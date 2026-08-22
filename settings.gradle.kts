@@ -16,4 +16,14 @@ dependencyResolutionManagement {
 
 rootProject.name = "CoinePro-App"
 include(":app")
+include(":core:common")
+include(":core:model")
+include(":core:network")
+include(":core:datastore")
+include(":core:navigation")
 include(":core:designsystem")
+include(":feature:home")
+include(":feature:signals")
+include(":feature:ai")
+include(":feature:tools")
+include(":feature:activity")

@@ -46,8 +46,17 @@ android {
 
 dependencies {
     implementation(project(":core:designsystem"))
+    implementation(project(":core:navigation"))
+    implementation(project(":feature:home"))
+    implementation(project(":feature:signals"))
+    implementation(project(":feature:ai"))
+    implementation(project(":feature:tools"))
+    implementation(project(":feature:activity"))
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.navigation.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)
