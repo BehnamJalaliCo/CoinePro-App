@@ -1,8 +1,8 @@
-# CoinePro App
+# CoinePro Android
 
-Native Android application for CoinePro.
+Native Android client for CoinePro, built with Kotlin and Jetpack Compose.
 
-CoinePro is being built as an AI-powered market intelligence and signal execution companion for Forex and crypto. The Android client is native-first and does not use a WebView architecture.
+CoinePro is an AI-powered market intelligence and signal execution platform for Forex and Crypto. The Android product is intentionally signal-centric and does not implement an embedded trading chart or a generic broker/exchange terminal.
 
 ## Foundation
 
@@ -10,21 +10,23 @@ CoinePro is being built as an AI-powered market intelligence and signal executio
 - Jetpack Compose
 - Android Gradle Plugin 9.0.0
 - Kotlin 2.3.0
-- Gradle 9.4.0 in CI
-- minSdk 26 / targetSdk 36
-- Package: `com.coinepro.app`
+- compileSdk / targetSdk 36
+- minSdk 26
+- GitHub Actions CI
 
-## Current phase
+## Product documentation
 
-This repository is at the foundation/bootstrap stage. Product screens, final visual language, API integration, MT5/LBank execution flows, AI vision, signals, news, tools, and notifications will be introduced incrementally after the core project structure is validated.
+- [Design Direction](docs/DESIGN_DIRECTION.md)
+- [Product Roadmap](docs/PRODUCT_ROADMAP.md)
 
-## Build
+## Current state
 
-CI installs Gradle 9.4.0 explicitly and validates lint, unit tests, and a debug APK. A committed Gradle Wrapper will be added after the initial toolchain validation.
+The repository is in the foundation/design-system stage. Product features such as Signals, AI Vision, MT5/LBank execution, News, Calendar, Tools, Activity and Notifications are intentionally implemented in later dependency-ordered phases.
 
 ## Security baseline
 
-- No credentials or production secrets are committed to the repository.
-- Cleartext network traffic is disabled.
-- Android backup is disabled by default.
-- Future auth and broker/exchange credentials must use secure server-side flows and Android Keystore-backed storage where client persistence is necessary.
+This repository is public. Never commit production credentials, API keys, MT5/LBank secrets, signing keys, `.env` files, `google-services.json`, or other private material. Production secrets belong in protected infrastructure / GitHub Actions secrets as appropriate.
+
+## CI
+
+Pull requests and pushes to `main` validate Android lint, unit tests, and a debug APK build. Successful builds upload a debug APK artifact for test installation.
