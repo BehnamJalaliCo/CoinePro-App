@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.coinepro.feature.signals"
+    namespace = "com.coinepro.feature.signaldetail"
     compileSdk = 36
     defaultConfig { minSdk = 26 }
     buildFeatures { compose = true }

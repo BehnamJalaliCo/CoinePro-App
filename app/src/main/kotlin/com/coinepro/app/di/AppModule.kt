@@ -10,6 +10,9 @@ import com.coinepro.core.auth.SessionTokenStorage
 import com.coinepro.core.marketdata.MarketDataController
 import com.coinepro.core.network.NetworkFactory
 import com.coinepro.core.security.KeystoreSessionTokenStorage
+import com.coinepro.core.signals.NetworkSignalGateway
+import com.coinepro.core.signals.SignalController
+import com.coinepro.core.signals.SignalGateway
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -52,6 +55,10 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun signalGateway(retrofit: Retrofit): SignalGateway = NetworkSignalGateway.create(retrofit)
+
+    @Provides
+    @Singleton
     fun appScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     @Provides
@@ -70,4 +77,11 @@ object AppModule {
         client: OkHttpClient,
         scope: CoroutineScope,
     ): MarketDataController = MarketDataController(retrofit, client, scope)
+
+    @Provides
+    @Singleton
+    fun signalController(
+        gateway: SignalGateway,
+        scope: CoroutineScope,
+    ): SignalController = SignalController(gateway, scope)
 }
