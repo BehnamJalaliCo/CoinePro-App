@@ -1,12 +1,12 @@
 # CoinePro Android Product Roadmap
 
-Status: Baseline roadmap v1
+Status: Baseline roadmap v1 — Phases 0, 1 and 2 complete
 
 This roadmap is ordered by dependency and risk, not by visual excitement. A phase is complete only when its exit criteria pass.
 
 ## Phase 0 — Foundation
 
-Status: In progress / bootstrap PR
+Status: Complete
 
 Deliverables:
 - Native Android, Kotlin, Jetpack Compose
@@ -21,6 +21,8 @@ Exit criteria:
 - no credentials in repository
 
 ## Phase 1 — Design System & Architecture Skeleton
+
+Status: Complete
 
 Deliverables:
 - locked Design Direction
@@ -40,37 +42,63 @@ Exit criteria:
 
 ## Phase 2 — Authentication, Session & Entitlements
 
+Status: Complete
+
+Backend contract implemented as it actually exists today:
+- Telegram signed-login flow via `GET /user/auth/config` and `POST /user/auth/telegram`
+- authenticated session validation via `GET /user/me`
+- no refresh-token endpoint exists today; Android does not invent one
+- email OTP remains a secondary verification step after authentication
+- server `/user/me` fields are the entitlement source of truth
+
 Deliverables:
-- login/register/refresh flow matching backend contract
-- Keystore-backed session/token storage
-- DataStore preferences
-- logout/revocation path
-- subscription/VIP entitlement source of truth from backend
-- global unauthorized/expired-session handling
+- `core:auth` session/auth domain and gateway
+- `core:security` Keystore-backed token storage
+- auth-only Telegram Login Widget bridge
+- Hilt dependency injection for auth/session/network dependencies
+- encrypted bearer-token persistence: AES/GCM key in Android Keystore, ciphertext in DataStore
+- cold-start session restore followed by mandatory `/user/me` validation
+- logout/local token clearing
+- global authenticated `401` handling and session invalidation
+- network-failure revalidation state that keeps protected flows locked
+- subscription/VIP entitlement state from backend fields
+- public-repo-safe API base URL injection via Gradle property
 
 Security gates:
 - no bearer tokens in URLs
+- Authorization and Cookie headers redacted from logs
+- no HTTP body logging in the shared production-capable client
 - no MT5/LBank secrets persisted in plaintext
 - no UI-only entitlement protection
+- protected shell remains locked until server revalidation succeeds
 
 Exit criteria:
 - cold-start session restore tested
-- token expiration/refresh tested
-- unauthorized state cannot access protected flows
+- expired/unauthorized session clearing tested
+- free user cannot acquire paid entitlement client-side
+- network failure cannot silently unlock protected flows
+- auth/session unit tests green
+- lint, debug assembly and APK artifact green in CI
+
+Future backend improvement:
+- add explicit server-side token revocation/logout and refresh/rotation only if the backend security model adopts them; Android must then update this contract before implementation.
 
 ## Phase 3 — Realtime Market Data Foundation
 
+Status: Next
+
 Deliverables:
-- OkHttp/Retrofit HTTP stack
 - resilient OkHttp WebSocket layer
 - Gold/Silver live prices
 - Crypto price stream / fallback polling
 - reconnect/backoff/network-state handling
 - normalized market model and timestamps
+- stale/freshness calculation based on server timestamps
 
 Exit criteria:
 - stale data visibly identified
 - reconnect works after network loss/app resume
+- fallback polling does not create duplicate streams
 - no fake live badge when data is stale
 
 ## Phase 4 — Signals Core
@@ -317,7 +345,7 @@ Exit criteria:
 
 ## Product module map
 
-Target structure evolves toward:
+Current/target structure evolves toward:
 
 ```text
 app
@@ -325,8 +353,10 @@ core:common
 core:model
 core:designsystem
 core:network
-core:database
 core:datastore
+core:auth
+core:security
+core:database
 core:notifications
 core:testing
 feature:auth
@@ -348,8 +378,8 @@ Create modules when boundaries become useful; do not create empty architecture f
 
 ## Cross-cutting contracts that must be settled early
 
-1. Authentication/refresh token contract
-2. User entitlement/subscription contract
+1. Authentication/session contract — settled for current backend: bearer token + `/user/me`, no refresh endpoint
+2. User entitlement/subscription contract — backend profile fields are source of truth
 3. Normalized Signal schema and lifecycle
 4. Realtime price/WebSocket schema
 5. FCM device + alert schema
