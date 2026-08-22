@@ -19,8 +19,8 @@ Use this as the execution checklist beside `PRODUCT_ROADMAP.md`.
 - [x] Phase 1B — Initial `core:designsystem` tokens/theme
 - [x] Phase 1C — Architecture skeleton modules + navigation shell
 - [x] Phase 2 — Authentication / Session / Entitlements
-- [ ] Phase 3 — Realtime Market Data Foundation
-- [ ] Phase 4 — Signals Core
+- [x] Phase 3 — Realtime Market Data Foundation
+- [x] Phase 4 — Signals Core
 - [ ] Phase 5 — Alerts & Push
 - [ ] Phase 6 — Connections & Signal Execution Bridge
 - [ ] Phase 7 — AI Generated Market Signal
@@ -39,7 +39,7 @@ Use this as the execution checklist beside `PRODUCT_ROADMAP.md`.
 
 - `core:common` — shared result/error model and market number formatting
 - `core:model` — market/instrument/quote domain models
-- `core:network` — HTTPS-only Retrofit/OkHttp factory with credential redaction
+- `core:network` — Retrofit + OkHttp HTTPS boundary with credential redaction
 - `core:datastore` — DataStore persistence boundary
 - `core:navigation` — canonical five-destination navigation contract
 - `feature:home`
@@ -63,10 +63,35 @@ Use this as the execution checklist beside `PRODUCT_ROADMAP.md`.
 - no refresh token was invented: current backend has no refresh endpoint
 - production/staging API base URL is injected by Gradle property and is not committed
 - SessionController tests cover signed-out restore, valid restore, unauthorized clearing and free-user entitlement
-- Android CI Run #9 passed lint, unit tests, debug assembly and APK artifact upload
+
+## Phase 3 delivered
+
+- `core:marketdata` — normalized quote state, WebSocket transport, HTTP snapshot fallback and freshness rules
+- Gold/Silver source contract is Finnhub; Crypto source contract is LBank
+- Android consumes only the normalized CoinePro backend contract, never vendor credentials
+- reconnect/backoff and duplicate/superseded socket protection
+- a socket connection alone never creates a fake `LIVE` state; at least one fresh quote is required
+- stale quotes are explicitly represented and degrade live state
+- Home Market Pulse renders real quote state only
+- final production vendor connectivity/whitelist smoke testing is intentionally deferred to Phase 17 Launch Readiness
+
+## Phase 4 delivered
+
+- `core:signals` — typed signal models, Retrofit gateway, controller and membership/error state
+- backend mobile contract: authenticated `/user/signals` list + detail
+- paid-membership gate is enforced server-side for actionable signal data
+- Forex V1 scope is locked to `XAUUSD` / `XAGUSD`
+- Crypto contract accepts only LBank-style `*USDT` symbols
+- owner/manual chart orders are excluded from the mobile signal surface
+- Signal list supports Forex/Crypto plus Active/Recent/Closed views
+- Signal Detail renders entry/entry-zone, SL, TP1/TP2/TP3, R:R, confidence, rationale/evidence when actually present, current/last quote and closed result
+- missing fields render as missing; no invented values or fake live state
+- invalid/neutral server directions are rejected rather than displayed as actionable trades
+- financial values remain LTR inside RTL-capable UI
+- no execution control is introduced before Phase 6
 
 ## Current next milestone
 
-Phase 3 — Realtime Market Data Foundation.
+Phase 5 — Alerts & Push.
 
-Phase 3 will establish resilient HTTP/WebSocket market transport, Gold/Silver live prices, crypto prices, reconnect/backoff, fallback polling, stale-data detection and server-truth timestamps before the Signals UI consumes live market state.
+Production vendor activation remains a Launch Readiness task and does not block Phases 5–16.

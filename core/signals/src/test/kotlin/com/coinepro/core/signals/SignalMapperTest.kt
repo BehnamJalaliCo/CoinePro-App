@@ -52,6 +52,11 @@ class SignalMapperTest {
 
     @Test
     fun `unknown market is rejected instead of guessed`() {
-        assertNull(SignalDto(id = 1, market = "stocks", symbol = "AAPL").toDomain(0L))
+        assertNull(SignalDto(id = 1, market = "stocks", symbol = "AAPL", direction = "BUY").toDomain(0L))
+    }
+
+    @Test
+    fun `non actionable direction is rejected instead of displayed as a trade`() {
+        assertNull(SignalDto(id = 1, market = "forex", symbol = "XAUUSD", direction = "neutral").toDomain(0L))
     }
 }

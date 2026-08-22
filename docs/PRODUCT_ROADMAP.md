@@ -1,6 +1,6 @@
 # CoinePro Android Product Roadmap
 
-Status: Baseline roadmap v1 — Phases 0, 1 and 2 complete
+Status: Baseline roadmap v1 — Phases 0 through 4 complete
 
 This roadmap is ordered by dependency and risk, not by visual excitement. A phase is complete only when its exit criteria pass.
 
@@ -85,39 +85,68 @@ Future backend improvement:
 
 ## Phase 3 — Realtime Market Data Foundation
 
-Status: Next
+Status: Complete
+
+Source-of-truth contract:
+- `XAUUSD` / `XAGUSD` realtime market data originates from Finnhub
+- Crypto realtime market data originates from LBank
+- Android connects only to the normalized CoinePro HTTP/WebSocket boundary
 
 Deliverables:
-- resilient OkHttp WebSocket layer
-- Gold/Silver live prices
-- Crypto price stream / fallback polling
+- resilient OkHttp WebSocket layer in `core:marketdata`
+- normalized Gold/Silver and Crypto quote model
+- HTTP snapshot fallback without duplicate realtime streams
 - reconnect/backoff/network-state handling
-- normalized market model and timestamps
-- stale/freshness calculation based on server timestamps
+- normalized timestamps and quote-source metadata
+- stale/freshness calculation based on source timestamps
+- stale-aware Market Pulse UI
+- fresh-quote requirement before declaring a stream `LIVE`
 
 Exit criteria:
 - stale data visibly identified
-- reconnect works after network loss/app resume
+- reconnect works after stream loss/app session restart
 - fallback polling does not create duplicate streams
 - no fake live badge when data is stale
+- market transport/unit tests and Android CI are green
+
+Launch note:
+- real production vendor connectivity, IP whitelist and end-to-end external smoke tests are intentionally deferred to Phase 17. They are deployment gates, not blockers for feature development.
 
 ## Phase 4 — Signals Core
 
+Status: Complete
+
+Backend contract:
+- native authenticated list: `GET /user/signals`
+- native authenticated detail: `GET /user/signals/{signalId}`
+- actionable levels require an active paid membership server-side
+- signal viewing is not coupled to execution/KYC approval; execution has stricter gates in Phase 6
+- owner/manual chart orders are excluded from the native signal product surface
+
 Deliverables:
+- `core:signals` domain/gateway/controller
 - Forex/Crypto signal list
 - XAUUSD/XAGUSD scope enforced for Forex V1
-- Signal Detail
-- entry/SL/TP1/TP2/TP3/R:R/confidence/reasoning
-- server-truth signal lifecycle
-- active/closed/history filters
+- LBank-style USDT pair scope for Crypto
+- Active / Recent / Closed filters
+- Signal Detail route and UI
+- entry/entry-zone, SL, TP1/TP2/TP3, R:R and confidence
+- human-readable rationale/evidence only when actually supplied by backend
+- current/last quote with stale state instead of fake realtime
+- server-truth closed result when available
+- safe missing-field rendering
 
 Exit criteria:
-- signal state survives restart
-- status agrees with backend tracking
+- restart refetches signal truth from backend rather than trusting stale local lifecycle state
+- status/result agree with backend tracking contract
 - missing fields render safely
-- signal detail deep link ready
+- invalid/non-actionable direction is rejected rather than guessed
+- signal detail internal deep-link route is ready for Phase 5 notification routing
+- `core:signals` tests, lint, debug assembly and APK CI pass
 
 ## Phase 5 — Alerts & Push
+
+Status: Next
 
 Deliverables:
 - FCM/device registration backend contract
@@ -337,8 +366,12 @@ Deliverables:
 - support/feedback path
 - analytics events with privacy review
 - operational runbooks for backend/notifications/execution incidents
+- production vendor domain/credential configuration review
+- production IP whitelist verification where required
+- real external market-data/API connectivity smoke tests
 
 Exit criteria:
+- external market sources are verified from the final production environment
 - end-to-end smoke: login → signal → execution confirmation → tracked result
 - AI Vision smoke: image → validated analysis → eligible action
 - incident rollback/disable switches defined server-side
@@ -356,6 +389,8 @@ core:network
 core:datastore
 core:auth
 core:security
+core:marketdata
+core:signals
 core:database
 core:notifications
 core:testing
@@ -380,8 +415,8 @@ Create modules when boundaries become useful; do not create empty architecture f
 
 1. Authentication/session contract — settled for current backend: bearer token + `/user/me`, no refresh endpoint
 2. User entitlement/subscription contract — backend profile fields are source of truth
-3. Normalized Signal schema and lifecycle
-4. Realtime price/WebSocket schema
+3. Normalized Signal schema and lifecycle — settled for native list/detail in Phase 4; execution lifecycle extends it in Phase 6
+4. Realtime price/WebSocket schema — settled for normalized Android consumption in Phase 3; production external activation is a Phase 17 gate
 5. FCM device + alert schema
 6. Per-user MT5 execution contract
 7. LBank open/close/order-status contract

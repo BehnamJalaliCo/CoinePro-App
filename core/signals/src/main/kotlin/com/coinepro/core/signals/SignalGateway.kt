@@ -132,7 +132,7 @@ internal fun SignalDto.toDomain(nowMs: Long): TradingSignal? {
     val safeDirection = when (direction?.uppercase()) {
         "BUY" -> SignalDirection.BUY
         "SELL" -> SignalDirection.SELL
-        else -> SignalDirection.NEUTRAL
+        else -> return null
     }
     val quote = currentQuote?.toDomain(safeMarket, nowMs)
     return TradingSignal(
