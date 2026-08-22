@@ -1,0 +1,35 @@
+# Android / Gradle
+.gradle/
+.kotlin/
+**/build/
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# IDE / OS
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+captures/
+
+# Secrets / credentials
+.env
+.env.*
+!.env.example
+secrets.properties
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+google-services.json
+
+# Generated / temporary
+out/
+generated/
+.externalNativeBuild/
+.cxx/
