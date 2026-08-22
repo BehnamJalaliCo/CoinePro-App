@@ -1,7 +1,13 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
 }
+
+val apiBaseUrl = providers.gradleProperty("COINEPRO_API_BASE_URL")
+    .orElse("https://example.invalid/")
+    .get()
 
 android {
     namespace = "com.coinepro.app"
@@ -14,6 +20,7 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl.replace("\"", "\\\"")}\"")
     }
 
     buildFeatures {
@@ -33,8 +40,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     packaging {
@@ -45,14 +52,21 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:auth"))
+    implementation(project(":core:security"))
+    implementation(project(":core:network"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:navigation"))
+    implementation(project(":feature:auth"))
     implementation(project(":feature:home"))
     implementation(project(":feature:signals"))
     implementation(project(":feature:ai"))
     implementation(project(":feature:tools"))
     implementation(project(":feature:activity"))
 
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)

@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "com.coinepro.core.network"
+    namespace = "com.coinepro.core.security"
     compileSdk = 36
     defaultConfig { minSdk = 26 }
     compileOptions {
@@ -13,8 +13,7 @@ android {
 }
 
 dependencies {
-    api(libs.okhttp.core)
-    api(libs.retrofit.core)
-    implementation(libs.retrofit.gson)
-    implementation(libs.okhttp.logging)
+    implementation(project(":core:auth"))
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.kotlinx.coroutines.core)
 }
