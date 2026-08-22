@@ -22,6 +22,8 @@ import androidx.navigation.compose.rememberNavController
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionState
 import com.coinepro.core.designsystem.CoineProTheme
+import com.coinepro.core.marketdata.MarketDataController
+import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.navigation.AppDestination
 import com.coinepro.feature.activity.ActivityScreen
 import com.coinepro.feature.ai.AiScreen
@@ -32,15 +34,26 @@ import com.coinepro.feature.tools.ToolsScreen
 import kotlinx.coroutines.launch
 
 @Composable
-fun CoineProApp(sessionController: SessionController) {
+fun CoineProApp(
+    sessionController: SessionController,
+    marketDataController: MarketDataController,
+) {
     LaunchedEffect(sessionController) { sessionController.start() }
     val session by sessionController.state.collectAsStateWithLifecycle()
     val botUsername by sessionController.botUsername.collectAsStateWithLifecycle()
+    val marketState by marketDataController.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
+    val signedIn = session is SessionState.SignedIn
+
+    LaunchedEffect(signedIn) {
+        if (signedIn) marketDataController.start() else marketDataController.stop()
+    }
 
     CoineProTheme {
         when (session) {
             is SessionState.SignedIn -> MainShell(
+                marketState = marketState,
+                onMarketRetry = marketDataController::retry,
                 onLogout = { scope.launch { sessionController.logout() } },
             )
             else -> AuthScreen(
@@ -58,7 +71,11 @@ fun CoineProApp(sessionController: SessionController) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MainShell(onLogout: () -> Unit) {
+private fun MainShell(
+    marketState: MarketDataState,
+    onMarketRetry: () -> Unit,
+    onLogout: () -> Unit,
+) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -94,7 +111,9 @@ private fun MainShell(onLogout: () -> Unit) {
             startDestination = AppDestination.HOME.route,
             modifier = Modifier.padding(innerPadding),
         ) {
-            composable(AppDestination.HOME.route) { HomeScreen() }
+            composable(AppDestination.HOME.route) {
+                HomeScreen(state = marketState, onRetry = onMarketRetry)
+            }
             composable(AppDestination.SIGNALS.route) { SignalsScreen() }
             composable(AppDestination.AI.route) { AiScreen() }
             composable(AppDestination.TOOLS.route) { ToolsScreen() }

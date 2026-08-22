@@ -38,6 +38,7 @@ object NetworkFactory {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
+            .pingInterval(20, TimeUnit.SECONDS)
             .addInterceptor(auth)
             .addInterceptor(logging)
             .build()

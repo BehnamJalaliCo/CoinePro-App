@@ -38,7 +38,12 @@ jobs:
         run: gradle --version
 
       - name: Lint, test, and assemble debug
-        run: gradle --no-daemon :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
+        run: >-
+          gradle --no-daemon
+          :core:marketdata:testDebugUnitTest
+          :app:lintDebug
+          :app:testDebugUnitTest
+          :app:assembleDebug
 
       - name: Upload debug APK
         if: success()

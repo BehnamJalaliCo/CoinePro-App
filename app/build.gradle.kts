@@ -55,6 +55,7 @@ dependencies {
     implementation(project(":core:auth"))
     implementation(project(":core:security"))
     implementation(project(":core:network"))
+    implementation(project(":core:marketdata"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:navigation"))
     implementation(project(":feature:auth"))

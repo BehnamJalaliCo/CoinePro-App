@@ -7,6 +7,7 @@ import com.coinepro.core.auth.NetworkAuthGateway
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionMemory
 import com.coinepro.core.auth.SessionTokenStorage
+import com.coinepro.core.marketdata.MarketDataController
 import com.coinepro.core.network.NetworkFactory
 import com.coinepro.core.security.KeystoreSessionTokenStorage
 import dagger.Module
@@ -61,4 +62,12 @@ object AppModule {
         gateway: AuthGateway,
         scope: CoroutineScope,
     ): SessionController = SessionController(storage, memory, gateway, scope)
+
+    @Provides
+    @Singleton
+    fun marketDataController(
+        retrofit: Retrofit,
+        client: OkHttpClient,
+        scope: CoroutineScope,
+    ): MarketDataController = MarketDataController(retrofit, client, scope)
 }
