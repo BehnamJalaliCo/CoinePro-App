@@ -21,6 +21,7 @@ private val CoineProDarkColorScheme = darkColorScheme(
 fun CoineProTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = CoineProDarkColorScheme,
+        shapes = CoineProShapes,
         content = content,
     )
 }
