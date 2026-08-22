@@ -13,7 +13,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":core:model"))
+    api(project(":core:model"))
     implementation(libs.retrofit.core)
     implementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.junit)
