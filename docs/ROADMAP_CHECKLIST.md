@@ -18,7 +18,7 @@ Use this as the execution checklist beside `PRODUCT_ROADMAP.md`.
 - [x] Phase 1A — Design Direction locked
 - [x] Phase 1B — Initial `core:designsystem` tokens/theme
 - [x] Phase 1C — Architecture skeleton modules + navigation shell
-- [ ] Phase 2 — Authentication / Session / Entitlements
+- [x] Phase 2 — Authentication / Session / Entitlements
 - [ ] Phase 3 — Realtime Market Data Foundation
 - [ ] Phase 4 — Signals Core
 - [ ] Phase 5 — Alerts & Push
@@ -48,10 +48,25 @@ Use this as the execution checklist beside `PRODUCT_ROADMAP.md`.
 - `feature:tools`
 - `feature:activity`
 - App shell wired to Home / Signals / AI / Tools / Activity
-- Android CI Run #6 passed lint, unit tests, debug assembly, and APK artifact upload
+
+## Phase 2 delivered
+
+- `core:auth` — backend-matched Telegram auth, `/user/me` session validation and entitlement model
+- `core:security` — AES/GCM token encryption with Android Keystore; ciphertext only in DataStore
+- `feature:auth` — auth-only Telegram Login Widget bridge; bearer token never enters the WebView or URL
+- Hilt DI wired for session, storage, network and auth gateway
+- Bearer interceptor with Authorization/Cookie log redaction
+- global authenticated `401` invalidation and encrypted-session clearing
+- cold-start token restore is locked until `/user/me` validates the session
+- network failure during restore enters `RevalidationRequired`; protected navigation stays locked
+- backend `is_vip`, `is_paid`, `panel_allowed`, `panel_state`, `plan`, `plan_expires_at` are entitlement truth
+- no refresh token was invented: current backend has no refresh endpoint
+- production/staging API base URL is injected by Gradle property and is not committed
+- SessionController tests cover signed-out restore, valid restore, unauthorized clearing and free-user entitlement
+- Android CI Run #9 passed lint, unit tests, debug assembly and APK artifact upload
 
 ## Current next milestone
 
-Phase 2 — Authentication / Session / Entitlements.
+Phase 3 — Realtime Market Data Foundation.
 
-Before product data integration, Phase 2 must establish secure session storage, authenticated API request boundaries, logout/session-expiry behavior, and backend-enforced entitlement state for free/VIP capabilities.
+Phase 3 will establish resilient HTTP/WebSocket market transport, Gold/Silver live prices, crypto prices, reconnect/backoff, fallback polling, stale-data detection and server-truth timestamps before the Signals UI consumes live market state.
