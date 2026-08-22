@@ -18,6 +18,7 @@ CoinePro is an AI-powered market intelligence and signal execution platform for 
 
 - [Design Direction](docs/DESIGN_DIRECTION.md)
 - [Product Roadmap](docs/PRODUCT_ROADMAP.md)
+- [Delivery Checklist](docs/ROADMAP_CHECKLIST.md)
 
 ## Current state
 
