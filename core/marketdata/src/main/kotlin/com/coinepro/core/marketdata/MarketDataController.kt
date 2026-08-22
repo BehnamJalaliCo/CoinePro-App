@@ -200,17 +200,20 @@ class MarketDataController(
     }
 }
 
-internal fun webSocketUrl(baseUrl: HttpUrl): HttpUrl {
+internal fun webSocketUrl(baseUrl: HttpUrl): String {
     require(baseUrl.isHttps) { "Market stream requires HTTPS/WSS" }
     val resolved = requireNotNull(baseUrl.resolve("ws/prices")) { "Invalid market stream URL" }
-    return resolved.newBuilder().scheme("wss").build()
+    return resolved.toString().replaceFirst("https://", "wss://")
 }
 
 internal fun WireQuoteDto.toDomain(nowMs: Long): MarketQuote? {
     val normalizedSymbol = symbol?.trim()?.uppercase()?.takeIf { it.isNotEmpty() } ?: return null
-    val normalizedPrice = price?.takeIf { it > 0 }
-        ?: if (bid != null && ask != null && bid > 0 && ask > 0) (bid + ask) / 2 else null
-        ?: return null
+    val normalizedPrice = price?.takeIf { it > 0 } ?: run {
+        val normalizedBid = bid ?: return null
+        val normalizedAsk = ask ?: return null
+        if (normalizedBid <= 0 || normalizedAsk <= 0) return null
+        (normalizedBid + normalizedAsk) / 2
+    }
     val timestamp = ts ?: receivedAtMs ?: 0L
     val sourceKind = when {
         source.orEmpty().contains("finnhub", ignoreCase = true) -> QuoteSource.FINNHUB
