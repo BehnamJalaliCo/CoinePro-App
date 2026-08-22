@@ -82,6 +82,7 @@ class MarketDataController(
         }
         reconnectAttempt = 0
         reconnectJob?.cancel()
+        reconnectJob = null
         socket?.cancel()
         socket = null
         _state.update { it.copy(connection = MarketConnectionState.CONNECTING, lastError = null) }
@@ -92,13 +93,26 @@ class MarketDataController(
     private fun connectWebSocket() {
         if (!started.get()) return
         val request = Request.Builder().url(webSocketUrl(baseUrl)).build()
-        socket = client.newWebSocket(
+        val newSocket = client.newWebSocket(
             request,
             object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
+                    if (!started.get() || socket !== webSocket) {
+                        webSocket.close(1000, "superseded")
+                        return
+                    }
                     reconnectAttempt = 0
-                    _state.update {
-                        it.copy(connection = MarketConnectionState.LIVE, lastError = null)
+                    reconnectJob?.cancel()
+                    reconnectJob = null
+                    _state.update { old ->
+                        old.copy(
+                            connection = if (old.quotes.isEmpty()) {
+                                MarketConnectionState.CONNECTING
+                            } else {
+                                MarketConnectionState.DEGRADED
+                            },
+                            lastError = null,
+                        )
                     }
                     val subscribe = Gson().toJson(
                         mapOf("action" to "subscribe", "symbols" to symbols),
@@ -107,19 +121,25 @@ class MarketDataController(
                 }
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
+                    if (socket !== webSocket) return
                     val batch = parser.parse(text) ?: return
-                    applyQuotes(batch.quotes, batch.serverTimeMs)
+                    applyQuotes(batch.quotes, batch.serverTimeMs, realtimeBatch = true)
                 }
 
                 override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                    if (started.get()) markDisconnected("Market stream closed")
+                    if (started.get() && socket === webSocket) {
+                        markDisconnected("Market stream closed")
+                    }
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    if (started.get()) markDisconnected(t.message ?: "Market stream unavailable")
+                    if (started.get() && socket === webSocket) {
+                        markDisconnected(t.message ?: "Market stream unavailable")
+                    }
                 }
             },
         )
+        socket = newSocket
     }
 
     private fun markDisconnected(message: String) {
@@ -162,13 +182,17 @@ class MarketDataController(
             }
             return
         }
-        applyQuotes(snapshot.prices.values.toList(), snapshot.serverTimeMs)
-        if (_state.value.connection != MarketConnectionState.LIVE) {
+        applyQuotes(snapshot.prices.values.toList(), snapshot.serverTimeMs, realtimeBatch = false)
+        if (_state.value.connection != MarketConnectionState.LIVE && _state.value.quotes.isNotEmpty()) {
             _state.update { it.copy(connection = MarketConnectionState.DEGRADED, lastError = null) }
         }
     }
 
-    private fun applyQuotes(wireQuotes: List<WireQuoteDto>, serverTimeMs: Long?) {
+    private fun applyQuotes(
+        wireQuotes: List<WireQuoteDto>,
+        serverTimeMs: Long?,
+        realtimeBatch: Boolean,
+    ) {
         val now = nowMillis()
         val mapped = wireQuotes.mapNotNull { it.toDomain(now) }
         if (mapped.isEmpty()) return
@@ -180,7 +204,14 @@ class MarketDataController(
                     merged[quote.instrument.symbol] = quote
                 }
             }
+            val hasFreshQuote = merged.values.any { !it.isStale }
+            val nextConnection = when {
+                realtimeBatch && hasFreshQuote -> MarketConnectionState.LIVE
+                old.connection == MarketConnectionState.LIVE && !hasFreshQuote -> MarketConnectionState.DEGRADED
+                else -> old.connection
+            }
             old.copy(
+                connection = nextConnection,
                 quotes = merged,
                 lastServerTimeEpochMillis = serverTimeMs ?: old.lastServerTimeEpochMillis,
                 lastError = null,
@@ -191,11 +222,19 @@ class MarketDataController(
     private fun refreshFreshness() {
         val now = nowMillis()
         _state.update { old ->
-            old.copy(
-                quotes = old.quotes.mapValues { (_, quote) ->
-                    quote.copy(isStale = isQuoteStale(quote.source, quote.timestampEpochMillis, now))
-                },
-            )
+            val refreshed = old.quotes.mapValues { (_, quote) ->
+                quote.copy(isStale = isQuoteStale(quote.source, quote.timestampEpochMillis, now))
+            }
+            val nextConnection = if (
+                old.connection == MarketConnectionState.LIVE &&
+                refreshed.isNotEmpty() &&
+                refreshed.values.none { !it.isStale }
+            ) {
+                MarketConnectionState.DEGRADED
+            } else {
+                old.connection
+            }
+            old.copy(connection = nextConnection, quotes = refreshed)
         }
     }
 }
