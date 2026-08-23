@@ -37,8 +37,8 @@ jobs:
       - name: Verify toolchain
         run: gradle --version
 
-      - name: Lint, test, and assemble debug
-        run: gradle --no-daemon :core:auth:testDebugUnitTest :core:network:testDebugUnitTest :core:marketdata:testDebugUnitTest :core:signals:testDebugUnitTest :core:notifications:testDebugUnitTest :core:execution:testDebugUnitTest :core:aisignal:testDebugUnitTest :core:aivision:testDebugUnitTest :core:aiassistant:testDebugUnitTest :core:marketintel:testDebugUnitTest :core:database:testDebugUnitTest :feature:tools:testDebugUnitTest :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
+      - name: Lint, test, and assemble debug + release
+        run: gradle --no-daemon :core:auth:testDebugUnitTest :core:network:testDebugUnitTest :core:marketdata:testDebugUnitTest :core:signals:testDebugUnitTest :core:notifications:testDebugUnitTest :core:execution:testDebugUnitTest :core:aisignal:testDebugUnitTest :core:aivision:testDebugUnitTest :core:aiassistant:testDebugUnitTest :core:marketintel:testDebugUnitTest :core:database:testDebugUnitTest :feature:tools:testDebugUnitTest :app:lintDebug :app:lintRelease :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease
 
       - name: Upload debug APK
         if: success()
