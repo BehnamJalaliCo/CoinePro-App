@@ -34,7 +34,7 @@ class RoomReadCacheMapperTest {
     }
 
     @Test
-    fun `unsupported or invalid quote cannot enter cache`() {
+    fun `unsupported or invalid quote cannot enter or leave cache`() {
         val invalid = MarketQuote(
             instrument = Instrument("XAUUSD", "Gold", MarketType.FOREX),
             price = Double.NaN,
@@ -42,7 +42,28 @@ class RoomReadCacheMapperTest {
             source = QuoteSource.FINNHUB,
             isStale = true,
         )
+        val unsupported = MarketQuote(
+            instrument = Instrument("EURUSD", "Euro", MarketType.FOREX),
+            price = 1.1,
+            timestampEpochMillis = 1000L,
+            source = QuoteSource.FINNHUB,
+            isStale = true,
+        )
+        val corruptedStoredRow = CachedMarketQuoteEntity(
+            symbol = "EURUSD",
+            displayName = "Euro",
+            marketType = MarketType.FOREX.name,
+            price = 1.1,
+            bid = null,
+            ask = null,
+            changePercent = null,
+            source = QuoteSource.FINNHUB.name,
+            sourceTimestampEpochMillis = 1000L,
+        )
+
         assertNull(invalid.toEntity())
+        assertNull(unsupported.toEntity())
+        assertNull(corruptedStoredRow.toDomain())
     }
 
     @Test
