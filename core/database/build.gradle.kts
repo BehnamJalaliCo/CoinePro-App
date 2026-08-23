@@ -17,7 +17,7 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:marketdata"))
     implementation(project(":core:signals"))
-    implementation(libs.androidx.room.runtime)
+    api(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)
 }
