@@ -106,9 +106,10 @@ class MainActivity : ComponentActivity() {
 
     private fun consumeDeepLink(intent: Intent?) {
         val uri = intent?.data ?: return
+        if (uri.scheme != DEEP_LINK_SCHEME) return
         when (uri.host) {
-            "signal" -> launchSignalId = positiveSignalId(uri.pathSegments.firstOrNull())
-            "activity" -> launchActivity = true
+            "signal" -> launchSignalId = positiveSignalId(uri.pathSegments.singleOrNull())
+            "activity" -> if (uri.pathSegments.isEmpty()) launchActivity = true
         }
     }
 
@@ -170,6 +171,7 @@ class MainActivity : ComponentActivity() {
     private fun launchPreferences() = getSharedPreferences(LAUNCH_PREFERENCES, MODE_PRIVATE)
 
     companion object {
+        private const val DEEP_LINK_SCHEME = "coinepro"
         private const val LAUNCH_PREFERENCES = "launch_readiness"
         private const val KEY_NOTIFICATION_PERMISSION_REQUESTED = "notification_permission_requested"
     }
