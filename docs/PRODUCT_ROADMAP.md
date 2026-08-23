@@ -1,217 +1,219 @@
 # CoinePro Android Product Roadmap
 
-Status: Baseline roadmap v1 — Phases 0 through 4 complete
+Status: Phases 0 through 6 complete — Phase 7 next
 
-This roadmap is ordered by dependency and risk, not by visual excitement. A phase is complete only when its exit criteria pass.
+This roadmap is ordered by dependency and risk. The canonical phase-to-branch/SHA/CI mapping lives in `PHASE_INDEX.md`.
+
+## Repository and delivery model
+
+- Source-of-truth repository: `BehnamJalaliCo/CoinePro-App`
+- `main` is the stable base.
+- `bootstrap/android-foundation` is the cumulative integration branch.
+- Each completed `feat/...` branch points to the exact green Android milestone for that phase.
+- Production vendor credentials, broker connectivity, IP whitelisting and real external smoke testing are deferred to Phase 17.
+- Android never stores production vendor/broker secrets in the repository.
 
 ## Phase 0 — Foundation
 
 Status: Complete
 
-Deliverables:
-- Native Android, Kotlin, Jetpack Compose
+Delivered:
+- Native Android app with Kotlin + Jetpack Compose
 - Gradle/version catalog
-- CI: lint, unit tests, debug build artifact
-- public-repo secret safeguards
+- GitHub Actions lint/test/debug build
+- public-repository secret safeguards
 - application shell
 
-Exit criteria:
-- clean CI on PR
-- debug APK artifact produced
-- no credentials in repository
+Exit state:
+- CI green
+- debug APK artifact available
+- no committed production credentials
 
 ## Phase 1 — Design System & Architecture Skeleton
 
 Status: Complete
 
-Deliverables:
+Delivered:
 - locked Design Direction
-- `core:designsystem` tokens/theme
+- `core:designsystem`
 - `core:model`
 - `core:common`
 - `core:network`
 - `core:datastore`
-- navigation shell with five destinations
-- app-level error/loading conventions
-- RTL/LTR financial formatting helpers
-
-Exit criteria:
-- theme preview/snapshot tests where practical
-- app builds with module boundaries enforced
-- no feature directly owns transport/storage implementation
+- `core:navigation`
+- five-destination shell: Home / Signals / AI / Tools / Activity
+- RTL/LTR financial formatting conventions
 
 ## Phase 2 — Authentication, Session & Entitlements
 
 Status: Complete
 
-Backend contract implemented as it actually exists today:
-- Telegram signed-login flow via `GET /user/auth/config` and `POST /user/auth/telegram`
-- authenticated session validation via `GET /user/me`
-- no refresh-token endpoint exists today; Android does not invent one
-- email OTP remains a secondary verification step after authentication
-- server `/user/me` fields are the entitlement source of truth
+Milestone:
+- branch: `feat/android-mobile-auth`
+- end SHA: `12cc837ac02e378f3ca4452a95bfed224ad3222b`
+- Android CI Run #11: success
 
-Deliverables:
+Delivered:
 - `core:auth` session/auth domain and gateway
-- `core:security` Keystore-backed token storage
-- auth-only Telegram Login Widget bridge
-- Hilt dependency injection for auth/session/network dependencies
-- encrypted bearer-token persistence: AES/GCM key in Android Keystore, ciphertext in DataStore
-- cold-start session restore followed by mandatory `/user/me` validation
-- logout/local token clearing
-- global authenticated `401` handling and session invalidation
-- network-failure revalidation state that keeps protected flows locked
-- subscription/VIP entitlement state from backend fields
-- public-repo-safe API base URL injection via Gradle property
+- `core:security` Android Keystore-backed token protection
+- authenticated `/user/me` validation contract
+- auth-only Telegram login bridge
+- bearer token redaction
+- mandatory cold-start revalidation before protected navigation
+- encrypted session clearing on logout/unauthorized response
+- entitlement state sourced from the authenticated server profile
+- no invented refresh-token flow
 
-Security gates:
-- no bearer tokens in URLs
-- Authorization and Cookie headers redacted from logs
-- no HTTP body logging in the shared production-capable client
-- no MT5/LBank secrets persisted in plaintext
-- no UI-only entitlement protection
-- protected shell remains locked until server revalidation succeeds
-
-Exit criteria:
-- cold-start session restore tested
-- expired/unauthorized session clearing tested
-- free user cannot acquire paid entitlement client-side
-- network failure cannot silently unlock protected flows
-- auth/session unit tests green
-- lint, debug assembly and APK artifact green in CI
-
-Future backend improvement:
-- add explicit server-side token revocation/logout and refresh/rotation only if the backend security model adopts them; Android must then update this contract before implementation.
+Security boundary:
+- no bearer token in URLs
+- no plaintext session token persistence
+- no UI-only entitlement bypass
 
 ## Phase 3 — Realtime Market Data Foundation
 
 Status: Complete
 
-Source-of-truth contract:
-- `XAUUSD` / `XAGUSD` realtime market data originates from Finnhub
-- Crypto realtime market data originates from LBank
-- Android connects only to the normalized CoinePro HTTP/WebSocket boundary
+Milestone:
+- branch: `feat/phase3-realtime-market-data`
+- end SHA: `7158a78ef6ee378ec531576bf7d9364816d25b56`
+- Android CI Run #14: success
 
-Deliverables:
-- resilient OkHttp WebSocket layer in `core:marketdata`
-- normalized Gold/Silver and Crypto quote model
-- HTTP snapshot fallback without duplicate realtime streams
-- reconnect/backoff/network-state handling
-- normalized timestamps and quote-source metadata
-- stale/freshness calculation based on source timestamps
-- stale-aware Market Pulse UI
-- fresh-quote requirement before declaring a stream `LIVE`
+Source contract:
+- XAUUSD / XAGUSD: Finnhub-originated normalized feed
+- Crypto: LBank-originated normalized feed
+- Android consumes the CoinePro HTTP/WebSocket contract rather than vendor credentials
 
-Exit criteria:
-- stale data visibly identified
-- reconnect works after stream loss/app session restart
-- fallback polling does not create duplicate streams
-- no fake live badge when data is stale
-- market transport/unit tests and Android CI are green
+Delivered:
+- `core:marketdata`
+- resilient OkHttp WebSocket transport
+- HTTP snapshot fallback
+- reconnect/backoff and superseded-socket protection
+- source timestamps and stale/fresh state
+- fresh quote required before `LIVE`
+- Home Market Pulse using real quote state only
 
-Launch note:
-- real production vendor connectivity, IP whitelist and end-to-end external smoke tests are intentionally deferred to Phase 17. They are deployment gates, not blockers for feature development.
+Launch deferral:
+- live production vendor connectivity and whitelist smoke testing remain Phase 17
 
 ## Phase 4 — Signals Core
 
 Status: Complete
 
-Backend contract:
-- native authenticated list: `GET /user/signals`
-- native authenticated detail: `GET /user/signals/{signalId}`
-- actionable levels require an active paid membership server-side
-- signal viewing is not coupled to execution/KYC approval; execution has stricter gates in Phase 6
-- owner/manual chart orders are excluded from the native signal product surface
+Milestone:
+- branch: `feat/phase4-signals-core`
+- end SHA: `adbefeb33b1e39eddd65f28ddd89ad40b70bafdb`
+- Android CI Run #17: success
 
-Deliverables:
-- `core:signals` domain/gateway/controller
+Delivered:
+- `core:signals`
+- typed signal network/domain models
 - Forex/Crypto signal list
-- XAUUSD/XAGUSD scope enforced for Forex V1
-- LBank-style USDT pair scope for Crypto
 - Active / Recent / Closed filters
-- Signal Detail route and UI
-- entry/entry-zone, SL, TP1/TP2/TP3, R:R and confidence
-- human-readable rationale/evidence only when actually supplied by backend
-- current/last quote with stale state instead of fake realtime
-- server-truth closed result when available
+- Signal Detail route and screen
+- Entry/zone, SL, TP1/TP2/TP3, R:R and confidence
+- optional rationale/evidence only when supplied
+- current/last quote with stale state
+- invalid/non-actionable direction rejection
 - safe missing-field rendering
 
-Exit criteria:
-- restart refetches signal truth from backend rather than trusting stale local lifecycle state
-- status/result agree with backend tracking contract
-- missing fields render safely
-- invalid/non-actionable direction is rejected rather than guessed
-- signal detail internal deep-link route is ready for Phase 5 notification routing
-- `core:signals` tests, lint, debug assembly and APK CI pass
+Product scope:
+- Forex V1: XAUUSD and XAGUSD only
+- Crypto: LBank-style USDT pairs
+- no generic trading terminal
 
 ## Phase 5 — Alerts & Push
+
+Status: Complete
+
+Milestone:
+- branch: `feat/phase5-alerts-push`
+- end SHA: `60dfd64259ec92775b38288f2a4dc8e4c50169e9`
+- Android CI Run #41: success
+
+Delivered:
+- `core:notifications`
+- Notification Center in Activity
+- notification preferences
+- price above/below/cross alert contract
+- FCM token registration
+- authenticated device unregister before explicit logout
+- Firebase Messaging service
+- Android notification channel
+- Android 13+ notification permission handling
+- deep links to Signal Detail / Activity
+- build-time Firebase runtime configuration without committed `google-services.json`
+
+Exit state:
+- notification payload mapping is unit-tested
+- app navigation is deterministic
+- production FCM delivery smoke remains Phase 17
+
+## Phase 6 — Connections & Signal Execution Bridge
+
+Status: Complete
+
+Milestone:
+- branch: `feat/phase6-signal-execution`
+- end SHA: `710ede98b19c74244e61048174fdd3939b0cb98a`
+- Android CI Run #65: success
+
+Delivered:
+- `core:execution`
+- `feature:connections`
+- `feature:execution`
+- MT5 and LBank connection-state surfaces
+- signal-scoped execution confirmation
+- no arbitrary-symbol New Trade screen
+- venue/lot/amount validation
+- idempotency request ID on every execution attempt
+- explicit execution states: queued, submitted, open, close-requested, closed, failed, cancelled
+- active executed-signal loading/tracking
+- UI never declares an order open without provider truth
+- LBank close remains hidden after submit/open until that external provider lifecycle is verified
+- queued execution can be cancelled before provider acknowledgement
+- Android does not persist trading credentials or render them back into logs/UI
+
+Launch deferral:
+- real broker/exchange credentials
+- production execution worker/provider activation
+- external close lifecycle verification
+- end-to-end live trade smoke
+
+These are Phase 17 deployment gates, not reasons to split Android phase history across repositories.
+
+## Phase 7 — AI Generated Market Signal
 
 Status: Next
 
 Deliverables:
-- FCM/device registration backend contract
-- new signal notifications
-- Entry Hit / TP / SL notifications
-- price above/below/cross alerts
-- deep-link routing from notification to signal/activity
-- notification preference controls
-
-Exit criteria:
-- duplicate notification suppression
-- revoked session/device handled
-- notification opens correct entity
-
-## Phase 6 — Connections & Signal Execution Bridge
-
-Deliverables:
-- Connections screen
-- MetaTrader 5 connection state
-- LBank connection state
-- per-signal execution confirmation
-- risk/lot/amount validation
-- idempotency key on every execution request
-- execution audit record bound to Signal ID
-- active executed signals
-- close action only where backend contract is verified
-
-Critical backend work:
-- user-scoped MT5 signal execution API separate from owner/master/copy paths
-- verify/complete LBank close lifecycle before exposing Close in Android
-
-Exit criteria:
-- duplicate taps cannot duplicate orders
-- execution cannot mutate arbitrary symbols outside eligible signal
-- server audit trail exists
-- connection secrets never exposed in logs/UI
-
-## Phase 7 — AI Generated Market Signal
-
-Deliverables:
 - AI Signal request form
-- symbol/timeframe/risk controls within product scope
+- symbol/timeframe/risk controls inside product scope
 - real pending/done/error job states
-- generated signal result using standard Signal Card language
+- generated result using the standard Signal Card language
 - quota/entitlement handling
+- server-validated structured result before display or execution
 
 Exit criteria:
 - no fake progress
 - failed/expired jobs recover cleanly
-- model output is validated server-side before display/execution
+- unvalidated model text cannot be executed
 
 ## Phase 8 — AI Vision Flagship
+
+Status: Planned
 
 Deliverables:
 - CameraX capture
 - gallery/document picker
 - screenshot/image upload
 - image compression/orientation/privacy handling
-- multimodal backend endpoint/job contract
+- multimodal job contract
 - structured analysis result
 - unknown/low-confidence states
 - optional eligible Execute CTA
 
-Required result schema:
-- symbol/timeframe (nullable + confidence)
+Required structured result:
+- symbol/timeframe plus confidence
 - trend/bias
 - market structure/setup
 - direction
@@ -224,29 +226,33 @@ Required result schema:
 
 Exit criteria:
 - EXIF/privacy rules defined
-- unsupported/unclear image has explicit response
-- execution never proceeds from unvalidated raw model text
+- unclear/unsupported images have explicit state
+- execution never proceeds from raw unvalidated model text
 
 ## Phase 9 — AI Assistant
 
+Status: Planned
+
 Deliverables:
-- contextual chat using authenticated user context
+- contextual authenticated chat
 - active signal context
-- current market price context
+- current market context
 - news/calendar context
 - risk/tool context
-- explicit citations/source labels where backend can provide them
+- freshness/source labels where available
 
 Exit criteria:
-- assistant cannot silently invent active positions/signals
-- context freshness timestamp visible when relevant
+- no invented active positions/signals
+- relevant context freshness is visible
 - conversation history policy defined
 
 ## Phase 10 — News & Economic Calendar
 
+Status: Planned
+
 Deliverables:
 - market news feed
-- AI sentiment/impact labels from backend
+- sentiment/impact labels from structured service output
 - economic calendar
 - Low/Medium/High impact
 - actual/forecast/previous when available
@@ -254,11 +260,12 @@ Deliverables:
 - high-impact warning attached to active signals
 
 Exit criteria:
-- publication/event times normalized correctly
+- event/publication times normalized correctly
 - stale/unknown impact not presented as certainty
-- high-impact event warning has source time
 
 ## Phase 11 — Trader Tools
+
+Status: Planned
 
 Deliverables:
 - Risk Calculator
@@ -271,65 +278,69 @@ Deliverables:
 - Drawdown Simulator
 
 Exit criteria:
-- deterministic unit tests for formulas
-- instrument precision/contract assumptions documented
-- calculations clearly separated from trade execution
+- deterministic formula tests
+- precision/contract assumptions documented
+- calculations remain separate from execution
 
 ## Phase 12 — Activity, History & Performance
+
+Status: Planned
 
 Deliverables:
 - executed-signal history
 - signal history
-- filters by market/instrument/result
-- total signals, win rate, TP hit rates, SL rate, average R:R
-- clear denominator and no-record state
+- market/instrument/result filters
+- total signals, win rate, TP hit rates, SL rate and average R:R
+- explicit denominator and no-record state
 
 Exit criteria:
-- never infer ROI/equity without backend data
-- losses have equal visual prominence
+- never infer ROI/equity without source data
+- losses receive equal visual prominence
 - zero and no-record are distinct
 
 ## Phase 13 — Offline, Reliability & Background Work
 
+Status: Planned
+
 Deliverables:
 - Room cache for safe read models
-- WorkManager for durable sync tasks
+- WorkManager durable sync
 - offline/stale states
-- app resume synchronization
+- app-resume synchronization
 - retry policy and idempotent background operations
 
 Exit criteria:
 - offline mode never pretends execution succeeded
-- stale market data visibly marked
+- stale market data remains explicit
 - background work respects battery/network constraints
 
 ## Phase 14 — Security Hardening
 
+Status: Planned
+
 Deliverables:
 - secret scan in CI
 - dependency vulnerability review
-- release network security configuration
+- release network security config
 - certificate strategy decision
-- log redaction
-- root/debug/tamper policy decision based on threat model
-- API rate-limit/error abuse handling
-- privacy/data retention documentation
-
-Backend prerequisite:
-- rotate and purge any historical secrets found in source repositories before production launch.
+- complete log redaction review
+- root/debug/tamper policy based on threat model
+- API abuse/rate-limit handling
+- privacy/data-retention documentation
 
 Exit criteria:
-- no secrets in build artifacts/logs
-- threat model reviewed for execution and AI image upload
-- production endpoints and credentials isolated from debug
+- no secrets in artifacts/logs
+- execution and image-upload threat model reviewed
+- production credentials isolated from debug builds
 
 ## Phase 15 — Quality, Performance & Accessibility
 
+Status: Planned
+
 Deliverables:
-- unit tests for domain/data logic
-- ViewModel tests
+- domain/ViewModel tests
 - Compose UI tests for critical flows
-- screenshot/golden tests for Signal Card and AI Vision states
+- screenshot/golden tests for signature states
 - baseline profile/startup measurement
 - RTL stress testing
 - font scaling
@@ -337,14 +348,16 @@ Deliverables:
 - TalkBack labels
 
 Exit criteria:
-- critical flow test matrix green
-- no clipped financial values at supported font scales
-- startup/jank budget documented and met
+- critical flow matrix green
+- financial values do not clip at supported font scales
+- startup/jank budget documented
 
 ## Phase 16 — Release Engineering
 
+Status: Planned
+
 Deliverables:
-- release signing via protected CI secrets
+- protected release signing
 - versioning strategy
 - staging vs production build configuration
 - Play Console internal testing pipeline
@@ -353,28 +366,31 @@ Deliverables:
 
 Exit criteria:
 - reproducible signed release
-- production signing key never enters repository
+- signing key never enters repository
 - staging cannot accidentally execute against production accounts
 
 ## Phase 17 — Launch Readiness
 
+Status: Planned — final external/runtime phase
+
 Deliverables:
-- onboarding
-- permissions education
+- onboarding and permission education
 - connection setup education
 - legal/risk disclosures
 - support/feedback path
-- analytics events with privacy review
-- operational runbooks for backend/notifications/execution incidents
-- production vendor domain/credential configuration review
+- privacy-reviewed analytics events
+- incident/runbook preparation
+- production vendor domain and credential configuration
 - production IP whitelist verification where required
-- real external market-data/API connectivity smoke tests
+- real external market-data connectivity smoke tests
+- real broker/exchange execution lifecycle verification
 
 Exit criteria:
-- external market sources are verified from the final production environment
-- end-to-end smoke: login → signal → execution confirmation → tracked result
-- AI Vision smoke: image → validated analysis → eligible action
-- incident rollback/disable switches defined server-side
+- final production market sources verified
+- end-to-end login → signal → execution confirmation → tracked result smoke
+- AI Vision image → validated analysis → eligible action smoke
+- provider close lifecycle verified before enabling any deferred Close CTA
+- rollback/disable switches defined
 
 ## Product module map
 
@@ -391,8 +407,9 @@ core:auth
 core:security
 core:marketdata
 core:signals
-core:database
 core:notifications
+core:execution
+core:database
 core:testing
 feature:auth
 feature:home
@@ -411,27 +428,28 @@ feature:profile
 
 Create modules when boundaries become useful; do not create empty architecture for its own sake.
 
-## Cross-cutting contracts that must be settled early
+## Cross-cutting contracts
 
-1. Authentication/session contract — settled for current backend: bearer token + `/user/me`, no refresh endpoint
-2. User entitlement/subscription contract — backend profile fields are source of truth
-3. Normalized Signal schema and lifecycle — settled for native list/detail in Phase 4; execution lifecycle extends it in Phase 6
-4. Realtime price/WebSocket schema — settled for normalized Android consumption in Phase 3; production external activation is a Phase 17 gate
-5. FCM device + alert schema
-6. Per-user MT5 execution contract
-7. LBank open/close/order-status contract
-8. AI Signal job schema
-9. AI Vision upload/job/result schema
-10. News/calendar timestamps and impact schema
+1. Authentication/session — bearer session + authenticated profile validation; no client-invented refresh flow
+2. Entitlements — authenticated server profile is source of truth
+3. Signal schema/lifecycle — normalized in Phase 4; execution extends it in Phase 6
+4. Realtime quote schema — normalized in Phase 3; production external activation in Phase 17
+5. FCM device + alert schema — client implemented in Phase 5
+6. Signal-scoped MT5 execution contract — client implemented in Phase 6; live provider validation Phase 17
+7. LBank execution/close contract — client safety boundary implemented; live close lifecycle Phase 17
+8. AI Signal job schema — Phase 7
+9. AI Vision upload/job/result schema — Phase 8
+10. News/calendar timestamps and impact schema — Phase 10
 
-## Definition of Done for every feature
+## Definition of Done
 
-A feature is not Done until:
-- backend contract is documented/validated
-- loading/empty/error/offline states exist
-- RTL + financial LTR formatting is verified
-- analytics/privacy decision is explicit
-- security/logging implications reviewed
+A client feature is not Done until:
+- its API contract is explicit
+- loading/empty/error/offline behavior exists where applicable
+- RTL and financial LTR formatting are handled
+- security/logging implications are reviewed
 - tests cover critical business rules
-- CI is green
-- no fake states or fake progress exist
+- Android CI is green
+- no fake realtime, execution or AI progress state exists
+
+External production connectivity is additionally gated by Phase 17.
