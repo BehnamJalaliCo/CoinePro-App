@@ -24,6 +24,7 @@ This file is the canonical map between delivery phases, Git branches, milestone 
 | 6 | Connections & Signal Execution Bridge | `feat/phase6-signal-execution` | `d8173f79df1aee18b169e8ccbbdcd7c776f7fa26` | Run #86 — success |
 | 7 | AI Generated Market Signal | `feat/phase7-ai-generated-market-signal` | `f718d9ad310ab37d4b109297c4fadcb33e287775` | Run #91 — success |
 | 8 | AI Vision Flagship | `feat/phase8-ai-vision` | `85ed5a681b9f3a548fdc1d30faeea8dacb3d88b1` | Run #101 — success |
+| 9 | AI Assistant | `feat/phase9-ai-assistant` | `3d158c9d0fc72724e9bbf402ae81540300950cc3` | Run #114 — success |
 
 ## Phase 1–6 audit closure
 
@@ -89,13 +90,42 @@ Final Phase 8 checkpoint:
 - Android CI Run #101: **success**
 - Run #101 passed Phase 8 tests, all previous core tests, app lint, app unit tests, debug assembly and debug APK artifact upload.
 
+## Phase 9 status
+
+**Closed / Complete.**
+
+Validated behavior:
+
+- `core:aiassistant` typed contextual-chat domain, authenticated Retrofit gateway and in-memory controller
+- `feature:ai-assistant` native Compose chat surface linked from the AI hub
+- explicit authenticated Assistant contract in `PHASE9_AI_ASSISTANT_CONTRACT.md`
+- requested structured context scopes: active signals, market, news, calendar, risk and tools
+- assistant prose never creates positions, signals, trade levels or execution state
+- active-signal context requires a positive persisted server `signal_id`
+- non-signal context cannot smuggle a signal ID
+- only structured active-signal context can expose `Open verified Signal`; there is no direct Assistant execution route
+- context provenance displays source / as-of / freshness when supplied
+- invalid freshness values degrade to `UNKNOWN`
+- `FRESH` context additionally requires non-empty source and as-of provenance; otherwise it degrades to `UNKNOWN`
+- an existing conversation ID cannot silently switch mid-chat
+- Android transcript is memory-only and clears on logout/session loss or `New chat`
+- server-declared conversation history policy (`ephemeral`, `account`, unknown) and positive retention days are displayed explicitly
+- entitlement, validation rejection, rate-limit and generic failure states are explicit; no fake assistant reply is inserted
+- `core:aiassistant` trust-boundary and lifecycle tests are part of cumulative Android CI
+
+Final Phase 9 checkpoint:
+
+- SHA: `3d158c9d0fc72724e9bbf402ae81540300950cc3`
+- Android CI Run #114: **success**
+- Run #114 passed Phase 9 tests, all previous core tests, app lint, app unit tests, debug assembly and debug APK artifact upload.
+
 ## Next phase
 
-**Phase 9 — AI Assistant**
+**Phase 10 — News & Economic Calendar**
 
 Status: **Ready to start.**
 
-## Branch rule from Phase 9 onward
+## Branch rule from Phase 10 onward
 
 For every new phase:
 
