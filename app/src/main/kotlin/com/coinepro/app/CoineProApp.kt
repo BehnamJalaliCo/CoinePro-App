@@ -25,6 +25,7 @@ import com.coinepro.app.notifications.PushCoordinator
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionState
 import com.coinepro.core.designsystem.CoineProTheme
+import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.marketdata.MarketDataController
 import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.navigation.AppDestination
@@ -33,6 +34,8 @@ import com.coinepro.core.signals.SignalController
 import com.coinepro.feature.activity.ActivityScreen
 import com.coinepro.feature.ai.AiScreen
 import com.coinepro.feature.auth.AuthScreen
+import com.coinepro.feature.connections.ConnectionsScreen
+import com.coinepro.feature.execution.ExecutionScreen
 import com.coinepro.feature.home.HomeScreen
 import com.coinepro.feature.signaldetail.SignalDetailScreen
 import com.coinepro.feature.signals.SignalsScreen
@@ -40,7 +43,10 @@ import com.coinepro.feature.tools.ToolsScreen
 import kotlinx.coroutines.launch
 
 private const val SIGNAL_DETAIL_PATTERN = "signal/{signalId}"
+private const val EXECUTION_PATTERN = "execution/{signalId}"
+private const val CONNECTIONS_ROUTE = "connections"
 private fun signalDetailRoute(signalId: Long) = "signal/$signalId"
+private fun executionRoute(signalId: Long) = "execution/$signalId"
 
 @Composable
 fun CoineProApp(
@@ -48,6 +54,7 @@ fun CoineProApp(
     marketDataController: MarketDataController,
     signalController: SignalController,
     notificationController: NotificationController,
+    executionController: ExecutionController,
     pushCoordinator: PushCoordinator,
     launchSignalId: Long?,
     launchActivity: Boolean,
@@ -69,6 +76,7 @@ fun CoineProApp(
             marketDataController.stop()
             signalController.clear()
             notificationController.clear()
+            executionController.clear()
         }
     }
 
@@ -78,6 +86,7 @@ fun CoineProApp(
                 marketState = marketState,
                 signalController = signalController,
                 notificationController = notificationController,
+                executionController = executionController,
                 launchSignalId = launchSignalId,
                 launchActivity = launchActivity,
                 onSignalLaunchConsumed = onSignalLaunchConsumed,
@@ -109,6 +118,7 @@ private fun MainShell(
     marketState: MarketDataState,
     signalController: SignalController,
     notificationController: NotificationController,
+    executionController: ExecutionController,
     launchSignalId: Long?,
     launchActivity: Boolean,
     onSignalLaunchConsumed: () -> Unit,
@@ -119,7 +129,13 @@ private fun MainShell(
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val isSignalDetail = currentRoute == SIGNAL_DETAIL_PATTERN
+    val isSubScreen = currentRoute in setOf(SIGNAL_DETAIL_PATTERN, EXECUTION_PATTERN, CONNECTIONS_ROUTE)
+    val subTitle = when (currentRoute) {
+        SIGNAL_DETAIL_PATTERN -> "Signal"
+        EXECUTION_PATTERN -> "Execute signal"
+        CONNECTIONS_ROUTE -> "Connections"
+        else -> "CoinePro"
+    }
 
     LaunchedEffect(launchSignalId) {
         launchSignalId?.let { signalId ->
@@ -140,9 +156,9 @@ private fun MainShell(
 
     Scaffold(
         topBar = {
-            if (isSignalDetail) {
+            if (isSubScreen) {
                 TopAppBar(
-                    title = { Text("Signal") },
+                    title = { Text(subTitle) },
                     navigationIcon = {
                         TextButton(onClick = { navController.popBackStack() }) { Text("Back") }
                     },
@@ -155,7 +171,7 @@ private fun MainShell(
             }
         },
         bottomBar = {
-            if (!isSignalDetail) {
+            if (!isSubScreen) {
                 NavigationBar {
                     AppDestination.entries.forEach { destination ->
                         NavigationBarItem(
@@ -194,10 +210,31 @@ private fun MainShell(
                 arguments = listOf(navArgument("signalId") { type = NavType.LongType }),
             ) { entry ->
                 val signalId = entry.arguments?.getLong("signalId") ?: return@composable
-                SignalDetailScreen(controller = signalController, signalId = signalId)
+                SignalDetailScreen(
+                    controller = signalController,
+                    signalId = signalId,
+                    onExecute = { navController.navigate(executionRoute(it)) },
+                )
+            }
+            composable(
+                route = EXECUTION_PATTERN,
+                arguments = listOf(navArgument("signalId") { type = NavType.LongType }),
+            ) { entry ->
+                val signalId = entry.arguments?.getLong("signalId") ?: return@composable
+                ExecutionScreen(
+                    signalId = signalId,
+                    signalController = signalController,
+                    executionController = executionController,
+                    onOpenConnections = { navController.navigate(CONNECTIONS_ROUTE) },
+                )
+            }
+            composable(CONNECTIONS_ROUTE) {
+                ConnectionsScreen(controller = executionController)
             }
             composable(AppDestination.AI.route) { AiScreen() }
-            composable(AppDestination.TOOLS.route) { ToolsScreen() }
+            composable(AppDestination.TOOLS.route) {
+                ToolsScreen(onOpenConnections = { navController.navigate(CONNECTIONS_ROUTE) })
+            }
             composable(AppDestination.ACTIVITY.route) {
                 ActivityScreen(
                     controller = notificationController,
