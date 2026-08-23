@@ -1,12 +1,14 @@
 # Phase 16 — Release Engineering Contract
 
-Status: Closure candidate. Phase 16 code is validated; this documentation Head must pass Android CI and Security CI before the phase is formally closed.
+Status: Closed / Complete.
 
 Repository scope: `BehnamJalaliCo/CoinePro-App` only.
 
 Base checkpoint: Phase 15 final green Head `a8d26b7df6332f569f963756a2e041ad31b3cdab` (Android Run #212, Security Run #44).
 
 Validated Phase 16 code checkpoint: `0681a763cf504275b60e50495d3c64d13f73ac79` (Android Run #226, Security Run #58).
+
+Final Phase 16 documentation Head: `5a1a02daf72acc60581665b3aee27dec713b400c` (Android Run #230, Security Run #62).
 
 ## Release identities
 
@@ -59,7 +61,9 @@ Tracked-secret CI continues to reject keystores/private-key files, and `.gitigno
 
 `versionName` uses semantic version form such as `1.2.3` or `1.2.3-rc.1`.
 
-`versionCode` is a positive monotonically increasing integer and must not exceed `2100000000`.
+`versionCode` must be a positive integer without leading zeroes and must not exceed the Android/Play upper bound `2100000000`.
+
+The repository validator checks semantic syntax and the local positive/range rules before signing or publishing. Play enforces cross-release monotonicity when an artifact is uploaded against the application's existing release history; the repository does not pretend to know the latest Play `versionCode` without Play evidence.
 
 The manual internal-release workflow requires both values explicitly and validates them before signing or publishing.
 
@@ -112,7 +116,7 @@ Android CI must pass:
 - cumulative core/feature unit tests;
 - debug/staging/release lint;
 - debug/staging/release/benchmark assembly;
-- staging app unit-test variant;
+- debug and staging app unit-test variants;
 - protected release-signing AAB smoke with an ephemeral CI key;
 - existing Compose accessibility tests;
 - existing macrobenchmark dry-run wiring.
@@ -132,6 +136,11 @@ On `0681a763cf504275b60e50495d3c64d13f73ac79`:
 - Compose accessibility + benchmark wiring smoke: **success**
 - tracked-secret, OSV and BuildConfig-isolation gates: **success**
 
+Final documentation closure:
+- Head `5a1a02daf72acc60581665b3aee27dec713b400c`
+- Android CI Run #230: **success**
+- Security CI Run #62: **success**
+
 ## Explicit non-claims
 
 Phase 16 does not claim:
@@ -140,15 +149,16 @@ Phase 16 does not claim:
 - that production vendor/broker connectivity has been validated;
 - that Play production rollout has been enabled;
 - that a new crash analytics vendor has user consent or approved retention;
-- that CI ephemeral signing keys are production keys.
+- that CI ephemeral signing keys are production keys;
+- that the local version script independently proves cross-release Play monotonicity.
 
 ## Exit criteria
 
-Phase 16 is complete only when:
+Phase 16 is complete because:
 - protected signing plumbing is green in CI;
 - staging and production BuildConfig isolation is green;
 - staging release identity cannot inherit production endpoint configuration;
 - internal-track workflow and version validation are committed;
 - changelog and monitoring decision are documented;
-- final Android CI and Security CI are green on the exact final Phase 16 documentation Head;
+- final Android CI and Security CI are green on exact Head `5a1a02daf72acc60581665b3aee27dec713b400c`;
 - PR remains Draft/unmerged unless merge is explicitly approved.
