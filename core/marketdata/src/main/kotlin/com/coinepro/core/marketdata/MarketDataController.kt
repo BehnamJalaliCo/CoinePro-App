@@ -23,12 +23,15 @@ import retrofit2.Retrofit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.min
 
+private const val REALTIME_CACHE_WRITE_INTERVAL_MS = 30_000L
+
 class MarketDataController(
     retrofit: Retrofit,
     private val client: OkHttpClient,
     private val scope: CoroutineScope,
     private val symbols: List<String> = MarketDataSymbols.default,
     private val nowMillis: () -> Long = System::currentTimeMillis,
+    private val cache: MarketDataCache = NoOpMarketDataCache,
 ) {
     private val api = retrofit.create(MarketDataApi::class.java)
     private val parser = MarketWireParser()
@@ -42,11 +45,15 @@ class MarketDataController(
     private var reconnectJob: Job? = null
     private var monitorJob: Job? = null
     private var reconnectAttempt = 0
+    private var lastCacheWriteEpochMillis = 0L
 
     fun start() {
         if (!started.compareAndSet(false, true)) return
         _state.update { it.copy(connection = MarketConnectionState.CONNECTING, lastError = null) }
-        scope.launch { refreshSnapshot() }
+        scope.launch {
+            restoreCacheIfNeeded()
+            refreshSnapshot()
+        }
         connectWebSocket()
         monitorJob = scope.launch {
             var fallbackTick = 0
@@ -90,6 +97,37 @@ class MarketDataController(
         connectWebSocket()
     }
 
+    fun syncOnResume() {
+        if (!started.get()) {
+            start()
+            return
+        }
+        refreshFreshness()
+        if (_state.value.connection == MarketConnectionState.LIVE) {
+            scope.launch { refreshSnapshot() }
+        } else {
+            retry()
+        }
+    }
+
+    private suspend fun restoreCacheIfNeeded() {
+        if (_state.value.origin == MarketDataOrigin.NETWORK || _state.value.quotes.isNotEmpty()) return
+        val cached = runCatching { cache.read() }.getOrNull() ?: return
+        val restored = cached.quotes.associateBy { it.instrument.symbol }
+        if (restored.isEmpty()) return
+        _state.update { old ->
+            if (old.origin == MarketDataOrigin.NETWORK || old.quotes.isNotEmpty()) {
+                old
+            } else {
+                old.copy(
+                    quotes = restored,
+                    origin = MarketDataOrigin.CACHE,
+                    cacheStoredAtEpochMillis = cached.cachedAtEpochMillis,
+                )
+            }
+        }
+    }
+
     private fun connectWebSocket() {
         if (!started.get()) return
         val request = Request.Builder().url(webSocketUrl(baseUrl)).build()
@@ -106,10 +144,10 @@ class MarketDataController(
                     reconnectJob = null
                     _state.update { old ->
                         old.copy(
-                            connection = if (old.quotes.isEmpty()) {
-                                MarketConnectionState.CONNECTING
-                            } else {
+                            connection = if (old.origin == MarketDataOrigin.NETWORK && old.quotes.isNotEmpty()) {
                                 MarketConnectionState.DEGRADED
+                            } else {
+                                MarketConnectionState.CONNECTING
                             },
                             lastError = null,
                         )
@@ -144,10 +182,11 @@ class MarketDataController(
 
     private fun markDisconnected(message: String) {
         socket = null
-        val hasQuotes = _state.value.quotes.isNotEmpty()
+        val state = _state.value
+        val hasNetworkQuotes = state.origin == MarketDataOrigin.NETWORK && state.quotes.isNotEmpty()
         _state.update {
             it.copy(
-                connection = if (hasQuotes) MarketConnectionState.DEGRADED else MarketConnectionState.OFFLINE,
+                connection = if (hasNetworkQuotes) MarketConnectionState.DEGRADED else MarketConnectionState.OFFLINE,
                 lastError = message,
             )
         }
@@ -172,10 +211,11 @@ class MarketDataController(
     private suspend fun refreshSnapshot() {
         val snapshot = runCatching { api.snapshot(symbols.joinToString(",")) }.getOrElse { error ->
             if (_state.value.connection != MarketConnectionState.LIVE) {
-                val hasQuotes = _state.value.quotes.isNotEmpty()
+                val state = _state.value
+                val hasNetworkQuotes = state.origin == MarketDataOrigin.NETWORK && state.quotes.isNotEmpty()
                 _state.update {
                     it.copy(
-                        connection = if (hasQuotes) MarketConnectionState.DEGRADED else MarketConnectionState.OFFLINE,
+                        connection = if (hasNetworkQuotes) MarketConnectionState.DEGRADED else MarketConnectionState.OFFLINE,
                         lastError = error.message ?: "Market snapshot unavailable",
                     )
                 }
@@ -215,15 +255,31 @@ class MarketDataController(
                 quotes = merged,
                 lastServerTimeEpochMillis = serverTimeMs ?: old.lastServerTimeEpochMillis,
                 lastError = null,
+                origin = MarketDataOrigin.NETWORK,
+                cacheStoredAtEpochMillis = null,
             )
         }
+        persistNetworkSnapshot(now, realtimeBatch)
+    }
+
+    private fun persistNetworkSnapshot(now: Long, realtimeBatch: Boolean) {
+        if (realtimeBatch && now - lastCacheWriteEpochMillis < REALTIME_CACHE_WRITE_INTERVAL_MS) return
+        lastCacheWriteEpochMillis = now
+        val snapshot = _state.value.quotes.values.toList()
+        scope.launch { runCatching { cache.replace(snapshot, now) } }
     }
 
     private fun refreshFreshness() {
         val now = nowMillis()
         _state.update { old ->
             val refreshed = old.quotes.mapValues { (_, quote) ->
-                quote.copy(isStale = isQuoteStale(quote.source, quote.timestampEpochMillis, now))
+                quote.copy(
+                    isStale = if (old.origin == MarketDataOrigin.CACHE) {
+                        true
+                    } else {
+                        isQuoteStale(quote.source, quote.timestampEpochMillis, now)
+                    },
+                )
             }
             val nextConnection = if (
                 old.connection == MarketConnectionState.LIVE &&
