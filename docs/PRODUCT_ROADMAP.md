@@ -1,6 +1,6 @@
 # CoinePro Android Product Roadmap
 
-Status: Phases 0 through 15 delivered at validated checkpoints — Phase 16 is the next milestone after the final Phase 15 documentation Head is green.
+Status: Phases 0 through 16 delivered at validated code checkpoints. Phase 16 closure becomes final when the exact documentation Head containing this update passes Android CI and Security CI; Phase 17 is the next and final launch-readiness milestone.
 
 The canonical phase-to-branch/SHA/CI mapping lives in `PHASE_INDEX.md`. Detailed truth/API/security rules live in each phase contract document.
 
@@ -204,9 +204,10 @@ Exit state:
 
 ## Phase 15 — Quality, Performance & Accessibility
 
-Status: Complete at validated code checkpoint; final documentation Head CI is the closure gate.
+Status: Complete
 
 Code milestone: `feat/phase15-quality-performance-accessibility` → `97d3ebc0165be27e86ad97dceef16494f7a7b428` → Android Run #208 success + Security Run #40 success.
+Final closure Head: `a8d26b7df6332f569f963756a2e041ad31b3cdab` → Android Run #212 success + Security Run #44 success.
 
 Delivered:
 - cumulative prior domain/controller/business-rule tests preserved as regression gates
@@ -228,31 +229,38 @@ Delivered:
 
 Contract: `docs/PHASE15_QUALITY_PERFORMANCE_ACCESSIBILITY_CONTRACT.md`
 
-Exit state:
-- Android Run #208 passed cumulative lint/test/build, reduced-motion enforcement, all four Compose accessibility tests and benchmark dry-run wiring
-- Security Run #40 passed tracked-secret, dependency OSV and build-config isolation checks
-- final Phase 15 documentation Head must pass Android CI and Security CI before Phase 16 starts
-
 ## Phase 16 — Release Engineering
 
-Status: Next after final Phase 15 closure CI
+Status: Complete at validated code checkpoint; this documentation Head is the final closure gate.
 
-Deliverables:
-- protected release signing
-- versioning strategy
-- staging vs production build configuration
-- Play Console internal testing pipeline
-- release notes/changelog
-- crash/ANR monitoring decision
+Code milestone: `feat/phase16-release-engineering` → `0681a763cf504275b60e50495d3c64d13f73ac79` → Android Run #226 success + Security Run #58 success.
 
-Exit criteria:
-- reproducible signed release
-- signing key never enters repository
-- staging cannot accidentally execute against production accounts
+Delivered:
+- semantic version + positive monotonic Android `versionCode` validation
+- dedicated release, staging and benchmark configuration namespaces
+- distinct staging application identity and non-production endpoint boundary
+- protected signing configuration that requires the complete signing tuple or fails configuration
+- ephemeral CI JKS signing smoke proving a signed release AAB without storing production key material
+- signature verification that distinguishes a valid signature from expected trust-chain warnings on self-signed CI certificates
+- manual Play Console internal-track workflow targeting protected `play-internal` environment
+- staging upload keystore materialized only under runner temp storage and removed in cleanup
+- Android Publisher edit/upload/internal-track/commit script with incomplete-edit cleanup
+- changelog/release-note policy
+- Android Vitals / Play Console selected as the baseline crash/ANR source without adding a new telemetry SDK before privacy review
+- cumulative Android CI expanded to debug/staging/release/benchmark variants plus protected signing smoke
+- Security CI expanded to staging dependency and BuildConfig isolation coverage
+- no claim that production broker/vendor connectivity, production rollout or live execution has been verified
+
+Contract: `docs/PHASE16_RELEASE_ENGINEERING_CONTRACT.md`
+
+Exit state at code checkpoint:
+- Android Run #226 passed cumulative lint/test/build, staging/release/benchmark assembly, Compose/benchmark smoke and protected release-signing AAB verification
+- Security Run #58 passed tracked-secret, dependency OSV and BuildConfig-isolation gates
+- the exact documentation Head containing this closure update must pass Android CI and Security CI before Phase 17 branches from it
 
 ## Phase 17 — Launch Readiness
 
-Status: Planned — final external/runtime phase
+Status: Next — final external/runtime phase after Phase 16 final documentation Head is green.
 
 Deliverables:
 - onboarding and permission education
@@ -329,6 +337,7 @@ Create modules when boundaries become useful; do not create empty architecture f
 13. Offline/reliability boundary — Phase 13 safe read caches, explicit stale/cache provenance, read-only durable sync, retry/idempotency rules and no background execution side effects
 14. Security hardening boundary — Phase 14 secret/dependency gates, release transport/logging policy, build-config isolation, explicit rate limits, threat models and privacy/retention non-claims
 15. Quality/performance/accessibility boundary — Phase 15 semantic critical-state tests, RTL/large-font reachability, reduced-motion policy, Baseline Profile/Macrobenchmark wiring and explicit separation between hosted smoke and physical-device performance evidence
+16. Release-engineering boundary — Phase 16 signing/version/build-environment isolation, internal-track publishing, changelog and crash/ANR monitoring decision without production-runtime claims
 
 ## Definition of Done
 
