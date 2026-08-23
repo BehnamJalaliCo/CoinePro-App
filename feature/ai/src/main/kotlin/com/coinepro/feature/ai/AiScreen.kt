@@ -19,8 +19,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -165,6 +165,7 @@ fun AiScreen(
 
 @Composable
 private fun QuotaCard(state: AiSignalState) {
+    val quota = state.quota
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -182,11 +183,11 @@ private fun QuotaCard(state: AiSignalState) {
                 )
                 state.quotaExhausted -> {
                     Text("AI Signal quota is exhausted.", color = MaterialTheme.colorScheme.error)
-                    state.quota?.resetAt?.let { Text("Reset: $it", style = MaterialTheme.typography.bodySmall) }
+                    quota?.resetAt?.let { Text("Reset: $it", style = MaterialTheme.typography.bodySmall) }
                 }
-                state.quota != null -> {
-                    Text("${state.quota.remaining} of ${state.quota.limit} requests remaining")
-                    state.quota.resetAt?.let { Text("Reset: $it", style = MaterialTheme.typography.bodySmall) }
+                quota != null -> {
+                    Text("${quota.remaining} of ${quota.limit} requests remaining")
+                    quota.resetAt?.let { Text("Reset: $it", style = MaterialTheme.typography.bodySmall) }
                 }
                 else -> Text("Quota will be confirmed by the server before generation.")
             }
@@ -322,7 +323,11 @@ private fun ChipRow(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun LevelRow(label: String, value: Double, color: androidx.compose.ui.graphics.Color = CoineProColors.TextPrimary) {
+private fun LevelRow(
+    label: String,
+    value: Double,
+    color: androidx.compose.ui.graphics.Color = CoineProColors.TextPrimary,
+) {
     FinancialRow(label, MarketNumberFormatter.price(value, 6).trimEnd('0').trimEnd('.'), color)
 }
 
