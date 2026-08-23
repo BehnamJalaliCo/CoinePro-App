@@ -23,7 +23,7 @@ This file is the canonical map between delivery phases, Git branches, milestone 
 | 5 | Alerts & Push | `feat/phase5-alerts-push` | `60dfd64259ec92775b38288f2a4dc8e4c50169e9` | Run #41 — success |
 | 6 | Connections & Signal Execution Bridge | `feat/phase6-signal-execution` | `d8173f79df1aee18b169e8ccbbdcd7c776f7fa26` | Run #86 — success |
 | 7 | AI Generated Market Signal | `feat/phase7-ai-generated-market-signal` | `f718d9ad310ab37d4b109297c4fadcb33e287775` | Run #91 — success |
-| 8 | AI Vision Flagship | `feat/phase8-ai-vision` | `10844e48e65b90e9bcd8d60bb5c7ecfea982c18b` | Run #97 — success |
+| 8 | AI Vision Flagship | `feat/phase8-ai-vision` | `85ed5a681b9f3a548fdc1d30faeea8dacb3d88b1` | Run #101 — success |
 
 ## Phase 1–6 audit closure
 
@@ -70,6 +70,7 @@ Validated behavior:
 - camera permission requested only when capture is selected; camera hardware remains optional so gallery-only devices are supported
 - selected/captured images are orientation-normalized, resized to a maximum 2048 px edge when needed, re-encoded as JPEG and limited to 6 MB
 - re-encoding removes original EXIF metadata from the outbound payload; image bytes, local paths and EXIF data are not part of logs/UI
+- CameraX temporary cache captures are deleted after image preparation, including failure paths
 - authenticated multipart upload contract documented in `PHASE8_AI_VISION_CONTRACT.md`
 - exact `QUEUED / RUNNING / DONE / FAILED / EXPIRED` server-truth job lifecycle
 - explicit `ACTIONABLE / LOW_CONFIDENCE / UNKNOWN / UNSUPPORTED` structured assessment states
@@ -82,11 +83,11 @@ Validated behavior:
 - AI Vision never calls execution directly; eligible action continues through Signal Detail → Execution
 - `core:aivision` mapper/controller tests are included in the Android CI gate
 
-Code checkpoint:
+Final Phase 8 checkpoint:
 
-- SHA: `10844e48e65b90e9bcd8d60bb5c7ecfea982c18b`
-- Android CI Run #97: **success**
-- Run #97 passed Phase 8 tests, all previous core tests, app lint, app unit tests, debug assembly and debug APK artifact upload.
+- SHA: `85ed5a681b9f3a548fdc1d30faeea8dacb3d88b1`
+- Android CI Run #101: **success**
+- Run #101 passed Phase 8 tests, all previous core tests, app lint, app unit tests, debug assembly and debug APK artifact upload.
 
 ## Next phase
 
