@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.notifications.PriceAlert
 import com.coinepro.core.notifications.PriceAlertCondition
@@ -40,16 +41,19 @@ import com.coinepro.core.notifications.PushPreferences
 @Composable
 fun ActivityScreen(
     controller: NotificationController,
+    executionController: ExecutionController,
     onOpenSignal: (Long) -> Unit,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
+    val executionState by executionController.history.collectAsStateWithLifecycle()
     var symbol by remember { mutableStateOf("XAUUSD") }
     var value by remember { mutableStateOf("") }
     var condition by remember { mutableStateOf(PriceAlertCondition.CROSS) }
 
-    LaunchedEffect(controller) {
+    LaunchedEffect(controller, executionController) {
         controller.refresh()
         controller.markRead()
+        executionController.refreshExecutions()
     }
 
     LazyColumn(
@@ -65,10 +69,63 @@ fun ActivityScreen(
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "Server-truth signal events and price alerts. No fake local triggers.",
+                text = "Server-truth execution and signal events. No fake local lifecycle state.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Active executed signals", fontWeight = FontWeight.SemiBold)
+                TextButton(onClick = executionController::refreshExecutions) { Text("Refresh") }
+            }
+        }
+
+        if (executionState.active.isEmpty() && !executionState.loading) {
+            item {
+                Text(
+                    text = "No active executions.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            items(executionState.active, key = { it.id }) { execution ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenSignal(execution.signalId) },
+                ) {
+                    Column(
+                        modifier = Modifier.padding(CoineProSpacing.Two),
+                        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                    ) {
+                        Text(
+                            text = execution.signal?.symbol ?: "Signal #${execution.signalId}",
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = "${execution.side.uppercase()} · ${execution.venue.name} · ${execution.status.name.replace('_', ' ')}",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Text("Quantity: ${execution.quantity}", style = MaterialTheme.typography.bodySmall)
+                        execution.providerOrderId?.let {
+                            Text("Provider order: $it", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        }
+
+        executionState.error?.let { error ->
+            item {
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         }
 
         item {
