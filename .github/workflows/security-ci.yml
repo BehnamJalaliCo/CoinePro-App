@@ -27,16 +27,27 @@ jobs:
       - name: Scan tracked files for credential material
         run: bash scripts/security/scan-secrets.sh
 
-  dependency-review:
-    name: Dependency review
-    if: github.event_name == 'pull_request'
+  resolved-dependency-audit:
+    name: Resolved dependency OSV audit
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Review dependency changes
-        uses: actions/dependency-review-action@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
         with:
-          fail-on-severity: moderate
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle 9.4.0
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.4.0"
+
+      - name: Export resolved Android runtime dependencies
+        run: gradle --no-daemon -I scripts/security/export-dependencies.init.gradle :app:exportSecurityDependencies
+
+      - name: Audit resolved dependencies against OSV
+        run: python3 scripts/security/osv-audit.py
