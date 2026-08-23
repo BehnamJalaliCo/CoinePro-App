@@ -1,6 +1,6 @@
 # CoinePro Android Product Roadmap
 
-Status: Phases 0 through 8 complete — Phase 9 next
+Status: Phases 0 through 9 complete — Phase 10 next
 
 The canonical phase-to-branch/SHA/CI mapping lives in `PHASE_INDEX.md`.
 
@@ -118,24 +118,39 @@ Exit state:
 
 ## Phase 9 — AI Assistant
 
-Status: Next
+Status: Complete
 
-Deliverables:
-- contextual authenticated chat
-- active signal context
-- current market context
-- news/calendar context
-- risk/tool context
-- freshness/source labels where available
+Final audited milestone: `feat/phase9-ai-assistant` → `3d158c9d0fc72724e9bbf402ae81540300950cc3` → Run #114 success.
 
-Exit criteria:
-- no invented active positions/signals
-- relevant context freshness is visible
-- conversation history policy defined
+Delivered:
+- `core:aiassistant` typed contextual-chat domain, authenticated Retrofit gateway and in-memory controller
+- `feature:ai-assistant` native Compose chat surface linked from the AI hub
+- authenticated `POST /user/ai/assistant/messages` client contract
+- structured context requests for active signals, market, news, calendar, risk and tools
+- structured context cards with explicit source, as-of and freshness where supplied
+- unknown/future freshness values degrade to `UNKNOWN`
+- reported `FRESH` context requires non-empty source and as-of provenance or is downgraded to `UNKNOWN`
+- active-signal context requires a positive persisted server `signal_id`
+- non-signal context cannot carry a signal ID
+- Assistant prose never creates active positions, active signals, execution state or trade truth
+- only verified active-signal context can navigate to the persisted Signal flow; there is no direct Assistant execution route
+- established conversation identity cannot silently switch mid-chat
+- transcript is memory-only on Android and clears on logout/session loss or New chat
+- server history policy (`ephemeral`, `account`, unknown) and positive retention days are displayed explicitly
+- entitlement-required, server-validation, rate-limit and generic failure states are explicit
+- failed turns never insert a fake assistant reply
+- trust/history/API contract documented in `docs/PHASE9_AI_ASSISTANT_CONTRACT.md`
+- mapper/controller tests cover context trust and conversation lifecycle
+
+Exit state:
+- no invented active positions or signals
+- relevant context freshness/provenance is explicit and never upgraded locally
+- conversation-history policy is explicit
+- Run #114 passed Phase 9 tests, all prior core tests, app lint, app tests, debug assembly and APK upload
 
 ## Phase 10 — News & Economic Calendar
 
-Status: Planned
+Status: Next
 
 Deliverables:
 - market news feed
@@ -296,6 +311,7 @@ core:notifications
 core:execution
 core:aisignal
 core:aivision
+core:aiassistant
 core:database
 core:testing
 feature:auth
@@ -306,6 +322,7 @@ feature:execution
 feature:connections
 feature:ai
 feature:ai-vision
+feature:ai-assistant
 feature:news
 feature:calendar
 feature:tools
@@ -325,7 +342,7 @@ Create modules when boundaries become useful; do not create empty architecture f
 6. Signal-scoped execution contract — client safety boundary implemented in Phase 6; live provider validation Phase 17
 7. AI Signal job schema — client implemented in Phase 7 with server-truth lifecycle and persisted-Signal trust boundary
 8. AI Vision upload/job/result schema — client implemented in Phase 8 with image privacy preprocessing, structured assessments and persisted-Signal trust boundary
-9. AI Assistant contextual chat schema — Phase 9
+9. AI Assistant contextual chat schema — client implemented in Phase 9 with structured context provenance, stable conversation identity and explicit history policy
 10. News/calendar timestamps and impact schema — Phase 10
 
 ## Definition of Done
