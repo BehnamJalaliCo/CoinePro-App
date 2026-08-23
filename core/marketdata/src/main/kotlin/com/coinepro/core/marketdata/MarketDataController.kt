@@ -259,10 +259,10 @@ internal fun WireQuoteDto.toDomain(nowMs: Long): MarketQuote? {
         source.orEmpty().contains("lbank", ignoreCase = true) -> QuoteSource.LBANK
         else -> QuoteSource.UNKNOWN
     }
-    val marketType = if (normalizedSymbol == "XAUUSD" || normalizedSymbol == "XAGUSD") {
-        MarketType.FOREX
-    } else {
-        MarketType.CRYPTO
+    val marketType = when {
+        normalizedSymbol == "XAUUSD" || normalizedSymbol == "XAGUSD" -> MarketType.FOREX
+        normalizedSymbol.endsWith("USDT") && normalizedSymbol.length > 4 -> MarketType.CRYPTO
+        else -> return null
     }
     val displayName = when (normalizedSymbol) {
         "XAUUSD" -> "Gold"
