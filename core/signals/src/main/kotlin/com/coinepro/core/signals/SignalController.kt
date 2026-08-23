@@ -87,10 +87,11 @@ class SignalController(
                 runCatching { historyCache.clear() }
                 _historyState.value = SignalHistoryState(membershipRequired = true)
             } catch (error: Exception) {
-                _historyState.update {
-                    it.copy(
+                _historyState.update { current ->
+                    val message = error.message ?: "Signal history is unavailable"
+                    current.copy(
                         loading = false,
-                        error = error.message ?: "Signal history is unavailable",
+                        error = if (current.fromCache) "Cached history shown. $message" else message,
                     )
                 }
             }
