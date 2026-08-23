@@ -27,6 +27,7 @@ secrets.properties
 *.pem
 *.key
 google-services.json
+gha-creds-*.json
 
 # Generated / temporary
 out/
