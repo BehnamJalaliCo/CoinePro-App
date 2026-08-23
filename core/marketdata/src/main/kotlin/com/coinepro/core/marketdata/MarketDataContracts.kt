@@ -10,11 +10,19 @@ enum class MarketConnectionState {
     OFFLINE,
 }
 
+enum class MarketDataOrigin {
+    NONE,
+    CACHE,
+    NETWORK,
+}
+
 data class MarketDataState(
     val connection: MarketConnectionState = MarketConnectionState.IDLE,
     val quotes: Map<String, MarketQuote> = emptyMap(),
     val lastServerTimeEpochMillis: Long? = null,
     val lastError: String? = null,
+    val origin: MarketDataOrigin = MarketDataOrigin.NONE,
+    val cacheStoredAtEpochMillis: Long? = null,
 )
 
 object MarketDataSymbols {
