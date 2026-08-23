@@ -4,6 +4,7 @@ import com.coinepro.core.model.QuoteSource
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -41,5 +42,17 @@ class MarketDataControllerTest {
         assertFalse(isQuoteStale(QuoteSource.FINNHUB, now - 60_000L, now))
         assertTrue(isQuoteStale(QuoteSource.FINNHUB, now - 91_000L, now))
         assertTrue(isQuoteStale(QuoteSource.UNKNOWN, 0L, now))
+    }
+
+    @Test
+    fun out_of_scope_market_symbol_is_rejected_instead_of_guessed_as_crypto() {
+        assertNull(
+            WireQuoteDto(symbol = "EURUSD", price = 1.1, ts = 100L, source = "finnhub")
+                .toDomain(nowMs = 100L),
+        )
+        assertTrue(
+            WireQuoteDto(symbol = "BTCUSDT", price = 60_000.0, ts = 100L, source = "lbank")
+                .toDomain(nowMs = 100L) != null,
+        )
     }
 }
