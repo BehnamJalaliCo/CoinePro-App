@@ -128,9 +128,19 @@ internal fun AssistantContextDto.toDomain(): AssistantContextItem? {
         it.wireValue == kind?.trim()?.lowercase()
     } ?: return null
     val safeTitle = title?.trim()?.takeIf { it.isNotBlank() } ?: return null
-    val safeFreshness = AssistantFreshness.entries.firstOrNull {
+    val safeSource = source.clean()
+    val safeAsOf = asOf.clean()
+    val reportedFreshness = AssistantFreshness.entries.firstOrNull {
         it.wireValue == freshness?.trim()?.lowercase()
     } ?: AssistantFreshness.UNKNOWN
+    val safeFreshness = if (
+        reportedFreshness == AssistantFreshness.FRESH &&
+        (safeSource == null || safeAsOf == null)
+    ) {
+        AssistantFreshness.UNKNOWN
+    } else {
+        reportedFreshness
+    }
     val safeSignalId = signalId?.takeIf { it > 0L }
     if (safeKind == AssistantContextKind.ACTIVE_SIGNAL && safeSignalId == null) return null
     if (safeKind != AssistantContextKind.ACTIVE_SIGNAL && signalId != null) return null
@@ -138,8 +148,8 @@ internal fun AssistantContextDto.toDomain(): AssistantContextItem? {
         kind = safeKind,
         title = safeTitle,
         summary = summary.clean(),
-        source = source.clean(),
-        asOf = asOf.clean(),
+        source = safeSource,
+        asOf = safeAsOf,
         freshness = safeFreshness,
         signalId = safeSignalId,
     )
