@@ -15,6 +15,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:designsystem"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.foundation)
