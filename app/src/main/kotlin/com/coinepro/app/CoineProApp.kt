@@ -81,6 +81,7 @@ fun CoineProApp(
     onSignalLaunchConsumed: () -> Unit,
     onActivityLaunchConsumed: () -> Unit,
     onRequestNotificationPermission: () -> Unit,
+    onOpenNotificationSettings: () -> Unit,
     onSendFeedback: () -> Unit,
 ) {
     LaunchedEffect(sessionController) { sessionController.start() }
@@ -125,6 +126,7 @@ fun CoineProApp(
                 onSignalLaunchConsumed = onSignalLaunchConsumed,
                 onActivityLaunchConsumed = onActivityLaunchConsumed,
                 onRequestNotificationPermission = onRequestNotificationPermission,
+                onOpenNotificationSettings = onOpenNotificationSettings,
                 onSendFeedback = onSendFeedback,
                 onMarketRetry = marketDataController::retry,
                 onLogout = {
@@ -164,6 +166,7 @@ private fun MainShell(
     onSignalLaunchConsumed: () -> Unit,
     onActivityLaunchConsumed: () -> Unit,
     onRequestNotificationPermission: () -> Unit,
+    onOpenNotificationSettings: () -> Unit,
     onSendFeedback: () -> Unit,
     onMarketRetry: () -> Unit,
     onLogout: () -> Unit,
@@ -342,6 +345,7 @@ private fun MainShell(
                 LaunchReadinessScreen(
                     notificationPermissionState = notificationPermissionState,
                     onRequestNotificationPermission = onRequestNotificationPermission,
+                    onOpenNotificationSettings = onOpenNotificationSettings,
                     onSendFeedback = onSendFeedback,
                 )
             }
