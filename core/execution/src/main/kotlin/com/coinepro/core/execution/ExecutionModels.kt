@@ -70,12 +70,24 @@ data class SignalExecution(
     val closedAt: String?,
 ) {
     val isBrokerConfirmedOpen: Boolean get() = status == ExecutionStatus.OPEN
-    val canRequestClose: Boolean get() = status in setOf(
+    val isActive: Boolean get() = status in setOf(
         ExecutionStatus.QUEUED,
         ExecutionStatus.SUBMITTED,
         ExecutionStatus.OPEN,
         ExecutionStatus.CLOSE_REQUESTED,
     )
+
+    // LBank close is deliberately not exposed until its provider lifecycle is verified.
+    // A queued LBank intent may still be cancelled before it reaches the provider.
+    val canRequestClose: Boolean get() = when {
+        status == ExecutionStatus.QUEUED -> true
+        venue == ExecutionVenue.MT5 -> status in setOf(
+            ExecutionStatus.SUBMITTED,
+            ExecutionStatus.OPEN,
+            ExecutionStatus.CLOSE_REQUESTED,
+        )
+        else -> false
+    }
 }
 
 data class ExecutionState(
@@ -83,3 +95,11 @@ data class ExecutionState(
     val execution: SignalExecution? = null,
     val error: String? = null,
 )
+
+data class ExecutionHistoryState(
+    val loading: Boolean = false,
+    val items: List<SignalExecution> = emptyList(),
+    val error: String? = null,
+) {
+    val active: List<SignalExecution> get() = items.filter { it.isActive }
+}
