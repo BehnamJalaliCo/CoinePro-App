@@ -27,6 +27,7 @@ class LaunchReadinessAccessibilityTest {
                 LaunchReadinessScreen(
                     notificationPermissionState = NotificationPermissionUiState.AVAILABLE_TO_REQUEST,
                     onRequestNotificationPermission = { requests += 1 },
+                    onOpenNotificationSettings = {},
                     onSendFeedback = {},
                 )
             }
@@ -41,6 +42,31 @@ class LaunchReadinessAccessibilityTest {
     }
 
     @Test
+    fun deniedNotificationPermissionExposesSettingsRecovery() {
+        var settingsActions = 0
+
+        composeRule.setContent {
+            CoineProTheme {
+                LaunchReadinessScreen(
+                    notificationPermissionState = NotificationPermissionUiState.DENIED,
+                    onRequestNotificationPermission = {},
+                    onOpenNotificationSettings = { settingsActions += 1 },
+                    onSendFeedback = {},
+                )
+            }
+        }
+
+        composeRule
+            .onNodeWithText("Notification permission was denied. CoinePro remains usable without it. You can change this later in Android notification settings.")
+            .assertIsDisplayed()
+        composeRule
+            .onNodeWithText("Open notification settings")
+            .assertHasClickAction()
+            .performClick()
+        composeRule.runOnIdle { assertEquals(1, settingsActions) }
+    }
+
+    @Test
     fun launchSafetyKeepsRiskAndFeedbackReachable() {
         var feedbackActions = 0
 
@@ -49,6 +75,7 @@ class LaunchReadinessAccessibilityTest {
                 LaunchReadinessScreen(
                     notificationPermissionState = NotificationPermissionUiState.NOT_CONFIGURED,
                     onRequestNotificationPermission = {},
+                    onOpenNotificationSettings = {},
                     onSendFeedback = { feedbackActions += 1 },
                 )
             }
