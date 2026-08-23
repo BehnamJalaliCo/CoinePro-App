@@ -11,6 +11,7 @@ val apiBaseUrl = providers.gradleProperty("COINEPRO_API_BASE_URL")
 val firebaseProjectId = providers.gradleProperty("COINEPRO_FIREBASE_PROJECT_ID").orElse("").get()
 val firebaseApplicationId = providers.gradleProperty("COINEPRO_FIREBASE_APPLICATION_ID").orElse("").get()
 val firebaseApiKey = providers.gradleProperty("COINEPRO_FIREBASE_API_KEY").orElse("").get()
+val firebaseSenderId = providers.gradleProperty("COINEPRO_FIREBASE_SENDER_ID").orElse("").get()
 
 fun escapedBuildConfig(value: String): String = "\"${value.replace("\"", "\\\"")}\""
 
@@ -29,6 +30,7 @@ android {
         buildConfigField("String", "FIREBASE_PROJECT_ID", escapedBuildConfig(firebaseProjectId))
         buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(firebaseApplicationId))
         buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(firebaseApiKey))
+        buildConfigField("String", "FIREBASE_SENDER_ID", escapedBuildConfig(firebaseSenderId))
     }
 
     buildFeatures {
