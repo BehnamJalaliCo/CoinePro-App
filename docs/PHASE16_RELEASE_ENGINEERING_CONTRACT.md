@@ -113,13 +113,14 @@ If a future crash SDK is added, it requires an explicit privacy/retention contra
 ## CI gates
 
 Android CI must pass:
-- cumulative core/feature unit tests;
-- debug/staging/release lint;
-- debug/staging/release/benchmark assembly;
-- debug and staging app unit-test variants;
+- cumulative core/feature unit tests on supported debug test variants;
+- `:app:lintDebug`, `:app:lintStaging` and `:app:lintRelease`;
+- `:app:assembleDebug`, `:app:assembleStaging`, `:app:assembleRelease`, `:app:assembleBenchmark` and benchmark assembly;
 - protected release-signing AAB smoke with an ephemeral CI key;
 - existing Compose accessibility tests;
 - existing macrobenchmark dry-run wiring.
+
+The current AGP configuration does not expose `:app:testStagingUnitTest`; Phase 16 therefore validates staging through the real `lintStaging` + `assembleStaging` gates rather than claiming a nonexistent unit-test task.
 
 Security CI must pass:
 - tracked-secret scan;
