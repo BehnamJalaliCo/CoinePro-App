@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import com.coinepro.app.notifications.PushCoordinator
 import com.coinepro.core.aisignal.AiSignalController
+import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.marketdata.MarketDataController
@@ -31,6 +32,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var notificationController: NotificationController
     @Inject lateinit var executionController: ExecutionController
     @Inject lateinit var aiSignalController: AiSignalController
+    @Inject lateinit var aiVisionController: AiVisionController
     @Inject lateinit var pushCoordinator: PushCoordinator
 
     private var launchSignalId by mutableStateOf<Long?>(null)
@@ -53,6 +55,7 @@ class MainActivity : ComponentActivity() {
                 notificationController = notificationController,
                 executionController = executionController,
                 aiSignalController = aiSignalController,
+                aiVisionController = aiVisionController,
                 pushCoordinator = pushCoordinator,
                 launchSignalId = launchSignalId,
                 launchActivity = launchActivity,
