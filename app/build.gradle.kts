@@ -65,6 +65,7 @@ dependencies {
     implementation(project(":core:auth"))
     implementation(project(":core:security"))
     implementation(project(":core:network"))
+    implementation(project(":core:database"))
     implementation(project(":core:marketdata"))
     implementation(project(":core:signals"))
     implementation(project(":core:notifications"))
@@ -91,6 +92,9 @@ dependencies {
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+    implementation(libs.androidx.work.runtime)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
