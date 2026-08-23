@@ -17,7 +17,7 @@ jobs:
   build:
     name: Lint, test, build
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - name: Checkout
@@ -40,8 +40,42 @@ jobs:
       - name: Enforce reduced-motion policy
         run: bash scripts/quality/check-motion-policy.sh
 
-      - name: Lint, test, and assemble debug + release + benchmark
-        run: gradle --no-daemon :core:auth:testDebugUnitTest :core:network:testDebugUnitTest :core:marketdata:testDebugUnitTest :core:signals:testDebugUnitTest :core:notifications:testDebugUnitTest :core:execution:testDebugUnitTest :core:aisignal:testDebugUnitTest :core:aivision:testDebugUnitTest :core:aiassistant:testDebugUnitTest :core:marketintel:testDebugUnitTest :core:database:testDebugUnitTest :feature:tools:testDebugUnitTest :app:lintDebug :app:lintRelease :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleRelease :app:assembleBenchmark :benchmark:assembleBenchmark
+      - name: Lint, test, and assemble debug + staging + release + benchmark
+        run: gradle --no-daemon :core:auth:testDebugUnitTest :core:network:testDebugUnitTest :core:marketdata:testDebugUnitTest :core:signals:testDebugUnitTest :core:notifications:testDebugUnitTest :core:execution:testDebugUnitTest :core:aisignal:testDebugUnitTest :core:aivision:testDebugUnitTest :core:aiassistant:testDebugUnitTest :core:marketintel:testDebugUnitTest :core:database:testDebugUnitTest :feature:tools:testDebugUnitTest :app:lintDebug :app:lintStaging :app:lintRelease :app:testDebugUnitTest :app:testStagingUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleStaging :app:assembleRelease :app:assembleBenchmark :benchmark:assembleBenchmark
+
+      - name: Verify protected release signing path
+        shell: bash
+        run: |
+          set -euo pipefail
+          signing_dir="$RUNNER_TEMP/coinepro-phase16-signing"
+          mkdir -p "$signing_dir"
+          keystore="$signing_dir/ci-release.jks"
+          password="$(openssl rand -hex 16)"
+
+          keytool -genkeypair \
+            -keystore "$keystore" \
+            -storetype JKS \
+            -storepass "$password" \
+            -keypass "$password" \
+            -alias phase16-ci \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 1 \
+            -dname "CN=CoinePro Phase16 CI, OU=CI, O=CoinePro, L=CI, ST=CI, C=DE"
+
+          export ORG_GRADLE_PROJECT_COINEPRO_RELEASE_STORE_FILE="$keystore"
+          export ORG_GRADLE_PROJECT_COINEPRO_RELEASE_STORE_PASSWORD="$password"
+          export ORG_GRADLE_PROJECT_COINEPRO_RELEASE_KEY_ALIAS="phase16-ci"
+          export ORG_GRADLE_PROJECT_COINEPRO_RELEASE_KEY_PASSWORD="$password"
+          export ORG_GRADLE_PROJECT_COINEPRO_PRODUCTION_API_BASE_URL="https://release-ci.example.invalid/"
+          export ORG_GRADLE_PROJECT_COINEPRO_VERSION_CODE="160001"
+          export ORG_GRADLE_PROJECT_COINEPRO_VERSION_NAME="16.0.1-ci"
+
+          gradle --no-daemon :app:bundleRelease
+          test -f app/build/outputs/bundle/release/app-release.aab
+          jarsigner -verify -strict app/build/outputs/bundle/release/app-release.aab
+
+          rm -rf "$signing_dir"
 
       - name: Upload debug APK
         if: success()
