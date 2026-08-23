@@ -2,6 +2,9 @@ package com.coinepro.app.di
 
 import android.content.Context
 import com.coinepro.app.BuildConfig
+import com.coinepro.core.aiassistant.AiAssistantController
+import com.coinepro.core.aiassistant.AiAssistantGateway
+import com.coinepro.core.aiassistant.NetworkAiAssistantGateway
 import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.aisignal.AiSignalGateway
 import com.coinepro.core.aisignal.NetworkAiSignalGateway
@@ -91,6 +94,11 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun aiAssistantGateway(retrofit: Retrofit): AiAssistantGateway =
+        NetworkAiAssistantGateway.create(retrofit)
+
+    @Provides
+    @Singleton
     fun appScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     @Provides
@@ -144,4 +152,11 @@ object AppModule {
         gateway: AiVisionGateway,
         scope: CoroutineScope,
     ): AiVisionController = AiVisionController(gateway, scope)
+
+    @Provides
+    @Singleton
+    fun aiAssistantController(
+        gateway: AiAssistantGateway,
+        scope: CoroutineScope,
+    ): AiAssistantController = AiAssistantController(gateway, scope)
 }
