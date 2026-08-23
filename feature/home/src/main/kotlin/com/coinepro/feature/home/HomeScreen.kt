@@ -15,6 +15,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.marketdata.MarketConnectionState
@@ -92,7 +94,13 @@ fun HomeScreen(
 
 @Composable
 private fun QuoteCard(quote: MarketQuote) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clearAndSetSemantics {
+                contentDescription = quoteAccessibilityLabel(quote)
+            },
+    ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -129,12 +137,26 @@ private fun QuoteCard(quote: MarketQuote) {
             ) {
                 Text(sourceLabel(quote.source), style = MaterialTheme.typography.bodySmall)
                 Text(
-                    text = if (quote.instrument.marketType == MarketType.FOREX) "Metal" else "Crypto",
+                    text = marketLabel(quote),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
         }
     }
+}
+
+private fun quoteAccessibilityLabel(quote: MarketQuote): String = buildString {
+    append(quote.instrument.displayName)
+    append(", ")
+    append(quote.instrument.symbol)
+    append(", ")
+    append(if (quote.isStale) "stale" else "live")
+    append(", price ")
+    append(formatPrice(quote))
+    append(", ")
+    append(sourceLabel(quote.source))
+    append(", ")
+    append(marketLabel(quote))
 }
 
 private fun formatPrice(quote: MarketQuote): String {
@@ -150,6 +172,9 @@ private fun sourceLabel(source: QuoteSource): String = when (source) {
     QuoteSource.LBANK -> "LBank"
     QuoteSource.UNKNOWN -> "Unknown source"
 }
+
+private fun marketLabel(quote: MarketQuote): String =
+    if (quote.instrument.marketType == MarketType.FOREX) "Metal" else "Crypto"
 
 private fun connectionLabel(state: MarketDataState): String = when {
     state.origin == MarketDataOrigin.CACHE && state.connection == MarketConnectionState.CONNECTING ->
