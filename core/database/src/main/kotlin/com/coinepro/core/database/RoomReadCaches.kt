@@ -86,12 +86,18 @@ class RoomSignalHistoryCache(
 }
 
 internal fun MarketQuote.toEntity(): CachedMarketQuoteEntity? {
-    if (!price.isFinite() || price <= 0.0 || timestampEpochMillis <= 0L) return null
+    val safeSymbol = instrument.symbol.trim().uppercase()
+    if (
+        !isSupportedProductSymbol(instrument.marketType, safeSymbol) ||
+        !price.isFinite() ||
+        price <= 0.0 ||
+        timestampEpochMillis <= 0L
+    ) return null
     val safeBid = bid?.takeIf { it.isFinite() && it > 0.0 }
     val safeAsk = ask?.takeIf { it.isFinite() && it > 0.0 }
     val safeChange = changePercent?.takeIf(Double::isFinite)
     return CachedMarketQuoteEntity(
-        symbol = instrument.symbol.trim().uppercase(),
+        symbol = safeSymbol,
         displayName = instrument.displayName,
         marketType = instrument.marketType.name,
         price = price,
@@ -107,7 +113,12 @@ internal fun CachedMarketQuoteEntity.toDomain(): MarketQuote? {
     val market = enumValueOrNull<MarketType>(marketType) ?: return null
     val sourceValue = enumValueOrNull<QuoteSource>(source) ?: QuoteSource.UNKNOWN
     val safeSymbol = symbol.trim().uppercase().takeIf { it.isNotEmpty() } ?: return null
-    if (!price.isFinite() || price <= 0.0 || sourceTimestampEpochMillis <= 0L) return null
+    if (
+        !isSupportedProductSymbol(market, safeSymbol) ||
+        !price.isFinite() ||
+        price <= 0.0 ||
+        sourceTimestampEpochMillis <= 0L
+    ) return null
     return MarketQuote(
         instrument = Instrument(safeSymbol, displayName.ifBlank { safeSymbol }, market),
         price = price,
@@ -121,7 +132,7 @@ internal fun CachedMarketQuoteEntity.toDomain(): MarketQuote? {
 }
 
 internal fun TradingSignal.toEntity(): CachedSignalEntity? {
-    if (id <= 0L || !isSupportedCachedSignal(market, symbol)) return null
+    if (id <= 0L || !isSupportedProductSymbol(market, symbol)) return null
     return CachedSignalEntity(
         id = id,
         market = market.name,
@@ -162,7 +173,7 @@ internal fun CachedSignalEntity.toDomain(targets: List<CachedSignalTargetEntity>
     val marketValue = enumValueOrNull<MarketType>(market) ?: return null
     val directionValue = enumValueOrNull<SignalDirection>(direction) ?: return null
     val safeSymbol = symbol.trim().uppercase()
-    if (id <= 0L || !isSupportedCachedSignal(marketValue, safeSymbol)) return null
+    if (id <= 0L || !isSupportedProductSymbol(marketValue, safeSymbol)) return null
     return TradingSignal(
         id = id,
         market = marketValue,
@@ -210,7 +221,7 @@ internal fun CachedSignalTargetEntity.toDomain(): SignalTarget? {
     return SignalTarget(level = level, price = price.finiteOrNull(), hit = hit)
 }
 
-private fun isSupportedCachedSignal(market: MarketType, symbol: String): Boolean {
+private fun isSupportedProductSymbol(market: MarketType, symbol: String): Boolean {
     val normalized = symbol.trim().uppercase()
     return when (market) {
         MarketType.FOREX -> normalized == "XAUUSD" || normalized == "XAGUSD"
