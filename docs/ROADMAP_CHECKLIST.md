@@ -37,7 +37,7 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - [x] Phase 13 — Offline / Reliability / Background Work
 - [x] Phase 14 — Security Hardening
 - [x] Phase 15 — Quality / Performance / Accessibility
-- [ ] Phase 16 — Release Engineering
+- [x] Phase 16 — Release Engineering
 - [ ] Phase 17 — Launch Readiness
 
 ## Validated milestones
@@ -56,6 +56,8 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - Phase 13 final closure: `feat/phase13-offline-reliability-background-work` → `a6b664f035e047afd51515b3481452d57ecd1ee9` → Run #159 success
 - Phase 14 final closure: `feat/phase14-security-hardening` → `8abdb6909beb2468ec10c911ebd22ad8411a1b5f` → Android Run #184 success + Security Run #16 success
 - Phase 15 code checkpoint: `feat/phase15-quality-performance-accessibility` → `97d3ebc0165be27e86ad97dceef16494f7a7b428` → Android Run #208 success + Security Run #40 success
+- Phase 15 final closure: `a8d26b7df6332f569f963756a2e041ad31b3cdab` → Android Run #212 success + Security Run #44 success
+- Phase 16 code checkpoint: `feat/phase16-release-engineering` → `0681a763cf504275b60e50495d3c64d13f73ac79` → Android Run #226 success + Security Run #58 success
 
 ## Phase 12 delivered
 
@@ -138,10 +140,30 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - reference-device cold-start and jank target budget is documented, while measured pass/fail remains a physical-device release-candidate responsibility
 - benchmark/profile dependencies continue through Security CI OSV/secret/build-config checks
 - `docs/PHASE15_QUALITY_PERFORMANCE_ACCESSIBILITY_CONTRACT.md` documents the full quality, accessibility, reduced-motion and performance evidence boundaries
-- Phase 15 code checkpoint `97d3ebc0165be27e86ad97dceef16494f7a7b428` passed Android CI #208 and Security CI #40
+- Phase 15 final documentation Head `a8d26b7df6332f569f963756a2e041ad31b3cdab` passed Android CI #212 and Security CI #44
+
+## Phase 16 delivered
+
+- semantic `versionName` and positive monotonic `versionCode` validation
+- dedicated debug/staging/production/benchmark service configuration namespaces
+- staging identity `com.coinepro.app.staging` separated from production identity
+- protected release signing requires the complete signing tuple and keeps keys outside the repository
+- CI creates a one-run ephemeral JKS, signs a release AAB and verifies that it is actually signed
+- self-signed CI trust-chain warnings are not misclassified as invalid signatures
+- manual protected `play-internal` workflow builds, signs and publishes the staging AAB to the Play internal track
+- Play upload keystore exists only in runner temp storage and is removed in cleanup
+- Google Play edit/upload/track/commit flow includes incomplete-edit cleanup
+- release notes are maintained in `CHANGELOG.md`
+- Android Vitals / Play Console is the baseline crash/ANR source; no new telemetry SDK is added before Phase 17 privacy review
+- Android CI covers debug/staging/release/benchmark variants, Compose/benchmark smoke and protected release signing
+- Security CI covers tracked secrets, resolved OSV dependencies and debug/staging/production/benchmark BuildConfig isolation
+- production vendor/broker connectivity and Play production rollout remain explicit Phase 17 work
+- `docs/PHASE16_RELEASE_ENGINEERING_CONTRACT.md` documents signing, environment, versioning, internal-track and monitoring boundaries
+- Phase 16 code checkpoint `0681a763cf504275b60e50495d3c64d13f73ac79` passed Android CI #226 and Security CI #58
+- the exact documentation Head containing this checklist must pass Android CI and Security CI before Phase 17 branches from it
 
 ## Current next milestone
 
-Phase 16 — Release Engineering, after the final Phase 15 documentation Head is green.
+Phase 17 — Launch Readiness, after the final Phase 16 documentation Head is green.
 
-There are 2 phases remaining: Phase 16 and Phase 17.
+There is 1 phase remaining: Phase 17.
