@@ -50,6 +50,18 @@ class AiAssistantMapperTest {
     }
 
     @Test
+    fun `fresh context without source and timestamp is downgraded to unknown`() {
+        val mapped = AssistantContextDto(
+            kind = "market",
+            title = "XAUUSD quote",
+            freshness = "fresh",
+            source = null,
+            asOf = null,
+        ).toDomain()
+        assertEquals(AssistantFreshness.UNKNOWN, mapped?.freshness)
+    }
+
+    @Test
     fun `reply must be an assistant message`() {
         val userPayload = AssistantMessageDto(
             id = "m1",
