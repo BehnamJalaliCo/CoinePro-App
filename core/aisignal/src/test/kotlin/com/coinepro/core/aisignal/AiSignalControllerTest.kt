@@ -1,5 +1,6 @@
 package com.coinepro.core.aisignal
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -8,6 +9,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class AiSignalControllerTest {
     private val request = AiSignalRequest("XAUUSD", AiSignalTimeframe.H1, AiSignalRisk.MEDIUM)
 
