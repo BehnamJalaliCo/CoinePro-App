@@ -24,6 +24,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -48,6 +50,11 @@ fun ConnectionsScreen(controller: ExecutionController) {
         Text(
             "Connect accounts only to execute CoinePro signals. Credentials are sent to the backend over HTTPS and are never stored by the Android app.",
             style = MaterialTheme.typography.bodyMedium,
+        )
+        Text(
+            "Values you enter are setup inputs, not proof of a live provider connection. Connected/verified state comes only from the backend/provider. If verification is missing or fails, execution stays unavailable or pending instead of being guessed locally.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (state.loading) CircularProgressIndicator()
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -83,7 +90,12 @@ private fun Mt5Card(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text("MetaTrader 5", style = MaterialTheme.typography.titleLarge)
-            ConnectionStatus(connection)
+            ConnectionStatus(connection, "MT5")
+            Text(
+                "Broker, server, login and trading password are account inputs you provide. CoinePro does not treat saving them as a successful MT5 connection; provider verification must be returned by the backend.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             if (connection == null) {
                 OutlinedTextField(broker, { broker = it }, label = { Text("Broker") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(server, { server = it }, label = { Text("MT5 server") }, modifier = Modifier.fillMaxWidth())
@@ -134,10 +146,11 @@ private fun LbankCard(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text("LBank", style = MaterialTheme.typography.titleLarge)
-            ConnectionStatus(connection)
+            ConnectionStatus(connection, "LBank")
             Text(
-                "Use an LBank API key with only the permission you need: Spot or Futures. Withdrawal permission is not required.",
+                "Use an LBank API key with only the permission you need: Spot or Futures. Withdrawal permission is not required. Saving credentials does not mean the exchange has verified them.",
                 style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (connection != null) {
                 connection.keyHint?.let { Text("Key ending: ••••$it") }
@@ -180,7 +193,7 @@ private fun LbankCard(
 }
 
 @Composable
-private fun ConnectionStatus(connection: VenueConnection?) {
+private fun ConnectionStatus(connection: VenueConnection?, venueName: String) {
     val text = when {
         connection == null -> "Not configured"
         connection.connected -> "Connected"
@@ -192,5 +205,10 @@ private fun ConnectionStatus(connection: VenueConnection?) {
         connection == null -> MaterialTheme.colorScheme.onSurfaceVariant
         else -> MaterialTheme.colorScheme.tertiary
     }
-    Text(text, color = color, style = MaterialTheme.typography.labelLarge)
+    Text(
+        text,
+        color = color,
+        style = MaterialTheme.typography.labelLarge,
+        modifier = Modifier.semantics { contentDescription = "$venueName connection status: $text" },
+    )
 }
