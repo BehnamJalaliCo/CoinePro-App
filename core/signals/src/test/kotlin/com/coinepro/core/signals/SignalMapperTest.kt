@@ -34,6 +34,12 @@ class SignalMapperTest {
     }
 
     @Test
+    fun `persisted signal id must be positive`() {
+        assertNull(SignalDto(id = 0, market = "forex", symbol = "XAUUSD", direction = "BUY").toDomain(0L))
+        assertNull(SignalDto(id = -1, market = "forex", symbol = "XAUUSD", direction = "BUY").toDomain(0L))
+    }
+
+    @Test
     fun `quote freshness follows market-specific thresholds`() {
         val crypto = SignalQuoteDto(100.0, timestampMs = 90_000L, source = "lbank_futures_ws")
             .toDomain(MarketType.CRYPTO, nowMs = 100_000L)!!
