@@ -43,7 +43,7 @@ class SignalControllerCacheTest {
         assertFalse(state.coverageComplete)
         assertTrue(state.fromCache)
         assertEquals(1234L, state.cacheStoredAtEpochMillis)
-        assertEquals("offline", state.error)
+        assertEquals("Cached history shown. offline", state.error)
     }
 
     @Test
