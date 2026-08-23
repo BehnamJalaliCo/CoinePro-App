@@ -95,9 +95,10 @@ def check_market_truth() -> None:
 
 def check_cache_scope() -> None:
     cache = read("core/database/src/main/kotlin/com/coinepro/core/database/RoomReadCaches.kt")
-    require("isSupportedCachedMarketQuote" in cache, "Market cache must independently enforce product scope")
+    require("isSupportedProductSymbol" in cache, "Market and Signal cache must independently enforce shared product scope")
     require('normalized == "XAUUSD" || normalized == "XAGUSD"' in cache, "Cache Forex scope drifted")
     require('normalized.endsWith("USDT")' in cache, "Cache Crypto scope drifted")
+    require("isStale = true" in cache, "Restored market cache must remain explicitly stale")
 
 
 def check_baseline_profile() -> None:
