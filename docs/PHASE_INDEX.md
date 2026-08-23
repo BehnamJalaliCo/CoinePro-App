@@ -25,6 +25,7 @@ This file is the canonical map between delivery phases, Git branches, milestone 
 | 7 | AI Generated Market Signal | `feat/phase7-ai-generated-market-signal` | `f718d9ad310ab37d4b109297c4fadcb33e287775` | Run #91 — success |
 | 8 | AI Vision Flagship | `feat/phase8-ai-vision` | `85ed5a681b9f3a548fdc1d30faeea8dacb3d88b1` | Run #101 — success |
 | 9 | AI Assistant | `feat/phase9-ai-assistant` | `3d158c9d0fc72724e9bbf402ae81540300950cc3` | Run #114 — success |
+| 10 | News & Economic Calendar | `feat/phase10-news-economic-calendar` | `cfef5ba5c20be8ccf189de137ca9e6a9a199def4` | Run #121 — success |
 
 ## Phase 1–6 audit closure
 
@@ -88,7 +89,6 @@ Final Phase 8 checkpoint:
 
 - SHA: `85ed5a681b9f3a548fdc1d30faeea8dacb3d88b1`
 - Android CI Run #101: **success**
-- Run #101 passed Phase 8 tests, all previous core tests, app lint, app unit tests, debug assembly and debug APK artifact upload.
 
 ## Phase 9 status
 
@@ -117,15 +117,42 @@ Final Phase 9 checkpoint:
 
 - SHA: `3d158c9d0fc72724e9bbf402ae81540300950cc3`
 - Android CI Run #114: **success**
-- Run #114 passed Phase 9 tests, all previous core tests, app lint, app unit tests, debug assembly and debug APK artifact upload.
+
+## Phase 10 status
+
+**Closed / Complete.**
+
+Validated behavior:
+
+- `core:marketintel` typed normalized market-news/economic-calendar domain, Retrofit gateway and state controller
+- authenticated `GET /user/market-intelligence` client contract documented in `PHASE10_MARKET_INTELLIGENCE_CONTRACT.md`
+- `feature:news` flagship Compose news feed with animated real-state transitions, relevance filters, structured impact/sentiment and explicit stale state
+- `feature:calendar` animated economic timeline with Low / Medium / High / Unknown impact and Gold / Silver / Crypto filters
+- publication/event times require valid ISO-8601 timestamps and normalize to `Instant`; invalid required timestamps are rejected rather than guessed
+- missing stale truth defaults to stale, never fresh
+- unknown impact and unknown sentiment remain unknown; Android never upgrades them to certainty
+- actual / forecast / previous render only when supplied
+- article links are normalized as HTTPS-only data
+- active Signal Detail displays a high-impact risk-context card only for exact HIGH, fresh, instrument-relevant events inside the defined time window
+- calendar warning is explicitly risk context, not a prediction or execution instruction
+- News/Calendar are linked from Tools and share one authenticated controller
+- market-intelligence state clears on logout/session loss
+- native Compose motion is driven only by real state transitions and respects system animator-duration scale; no fake live pulse/count-up urgency
+- `core:marketintel` truth-boundary tests are part of cumulative Android CI
+
+Final Phase 10 checkpoint:
+
+- SHA: `cfef5ba5c20be8ccf189de137ca9e6a9a199def4`
+- Android CI Run #121: **success**
+- Run #121 passed Phase 10 tests, every prior core gate, app lint, app unit tests, debug assembly and debug APK upload.
 
 ## Next phase
 
-**Phase 10 — News & Economic Calendar**
+**Phase 11 — Trader Tools**
 
 Status: **Ready to start.**
 
-## Branch rule from Phase 10 onward
+## Branch rule from Phase 11 onward
 
 For every new phase:
 
