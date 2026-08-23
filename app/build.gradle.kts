@@ -8,6 +8,11 @@ plugins {
 val apiBaseUrl = providers.gradleProperty("COINEPRO_API_BASE_URL")
     .orElse("https://example.invalid/")
     .get()
+val firebaseProjectId = providers.gradleProperty("COINEPRO_FIREBASE_PROJECT_ID").orElse("").get()
+val firebaseApplicationId = providers.gradleProperty("COINEPRO_FIREBASE_APPLICATION_ID").orElse("").get()
+val firebaseApiKey = providers.gradleProperty("COINEPRO_FIREBASE_API_KEY").orElse("").get()
+
+fun escapedBuildConfig(value: String): String = "\"${value.replace("\"", "\\\"")}\""
 
 android {
     namespace = "com.coinepro.app"
@@ -20,7 +25,10 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl.replace("\"", "\\\"")}\"")
+        buildConfigField("String", "API_BASE_URL", escapedBuildConfig(apiBaseUrl))
+        buildConfigField("String", "FIREBASE_PROJECT_ID", escapedBuildConfig(firebaseProjectId))
+        buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(firebaseApplicationId))
+        buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(firebaseApiKey))
     }
 
     buildFeatures {
@@ -57,6 +65,7 @@ dependencies {
     implementation(project(":core:network"))
     implementation(project(":core:marketdata"))
     implementation(project(":core:signals"))
+    implementation(project(":core:notifications"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:navigation"))
     implementation(project(":feature:auth"))
@@ -78,6 +87,8 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
