@@ -1,6 +1,6 @@
 # CoinePro Android Product Roadmap
 
-Status: Phases 0 through 16 delivered at validated code checkpoints. Phase 16 closure becomes final when the exact documentation Head containing this update passes Android CI and Security CI; Phase 17 is the next and final launch-readiness milestone.
+Status: Phases 0 through 16 are Closed / Complete at validated final Heads. Phase 17 repository/client implementation and Phase 1–17 reconciliation are implemented on `feat/phase17-launch-readiness`; final closure still requires the exact final documentation Head to pass Android CI and Security CI plus any explicitly required external production evidence recorded in `PHASE17_EVIDENCE_LEDGER.md`.
 
 The canonical phase-to-branch/SHA/CI mapping lives in `PHASE_INDEX.md`. Detailed truth/API/security rules live in each phase contract document.
 
@@ -11,8 +11,8 @@ The canonical phase-to-branch/SHA/CI mapping lives in `PHASE_INDEX.md`. Detailed
 - `bootstrap/android-foundation` is the cumulative integration branch.
 - Every phase branch, PR, CI check and phase ledger entry for this project stays in this repository.
 - PRs remain Draft and unmerged unless merge is explicitly requested.
-- Production vendor credentials, broker connectivity, IP whitelisting and real external smoke testing remain Phase 17 unless explicitly moved earlier.
 - Android never stores production vendor/broker secrets in the repository.
+- External legal/provider/production evidence is recorded separately from deterministic repository/client validation and is never fabricated from code or mocks.
 
 ## Completed foundation — Phases 0 through 6
 
@@ -29,27 +29,27 @@ Core module boundaries, five-destination shell (Home / Signals / AI / Tools / Ac
 ### Phase 2 — Authentication, Session & Entitlements
 Status: Complete
 
-Keystore-backed session protection, authenticated profile revalidation, Telegram auth bridge, token redaction, unauthorized clearing and server-truth entitlements.
+Keystore-backed session protection, authenticated profile revalidation, Telegram auth bridge, token redaction, unauthorized clearing, server-truth entitlements and environment-specific debug/staging/production API configuration.
 
 ### Phase 3 — Realtime Market Data Foundation
 Status: Complete
 
-Normalized HTTP/WebSocket quote contract, reconnect/fallback, stale/fresh state, source timestamps, product-scope validation and no fake `LIVE` state.
+Normalized HTTP/WebSocket quote contract, reconnect/fallback, stale/fresh state, source timestamps, product-scope validation and no fake `LIVE` state. Freshness is LBank 15 s, Finnhub 90 s and unknown-source 30 s with future-skew rejection.
 
 ### Phase 4 — Signals Core
 Status: Complete
 
-Typed Signal list/detail flow, Active/Recent/Closed states, Entry/SL/TP/R:R/confidence, missing-field safety and product scope locked to Forex V1 `XAUUSD/XAGUSD` plus Crypto `*USDT`.
+Typed Signal list/detail flow, Active/Recent/Closed states, Entry/SL/TP/R:R/confidence, missing-field safety, positive persisted signal IDs and product scope locked to Forex V1 `XAUUSD/XAGUSD` plus Crypto `*USDT`.
 
 ### Phase 5 — Alerts & Push
 Status: Complete
 
-Notification Center, push preferences, price alerts, FCM lifecycle, native notification channels, permission flow and validated deep links/payloads.
+Notification Center, push preferences, price alerts, FCM lifecycle, native notification channels, permission flow and validated deep links/payloads. Notification/deep-link Signal navigation accepts only positive persisted signal IDs.
 
 ### Phase 6 — Connections & Signal Execution Bridge
 Status: Complete
 
-MT5/LBank connection state, signal-scoped execution confirmation, quantity validation, idempotency request IDs, server/provider-truth execution states and duplicate-close protection.
+MT5/LBank connection state, signal-scoped execution confirmation, quantity validation, idempotency request IDs, positive Signal identity validation, server/provider-truth execution states and duplicate-close protection.
 
 ## Phase 7 — AI Generated Market Signal
 
@@ -76,7 +76,7 @@ Delivered:
 - structured server-truth AI Vision lifecycle
 - actionable/low-confidence/unknown/unsupported states
 - strict trade geometry/product validation
-- only validated persisted server Signal can become actionable
+- only validated persisted positive server Signal can become actionable
 - AI Vision never executes directly
 
 Contract: `docs/PHASE8_AI_VISION_CONTRACT.md`
@@ -90,7 +90,7 @@ Delivered:
 - source/as-of/freshness provenance
 - stable conversation identity and explicit server history policy
 - no invented positions, signals or execution state
-- only verified active-signal context can open a persisted Signal
+- only verified active-signal context with a positive persisted Signal ID can open Signal Detail
 - transcript clears on logout/session loss
 
 Contract: `docs/PHASE9_AI_ASSISTANT_CONTRACT.md`
@@ -153,7 +153,7 @@ Final closure milestone: `feat/phase13-offline-reliability-background-work` → 
 Delivered:
 - `core:database` Room 2.8.4 safe read-cache boundary
 - cached market snapshots that always restore as explicit stale/cache evidence
-- cache product-scope and finite-number validation
+- independent cache product-scope and finite-number validation for market rows and Signal history
 - CLOSED signal-history cache with live quote/live P&L authority intentionally removed
 - nullable target-hit evidence preserved through cache round-trips
 - cache-aware signal-history fallback with explicit provenance, storage time and refresh errors
@@ -181,15 +181,13 @@ Final closure milestone: `feat/phase14-security-hardening` → `8abdb6909beb2468
 
 Delivered:
 - tracked-secret scanning for private keys, common token signatures and forbidden local secret/config files
-- resolved debug/release runtime dependency export and OSV vulnerability audit independent of GitHub Dependency Graph availability
+- resolved runtime dependency export and OSV vulnerability audit independent of GitHub Dependency Graph availability
 - explicit vulnerability exception ledger with no silent suppressions
 - Retrofit HTTPS-only boundary plus manifest/network-security cleartext denial
 - release HTTP logging disabled; debug is opt-in BASIC only with sensitive-header redaction
 - explicit system-CA certificate policy and a deliberate no-fake-pinning decision until production domains/backup pins/rotation ownership exist
-- debug and release service configuration separated into different Gradle property namespaces
-- generated BuildConfig cross-variant isolation verified in Security CI using distinct markers
+- generated BuildConfig cross-variant isolation verified in Security CI
 - release explicitly non-debuggable, minified and resource-shrunk
-- Android CI gates both debug and release lint/assembly
 - explicit execution 429 state and one-call/no-auto-retry trading-write policy
 - execution and AI Vision upload threat-model review
 - AI Vision EXIF stripping and app-owned camera-temp deletion boundaries preserved
@@ -197,10 +195,6 @@ Delivered:
 - session/cache/assistant/image privacy and retention rules documented without inventing server retention
 
 Contract: `docs/PHASE14_SECURITY_HARDENING_CONTRACT.md`
-
-Exit state:
-- Android Run #184 passed cumulative tests, debug/release lint, app tests and debug/release assembly on the final Phase 14 documentation Head
-- Security Run #16 passed tracked-secret, resolved dependency and BuildConfig-isolation gates on the same final Head
 
 ## Phase 15 — Quality, Performance & Accessibility
 
@@ -215,81 +209,79 @@ Delivered:
 - Home large-text accessibility fix via vertical scrolling rather than weakening the test
 - TalkBack quote semantics with instrument, symbol, stale/live state, price, source and market
 - explicit LTR financial values inside RTL at large font scale
-- CI-enforced reduced-motion policy that rejects continuous/infinite Compose animation primitives across app/core/feature source
-- emulator accessibility coverage with Android system animations disabled
-- deterministic semantic/state assertions as the hard signature-state golden gate; no false claim that hosted-emulator pixel rendering is deterministic
-- ProfileInstaller plus checked-in Baseline Profile seed
+- CI-enforced reduced-motion policy
+- deterministic semantic/state signature-state gate without false hosted-emulator pixel-golden claims
+- ProfileInstaller plus checked-in Baseline Profile seed targeting the current `CoineProThemeKt` class
 - dedicated `benchmark` module with Baseline Profile generation and cold-start Macrobenchmark
-- release-like non-debuggable benchmark target app, with debug signing only for benchmark installability
-- separately signed instrumentation APK for benchmark execution
-- hosted CI Macrobenchmark dry-run to verify build/install/instrumentation wiring without promoting emulator latency to a performance claim
-- explicit physical reference-device cold-start and jank target budget, with no claim that hosted CI measured or met it
-- benchmark/profile dependencies remain covered by Security CI
-- no Phase 15 change to execution, broker, provider, AI, session or entitlement truth contracts
+- release-like non-debuggable benchmark target app; signing only for installability
+- hosted CI Macrobenchmark dry-run verifies wiring without promoting emulator latency to a performance claim
+- explicit physical reference-device cold-start and jank target budget without a false measured claim
 
 Contract: `docs/PHASE15_QUALITY_PERFORMANCE_ACCESSIBILITY_CONTRACT.md`
 
 ## Phase 16 — Release Engineering
 
-Status: Complete at validated code checkpoint; this documentation Head is the final closure gate.
+Status: Closed / Complete.
 
 Code milestone: `feat/phase16-release-engineering` → `0681a763cf504275b60e50495d3c64d13f73ac79` → Android Run #226 success + Security Run #58 success.
+Final documentation Head: `5a1a02daf72acc60581665b3aee27dec713b400c` → Android Run #230 success + Security Run #62 success.
 
 Delivered:
-- semantic version + positive monotonic Android `versionCode` validation
-- dedicated release, staging and benchmark configuration namespaces
+- semantic `versionName` validation plus positive/range-safe Android `versionCode` validation
+- Play remains authoritative for cross-release `versionCode` monotonicity against existing release history
+- dedicated debug, staging, production and benchmark configuration namespaces
 - distinct staging application identity and non-production endpoint boundary
-- protected signing configuration that requires the complete signing tuple or fails configuration
-- ephemeral CI JKS signing smoke proving a signed release AAB without storing production key material
-- signature verification that distinguishes a valid signature from expected trust-chain warnings on self-signed CI certificates
-- manual Play Console internal-track workflow targeting protected `play-internal` environment
-- staging upload keystore materialized only under runner temp storage and removed in cleanup
-- Android Publisher edit/upload/internal-track/commit script with incomplete-edit cleanup
+- protected signing configuration requiring the complete signing tuple
+- ephemeral CI JKS signing smoke proving a signed release AAB without production key material
+- manual Play Console internal-track workflow targeting protected `play-internal`
+- runner-temp upload keystore with cleanup
+- Android Publisher edit/upload/internal-track/commit flow with incomplete-edit cleanup
 - changelog/release-note policy
-- Android Vitals / Play Console selected as the baseline crash/ANR source without adding a new telemetry SDK before privacy review
-- cumulative Android CI expanded to debug/staging/release/benchmark variants plus protected signing smoke
-- Security CI expanded to staging dependency and BuildConfig isolation coverage
-- no claim that production broker/vendor connectivity, production rollout or live execution has been verified
+- Android Vitals / Play Console baseline crash/ANR decision without a new telemetry SDK before privacy review
+- cumulative Android CI for debug/staging/release/benchmark plus protected signing
+- Security CI for secret/dependency/BuildConfig-isolation gates
 
 Contract: `docs/PHASE16_RELEASE_ENGINEERING_CONTRACT.md`
 
-Exit state at code checkpoint:
-- Android Run #226 passed cumulative lint/test/build, staging/release/benchmark assembly, Compose/benchmark smoke and protected release-signing AAB verification
-- Security Run #58 passed tracked-secret, dependency OSV and BuildConfig-isolation gates
-- the exact documentation Head containing this closure update must pass Android CI and Security CI before Phase 17 branches from it
-
 ## Phase 17 — Launch Readiness
 
-Status: Next — final external/runtime phase after Phase 16 final documentation Head is green.
+Status: Repository/client implementation complete; final exact-Head CI and external production evidence are tracked independently in `docs/PHASE17_EVIDENCE_LEDGER.md`.
 
-Deliverables:
-- onboarding and permission education
-- connection setup education
-- legal/risk disclosures
-- support/feedback path
-- privacy-reviewed analytics events
-- incident/runbook preparation
-- production vendor domain and credential configuration
-- production IP whitelist verification where required
-- real external market-data connectivity smoke tests
-- real broker/exchange execution lifecycle verification
+Delivered in the repository:
+- launch/safety education surface
+- notification permission education before request and denial recovery path
+- Camera permission remains user-action scoped with gallery/file fallback
+- connection setup education that separates configured credentials from provider-confirmed state
+- trading/AI/provider-truth risk disclosures without regulatory approval claims
+- support/feedback share-sheet path with safe app metadata only
+- analytics explicitly disabled rather than introducing an unreviewed telemetry SDK
+- incident/rollback runbook
+- production read-only smoke workflow and sanitizer
+- market smoke freshness checks matched to Phase 3 source thresholds
+- positive persisted Signal ID invariant reconciled across Signals, notifications, deep links, AI and execution
+- cache product-scope boundary reconciled with Phase 3/4 product scope
+- Baseline Profile class reconciled with current design-system source
+- deterministic Phase 1–17 repository consistency gate
+- full cross-phase audit document
 
-Exit criteria:
-- final production market sources verified
-- end-to-end login → signal → execution confirmation → tracked result smoke
-- AI Vision image → validated analysis → eligible action smoke
-- provider close lifecycle verified before enabling any deferred Close CTA
-- rollback/disable switches defined
+External runtime/legal evidence is not manufactured from repository state. It remains visible in the evidence ledger until supplied by the appropriate protected production/provider/legal source.
+
+Contract: `docs/PHASE17_LAUNCH_READINESS_CONTRACT.md`
+Audit: `docs/PHASE1_17_CROSS_PHASE_AUDIT.md`
+Evidence: `docs/PHASE17_EVIDENCE_LEDGER.md`
+Runbook: `docs/PHASE17_INCIDENT_RUNBOOK.md`
 
 ## Product module map
 
 ```text
 app
+benchmark
 core:common
 core:model
-core:designsystem
 core:network
 core:datastore
+core:navigation
+core:designsystem
 core:auth
 core:security
 core:marketdata
@@ -301,13 +293,12 @@ core:aivision
 core:aiassistant
 core:marketintel
 core:database
-core:testing
 feature:auth
 feature:home
 feature:signals
 feature:signal-detail
-feature:execution
 feature:connections
+feature:execution
 feature:ai
 feature:ai-vision
 feature:ai-assistant
@@ -315,29 +306,29 @@ feature:news
 feature:calendar
 feature:tools
 feature:activity
-feature:profile
 ```
 
-Create modules when boundaries become useful; do not create empty architecture for its own sake.
+This block must match `settings.gradle.kts` exactly; `scripts/quality/check-cross-phase-consistency.py` enforces that invariant in CI. Empty or phantom architecture modules are not listed.
 
 ## Cross-cutting contracts
 
 1. Authentication/session — bearer session + authenticated profile validation; no client-invented refresh flow
 2. Entitlements — authenticated server profile is source of truth
-3. Signal schema/lifecycle — normalized in Phase 4; execution extends it in Phase 6
-4. Realtime quote schema — normalized in Phase 3; production external activation in Phase 17
-5. FCM device + alert schema — client implemented in Phase 5
-6. Signal-scoped execution contract — client safety boundary implemented in Phase 6; live provider validation Phase 17
+3. Signal schema/lifecycle — normalized in Phase 4; persisted Signal IDs are positive across downstream features
+4. Realtime quote schema — normalized in Phase 3; production read-only smoke uses the same freshness thresholds
+5. FCM device + alert schema — client implemented in Phase 5; Signal links accept only positive IDs
+6. Signal-scoped execution contract — client safety boundary implemented in Phase 6; provider status remains server-owned
 7. AI Signal job schema — Phase 7 server-truth lifecycle and persisted-Signal trust boundary
 8. AI Vision upload/job/result schema — Phase 8 privacy preprocessing and persisted-Signal trust boundary
 9. AI Assistant contextual chat schema — Phase 9 context provenance, stable conversation identity and explicit history policy
 10. News/calendar timestamps and impact schema — Phase 10 timestamp/stale/unknown truth boundaries and active-signal risk context
 11. Trader Tools formulas — Phase 11 local deterministic contract with no execution side effect
 12. Activity/performance evidence — Phase 12 explicit denominators, history coverage truth and no ROI/equity inference
-13. Offline/reliability boundary — Phase 13 safe read caches, explicit stale/cache provenance, read-only durable sync, retry/idempotency rules and no background execution side effects
-14. Security hardening boundary — Phase 14 secret/dependency gates, release transport/logging policy, build-config isolation, explicit rate limits, threat models and privacy/retention non-claims
-15. Quality/performance/accessibility boundary — Phase 15 semantic critical-state tests, RTL/large-font reachability, reduced-motion policy, Baseline Profile/Macrobenchmark wiring and explicit separation between hosted smoke and physical-device performance evidence
-16. Release-engineering boundary — Phase 16 signing/version/build-environment isolation, internal-track publishing, changelog and crash/ANR monitoring decision without production-runtime claims
+13. Offline/reliability boundary — Phase 13 safe read caches, independent product-scope validation, explicit stale/cache provenance and read-only durable sync
+14. Security hardening boundary — Phase 14 secret/dependency gates, release transport/logging policy, build-config isolation, explicit rate limits and threat models
+15. Quality/performance/accessibility boundary — Phase 15 semantic critical-state tests, RTL/large-font reachability, reduced-motion policy and current Baseline Profile/Macrobenchmark wiring
+16. Release-engineering boundary — Phase 16 signing/version/build-environment isolation, internal-track publishing, changelog and crash/ANR monitoring decision
+17. Launch-readiness/reconciliation boundary — Phase 17 education/runbook/evidence tooling plus a deterministic Phase 1–17 consistency gate; external evidence remains evidence-based, never inferred
 
 ## Definition of Done
 
@@ -349,5 +340,6 @@ A client feature is not Done until:
 - tests cover critical business rules
 - Android CI and any phase-specific required CI are green
 - no fake realtime, execution or AI progress state exists
+- cross-phase invariants remain compatible with prior contracts
 
-External production connectivity is additionally gated by Phase 17.
+External legal/provider/production verification is additionally evidence-gated by Phase 17 and cannot be substituted by a client-side pass.
