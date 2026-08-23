@@ -4,6 +4,7 @@ import retrofit2.Retrofit
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
@@ -36,7 +37,7 @@ internal interface NotificationApi {
     @POST("user/signals/mobile/push/devices")
     suspend fun registerDevice(@Body body: DeviceRegistrationDto): DeviceRegistrationResponseDto
 
-    @DELETE("user/signals/mobile/push/devices")
+    @HTTP(method = "DELETE", path = "user/signals/mobile/push/devices", hasBody = true)
     suspend fun unregisterDevice(@Body body: DeviceUnregisterDto): DeviceUnregisterResponseDto
 
     @GET("user/signals/mobile/push/preferences")
