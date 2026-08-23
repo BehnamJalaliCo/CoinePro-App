@@ -29,7 +29,8 @@ This file is the canonical map between delivery phases, Git branches, milestone 
 | 11 | Trader Tools | `feat/phase11-trader-tools` | `11d91b2cb90a484611a1b1c773187b7c2b2795e4` | Android Run #126 — success |
 | 12 | Activity, History & Performance | `feat/phase12-activity-history-performance` | `23f7113d83acdcfda74798380f04da1c7447be9f` | Android Run #132 — success |
 | 13 | Offline, Reliability & Background Work | `feat/phase13-offline-reliability-background-work` | `a6b664f035e047afd51515b3481452d57ecd1ee9` | Android Run #159 — success |
-| 14 | Security Hardening | `feat/phase14-security-hardening` | `ed568e8672ef1c112f874f85411a11e0c6e4b7fb` | Android Run #178 + Security Run #10 — success |
+| 14 | Security Hardening | `feat/phase14-security-hardening` | `8abdb6909beb2468ec10c911ebd22ad8411a1b5f` | Android Run #184 + Security Run #16 — success |
+| 15 | Quality, Performance & Accessibility | `feat/phase15-quality-performance-accessibility` | `97d3ebc0165be27e86ad97dceef16494f7a7b428` | Android Run #208 + Security Run #40 — success |
 
 ## Phase 1–6 audit closure
 
@@ -247,7 +248,7 @@ Final Phase 13 closure:
 
 ## Phase 14 status
 
-**Closed / Complete at code checkpoint; final documentation/security-verifier Head validation pending.**
+**Closed / Complete.**
 
 Validated behavior:
 
@@ -269,18 +270,46 @@ Validated behavior:
 - local session/cache/assistant/image privacy and retention boundaries are explicit
 - contract documented in `PHASE14_SECURITY_HARDENING_CONTRACT.md`
 
-Phase 14 code checkpoint:
+Final Phase 14 closure:
 
-- SHA: `ed568e8672ef1c112f874f85411a11e0c6e4b7fb`
-- Android CI Run #178: **success**
-- Security CI Run #10: **success**
-- Run #178 passed cumulative tests, debug/release lint, app tests, debug/release assembly and debug APK upload.
+- SHA: `8abdb6909beb2468ec10c911ebd22ad8411a1b5f`
+- Android CI Run #184: **success**
+- Security CI Run #16: **success**
+
+## Phase 15 status
+
+**Closed / Complete.**
+
+Validated behavior:
+
+- cumulative domain/controller/business-rule tests remain part of the Android CI regression gate
+- four Compose instrumentation tests cover cached stale truth in RTL, offline Retry actionability, explicit network LIVE semantics and 2× font-scale RTL quote reachability
+- Home is vertically scrollable so large text cannot make critical financial quote content unreachable below the initial viewport
+- quote cards expose TalkBack semantics for instrument, symbol, stale/live state, price, source and market type
+- financial values keep explicit LTR isolation inside RTL layouts
+- reduced-motion CI policy rejects continuous/infinite Compose animation primitives across app/core/feature source
+- emulator accessibility tests run with Android system animations disabled
+- deterministic semantic/state assertions are the hard signature-state golden gate; hosted-emulator pixel snapshots are not misrepresented as deterministic goldens
+- `app/src/main/baseline-prof.txt` and ProfileInstaller provide an explicit Baseline Profile seed
+- a dedicated `benchmark` module includes Baseline Profile generation and cold-start Macrobenchmark tooling
+- target app benchmark build inherits release behavior and remains non-debuggable; debug signing exists only for benchmark installability
+- benchmark instrumentation APK is separately debug-signed for test installation
+- hosted CI runs Macrobenchmark dry-run as a wiring smoke and does not claim emulator latency as reference-device performance
+- physical reference-device startup/jank targets are documented in `PHASE15_QUALITY_PERFORMANCE_ACCESSIBILITY_CONTRACT.md`
+- Phase 15 changes do not touch execution/broker/AI/provider truth contracts
+- benchmark/profile dependencies remain covered by Security CI OSV/secret/build-config gates
+
+Phase 15 code checkpoint:
+
+- SHA: `97d3ebc0165be27e86ad97dceef16494f7a7b428`
+- Android CI Run #208: **success**
+- Security CI Run #40: **success**
 
 ## Next phase
 
-**Phase 15 — Quality, Performance & Accessibility**
+**Phase 16 — Release Engineering**
 
-Status: **Ready only after the final Phase 14 documentation/security-verifier Head passes both Android CI and Security CI.**
+Status: **Ready after the final Phase 15 documentation Head passes Android CI and Security CI.**
 
 ## Branch rule from Phase 11 onward
 
