@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.coinepro.core.auth.LoginConfigState
 import com.coinepro.core.auth.SessionState
 import com.coinepro.core.auth.TelegramAuthPayload
 import org.json.JSONObject
@@ -34,8 +35,9 @@ import org.json.JSONObject
 @Composable
 fun AuthScreen(
     state: SessionState,
-    botUsername: String?,
+    loginConfigState: LoginConfigState,
     onTelegramPayload: (TelegramAuthPayload) -> Unit,
+    onRetryLoginConfig: () -> Unit,
     onRetry: () -> Unit,
     onLogout: () -> Unit,
 ) {
@@ -64,16 +66,31 @@ fun AuthScreen(
 
         when (state) {
             SessionState.Loading -> CircularProgressIndicator()
-            SessionState.SignedOut -> {
-                if (showTelegram && botUsername != null) {
-                    TelegramLoginWebView(botUsername, onTelegramPayload)
+            SessionState.SignedOut -> when (loginConfigState) {
+                LoginConfigState.Loading -> {
+                    CircularProgressIndicator()
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Loading Telegram sign-in configuration…",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                is LoginConfigState.Error -> {
+                    Text(
+                        loginConfigState.message,
+                        color = MaterialTheme.colorScheme.error,
+                    )
                     Spacer(Modifier.height(16.dp))
-                    OutlinedButton(onClick = { showTelegram = false }) { Text("Cancel") }
-                } else {
-                    Button(
-                        enabled = botUsername != null,
-                        onClick = { showTelegram = true },
-                    ) { Text(if (botUsername == null) "Loading Telegram login…" else "Continue with Telegram") }
+                    Button(onClick = onRetryLoginConfig) { Text("Retry Telegram login") }
+                }
+                is LoginConfigState.Ready -> {
+                    if (showTelegram) {
+                        TelegramLoginWebView(loginConfigState.botUsername, onTelegramPayload)
+                        Spacer(Modifier.height(16.dp))
+                        OutlinedButton(onClick = { showTelegram = false }) { Text("Cancel") }
+                    } else {
+                        Button(onClick = { showTelegram = true }) { Text("Continue with Telegram") }
+                    }
                 }
             }
             is SessionState.RevalidationRequired -> {
