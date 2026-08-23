@@ -59,6 +59,20 @@ class NotificationMapperTest {
     }
 
     @Test
+    fun `out of scope server alert is rejected`() {
+        assertNull(
+            PriceAlertDto(
+                id = "a1",
+                market = "forex",
+                symbol = "EURUSD",
+                condition = "cross_up",
+                value = 1.1,
+                trigger = "once",
+            ).toDomain(),
+        )
+    }
+
+    @Test
     fun `non finite alert payload is rejected`() {
         assertNull(
             PriceAlertDto(
