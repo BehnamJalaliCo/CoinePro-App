@@ -40,8 +40,19 @@ jobs:
       - name: Enforce reduced-motion policy
         run: bash scripts/quality/check-motion-policy.sh
 
+      - name: Validate release scripts and version contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/release/validate-version.sh scripts/release/publish-play-internal.sh
+          bash scripts/release/validate-version.sh "0.2.0-rc.1" "200001"
+          if bash scripts/release/validate-version.sh "invalid-version" "0"; then
+            echo "::error::Invalid release version unexpectedly passed validation."
+            exit 1
+          fi
+
       - name: Lint, test, and assemble debug + staging + release + benchmark
-        run: gradle --no-daemon :core:auth:testDebugUnitTest :core:network:testDebugUnitTest :core:marketdata:testDebugUnitTest :core:signals:testDebugUnitTest :core:notifications:testDebugUnitTest :core:execution:testDebugUnitTest :core:aisignal:testDebugUnitTest :core:aivision:testDebugUnitTest :core:aiassistant:testDebugUnitTest :core:marketintel:testDebugUnitTest :core:database:testDebugUnitTest :feature:tools:testDebugUnitTest :app:lintDebug :app:lintStaging :app:lintRelease :app:testDebugUnitTest :app:testStagingUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleStaging :app:assembleRelease :app:assembleBenchmark :benchmark:assembleBenchmark
+        run: gradle --no-daemon :core:auth:testDebugUnitTest :core:network:testDebugUnitTest :core:marketdata:testDebugUnitTest :core:signals:testDebugUnitTest :core:notifications:testDebugUnitTest :core:execution:testDebugUnitTest :core:aisignal:testDebugUnitTest :core:aivision:testDebugUnitTest :core:aiassistant:testDebugUnitTest :core:marketintel:testDebugUnitTest :core:database:testDebugUnitTest :feature:tools:testDebugUnitTest :app:lintDebug :app:lintStaging :app:lintRelease :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleStaging :app:assembleRelease :app:assembleBenchmark :benchmark:assembleBenchmark
 
       - name: Verify protected release signing path
         shell: bash
