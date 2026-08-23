@@ -31,6 +31,7 @@ import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.marketdata.MarketDataController
 import com.coinepro.core.marketdata.MarketDataState
+import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.navigation.AppDestination
 import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.signals.SignalController
@@ -39,9 +40,11 @@ import com.coinepro.feature.ai.AiScreen
 import com.coinepro.feature.aiassistant.AiAssistantScreen
 import com.coinepro.feature.aivision.AiVisionScreen
 import com.coinepro.feature.auth.AuthScreen
+import com.coinepro.feature.calendar.EconomicCalendarScreen
 import com.coinepro.feature.connections.ConnectionsScreen
 import com.coinepro.feature.execution.ExecutionScreen
 import com.coinepro.feature.home.HomeScreen
+import com.coinepro.feature.news.NewsScreen
 import com.coinepro.feature.signaldetail.SignalDetailScreen
 import com.coinepro.feature.signals.SignalsScreen
 import com.coinepro.feature.tools.ToolsScreen
@@ -52,6 +55,8 @@ private const val EXECUTION_PATTERN = "execution/{signalId}"
 private const val CONNECTIONS_ROUTE = "connections"
 private const val AI_VISION_ROUTE = "ai/vision"
 private const val AI_ASSISTANT_ROUTE = "ai/assistant"
+private const val NEWS_ROUTE = "market/news"
+private const val CALENDAR_ROUTE = "market/calendar"
 private fun signalDetailRoute(signalId: Long) = "signal/$signalId"
 private fun executionRoute(signalId: Long) = "execution/$signalId"
 
@@ -65,6 +70,7 @@ fun CoineProApp(
     aiSignalController: AiSignalController,
     aiVisionController: AiVisionController,
     aiAssistantController: AiAssistantController,
+    marketIntelController: MarketIntelController,
     pushCoordinator: PushCoordinator,
     launchSignalId: Long?,
     launchActivity: Boolean,
@@ -90,6 +96,7 @@ fun CoineProApp(
             aiSignalController.clear()
             aiVisionController.clear()
             aiAssistantController.clear()
+            marketIntelController.clear()
         }
     }
 
@@ -103,6 +110,7 @@ fun CoineProApp(
                 aiSignalController = aiSignalController,
                 aiVisionController = aiVisionController,
                 aiAssistantController = aiAssistantController,
+                marketIntelController = marketIntelController,
                 launchSignalId = launchSignalId,
                 launchActivity = launchActivity,
                 onSignalLaunchConsumed = onSignalLaunchConsumed,
@@ -138,6 +146,7 @@ private fun MainShell(
     aiSignalController: AiSignalController,
     aiVisionController: AiVisionController,
     aiAssistantController: AiAssistantController,
+    marketIntelController: MarketIntelController,
     launchSignalId: Long?,
     launchActivity: Boolean,
     onSignalLaunchConsumed: () -> Unit,
@@ -154,6 +163,8 @@ private fun MainShell(
         CONNECTIONS_ROUTE,
         AI_VISION_ROUTE,
         AI_ASSISTANT_ROUTE,
+        NEWS_ROUTE,
+        CALENDAR_ROUTE,
     )
     val subTitle = when (currentRoute) {
         SIGNAL_DETAIL_PATTERN -> "Signal"
@@ -161,6 +172,8 @@ private fun MainShell(
         CONNECTIONS_ROUTE -> "Connections"
         AI_VISION_ROUTE -> "AI Vision"
         AI_ASSISTANT_ROUTE -> "AI Assistant"
+        NEWS_ROUTE -> "Market Intelligence"
+        CALENDAR_ROUTE -> "Economic Calendar"
         else -> "CoinePro"
     }
 
@@ -239,6 +252,7 @@ private fun MainShell(
                 val signalId = entry.arguments?.getLong("signalId") ?: return@composable
                 SignalDetailScreen(
                     controller = signalController,
+                    marketIntelController = marketIntelController,
                     signalId = signalId,
                     onExecute = { navController.navigate(executionRoute(it)) },
                 )
@@ -278,8 +292,24 @@ private fun MainShell(
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
                 )
             }
+            composable(NEWS_ROUTE) {
+                NewsScreen(
+                    controller = marketIntelController,
+                    onOpenCalendar = { navController.navigate(CALENDAR_ROUTE) },
+                )
+            }
+            composable(CALENDAR_ROUTE) {
+                EconomicCalendarScreen(
+                    controller = marketIntelController,
+                    onOpenNews = { navController.navigate(NEWS_ROUTE) },
+                )
+            }
             composable(AppDestination.TOOLS.route) {
-                ToolsScreen(onOpenConnections = { navController.navigate(CONNECTIONS_ROUTE) })
+                ToolsScreen(
+                    onOpenConnections = { navController.navigate(CONNECTIONS_ROUTE) },
+                    onOpenNews = { navController.navigate(NEWS_ROUTE) },
+                    onOpenCalendar = { navController.navigate(CALENDAR_ROUTE) },
+                )
             }
             composable(AppDestination.ACTIVITY.route) {
                 ActivityScreen(
