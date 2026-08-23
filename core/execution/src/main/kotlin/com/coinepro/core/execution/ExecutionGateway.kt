@@ -7,6 +7,7 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface ExecutionGateway {
     suspend fun connections(): Pair<VenueConnection?, VenueConnection?>
@@ -20,6 +21,7 @@ interface ExecutionGateway {
         quantity: Double,
         clientRequestId: String,
     ): SignalExecution
+    suspend fun executions(limit: Int = 50): List<SignalExecution>
     suspend fun execution(executionId: String): SignalExecution
     suspend fun requestClose(executionId: String): SignalExecution
 }
@@ -45,6 +47,9 @@ internal interface ExecutionApi {
         @Path("signalId") signalId: Long,
         @Body body: ExecuteSignalDto,
     ): ExecutionResponseDto
+
+    @GET("user/signals/execution/executions")
+    suspend fun executions(@Query("limit") limit: Int): ExecutionListResponseDto
 
     @GET("user/signals/execution/executions/{executionId}")
     suspend fun execution(@Path("executionId") executionId: String): ExecutionResponseDto
@@ -119,6 +124,7 @@ internal data class ExecutionDto(
 )
 
 internal data class ExecutionResponseDto(val execution: ExecutionDto? = null)
+internal data class ExecutionListResponseDto(val items: List<ExecutionDto> = emptyList())
 
 class NetworkExecutionGateway private constructor(
     private val api: ExecutionApi,
@@ -159,6 +165,9 @@ class NetworkExecutionGateway private constructor(
             ),
         ).execution?.toDomain(),
     ) { "Invalid execution response" }
+
+    override suspend fun executions(limit: Int): List<SignalExecution> =
+        api.executions(limit.coerceIn(1, 100)).items.mapNotNull { it.toDomain() }
 
     override suspend fun execution(executionId: String): SignalExecution = requireNotNull(
         api.execution(executionId).execution?.toDomain(),
