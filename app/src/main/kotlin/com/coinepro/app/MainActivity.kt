@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import com.coinepro.app.notifications.PushCoordinator
 import com.coinepro.core.aisignal.AiSignalController
+import com.coinepro.core.aisignal.AiVisionController
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.marketdata.MarketDataController
@@ -31,58 +32,22 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var notificationController: NotificationController
     @Inject lateinit var executionController: ExecutionController
     @Inject lateinit var aiSignalController: AiSignalController
+    @Inject lateinit var aiVisionController: AiVisionController
     @Inject lateinit var pushCoordinator: PushCoordinator
-
     private var launchSignalId by mutableStateOf<Long?>(null)
     private var launchActivity by mutableStateOf(false)
-
-    private val notificationPermission = registerForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { }
+    private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        consumeDeepLink(intent)
-        requestNotificationPermissionIfConfigured()
-        enableEdgeToEdge()
+        consumeDeepLink(intent); requestNotificationPermissionIfConfigured(); enableEdgeToEdge()
         setContent {
-            CoineProApp(
-                sessionController = sessionController,
-                marketDataController = marketDataController,
-                signalController = signalController,
-                notificationController = notificationController,
-                executionController = executionController,
-                aiSignalController = aiSignalController,
-                pushCoordinator = pushCoordinator,
-                launchSignalId = launchSignalId,
-                launchActivity = launchActivity,
-                onSignalLaunchConsumed = { launchSignalId = null },
-                onActivityLaunchConsumed = { launchActivity = false },
-            )
+            CoineProApp(sessionController, marketDataController, signalController, notificationController, executionController, aiSignalController, aiVisionController, pushCoordinator, launchSignalId, launchActivity, { launchSignalId = null }, { launchActivity = false })
         }
     }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        consumeDeepLink(intent)
-    }
-
-    private fun consumeDeepLink(intent: Intent?) {
-        val uri = intent?.data ?: return
-        when (uri.host) {
-            "signal" -> launchSignalId = uri.pathSegments.firstOrNull()?.toLongOrNull()
-            "activity" -> launchActivity = true
-        }
-    }
-
+    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); consumeDeepLink(intent) }
+    private fun consumeDeepLink(intent: Intent?) { val uri = intent?.data ?: return; when (uri.host) { "signal" -> launchSignalId = uri.pathSegments.firstOrNull()?.toLongOrNull(); "activity" -> launchActivity = true } }
     private fun requestNotificationPermissionIfConfigured() {
-        if (
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            BuildConfig.FIREBASE_PROJECT_ID.isNotBlank() &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && BuildConfig.FIREBASE_PROJECT_ID.isNotBlank() && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 }
