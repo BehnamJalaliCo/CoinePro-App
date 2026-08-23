@@ -17,9 +17,13 @@ class ExecutionController(
     private val _execution = MutableStateFlow(ExecutionState())
     val execution: StateFlow<ExecutionState> = _execution.asStateFlow()
 
+    private val _history = MutableStateFlow(ExecutionHistoryState())
+    val history: StateFlow<ExecutionHistoryState> = _history.asStateFlow()
+
     fun clear() {
         _connections.value = ConnectionsState()
         _execution.value = ExecutionState()
+        _history.value = ExecutionHistoryState()
     }
 
     fun refreshConnections() {
@@ -32,6 +36,19 @@ class ExecutionController(
                 .onFailure { error ->
                     _connections.update {
                         it.copy(loading = false, error = error.message ?: "Connections unavailable")
+                    }
+                }
+        }
+    }
+
+    fun refreshExecutions() {
+        scope.launch {
+            _history.update { it.copy(loading = true, error = null) }
+            runCatching { gateway.executions() }
+                .onSuccess { items -> _history.value = ExecutionHistoryState(items = items) }
+                .onFailure { error ->
+                    _history.update {
+                        it.copy(loading = false, error = error.message ?: "Executed signals unavailable")
                     }
                 }
         }
@@ -89,11 +106,22 @@ class ExecutionController(
         quantity: Double,
         clientRequestId: String,
     ) {
-        if (quantity <= 0 || clientRequestId.isBlank()) return
+        val validationError = quantityValidationError(venue, quantity)
+        if (validationError != null) {
+            _execution.value = ExecutionState(error = validationError)
+            return
+        }
+        if (clientRequestId.isBlank()) {
+            _execution.value = ExecutionState(error = "Missing idempotency request ID")
+            return
+        }
         scope.launch {
             _execution.value = ExecutionState(loading = true)
             runCatching { gateway.executeSignal(signalId, venue, quantity, clientRequestId) }
-                .onSuccess { value -> _execution.value = ExecutionState(execution = value) }
+                .onSuccess { value ->
+                    _execution.value = ExecutionState(execution = value)
+                    refreshExecutions()
+                }
                 .onFailure { error ->
                     _execution.value = ExecutionState(error = error.message ?: "Execution request failed")
                 }
@@ -104,7 +132,10 @@ class ExecutionController(
         if (executionId.isBlank()) return
         scope.launch {
             runCatching { gateway.execution(executionId) }
-                .onSuccess { value -> _execution.value = ExecutionState(execution = value) }
+                .onSuccess { value ->
+                    _execution.value = ExecutionState(execution = value)
+                    refreshExecutions()
+                }
                 .onFailure { error -> _execution.update { it.copy(error = error.message) } }
         }
     }
@@ -115,7 +146,10 @@ class ExecutionController(
         scope.launch {
             _execution.update { it.copy(loading = true, error = null) }
             runCatching { gateway.requestClose(current.id) }
-                .onSuccess { value -> _execution.value = ExecutionState(execution = value) }
+                .onSuccess { value ->
+                    _execution.value = ExecutionState(execution = value)
+                    refreshExecutions()
+                }
                 .onFailure { error ->
                     _execution.update { it.copy(loading = false, error = error.message ?: "Close request failed") }
                 }
@@ -124,5 +158,23 @@ class ExecutionController(
 
     fun clearExecution() {
         _execution.value = ExecutionState()
+    }
+
+    companion object {
+        fun quantityValidationError(venue: ExecutionVenue, quantity: Double): String? {
+            if (!quantity.isFinite()) return "Quantity must be a finite number"
+            return when (venue) {
+                ExecutionVenue.MT5 -> when {
+                    quantity < 0.01 -> "MT5 quantity must be at least 0.01 lot"
+                    quantity > 100.0 -> "MT5 quantity cannot exceed 100 lots"
+                    else -> null
+                }
+                ExecutionVenue.LBANK -> when {
+                    quantity <= 0.0 -> "LBank amount must be greater than zero"
+                    quantity > 1_000_000_000.0 -> "LBank amount is outside the supported request range"
+                    else -> null
+                }
+            }
+        }
     }
 }
