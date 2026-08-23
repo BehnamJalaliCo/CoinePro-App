@@ -214,7 +214,7 @@ internal fun NotificationDto.toDomain(): AppNotification? {
 
 internal fun PriceAlertDto.toDomain(): PriceAlert? {
     val safeId = id?.takeIf { it.isNotBlank() } ?: return null
-    val safeSymbol = symbol?.takeIf { it.isNotBlank() } ?: return null
+    val safeSymbol = normalizeProductAlertSymbol(symbol ?: return null) ?: return null
     val safeValue = value?.takeIf { it.isFinite() && it > 0.0 } ?: return null
     val safeCondition = PriceAlertCondition.entries.firstOrNull { it.wireValue == condition } ?: return null
     val safeTrigger = PriceAlertTrigger.entries.firstOrNull { it.wireValue == trigger } ?: return null
