@@ -129,6 +129,7 @@ internal fun SignalDto.toDomain(nowMs: Long): TradingSignal? {
         "crypto" -> MarketType.CRYPTO
         else -> return null
     }
+    if (!isProductSignalSymbol(safeMarket, safeSymbol)) return null
     val safeDirection = when (direction?.uppercase()) {
         "BUY" -> SignalDirection.BUY
         "SELL" -> SignalDirection.SELL
@@ -159,6 +160,14 @@ internal fun SignalDto.toDomain(nowMs: Long): TradingSignal? {
         createdAt = createdAt,
         closedAt = closedAt,
     )
+}
+
+internal fun isProductSignalSymbol(market: MarketType, symbol: String): Boolean {
+    val normalized = symbol.trim().uppercase()
+    return when (market) {
+        MarketType.FOREX -> normalized == "XAUUSD" || normalized == "XAGUSD"
+        MarketType.CRYPTO -> normalized.endsWith("USDT") && normalized.length > 4
+    }
 }
 
 internal fun SignalQuoteDto.toDomain(market: MarketType, nowMs: Long): SignalLiveQuote? {
