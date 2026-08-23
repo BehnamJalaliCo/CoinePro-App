@@ -1,6 +1,6 @@
 # CoinePro Android Product Roadmap
 
-Status: Phases 0 through 14 delivered at validated code checkpoints — Phase 15 starts only after the final Phase 14 documentation/security-verifier Head is green.
+Status: Phases 0 through 15 delivered at validated checkpoints — Phase 16 is the next milestone after the final Phase 15 documentation Head is green.
 
 The canonical phase-to-branch/SHA/CI mapping lives in `PHASE_INDEX.md`. Detailed truth/API/security rules live in each phase contract document.
 
@@ -175,9 +175,9 @@ Contract: `docs/PHASE13_OFFLINE_RELIABILITY_BACKGROUND_CONTRACT.md`
 
 ## Phase 14 — Security Hardening
 
-Status: Complete at validated code checkpoint; final documentation/security-verifier Head CI pending.
+Status: Complete
 
-Code milestone: `feat/phase14-security-hardening` → `ed568e8672ef1c112f874f85411a11e0c6e4b7fb` → Android Run #178 success + Security Run #10 success.
+Final closure milestone: `feat/phase14-security-hardening` → `8abdb6909beb2468ec10c911ebd22ad8411a1b5f` → Android Run #184 success + Security Run #16 success.
 
 Delivered:
 - tracked-secret scanning for private keys, common token signatures and forbidden local secret/config files
@@ -189,7 +189,7 @@ Delivered:
 - debug and release service configuration separated into different Gradle property namespaces
 - generated BuildConfig cross-variant isolation verified in Security CI using distinct markers
 - release explicitly non-debuggable, minified and resource-shrunk
-- Android CI now gates both debug and release lint/assembly
+- Android CI gates both debug and release lint/assembly
 - explicit execution 429 state and one-call/no-auto-retry trading-write policy
 - execution and AI Vision upload threat-model review
 - AI Vision EXIF stripping and app-owned camera-temp deletion boundaries preserved
@@ -199,32 +199,43 @@ Delivered:
 Contract: `docs/PHASE14_SECURITY_HARDENING_CONTRACT.md`
 
 Exit state:
-- Android Run #178 passed cumulative unit tests, debug/release lint, app tests, debug/release assembly and debug APK upload
-- Security Run #10 passed tracked-secret scan and resolved dependency OSV audit
-- final Phase 14 documentation/security-verifier Head must pass both Android CI and Security CI before Phase 15 begins
+- Android Run #184 passed cumulative tests, debug/release lint, app tests and debug/release assembly on the final Phase 14 documentation Head
+- Security Run #16 passed tracked-secret, resolved dependency and BuildConfig-isolation gates on the same final Head
 
 ## Phase 15 — Quality, Performance & Accessibility
 
-Status: Next after final Phase 14 closure CI
+Status: Complete at validated code checkpoint; final documentation Head CI is the closure gate.
 
-Deliverables:
-- domain/ViewModel tests
-- Compose UI tests for critical flows
-- screenshot/golden tests for signature states
-- baseline profile/startup measurement
-- RTL stress testing
-- font scaling
-- reduced motion
-- TalkBack labels
+Code milestone: `feat/phase15-quality-performance-accessibility` → `97d3ebc0165be27e86ad97dceef16494f7a7b428` → Android Run #208 success + Security Run #40 success.
 
-Exit criteria:
-- critical flow matrix green
-- financial values do not clip at supported font scales
-- startup/jank budget documented
+Delivered:
+- cumulative prior domain/controller/business-rule tests preserved as regression gates
+- four Compose UI accessibility tests for cached stale truth, offline Retry, explicit network LIVE semantics and 2× font-scale RTL quote reachability
+- Home large-text accessibility fix via vertical scrolling rather than weakening the test
+- TalkBack quote semantics with instrument, symbol, stale/live state, price, source and market
+- explicit LTR financial values inside RTL at large font scale
+- CI-enforced reduced-motion policy that rejects continuous/infinite Compose animation primitives across app/core/feature source
+- emulator accessibility coverage with Android system animations disabled
+- deterministic semantic/state assertions as the hard signature-state golden gate; no false claim that hosted-emulator pixel rendering is deterministic
+- ProfileInstaller plus checked-in Baseline Profile seed
+- dedicated `benchmark` module with Baseline Profile generation and cold-start Macrobenchmark
+- release-like non-debuggable benchmark target app, with debug signing only for benchmark installability
+- separately signed instrumentation APK for benchmark execution
+- hosted CI Macrobenchmark dry-run to verify build/install/instrumentation wiring without promoting emulator latency to a performance claim
+- explicit physical reference-device cold-start and jank target budget, with no claim that hosted CI measured or met it
+- benchmark/profile dependencies remain covered by Security CI
+- no Phase 15 change to execution, broker, provider, AI, session or entitlement truth contracts
+
+Contract: `docs/PHASE15_QUALITY_PERFORMANCE_ACCESSIBILITY_CONTRACT.md`
+
+Exit state:
+- Android Run #208 passed cumulative lint/test/build, reduced-motion enforcement, all four Compose accessibility tests and benchmark dry-run wiring
+- Security Run #40 passed tracked-secret, dependency OSV and build-config isolation checks
+- final Phase 15 documentation Head must pass Android CI and Security CI before Phase 16 starts
 
 ## Phase 16 — Release Engineering
 
-Status: Planned
+Status: Next after final Phase 15 closure CI
 
 Deliverables:
 - protected release signing
@@ -317,6 +328,7 @@ Create modules when boundaries become useful; do not create empty architecture f
 12. Activity/performance evidence — Phase 12 explicit denominators, history coverage truth and no ROI/equity inference
 13. Offline/reliability boundary — Phase 13 safe read caches, explicit stale/cache provenance, read-only durable sync, retry/idempotency rules and no background execution side effects
 14. Security hardening boundary — Phase 14 secret/dependency gates, release transport/logging policy, build-config isolation, explicit rate limits, threat models and privacy/retention non-claims
+15. Quality/performance/accessibility boundary — Phase 15 semantic critical-state tests, RTL/large-font reachability, reduced-motion policy, Baseline Profile/Macrobenchmark wiring and explicit separation between hosted smoke and physical-device performance evidence
 
 ## Definition of Done
 
