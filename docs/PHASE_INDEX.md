@@ -24,63 +24,43 @@ This file is the canonical map between delivery phases, Git branches, milestone 
 | 6 | Connections & Signal Execution Bridge | `feat/phase6-signal-execution` | `d8173f79df1aee18b169e8ccbbdcd7c776f7fa26` | Run #86 — success |
 | 7 | AI Generated Market Signal | `feat/phase7-ai-generated-market-signal` | `be8643d9aa07f44031f49b472536fc074a22dbea` | Run #94 — success |
 
-## Phase 1–6 audit closure
-
-A final client-side audit was completed before closing Phase 6. The audit found and fixed the following gaps on `bootstrap/android-foundation`:
-
-- Phase 2 authentication unit tests are an explicit CI gate and network revalidation failure is covered.
-- Phase 3 rejects unsupported market symbols instead of guessing their market type.
-- Phase 4 enforces Forex V1 (`XAUUSD` / `XAGUSD`) and Crypto (`*USDT`) scope in the Android signal mapper.
-- Phase 5 validates alert symbols and finite positive prices for outgoing requests and incoming payloads.
-- Phase 6 renders active executed signals in Activity, prevents duplicate close requests after `CLOSE_REQUESTED`, keeps LBank Close hidden after submit/open, and includes explicit quantity/close-gating tests.
-
-Final audited Phase 6 checkpoint:
-
-- SHA: `d8173f79df1aee18b169e8ccbbdcd7c776f7fa26`
-- Android CI Run #86: **success**
-- CI gate includes `core:auth`, `core:marketdata`, `core:signals`, `core:notifications`, `core:execution`, app lint, app unit tests, debug assembly and APK artifact upload.
-
 ## Phase 7 status
 
-**Closed / Complete for the current CoinePro-App project scope.**
+**Closed / Complete.**
 
-Validated Phase 7 behavior includes:
+Final validated head: `be8643d9aa07f44031f49b472536fc074a22dbea`, Android CI Run #94 — **success**.
 
-- `core:aisignal` domain, Retrofit gateway and server-truth job controller
-- explicit authenticated AI Signal API contract documented in `PHASE7_AI_SIGNAL_CONTRACT.md`
-- product-scoped symbol controls; Forex is `XAUUSD/XAGUSD`, Crypto uses curated `*USDT` symbols
-- `M15 / H1 / H4 / D1` timeframe controls
-- `low / medium / high` risk controls
-- server-derived entitlement and quota state
-- exact `QUEUED / RUNNING / DONE / FAILED / EXPIRED` job states
-- no local percentage, fake success or fake AI progress
-- failed/expired jobs remain recoverable
-- strict structured-result validation before Android exposes a Signal CTA
-- `validated=false`, invalid symbol/timeframe/direction/prices/targets and mismatched request/result payloads are blocked
-- raw model text is not part of the Android execution contract
-- a validated AI result can only open its persisted server `signal_id`
-- the AI screen never calls execution directly; execution stays in the existing Signal Detail → Execution flow
-- AI state is cleared on sign-out
-- `core:aisignal` unit tests are part of the Android CI gate
+## Phase 8 — AI Vision Flagship
 
-Final Phase 7 validated head:
+Status: **In progress.**
 
-- SHA: `be8643d9aa07f44031f49b472536fc074a22dbea`
-- Android CI Run #94: **success**
-- CI gate includes Phase 7 unit tests, all prior core tests, app lint, app unit tests, debug assembly and APK artifact upload.
+Implementation scope:
+
+- image input from camera or gallery without storing raw image credentials or secrets
+- explicit user-selected symbol/timeframe context; no market guessing from pixels
+- authenticated multipart upload to an AI Vision analysis job endpoint
+- server-truth `QUEUED / RUNNING / DONE / FAILED / EXPIRED` lifecycle
+- entitlement and quota states derived from server response
+- structured analysis result with trend, entry, stop, targets, confidence and explanation
+- strict validation: unsupported symbols/timeframes, invalid prices, invalid target ordering, mismatched request/result context and `validated=false` are blocked
+- no raw model output is executable
+- result may open only a persisted validated `signal_id`; execution remains Signal Detail → Execution
+- local image preview is cleared when the analysis finishes, fails, expires, is cancelled or the user signs out
+- retry requires an explicit image selection again after terminal failure/expiry
+- Phase 8 unit tests must be part of Android CI with all prior phase gates
+
+Exit gate:
+
+1. Phase 8 module and UI compile.
+2. Vision job state tests pass.
+3. Structured-result validation tests pass.
+4. App lint/test/assemble passes.
+5. Exact green SHA and CI run are recorded here before Phase 9 starts.
 
 ## Next phase
 
-**Phase 8 — AI Vision Flagship**
+Phase 9 starts only after Phase 8 reaches the exit gate above.
 
-Status: **Ready to start.**
+## Branch rule
 
-## Branch rule from Phase 7 onward
-
-For every new phase:
-
-1. Create `feat/phaseN-<scope>` in `BehnamJalaliCo/CoinePro-App` only.
-2. Build on top of the current cumulative integration head.
-3. Run phase-specific unit tests plus app lint/test/assemble CI.
-4. When green, record the exact end SHA and CI run in this file.
-5. Keep the project ledger and PR descriptions aligned with the validated code state.
+All phase work remains in `BehnamJalaliCo/CoinePro-App` only.
