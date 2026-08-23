@@ -22,6 +22,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.coinepro.app.notifications.PushCoordinator
+import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionState
 import com.coinepro.core.designsystem.CoineProTheme
@@ -55,6 +56,7 @@ fun CoineProApp(
     signalController: SignalController,
     notificationController: NotificationController,
     executionController: ExecutionController,
+    aiSignalController: AiSignalController,
     pushCoordinator: PushCoordinator,
     launchSignalId: Long?,
     launchActivity: Boolean,
@@ -77,6 +79,7 @@ fun CoineProApp(
             signalController.clear()
             notificationController.clear()
             executionController.clear()
+            aiSignalController.clear()
         }
     }
 
@@ -87,6 +90,7 @@ fun CoineProApp(
                 signalController = signalController,
                 notificationController = notificationController,
                 executionController = executionController,
+                aiSignalController = aiSignalController,
                 launchSignalId = launchSignalId,
                 launchActivity = launchActivity,
                 onSignalLaunchConsumed = onSignalLaunchConsumed,
@@ -119,6 +123,7 @@ private fun MainShell(
     signalController: SignalController,
     notificationController: NotificationController,
     executionController: ExecutionController,
+    aiSignalController: AiSignalController,
     launchSignalId: Long?,
     launchActivity: Boolean,
     onSignalLaunchConsumed: () -> Unit,
@@ -231,7 +236,12 @@ private fun MainShell(
             composable(CONNECTIONS_ROUTE) {
                 ConnectionsScreen(controller = executionController)
             }
-            composable(AppDestination.AI.route) { AiScreen() }
+            composable(AppDestination.AI.route) {
+                AiScreen(
+                    controller = aiSignalController,
+                    onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
+                )
+            }
             composable(AppDestination.TOOLS.route) {
                 ToolsScreen(onOpenConnections = { navController.navigate(CONNECTIONS_ROUTE) })
             }
