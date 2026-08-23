@@ -238,6 +238,7 @@ private fun MainShell(
             composable(AppDestination.ACTIVITY.route) {
                 ActivityScreen(
                     controller = notificationController,
+                    executionController = executionController,
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
                 )
             }
