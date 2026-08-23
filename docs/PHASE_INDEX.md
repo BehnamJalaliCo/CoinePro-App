@@ -22,6 +22,7 @@ This file is the canonical map between delivery phases, Git branches, milestone 
 | 4 | Signals Core | `feat/phase4-signals-core` | `adbefeb33b1e39eddd65f28ddd89ad40b70bafdb` | Run #17 — success |
 | 5 | Alerts & Push | `feat/phase5-alerts-push` | `60dfd64259ec92775b38288f2a4dc8e4c50169e9` | Run #41 — success |
 | 6 | Connections & Signal Execution Bridge | `feat/phase6-signal-execution` | `d8173f79df1aee18b169e8ccbbdcd7c776f7fa26` | Run #86 — success |
+| 7 | AI Generated Market Signal | `feat/phase7-ai-generated-market-signal` | `f718d9ad310ab37d4b109297c4fadcb33e287775` | Run #91 — success |
 
 ## Phase 1–6 audit closure
 
@@ -39,28 +40,40 @@ Final audited Phase 6 checkpoint:
 - Android CI Run #86: **success**
 - CI gate includes `core:auth`, `core:marketdata`, `core:signals`, `core:notifications`, `core:execution`, app lint, app unit tests, debug assembly and APK artifact upload.
 
-## Phase 6 status
+## Phase 7 status
 
 **Closed / Complete for the current CoinePro-App project scope.**
 
-Validated Phase 6 behavior includes:
+Validated Phase 7 behavior includes:
 
-- MT5/LBank connection-state UI and secure credential submission boundary
-- signal-scoped execution confirmation with no arbitrary-symbol New Trade surface
-- quantity/lot validation before execution request
-- idempotency request ID on every execution attempt
-- explicit `QUEUED / SUBMITTED / OPEN / CLOSE_REQUESTED / CLOSED / FAILED / CANCELLED / UNKNOWN` truth states
-- no fake provider-open state
-- active executed-signal tracking in Activity
-- LBank Close hidden after submit/open until its external lifecycle is intentionally enabled later
-- queued requests may be cancelled before provider acknowledgement
-- Android does not persist trading credentials or render them back into logs/UI
+- `core:aisignal` domain, Retrofit gateway and server-truth job controller
+- explicit authenticated AI Signal API contract documented in `PHASE7_AI_SIGNAL_CONTRACT.md`
+- product-scoped symbol controls; Forex is `XAUUSD/XAGUSD`, Crypto uses curated `*USDT` symbols
+- `M15 / H1 / H4 / D1` timeframe controls
+- `low / medium / high` risk controls
+- server-derived entitlement and quota state
+- exact `QUEUED / RUNNING / DONE / FAILED / EXPIRED` job states
+- no local percentage, fake success or fake AI progress
+- failed/expired jobs remain recoverable
+- strict structured-result validation before Android exposes a Signal CTA
+- `validated=false`, invalid symbol/timeframe/direction/prices/targets and mismatched request/result payloads are blocked
+- raw model text is not part of the Android execution contract
+- a validated AI result can only open its persisted server `signal_id`
+- the AI screen never calls execution directly; execution stays in the existing Signal Detail → Execution flow
+- AI state is cleared on sign-out
+- `core:aisignal` unit tests are part of the Android CI gate
 
-No other repository is required to close Phase 6 in this ledger.
+Phase 7 code checkpoint:
+
+- SHA: `f718d9ad310ab37d4b109297c4fadcb33e287775`
+- Android CI Run #91: **success**
+- CI gate includes Phase 7 unit tests, all prior core tests, app lint, app unit tests, debug assembly and APK artifact upload.
+
+Documentation-only bookkeeping commits after this checkpoint do not redefine the green Phase 7 code milestone.
 
 ## Next phase
 
-**Phase 7 — AI Generated Market Signal**
+**Phase 8 — AI Vision Flagship**
 
 Status: **Ready to start.**
 
