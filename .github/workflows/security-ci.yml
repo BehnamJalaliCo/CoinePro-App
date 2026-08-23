@@ -51,3 +51,6 @@ jobs:
 
       - name: Audit resolved dependencies against OSV
         run: python3 scripts/security/osv-audit.py
+
+      - name: Verify debug/release BuildConfig isolation
+        run: bash scripts/security/verify-build-config-isolation.sh
