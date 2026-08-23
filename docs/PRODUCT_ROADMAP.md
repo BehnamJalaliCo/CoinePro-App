@@ -1,6 +1,6 @@
 # CoinePro Android Product Roadmap
 
-Status: Phases 0 through 9 complete — Phase 10 next
+Status: Phases 0 through 10 complete — Phase 11 next
 
 The canonical phase-to-branch/SHA/CI mapping lives in `PHASE_INDEX.md`.
 
@@ -150,24 +150,40 @@ Exit state:
 
 ## Phase 10 — News & Economic Calendar
 
-Status: Next
+Status: Complete
 
-Deliverables:
-- market news feed
-- sentiment/impact labels from structured service output
-- economic calendar
-- Low/Medium/High impact
-- actual/forecast/previous when available
-- Gold/Silver/Crypto relevance
-- high-impact warning attached to active signals
+Final milestone: `feat/phase10-news-economic-calendar` → `cfef5ba5c20be8ccf189de137ca9e6a9a199def4` → Run #121 success.
 
-Exit criteria:
-- event/publication times normalized correctly
-- stale/unknown impact not presented as certainty
+Delivered:
+- `core:marketintel` typed normalized news/calendar domain, Retrofit gateway and shared controller
+- authenticated `GET /user/market-intelligence` client contract
+- `feature:news` advanced Compose market-news feed
+- source publication timestamp, structured sentiment, structured impact and stale truth
+- `feature:calendar` advanced economic-event timeline
+- Low / Medium / High / Unknown impact remains explicit
+- actual / forecast / previous values only when supplied
+- Gold / Silver / Crypto structured relevance and filters
+- required event/publication timestamps normalize from ISO-8601 into `Instant`; invalid timestamps are rejected rather than guessed
+- missing stale truth defaults to stale
+- unknown impact/sentiment never becomes certainty locally
+- article URL data is accepted only for HTTPS hosts
+- exact-HIGH, fresh, relevant economic events can attach a risk-context warning to active Signal Detail inside the defined time window
+- warning never creates a prediction, direction or execution state
+- News and Calendar routes are available from Tools
+- market-intelligence state clears on sign-out/session loss
+- native Compose state/list/card motion follows platform animator-duration scale and is driven only by real data-state changes
+- no fake live pulse, count-up price or urgency animation
+- API/truth/motion contract documented in `docs/PHASE10_MARKET_INTELLIGENCE_CONTRACT.md`
+- `core:marketintel` tests are part of cumulative Android CI
+
+Exit state:
+- event/publication time truth is normalized and unit-tested
+- stale/unknown impact is never presented as certainty
+- Run #121 passed Phase 10 tests, all prior core tests, app lint, app tests, debug assembly and APK upload
 
 ## Phase 11 — Trader Tools
 
-Status: Planned
+Status: Next
 
 Deliverables:
 - Risk Calculator
@@ -312,6 +328,7 @@ core:execution
 core:aisignal
 core:aivision
 core:aiassistant
+core:marketintel
 core:database
 core:testing
 feature:auth
@@ -343,7 +360,7 @@ Create modules when boundaries become useful; do not create empty architecture f
 7. AI Signal job schema — client implemented in Phase 7 with server-truth lifecycle and persisted-Signal trust boundary
 8. AI Vision upload/job/result schema — client implemented in Phase 8 with image privacy preprocessing, structured assessments and persisted-Signal trust boundary
 9. AI Assistant contextual chat schema — client implemented in Phase 9 with structured context provenance, stable conversation identity and explicit history policy
-10. News/calendar timestamps and impact schema — Phase 10
+10. News/calendar timestamps and impact schema — client implemented in Phase 10 with strict timestamp/stale/unknown truth boundaries and active-signal high-impact risk context
 
 ## Definition of Done
 
