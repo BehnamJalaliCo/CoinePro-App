@@ -1,6 +1,7 @@
 package com.coinepro.app
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
@@ -8,6 +9,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.coinepro.core.designsystem.CoineProTheme
@@ -31,13 +33,7 @@ class HomeAccessibilityTest {
 
     @Test
     fun cachedQuoteIsAnnouncedAsStaleWithFinancialValueInRtl() {
-        val quote = MarketQuote(
-            instrument = Instrument("XAUUSD", "Gold", MarketType.FOREX),
-            price = 2350.25,
-            timestampEpochMillis = 1_000L,
-            source = QuoteSource.FINNHUB,
-            isStale = true,
-        )
+        val quote = goldQuote()
         val state = MarketDataState(
             connection = MarketConnectionState.OFFLINE,
             quotes = mapOf(quote.instrument.symbol to quote),
@@ -60,6 +56,33 @@ class HomeAccessibilityTest {
         composeRule
             .onNodeWithText("Network refresh failed. The stored snapshot stays visible and remains marked stale.")
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun largeFontRtlKeepsCoreFinancialQuoteVisibleAndReadable() {
+        val quote = goldQuote()
+        val state = MarketDataState(
+            connection = MarketConnectionState.OFFLINE,
+            quotes = mapOf(quote.instrument.symbol to quote),
+            origin = MarketDataOrigin.CACHE,
+        )
+
+        composeRule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(
+                LocalLayoutDirection provides LayoutDirection.Rtl,
+                LocalDensity provides Density(density.density, fontScale = 2f),
+            ) {
+                CoineProTheme {
+                    HomeScreen(state = state, onRetry = {})
+                }
+            }
+        }
+
+        composeRule
+            .onNodeWithContentDescription("Gold, XAUUSD, stale, price 2350.25, Finnhub, Metal")
+            .assertIsDisplayed()
+        composeRule.onNodeWithText("\u20662350.25\u2069").assertIsDisplayed()
     }
 
     @Test
@@ -104,4 +127,12 @@ class HomeAccessibilityTest {
             .onNodeWithContentDescription("Bitcoin, BTCUSDT, live, price 64250.00, LBank, Crypto")
             .assertIsDisplayed()
     }
+
+    private fun goldQuote() = MarketQuote(
+        instrument = Instrument("XAUUSD", "Gold", MarketType.FOREX),
+        price = 2350.25,
+        timestampEpochMillis = 1_000L,
+        source = QuoteSource.FINNHUB,
+        isStale = true,
+    )
 }
