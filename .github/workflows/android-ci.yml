@@ -92,10 +92,6 @@ jobs:
           aab="app/build/outputs/bundle/release/app-release.aab"
           test -f "$aab"
 
-          # The CI keystore is intentionally ephemeral and self-signed, so strict
-          # certificate-chain validation would reject the test certificate itself.
-          # Verify the JAR/AAB signature cryptographically and require jarsigner's
-          # explicit success marker instead of weakening or skipping the signing gate.
           jarsigner -verify -verbose -certs "$aab" | tee "$verify_log"
           grep -Fq "jar verified." "$verify_log"
 
@@ -135,7 +131,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Run UI tests and benchmark wiring smoke
+      - name: Run UI tests, capture real rendered app menu, and benchmark wiring smoke
         uses: ReactiveCircus/android-emulator-runner@v2.38.0
         with:
           api-level: 35
@@ -144,4 +140,16 @@ jobs:
           disable-animations: true
           script: |
             gradle --no-daemon :app:connectedDebugAndroidTest
+            mkdir -p app/build/screenshots
+            adb exec-out run-as com.coinepro.app cat files/coinepro-menu-render.png > app/build/screenshots/coinepro-menu-render.png
+            test -s app/build/screenshots/coinepro-menu-render.png
             gradle --no-daemon :benchmark:connectedBenchmarkAndroidTest -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.dryRunMode.enable=true -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=Macrobenchmark -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.suppressErrors=EMULATOR
+
+      - name: Upload actual rendered app menu screenshot
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coinepro-actual-menu-screenshot
+          path: app/build/screenshots/coinepro-menu-render.png
+          if-no-files-found: error
+          retention-days: 7
