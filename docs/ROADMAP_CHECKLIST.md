@@ -48,7 +48,7 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - Phase 5: `feat/phase5-alerts-push` → `60dfd64259ec92775b38288f2a4dc8e4c50169e9` → Run #41 success
 - Phase 6 audited: `feat/phase6-signal-execution` → `d8173f79df1aee18b169e8ccbbdcd7c776f7fa26` → Run #86 success
 - Phase 7: `feat/phase7-ai-generated-market-signal` → `f718d9ad310ab37d4b109297c4fadcb33e287775` → Run #91 success
-- Phase 8: `feat/phase8-ai-vision` → `10844e48e65b90e9bcd8d60bb5c7ecfea982c18b` → Run #97 success
+- Phase 8 audited: `feat/phase8-ai-vision` → `85ed5a681b9f3a548fdc1d30faeea8dacb3d88b1` → Run #101 success
 
 ## Phase 8 delivered
 
@@ -58,6 +58,7 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - Android document/gallery picker without broad storage permission
 - CAMERA permission requested only for capture; camera hardware marked optional
 - EXIF orientation read locally then outbound image re-encoded so original metadata is stripped
+- temporary CameraX cache capture deleted after preparation, including failure paths
 - maximum 2048 px edge and adaptive JPEG compression under 6 MB
 - exact `QUEUED / RUNNING / DONE / FAILED / EXPIRED` lifecycle
 - explicit `ACTIONABLE / LOW_CONFIDENCE / UNKNOWN / UNSUPPORTED` result states
@@ -68,7 +69,7 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - AI Vision has no direct execute path; eligible action opens the persisted Signal and reuses Signal Detail → Execution
 - `docs/PHASE8_AI_VISION_CONTRACT.md` defines privacy/trust/API rules
 - `core:aivision` mapper/controller tests are part of cumulative CI
-- Run #97 passed Phase 8 tests, all earlier core tests, lint, app tests, debug build and APK upload
+- Run #101 passed Phase 8 tests, all earlier core tests, lint, app tests, debug build and APK upload
 
 ## Current next milestone
 
