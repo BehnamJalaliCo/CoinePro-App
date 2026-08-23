@@ -34,7 +34,7 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - [x] Phase 10 — News & Economic Calendar
 - [x] Phase 11 — Trader Tools
 - [x] Phase 12 — Activity / History / Performance
-- [ ] Phase 13 — Offline / Reliability / Background Work
+- [x] Phase 13 — Offline / Reliability / Background Work
 - [ ] Phase 14 — Security Hardening
 - [ ] Phase 15 — Quality / Performance / Accessibility
 - [ ] Phase 16 — Release Engineering
@@ -52,7 +52,8 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - Phase 9 audited: `feat/phase9-ai-assistant` → `3d158c9d0fc72724e9bbf402ae81540300950cc3` → Run #114 success
 - Phase 10: `feat/phase10-news-economic-calendar` → `cfef5ba5c20be8ccf189de137ca9e6a9a199def4` → Run #121 success
 - Phase 11: `feat/phase11-trader-tools` → `11d91b2cb90a484611a1b1c773187b7c2b2795e4` → Run #126 success
-- Phase 12: `feat/phase12-activity-history-performance` → `d592401d6a775254f60850cfc6f2772d4483ee6f` → Run #131 success
+- Phase 12 final closure: `feat/phase12-activity-history-performance` → `23f7113d83acdcfda74798380f04da1c7447be9f` → Run #132 success
+- Phase 13 code checkpoint: `feat/phase13-offline-reliability-background-work` → `fd8d56be5023b03ae136a5af633addaf3edee3a7` → Run #155 success
 
 ## Phase 12 delivered
 
@@ -74,10 +75,31 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - no performance action can send an order
 - `docs/PHASE12_ACTIVITY_HISTORY_PERFORMANCE_CONTRACT.md` documents evidence, denominators, coverage and truth boundaries
 - Phase 12 unit tests run through cumulative `:core:signals:testDebugUnitTest`
-- Run #131 passed Phase 12 tests, prior core tests, lint, app tests, debug build and APK upload
+- final Phase 12 documentation Head passed Android CI Run #132
+
+## Phase 13 delivered
+
+- `core:database` Room boundary for safe read caches
+- market snapshot cache with product-scope and finite-number validation
+- every market quote restored from disk remains explicit stale/cache evidence and cannot claim LIVE
+- closed-signal history cache intentionally excludes live quote/live P&L authority
+- nullable target-hit evidence survives cache round-trips without becoming a fake miss
+- cache-aware Signal History fallback with explicit cache provenance and refresh errors
+- successful server refresh replaces cached history
+- membership loss/logout clears account-scoped cached history
+- app-resume synchronization refreshes server-backed read state
+- WorkManager durable read sync with network constraints, battery-not-low periodic work and exponential backoff
+- background worker has no execution/broker write dependency and cannot submit/close/retry a trade
+- unique work scheduling makes repeated background read scheduling idempotent
+- process-death worker session hydration uses existing secure token storage only for authenticated reads
+- HTTP 401 expires the session instead of retrying with stale credentials
+- on-demand WorkManager/Hilt initialization is configured without suppressing lint
+- `docs/PHASE13_OFFLINE_RELIABILITY_BACKGROUND_CONTRACT.md` documents storage, stale, retry, session and side-effect boundaries
+- Phase 13 database/signals/background tests are included in cumulative Android CI
+- Run #155 passed tests, lint, app tests, debug build and APK upload at the code checkpoint
 
 ## Current next milestone
 
-Phase 13 — Offline / Reliability / Background Work, after the final Phase 12 documentation Head is green.
+Phase 14 — Security Hardening, after the final Phase 13 documentation Head is green.
 
-There are 5 phases remaining: Phase 13 through Phase 17.
+There are 4 phases remaining: Phase 14 through Phase 17.
