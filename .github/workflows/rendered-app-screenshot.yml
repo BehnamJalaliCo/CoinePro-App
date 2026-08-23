@@ -46,8 +46,14 @@ jobs:
           script: |
             gradle --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.coinepro.app.ActualAppMenuScreenshotTest
             mkdir -p app/build/screenshots
-            adb exec-out run-as com.coinepro.app cat files/coinepro-menu-render.png > app/build/screenshots/coinepro-menu-render.png
-            test -s app/build/screenshots/coinepro-menu-render.png
+            adb pull /sdcard/coinepro-menu-render.png app/build/screenshots/coinepro-menu-render.png
+            python3 - <<'PY'
+            from pathlib import Path
+            p = Path('app/build/screenshots/coinepro-menu-render.png')
+            data = p.read_bytes()
+            assert len(data) > 1000, f'screenshot too small: {len(data)} bytes'
+            assert data.startswith(b'\x89PNG\r\n\x1a\n'), 'screenshot is not a PNG'
+            PY
 
       - name: Upload actual rendered screenshot
         uses: actions/upload-artifact@v4
