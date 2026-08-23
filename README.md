@@ -19,15 +19,26 @@ CoinePro is an AI-powered market intelligence and signal execution platform for 
 - [Design Direction](docs/DESIGN_DIRECTION.md)
 - [Product Roadmap](docs/PRODUCT_ROADMAP.md)
 - [Delivery Checklist](docs/ROADMAP_CHECKLIST.md)
+- [Canonical Phase Index](docs/PHASE_INDEX.md)
 
 ## Current state
 
-The repository is in the foundation/design-system stage. Product features such as Signals, AI Vision, MT5/LBank execution, News, Calendar, Tools, Activity and Notifications are intentionally implemented in later dependency-ordered phases.
+Phases 0 through 6 are implemented on the cumulative `bootstrap/android-foundation` integration branch. The exact green milestone branch, end SHA and Android CI run for each completed phase are recorded in `docs/PHASE_INDEX.md`.
+
+Delivered foundations now include authentication/session handling, realtime market-data transport, Signals list/detail, Alerts & Push, MT5/LBank connection surfaces, and signal-scoped execution confirmation/tracking.
+
+The next milestone is **Phase 7 — AI Generated Market Signal**.
+
+Production-only vendor/broker credentials, IP whitelisting, external connectivity and full end-to-end live smoke testing are intentionally deferred to Phase 17 — Launch Readiness.
+
+## Branch discipline
+
+`main` remains the stable base. `bootstrap/android-foundation` is the cumulative integration branch. Completed `feat/...` phase branches are milestone pointers to their exact phase-end commits; new phase work must be created in this repository only.
 
 ## Security baseline
 
-This repository is public. Never commit production credentials, API keys, MT5/LBank secrets, signing keys, `.env` files, `google-services.json`, or other private material. Production secrets belong in protected infrastructure / GitHub Actions secrets as appropriate.
+This repository is public. Never commit production credentials, API keys, MT5/LBank secrets, signing keys, `.env` files, `google-services.json`, or other private material. Production secrets belong in protected runtime/CI infrastructure as appropriate.
 
 ## CI
 
-Pull requests and pushes to `main` validate Android lint, unit tests, and a debug APK build. Successful builds upload a debug APK artifact for test installation.
+Android phase milestones validate lint, unit tests, debug assembly and the debug APK artifact. Phase 6 milestone CI Run #65 completed successfully.
