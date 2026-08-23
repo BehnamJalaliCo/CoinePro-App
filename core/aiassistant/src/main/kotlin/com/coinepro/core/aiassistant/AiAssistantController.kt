@@ -45,6 +45,11 @@ class AiAssistantController(
         scope.launch {
             try {
                 val turn = gateway.send(conversationId, message)
+                if (conversationId != null && turn.conversation.id != conversationId) {
+                    throw AiAssistantRequestRejectedException(
+                        "Assistant conversation changed unexpectedly. Start a new chat and try again.",
+                    )
+                }
                 _state.update {
                     it.copy(
                         sending = false,
