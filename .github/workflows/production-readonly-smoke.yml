@@ -1,0 +1,69 @@
+name: Production Read-Only Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      symbols:
+        description: Comma-separated supported symbols to verify
+        required: true
+        default: XAUUSD,XAGUSD
+        type: string
+      ai_vision_job_id:
+        description: Optional existing production AI Vision job ID to verify read-only
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coinepro-production-readonly-smoke
+  cancel-in-progress: false
+
+jobs:
+  readonly-production-smoke:
+    name: Verify production reads without trading writes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production-smoke
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Validate protected smoke inputs
+        shell: bash
+        env:
+          API_BASE_URL: ${{ secrets.COINEPRO_PRODUCTION_API_BASE_URL }}
+          SMOKE_TOKEN: ${{ secrets.COINEPRO_PRODUCTION_SMOKE_BEARER_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$API_BASE_URL" || "$API_BASE_URL" != https://* ]]; then
+            echo "::error::COINEPRO_PRODUCTION_API_BASE_URL must be a protected HTTPS value."
+            exit 1
+          fi
+          if [[ -z "$SMOKE_TOKEN" ]]; then
+            echo "::error::COINEPRO_PRODUCTION_SMOKE_BEARER_TOKEN is required."
+            exit 1
+          fi
+
+      - name: Run production read-only smoke
+        env:
+          COINEPRO_PRODUCTION_API_BASE_URL: ${{ secrets.COINEPRO_PRODUCTION_API_BASE_URL }}
+          COINEPRO_PRODUCTION_SMOKE_BEARER_TOKEN: ${{ secrets.COINEPRO_PRODUCTION_SMOKE_BEARER_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release/production-readonly-smoke.py \
+            --symbols "${{ inputs.symbols }}" \
+            --ai-vision-job-id "${{ inputs.ai_vision_job_id }}" \
+            --output "$RUNNER_TEMP/phase17-production-readonly-smoke.json"
+
+      - name: Upload sanitized smoke evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase17-production-readonly-smoke-${{ github.run_id }}
+          path: ${{ runner.temp }}/phase17-production-readonly-smoke.json
+          if-no-files-found: error
+          retention-days: 7
