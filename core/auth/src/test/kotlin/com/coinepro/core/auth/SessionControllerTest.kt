@@ -11,10 +11,25 @@ import org.junit.Test
 
 class SessionControllerTest {
     @Test
-    fun coldStartWithoutTokenIsSignedOut() = runTest {
+    fun coldStartWithoutTokenIsSignedOutWithReadyLoginConfig() = runTest {
         val controller = controller(FakeStorage(null), FakeGateway())
         controller.restore()
         assertTrue(controller.state.value is SessionState.SignedOut)
+        assertEquals(LoginConfigState.Ready("CoineProBot"), controller.loginConfigState.value)
+    }
+
+    @Test
+    fun loginConfigFailureBecomesVisibleRetryableError() = runTest {
+        val gateway = FakeGateway(authConfig = AppResult.Failure(ErrorKind.NETWORK))
+        val controller = controller(FakeStorage(null), gateway)
+
+        controller.restore()
+        assertTrue(controller.state.value is SessionState.SignedOut)
+        assertTrue(controller.loginConfigState.value is LoginConfigState.Error)
+
+        gateway.authConfig = AppResult.Success(AuthConfig("CoineProBot"))
+        controller.prepareLogin()
+        assertEquals(LoginConfigState.Ready("CoineProBot"), controller.loginConfigState.value)
     }
 
     @Test
@@ -27,7 +42,7 @@ class SessionControllerTest {
     }
 
     @Test
-    fun unauthorizedSessionIsCleared() = runTest {
+    fun unauthorizedSessionIsClearedAndLoginConfigPrepared() = runTest {
         val storage = FakeStorage("expired")
         val controller = controller(
             storage,
@@ -36,6 +51,7 @@ class SessionControllerTest {
         controller.restore()
         assertTrue(controller.state.value is SessionState.SignedOut)
         assertEquals(null, storage.token)
+        assertTrue(controller.loginConfigState.value is LoginConfigState.Ready)
     }
 
     @Test
@@ -78,9 +94,10 @@ class SessionControllerTest {
     }
 
     private class FakeGateway(
+        var authConfig: AppResult<AuthConfig> = AppResult.Success(AuthConfig("CoineProBot")),
         private val me: AppResult<UserProfile> = AppResult.Failure(ErrorKind.AUTH),
     ) : AuthGateway {
-        override suspend fun authConfig() = AppResult.Success(AuthConfig("CoineProBot"))
+        override suspend fun authConfig() = authConfig
         override suspend fun loginTelegram(payload: TelegramAuthPayload) = AppResult.Failure(ErrorKind.AUTH)
         override suspend fun me(): AppResult<UserProfile> = me
     }
