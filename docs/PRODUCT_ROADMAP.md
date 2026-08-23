@@ -1,6 +1,6 @@
 # CoinePro Android Product Roadmap
 
-Status: Phases 0 through 11 complete — Phase 12 next
+Status: Phases 0 through 12 complete — Phase 13 next after final Phase 12 closure CI
 
 The canonical phase-to-branch/SHA/CI mapping lives in `PHASE_INDEX.md`.
 
@@ -213,27 +213,41 @@ Exit state:
 - assumptions and display precision are documented
 - RTL financial LTR isolation is unit-tested
 - Run #126 passed Phase 11 tests, all prior cumulative core tests, app lint, app tests, debug assembly and APK upload
-- final phase closure still requires the latest documentation Head to pass the same Android CI gate
 
 ## Phase 12 — Activity, History & Performance
 
-Status: Next
+Status: Complete at code checkpoint; final documentation Head CI pending
 
-Deliverables:
-- executed-signal history
-- signal history
-- market/instrument/result filters
-- total signals, win rate, TP hit rates, SL rate and average R:R
-- explicit denominator and no-record state
+Code milestone: `feat/phase12-activity-history-performance` → `d592401d6a775254f60850cfc6f2772d4483ee6f` → Run #131 success.
 
-Exit criteria:
-- never infer ROI/equity without source data
+Delivered:
+- premium Activity / Performance dashboard built around server evidence rather than inferred account state
+- paginated CLOSED signal history across Forex and Crypto using the existing authenticated signals contract
+- explicit loaded count, server expected total and incomplete-coverage disclosure
+- pagination offset based on server pages even when Android rejects invalid rows
+- market / exact instrument / explicit result filters over loaded closed history
+- total loaded signals with distinct Win / Loss / Breakeven / Result missing states
+- Win rate based only on finite explicit `result.pnlUsd`
+- TP hit rate based only on explicit nullable target-hit evidence; missing target-hit state remains missing
+- SL rate based only on explicit close-reason evidence
+- average planned R:R based only on finite positive server-provided `riskRewardTp1`
+- zero, missing denominator, no records and no filter matches remain distinct
 - losses receive equal visual prominence
-- zero and no-record are distinct
+- full server execution ledger remains separate from signal performance
+- no inferred ROI, equity, account return, broker P&L or execution lifecycle
+- financial values render with explicit LTR direction inside RTL layouts
+- existing alerts, push preferences and notifications remain in Activity
+- no performance calculator or history action can submit an order
+- truth/evidence/coverage contract documented in `docs/PHASE12_ACTIVITY_HISTORY_PERFORMANCE_CONTRACT.md`
+- denominator, missing-evidence, filtering, coverage and pagination behavior unit-tested in `core:signals`
+
+Exit state:
+- Phase 12 code Head passed cumulative core tests, app lint, app tests, debug assembly and APK upload in Run #131
+- final phase closure requires this documentation Head to pass the same Android CI gate
 
 ## Phase 13 — Offline, Reliability & Background Work
 
-Status: Planned
+Status: Next after Phase 12 final closure CI
 
 Deliverables:
 - Room cache for safe read models
@@ -377,6 +391,7 @@ Create modules when boundaries become useful; do not create empty architecture f
 9. AI Assistant contextual chat schema — client implemented in Phase 9 with structured context provenance, stable conversation identity and explicit history policy
 10. News/calendar timestamps and impact schema — client implemented in Phase 10 with strict timestamp/stale/unknown truth boundaries and active-signal high-impact risk context
 11. Trader Tools formulas — local deterministic Phase 11 contract; no execution side effect and explicit numeric/precision/RTL boundaries
+12. Activity/performance evidence — Phase 12 closed-signal and execution-history contract with explicit denominators, coverage truth and no ROI/equity inference
 
 ## Definition of Done
 

@@ -33,7 +33,7 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - [x] Phase 9 — AI Assistant
 - [x] Phase 10 — News & Economic Calendar
 - [x] Phase 11 — Trader Tools
-- [ ] Phase 12 — Activity / History / Performance
+- [x] Phase 12 — Activity / History / Performance
 - [ ] Phase 13 — Offline / Reliability / Background Work
 - [ ] Phase 14 — Security Hardening
 - [ ] Phase 15 — Quality / Performance / Accessibility
@@ -52,31 +52,32 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - Phase 9 audited: `feat/phase9-ai-assistant` → `3d158c9d0fc72724e9bbf402ae81540300950cc3` → Run #114 success
 - Phase 10: `feat/phase10-news-economic-calendar` → `cfef5ba5c20be8ccf189de137ca9e6a9a199def4` → Run #121 success
 - Phase 11: `feat/phase11-trader-tools` → `11d91b2cb90a484611a1b1c773187b7c2b2795e4` → Run #126 success
+- Phase 12: `feat/phase12-activity-history-performance` → `d592401d6a775254f60850cfc6f2772d4483ee6f` → Run #131 success
 
-## Phase 11 delivered
+## Phase 12 delivered
 
-- premium Trader Toolkit dashboard in the existing `feature:tools` surface
-- Risk Calculator
-- Position Size / Lot Calculator
-- Risk / Reward Calculator with direction geometry validation
-- Profit Calculator with explicit contract size
-- Pip Calculator with explicit pip size and pip value assumptions
-- Crypto PnL Calculator for USDT-quoted pairs with two-sided fees
-- Compound Calculator with arithmetic-only growth assumptions
-- Drawdown Simulator with compounded loss and recovery requirement
-- deterministic local formulas isolated from signal/order execution
-- zero, negative and non-finite input handling by formula contract
-- final finite-output guard prevents `NaN` and Infinity from reaching UI
-- formula, unit, precision, assumption, missing-input, validation-error and reset states are explicit
-- financial outputs use Latin precision plus Unicode LTR isolate/PDI and Compose LTR text direction for RTL safety
-- News / Calendar / Connections remain separate source-backed surfaces
-- no fake market state, AI progress, broker state, execution state or urgency animation
-- `docs/PHASE11_TRADER_TOOLS_CONTRACT.md` documents formulas, assumptions, precision and truth boundaries
-- `:feature:tools:testDebugUnitTest` is part of cumulative Android CI
-- Run #126 passed Phase 11 tests, all earlier core tests, lint, app tests, debug build and APK upload
+- premium Activity / Performance dashboard based on server evidence
+- paginated closed-signal history for Forex and Crypto
+- explicit coverage count and incomplete-history state
+- market / instrument / result filters over loaded history
+- total loaded signals and explicit Win / Loss / Breakeven / Missing result states
+- Win rate with finite explicit P&L denominator
+- TP hit rate with explicit nullable target-hit evidence; omitted hit status stays missing
+- SL rate with explicit close-reason denominator
+- average planned R:R with finite positive server-provided evidence
+- zero, missing denominator, no records and no filter matches are distinct states
+- losses receive equal metric prominence
+- complete server-reported execution ledger shown separately from signal performance
+- no ROI/equity, broker P&L or execution outcome inference
+- LTR financial rendering inside RTL layouts
+- existing alerts, push preferences and notifications preserved
+- no performance action can send an order
+- `docs/PHASE12_ACTIVITY_HISTORY_PERFORMANCE_CONTRACT.md` documents evidence, denominators, coverage and truth boundaries
+- Phase 12 unit tests run through cumulative `:core:signals:testDebugUnitTest`
+- Run #131 passed Phase 12 tests, prior core tests, lint, app tests, debug build and APK upload
 
 ## Current next milestone
 
-Phase 12 — Activity / History / Performance, after the final Phase 11 closure Head is green.
+Phase 13 — Offline / Reliability / Background Work, after the final Phase 12 documentation Head is green.
 
-There are 6 phases remaining: Phase 12 through Phase 17.
+There are 5 phases remaining: Phase 13 through Phase 17.

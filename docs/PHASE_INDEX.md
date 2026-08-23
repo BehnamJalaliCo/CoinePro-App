@@ -27,6 +27,7 @@ This file is the canonical map between delivery phases, Git branches, milestone 
 | 9 | AI Assistant | `feat/phase9-ai-assistant` | `3d158c9d0fc72724e9bbf402ae81540300950cc3` | Run #114 — success |
 | 10 | News & Economic Calendar | `feat/phase10-news-economic-calendar` | `cfef5ba5c20be8ccf189de137ca9e6a9a199def4` | Run #121 — success |
 | 11 | Trader Tools | `feat/phase11-trader-tools` | `11d91b2cb90a484611a1b1c773187b7c2b2795e4` | Run #126 — success |
+| 12 | Activity, History & Performance | `feat/phase12-activity-history-performance` | `d592401d6a775254f60850cfc6f2772d4483ee6f` | Run #131 — success |
 
 ## Phase 1–6 audit closure
 
@@ -178,11 +179,45 @@ Final Phase 11 code checkpoint:
 - Android CI Run #126: **success**
 - Run #126 passed Phase 11 formula/RTL tests, every prior core gate, app lint, app unit tests, debug assembly and debug APK upload.
 
+## Phase 12 status
+
+**Closed / Complete at code checkpoint; final closure Head validation pending after this documentation update.**
+
+Validated behavior:
+
+- Activity upgraded into a premium server-evidence performance dashboard while preserving alerts and notifications
+- paginated CLOSED signal history loads Forex and Crypto from the existing authenticated signals contract
+- Forex V1 and Crypto USDT product-scope validation remains enforced by the signal mapper
+- pagination advances by server page size so locally rejected invalid rows cannot repeat or shift server pages
+- history exposes loaded count, expected server total, coverage completeness, entitlement and error state
+- incomplete history is disclosed; partial records are never labeled as complete account history
+- market, exact instrument and explicit result filters operate only on loaded closed-signal records
+- Win / Loss / Breakeven classification uses only finite explicit `result.pnlUsd`; missing/non-finite P&L stays missing
+- Win rate denominator uses only finite explicit P&L evidence
+- target `hit` is nullable end-to-end; omitted provider/server hit state remains missing instead of becoming a fake miss
+- TP hit denominator uses only signals with explicit target-hit evidence
+- SL rate uses only explicit close-reason evidence and recognizes only normalized explicit stop-loss codes
+- average R:R uses only finite positive server-provided planned TP1 R:R and is labeled as planned, not realized
+- zero with evidence, missing evidence and no-record states are visually and semantically distinct
+- losses receive equal dashboard prominence with wins
+- full server-reported execution ledger is displayed separately; Android does not infer P&L from execution records
+- no ROI, equity, account return, broker outcome or execution lifecycle is invented
+- financial prices, P&L, quantities, percentages and R:R render in explicit LTR context inside RTL layouts
+- signal-history and execution cards can navigate to persisted Signal Detail but performance calculations never execute orders
+- contract and evidence rules documented in `PHASE12_ACTIVITY_HISTORY_PERFORMANCE_CONTRACT.md`
+- Phase 12 truth/denominator/pagination tests run inside the existing `:core:signals:testDebugUnitTest` cumulative CI gate
+
+Final Phase 12 code checkpoint:
+
+- SHA: `d592401d6a775254f60850cfc6f2772d4483ee6f`
+- Android CI Run #131: **success**
+- Run #131 passed Phase 12 tests, every previous cumulative core gate, app lint, app unit tests, debug assembly and debug APK upload.
+
 ## Next phase
 
-**Phase 12 — Activity, History & Performance**
+**Phase 13 — Offline, Reliability & Background Work**
 
-Status: **Ready to start after the Phase 11 closure Head is green.**
+Status: **Ready after the final Phase 12 documentation Head passes Android CI.**
 
 ## Branch rule from Phase 11 onward
 
