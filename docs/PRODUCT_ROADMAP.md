@@ -1,6 +1,6 @@
 # CoinePro Android Product Roadmap
 
-Status: Phases 0 through 13 delivered at validated code checkpoints — Phase 14 starts after the final Phase 13 documentation Head is green.
+Status: Phases 0 through 14 delivered at validated code checkpoints — Phase 15 starts only after the final Phase 14 documentation/security-verifier Head is green.
 
 The canonical phase-to-branch/SHA/CI mapping lives in `PHASE_INDEX.md`. Detailed truth/API/security rules live in each phase contract document.
 
@@ -146,9 +146,9 @@ Contract: `docs/PHASE12_ACTIVITY_HISTORY_PERFORMANCE_CONTRACT.md`
 
 ## Phase 13 — Offline, Reliability & Background Work
 
-Status: Complete at validated code checkpoint; final documentation Head CI pending.
+Status: Complete
 
-Code milestone: `feat/phase13-offline-reliability-background-work` → `fd8d56be5023b03ae136a5af633addaf3edee3a7` → Run #155 success.
+Final closure milestone: `feat/phase13-offline-reliability-background-work` → `a6b664f035e047afd51515b3481452d57ecd1ee9` → Run #159 success.
 
 Delivered:
 - `core:database` Room 2.8.4 safe read-cache boundary
@@ -173,33 +173,39 @@ Delivered:
 
 Contract: `docs/PHASE13_OFFLINE_RELIABILITY_BACKGROUND_CONTRACT.md`
 
-Exit state:
-- code checkpoint Run #155 passed cumulative tests, lint, app tests, debug assembly and APK upload
-- final Phase 13 closure requires the documentation Head to pass the same Android CI gate
-
 ## Phase 14 — Security Hardening
 
-Status: Next after Phase 13 final closure CI
+Status: Complete at validated code checkpoint; final documentation/security-verifier Head CI pending.
 
-Deliverables:
-- secret scan in CI
-- dependency vulnerability review
-- release network security config
-- certificate strategy decision
-- complete log redaction review
-- root/debug/tamper policy based on threat model
-- API abuse/rate-limit handling
-- privacy/data-retention documentation
+Code milestone: `feat/phase14-security-hardening` → `ed568e8672ef1c112f874f85411a11e0c6e4b7fb` → Android Run #178 success + Security Run #10 success.
 
-Exit criteria:
-- no secrets in repository artifacts/logs
-- execution and image-upload threat model reviewed
-- production credentials isolated from debug builds
-- release network policy is explicit and testable
+Delivered:
+- tracked-secret scanning for private keys, common token signatures and forbidden local secret/config files
+- resolved debug/release runtime dependency export and OSV vulnerability audit independent of GitHub Dependency Graph availability
+- explicit vulnerability exception ledger with no silent suppressions
+- Retrofit HTTPS-only boundary plus manifest/network-security cleartext denial
+- release HTTP logging disabled; debug is opt-in BASIC only with sensitive-header redaction
+- explicit system-CA certificate policy and a deliberate no-fake-pinning decision until production domains/backup pins/rotation ownership exist
+- debug and release service configuration separated into different Gradle property namespaces
+- generated BuildConfig cross-variant isolation verified in Security CI using distinct markers
+- release explicitly non-debuggable, minified and resource-shrunk
+- Android CI now gates both debug and release lint/assembly
+- explicit execution 429 state and one-call/no-auto-retry trading-write policy
+- execution and AI Vision upload threat-model review
+- AI Vision EXIF stripping and app-owned camera-temp deletion boundaries preserved
+- root/debug/tamper policy based on server authority rather than bypassable client-only trust claims
+- session/cache/assistant/image privacy and retention rules documented without inventing server retention
+
+Contract: `docs/PHASE14_SECURITY_HARDENING_CONTRACT.md`
+
+Exit state:
+- Android Run #178 passed cumulative unit tests, debug/release lint, app tests, debug/release assembly and debug APK upload
+- Security Run #10 passed tracked-secret scan and resolved dependency OSV audit
+- final Phase 14 documentation/security-verifier Head must pass both Android CI and Security CI before Phase 15 begins
 
 ## Phase 15 — Quality, Performance & Accessibility
 
-Status: Planned
+Status: Next after final Phase 14 closure CI
 
 Deliverables:
 - domain/ViewModel tests
@@ -310,6 +316,7 @@ Create modules when boundaries become useful; do not create empty architecture f
 11. Trader Tools formulas — Phase 11 local deterministic contract with no execution side effect
 12. Activity/performance evidence — Phase 12 explicit denominators, history coverage truth and no ROI/equity inference
 13. Offline/reliability boundary — Phase 13 safe read caches, explicit stale/cache provenance, read-only durable sync, retry/idempotency rules and no background execution side effects
+14. Security hardening boundary — Phase 14 secret/dependency gates, release transport/logging policy, build-config isolation, explicit rate limits, threat models and privacy/retention non-claims
 
 ## Definition of Done
 
@@ -319,7 +326,7 @@ A client feature is not Done until:
 - RTL and financial LTR formatting are handled
 - security/privacy/logging implications are reviewed
 - tests cover critical business rules
-- Android CI is green
+- Android CI and any phase-specific required CI are green
 - no fake realtime, execution or AI progress state exists
 
 External production connectivity is additionally gated by Phase 17.
