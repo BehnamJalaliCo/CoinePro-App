@@ -9,6 +9,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.coinepro.app.MainActivity
+import com.coinepro.app.positiveSignalId
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import dagger.hilt.android.AndroidEntryPoint
@@ -26,7 +27,7 @@ class CoineProFirebaseMessagingService : FirebaseMessagingService() {
         val data = message.data
         val title = data["_title"]?.takeIf { it.isNotBlank() } ?: "CoinePro"
         val body = data["_body"].orEmpty()
-        val signalId = data["signal_id"]?.toLongOrNull()
+        val signalId = positiveSignalId(data["signal_id"])
         val destination = if (signalId != null) {
             Uri.parse("coinepro://signal/$signalId")
         } else {
