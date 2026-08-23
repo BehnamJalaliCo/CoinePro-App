@@ -9,6 +9,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -80,9 +81,12 @@ class HomeAccessibilityTest {
         }
 
         composeRule
+            .onNodeWithText("\u20662350.25\u2069", useUnmergedTree = true)
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeRule
             .onNodeWithContentDescription("Gold, XAUUSD, stale, price 2350.25, Finnhub, Metal")
             .assertIsDisplayed()
-        composeRule.onNodeWithText("\u20662350.25\u2069").assertIsDisplayed()
     }
 
     @Test
