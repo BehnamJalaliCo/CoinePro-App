@@ -112,6 +112,22 @@ def check_release_version_claim() -> None:
     require("Play enforces cross-release monotonicity" in contract, "Phase 16 contract must distinguish local version validation from Play monotonicity")
 
 
+def check_staging_validation() -> None:
+    workflow = read(".github/workflows/android-ci.yml")
+    require(":app:lintStaging" in workflow, "Android CI must lint the real staging variant")
+    require(":app:assembleStaging" in workflow, "Android CI must assemble the real staging variant")
+    require(":app:testStagingUnitTest" not in workflow, "Android CI must not claim nonexistent testStagingUnitTest")
+
+    for path in (
+        "docs/PHASE16_RELEASE_ENGINEERING_CONTRACT.md",
+        "docs/PHASE17_LAUNCH_READINESS_CONTRACT.md",
+        "docs/PHASE1_17_CROSS_PHASE_AUDIT.md",
+        "docs/ROADMAP_CHECKLIST.md",
+        "CHANGELOG.md",
+    ):
+        require(":app:testStagingUnitTest" not in read(path), f"{path} still claims nonexistent testStagingUnitTest")
+
+
 def main() -> None:
     check_module_map()
     check_bottom_navigation()
@@ -121,6 +137,7 @@ def main() -> None:
     check_cache_scope()
     check_baseline_profile()
     check_release_version_claim()
+    check_staging_validation()
     print("Phase 1-17 repository consistency gate passed.")
 
 
