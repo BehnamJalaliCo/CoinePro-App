@@ -20,6 +20,9 @@ import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.ExecutionGateway
 import com.coinepro.core.execution.NetworkExecutionGateway
 import com.coinepro.core.marketdata.MarketDataController
+import com.coinepro.core.marketintel.MarketIntelController
+import com.coinepro.core.marketintel.MarketIntelGateway
+import com.coinepro.core.marketintel.NetworkMarketIntelGateway
 import com.coinepro.core.network.NetworkFactory
 import com.coinepro.core.notifications.NetworkNotificationGateway
 import com.coinepro.core.notifications.NotificationController
@@ -99,6 +102,11 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun marketIntelGateway(retrofit: Retrofit): MarketIntelGateway =
+        NetworkMarketIntelGateway.create(retrofit)
+
+    @Provides
+    @Singleton
     fun appScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     @Provides
@@ -159,4 +167,11 @@ object AppModule {
         gateway: AiAssistantGateway,
         scope: CoroutineScope,
     ): AiAssistantController = AiAssistantController(gateway, scope)
+
+    @Provides
+    @Singleton
+    fun marketIntelController(
+        gateway: MarketIntelGateway,
+        scope: CoroutineScope,
+    ): MarketIntelController = MarketIntelController(gateway, scope)
 }
