@@ -5,6 +5,9 @@ import com.coinepro.app.BuildConfig
 import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.aisignal.AiSignalGateway
 import com.coinepro.core.aisignal.NetworkAiSignalGateway
+import com.coinepro.core.aivision.AiVisionController
+import com.coinepro.core.aivision.AiVisionGateway
+import com.coinepro.core.aivision.NetworkAiVisionGateway
 import com.coinepro.core.auth.AuthGateway
 import com.coinepro.core.auth.NetworkAuthGateway
 import com.coinepro.core.auth.SessionController
@@ -83,6 +86,11 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun aiVisionGateway(retrofit: Retrofit): AiVisionGateway =
+        NetworkAiVisionGateway.create(retrofit)
+
+    @Provides
+    @Singleton
     fun appScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     @Provides
@@ -129,4 +137,11 @@ object AppModule {
         gateway: AiSignalGateway,
         scope: CoroutineScope,
     ): AiSignalController = AiSignalController(gateway, scope)
+
+    @Provides
+    @Singleton
+    fun aiVisionController(
+        gateway: AiVisionGateway,
+        scope: CoroutineScope,
+    ): AiVisionController = AiVisionController(gateway, scope)
 }
