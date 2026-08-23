@@ -38,7 +38,7 @@ jobs:
         run: gradle --version
 
       - name: Lint, test, and assemble debug
-        run: gradle --no-daemon :core:auth:testDebugUnitTest :core:marketdata:testDebugUnitTest :core:signals:testDebugUnitTest :core:notifications:testDebugUnitTest :core:execution:testDebugUnitTest :core:aisignal:testDebugUnitTest :core:aivision:testDebugUnitTest :core:aiassistant:testDebugUnitTest :core:marketintel:testDebugUnitTest :feature:tools:testDebugUnitTest :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
+        run: gradle --no-daemon :core:auth:testDebugUnitTest :core:marketdata:testDebugUnitTest :core:signals:testDebugUnitTest :core:notifications:testDebugUnitTest :core:execution:testDebugUnitTest :core:aisignal:testDebugUnitTest :core:aivision:testDebugUnitTest :core:aiassistant:testDebugUnitTest :core:marketintel:testDebugUnitTest :core:database:testDebugUnitTest :feature:tools:testDebugUnitTest :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
 
       - name: Upload debug APK
         if: success()
