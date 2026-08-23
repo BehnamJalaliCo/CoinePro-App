@@ -30,7 +30,7 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - [x] Phase 6 — Connections & Signal Execution Bridge
 - [x] Phase 7 — AI Generated Market Signal
 - [x] Phase 8 — AI Vision Flagship
-- [ ] Phase 9 — AI Assistant
+- [x] Phase 9 — AI Assistant
 - [ ] Phase 10 — News & Economic Calendar
 - [ ] Phase 11 — Trader Tools
 - [ ] Phase 12 — Activity / History / Performance
@@ -49,6 +49,7 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - Phase 6 audited: `feat/phase6-signal-execution` → `d8173f79df1aee18b169e8ccbbdcd7c776f7fa26` → Run #86 success
 - Phase 7: `feat/phase7-ai-generated-market-signal` → `f718d9ad310ab37d4b109297c4fadcb33e287775` → Run #91 success
 - Phase 8 audited: `feat/phase8-ai-vision` → `85ed5a681b9f3a548fdc1d30faeea8dacb3d88b1` → Run #101 success
+- Phase 9 audited: `feat/phase9-ai-assistant` → `3d158c9d0fc72724e9bbf402ae81540300950cc3` → Run #114 success
 
 ## Phase 8 delivered
 
@@ -71,8 +72,27 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - `core:aivision` mapper/controller tests are part of cumulative CI
 - Run #101 passed Phase 8 tests, all earlier core tests, lint, app tests, debug build and APK upload
 
+## Phase 9 delivered
+
+- `core:aiassistant` typed chat/context model, authenticated Retrofit gateway and in-memory controller
+- `feature:ai-assistant` contextual Compose chat surface linked from the AI hub
+- server-requested scopes for active signals, market, news, calendar, risk and tools
+- structured context cards show source, as-of and freshness when supplied
+- unknown/future freshness never becomes fresh
+- `FRESH` requires non-empty source and as-of provenance or is downgraded to `UNKNOWN`
+- active-signal context requires a positive persisted `signal_id`; other context kinds cannot carry a signal ID
+- Assistant prose never creates app positions/signals/execution state
+- no direct execution route from Assistant; only verified Signal context can open Signal Detail
+- conversation identity cannot silently change once a chat is established
+- transcript is memory-only on Android and clears on logout/session loss or New chat
+- server history policy (`ephemeral`, `account`, unknown) and positive retention days are displayed explicitly
+- entitlement, server validation, rate-limit and network/error states are explicit with no fake reply
+- `docs/PHASE9_AI_ASSISTANT_CONTRACT.md` defines trust, provenance and history policy
+- `core:aiassistant` mapper/controller tests are part of cumulative CI
+- Run #114 passed Phase 9 tests, all earlier core tests, lint, app tests, debug build and APK upload
+
 ## Current next milestone
 
-Phase 9 — AI Assistant.
+Phase 10 — News & Economic Calendar.
 
-There are 9 phases remaining: Phase 9 through Phase 17.
+There are 8 phases remaining: Phase 10 through Phase 17.
