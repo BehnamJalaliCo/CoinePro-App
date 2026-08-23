@@ -75,7 +75,7 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - [x] Release HTTP remains HTTPS-only and release logging remains disabled
 - [x] Baseline Profile targets current `CoineProThemeKt`
 - [x] Phase 16 versioning wording matches actual local validation and Play authority
-- [x] Staging app unit tests are a real CI task
+- [x] Staging coverage uses real `lintStaging + assembleStaging`; unit tests run on the supported debug variant and no nonexistent staging test task is claimed
 - [x] Deterministic `check-cross-phase-consistency.py` gate protects future drift
 - [x] Full audit recorded in `PHASE1_17_CROSS_PHASE_AUDIT.md`
 
