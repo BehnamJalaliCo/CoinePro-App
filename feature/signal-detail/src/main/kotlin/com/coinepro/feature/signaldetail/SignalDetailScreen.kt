@@ -41,7 +41,11 @@ import com.coinepro.core.signals.SignalController
 import com.coinepro.core.signals.TradingSignal
 
 @Composable
-fun SignalDetailScreen(controller: SignalController, signalId: Long) {
+fun SignalDetailScreen(
+    controller: SignalController,
+    signalId: Long,
+    onExecute: (Long) -> Unit,
+) {
     LaunchedEffect(signalId) { controller.loadDetail(signalId) }
     DisposableEffect(signalId) { onDispose(controller::clearDetail) }
     val state by controller.detailState.collectAsStateWithLifecycle()
@@ -56,7 +60,7 @@ fun SignalDetailScreen(controller: SignalController, signalId: Long) {
                 Button(onClick = { controller.loadDetail(signalId) }) { Text("Retry") }
             }
         }
-        state.signal != null -> SignalContent(state.signal!!)
+        state.signal != null -> SignalContent(state.signal!!, onExecute)
         else -> Center { Text("Signal not found.", color = CoineProColors.TextSecondary) }
     }
 }
@@ -71,7 +75,7 @@ private fun Center(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun SignalContent(signal: TradingSignal) {
+private fun SignalContent(signal: TradingSignal, onExecute: (Long) -> Unit) {
     val directionColor = when (signal.direction) {
         SignalDirection.BUY -> CoineProColors.Buy
         SignalDirection.SELL -> CoineProColors.Sell
@@ -155,6 +159,21 @@ private fun SignalContent(signal: TradingSignal) {
                 }
                 result.source?.let { Text("Source: $it", color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall) }
             }
+        }
+
+        if (
+            signal.status == "active" &&
+            signal.direction in setOf(SignalDirection.BUY, SignalDirection.SELL)
+        ) {
+            Button(
+                onClick = { onExecute(signal.id) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Execute this signal") }
+            Text(
+                "Execution uses this exact server-owned signal; there is no manual trade form.",
+                color = CoineProColors.TextMuted,
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
 
         Spacer(Modifier.height(CoineProSpacing.Two))
