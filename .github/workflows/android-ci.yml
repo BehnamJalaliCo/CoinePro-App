@@ -99,10 +99,6 @@ jobs:
           jarsigner -verify -verbose -certs "$aab" | tee "$verify_log"
           grep -Fq "jar verified." "$verify_log"
 
-      - name: Build connected Phase 17 test APK
-        if: success() && github.event_name == 'pull_request' && github.head_ref == 'feat/phase17-launch-readiness'
-        run: gradle --no-daemon --rerun-tasks :app:assembleDebug -PCOINEPRO_DEBUG_API_BASE_URL=https://user.pro-chart.com/api/
-
       - name: Upload debug APK
         if: success()
         uses: actions/upload-artifact@v4
