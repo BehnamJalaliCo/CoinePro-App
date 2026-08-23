@@ -83,7 +83,12 @@ fun CoineProApp(
                 onSignalLaunchConsumed = onSignalLaunchConsumed,
                 onActivityLaunchConsumed = onActivityLaunchConsumed,
                 onMarketRetry = marketDataController::retry,
-                onLogout = { scope.launch { sessionController.logout() } },
+                onLogout = {
+                    scope.launch {
+                        pushCoordinator.unregisterCurrentToken()
+                        sessionController.logout()
+                    }
+                },
             )
             else -> AuthScreen(
                 state = session,
