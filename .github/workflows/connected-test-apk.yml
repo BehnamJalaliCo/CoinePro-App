@@ -1,4 +1,4 @@
-name: Connected Test APK
+name: CoinePro Staging Test APK
 
 on:
   pull_request:
@@ -8,15 +8,16 @@ permissions:
   contents: read
 
 concurrency:
-  group: connected-test-apk-${{ github.ref }}
+  group: coinepro-staging-test-apk-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-connected-test-apk:
-    name: Build connected test APK
+  build-staging-test-apk:
+    name: Build CoinePro staging test APK
     if: github.head_ref == 'feat/phase17-launch-readiness'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    environment: play-internal
 
     steps:
       - name: Checkout
@@ -33,13 +34,37 @@ jobs:
         with:
           gradle-version: "9.4.0"
 
-      - name: Build debug APK against the user API
-        run: gradle --no-daemon :app:assembleDebug -PCOINEPRO_DEBUG_API_BASE_URL=https://user.pro-chart.com/api/
+      - name: Validate CoinePro staging configuration
+        shell: bash
+        env:
+          STAGING_API_BASE_URL: ${{ secrets.COINEPRO_STAGING_API_BASE_URL }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$STAGING_API_BASE_URL" ]]; then
+            echo "::error::COINEPRO_STAGING_API_BASE_URL is missing from play-internal."
+            exit 1
+          fi
+          if [[ "$STAGING_API_BASE_URL" != https://* ]]; then
+            echo "::error::COINEPRO_STAGING_API_BASE_URL must be HTTPS."
+            exit 1
+          fi
 
-      - name: Upload connected test APK
+      - name: Build CoinePro staging test APK
+        env:
+          ORG_GRADLE_PROJECT_COINEPRO_STAGING_API_BASE_URL: ${{ secrets.COINEPRO_STAGING_API_BASE_URL }}
+          ORG_GRADLE_PROJECT_COINEPRO_STAGING_FIREBASE_PROJECT_ID: ${{ secrets.COINEPRO_STAGING_FIREBASE_PROJECT_ID }}
+          ORG_GRADLE_PROJECT_COINEPRO_STAGING_FIREBASE_APPLICATION_ID: ${{ secrets.COINEPRO_STAGING_FIREBASE_APPLICATION_ID }}
+          ORG_GRADLE_PROJECT_COINEPRO_STAGING_FIREBASE_API_KEY: ${{ secrets.COINEPRO_STAGING_FIREBASE_API_KEY }}
+          ORG_GRADLE_PROJECT_COINEPRO_STAGING_FIREBASE_SENDER_ID: ${{ secrets.COINEPRO_STAGING_FIREBASE_SENDER_ID }}
+        run: |
+          set -euo pipefail
+          gradle --no-daemon :app:assembleStaging
+          test -f app/build/outputs/apk/staging/app-staging.apk
+
+      - name: Upload CoinePro staging test APK
         uses: actions/upload-artifact@v4
         with:
-          name: coinepro-connected-test-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: coinepro-staging-test-apk
+          path: app/build/outputs/apk/staging/app-staging.apk
           if-no-files-found: error
           retention-days: 7
