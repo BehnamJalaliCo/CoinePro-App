@@ -1,6 +1,5 @@
 package com.coinepro.core.signals
 
-import java.time.Instant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -9,16 +8,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-private const val HISTORY_PAGE_SIZE = 50
-private const val MAX_HISTORY_RECORDS = 1000
-
 class SignalController(
     private val gateway: SignalGateway,
     private val scope: CoroutineScope,
+    private val historyCache: SignalHistoryCache = NoOpSignalHistoryCache,
+    private val nowMillis: () -> Long = System::currentTimeMillis,
 ) {
     private val _state = MutableStateFlow(SignalsState())
     private val _detailState = MutableStateFlow(SignalDetailState())
     private val _historyState = MutableStateFlow(SignalHistoryState())
+    private val historyLoader = SignalHistoryLoader(gateway, nowMillis)
 
     val state: StateFlow<SignalsState> = _state.asStateFlow()
     val detailState: StateFlow<SignalDetailState> = _detailState.asStateFlow()
@@ -73,63 +72,43 @@ class SignalController(
         historyJob?.cancel()
         _historyState.update { it.copy(loading = true, error = null, membershipRequired = false) }
         historyJob = scope.launch {
+            restoreHistoryCacheIfNeeded()
             try {
-                val forex = loadClosedHistory(SignalMarketFilter.FOREX)
-                val crypto = loadClosedHistory(SignalMarketFilter.CRYPTO)
-                val combined = (forex.items + crypto.items)
-                    .distinctBy(TradingSignal::id)
-                    .sortedWith(compareByDescending<TradingSignal> { historyInstant(it) }.thenByDescending(TradingSignal::id))
-                val expected = forex.expectedTotal + crypto.expectedTotal
+                val fresh = historyLoader.load()
                 _historyState.value = SignalHistoryState(
-                    items = combined,
-                    expectedTotal = expected,
-                    coverageComplete = forex.complete && crypto.complete && combined.size >= expected,
+                    items = fresh.items,
+                    expectedTotal = fresh.expectedTotal,
+                    coverageComplete = fresh.coverageComplete,
+                    fromCache = false,
+                    cacheStoredAtEpochMillis = null,
                 )
+                runCatching { historyCache.replace(fresh) }
             } catch (_: SignalMembershipRequiredException) {
+                runCatching { historyCache.clear() }
                 _historyState.value = SignalHistoryState(membershipRequired = true)
             } catch (error: Exception) {
                 _historyState.update {
-                    it.copy(loading = false, error = error.message ?: "Signal history is unavailable")
+                    it.copy(
+                        loading = false,
+                        error = error.message ?: "Signal history is unavailable",
+                    )
                 }
             }
         }
     }
 
-    private suspend fun loadClosedHistory(market: SignalMarketFilter): HistoryLoad {
-        val items = mutableListOf<TradingSignal>()
-        var offset = 0
-        var expectedTotal = 0
-        var complete = true
-
-        do {
-            val page = gateway.list(
-                market = market,
-                status = SignalStatusFilter.CLOSED,
-                limit = HISTORY_PAGE_SIZE,
-                offset = offset,
+    private suspend fun restoreHistoryCacheIfNeeded() {
+        if (_historyState.value.items.isNotEmpty()) return
+        val cached = runCatching { historyCache.read() }.getOrNull() ?: return
+        _historyState.update { current ->
+            if (current.items.isNotEmpty()) current else current.copy(
+                items = cached.items,
+                expectedTotal = cached.expectedTotal,
+                coverageComplete = cached.coverageComplete,
+                fromCache = true,
+                cacheStoredAtEpochMillis = cached.cachedAtEpochMillis,
             )
-            expectedTotal = page.total.coerceAtLeast(0)
-            items += page.items
-
-            if (page.items.isEmpty()) {
-                complete = offset >= expectedTotal
-                break
-            }
-
-            // Offset belongs to the server row-set, not to the subset that survived Android mapping.
-            // Advancing by mapped item count could repeat pages when an invalid row is rejected locally.
-            offset += HISTORY_PAGE_SIZE
-            if (items.size >= MAX_HISTORY_RECORDS && offset < expectedTotal) {
-                complete = false
-                break
-            }
-        } while (offset < expectedTotal)
-
-        return HistoryLoad(
-            items = items.take(MAX_HISTORY_RECORDS),
-            expectedTotal = expectedTotal,
-            complete = complete && offset >= expectedTotal,
-        )
+        }
     }
 
     fun loadDetail(signalId: Long) {
@@ -168,16 +147,6 @@ class SignalController(
         _state.value = SignalsState()
         _detailState.value = SignalDetailState()
         _historyState.value = SignalHistoryState()
+        scope.launch { runCatching { historyCache.clear() } }
     }
-
-    private data class HistoryLoad(
-        val items: List<TradingSignal>,
-        val expectedTotal: Int,
-        val complete: Boolean,
-    )
-}
-
-private fun historyInstant(signal: TradingSignal): Instant? {
-    val raw = signal.closedAt ?: signal.createdAt ?: return null
-    return runCatching { Instant.parse(raw) }.getOrNull()
 }
