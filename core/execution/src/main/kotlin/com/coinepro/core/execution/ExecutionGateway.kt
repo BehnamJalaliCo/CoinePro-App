@@ -1,5 +1,6 @@
 package com.coinepro.core.execution
 
+import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -25,6 +26,14 @@ interface ExecutionGateway {
     suspend fun execution(executionId: String): SignalExecution
     suspend fun requestClose(executionId: String): SignalExecution
 }
+
+class ExecutionRateLimitedException : Exception(
+    "Execution request was rate limited. No automatic retry was sent.",
+)
+
+class ExecutionRequestRejectedException : Exception(
+    "Execution request was rejected by server validation.",
+)
 
 internal interface ExecutionApi {
     @GET("user/signals/execution/connections")
@@ -129,25 +138,29 @@ internal data class ExecutionListResponseDto(val items: List<ExecutionDto> = emp
 class NetworkExecutionGateway private constructor(
     private val api: ExecutionApi,
 ) : ExecutionGateway {
-    override suspend fun connections(): Pair<VenueConnection?, VenueConnection?> {
+    override suspend fun connections(): Pair<VenueConnection?, VenueConnection?> = translate {
         val response = api.connections()
-        return response.mt5?.toDomain(ExecutionVenue.MT5) to response.lbank?.toDomain(ExecutionVenue.LBANK)
+        response.mt5?.toDomain(ExecutionVenue.MT5) to response.lbank?.toDomain(ExecutionVenue.LBANK)
     }
 
-    override suspend fun connectMt5(broker: String, server: String, login: String, password: String) {
+    override suspend fun connectMt5(broker: String, server: String, login: String, password: String) = translate {
         api.connectMt5(Mt5ConnectionDto(broker, server, login, password))
+        Unit
     }
 
-    override suspend fun disconnectMt5() {
+    override suspend fun disconnectMt5() = translate {
         api.disconnectMt5()
+        Unit
     }
 
-    override suspend fun connectLbank(apiKey: String, apiSecret: String, permission: LbankPermission) {
+    override suspend fun connectLbank(apiKey: String, apiSecret: String, permission: LbankPermission) = translate {
         api.connectLbank(LbankConnectionDto(apiKey, apiSecret, permission.wireValue))
+        Unit
     }
 
-    override suspend fun disconnectLbank() {
+    override suspend fun disconnectLbank() = translate {
         api.disconnectLbank()
+        Unit
     }
 
     override suspend fun executeSignal(
@@ -155,27 +168,44 @@ class NetworkExecutionGateway private constructor(
         venue: ExecutionVenue,
         quantity: Double,
         clientRequestId: String,
-    ): SignalExecution = requireNotNull(
-        api.executeSignal(
-            signalId,
-            ExecuteSignalDto(
-                venue = venue.wireValue,
-                quantity = quantity,
-                clientRequestId = clientRequestId,
-            ),
-        ).execution?.toDomain(),
-    ) { "Invalid execution response" }
+    ): SignalExecution = translate {
+        requireNotNull(
+            api.executeSignal(
+                signalId,
+                ExecuteSignalDto(
+                    venue = venue.wireValue,
+                    quantity = quantity,
+                    clientRequestId = clientRequestId,
+                ),
+            ).execution?.toDomain(),
+        ) { "Invalid execution response" }
+    }
 
-    override suspend fun executions(limit: Int): List<SignalExecution> =
+    override suspend fun executions(limit: Int): List<SignalExecution> = translate {
         api.executions(limit.coerceIn(1, 100)).items.mapNotNull { it.toDomain() }
+    }
 
-    override suspend fun execution(executionId: String): SignalExecution = requireNotNull(
-        api.execution(executionId).execution?.toDomain(),
-    ) { "Invalid execution response" }
+    override suspend fun execution(executionId: String): SignalExecution = translate {
+        requireNotNull(api.execution(executionId).execution?.toDomain()) {
+            "Invalid execution response"
+        }
+    }
 
-    override suspend fun requestClose(executionId: String): SignalExecution = requireNotNull(
-        api.requestClose(executionId).execution?.toDomain(),
-    ) { "Invalid execution response" }
+    override suspend fun requestClose(executionId: String): SignalExecution = translate {
+        requireNotNull(api.requestClose(executionId).execution?.toDomain()) {
+            "Invalid execution response"
+        }
+    }
+
+    private suspend fun <T> translate(block: suspend () -> T): T = try {
+        block()
+    } catch (error: HttpException) {
+        when (error.code()) {
+            422 -> throw ExecutionRequestRejectedException()
+            429 -> throw ExecutionRateLimitedException()
+            else -> throw error
+        }
+    }
 
     companion object {
         fun create(retrofit: Retrofit): NetworkExecutionGateway =
