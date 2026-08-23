@@ -68,6 +68,7 @@ object AppModule {
     fun okHttp(memory: SessionMemory): OkHttpClient = NetworkFactory.okHttpClient(
         bearerToken = memory::token,
         onUnauthorized = memory::notifyUnauthorized,
+        enableHttpLogging = BuildConfig.DEBUG,
     )
 
     @Provides
