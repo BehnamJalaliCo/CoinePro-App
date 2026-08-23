@@ -48,6 +48,18 @@ fun AuthScreen(
         Text("CoinePro", style = MaterialTheme.typography.headlineLarge)
         Spacer(Modifier.height(12.dp))
         Text("Secure sign-in", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "Signal → Analysis → Entry / SL / TP → explicit execution confirmation → Monitor → Result / History",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Trading involves risk of loss. Signals and AI analysis are not guaranteed outcomes, and Android never invents provider or execution success.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Spacer(Modifier.height(28.dp))
 
         when (state) {
