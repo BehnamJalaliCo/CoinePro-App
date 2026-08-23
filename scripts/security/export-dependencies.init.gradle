@@ -11,7 +11,7 @@ allprojects { project ->
                 output.parentFile.mkdirs()
                 def coordinates = new TreeSet<String>()
 
-                ['debugRuntimeClasspath', 'releaseRuntimeClasspath'].each { configurationName ->
+                ['debugRuntimeClasspath', 'stagingRuntimeClasspath', 'releaseRuntimeClasspath'].each { configurationName ->
                     def configuration = project.configurations.findByName(configurationName)
                     if (configuration == null || !configuration.canBeResolved) {
                         throw new GradleException("Required security configuration is not resolvable: ${configurationName}")
