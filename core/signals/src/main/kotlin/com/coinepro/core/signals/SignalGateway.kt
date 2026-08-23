@@ -104,6 +104,7 @@ class NetworkSignalGateway private constructor(
     }
 
     override suspend fun detail(signalId: Long): TradingSignal = translateAccess {
+        require(signalId > 0L) { "Signal ID must be positive" }
         val response = api.signalDetail(signalId)
         requireNotNull(response.signal?.toDomain(nowMillis())) { "Invalid signal payload" }
     }
@@ -122,7 +123,7 @@ class NetworkSignalGateway private constructor(
 }
 
 internal fun SignalDto.toDomain(nowMs: Long): TradingSignal? {
-    val safeId = id ?: return null
+    val safeId = id?.takeIf { it > 0L } ?: return null
     val safeSymbol = symbol?.trim()?.uppercase()?.takeIf { it.isNotEmpty() } ?: return null
     val safeMarket = when (market?.lowercase()) {
         "forex" -> MarketType.FOREX
