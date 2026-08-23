@@ -5,13 +5,21 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-val apiBaseUrl = providers.gradleProperty("COINEPRO_API_BASE_URL")
+val debugApiBaseUrl = providers.gradleProperty("COINEPRO_DEBUG_API_BASE_URL")
     .orElse("https://example.invalid/")
     .get()
-val firebaseProjectId = providers.gradleProperty("COINEPRO_FIREBASE_PROJECT_ID").orElse("").get()
-val firebaseApplicationId = providers.gradleProperty("COINEPRO_FIREBASE_APPLICATION_ID").orElse("").get()
-val firebaseApiKey = providers.gradleProperty("COINEPRO_FIREBASE_API_KEY").orElse("").get()
-val firebaseSenderId = providers.gradleProperty("COINEPRO_FIREBASE_SENDER_ID").orElse("").get()
+val debugFirebaseProjectId = providers.gradleProperty("COINEPRO_DEBUG_FIREBASE_PROJECT_ID").orElse("").get()
+val debugFirebaseApplicationId = providers.gradleProperty("COINEPRO_DEBUG_FIREBASE_APPLICATION_ID").orElse("").get()
+val debugFirebaseApiKey = providers.gradleProperty("COINEPRO_DEBUG_FIREBASE_API_KEY").orElse("").get()
+val debugFirebaseSenderId = providers.gradleProperty("COINEPRO_DEBUG_FIREBASE_SENDER_ID").orElse("").get()
+
+val releaseApiBaseUrl = providers.gradleProperty("COINEPRO_API_BASE_URL")
+    .orElse("https://example.invalid/")
+    .get()
+val releaseFirebaseProjectId = providers.gradleProperty("COINEPRO_FIREBASE_PROJECT_ID").orElse("").get()
+val releaseFirebaseApplicationId = providers.gradleProperty("COINEPRO_FIREBASE_APPLICATION_ID").orElse("").get()
+val releaseFirebaseApiKey = providers.gradleProperty("COINEPRO_FIREBASE_API_KEY").orElse("").get()
+val releaseFirebaseSenderId = providers.gradleProperty("COINEPRO_FIREBASE_SENDER_ID").orElse("").get()
 
 fun escapedBuildConfig(value: String): String = "\"${value.replace("\"", "\\\"")}\""
 
@@ -26,11 +34,6 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "API_BASE_URL", escapedBuildConfig(apiBaseUrl))
-        buildConfigField("String", "FIREBASE_PROJECT_ID", escapedBuildConfig(firebaseProjectId))
-        buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(firebaseApplicationId))
-        buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(firebaseApiKey))
-        buildConfigField("String", "FIREBASE_SENDER_ID", escapedBuildConfig(firebaseSenderId))
     }
 
     buildFeatures {
@@ -39,9 +42,22 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "API_BASE_URL", escapedBuildConfig(debugApiBaseUrl))
+            buildConfigField("String", "FIREBASE_PROJECT_ID", escapedBuildConfig(debugFirebaseProjectId))
+            buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(debugFirebaseApplicationId))
+            buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(debugFirebaseApiKey))
+            buildConfigField("String", "FIREBASE_SENDER_ID", escapedBuildConfig(debugFirebaseSenderId))
+        }
         release {
+            isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
+            buildConfigField("String", "API_BASE_URL", escapedBuildConfig(releaseApiBaseUrl))
+            buildConfigField("String", "FIREBASE_PROJECT_ID", escapedBuildConfig(releaseFirebaseProjectId))
+            buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(releaseFirebaseApplicationId))
+            buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(releaseFirebaseApiKey))
+            buildConfigField("String", "FIREBASE_SENDER_ID", escapedBuildConfig(releaseFirebaseSenderId))
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
