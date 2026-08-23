@@ -1,0 +1,2 @@
+# Exact OSV exceptions only: VULN_ID|group:artifact|version
+# Every non-comment entry must have a documented Phase 14 rationale before it is accepted.
