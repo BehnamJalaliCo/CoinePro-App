@@ -162,7 +162,7 @@ private fun SignalContent(
             }
             LevelRow("Stop loss", signal.stopLoss, signal.symbol, accent = CoineProColors.Sell)
             signal.targets.sortedBy { it.level }.forEach { target ->
-                LevelRow("TP${target.level}${if (target.hit) " · hit" else ""}", target.price, signal.symbol, accent = CoineProColors.Buy)
+                LevelRow("TP${target.level}${if (target.hit == true) " · hit" else ""}", target.price, signal.symbol, accent = CoineProColors.Buy)
             }
             signal.riskRewardTp1?.let {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

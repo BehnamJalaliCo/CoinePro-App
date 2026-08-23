@@ -315,6 +315,7 @@ private fun MainShell(
                 ActivityScreen(
                     controller = notificationController,
                     executionController = executionController,
+                    signalController = signalController,
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
                 )
             }

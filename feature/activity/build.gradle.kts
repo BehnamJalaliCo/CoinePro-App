@@ -17,6 +17,7 @@ android {
 dependencies {
     implementation(project(":core:notifications"))
     implementation(project(":core:execution"))
+    implementation(project(":core:signals"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:common"))
     implementation(libs.androidx.lifecycle.runtime.compose)
