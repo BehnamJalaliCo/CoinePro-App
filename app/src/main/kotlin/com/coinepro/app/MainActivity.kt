@@ -20,6 +20,7 @@ import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.marketdata.MarketDataController
+import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.signals.SignalController
 import dagger.hilt.android.AndroidEntryPoint
@@ -35,6 +36,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var aiSignalController: AiSignalController
     @Inject lateinit var aiVisionController: AiVisionController
     @Inject lateinit var aiAssistantController: AiAssistantController
+    @Inject lateinit var marketIntelController: MarketIntelController
     @Inject lateinit var pushCoordinator: PushCoordinator
 
     private var launchSignalId by mutableStateOf<Long?>(null)
@@ -59,6 +61,7 @@ class MainActivity : ComponentActivity() {
                 aiSignalController = aiSignalController,
                 aiVisionController = aiVisionController,
                 aiAssistantController = aiAssistantController,
+                marketIntelController = marketIntelController,
                 pushCoordinator = pushCoordinator,
                 launchSignalId = launchSignalId,
                 launchActivity = launchActivity,
