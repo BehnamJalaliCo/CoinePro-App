@@ -25,7 +25,7 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = androidx.test.runner.AndroidJUnitRunner::class.java.name
         buildConfigField("String", "API_BASE_URL", escapedBuildConfig(apiBaseUrl))
         buildConfigField("String", "FIREBASE_PROJECT_ID", escapedBuildConfig(firebaseProjectId))
         buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(firebaseApplicationId))
@@ -72,6 +72,7 @@ dependencies {
     implementation(project(":core:aisignal"))
     implementation(project(":core:aivision"))
     implementation(project(":core:aiassistant"))
+    implementation(project(":core:marketintel"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:navigation"))
     implementation(project(":feature:auth"))
@@ -83,6 +84,8 @@ dependencies {
     implementation(project(":feature:ai"))
     implementation(project(":feature:ai-vision"))
     implementation(project(":feature:ai-assistant"))
+    implementation(project(":feature:news"))
+    implementation(project(":feature:calendar"))
     implementation(project(":feature:tools"))
     implementation(project(":feature:activity"))
 
