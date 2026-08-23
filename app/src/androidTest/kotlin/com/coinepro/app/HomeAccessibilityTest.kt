@@ -2,8 +2,8 @@ package com.coinepro.app
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -53,13 +53,13 @@ class HomeAccessibilityTest {
             }
         }
 
-        composeRule.onNodeWithText("Cached snapshot · offline").assertExists()
+        composeRule.onNodeWithText("Cached snapshot · offline").assertIsDisplayed()
         composeRule
             .onNodeWithContentDescription("Gold, XAUUSD, stale, price 2350.25, Finnhub, Metal")
-            .assertExists()
+            .assertIsDisplayed()
         composeRule
             .onNodeWithText("Network refresh failed. The stored snapshot stays visible and remains marked stale.")
-            .assertExists()
+            .assertIsDisplayed()
     }
 
     @Test
@@ -73,7 +73,7 @@ class HomeAccessibilityTest {
             }
         }
 
-        composeRule.onNodeWithText("No market data available yet.").assertExists()
+        composeRule.onNodeWithText("No market data available yet.").assertIsDisplayed()
         composeRule.onNodeWithText("Retry").assertHasClickAction().performClick()
         composeRule.runOnIdle { assertEquals(1, retries) }
     }
@@ -99,9 +99,9 @@ class HomeAccessibilityTest {
             }
         }
 
-        composeRule.onNodeWithText("Realtime connected").assertExists()
+        composeRule.onNodeWithText("Realtime connected").assertIsDisplayed()
         composeRule
             .onNodeWithContentDescription("Bitcoin, BTCUSDT, live, price 64250.00, LBank, Crypto")
-            .assertExists()
+            .assertIsDisplayed()
     }
 }
