@@ -16,7 +16,7 @@ class SignalControllerCacheTest {
     @Test
     fun `network failure keeps cached history explicit and reports refresh error`() = runBlocking {
         val cached = CachedSignalHistory(
-            items = listOf(historySignal(7)),
+            items = listOf(cacheSignal(7)),
             expectedTotal = 4,
             coverageComplete = false,
             cachedAtEpochMillis = 1234L,
@@ -50,13 +50,13 @@ class SignalControllerCacheTest {
     fun `successful refresh replaces cache and removes cached provenance`() = runBlocking {
         val cache = FakeHistoryCache(
             CachedSignalHistory(
-                items = listOf(historySignal(1)),
+                items = listOf(cacheSignal(1)),
                 expectedTotal = 1,
                 coverageComplete = true,
                 cachedAtEpochMillis = 10L,
             ),
         )
-        val gateway = PagingGateway(listOf(historySignal(20), historySignal(21)))
+        val gateway = PagingGateway(listOf(cacheSignal(20), cacheSignal(21)))
         val controller = SignalController(
             gateway = gateway,
             scope = CoroutineScope(coroutineContext),
@@ -79,7 +79,7 @@ class SignalControllerCacheTest {
     @Test
     fun `membership loss clears account history cache`() = runBlocking {
         val cache = FakeHistoryCache(
-            CachedSignalHistory(listOf(historySignal(1)), 1, true, 10L),
+            CachedSignalHistory(listOf(cacheSignal(1)), 1, true, 10L),
         )
         val gateway = object : SignalGateway {
             override suspend fun list(
@@ -144,7 +144,7 @@ class SignalControllerCacheTest {
     }
 }
 
-private fun historySignal(id: Long) = TradingSignal(
+private fun cacheSignal(id: Long) = TradingSignal(
     id = id,
     market = MarketType.FOREX,
     symbol = "XAUUSD",
