@@ -37,6 +37,9 @@ jobs:
       - name: Verify toolchain
         run: gradle --version
 
+      - name: Enforce reduced-motion policy
+        run: bash scripts/quality/check-motion-policy.sh
+
       - name: Lint, test, and assemble debug + release + benchmark
         run: gradle --no-daemon :core:auth:testDebugUnitTest :core:network:testDebugUnitTest :core:marketdata:testDebugUnitTest :core:signals:testDebugUnitTest :core:notifications:testDebugUnitTest :core:execution:testDebugUnitTest :core:aisignal:testDebugUnitTest :core:aivision:testDebugUnitTest :core:aiassistant:testDebugUnitTest :core:marketintel:testDebugUnitTest :core:database:testDebugUnitTest :feature:tools:testDebugUnitTest :app:lintDebug :app:lintRelease :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleRelease :app:assembleBenchmark :benchmark:assembleBenchmark
 
