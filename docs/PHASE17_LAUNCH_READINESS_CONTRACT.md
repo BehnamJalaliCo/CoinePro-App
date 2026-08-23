@@ -1,6 +1,6 @@
 # Phase 17 — Launch Readiness Contract
 
-Status: Active / In progress.
+Status: Repository/client implementation complete; external production/legal evidence and exact-final-Head validation remain evidence-gated.
 
 Repository scope: `BehnamJalaliCo/CoinePro-App` only.
 
@@ -13,48 +13,46 @@ Phase 16 closure evidence:
 
 ## Purpose
 
-Phase 17 is the final launch-readiness phase. It closes user education, legal/support/privacy/incident readiness and the production external-runtime evidence that earlier phases deliberately did not claim.
+Phase 17 is the final launch-readiness phase. It closes repository/client education, support/privacy/incident readiness, reconciles the cumulative Phase 1–17 application, and provides protected evidence tooling for external production checks that earlier phases deliberately did not claim.
 
-The Android client continues to treat server/provider state as authoritative. Phase 17 must not convert missing external evidence into a successful production-readiness claim.
+The Android client continues to treat server/provider state as authoritative. Phase 17 must not convert missing external evidence into a successful production-runtime claim.
 
-## Workstreams
+## Repository/client workstreams
 
 ### 1. Onboarding and permission education
 
-Required client behavior:
-- explain the product flow before the user reaches high-consequence actions;
-- explain camera access before AI Vision capture is requested;
-- explain notification permission before the platform prompt where appropriate;
-- keep permission denial/retry/recovery paths explicit;
-- do not block gallery-only AI Vision use solely because camera permission is denied;
-- preserve RTL layout and LTR financial values.
+Implemented client behavior:
+- launch/safety education explains the product and provider-truth boundary;
+- camera permission is requested only from the explicit Camera action;
+- gallery/file AI Vision use remains available without camera permission;
+- notification permission is requested only after an educated user action;
+- denied notification permission exposes an explicit settings recovery path;
+- RTL layout and LTR financial conventions remain inherited from prior phases.
 
 ### 2. Connection setup education
 
-Connection surfaces must explain:
+Connection surfaces explain:
 - which connection/provider is being configured;
 - which values are user/account inputs versus server/provider-derived state;
-- that Android does not validate a live provider connection by guessing locally;
-- that execution availability requires positive server/provider evidence;
-- that no vendor/broker credential is committed to or logged by the Android repository.
+- Android does not validate a live provider connection by guessing locally;
+- execution availability requires positive server/provider evidence;
+- vendor/broker credentials are not committed to or logged by the Android repository.
 
-### 3. Legal and risk disclosures
+### 3. Legal and risk disclosure surface
 
-Before launch, the app must present concise, reviewable disclosures covering at minimum:
+The launch build presents concise reviewable disclosures covering:
 - trading and investment risk;
 - AI output limitations;
 - signals/analysis are not guaranteed outcomes;
 - execution depends on external providers and market conditions;
-- past or displayed historical results do not guarantee future performance;
+- historical/displayed results do not guarantee future performance;
 - user responsibility for account/provider permissions and order confirmation.
 
-Legal copy must be product-approved before it is represented as final legal language. Android must not invent regulatory approval or jurisdictional coverage.
+This repository does not claim that the wording has regulatory/jurisdictional approval. Final legal/product approval is external evidence and must be recorded in `PHASE17_EVIDENCE_LEDGER.md` before production-launch authorization is claimed.
 
 ### 4. Support and feedback path
 
-A launch build must expose a clear support/feedback path without embedding privileged credentials or sensitive diagnostic payloads.
-
-Support diagnostics must not include:
+A system share-sheet feedback path is available. The prefilled diagnostic context is limited to app version and build environment and does not include:
 - bearer/session tokens;
 - broker/exchange passwords or secrets;
 - production signing material;
@@ -62,11 +60,11 @@ Support diagnostics must not include:
 - raw sensitive prompts;
 - hidden execution credentials.
 
-### 5. Privacy-reviewed analytics
+### 5. Privacy-reviewed analytics decision
 
-Phase 17 does not assume analytics consent or retention approval exists.
+No new production analytics SDK/event stream is enabled in Phase 17. Analytics remains explicitly disabled rather than silently introducing a consent/retention surface without approval.
 
-Any analytics event added in this phase must have:
+Any future analytics enablement requires:
 - explicit event purpose;
 - minimal fields;
 - no secrets/tokens/credentials;
@@ -75,12 +73,10 @@ Any analytics event added in this phase must have:
 - environment separation where applicable;
 - documented privacy/retention ownership before production enablement.
 
-If these conditions are not satisfied, analytics remains disabled/not added rather than being silently enabled.
-
 ### 6. Incident and rollback readiness
 
-Launch readiness requires a documented operational response for at least:
-- market-data outage or stale feed;
+`docs/PHASE17_INCIDENT_RUNBOOK.md` defines operational response for:
+- market-data outage/stale feed;
 - authentication/session outage;
 - notification degradation;
 - AI service degradation;
@@ -88,39 +84,61 @@ Launch readiness requires a documented operational response for at least:
 - elevated crash/ANR rate;
 - incorrect production environment configuration.
 
-Rollback/disable controls must be defined for high-consequence capabilities. A client-only flag must not be described as a complete server-side kill switch unless the server actually enforces it.
+The runbook distinguishes Android presentation controls from server/provider kill switches and never calls a client-only flag a complete execution kill switch.
 
-### 7. Production vendor configuration
+### 7. Production evidence tooling
 
-Production domains, credentials, provider IDs and IP whitelist configuration are external deployment inputs and must not be committed to the repository.
+Production domains, credentials, provider IDs and IP whitelist configuration remain protected external deployment inputs and are not committed.
 
-Readiness evidence must distinguish:
-- configuration prepared;
-- credentials available in the protected deployment environment;
-- provider/IP whitelist configured;
-- connectivity actually verified.
+`.github/workflows/production-readonly-smoke.yml` plus `scripts/release/production-readonly-smoke.py` provide a protected, GET-only production verification path. The smoke:
+- requires an HTTPS production API base URL and protected bearer token;
+- validates supported symbol scope;
+- requires positive prices, provider/source identity and source timestamp;
+- applies the same freshness thresholds as Phase 3: LBank 15 s, Finnhub 90 s, unknown source 30 s;
+- rejects implausibly future timestamps;
+- reads execution connection/history state without creating/closing/retrying an order;
+- may inspect an explicitly supplied existing AI Vision job ID read-only;
+- emits only sanitized evidence and never writes tokens/credentials/raw AI content/account identifiers to the artifact.
 
-These are different states and must not be collapsed into one "ready" flag.
+No live-money order is created merely to satisfy CI.
 
-### 8. Production market-data smoke
+## Final Phase 1–17 reconciliation
 
-A real production market-data smoke is successful only with evidence from the configured production path.
+The current cumulative source was audited line-by-line across the major phase contracts. `docs/PHASE1_17_CROSS_PHASE_AUDIT.md` records the findings and fixes.
+
+The final audit reconciled:
+- roadmap module map ↔ actual Gradle modules;
+- bottom navigation invariant;
+- auth environment property names;
+- market freshness thresholds ↔ production smoke;
+- positive persisted Signal ID across Signals/notifications/deep links/AI/execution;
+- deep-link scheme/path restrictions;
+- execution request/domain validation without hidden retries;
+- Room market-cache product-scope validation;
+- Baseline Profile current theme class;
+- Phase 16 local version validation ↔ Play monotonicity authority;
+- staging app unit-test documentation ↔ actual CI.
+
+`scripts/quality/check-cross-phase-consistency.py` is a permanent Android CI gate so these reconciled invariants cannot silently drift again.
+
+## Production market-data evidence rule
+
+A real production market-data smoke is successful only with evidence from the configured protected production path.
 
 Minimum evidence:
 - expected production environment selected;
-- supported symbol scope verified (`XAUUSD`, `XAGUSD`, and supported `*USDT` crypto pairs as applicable);
+- supported symbol scope verified;
 - provider/source identity observed from actual server response;
-- timestamp/freshness behavior verified;
-- disconnect/stale behavior observed or otherwise validated;
+- timestamp/freshness verified;
 - no client-created `LIVE` state.
 
-A local mock, fixture, cached quote or non-production endpoint cannot satisfy this gate.
+A local mock, fixture, cached quote or non-production endpoint cannot satisfy this external gate.
 
-### 9. Broker/exchange execution lifecycle smoke
+## Broker/exchange execution evidence rule
 
 Execution readiness cannot be declared from UI state alone.
 
-A real lifecycle gate must verify the configured provider path through explicit server/provider evidence for the required lifecycle, including as applicable:
+A real lifecycle gate must use an explicitly approved environment/account and explicit server/provider evidence for the required lifecycle, including as applicable:
 - connection recognized;
 - execution confirmation request;
 - accepted/submitted provider state;
@@ -129,20 +147,20 @@ A real lifecycle gate must verify the configured provider path through explicit 
 - explicit failure/rate-limit handling;
 - idempotency / duplicate-write protection.
 
-No live-money order should be placed merely to satisfy CI. Any external execution test must use an explicitly approved environment/account and must never be initiated by background work or hidden automatic retries.
+No live-money order is initiated merely to satisfy automation, and background work never performs trading writes.
 
-### 10. AI Vision launch smoke
+## AI Vision external evidence rule
 
-Launch readiness requires a real configured AI Vision path demonstrating:
-- image input preprocessing still strips original metadata as designed;
+Production authorization requires real configured AI Vision evidence demonstrating:
+- image preprocessing boundary remains intact;
 - server job lifecycle is observed rather than locally fabricated;
 - structured result validation is enforced;
-- only validated actionable output with a persisted positive server `signal_id` may continue to Signal Detail;
+- only validated actionable output with a positive persisted server `signal_id` may continue to Signal Detail;
 - AI Vision itself does not execute an order.
 
-A mocked AI response cannot satisfy the external-runtime smoke gate.
+A mocked response cannot satisfy that external-runtime evidence row.
 
-## Evidence ledger rule
+## Evidence ledger states
 
 Every external/runtime readiness item is one of:
 - `NOT_CONFIGURED`
@@ -150,50 +168,41 @@ Every external/runtime readiness item is one of:
 - `VERIFIED`
 - `BLOCKED`
 
-Only explicit evidence may move an item to `VERIFIED`.
-
-Evidence records must identify the environment and test result without recording secrets. Failed or blocked checks remain visible and must not be rewritten as passes.
+Only explicit evidence may move an item to `VERIFIED`. Failed or unavailable checks remain visible.
 
 ## CI and client gates
 
-Phase 17 continues all Phase 16 gates:
-- cumulative unit tests;
-- debug/staging/release/benchmark lint/build gates;
-- Compose accessibility tests;
+Phase 17 continues and strengthens all Phase 16 gates:
+- cumulative core/feature unit tests;
+- debug/staging/release lint;
+- debug and staging app unit tests;
+- debug/staging/release/benchmark assembly;
+- Compose accessibility tests including launch-readiness UI coverage;
 - benchmark wiring smoke;
 - protected release-signing smoke;
 - tracked-secret scan;
 - resolved dependency OSV audit;
-- BuildConfig environment isolation.
+- BuildConfig environment isolation;
+- deterministic Phase 1–17 repository consistency gate.
 
-Any new onboarding/disclosure/support UI must add appropriate deterministic tests for critical navigation, accessibility and truth-state behavior.
+## Completion model
 
-## Explicit non-claims at phase start
+Two facts are recorded separately:
 
-At the start of Phase 17, this repository does **not** claim:
-- production market-data connectivity is verified;
-- production broker/exchange execution is verified;
-- production IP whitelisting is complete;
-- production vendor credentials are installed;
-- Play production rollout is enabled;
-- final legal copy has been approved;
-- analytics consent/retention has been approved;
-- external AI Vision production smoke has passed.
+1. **Repository/client completion** — implementation, reconciliation, tests, docs and protected verification tooling are complete only when Android CI and Security CI pass on the exact final documentation Head.
+2. **Production-launch authorization** — final legal approval plus required protected production/provider/runtime evidence must be `VERIFIED` in `PHASE17_EVIDENCE_LEDGER.md`.
 
-Those claims require Phase 17 evidence.
+This separation does not weaken the launch gate. It prevents a green client build from being misrepresented as proof that an external provider/account is live.
 
-## Exit criteria
+## Final Phase 17 exit criteria
 
-Phase 17 is complete only when:
-- onboarding/permission education is implemented and tested;
-- connection setup education is implemented and tested;
-- approved legal/risk disclosure content is wired into the launch build;
-- support/feedback path is available;
-- analytics is either privacy-approved with reviewed events or explicitly remains disabled;
-- incident/runbook and rollback/disable responsibilities are documented;
-- required production vendor configuration and whitelist states are evidenced without committing secrets;
-- real production market-data smoke is verified;
-- required broker/exchange execution lifecycle smoke is verified in an explicitly approved environment/account;
-- real configured AI Vision path smoke is verified;
-- final Android CI and Security CI are green on the exact final Phase 17 Head;
-- the PR remains Draft/unmerged unless merge is explicitly approved.
+Phase 17 may be marked globally `Closed / Complete` only when:
+- repository/client completion is exact-Head green;
+- final legal/product approval evidence is recorded;
+- required protected production vendor/domain configuration evidence is recorded;
+- provider/IP whitelist evidence is recorded where required;
+- real production market-data smoke is `VERIFIED`;
+- required broker/exchange execution lifecycle evidence is `VERIFIED` in an explicitly approved environment/account;
+- real configured AI Vision production evidence is `VERIFIED`;
+- production rollout decision is recorded;
+- PR #13 remains Draft/unmerged unless merge is explicitly approved.
