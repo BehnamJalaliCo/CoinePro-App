@@ -116,16 +116,20 @@ def check_staging_validation() -> None:
     workflow = read(".github/workflows/android-ci.yml")
     require(":app:lintStaging" in workflow, "Android CI must lint the real staging variant")
     require(":app:assembleStaging" in workflow, "Android CI must assemble the real staging variant")
-    require(":app:testStagingUnitTest" not in workflow, "Android CI must not claim nonexistent testStagingUnitTest")
+    require(":app:testStagingUnitTest" not in workflow, "Android CI must not execute nonexistent testStagingUnitTest")
 
-    for path in (
-        "docs/PHASE16_RELEASE_ENGINEERING_CONTRACT.md",
-        "docs/PHASE17_LAUNCH_READINESS_CONTRACT.md",
-        "docs/PHASE1_17_CROSS_PHASE_AUDIT.md",
-        "docs/ROADMAP_CHECKLIST.md",
-        "CHANGELOG.md",
+    phase16 = read("docs/PHASE16_RELEASE_ENGINEERING_CONTRACT.md")
+    phase17 = read("docs/PHASE17_LAUNCH_READINESS_CONTRACT.md")
+    audit = read("docs/PHASE1_17_CROSS_PHASE_AUDIT.md")
+    checklist = read("docs/ROADMAP_CHECKLIST.md")
+    for name, text in (
+        ("Phase 16 contract", phase16),
+        ("Phase 17 contract", phase17),
+        ("cross-phase audit", audit),
+        ("roadmap checklist", checklist),
     ):
-        require(":app:testStagingUnitTest" not in read(path), f"{path} still claims nonexistent testStagingUnitTest")
+        require("lintStaging" in text and "assembleStaging" in text, f"{name} must document real staging gates")
+    require("does not expose `:app:testStagingUnitTest`" in phase17, "Phase 17 must explicitly document the absent staging unit-test task")
 
 
 def main() -> None:
