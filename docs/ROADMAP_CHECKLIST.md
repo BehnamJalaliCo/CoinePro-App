@@ -32,7 +32,7 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - [x] Phase 8 — AI Vision Flagship
 - [x] Phase 9 — AI Assistant
 - [x] Phase 10 — News & Economic Calendar
-- [ ] Phase 11 — Trader Tools
+- [x] Phase 11 — Trader Tools
 - [ ] Phase 12 — Activity / History / Performance
 - [ ] Phase 13 — Offline / Reliability / Background Work
 - [ ] Phase 14 — Security Hardening
@@ -51,30 +51,32 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - Phase 8 audited: `feat/phase8-ai-vision` → `85ed5a681b9f3a548fdc1d30faeea8dacb3d88b1` → Run #101 success
 - Phase 9 audited: `feat/phase9-ai-assistant` → `3d158c9d0fc72724e9bbf402ae81540300950cc3` → Run #114 success
 - Phase 10: `feat/phase10-news-economic-calendar` → `cfef5ba5c20be8ccf189de137ca9e6a9a199def4` → Run #121 success
+- Phase 11: `feat/phase11-trader-tools` → `11d91b2cb90a484611a1b1c773187b7c2b2795e4` → Run #126 success
 
-## Phase 10 delivered
+## Phase 11 delivered
 
-- `core:marketintel` typed normalized news/calendar models, Retrofit gateway and shared controller
-- explicit authenticated `GET /user/market-intelligence` contract
-- `feature:news` animated Market Intelligence feed with source, publication time, stale state, impact, sentiment and Gold/Silver/Crypto relevance
-- `feature:calendar` animated economic-event timeline with Low / Medium / High / Unknown impact filters
-- actual / forecast / previous values render only when supplied
-- required publication/event timestamps normalize from ISO-8601 into `Instant`; invalid timestamps are rejected instead of guessed
-- missing stale flag defaults to stale
-- unknown impact/sentiment remains unknown
-- HTTPS-only article URL normalization
-- active Signal Detail high-impact warning requires exact HIGH + fresh + matching instrument relevance + defined time window
-- warning is risk context only and never creates trade direction/execution state
-- News and Calendar routes are available from Tools
-- native Compose AnimatedContent/card/list motion is tied only to real state changes and follows system reduced-motion scaling
-- no fake live pulse, price count-up or urgency animation
-- state clears on logout/session loss
-- `docs/PHASE10_MARKET_INTELLIGENCE_CONTRACT.md` documents API/truth/motion rules
-- `core:marketintel` tests are part of cumulative Android CI
-- Run #121 passed Phase 10 tests, all earlier core tests, lint, app tests, debug build and APK upload
+- premium Trader Toolkit dashboard in the existing `feature:tools` surface
+- Risk Calculator
+- Position Size / Lot Calculator
+- Risk / Reward Calculator with direction geometry validation
+- Profit Calculator with explicit contract size
+- Pip Calculator with explicit pip size and pip value assumptions
+- Crypto PnL Calculator for USDT-quoted pairs with two-sided fees
+- Compound Calculator with arithmetic-only growth assumptions
+- Drawdown Simulator with compounded loss and recovery requirement
+- deterministic local formulas isolated from signal/order execution
+- zero, negative and non-finite input handling by formula contract
+- final finite-output guard prevents `NaN` and Infinity from reaching UI
+- formula, unit, precision, assumption, missing-input, validation-error and reset states are explicit
+- financial outputs use Latin precision plus Unicode LTR isolate/PDI and Compose LTR text direction for RTL safety
+- News / Calendar / Connections remain separate source-backed surfaces
+- no fake market state, AI progress, broker state, execution state or urgency animation
+- `docs/PHASE11_TRADER_TOOLS_CONTRACT.md` documents formulas, assumptions, precision and truth boundaries
+- `:feature:tools:testDebugUnitTest` is part of cumulative Android CI
+- Run #126 passed Phase 11 tests, all earlier core tests, lint, app tests, debug build and APK upload
 
 ## Current next milestone
 
-Phase 11 — Trader Tools.
+Phase 12 — Activity / History / Performance, after the final Phase 11 closure Head is green.
 
-There are 7 phases remaining: Phase 11 through Phase 17.
+There are 6 phases remaining: Phase 12 through Phase 17.
