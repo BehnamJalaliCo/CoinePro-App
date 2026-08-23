@@ -2,6 +2,9 @@ package com.coinepro.app.di
 
 import android.content.Context
 import com.coinepro.app.BuildConfig
+import com.coinepro.core.aisignal.AiSignalController
+import com.coinepro.core.aisignal.AiSignalGateway
+import com.coinepro.core.aisignal.NetworkAiSignalGateway
 import com.coinepro.core.auth.AuthGateway
 import com.coinepro.core.auth.NetworkAuthGateway
 import com.coinepro.core.auth.SessionController
@@ -75,6 +78,11 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun aiSignalGateway(retrofit: Retrofit): AiSignalGateway =
+        NetworkAiSignalGateway.create(retrofit)
+
+    @Provides
+    @Singleton
     fun appScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     @Provides
@@ -114,4 +122,11 @@ object AppModule {
         gateway: ExecutionGateway,
         scope: CoroutineScope,
     ): ExecutionController = ExecutionController(gateway, scope)
+
+    @Provides
+    @Singleton
+    fun aiSignalController(
+        gateway: AiSignalGateway,
+        scope: CoroutineScope,
+    ): AiSignalController = AiSignalController(gateway, scope)
 }
