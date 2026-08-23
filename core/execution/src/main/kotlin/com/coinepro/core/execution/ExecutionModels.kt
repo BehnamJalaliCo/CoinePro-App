@@ -79,13 +79,10 @@ data class SignalExecution(
 
     // LBank close is deliberately not exposed until its provider lifecycle is verified.
     // A queued LBank intent may still be cancelled before it reaches the provider.
+    // CLOSE_REQUESTED is already in flight, so no second close action is exposed.
     val canRequestClose: Boolean get() = when {
         status == ExecutionStatus.QUEUED -> true
-        venue == ExecutionVenue.MT5 -> status in setOf(
-            ExecutionStatus.SUBMITTED,
-            ExecutionStatus.OPEN,
-            ExecutionStatus.CLOSE_REQUESTED,
-        )
+        venue == ExecutionVenue.MT5 -> status == ExecutionStatus.SUBMITTED || status == ExecutionStatus.OPEN
         else -> false
     }
 }
