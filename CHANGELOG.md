@@ -28,7 +28,7 @@ The format follows Keep a Changelog conventions. Release names use semantic `MAJ
 - Production market smoke applies the same source freshness thresholds as the Android client.
 - Baseline Profile now targets the current `CoineProThemeKt` class.
 - Release/version documentation now distinguishes repository syntax/range checks from Play-enforced cross-release `versionCode` monotonicity.
-- Staging app unit tests are explicitly included in Android CI.
+- Staging CI uses supported `lintStaging` and `assembleStaging` gates; cumulative unit tests remain on the supported debug test variants instead of claiming a nonexistent `testStagingUnitTest` task.
 
 ### Security
 - Release keystores and service-account credentials remain external secrets and are never committed.
