@@ -151,16 +151,20 @@ class NetworkNotificationGateway private constructor(
         condition: PriceAlertCondition,
         value: Double,
         trigger: PriceAlertTrigger,
-    ): PriceAlert = requireNotNull(
-        api.createAlert(
-            PriceAlertCreateDto(
-                symbol = symbol.trim().uppercase().replace("/", "").replace("-", ""),
-                condition = condition.wireValue,
-                value = value,
-                trigger = trigger.wireValue,
-            ),
-        ).alert?.toDomain(),
-    ) { "Invalid alert payload" }
+    ): PriceAlert {
+        val safeSymbol = requireNotNull(normalizeProductAlertSymbol(symbol)) { "Unsupported alert symbol" }
+        require(value.isFinite() && value > 0.0) { "Alert value must be a positive finite number" }
+        return requireNotNull(
+            api.createAlert(
+                PriceAlertCreateDto(
+                    symbol = safeSymbol,
+                    condition = condition.wireValue,
+                    value = value,
+                    trigger = trigger.wireValue,
+                ),
+            ).alert?.toDomain(),
+        ) { "Invalid alert payload" }
+    }
 
     override suspend fun setAlertActive(alertId: String, active: Boolean): PriceAlert = requireNotNull(
         api.patchAlert(alertId, PriceAlertPatchDto(active)).alert?.toDomain(),
@@ -171,6 +175,15 @@ class NetworkNotificationGateway private constructor(
     companion object {
         fun create(retrofit: Retrofit): NetworkNotificationGateway =
             NetworkNotificationGateway(retrofit.create(NotificationApi::class.java))
+    }
+}
+
+internal fun normalizeProductAlertSymbol(raw: String): String? {
+    val normalized = raw.trim().uppercase().replace("/", "").replace("-", "")
+    return when {
+        normalized == "XAUUSD" || normalized == "XAGUSD" -> normalized
+        normalized.endsWith("USDT") && normalized.length > 4 -> normalized
+        else -> null
     }
 }
 
@@ -202,7 +215,7 @@ internal fun NotificationDto.toDomain(): AppNotification? {
 internal fun PriceAlertDto.toDomain(): PriceAlert? {
     val safeId = id?.takeIf { it.isNotBlank() } ?: return null
     val safeSymbol = symbol?.takeIf { it.isNotBlank() } ?: return null
-    val safeValue = value?.takeIf { it > 0 } ?: return null
+    val safeValue = value?.takeIf { it.isFinite() && it > 0.0 } ?: return null
     val safeCondition = PriceAlertCondition.entries.firstOrNull { it.wireValue == condition } ?: return null
     val safeTrigger = PriceAlertTrigger.entries.firstOrNull { it.wireValue == trigger } ?: return null
     return PriceAlert(
