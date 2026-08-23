@@ -1,13 +1,15 @@
 # Authentication / Session Contract
 
-Validated against the current CoineProFx user backend on 2026-08-22.
+This document records the Android-facing authentication/session contract for `BehnamJalaliCo/CoinePro-App`.
 
-## Existing backend truth
+The backend endpoint shape below is the contract snapshot already consumed by this Android repository. Phase 17 cross-phase audit validates the Android implementation and its internal consistency only; it does not inspect or make claims about any out-of-scope repository.
+
+## Existing backend contract
 
 - `GET /user/auth/config` returns the Telegram bot username.
 - `POST /user/auth/telegram` accepts Telegram's signed login payload and returns `{ token, profile }`.
 - `GET /user/me` validates the bearer token and returns current user + entitlement state.
-- There is no refresh-token endpoint today.
+- There is no client-invented refresh-token flow.
 - `POST /user/auth/request-otp` and `POST /user/auth/verify-otp` are secondary email-verification steps and require an already authenticated user.
 - `GET /user/subscription` is VIP-gated; Android therefore uses `/user/me` as the entitlement source of truth for all authenticated users.
 
@@ -20,7 +22,7 @@ Validated against the current CoineProFx user backend on 2026-08-22.
 - Every cold start reads/decrypts the token and revalidates it with `/user/me` before protected navigation is unlocked.
 - Any authenticated HTTP `401` emits a global unauthorized event, clears the encrypted session, and returns the app to sign-in.
 - Network failure during cold-start revalidation does not unlock protected flows; the app enters `RevalidationRequired` until retry or sign-out.
-- Logout is currently local because the backend has no token-revocation endpoint. JWT expiry + server `401` remains the server-side invalidation path.
+- Logout is local unless/until a server token-revocation endpoint is part of the explicit contract. Server expiry/`401` remains the authoritative invalidation path.
 
 ## Entitlement mapping
 
@@ -40,8 +42,12 @@ UI gating is convenience only. Protected APIs must continue to enforce authoriza
 
 ## Public repository configuration
 
-Production/staging API URLs are not committed. Builds inject:
+Service configuration is separated by build environment and is injected outside the repository:
 
-`-PCOINEPRO_API_BASE_URL=https://.../api/`
+- debug API: `COINEPRO_DEBUG_API_BASE_URL` — default `https://debug.example.invalid/`
+- staging API: `COINEPRO_STAGING_API_BASE_URL` — default `https://staging.example.invalid/`
+- production API: `COINEPRO_PRODUCTION_API_BASE_URL` — default `https://production.example.invalid/`
 
-Without that property the debug build uses `https://example.invalid/` and cannot authenticate against production by accident.
+Staging and production API base URLs are required to be different. The corresponding Firebase values also use separate `COINEPRO_DEBUG_*`, `COINEPRO_STAGING_*`, and `COINEPRO_PRODUCTION_*` namespaces.
+
+Placeholder `.invalid` defaults deliberately cannot authenticate against a real service. Production/staging credentials and secrets are not committed to this repository.
