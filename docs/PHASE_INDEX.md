@@ -22,7 +22,7 @@ This file is the canonical map between delivery phases, Git branches, milestone 
 | 4 | Signals Core | `feat/phase4-signals-core` | `adbefeb33b1e39eddd65f28ddd89ad40b70bafdb` | Run #17 — success |
 | 5 | Alerts & Push | `feat/phase5-alerts-push` | `60dfd64259ec92775b38288f2a4dc8e4c50169e9` | Run #41 — success |
 | 6 | Connections & Signal Execution Bridge | `feat/phase6-signal-execution` | `d8173f79df1aee18b169e8ccbbdcd7c776f7fa26` | Run #86 — success |
-| 7 | AI Generated Market Signal | `feat/phase7-ai-generated-market-signal` | `f718d9ad310ab37d4b109297c4fadcb33e287775` | Run #91 — success |
+| 7 | AI Generated Market Signal | `feat/phase7-ai-generated-market-signal` | `be8643d9aa07f44031f49b472536fc074a22dbea` | Run #94 — success |
 
 ## Phase 1–6 audit closure
 
@@ -63,13 +63,11 @@ Validated Phase 7 behavior includes:
 - AI state is cleared on sign-out
 - `core:aisignal` unit tests are part of the Android CI gate
 
-Phase 7 code checkpoint:
+Final Phase 7 validated head:
 
-- SHA: `f718d9ad310ab37d4b109297c4fadcb33e287775`
-- Android CI Run #91: **success**
+- SHA: `be8643d9aa07f44031f49b472536fc074a22dbea`
+- Android CI Run #94: **success**
 - CI gate includes Phase 7 unit tests, all prior core tests, app lint, app unit tests, debug assembly and APK artifact upload.
-
-Documentation-only bookkeeping commits after this checkpoint do not redefine the green Phase 7 code milestone.
 
 ## Next phase
 
@@ -86,5 +84,3 @@ For every new phase:
 3. Run phase-specific unit tests plus app lint/test/assemble CI.
 4. When green, record the exact end SHA and CI run in this file.
 5. Keep the project ledger and PR descriptions aligned with the validated code state.
-
-This prevents phase ownership from being split across repositories or inferred from unrelated codebases.
