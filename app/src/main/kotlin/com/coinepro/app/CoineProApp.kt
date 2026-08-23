@@ -86,7 +86,7 @@ fun CoineProApp(
 ) {
     LaunchedEffect(sessionController) { sessionController.start() }
     val session by sessionController.state.collectAsStateWithLifecycle()
-    val botUsername by sessionController.botUsername.collectAsStateWithLifecycle()
+    val loginConfigState by sessionController.loginConfigState.collectAsStateWithLifecycle()
     val marketState by marketDataController.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val signedIn = session is SessionState.SignedIn
@@ -138,10 +138,11 @@ fun CoineProApp(
             )
             else -> AuthScreen(
                 state = session,
-                botUsername = botUsername,
+                loginConfigState = loginConfigState,
                 onTelegramPayload = { payload ->
                     scope.launch { sessionController.completeTelegramLogin(payload) }
                 },
+                onRetryLoginConfig = { scope.launch { sessionController.prepareLogin() } },
                 onRetry = { scope.launch { sessionController.restore() } },
                 onLogout = { scope.launch { sessionController.logout() } },
             )
