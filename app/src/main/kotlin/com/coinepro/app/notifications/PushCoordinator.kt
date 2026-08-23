@@ -18,6 +18,8 @@ class PushCoordinator @Inject constructor(
     private val controller: NotificationController,
     private val scope: CoroutineScope,
 ) {
+    @Volatile private var lastToken: String? = null
+
     fun registerCurrentToken() {
         if (FirebaseApp.getApps(context).isEmpty()) return
         FirebaseMessaging.getInstance().token
@@ -26,6 +28,7 @@ class PushCoordinator @Inject constructor(
 
     fun registerToken(token: String) {
         if (token.isBlank()) return
+        lastToken = token
         scope.launch {
             runCatching {
                 controller.registerDevice(
@@ -35,5 +38,11 @@ class PushCoordinator @Inject constructor(
                 )
             }
         }
+    }
+
+    suspend fun unregisterCurrentToken() {
+        val token = lastToken ?: return
+        runCatching { controller.unregisterDevice(token) }
+        lastToken = null
     }
 }
