@@ -10,6 +10,7 @@ Android never executes raw multimodal model text. AI Vision may expose an action
 - Gallery/file selection uses Android's document picker and does not require broad storage permission.
 - The selected image is decoded, orientation-normalized, resized to a maximum 2048 px edge when needed, and re-encoded as JPEG before upload.
 - Re-encoding strips original EXIF metadata from the outbound payload.
+- Temporary CameraX files created inside the app cache are deleted after preprocessing, including preprocessing failure paths.
 - Prepared uploads are limited to 6 MB.
 - Local file paths, image bytes and EXIF metadata must never be logged.
 
