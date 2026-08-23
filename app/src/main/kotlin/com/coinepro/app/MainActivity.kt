@@ -14,10 +14,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import com.coinepro.app.notifications.PushCoordinator
+import com.coinepro.app.sync.BackgroundSyncScheduler
 import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.SessionController
+import com.coinepro.core.auth.SessionState
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.marketdata.MarketDataController
 import com.coinepro.core.marketintel.MarketIntelController
@@ -38,6 +40,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var aiAssistantController: AiAssistantController
     @Inject lateinit var marketIntelController: MarketIntelController
     @Inject lateinit var pushCoordinator: PushCoordinator
+    @Inject lateinit var backgroundSyncScheduler: BackgroundSyncScheduler
 
     private var launchSignalId by mutableStateOf<Long?>(null)
     private var launchActivity by mutableStateOf(false)
@@ -63,12 +66,25 @@ class MainActivity : ComponentActivity() {
                 aiAssistantController = aiAssistantController,
                 marketIntelController = marketIntelController,
                 pushCoordinator = pushCoordinator,
+                backgroundSyncScheduler = backgroundSyncScheduler,
                 launchSignalId = launchSignalId,
                 launchActivity = launchActivity,
                 onSignalLaunchConsumed = { launchSignalId = null },
                 onActivityLaunchConsumed = { launchActivity = false },
             )
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (sessionController.state.value !is SessionState.SignedIn) return
+        marketDataController.syncOnResume()
+        signalController.refresh()
+        signalController.refreshHistory()
+        executionController.refreshExecutions()
+        notificationController.refresh()
+        marketIntelController.refresh()
+        backgroundSyncScheduler.requestImmediate()
     }
 
     override fun onNewIntent(intent: Intent) {
