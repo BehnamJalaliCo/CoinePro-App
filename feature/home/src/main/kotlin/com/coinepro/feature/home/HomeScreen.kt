@@ -18,11 +18,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.marketdata.MarketConnectionState
+import com.coinepro.core.marketdata.MarketDataOrigin
 import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.model.MarketQuote
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.QuoteSource
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
+
+private val cacheTimeFormatter = DateTimeFormatter.ofPattern("MMM d · HH:mm")
 
 @Composable
 fun HomeScreen(
@@ -39,15 +45,22 @@ fun HomeScreen(
             fontWeight = FontWeight.Bold,
         )
         Text(
-            text = connectionLabel(state.connection),
+            text = connectionLabel(state),
             style = MaterialTheme.typography.labelMedium,
         )
+
+        if (state.origin == MarketDataOrigin.CACHE && state.quotes.isNotEmpty()) {
+            Text(
+                text = cacheLabel(state.cacheStoredAtEpochMillis),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
 
         if (state.quotes.isEmpty()) {
             Spacer(Modifier.height(12.dp))
             Text(
                 text = if (state.connection == MarketConnectionState.CONNECTING) {
-                    "Connecting to live market data…"
+                    "Connecting to market data…"
                 } else {
                     "No market data available yet."
                 },
@@ -63,11 +76,13 @@ fun HomeScreen(
                 .sortedWith(compareBy<MarketQuote>({ marketRank(it) }, { it.instrument.symbol }))
                 .forEach { quote -> QuoteCard(quote) }
 
-            if (!state.lastError.isNullOrBlank() &&
-                state.connection != MarketConnectionState.LIVE
-            ) {
+            if (!state.lastError.isNullOrBlank() && state.connection != MarketConnectionState.LIVE) {
                 Text(
-                    text = "Realtime stream is recovering. Cached snapshot remains visible.",
+                    text = if (state.origin == MarketDataOrigin.CACHE) {
+                        "Network refresh failed. The stored snapshot stays visible and remains marked stale."
+                    } else {
+                        "Realtime stream is recovering. The latest network snapshot remains visible."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -136,12 +151,21 @@ private fun sourceLabel(source: QuoteSource): String = when (source) {
     QuoteSource.UNKNOWN -> "Unknown source"
 }
 
-private fun connectionLabel(state: MarketConnectionState): String = when (state) {
-    MarketConnectionState.IDLE -> "Market stream idle"
-    MarketConnectionState.CONNECTING -> "Connecting…"
-    MarketConnectionState.LIVE -> "Realtime connected"
-    MarketConnectionState.DEGRADED -> "Realtime reconnecting · HTTP fallback active"
-    MarketConnectionState.OFFLINE -> "Market data offline"
+private fun connectionLabel(state: MarketDataState): String = when {
+    state.origin == MarketDataOrigin.CACHE && state.connection == MarketConnectionState.CONNECTING ->
+        "Cached snapshot · network refresh in progress"
+    state.origin == MarketDataOrigin.CACHE -> "Cached snapshot · offline"
+    state.connection == MarketConnectionState.IDLE -> "Market stream idle"
+    state.connection == MarketConnectionState.CONNECTING -> "Connecting…"
+    state.connection == MarketConnectionState.LIVE -> "Realtime connected"
+    state.connection == MarketConnectionState.DEGRADED -> "Realtime reconnecting · HTTP snapshot active"
+    else -> "Market data offline"
+}
+
+private fun cacheLabel(epochMillis: Long?): String {
+    val value = epochMillis ?: return "Stored market snapshot · age unknown"
+    val formatted = Instant.ofEpochMilli(value).atZone(ZoneId.systemDefault()).format(cacheTimeFormatter)
+    return "Stored market snapshot from $formatted · values are not live"
 }
 
 private fun marketRank(quote: MarketQuote): Int = when (quote.instrument.symbol) {
