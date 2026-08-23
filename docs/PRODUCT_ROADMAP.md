@@ -1,261 +1,123 @@
 # CoinePro Android Product Roadmap
 
-Status: Phases 0 through 7 complete — Phase 8 next
+Status: Phases 0 through 8 complete — Phase 9 next
 
-This roadmap is ordered by dependency and risk. The canonical phase-to-branch/SHA/CI mapping lives in `PHASE_INDEX.md`.
+The canonical phase-to-branch/SHA/CI mapping lives in `PHASE_INDEX.md`.
 
 ## Repository and delivery model
 
 - Source-of-truth repository: `BehnamJalaliCo/CoinePro-App`
 - `main` is the stable base.
 - `bootstrap/android-foundation` is the cumulative integration branch.
-- Each completed `feat/...` branch records the validated phase checkpoint in `PHASE_INDEX.md`.
-- All project phase branches, PRs, CI checks and bookkeeping stay in this repository.
-- Production vendor credentials, broker connectivity, IP whitelisting and real external smoke testing are deferred to Phase 17 unless explicitly moved earlier.
+- Every phase branch, PR, CI check and phase ledger entry for this project stays in this repository.
+- Completed phase checkpoints are recorded in `PHASE_INDEX.md`.
+- Production vendor credentials, broker connectivity, IP whitelisting and real external smoke testing remain Phase 17 unless explicitly moved earlier.
 - Android never stores production vendor/broker secrets in the repository.
 
-## Phase 0 — Foundation
+## Completed foundation — Phases 0 through 6
 
+### Phase 0 — Foundation
 Status: Complete
 
-Delivered:
-- Native Android app with Kotlin + Jetpack Compose
-- Gradle/version catalog
-- GitHub Actions lint/test/debug build
-- public-repository secret safeguards
-- application shell
+Native Kotlin/Jetpack Compose app, Gradle/version catalog, GitHub Actions lint/test/debug build, public-repository secret safeguards and application shell.
 
-Exit state:
-- CI green
-- debug APK artifact available
-- no committed production credentials
-
-## Phase 1 — Design System & Architecture Skeleton
-
+### Phase 1 — Design System & Architecture Skeleton
 Status: Complete
 
-Delivered:
-- locked Design Direction
-- `core:designsystem`
-- `core:model`
-- `core:common`
-- `core:network`
-- `core:datastore`
-- `core:navigation`
-- five-destination shell: Home / Signals / AI / Tools / Activity
-- RTL/LTR financial formatting conventions
+Design direction, core design/model/common/network/datastore/navigation boundaries, five-destination shell (Home / Signals / AI / Tools / Activity), RTL layout conventions and LTR financial formatting.
 
-## Phase 2 — Authentication, Session & Entitlements
-
+### Phase 2 — Authentication, Session & Entitlements
 Status: Complete
 
-Milestone:
-- branch: `feat/android-mobile-auth`
-- end SHA: `12cc837ac02e378f3ca4452a95bfed224ad3222b`
-- Android CI Run #11: success
+Milestone: `feat/android-mobile-auth` → `12cc837ac02e378f3ca4452a95bfed224ad3222b` → Run #11 success.
 
-Delivered:
-- `core:auth` session/auth domain and gateway
-- `core:security` Android Keystore-backed token protection
-- authenticated `/user/me` validation contract
-- auth-only Telegram login bridge
-- bearer token redaction
-- mandatory cold-start revalidation before protected navigation
-- encrypted session clearing on logout/unauthorized response
-- entitlement state sourced from the authenticated server profile
-- no invented refresh-token flow
-- network revalidation failure remains locked and is covered by unit tests
+Keystore-backed session protection, authenticated profile revalidation, Telegram auth bridge, token redaction, unauthorized clearing, entitlement truth from server profile and no invented refresh-token flow.
 
-Security boundary:
-- no bearer token in URLs
-- no plaintext session token persistence
-- no UI-only entitlement bypass
-
-## Phase 3 — Realtime Market Data Foundation
-
+### Phase 3 — Realtime Market Data Foundation
 Status: Complete
 
-Milestone:
-- branch: `feat/phase3-realtime-market-data`
-- end SHA: `7158a78ef6ee378ec531576bf7d9364816d25b56`
-- Android CI Run #14: success
+Milestone: `feat/phase3-realtime-market-data` → `7158a78ef6ee378ec531576bf7d9364816d25b56` → Run #14 success.
 
-Source contract:
-- XAUUSD / XAGUSD: Finnhub-originated normalized feed
-- Crypto: LBank-originated normalized feed
-- Android consumes the CoinePro HTTP/WebSocket contract rather than vendor credentials
+Normalized CoinePro HTTP/WebSocket quote contract, resilient reconnect/fallback, stale/fresh state, source timestamps, product-scope validation and no fake `LIVE` state.
 
-Delivered:
-- `core:marketdata`
-- resilient OkHttp WebSocket transport
-- HTTP snapshot fallback
-- reconnect/backoff and superseded-socket protection
-- source timestamps and stale/fresh state
-- fresh quote required before `LIVE`
-- unsupported market symbols rejected instead of guessed
-- Home Market Pulse using real quote state only
-
-Launch deferral:
-- live production vendor connectivity and whitelist smoke testing remain Phase 17
-
-## Phase 4 — Signals Core
-
+### Phase 4 — Signals Core
 Status: Complete
 
-Milestone:
-- branch: `feat/phase4-signals-core`
-- end SHA: `adbefeb33b1e39eddd65f28ddd89ad40b70bafdb`
-- Android CI Run #17: success
+Milestone: `feat/phase4-signals-core` → `adbefeb33b1e39eddd65f28ddd89ad40b70bafdb` → Run #17 success.
 
-Delivered:
-- `core:signals`
-- typed signal network/domain models
-- Forex/Crypto signal list
-- Active / Recent / Closed filters
-- Signal Detail route and screen
-- Entry/zone, SL, TP1/TP2/TP3, R:R and confidence
-- optional rationale/evidence only when supplied
-- current/last quote with stale state
-- invalid/non-actionable direction rejection
-- safe missing-field rendering
-- Android mapper enforces the product symbol boundary
+Typed Signal list/detail flow, Active/Recent/Closed filters, Entry/SL/TP/R:R/confidence, safe missing fields, current/last quote state and product scope locked to Forex V1 `XAUUSD/XAGUSD` plus Crypto `*USDT`.
 
-Product scope:
-- Forex V1: XAUUSD and XAGUSD only
-- Crypto: LBank-style USDT pairs
-- no generic trading terminal
-
-## Phase 5 — Alerts & Push
-
+### Phase 5 — Alerts & Push
 Status: Complete
 
-Milestone:
-- branch: `feat/phase5-alerts-push`
-- end SHA: `60dfd64259ec92775b38288f2a4dc8e4c50169e9`
-- Android CI Run #41: success
+Milestone: `feat/phase5-alerts-push` → `60dfd64259ec92775b38288f2a4dc8e4c50169e9` → Run #41 success.
 
-Delivered:
-- `core:notifications`
-- Notification Center in Activity
-- notification preferences
-- price above/below/cross alert contract
-- FCM token registration
-- authenticated device unregister before explicit logout
-- Firebase Messaging service
-- Android notification channel
-- Android 13+ notification permission handling
-- deep links to Signal Detail / Activity
-- build-time Firebase runtime configuration without committed `google-services.json`
-- outgoing and incoming alert symbols/values validated against product scope and finite positive values
+Notification Center, preferences, price alerts, FCM token lifecycle, native messaging service/channel, Android 13+ permission flow, deterministic deep links and validated alert payloads.
 
-Exit state:
-- notification payload mapping is unit-tested
-- app navigation is deterministic
-- production FCM delivery smoke remains Phase 17
-
-## Phase 6 — Connections & Signal Execution Bridge
-
+### Phase 6 — Connections & Signal Execution Bridge
 Status: Complete
 
-Audited milestone:
-- branch: `feat/phase6-signal-execution`
-- end SHA: `d8173f79df1aee18b169e8ccbbdcd7c776f7fa26`
-- Android CI Run #86: success
+Audited milestone: `feat/phase6-signal-execution` → `d8173f79df1aee18b169e8ccbbdcd7c776f7fa26` → Run #86 success.
 
-Delivered:
-- `core:execution`
-- `feature:connections`
-- `feature:execution`
-- MT5 and LBank connection-state surfaces
-- signal-scoped execution confirmation
-- no arbitrary-symbol New Trade screen
-- venue/lot/amount validation
-- idempotency request ID on every execution attempt
-- explicit execution states: queued, submitted, open, close-requested, closed, failed, cancelled, unknown
-- active executed signals rendered/tracked in Activity
-- UI never declares an order open without provider truth
-- duplicate close requests after `CLOSE_REQUESTED` are blocked
-- LBank close remains hidden after submit/open until that external provider lifecycle is intentionally enabled later
-- queued execution can be cancelled before provider acknowledgement
-- Android does not persist trading credentials or render them back into logs/UI
-
-Launch deferral:
-- real broker/exchange credentials
-- production execution worker/provider activation
-- external close lifecycle verification
-- end-to-end live trade smoke
+MT5/LBank connection state, signal-scoped execution confirmation, quantity validation, idempotency request IDs, explicit provider-truth execution states, active executed signals, duplicate-close prevention, safe LBank close gating and no Android persistence of trading credentials.
 
 ## Phase 7 — AI Generated Market Signal
 
 Status: Complete
 
-Milestone:
-- branch: `feat/phase7-ai-generated-market-signal`
-- end SHA: `f718d9ad310ab37d4b109297c4fadcb33e287775`
-- Android CI Run #91: success
+Milestone: `feat/phase7-ai-generated-market-signal` → `f718d9ad310ab37d4b109297c4fadcb33e287775` → Run #91 success.
 
 Delivered:
-- `core:aisignal` AI Signal domain, Retrofit gateway and server-truth controller
+- `core:aisignal` domain, Retrofit gateway and server-truth controller
 - explicit authenticated contract in `docs/PHASE7_AI_SIGNAL_CONTRACT.md`
-- AI Signal request form
 - product-scoped symbol controls
 - timeframe controls: M15 / H1 / H4 / D1
 - risk controls: low / medium / high
 - server-derived quota and entitlement states
-- exact queued / running / done / failed / expired job lifecycle
-- polling based only on server status; no local fake completion percentage
-- failed/expired job recovery
-- strict structured-result validation before a Signal CTA is exposed
-- result must be `validated=true` and must match the original symbol/timeframe request
-- invalid direction, price, target, confidence, product scope and request/result mismatches are blocked
-- raw model text is not part of the Android execution contract
-- a valid result can only open its persisted server `signal_id`
-- AI screen has no direct execution call; execution remains Signal Detail → Execution
-- AI state clears on sign-out
-- Phase 7 contract/controller tests are included in CI
-
-Exit state:
-- no fake AI progress
-- failed/expired jobs recover cleanly
-- unvalidated model output cannot open an executable Signal
-- raw model text cannot be executed
-- `core:aisignal` unit tests green
-- app lint, unit tests, debug assembly and APK artifact upload green in Run #91
+- exact queued / running / done / failed / expired lifecycle
+- polling based only on server status; no fake completion percentage
+- failed/expired recovery
+- strict structured-result validation
+- result must be `validated=true` and match request symbol/timeframe
+- invalid direction/prices/targets/confidence/product scope are blocked
+- raw model text is never executable
+- valid result can only open its persisted positive `signal_id`
+- no direct execution from AI screen; action remains Signal Detail → Execution
 
 ## Phase 8 — AI Vision Flagship
 
-Status: Next
+Status: Complete
 
-Deliverables:
-- CameraX capture
-- gallery/document picker
+Milestone: `feat/phase8-ai-vision` → `10844e48e65b90e9bcd8d60bb5c7ecfea982c18b` → Run #97 success.
+
+Delivered:
+- `core:aivision` typed multimodal upload/job/result contract
+- `feature:ai-vision` native CameraX and picker UI
+- back-camera capture with camera hardware optional
+- Android document/gallery picker without broad storage permission
 - screenshot/image upload
-- image compression/orientation/privacy handling
-- multimodal job contract
-- structured analysis result
-- unknown/low-confidence states
-- optional eligible Execute CTA
+- EXIF orientation normalization and outbound metadata stripping through JPEG re-encoding
+- maximum 2048 px image edge with adaptive compression under 6 MB
+- exact queued / running / done / failed / expired server-truth lifecycle
+- explicit actionable / low-confidence / unknown / unsupported assessments
+- structured fields: symbol/timeframe/confidence, trend/bias, market structure/setup, direction, entry zone, stop loss, TP1/TP2/TP3, risk and concise reasoning
+- strict result validation, including trade geometry and product scope
+- low-confidence/unknown/unsupported outputs cannot carry an executable signal
+- actionable output requires `validated=true` and a positive persisted server `signal_id`
+- AI Vision never executes directly; eligible action opens the persisted Signal flow
+- privacy/trust/API contract in `docs/PHASE8_AI_VISION_CONTRACT.md`
+- Phase 8 mapper/controller tests in cumulative Android CI
 
-Required structured result:
-- symbol/timeframe plus confidence
-- trend/bias
-- market structure/setup
-- direction
-- entry zone
-- stop loss
-- TP1/TP2/TP3
-- confidence
-- risk
-- concise reasoning
-
-Exit criteria:
+Exit state:
 - EXIF/privacy rules defined
 - unclear/unsupported images have explicit state
-- execution never proceeds from raw unvalidated model text
+- no fake multimodal progress
+- raw or unvalidated model output cannot execute
+- Run #97 passed Phase 8 tests, all prior core tests, app lint, app tests, debug assembly and APK upload
 
 ## Phase 9 — AI Assistant
 
-Status: Planned
+Status: Next
 
 Deliverables:
 - contextual authenticated chat
@@ -418,8 +280,6 @@ Exit criteria:
 
 ## Product module map
 
-Current/target structure evolves toward:
-
 ```text
 app
 core:common
@@ -434,6 +294,7 @@ core:signals
 core:notifications
 core:execution
 core:aisignal
+core:aivision
 core:database
 core:testing
 feature:auth
@@ -460,11 +321,10 @@ Create modules when boundaries become useful; do not create empty architecture f
 3. Signal schema/lifecycle — normalized in Phase 4; execution extends it in Phase 6
 4. Realtime quote schema — normalized in Phase 3; production external activation in Phase 17
 5. FCM device + alert schema — client implemented in Phase 5
-6. Signal-scoped MT5 execution contract — client implemented in Phase 6; live provider validation Phase 17
-7. LBank execution/close contract — client safety boundary implemented; live close lifecycle Phase 17
-8. AI Signal job schema — client implemented in Phase 7 with explicit server-truth job states and persisted-Signal trust boundary
-9. AI Vision upload/job/result schema — Phase 8
-10. News/calendar timestamps and impact schema — Phase 10
+6. Signal-scoped execution contract — client safety boundary implemented in Phase 6; live provider validation Phase 17
+7. AI Signal job schema — client implemented in Phase 7 with server-truth lifecycle and persisted-Signal trust boundary
+8. AI Vision upload/job/result schema — client implemented in Phase 8 with image privacy preprocessing, structured assessments and persisted-Signal trust boundary
+9. News/calendar timestamps and impact schema — Phase 10
 
 ## Definition of Done
 
@@ -472,7 +332,7 @@ A client feature is not Done until:
 - its API contract is explicit
 - loading/empty/error/offline behavior exists where applicable
 - RTL and financial LTR formatting are handled
-- security/logging implications are reviewed
+- security/privacy/logging implications are reviewed
 - tests cover critical business rules
 - Android CI is green
 - no fake realtime, execution or AI progress state exists
