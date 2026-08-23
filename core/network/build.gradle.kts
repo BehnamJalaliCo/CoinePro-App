@@ -17,4 +17,5 @@ dependencies {
     api(libs.retrofit.core)
     implementation(libs.retrofit.gson)
     implementation(libs.okhttp.logging)
+    testImplementation(libs.junit)
 }
