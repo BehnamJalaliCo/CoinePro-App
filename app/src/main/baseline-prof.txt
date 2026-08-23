@@ -3,6 +3,6 @@ Lcom/coinepro/app/MainActivity;
 Lcom/coinepro/app/CoineProAppKt;
 Lcom/coinepro/core/auth/SessionController;
 Lcom/coinepro/core/marketdata/MarketDataController;
-Lcom/coinepro/core/designsystem/ThemeKt;
+Lcom/coinepro/core/designsystem/CoineProThemeKt;
 Lcom/coinepro/feature/auth/AuthScreenKt;
 Lcom/coinepro/feature/home/HomeScreenKt;
