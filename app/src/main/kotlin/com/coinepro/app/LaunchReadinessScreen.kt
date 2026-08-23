@@ -21,6 +21,7 @@ enum class NotificationPermissionUiState {
     NOT_CONFIGURED,
     NOT_REQUIRED,
     AVAILABLE_TO_REQUEST,
+    DENIED,
     GRANTED,
 }
 
@@ -28,6 +29,7 @@ enum class NotificationPermissionUiState {
 fun LaunchReadinessScreen(
     notificationPermissionState: NotificationPermissionUiState,
     onRequestNotificationPermission: () -> Unit,
+    onOpenNotificationSettings: () -> Unit,
     onSendFeedback: () -> Unit,
 ) {
     Column(
@@ -65,10 +67,18 @@ fun LaunchReadinessScreen(
                     },
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                if (notificationPermissionState == NotificationPermissionUiState.AVAILABLE_TO_REQUEST) {
-                    Button(onClick = onRequestNotificationPermission) {
-                        Text("Enable notifications")
+                when (notificationPermissionState) {
+                    NotificationPermissionUiState.AVAILABLE_TO_REQUEST -> {
+                        Button(onClick = onRequestNotificationPermission) {
+                            Text("Enable notifications")
+                        }
                     }
+                    NotificationPermissionUiState.DENIED -> {
+                        Button(onClick = onOpenNotificationSettings) {
+                            Text("Open notification settings")
+                        }
+                    }
+                    else -> Unit
                 }
             }
         }
@@ -129,6 +139,9 @@ private fun notificationPermissionCopy(state: NotificationPermissionUiState): St
 
     NotificationPermissionUiState.AVAILABLE_TO_REQUEST ->
         "Notifications can alert you to server-provided signal and activity updates. Permission is optional and is requested only after you choose Enable notifications here."
+
+    NotificationPermissionUiState.DENIED ->
+        "Notification permission was denied. CoinePro remains usable without it. You can change this later in Android notification settings."
 
     NotificationPermissionUiState.GRANTED ->
         "Notification permission is granted. Delivery still depends on configured push services and server state."
