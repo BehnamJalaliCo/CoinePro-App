@@ -9,6 +9,9 @@ import com.coinepro.core.auth.SessionMemory
 import com.coinepro.core.auth.SessionTokenStorage
 import com.coinepro.core.marketdata.MarketDataController
 import com.coinepro.core.network.NetworkFactory
+import com.coinepro.core.notifications.NetworkNotificationGateway
+import com.coinepro.core.notifications.NotificationController
+import com.coinepro.core.notifications.NotificationGateway
 import com.coinepro.core.security.KeystoreSessionTokenStorage
 import com.coinepro.core.signals.NetworkSignalGateway
 import com.coinepro.core.signals.SignalController
@@ -59,6 +62,11 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun notificationGateway(retrofit: Retrofit): NotificationGateway =
+        NetworkNotificationGateway.create(retrofit)
+
+    @Provides
+    @Singleton
     fun appScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     @Provides
@@ -84,4 +92,11 @@ object AppModule {
         gateway: SignalGateway,
         scope: CoroutineScope,
     ): SignalController = SignalController(gateway, scope)
+
+    @Provides
+    @Singleton
+    fun notificationController(
+        gateway: NotificationGateway,
+        scope: CoroutineScope,
+    ): NotificationController = NotificationController(gateway, scope)
 }
