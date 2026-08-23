@@ -25,7 +25,7 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
-        testInstrumentationRunner = androidx.test.runner.AndroidJUnitRunner::class.java.name
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", escapedBuildConfig(apiBaseUrl))
         buildConfigField("String", "FIREBASE_PROJECT_ID", escapedBuildConfig(firebaseProjectId))
         buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(firebaseApplicationId))
