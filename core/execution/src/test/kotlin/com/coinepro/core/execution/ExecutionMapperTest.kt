@@ -54,6 +54,12 @@ class ExecutionMapperTest {
     }
 
     @Test
+    fun `execution payload requires positive persisted signal id`() {
+        assertNull(ExecutionDto(id = "x", signalId = 0, venue = "mt5", status = "queued").toDomain())
+        assertNull(ExecutionDto(id = "x", signalId = -1, venue = "mt5", status = "queued").toDomain())
+    }
+
+    @Test
     fun `lbank close is hidden after provider submission`() {
         assertTrue(execution(ExecutionVenue.LBANK, ExecutionStatus.QUEUED).canRequestClose)
         assertFalse(execution(ExecutionVenue.LBANK, ExecutionStatus.SUBMITTED).canRequestClose)
