@@ -47,7 +47,7 @@ jobs:
           gradle-version: "9.4.0"
 
       - name: Export resolved Android runtime dependencies
-        run: gradle --no-daemon -I scripts/security/export-dependencies.init.gradle :app:exportSecurityDependencies
+        run: gradle --no-daemon --no-configuration-cache -I scripts/security/export-dependencies.init.gradle :app:exportSecurityDependencies
 
       - name: Audit resolved dependencies against OSV
         run: python3 scripts/security/osv-audit.py
