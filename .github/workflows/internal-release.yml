@@ -100,9 +100,12 @@ jobs:
           ORG_GRADLE_PROJECT_COINEPRO_STAGING_FIREBASE_SENDER_ID: ${{ secrets.COINEPRO_STAGING_FIREBASE_SENDER_ID }}
         run: |
           set -euo pipefail
+          verify_log="$RUNNER_TEMP/coinepro-staging-jarsigner-verify.log"
           gradle --no-daemon :app:bundleStaging
-          test -f app/build/outputs/bundle/staging/app-staging.aab
-          jarsigner -verify -strict app/build/outputs/bundle/staging/app-staging.aab
+          aab="app/build/outputs/bundle/staging/app-staging.aab"
+          test -f "$aab"
+          jarsigner -verify -verbose -certs "$aab" | tee "$verify_log"
+          grep -Fq "jar verified." "$verify_log"
 
       - name: Publish staging package to Play internal track
         env:
@@ -123,4 +126,6 @@ jobs:
       - name: Remove runner signing material
         if: always()
         shell: bash
-        run: rm -f "$RUNNER_TEMP/coinepro-upload.jks"
+        run: |
+          rm -f "$RUNNER_TEMP/coinepro-upload.jks"
+          rm -f "$RUNNER_TEMP/coinepro-staging-jarsigner-verify.log"
