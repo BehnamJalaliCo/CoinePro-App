@@ -21,12 +21,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.coinepro.app.notifications.PushCoordinator
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionState
 import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.marketdata.MarketDataController
 import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.navigation.AppDestination
+import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.signals.SignalController
 import com.coinepro.feature.activity.ActivityScreen
 import com.coinepro.feature.ai.AiScreen
@@ -45,6 +47,12 @@ fun CoineProApp(
     sessionController: SessionController,
     marketDataController: MarketDataController,
     signalController: SignalController,
+    notificationController: NotificationController,
+    pushCoordinator: PushCoordinator,
+    launchSignalId: Long?,
+    launchActivity: Boolean,
+    onSignalLaunchConsumed: () -> Unit,
+    onActivityLaunchConsumed: () -> Unit,
 ) {
     LaunchedEffect(sessionController) { sessionController.start() }
     val session by sessionController.state.collectAsStateWithLifecycle()
@@ -56,9 +64,11 @@ fun CoineProApp(
     LaunchedEffect(signedIn) {
         if (signedIn) {
             marketDataController.start()
+            pushCoordinator.registerCurrentToken()
         } else {
             marketDataController.stop()
             signalController.clear()
+            notificationController.clear()
         }
     }
 
@@ -67,6 +77,11 @@ fun CoineProApp(
             is SessionState.SignedIn -> MainShell(
                 marketState = marketState,
                 signalController = signalController,
+                notificationController = notificationController,
+                launchSignalId = launchSignalId,
+                launchActivity = launchActivity,
+                onSignalLaunchConsumed = onSignalLaunchConsumed,
+                onActivityLaunchConsumed = onActivityLaunchConsumed,
                 onMarketRetry = marketDataController::retry,
                 onLogout = { scope.launch { sessionController.logout() } },
             )
@@ -88,6 +103,11 @@ fun CoineProApp(
 private fun MainShell(
     marketState: MarketDataState,
     signalController: SignalController,
+    notificationController: NotificationController,
+    launchSignalId: Long?,
+    launchActivity: Boolean,
+    onSignalLaunchConsumed: () -> Unit,
+    onActivityLaunchConsumed: () -> Unit,
     onMarketRetry: () -> Unit,
     onLogout: () -> Unit,
 ) {
@@ -95,6 +115,23 @@ private fun MainShell(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val isSignalDetail = currentRoute == SIGNAL_DETAIL_PATTERN
+
+    LaunchedEffect(launchSignalId) {
+        launchSignalId?.let { signalId ->
+            navController.navigate(signalDetailRoute(signalId)) { launchSingleTop = true }
+            onSignalLaunchConsumed()
+        }
+    }
+    LaunchedEffect(launchActivity) {
+        if (launchActivity) {
+            navController.navigate(AppDestination.ACTIVITY.route) {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+            onActivityLaunchConsumed()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -156,7 +193,12 @@ private fun MainShell(
             }
             composable(AppDestination.AI.route) { AiScreen() }
             composable(AppDestination.TOOLS.route) { ToolsScreen() }
-            composable(AppDestination.ACTIVITY.route) { ActivityScreen() }
+            composable(AppDestination.ACTIVITY.route) {
+                ActivityScreen(
+                    controller = notificationController,
+                    onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
+                )
+            }
         }
     }
 }
