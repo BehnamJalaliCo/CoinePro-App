@@ -70,6 +70,7 @@ dependencies {
     implementation(project(":core:notifications"))
     implementation(project(":core:execution"))
     implementation(project(":core:aisignal"))
+    implementation(project(":core:aivision"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:navigation"))
     implementation(project(":feature:auth"))
@@ -79,6 +80,7 @@ dependencies {
     implementation(project(":feature:connections"))
     implementation(project(":feature:execution"))
     implementation(project(":feature:ai"))
+    implementation(project(":feature:ai-vision"))
     implementation(project(":feature:tools"))
     implementation(project(":feature:activity"))
 
