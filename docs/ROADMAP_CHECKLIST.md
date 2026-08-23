@@ -36,7 +36,7 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - [x] Phase 12 — Activity / History / Performance
 - [x] Phase 13 — Offline / Reliability / Background Work
 - [x] Phase 14 — Security Hardening
-- [ ] Phase 15 — Quality / Performance / Accessibility
+- [x] Phase 15 — Quality / Performance / Accessibility
 - [ ] Phase 16 — Release Engineering
 - [ ] Phase 17 — Launch Readiness
 
@@ -53,8 +53,9 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - Phase 10: `feat/phase10-news-economic-calendar` → `cfef5ba5c20be8ccf189de137ca9e6a9a199def4` → Run #121 success
 - Phase 11: `feat/phase11-trader-tools` → `11d91b2cb90a484611a1b1c773187b7c2b2795e4` → Run #126 success
 - Phase 12 final closure: `feat/phase12-activity-history-performance` → `23f7113d83acdcfda74798380f04da1c7447be9f` → Run #132 success
-- Phase 13 code checkpoint: `feat/phase13-offline-reliability-background-work` → `fd8d56be5023b03ae136a5af633addaf3edee3a7` → Run #155 success
-- Phase 14 code checkpoint: `feat/phase14-security-hardening` → `ed568e8672ef1c112f874f85411a11e0c6e4b7fb` → Android Run #178 success + Security Run #10 success
+- Phase 13 final closure: `feat/phase13-offline-reliability-background-work` → `a6b664f035e047afd51515b3481452d57ecd1ee9` → Run #159 success
+- Phase 14 final closure: `feat/phase14-security-hardening` → `8abdb6909beb2468ec10c911ebd22ad8411a1b5f` → Android Run #184 success + Security Run #16 success
+- Phase 15 code checkpoint: `feat/phase15-quality-performance-accessibility` → `97d3ebc0165be27e86ad97dceef16494f7a7b428` → Android Run #208 success + Security Run #40 success
 
 ## Phase 12 delivered
 
@@ -109,7 +110,7 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - security vulnerability exception ledger is explicit and starts empty
 - debug and release service configuration use separate Gradle property namespaces
 - generated debug/release BuildConfig isolation is verified by Security CI with distinct markers
-- release is explicitly non-debuggable and Android CI now lints/assembles both debug and release
+- release is explicitly non-debuggable and Android CI lints/assembles both debug and release
 - execution HTTP 429 becomes an explicit rate-limit error; one user action makes one trading gateway call and no automatic write retry
 - existing auth, AI Signal, AI Vision and AI Assistant rate-limit/quota states remain explicit
 - execution and AI Vision upload threat models reviewed
@@ -117,11 +118,30 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - root/debug/tamper policy rejects fake client-only trust claims; future integrity signals must be server-evaluated risk inputs rather than local execution truth
 - local privacy/retention rules for session, Room cache, AI Assistant and AI Vision are documented
 - `docs/PHASE14_SECURITY_HARDENING_CONTRACT.md` is the security contract
-- Android CI Run #178 and Security CI Run #10 passed at the code checkpoint
-- final Phase 14 documentation/security-verifier Head must pass both CI workflows before Phase 15 is created
+- final Phase 14 Head `8abdb6909beb2468ec10c911ebd22ad8411a1b5f` passed Android CI Run #184 and Security CI Run #16
+
+## Phase 15 delivered
+
+- cumulative prior domain/controller/business-rule tests remain authoritative regression gates
+- four Compose UI tests cover cached stale truth in RTL, explicit network LIVE semantics, offline Retry behavior and 2× font-scale RTL quote reachability
+- Home content is scrollable so large text keeps critical financial information reachable
+- TalkBack quote semantics include instrument, symbol, stale/live state, price, source and market type
+- LTR financial values remain directionally isolated inside RTL at large font scale
+- reduced-motion CI gate rejects infinite/continuous Compose animation primitives in app/core/feature source
+- emulator accessibility tests run with Android system animations disabled
+- deterministic semantic/state assertions are the hard signature-state golden gate; hosted-emulator pixel rendering is not misrepresented as deterministic
+- ProfileInstaller and a checked-in Baseline Profile seed are present
+- dedicated benchmark module includes Baseline Profile generation and cold-start Macrobenchmark tooling
+- benchmark target app is release-like and non-debuggable; signing is only for installability of benchmark artifacts
+- benchmark instrumentation APK is explicitly signed for test installation
+- hosted CI runs benchmark dry-run smoke without converting emulator timings into performance claims
+- reference-device cold-start and jank target budget is documented, while measured pass/fail remains a physical-device release-candidate responsibility
+- benchmark/profile dependencies continue through Security CI OSV/secret/build-config checks
+- `docs/PHASE15_QUALITY_PERFORMANCE_ACCESSIBILITY_CONTRACT.md` documents the full quality, accessibility, reduced-motion and performance evidence boundaries
+- Phase 15 code checkpoint `97d3ebc0165be27e86ad97dceef16494f7a7b428` passed Android CI #208 and Security CI #40
 
 ## Current next milestone
 
-Phase 15 — Quality / Performance / Accessibility, after the final Phase 14 documentation Head is green.
+Phase 16 — Release Engineering, after the final Phase 15 documentation Head is green.
 
-There are 3 phases remaining: Phase 15 through Phase 17.
+There are 2 phases remaining: Phase 16 and Phase 17.
