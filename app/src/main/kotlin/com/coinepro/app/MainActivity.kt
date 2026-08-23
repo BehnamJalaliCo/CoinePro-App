@@ -107,7 +107,7 @@ class MainActivity : ComponentActivity() {
     private fun consumeDeepLink(intent: Intent?) {
         val uri = intent?.data ?: return
         when (uri.host) {
-            "signal" -> launchSignalId = uri.pathSegments.firstOrNull()?.toLongOrNull()
+            "signal" -> launchSignalId = positiveSignalId(uri.pathSegments.firstOrNull())
             "activity" -> launchActivity = true
         }
     }
