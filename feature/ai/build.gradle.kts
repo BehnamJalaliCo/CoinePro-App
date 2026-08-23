@@ -18,6 +18,7 @@ dependencies {
     implementation(project(":core:aisignal"))
     implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
+    implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)
