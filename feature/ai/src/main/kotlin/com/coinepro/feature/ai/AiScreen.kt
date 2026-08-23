@@ -49,6 +49,7 @@ fun AiScreen(
     controller: AiSignalController,
     onOpenSignal: (Long) -> Unit,
     onOpenVision: () -> Unit,
+    onOpenAssistant: () -> Unit,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var symbol by remember { mutableStateOf(AiSignalProductScope.defaultSymbols.first()) }
@@ -70,10 +71,26 @@ fun AiScreen(
             fontWeight = FontWeight.SemiBold,
         )
         Text(
-            text = "Request a server-generated market signal. Android never invents AI progress and never executes raw model text.",
+            text = "Request server-validated AI features. Android never invents AI progress and never executes raw model text.",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
         )
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("AI Assistant", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Ask about verified active signals, market context, news/calendar, risk and tools with visible source freshness.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(onClick = onOpenAssistant, modifier = Modifier.fillMaxWidth()) {
+                    Text("Open AI Assistant")
+                }
+            }
+        }
 
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(
