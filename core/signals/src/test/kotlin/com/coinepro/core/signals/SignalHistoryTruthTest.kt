@@ -61,8 +61,8 @@ class SignalHistoryTruthTest {
                 SignalMarketFilter.FOREX -> {
                     forexOffsets += offset
                     when (offset) {
-                        0 -> SignalPage((1L..49L).map(::signal), total = 60, serverTimeEpochMillis = null)
-                        50 -> SignalPage((51L..60L).map(::signal), total = 60, serverTimeEpochMillis = null)
+                        0 -> SignalPage((1L..49L).map(::historySignal), total = 60, serverTimeEpochMillis = null)
+                        50 -> SignalPage((51L..60L).map(::historySignal), total = 60, serverTimeEpochMillis = null)
                         else -> SignalPage(emptyList(), total = 60, serverTimeEpochMillis = null)
                     }
                 }
@@ -73,27 +73,27 @@ class SignalHistoryTruthTest {
             }
         }
 
-        override suspend fun detail(signalId: Long): TradingSignal = signal(signalId)
+        override suspend fun detail(signalId: Long): TradingSignal = historySignal(signalId)
     }
-
-    private fun signal(id: Long) = TradingSignal(
-        id = id,
-        market = MarketType.FOREX,
-        symbol = "XAUUSD",
-        direction = SignalDirection.BUY,
-        status = "closed",
-        timeframe = "H1",
-        strategy = null,
-        confidence = null,
-        entry = 100.0,
-        entryZone = null,
-        stopLoss = 99.0,
-        targets = emptyList(),
-        riskRewardTp1 = null,
-        currentQuote = null,
-        livePnlPercent = null,
-        hitTarget = null,
-        createdAt = "2026-08-20T10:00:00Z",
-        closedAt = "2026-08-20T11:00:00Z",
-    )
 }
+
+private fun historySignal(id: Long) = TradingSignal(
+    id = id,
+    market = MarketType.FOREX,
+    symbol = "XAUUSD",
+    direction = SignalDirection.BUY,
+    status = "closed",
+    timeframe = "H1",
+    strategy = null,
+    confidence = null,
+    entry = 100.0,
+    entryZone = null,
+    stopLoss = 99.0,
+    targets = emptyList(),
+    riskRewardTp1 = null,
+    currentQuote = null,
+    livePnlPercent = null,
+    hitTarget = null,
+    createdAt = "2026-08-20T10:00:00Z",
+    closedAt = "2026-08-20T11:00:00Z",
+)
