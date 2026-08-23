@@ -19,6 +19,12 @@ sealed interface SessionState {
     data class RevalidationRequired(val message: String) : SessionState
 }
 
+sealed interface LoginConfigState {
+    data object Loading : LoginConfigState
+    data class Ready(val botUsername: String) : LoginConfigState
+    data class Error(val message: String) : LoginConfigState
+}
+
 class SessionController(
     private val storage: SessionTokenStorage,
     private val memory: SessionMemory,
@@ -27,10 +33,10 @@ class SessionController(
 ) {
     private val started = AtomicBoolean(false)
     private val stateMutable = MutableStateFlow<SessionState>(SessionState.Loading)
-    private val botUsernameMutable = MutableStateFlow<String?>(null)
+    private val loginConfigStateMutable = MutableStateFlow<LoginConfigState>(LoginConfigState.Loading)
 
     val state: StateFlow<SessionState> = stateMutable.asStateFlow()
-    val botUsername: StateFlow<String?> = botUsernameMutable.asStateFlow()
+    val loginConfigState: StateFlow<LoginConfigState> = loginConfigStateMutable.asStateFlow()
 
     fun start() {
         if (!started.compareAndSet(false, true)) return
@@ -66,10 +72,22 @@ class SessionController(
     }
 
     suspend fun prepareLogin() {
-        if (botUsernameMutable.value != null) return
+        if (loginConfigStateMutable.value is LoginConfigState.Ready) return
+        loginConfigStateMutable.value = LoginConfigState.Loading
         when (val result = gateway.authConfig()) {
-            is AppResult.Success -> botUsernameMutable.value = result.value.botUsername
-            is AppResult.Failure -> Unit
+            is AppResult.Success -> {
+                val botUsername = result.value.botUsername.trim()
+                loginConfigStateMutable.value = if (botUsername.isNotEmpty()) {
+                    LoginConfigState.Ready(botUsername)
+                } else {
+                    LoginConfigState.Error("Telegram sign-in is not configured by the server.")
+                }
+            }
+            is AppResult.Failure -> {
+                loginConfigStateMutable.value = LoginConfigState.Error(
+                    "Could not load Telegram sign-in configuration. Check the server connection and retry.",
+                )
+            }
         }
     }
 
@@ -99,6 +117,7 @@ class SessionController(
         storage.clear()
         memory.setToken(null)
         stateMutable.value = SessionState.SignedOut
+        prepareLogin()
     }
 
     private fun UserProfile.asSignedIn() = SessionState.SignedIn(
