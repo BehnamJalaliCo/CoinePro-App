@@ -30,6 +30,8 @@ Response:
 
 The server validates authentication, entitlement, conversation ownership and all supplied context.
 
+Once Android has an active `conversation_id`, a later response must keep the same identifier. An unexpected conversation-id change is rejected and never appended as a trusted assistant reply.
+
 ## Structured context
 
 Recognized context kinds:
@@ -54,9 +56,11 @@ Android may offer `Open verified Signal` only for that structured positive `sign
 
 ## Freshness and provenance
 
-Freshness is never inferred from assistant wording. Android displays the structured freshness value returned by the server. Unknown or future freshness values degrade to `UNKNOWN` rather than being shown as fresh.
+Freshness is never inferred from assistant wording. Unknown or future freshness values degrade to `UNKNOWN` rather than being shown as fresh.
 
-Source and `as_of` are displayed when supplied. Missing provenance remains visibly absent and is never fabricated by Android.
+A context item reported as `fresh` is displayed as `FRESH` only when both a non-empty `source` and `as_of` timestamp are present. A reported fresh item with missing provenance is downgraded to `UNKNOWN`.
+
+Source and `as_of` are displayed when supplied. Missing provenance is never fabricated by Android.
 
 ## Conversation history policy
 
@@ -80,12 +84,14 @@ If the server declares account history, it may also return positive `retention_d
 - `403`: entitlement required
 - `422`: request rejected by server validation
 - `429`: rate limited
+- unexpected conversation identity change: turn rejected and explicit error shown
 - network/other failures: message remains visible as the user's attempted turn and an explicit error is shown; no fake assistant reply is inserted
 
 ## Exit safety
 
 - active signals/positions are never created from prose
-- context freshness/source is visible when available and unknown freshness is explicit
+- context freshness/source is visible and `FRESH` requires provenance
 - assistant has no direct execution endpoint
 - transcript persistence policy is explicit
+- conversation identity cannot silently switch mid-chat
 - session loss removes the local transcript
