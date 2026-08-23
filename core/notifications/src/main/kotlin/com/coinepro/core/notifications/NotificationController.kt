@@ -97,4 +97,6 @@ class NotificationController(
 
     suspend fun registerDevice(token: String, appVersion: String?, locale: String?): Boolean =
         gateway.registerDevice(token, appVersion, locale)
+
+    suspend fun unregisterDevice(token: String): Boolean = gateway.unregisterDevice(token)
 }
