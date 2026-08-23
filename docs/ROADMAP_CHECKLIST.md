@@ -35,7 +35,7 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - [x] Phase 11 — Trader Tools
 - [x] Phase 12 — Activity / History / Performance
 - [x] Phase 13 — Offline / Reliability / Background Work
-- [ ] Phase 14 — Security Hardening
+- [x] Phase 14 — Security Hardening
 - [ ] Phase 15 — Quality / Performance / Accessibility
 - [ ] Phase 16 — Release Engineering
 - [ ] Phase 17 — Launch Readiness
@@ -54,6 +54,7 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - Phase 11: `feat/phase11-trader-tools` → `11d91b2cb90a484611a1b1c773187b7c2b2795e4` → Run #126 success
 - Phase 12 final closure: `feat/phase12-activity-history-performance` → `23f7113d83acdcfda74798380f04da1c7447be9f` → Run #132 success
 - Phase 13 code checkpoint: `feat/phase13-offline-reliability-background-work` → `fd8d56be5023b03ae136a5af633addaf3edee3a7` → Run #155 success
+- Phase 14 code checkpoint: `feat/phase14-security-hardening` → `ed568e8672ef1c112f874f85411a11e0c6e4b7fb` → Android Run #178 success + Security Run #10 success
 
 ## Phase 12 delivered
 
@@ -98,8 +99,29 @@ Use this beside `PRODUCT_ROADMAP.md`; canonical phase SHA/CI mapping lives in `P
 - Phase 13 database/signals/background tests are included in cumulative Android CI
 - Run #155 passed tests, lint, app tests, debug build and APK upload at the code checkpoint
 
+## Phase 14 delivered
+
+- release HTTP logging disabled; debug logging is explicit BASIC only with sensitive headers redacted
+- cleartext disabled in manifest/network policy and Retrofit remains HTTPS-only
+- system-CA certificate strategy is explicit; certificate pinning is deferred until stable production domains plus primary/backup pins and rotation ownership exist
+- tracked-secret CI blocks common credential signatures, private keys, keystores and local secret/config files
+- actual resolved debug/release runtime dependencies are audited against OSV; no dependency-graph feature assumption is required
+- security vulnerability exception ledger is explicit and starts empty
+- debug and release service configuration use separate Gradle property namespaces
+- generated debug/release BuildConfig isolation is verified by Security CI with distinct markers
+- release is explicitly non-debuggable and Android CI now lints/assembles both debug and release
+- execution HTTP 429 becomes an explicit rate-limit error; one user action makes one trading gateway call and no automatic write retry
+- existing auth, AI Signal, AI Vision and AI Assistant rate-limit/quota states remain explicit
+- execution and AI Vision upload threat models reviewed
+- AI Vision re-encoding strips original EXIF metadata and app-owned camera cache captures are deleted in a finally path
+- root/debug/tamper policy rejects fake client-only trust claims; future integrity signals must be server-evaluated risk inputs rather than local execution truth
+- local privacy/retention rules for session, Room cache, AI Assistant and AI Vision are documented
+- `docs/PHASE14_SECURITY_HARDENING_CONTRACT.md` is the security contract
+- Android CI Run #178 and Security CI Run #10 passed at the code checkpoint
+- final Phase 14 documentation/security-verifier Head must pass both CI workflows before Phase 15 is created
+
 ## Current next milestone
 
-Phase 14 — Security Hardening, after the final Phase 13 documentation Head is green.
+Phase 15 — Quality / Performance / Accessibility, after the final Phase 14 documentation Head is green.
 
-There are 4 phases remaining: Phase 14 through Phase 17.
+There are 3 phases remaining: Phase 15 through Phase 17.
