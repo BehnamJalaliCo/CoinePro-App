@@ -9,6 +9,8 @@ data class SignalHistoryState(
     val coverageComplete: Boolean = true,
     val membershipRequired: Boolean = false,
     val error: String? = null,
+    val fromCache: Boolean = false,
+    val cacheStoredAtEpochMillis: Long? = null,
 )
 
 enum class PerformanceResultFilter {
