@@ -39,6 +39,18 @@ class SessionControllerTest {
     }
 
     @Test
+    fun networkFailureKeepsProtectedFeaturesLockedUntilRevalidation() = runTest {
+        val storage = FakeStorage("existing")
+        val controller = controller(
+            storage,
+            FakeGateway(me = AppResult.Failure(ErrorKind.NETWORK)),
+        )
+        controller.restore()
+        assertTrue(controller.state.value is SessionState.RevalidationRequired)
+        assertEquals("existing", storage.token)
+    }
+
+    @Test
     fun freeUserDoesNotReceivePaidEntitlement() = runTest {
         val controller = controller(FakeStorage("token"), FakeGateway(me = AppResult.Success(profile())))
         controller.restore()
