@@ -1,0 +1,126 @@
+name: Internal Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: Semantic version, for example 0.2.0
+        required: true
+        type: string
+      version_code:
+        description: Monotonic Android versionCode
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coinepro-play-internal
+  cancel-in-progress: false
+
+jobs:
+  staging-internal:
+    name: Build, sign, publish staging to Play internal
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: play-internal
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle 9.4.0
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.4.0"
+
+      - name: Validate release version
+        run: bash scripts/release/validate-version.sh "${{ inputs.version_name }}" "${{ inputs.version_code }}"
+
+      - name: Validate protected release inputs
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.COINEPRO_RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.COINEPRO_RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.COINEPRO_RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.COINEPRO_RELEASE_KEY_PASSWORD }}
+          STAGING_API_BASE_URL: ${{ secrets.COINEPRO_STAGING_API_BASE_URL }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          for name in KEYSTORE_BASE64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD STAGING_API_BASE_URL PLAY_SERVICE_ACCOUNT_JSON; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::Required play-internal secret is missing: $name"
+              exit 1
+            fi
+          done
+          if [[ "$STAGING_API_BASE_URL" != https://* ]]; then
+            echo "::error::COINEPRO_STAGING_API_BASE_URL must be HTTPS."
+            exit 1
+          fi
+
+      - name: Materialize upload keystore outside repository
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.COINEPRO_RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/coinepro-upload.jks"
+          chmod 600 "$RUNNER_TEMP/coinepro-upload.jks"
+          keytool -list -keystore "$RUNNER_TEMP/coinepro-upload.jks" -storepass "${{ secrets.COINEPRO_RELEASE_STORE_PASSWORD }}" >/dev/null
+
+      - name: Authenticate Android Publisher
+        id: google-auth
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+
+      - name: Build protected staging AAB
+        env:
+          ORG_GRADLE_PROJECT_COINEPRO_VERSION_NAME: ${{ inputs.version_name }}
+          ORG_GRADLE_PROJECT_COINEPRO_VERSION_CODE: ${{ inputs.version_code }}
+          ORG_GRADLE_PROJECT_COINEPRO_RELEASE_STORE_FILE: ${{ runner.temp }}/coinepro-upload.jks
+          ORG_GRADLE_PROJECT_COINEPRO_RELEASE_STORE_PASSWORD: ${{ secrets.COINEPRO_RELEASE_STORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_COINEPRO_RELEASE_KEY_ALIAS: ${{ secrets.COINEPRO_RELEASE_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_COINEPRO_RELEASE_KEY_PASSWORD: ${{ secrets.COINEPRO_RELEASE_KEY_PASSWORD }}
+          ORG_GRADLE_PROJECT_COINEPRO_STAGING_API_BASE_URL: ${{ secrets.COINEPRO_STAGING_API_BASE_URL }}
+          ORG_GRADLE_PROJECT_COINEPRO_STAGING_FIREBASE_PROJECT_ID: ${{ secrets.COINEPRO_STAGING_FIREBASE_PROJECT_ID }}
+          ORG_GRADLE_PROJECT_COINEPRO_STAGING_FIREBASE_APPLICATION_ID: ${{ secrets.COINEPRO_STAGING_FIREBASE_APPLICATION_ID }}
+          ORG_GRADLE_PROJECT_COINEPRO_STAGING_FIREBASE_API_KEY: ${{ secrets.COINEPRO_STAGING_FIREBASE_API_KEY }}
+          ORG_GRADLE_PROJECT_COINEPRO_STAGING_FIREBASE_SENDER_ID: ${{ secrets.COINEPRO_STAGING_FIREBASE_SENDER_ID }}
+        run: |
+          set -euo pipefail
+          gradle --no-daemon :app:bundleStaging
+          test -f app/build/outputs/bundle/staging/app-staging.aab
+          jarsigner -verify -strict app/build/outputs/bundle/staging/app-staging.aab
+
+      - name: Publish staging package to Play internal track
+        env:
+          PLAY_ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+        run: bash scripts/release/publish-play-internal.sh com.coinepro.app.staging app/build/outputs/bundle/staging/app-staging.aab "${{ inputs.version_code }}" "${{ inputs.version_name }}"
+
+      - name: Upload release evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coinepro-staging-${{ inputs.version_name }}-${{ inputs.version_code }}
+          path: |
+            app/build/outputs/bundle/staging/app-staging.aab
+            app/build/outputs/mapping/staging/mapping.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove runner signing material
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/coinepro-upload.jks"
