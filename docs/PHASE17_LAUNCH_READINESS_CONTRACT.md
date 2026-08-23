@@ -104,7 +104,7 @@ No live-money order is created merely to satisfy CI.
 
 ## Final Phase 1–17 reconciliation
 
-The current cumulative source was audited line-by-line across the major phase contracts. `docs/PHASE1_17_CROSS_PHASE_AUDIT.md` records the findings and fixes.
+The current cumulative source was audited across the major phase contracts. `docs/PHASE1_17_CROSS_PHASE_AUDIT.md` records the findings and fixes.
 
 The final audit reconciled:
 - roadmap module map ↔ actual Gradle modules;
@@ -117,7 +117,7 @@ The final audit reconciled:
 - Room market-cache product-scope validation;
 - Baseline Profile current theme class;
 - Phase 16 local version validation ↔ Play monotonicity authority;
-- staging app unit-test documentation ↔ actual CI.
+- staging validation documentation ↔ real supported `lintStaging` + `assembleStaging` tasks, with cumulative unit tests on supported debug variants.
 
 `scripts/quality/check-cross-phase-consistency.py` is a permanent Android CI gate so these reconciled invariants cannot silently drift again.
 
@@ -173,9 +173,9 @@ Only explicit evidence may move an item to `VERIFIED`. Failed or unavailable che
 ## CI and client gates
 
 Phase 17 continues and strengthens all Phase 16 gates:
-- cumulative core/feature unit tests;
-- debug/staging/release lint;
-- debug and staging app unit tests;
+- cumulative core/feature unit tests on supported debug test variants;
+- debug/staging/release lint where supported;
+- staging validation through real `lintStaging` and `assembleStaging` tasks;
 - debug/staging/release/benchmark assembly;
 - Compose accessibility tests including launch-readiness UI coverage;
 - benchmark wiring smoke;
@@ -184,6 +184,8 @@ Phase 17 continues and strengthens all Phase 16 gates:
 - resolved dependency OSV audit;
 - BuildConfig environment isolation;
 - deterministic Phase 1–17 repository consistency gate.
+
+The AGP configuration does not expose `:app:testStagingUnitTest`; no closure criterion depends on a nonexistent task.
 
 ## Completion model
 
