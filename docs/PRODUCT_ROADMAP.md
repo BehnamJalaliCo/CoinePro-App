@@ -1,8 +1,8 @@
 # CoinePro Android Product Roadmap
 
-Status: Phases 0 through 12 complete — Phase 13 next after final Phase 12 closure CI
+Status: Phases 0 through 13 delivered at validated code checkpoints — Phase 14 starts after the final Phase 13 documentation Head is green.
 
-The canonical phase-to-branch/SHA/CI mapping lives in `PHASE_INDEX.md`.
+The canonical phase-to-branch/SHA/CI mapping lives in `PHASE_INDEX.md`. Detailed truth/API/security rules live in each phase contract document.
 
 ## Repository and delivery model
 
@@ -10,7 +10,7 @@ The canonical phase-to-branch/SHA/CI mapping lives in `PHASE_INDEX.md`.
 - `main` is the stable base.
 - `bootstrap/android-foundation` is the cumulative integration branch.
 - Every phase branch, PR, CI check and phase ledger entry for this project stays in this repository.
-- Completed phase checkpoints are recorded in `PHASE_INDEX.md`.
+- PRs remain Draft and unmerged unless merge is explicitly requested.
 - Production vendor credentials, broker connectivity, IP whitelisting and real external smoke testing remain Phase 17 unless explicitly moved earlier.
 - Android never stores production vendor/broker secrets in the repository.
 
@@ -24,246 +24,162 @@ Native Kotlin/Jetpack Compose app, Gradle/version catalog, GitHub Actions lint/t
 ### Phase 1 — Design System & Architecture Skeleton
 Status: Complete
 
-Design direction, core design/model/common/network/datastore/navigation boundaries, five-destination shell (Home / Signals / AI / Tools / Activity), RTL layout conventions and LTR financial formatting.
+Core module boundaries, five-destination shell (Home / Signals / AI / Tools / Activity), RTL conventions and LTR financial formatting.
 
 ### Phase 2 — Authentication, Session & Entitlements
 Status: Complete
 
-Milestone: `feat/android-mobile-auth` → `12cc837ac02e378f3ca4452a95bfed224ad3222b` → Run #11 success.
-
-Keystore-backed session protection, authenticated profile revalidation, Telegram auth bridge, token redaction, unauthorized clearing, entitlement truth from server profile and no invented refresh-token flow.
+Keystore-backed session protection, authenticated profile revalidation, Telegram auth bridge, token redaction, unauthorized clearing and server-truth entitlements.
 
 ### Phase 3 — Realtime Market Data Foundation
 Status: Complete
 
-Milestone: `feat/phase3-realtime-market-data` → `7158a78ef6ee378ec531576bf7d9364816d25b56` → Run #14 success.
-
-Normalized CoinePro HTTP/WebSocket quote contract, resilient reconnect/fallback, stale/fresh state, source timestamps, product-scope validation and no fake `LIVE` state.
+Normalized HTTP/WebSocket quote contract, reconnect/fallback, stale/fresh state, source timestamps, product-scope validation and no fake `LIVE` state.
 
 ### Phase 4 — Signals Core
 Status: Complete
 
-Milestone: `feat/phase4-signals-core` → `adbefeb33b1e39eddd65f28ddd89ad40b70bafdb` → Run #17 success.
-
-Typed Signal list/detail flow, Active/Recent/Closed filters, Entry/SL/TP/R:R/confidence, safe missing fields, current/last quote state and product scope locked to Forex V1 `XAUUSD/XAGUSD` plus Crypto `*USDT`.
+Typed Signal list/detail flow, Active/Recent/Closed states, Entry/SL/TP/R:R/confidence, missing-field safety and product scope locked to Forex V1 `XAUUSD/XAGUSD` plus Crypto `*USDT`.
 
 ### Phase 5 — Alerts & Push
 Status: Complete
 
-Milestone: `feat/phase5-alerts-push` → `60dfd64259ec92775b38288f2a4dc8e4c50169e9` → Run #41 success.
-
-Notification Center, preferences, price alerts, FCM token lifecycle, native messaging service/channel, Android 13+ permission flow, deterministic deep links and validated alert payloads.
+Notification Center, push preferences, price alerts, FCM lifecycle, native notification channels, permission flow and validated deep links/payloads.
 
 ### Phase 6 — Connections & Signal Execution Bridge
 Status: Complete
 
-Audited milestone: `feat/phase6-signal-execution` → `d8173f79df1aee18b169e8ccbbdcd7c776f7fa26` → Run #86 success.
-
-MT5/LBank connection state, signal-scoped execution confirmation, quantity validation, idempotency request IDs, explicit provider-truth execution states, active executed signals, duplicate-close prevention, safe LBank close gating and no Android persistence of trading credentials.
+MT5/LBank connection state, signal-scoped execution confirmation, quantity validation, idempotency request IDs, server/provider-truth execution states and duplicate-close protection.
 
 ## Phase 7 — AI Generated Market Signal
 
 Status: Complete
 
-Milestone: `feat/phase7-ai-generated-market-signal` → `f718d9ad310ab37d4b109297c4fadcb33e287775` → Run #91 success.
-
 Delivered:
-- `core:aisignal` domain, Retrofit gateway and server-truth controller
-- explicit authenticated contract in `docs/PHASE7_AI_SIGNAL_CONTRACT.md`
-- product-scoped symbol controls
-- timeframe controls: M15 / H1 / H4 / D1
-- risk controls: low / medium / high
-- server-derived quota and entitlement states
-- exact queued / running / done / failed / expired lifecycle
-- polling based only on server status; no fake completion percentage
-- failed/expired recovery
-- strict structured-result validation
-- result must be `validated=true` and match request symbol/timeframe
-- invalid direction/prices/targets/confidence/product scope are blocked
+- typed AI Signal job contract and server-truth lifecycle
+- product/timeframe/risk controls and entitlement/quota state
+- strict structured result validation
+- no fake progress or client-invented completion
 - raw model text is never executable
-- valid result can only open its persisted positive `signal_id`
-- no direct execution from AI screen; action remains Signal Detail → Execution
+- only persisted positive server `signal_id` can continue to Signal Detail
+- no direct execution from the AI screen
+
+Contract: `docs/PHASE7_AI_SIGNAL_CONTRACT.md`
 
 ## Phase 8 — AI Vision Flagship
 
 Status: Complete
 
-Final audited milestone: `feat/phase8-ai-vision` → `85ed5a681b9f3a548fdc1d30faeea8dacb3d88b1` → Run #101 success.
-
 Delivered:
-- `core:aivision` typed multimodal upload/job/result contract
-- `feature:ai-vision` native CameraX and picker UI
-- back-camera capture with camera hardware optional
-- Android document/gallery picker without broad storage permission
-- screenshot/image upload
-- EXIF orientation normalization and outbound metadata stripping through JPEG re-encoding
-- temporary CameraX cache capture deleted after preparation, including error paths
-- maximum 2048 px image edge with adaptive compression under 6 MB
-- exact queued / running / done / failed / expired server-truth lifecycle
-- explicit actionable / low-confidence / unknown / unsupported assessments
-- structured fields: symbol/timeframe/confidence, trend/bias, market structure/setup, direction, entry zone, stop loss, TP1/TP2/TP3, risk and concise reasoning
-- strict result validation, including trade geometry and product scope
-- low-confidence/unknown/unsupported outputs cannot carry an executable signal
-- actionable output requires `validated=true` and a positive persisted server `signal_id`
-- AI Vision never executes directly; eligible action opens the persisted Signal flow
-- privacy/trust/API contract in `docs/PHASE8_AI_VISION_CONTRACT.md`
-- Phase 8 mapper/controller tests in cumulative Android CI
+- CameraX + gallery/document input
+- orientation normalization, resize/compression and outbound EXIF stripping
+- structured server-truth AI Vision lifecycle
+- actionable/low-confidence/unknown/unsupported states
+- strict trade geometry/product validation
+- only validated persisted server Signal can become actionable
+- AI Vision never executes directly
 
-Exit state:
-- EXIF/privacy rules defined and camera temp files do not linger after preprocessing
-- unclear/unsupported images have explicit state
-- no fake multimodal progress
-- raw or unvalidated model output cannot execute
-- Run #101 passed Phase 8 tests, all prior core tests, app lint, app tests, debug assembly and APK upload
+Contract: `docs/PHASE8_AI_VISION_CONTRACT.md`
 
 ## Phase 9 — AI Assistant
 
 Status: Complete
 
-Final audited milestone: `feat/phase9-ai-assistant` → `3d158c9d0fc72724e9bbf402ae81540300950cc3` → Run #114 success.
-
 Delivered:
-- `core:aiassistant` typed contextual-chat domain, authenticated Retrofit gateway and in-memory controller
-- `feature:ai-assistant` native Compose chat surface linked from the AI hub
-- authenticated `POST /user/ai/assistant/messages` client contract
-- structured context requests for active signals, market, news, calendar, risk and tools
-- structured context cards with explicit source, as-of and freshness where supplied
-- unknown/future freshness values degrade to `UNKNOWN`
-- reported `FRESH` context requires non-empty source and as-of provenance or is downgraded to `UNKNOWN`
-- active-signal context requires a positive persisted server `signal_id`
-- non-signal context cannot carry a signal ID
-- Assistant prose never creates active positions, active signals, execution state or trade truth
-- only verified active-signal context can navigate to the persisted Signal flow; there is no direct Assistant execution route
-- established conversation identity cannot silently switch mid-chat
-- transcript is memory-only on Android and clears on logout/session loss or New chat
-- server history policy (`ephemeral`, `account`, unknown) and positive retention days are displayed explicitly
-- entitlement-required, server-validation, rate-limit and generic failure states are explicit
-- failed turns never insert a fake assistant reply
-- trust/history/API contract documented in `docs/PHASE9_AI_ASSISTANT_CONTRACT.md`
-- mapper/controller tests cover context trust and conversation lifecycle
+- typed contextual chat with structured context scopes
+- source/as-of/freshness provenance
+- stable conversation identity and explicit server history policy
+- no invented positions, signals or execution state
+- only verified active-signal context can open a persisted Signal
+- transcript clears on logout/session loss
 
-Exit state:
-- no invented active positions or signals
-- relevant context freshness/provenance is explicit and never upgraded locally
-- conversation-history policy is explicit
-- Run #114 passed Phase 9 tests, all prior core tests, app lint, app tests, debug assembly and APK upload
+Contract: `docs/PHASE9_AI_ASSISTANT_CONTRACT.md`
 
 ## Phase 10 — News & Economic Calendar
 
 Status: Complete
 
-Final milestone: `feat/phase10-news-economic-calendar` → `cfef5ba5c20be8ccf189de137ca9e6a9a199def4` → Run #121 success.
-
 Delivered:
-- `core:marketintel` typed normalized news/calendar domain, Retrofit gateway and shared controller
-- authenticated `GET /user/market-intelligence` client contract
-- `feature:news` advanced Compose market-news feed
-- source publication timestamp, structured sentiment, structured impact and stale truth
-- `feature:calendar` advanced economic-event timeline
-- Low / Medium / High / Unknown impact remains explicit
-- actual / forecast / previous values only when supplied
-- Gold / Silver / Crypto structured relevance and filters
-- required event/publication timestamps normalize from ISO-8601 into `Instant`; invalid timestamps are rejected rather than guessed
-- missing stale truth defaults to stale
-- unknown impact/sentiment never becomes certainty locally
-- article URL data is accepted only for HTTPS hosts
-- exact-HIGH, fresh, relevant economic events can attach a risk-context warning to active Signal Detail inside the defined time window
-- warning never creates a prediction, direction or execution state
-- News and Calendar routes are available from Tools
-- market-intelligence state clears on sign-out/session loss
-- native Compose state/list/card motion follows platform animator-duration scale and is driven only by real data-state changes
-- no fake live pulse, count-up price or urgency animation
-- API/truth/motion contract documented in `docs/PHASE10_MARKET_INTELLIGENCE_CONTRACT.md`
-- `core:marketintel` tests are part of cumulative Android CI
+- typed normalized news/calendar domain
+- strict timestamp parsing and stale truth
+- explicit impact/sentiment unknown states
+- Gold/Silver/Crypto relevance filters
+- HTTPS-only article URL data
+- high-impact active-signal risk context without prediction or execution instruction
+- News/Calendar routes from Tools
 
-Exit state:
-- event/publication time truth is normalized and unit-tested
-- stale/unknown impact is never presented as certainty
-- Run #121 passed Phase 10 tests, all prior core tests, app lint, app tests, debug assembly and APK upload
+Contract: `docs/PHASE10_MARKET_INTELLIGENCE_CONTRACT.md`
 
 ## Phase 11 — Trader Tools
 
 Status: Complete
 
-Final code milestone: `feat/phase11-trader-tools` → `11d91b2cb90a484611a1b1c773187b7c2b2795e4` → Run #126 success.
-
 Delivered:
-- premium Trader Toolkit dashboard in existing `feature:tools`
-- Risk Calculator with deterministic account-risk math
-- Position Size / Lot Calculator with explicit pip-value assumptions
-- Risk / Reward Calculator with strict long/short level geometry
-- Profit Calculator with explicit lots and contract size
-- Pip Calculator with explicit pip size and pip value per lot
-- Crypto PnL Calculator for USDT-quoted pairs with entry and exit fees
-- Compound Calculator with arithmetic-only growth assumptions
-- Drawdown Simulator with compounded loss and recovery requirement
-- formula, units, precision and assumptions visible in the UI
-- designed missing-input, validation-error and result states plus per-tool reset
-- zero, negative, invalid and non-finite input handling per formula contract
-- successful results pass a final finite-number guard so `NaN` / Infinity cannot enter UI
-- financial outputs use deterministic Latin precision, Unicode LTR isolates and Compose LTR text direction for RTL safety
-- calculator engine remains local and fully separate from execution; no calculator can send an order
-- connected News, Calendar and Connections remain separate source-backed surfaces
-- no fake realtime, AI progress, broker state, execution state, urgency animation or price count-up
-- `docs/PHASE11_TRADER_TOOLS_CONTRACT.md` documents formulas, assumptions, precision and truth boundaries
-- `:feature:tools:testDebugUnitTest` added to cumulative Android CI
+- premium Trader Toolkit
+- risk, position-size, R:R, profit, pip, crypto PnL, compound and drawdown calculators
+- deterministic finite-number validation
+- visible formulas/units/assumptions/precision
+- explicit LTR financial output inside RTL
+- calculators remain fully isolated from execution
 
-Exit state:
-- all eight formula families and important invalid-input paths are unit-tested
-- assumptions and display precision are documented
-- RTL financial LTR isolation is unit-tested
-- Run #126 passed Phase 11 tests, all prior cumulative core tests, app lint, app tests, debug assembly and APK upload
+Contract: `docs/PHASE11_TRADER_TOOLS_CONTRACT.md`
 
 ## Phase 12 — Activity, History & Performance
 
-Status: Complete at code checkpoint; final documentation Head CI pending
+Status: Complete
 
-Code milestone: `feat/phase12-activity-history-performance` → `d592401d6a775254f60850cfc6f2772d4483ee6f` → Run #131 success.
+Final closure milestone: `feat/phase12-activity-history-performance` → `23f7113d83acdcfda74798380f04da1c7447be9f` → Run #132 success.
 
 Delivered:
-- premium Activity / Performance dashboard built around server evidence rather than inferred account state
-- paginated CLOSED signal history across Forex and Crypto using the existing authenticated signals contract
-- explicit loaded count, server expected total and incomplete-coverage disclosure
-- pagination offset based on server pages even when Android rejects invalid rows
-- market / exact instrument / explicit result filters over loaded closed history
-- total loaded signals with distinct Win / Loss / Breakeven / Result missing states
-- Win rate based only on finite explicit `result.pnlUsd`
-- TP hit rate based only on explicit nullable target-hit evidence; missing target-hit state remains missing
-- SL rate based only on explicit close-reason evidence
-- average planned R:R based only on finite positive server-provided `riskRewardTp1`
-- zero, missing denominator, no records and no filter matches remain distinct
-- losses receive equal visual prominence
-- full server execution ledger remains separate from signal performance
-- no inferred ROI, equity, account return, broker P&L or execution lifecycle
-- financial values render with explicit LTR direction inside RTL layouts
-- existing alerts, push preferences and notifications remain in Activity
-- no performance calculator or history action can submit an order
-- truth/evidence/coverage contract documented in `docs/PHASE12_ACTIVITY_HISTORY_PERFORMANCE_CONTRACT.md`
-- denominator, missing-evidence, filtering, coverage and pagination behavior unit-tested in `core:signals`
+- premium server-evidence Activity / Performance dashboard
+- paginated CLOSED signal history across Forex and Crypto
+- explicit loaded/expected counts and incomplete-coverage state
+- market/instrument/result filters over loaded history
+- Win/Loss/Breakeven/Missing classifications from explicit evidence only
+- TP/SL rates with explicit denominators and nullable target-hit evidence
+- average planned R:R from finite positive server evidence
+- full server execution ledger kept separate from performance
+- no inferred ROI, equity, broker P&L or execution outcome
+- LTR financial values inside RTL layouts
 
-Exit state:
-- Phase 12 code Head passed cumulative core tests, app lint, app tests, debug assembly and APK upload in Run #131
-- final phase closure requires this documentation Head to pass the same Android CI gate
+Contract: `docs/PHASE12_ACTIVITY_HISTORY_PERFORMANCE_CONTRACT.md`
 
 ## Phase 13 — Offline, Reliability & Background Work
 
-Status: Next after Phase 12 final closure CI
+Status: Complete at validated code checkpoint; final documentation Head CI pending.
 
-Deliverables:
-- Room cache for safe read models
-- WorkManager durable sync
-- offline/stale states
-- app-resume synchronization
-- retry policy and idempotent background operations
+Code milestone: `feat/phase13-offline-reliability-background-work` → `fd8d56be5023b03ae136a5af633addaf3edee3a7` → Run #155 success.
 
-Exit criteria:
-- offline mode never pretends execution succeeded
-- stale market data remains explicit
-- background work respects battery/network constraints
+Delivered:
+- `core:database` Room 2.8.4 safe read-cache boundary
+- cached market snapshots that always restore as explicit stale/cache evidence
+- cache product-scope and finite-number validation
+- CLOSED signal-history cache with live quote/live P&L authority intentionally removed
+- nullable target-hit evidence preserved through cache round-trips
+- cache-aware signal-history fallback with explicit provenance, storage time and refresh errors
+- successful server refresh replaces cached history
+- membership loss/logout clears account-scoped history cache
+- authenticated app-resume synchronization across server-backed read surfaces
+- WorkManager 2.11.2 durable **read-only** synchronization
+- periodic network + battery-not-low constraints and immediate network constraint
+- unique work scheduling plus update/replace semantics for scheduler idempotency
+- exponential retry for transient read failures
+- missing session is a no-op, not a retry loop
+- process-death worker hydration from existing secure token storage into temporary memory only
+- HTTP 401 expires session state instead of retrying stale credentials
+- HiltWorkerFactory on-demand WorkManager initialization without lint suppression
+- no execution, close, broker write, AI job creation or fake provider state from background work
+- Phase 13 reliability tests included in cumulative Android CI
+
+Contract: `docs/PHASE13_OFFLINE_RELIABILITY_BACKGROUND_CONTRACT.md`
+
+Exit state:
+- code checkpoint Run #155 passed cumulative tests, lint, app tests, debug assembly and APK upload
+- final Phase 13 closure requires the documentation Head to pass the same Android CI gate
 
 ## Phase 14 — Security Hardening
 
-Status: Planned
+Status: Next after Phase 13 final closure CI
 
 Deliverables:
 - secret scan in CI
@@ -276,9 +192,10 @@ Deliverables:
 - privacy/data-retention documentation
 
 Exit criteria:
-- no secrets in artifacts/logs
+- no secrets in repository artifacts/logs
 - execution and image-upload threat model reviewed
 - production credentials isolated from debug builds
+- release network policy is explicit and testable
 
 ## Phase 15 — Quality, Performance & Accessibility
 
@@ -386,12 +303,13 @@ Create modules when boundaries become useful; do not create empty architecture f
 4. Realtime quote schema — normalized in Phase 3; production external activation in Phase 17
 5. FCM device + alert schema — client implemented in Phase 5
 6. Signal-scoped execution contract — client safety boundary implemented in Phase 6; live provider validation Phase 17
-7. AI Signal job schema — client implemented in Phase 7 with server-truth lifecycle and persisted-Signal trust boundary
-8. AI Vision upload/job/result schema — client implemented in Phase 8 with image privacy preprocessing, structured assessments and persisted-Signal trust boundary
-9. AI Assistant contextual chat schema — client implemented in Phase 9 with structured context provenance, stable conversation identity and explicit history policy
-10. News/calendar timestamps and impact schema — client implemented in Phase 10 with strict timestamp/stale/unknown truth boundaries and active-signal high-impact risk context
-11. Trader Tools formulas — local deterministic Phase 11 contract; no execution side effect and explicit numeric/precision/RTL boundaries
-12. Activity/performance evidence — Phase 12 closed-signal and execution-history contract with explicit denominators, coverage truth and no ROI/equity inference
+7. AI Signal job schema — Phase 7 server-truth lifecycle and persisted-Signal trust boundary
+8. AI Vision upload/job/result schema — Phase 8 privacy preprocessing and persisted-Signal trust boundary
+9. AI Assistant contextual chat schema — Phase 9 context provenance, stable conversation identity and explicit history policy
+10. News/calendar timestamps and impact schema — Phase 10 timestamp/stale/unknown truth boundaries and active-signal risk context
+11. Trader Tools formulas — Phase 11 local deterministic contract with no execution side effect
+12. Activity/performance evidence — Phase 12 explicit denominators, history coverage truth and no ROI/equity inference
+13. Offline/reliability boundary — Phase 13 safe read caches, explicit stale/cache provenance, read-only durable sync, retry/idempotency rules and no background execution side effects
 
 ## Definition of Done
 
