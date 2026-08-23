@@ -16,10 +16,17 @@ import com.coinepro.core.auth.NetworkAuthGateway
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionMemory
 import com.coinepro.core.auth.SessionTokenStorage
+import com.coinepro.core.database.CoineProDatabase
+import com.coinepro.core.database.CoineProDatabaseFactory
+import com.coinepro.core.database.RoomMarketDataCache
+import com.coinepro.core.database.RoomSignalHistoryCache
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.ExecutionGateway
 import com.coinepro.core.execution.NetworkExecutionGateway
+import com.coinepro.core.marketdata.MarketDataCache
 import com.coinepro.core.marketdata.MarketDataController
+import com.coinepro.core.marketdata.MarketSnapshotGateway
+import com.coinepro.core.marketdata.NetworkMarketSnapshotGateway
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.marketintel.MarketIntelGateway
 import com.coinepro.core.marketintel.NetworkMarketIntelGateway
@@ -31,6 +38,7 @@ import com.coinepro.core.security.KeystoreSessionTokenStorage
 import com.coinepro.core.signals.NetworkSignalGateway
 import com.coinepro.core.signals.SignalController
 import com.coinepro.core.signals.SignalGateway
+import com.coinepro.core.signals.SignalHistoryCache
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -69,11 +77,31 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun database(@ApplicationContext context: Context): CoineProDatabase =
+        CoineProDatabaseFactory.create(context)
+
+    @Provides
+    @Singleton
+    fun marketDataCache(database: CoineProDatabase): MarketDataCache =
+        RoomMarketDataCache(database.cacheDao())
+
+    @Provides
+    @Singleton
+    fun signalHistoryCache(database: CoineProDatabase): SignalHistoryCache =
+        RoomSignalHistoryCache(database.cacheDao())
+
+    @Provides
+    @Singleton
     fun authGateway(retrofit: Retrofit): AuthGateway = NetworkAuthGateway.create(retrofit)
 
     @Provides
     @Singleton
     fun signalGateway(retrofit: Retrofit): SignalGateway = NetworkSignalGateway.create(retrofit)
+
+    @Provides
+    @Singleton
+    fun marketSnapshotGateway(retrofit: Retrofit): MarketSnapshotGateway =
+        NetworkMarketSnapshotGateway.create(retrofit)
 
     @Provides
     @Singleton
@@ -124,14 +152,21 @@ object AppModule {
         retrofit: Retrofit,
         client: OkHttpClient,
         scope: CoroutineScope,
-    ): MarketDataController = MarketDataController(retrofit, client, scope)
+        cache: MarketDataCache,
+    ): MarketDataController = MarketDataController(
+        retrofit = retrofit,
+        client = client,
+        scope = scope,
+        cache = cache,
+    )
 
     @Provides
     @Singleton
     fun signalController(
         gateway: SignalGateway,
         scope: CoroutineScope,
-    ): SignalController = SignalController(gateway, scope)
+        historyCache: SignalHistoryCache,
+    ): SignalController = SignalController(gateway, scope, historyCache)
 
     @Provides
     @Singleton
