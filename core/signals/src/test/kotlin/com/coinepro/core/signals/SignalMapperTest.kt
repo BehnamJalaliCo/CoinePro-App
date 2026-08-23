@@ -59,4 +59,18 @@ class SignalMapperTest {
     fun `non actionable direction is rejected instead of displayed as a trade`() {
         assertNull(SignalDto(id = 1, market = "forex", symbol = "XAUUSD", direction = "neutral").toDomain(0L))
     }
+
+    @Test
+    fun `forex signal outside gold and silver scope is rejected`() {
+        assertNull(SignalDto(id = 1, market = "forex", symbol = "EURUSD", direction = "BUY").toDomain(0L))
+        assertTrue(isProductSignalSymbol(MarketType.FOREX, "XAUUSD"))
+        assertTrue(isProductSignalSymbol(MarketType.FOREX, "XAGUSD"))
+    }
+
+    @Test
+    fun `crypto signal must use lbank style usdt pair`() {
+        assertNull(SignalDto(id = 1, market = "crypto", symbol = "BTCUSD", direction = "BUY").toDomain(0L))
+        assertTrue(isProductSignalSymbol(MarketType.CRYPTO, "BTCUSDT"))
+        assertFalse(isProductSignalSymbol(MarketType.CRYPTO, "USDT"))
+    }
 }
