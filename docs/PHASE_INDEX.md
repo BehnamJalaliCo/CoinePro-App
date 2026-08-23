@@ -13,22 +13,23 @@ This file is the canonical map between delivery phases, Git branches, milestone 
 
 ## Completed milestones
 
-| Phase | Scope | Milestone branch | Validated commit | Android CI |
+| Phase | Scope | Milestone branch | Validated commit | Validation |
 | --- | --- | --- | --- | --- |
 | 0 | Foundation bootstrap | `bootstrap/android-foundation` | foundation history | green |
 | 1 | Design system + architecture skeleton | `bootstrap/android-foundation` | architecture history | green |
-| 2 | Authentication / Session / Entitlements | `feat/android-mobile-auth` | `12cc837ac02e378f3ca4452a95bfed224ad3222b` | Run #11 — success |
-| 3 | Realtime Market Data Foundation | `feat/phase3-realtime-market-data` | `7158a78ef6ee378ec531576bf7d9364816d25b56` | Run #14 — success |
-| 4 | Signals Core | `feat/phase4-signals-core` | `adbefeb33b1e39eddd65f28ddd89ad40b70bafdb` | Run #17 — success |
-| 5 | Alerts & Push | `feat/phase5-alerts-push` | `60dfd64259ec92775b38288f2a4dc8e4c50169e9` | Run #41 — success |
-| 6 | Connections & Signal Execution Bridge | `feat/phase6-signal-execution` | `d8173f79df1aee18b169e8ccbbdcd7c776f7fa26` | Run #86 — success |
-| 7 | AI Generated Market Signal | `feat/phase7-ai-generated-market-signal` | `f718d9ad310ab37d4b109297c4fadcb33e287775` | Run #91 — success |
-| 8 | AI Vision Flagship | `feat/phase8-ai-vision` | `85ed5a681b9f3a548fdc1d30faeea8dacb3d88b1` | Run #101 — success |
-| 9 | AI Assistant | `feat/phase9-ai-assistant` | `3d158c9d0fc72724e9bbf402ae81540300950cc3` | Run #114 — success |
-| 10 | News & Economic Calendar | `feat/phase10-news-economic-calendar` | `cfef5ba5c20be8ccf189de137ca9e6a9a199def4` | Run #121 — success |
-| 11 | Trader Tools | `feat/phase11-trader-tools` | `11d91b2cb90a484611a1b1c773187b7c2b2795e4` | Run #126 — success |
-| 12 | Activity, History & Performance | `feat/phase12-activity-history-performance` | `23f7113d83acdcfda74798380f04da1c7447be9f` | Run #132 — success |
-| 13 | Offline, Reliability & Background Work | `feat/phase13-offline-reliability-background-work` | `fd8d56be5023b03ae136a5af633addaf3edee3a7` | Run #155 — success |
+| 2 | Authentication / Session / Entitlements | `feat/android-mobile-auth` | `12cc837ac02e378f3ca4452a95bfed224ad3222b` | Android Run #11 — success |
+| 3 | Realtime Market Data Foundation | `feat/phase3-realtime-market-data` | `7158a78ef6ee378ec531576bf7d9364816d25b56` | Android Run #14 — success |
+| 4 | Signals Core | `feat/phase4-signals-core` | `adbefeb33b1e39eddd65f28ddd89ad40b70bafdb` | Android Run #17 — success |
+| 5 | Alerts & Push | `feat/phase5-alerts-push` | `60dfd64259ec92775b38288f2a4dc8e4c50169e9` | Android Run #41 — success |
+| 6 | Connections & Signal Execution Bridge | `feat/phase6-signal-execution` | `d8173f79df1aee18b169e8ccbbdcd7c776f7fa26` | Android Run #86 — success |
+| 7 | AI Generated Market Signal | `feat/phase7-ai-generated-market-signal` | `f718d9ad310ab37d4b109297c4fadcb33e287775` | Android Run #91 — success |
+| 8 | AI Vision Flagship | `feat/phase8-ai-vision` | `85ed5a681b9f3a548fdc1d30faeea8dacb3d88b1` | Android Run #101 — success |
+| 9 | AI Assistant | `feat/phase9-ai-assistant` | `3d158c9d0fc72724e9bbf402ae81540300950cc3` | Android Run #114 — success |
+| 10 | News & Economic Calendar | `feat/phase10-news-economic-calendar` | `cfef5ba5c20be8ccf189de137ca9e6a9a199def4` | Android Run #121 — success |
+| 11 | Trader Tools | `feat/phase11-trader-tools` | `11d91b2cb90a484611a1b1c773187b7c2b2795e4` | Android Run #126 — success |
+| 12 | Activity, History & Performance | `feat/phase12-activity-history-performance` | `23f7113d83acdcfda74798380f04da1c7447be9f` | Android Run #132 — success |
+| 13 | Offline, Reliability & Background Work | `feat/phase13-offline-reliability-background-work` | `a6b664f035e047afd51515b3481452d57ecd1ee9` | Android Run #159 — success |
+| 14 | Security Hardening | `feat/phase14-security-hardening` | `ed568e8672ef1c112f874f85411a11e0c6e4b7fb` | Android Run #178 + Security Run #10 — success |
 
 ## Phase 1–6 audit closure
 
@@ -215,7 +216,7 @@ Final Phase 12 closure:
 
 ## Phase 13 status
 
-**Closed / Complete at code checkpoint; final documentation Head validation pending after this closure update.**
+**Closed / Complete.**
 
 Validated behavior:
 
@@ -239,17 +240,47 @@ Validated behavior:
 - Phase 13 cache, controller and background reliability tests are included in cumulative Android CI
 - background work never executes/closes a signal, submits broker writes, creates AI jobs or fabricates execution success
 
-Phase 13 code checkpoint:
+Final Phase 13 closure:
 
-- SHA: `fd8d56be5023b03ae136a5af633addaf3edee3a7`
-- Android CI Run #155: **success**
-- Run #155 passed cumulative core tests, database/signals tests, app lint, app unit tests, debug assembly and debug APK upload.
+- code checkpoint SHA: `fd8d56be5023b03ae136a5af633addaf3edee3a7` — Android Run #155 success
+- final documentation Head: `a6b664f035e047afd51515b3481452d57ecd1ee9` — Android Run #159 success
+
+## Phase 14 status
+
+**Closed / Complete at code checkpoint; final documentation/security-verifier Head validation pending.**
+
+Validated behavior:
+
+- Security CI scans tracked files for common credential/private-key signatures and forbidden secret/config files
+- resolved debug/release Android runtime dependencies are exported and audited against OSV; GitHub Dependency Graph availability is not required
+- the vulnerability exception ledger is explicit and begins empty
+- release HTTP logging is absent by default; debug logging is opt-in BASIC only with Authorization/Cookie/Set-Cookie redaction
+- Retrofit accepts HTTPS only, the manifest/network security policy disables cleartext and release trust uses system certificate authorities
+- certificate pinning is intentionally deferred until stable production hosts, primary/backup pins and rotation/rollback ownership exist; Android does not invent a pin
+- debug and release service configuration read separate Gradle property namespaces
+- Security CI generates both BuildConfig variants with distinct markers and rejects cross-variant leakage
+- release is explicitly non-debuggable, minified and resource-shrunk
+- cumulative Android CI now lints and assembles both debug and release variants
+- execution HTTP 429 maps to an explicit rate-limit error; one user action performs one gateway write and no hidden automatic execution retry
+- auth/AI feature rate-limit states remain explicit and WorkManager remains read-only
+- execution and AI Vision upload threat models are documented
+- AI Vision preprocessing re-encodes JPEG output, strips original EXIF metadata and deletes app-owned camera cache captures in a finally path
+- root/debug/tamper policy does not pretend bypassable local checks make a compromised client trusted; future integrity signals must be server-evaluated risk inputs
+- local session/cache/assistant/image privacy and retention boundaries are explicit
+- contract documented in `PHASE14_SECURITY_HARDENING_CONTRACT.md`
+
+Phase 14 code checkpoint:
+
+- SHA: `ed568e8672ef1c112f874f85411a11e0c6e4b7fb`
+- Android CI Run #178: **success**
+- Security CI Run #10: **success**
+- Run #178 passed cumulative tests, debug/release lint, app tests, debug/release assembly and debug APK upload.
 
 ## Next phase
 
-**Phase 14 — Security Hardening**
+**Phase 15 — Quality, Performance & Accessibility**
 
-Status: **Ready after the final Phase 13 documentation Head passes Android CI.**
+Status: **Ready only after the final Phase 14 documentation/security-verifier Head passes both Android CI and Security CI.**
 
 ## Branch rule from Phase 11 onward
 
