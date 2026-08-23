@@ -169,6 +169,9 @@ class NetworkExecutionGateway private constructor(
         quantity: Double,
         clientRequestId: String,
     ): SignalExecution = translate {
+        require(signalId > 0L) { "Signal ID must be positive" }
+        require(quantity.isFinite() && quantity > 0.0) { "Execution quantity must be positive and finite" }
+        require(clientRequestId.isNotBlank()) { "Missing idempotency request ID" }
         requireNotNull(
             api.executeSignal(
                 signalId,
@@ -186,12 +189,14 @@ class NetworkExecutionGateway private constructor(
     }
 
     override suspend fun execution(executionId: String): SignalExecution = translate {
+        require(executionId.isNotBlank()) { "Missing execution ID" }
         requireNotNull(api.execution(executionId).execution?.toDomain()) {
             "Invalid execution response"
         }
     }
 
     override suspend fun requestClose(executionId: String): SignalExecution = translate {
+        require(executionId.isNotBlank()) { "Missing execution ID" }
         requireNotNull(api.requestClose(executionId).execution?.toDomain()) {
             "Invalid execution response"
         }
@@ -227,7 +232,7 @@ internal fun ConnectionDto.toDomain(venue: ExecutionVenue) = VenueConnection(
 
 internal fun ExecutionDto.toDomain(): SignalExecution? {
     val safeId = id?.takeIf { it.isNotBlank() } ?: return null
-    val safeSignalId = signalId ?: return null
+    val safeSignalId = signalId?.takeIf { it > 0L } ?: return null
     val safeVenue = ExecutionVenue.entries.firstOrNull { it.wireValue == venue } ?: return null
     val safeStatus = ExecutionStatus.entries.firstOrNull { it.wireValue == status } ?: ExecutionStatus.UNKNOWN
     return SignalExecution(
@@ -249,7 +254,7 @@ internal fun ExecutionDto.toDomain(): SignalExecution? {
 }
 
 private fun ExecutionSignalDto.toDomain(): ExecutionSignalSnapshot? {
-    val safeId = signalId ?: return null
+    val safeId = signalId?.takeIf { it > 0L } ?: return null
     val safeSymbol = symbol?.takeIf { it.isNotBlank() } ?: return null
     return ExecutionSignalSnapshot(
         signalId = safeId,
