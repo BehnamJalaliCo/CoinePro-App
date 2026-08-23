@@ -26,6 +26,7 @@ This file is the canonical map between delivery phases, Git branches, milestone 
 | 8 | AI Vision Flagship | `feat/phase8-ai-vision` | `85ed5a681b9f3a548fdc1d30faeea8dacb3d88b1` | Run #101 — success |
 | 9 | AI Assistant | `feat/phase9-ai-assistant` | `3d158c9d0fc72724e9bbf402ae81540300950cc3` | Run #114 — success |
 | 10 | News & Economic Calendar | `feat/phase10-news-economic-calendar` | `cfef5ba5c20be8ccf189de137ca9e6a9a199def4` | Run #121 — success |
+| 11 | Trader Tools | `feat/phase11-trader-tools` | `11d91b2cb90a484611a1b1c773187b7c2b2795e4` | Run #126 — success |
 
 ## Phase 1–6 audit closure
 
@@ -146,11 +147,42 @@ Final Phase 10 checkpoint:
 - Android CI Run #121: **success**
 - Run #121 passed Phase 10 tests, every prior core gate, app lint, app unit tests, debug assembly and debug APK upload.
 
+## Phase 11 status
+
+**Closed / Complete.**
+
+Validated behavior:
+
+- existing `feature:tools` upgraded into a premium Trader Toolkit dashboard instead of a flat Material form list
+- Risk Calculator with explicit capital/risk percentage validation
+- Position Size / Lot Calculator with user-supplied stop distance and pip value per lot; broker values are never guessed
+- Risk / Reward Calculator with strict Long/Short SL/Entry/TP geometry validation
+- Profit Calculator with explicit lot and contract-size assumptions
+- Pip Calculator with explicit pip-size and pip-value assumptions
+- Crypto PnL Calculator scoped to USDT-quoted pairs with entry and exit fees
+- Compound Calculator as arithmetic only; entered return is never presented as AI or market forecast
+- Drawdown Simulator with compounded losses and required recovery percentage
+- all calculator math is local, deterministic and isolated from signal/order execution
+- zero, negative, invalid and non-finite inputs are rejected as required by each formula
+- every successful result is checked for finite output so `NaN` / Infinity cannot enter UI
+- formulas, units, assumptions, precision, missing-input state, validation errors and reset are explicit in each calculator
+- Latin-digit formatting uses deterministic US-locale precision plus Unicode LTR isolate/PDI and Compose LTR text direction for financial output inside RTL layouts
+- connected News, Calendar and Connections remain separate source-backed surfaces
+- no fake realtime, fake AI progress, broker state, execution state, urgency or price count-up is introduced
+- formula/truth/precision contract documented in `PHASE11_TRADER_TOOLS_CONTRACT.md`
+- `:feature:tools:testDebugUnitTest` is part of cumulative Android CI
+
+Final Phase 11 code checkpoint:
+
+- SHA: `11d91b2cb90a484611a1b1c773187b7c2b2795e4`
+- Android CI Run #126: **success**
+- Run #126 passed Phase 11 formula/RTL tests, every prior core gate, app lint, app unit tests, debug assembly and debug APK upload.
+
 ## Next phase
 
-**Phase 11 — Trader Tools**
+**Phase 12 — Activity, History & Performance**
 
-Status: **Ready to start.**
+Status: **Ready to start after the Phase 11 closure Head is green.**
 
 ## Branch rule from Phase 11 onward
 
