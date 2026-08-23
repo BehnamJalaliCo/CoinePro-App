@@ -44,15 +44,18 @@ class MainActivity : ComponentActivity() {
 
     private var launchSignalId by mutableStateOf<Long?>(null)
     private var launchActivity by mutableStateOf(false)
+    private var notificationPermissionState by mutableStateOf(NotificationPermissionUiState.NOT_CONFIGURED)
 
     private val notificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) { }
+    ) {
+        updateNotificationPermissionState()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         consumeDeepLink(intent)
-        requestNotificationPermissionIfConfigured()
+        updateNotificationPermissionState()
         enableEdgeToEdge()
         setContent {
             CoineProApp(
@@ -69,14 +72,18 @@ class MainActivity : ComponentActivity() {
                 backgroundSyncScheduler = backgroundSyncScheduler,
                 launchSignalId = launchSignalId,
                 launchActivity = launchActivity,
+                notificationPermissionState = notificationPermissionState,
                 onSignalLaunchConsumed = { launchSignalId = null },
                 onActivityLaunchConsumed = { launchActivity = false },
+                onRequestNotificationPermission = ::requestNotificationPermission,
+                onSendFeedback = ::sendFeedback,
             )
         }
     }
 
     override fun onResume() {
         super.onResume()
+        updateNotificationPermissionState()
         if (sessionController.state.value !is SessionState.SignedIn) return
         marketDataController.syncOnResume()
         signalController.refresh()
@@ -101,7 +108,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun requestNotificationPermissionIfConfigured() {
+    private fun updateNotificationPermissionState() {
+        notificationPermissionState = when {
+            BuildConfig.FIREBASE_PROJECT_ID.isBlank() -> NotificationPermissionUiState.NOT_CONFIGURED
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU -> NotificationPermissionUiState.NOT_REQUIRED
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED -> {
+                NotificationPermissionUiState.GRANTED
+            }
+            else -> NotificationPermissionUiState.AVAILABLE_TO_REQUEST
+        }
+    }
+
+    private fun requestNotificationPermission() {
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             BuildConfig.FIREBASE_PROJECT_ID.isNotBlank() &&
@@ -109,5 +127,21 @@ class MainActivity : ComponentActivity() {
         ) {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+    }
+
+    private fun sendFeedback() {
+        val body = buildString {
+            appendLine("CoinePro Android feedback")
+            appendLine("Version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+            appendLine("Environment: ${BuildConfig.BUILD_ENVIRONMENT}")
+            appendLine()
+            append("Feedback: ")
+        }
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "CoinePro Android feedback")
+            putExtra(Intent.EXTRA_TEXT, body)
+        }
+        startActivity(Intent.createChooser(intent, "Send CoinePro feedback"))
     }
 }
