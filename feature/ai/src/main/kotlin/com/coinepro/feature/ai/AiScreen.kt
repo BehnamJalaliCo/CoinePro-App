@@ -48,6 +48,7 @@ import com.coinepro.core.model.SignalDirection
 fun AiScreen(
     controller: AiSignalController,
     onOpenSignal: (Long) -> Unit,
+    onOpenVision: () -> Unit,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var symbol by remember { mutableStateOf(AiSignalProductScope.defaultSymbols.first()) }
@@ -73,6 +74,22 @@ fun AiScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
         )
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("AI Vision", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Capture or choose a chart screenshot for structured multimodal analysis.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(onClick = onOpenVision, modifier = Modifier.fillMaxWidth()) {
+                    Text("Analyze chart image")
+                }
+            }
+        }
 
         QuotaCard(state)
 
