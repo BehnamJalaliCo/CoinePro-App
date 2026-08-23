@@ -78,7 +78,7 @@ fun AiVisionScreen(
         if (granted) {
             showCamera = true
         } else {
-            selectionError = "Camera permission is required only when capturing a new chart image."
+            selectionError = "Camera permission was denied. Gallery / file remains available without camera permission."
         }
     }
 
@@ -123,6 +123,11 @@ fun AiVisionScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Text("Chart image", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Camera permission is requested only if you choose Camera below. Gallery / file selection does not require camera permission, so denying Camera does not block image analysis from an existing file.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = ::openCamera) { Text("Camera") }
                         TextButton(onClick = { documentPicker.launch(arrayOf("image/*")) }) {
