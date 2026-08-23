@@ -23,6 +23,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.coinepro.app.notifications.PushCoordinator
 import com.coinepro.core.aisignal.AiSignalController
+import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionState
 import com.coinepro.core.designsystem.CoineProTheme
@@ -34,6 +35,7 @@ import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.signals.SignalController
 import com.coinepro.feature.activity.ActivityScreen
 import com.coinepro.feature.ai.AiScreen
+import com.coinepro.feature.aivision.AiVisionScreen
 import com.coinepro.feature.auth.AuthScreen
 import com.coinepro.feature.connections.ConnectionsScreen
 import com.coinepro.feature.execution.ExecutionScreen
@@ -46,6 +48,7 @@ import kotlinx.coroutines.launch
 private const val SIGNAL_DETAIL_PATTERN = "signal/{signalId}"
 private const val EXECUTION_PATTERN = "execution/{signalId}"
 private const val CONNECTIONS_ROUTE = "connections"
+private const val AI_VISION_ROUTE = "ai/vision"
 private fun signalDetailRoute(signalId: Long) = "signal/$signalId"
 private fun executionRoute(signalId: Long) = "execution/$signalId"
 
@@ -57,6 +60,7 @@ fun CoineProApp(
     notificationController: NotificationController,
     executionController: ExecutionController,
     aiSignalController: AiSignalController,
+    aiVisionController: AiVisionController,
     pushCoordinator: PushCoordinator,
     launchSignalId: Long?,
     launchActivity: Boolean,
@@ -80,6 +84,7 @@ fun CoineProApp(
             notificationController.clear()
             executionController.clear()
             aiSignalController.clear()
+            aiVisionController.clear()
         }
     }
 
@@ -91,6 +96,7 @@ fun CoineProApp(
                 notificationController = notificationController,
                 executionController = executionController,
                 aiSignalController = aiSignalController,
+                aiVisionController = aiVisionController,
                 launchSignalId = launchSignalId,
                 launchActivity = launchActivity,
                 onSignalLaunchConsumed = onSignalLaunchConsumed,
@@ -124,6 +130,7 @@ private fun MainShell(
     notificationController: NotificationController,
     executionController: ExecutionController,
     aiSignalController: AiSignalController,
+    aiVisionController: AiVisionController,
     launchSignalId: Long?,
     launchActivity: Boolean,
     onSignalLaunchConsumed: () -> Unit,
@@ -134,11 +141,17 @@ private fun MainShell(
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val isSubScreen = currentRoute in setOf(SIGNAL_DETAIL_PATTERN, EXECUTION_PATTERN, CONNECTIONS_ROUTE)
+    val isSubScreen = currentRoute in setOf(
+        SIGNAL_DETAIL_PATTERN,
+        EXECUTION_PATTERN,
+        CONNECTIONS_ROUTE,
+        AI_VISION_ROUTE,
+    )
     val subTitle = when (currentRoute) {
         SIGNAL_DETAIL_PATTERN -> "Signal"
         EXECUTION_PATTERN -> "Execute signal"
         CONNECTIONS_ROUTE -> "Connections"
+        AI_VISION_ROUTE -> "AI Vision"
         else -> "CoinePro"
     }
 
@@ -239,6 +252,13 @@ private fun MainShell(
             composable(AppDestination.AI.route) {
                 AiScreen(
                     controller = aiSignalController,
+                    onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
+                    onOpenVision = { navController.navigate(AI_VISION_ROUTE) },
+                )
+            }
+            composable(AI_VISION_ROUTE) {
+                AiVisionScreen(
+                    controller = aiVisionController,
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
                 )
             }
