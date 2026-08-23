@@ -2,17 +2,18 @@ package com.coinepro.core.network
 
 import com.google.gson.FieldNamingPolicy
 import com.google.gson.GsonBuilder
+import java.util.concurrent.TimeUnit
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.util.concurrent.TimeUnit
 
 object NetworkFactory {
     fun okHttpClient(
         bearerToken: () -> String? = { null },
         onUnauthorized: () -> Unit = {},
+        enableHttpLogging: Boolean = false,
     ): OkHttpClient {
         val auth = Interceptor { chain ->
             val token = bearerToken()?.takeIf { it.isNotBlank() }
@@ -28,20 +29,24 @@ object NetworkFactory {
             response
         }
 
-        val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BASIC
-            redactHeader("Authorization")
-            redactHeader("Cookie")
-        }
-
-        return OkHttpClient.Builder()
+        val builder = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .pingInterval(20, TimeUnit.SECONDS)
             .addInterceptor(auth)
-            .addInterceptor(logging)
-            .build()
+
+        if (enableHttpLogging) {
+            val logging = HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BASIC
+                redactHeader("Authorization")
+                redactHeader("Cookie")
+                redactHeader("Set-Cookie")
+            }
+            builder.addInterceptor(logging)
+        }
+
+        return builder.build()
     }
 
     fun retrofit(baseUrl: String, client: OkHttpClient): Retrofit {
