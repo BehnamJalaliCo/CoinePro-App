@@ -34,20 +34,20 @@ Historical phase CI remains evidence that each phase worked at its checkpoint, b
 | --- | --- | --- | --- |
 | 1 — Design System & Architecture | Gradle module graph, five bottom destinations, RTL/LTR conventions | Removed phantom roadmap modules, added missing `benchmark` and `core:navigation` entries; roadmap now mirrors `settings.gradle.kts` | Matched |
 | 2 — Auth / Session / Entitlements | `/user/me` server truth, encrypted token storage, 401 clearing, build environment properties | AUTH contract corrected from obsolete shared property to debug/staging/production namespaces | Matched |
-| 3 — Realtime Market Data | WSS/HTTP fallback, source identity, product scope, stale thresholds | Production smoke now uses the same 15 s LBank / 90 s Finnhub / 30 s unknown thresholds plus future-skew rejection | Matched |
-| 4 — Signals Core | Forex `XAUUSD/XAGUSD`, Crypto `*USDT`, typed BUY/SELL and persisted identity | Core Signal mapper now rejects null/zero/negative IDs so persisted Signal identity matches downstream AI/execution rules | Matched |
-| 5 — Alerts & Push | alert symbol validation, FCM, Notification Center, deep links | FCM, Notification Center and app deep links now accept Signal navigation only for positive persisted IDs; scheme/path shape is constrained | Matched |
-| 6 — Execution Bridge | signal-scoped writes, quantity validation, idempotency, provider-owned status | Execution responses/snapshots now reject non-positive Signal IDs; request boundary validates positive Signal ID, finite quantity and nonblank idempotency ID without adding hidden retries | Matched |
+| 3 — Realtime Market Data | WSS/HTTP fallback, source identity, product scope, stale thresholds | Production smoke uses the same 15 s LBank / 90 s Finnhub / 30 s unknown thresholds plus future-skew rejection | Matched |
+| 4 — Signals Core | Forex `XAUUSD/XAGUSD`, Crypto `*USDT`, typed BUY/SELL and persisted identity | Core Signal mapper rejects null/zero/negative IDs so persisted Signal identity matches downstream AI/execution rules | Matched |
+| 5 — Alerts & Push | alert symbol validation, FCM, Notification Center, deep links | FCM, Notification Center and app deep links accept Signal navigation only for positive persisted IDs; scheme/path shape is constrained | Matched |
+| 6 — Execution Bridge | signal-scoped writes, quantity validation, idempotency, provider-owned status | Execution responses/snapshots reject non-positive Signal IDs; request boundary validates positive Signal ID, finite quantity and nonblank idempotency ID without hidden retries | Matched |
 | 7 — AI Signal | server job states, quota, strict structured result, no direct execution | Positive persisted Signal result remains mandatory and aligns with Phase 4/5/6 identity rules | Matched |
 | 8 — AI Vision | image preprocessing, EXIF stripping, structured server job/result, no direct execution | Actionability remains gated by validated structured output and positive persisted Signal ID; camera fallback remains independent | Matched |
 | 9 — AI Assistant | contextual provenance, stable conversation identity, memory-only local transcript | Active-Signal context requires a positive ID; non-signal context cannot smuggle Signal identity; no direct execution route | Matched |
 | 10 — Market Intelligence | ISO timestamps, stale/unknown truth, HTTPS links, high-impact risk context | Current source retains explicit source/stale/impact semantics and remains advisory-only | Matched |
 | 11 — Trader Tools | deterministic local formulas, finite validation, LTR financial output | Calculators remain isolated from execution and do not infer broker specifications | Matched |
 | 12 — Activity / History / Performance | explicit P&L/TP/SL denominators, incomplete coverage, execution ledger separation | Missing evidence remains missing; no ROI/equity/broker outcome inference introduced by later phases | Matched |
-| 13 — Offline / Reliability | stale read cache, closed-history cache, WorkManager read-only sync | Market Room mapper now independently rejects product-scope mismatches on both write and restore; background work remains read-only | Matched |
+| 13 — Offline / Reliability | stale read cache, closed-history cache, WorkManager read-only sync | Market Room mapper independently rejects product-scope mismatches on both write and restore; background work remains read-only | Matched |
 | 14 — Security Hardening | HTTPS-only, secret scan, OSV, BuildConfig isolation, release logging policy, no write retry | Later staging/production namespaces remain isolated; no credential-bearing logging/write retry regression found | Matched |
 | 15 — Quality / Performance / Accessibility | Compose accessibility, reduced-motion, Baseline Profile, benchmark wiring | Baseline Profile fixed from removed `ThemeKt` to current `CoineProThemeKt`; no hosted-emulator performance overclaim introduced | Matched |
-| 16 — Release Engineering | signing, staging identity, version validation, internal track | Contract corrected: local script validates semver + positive/range-safe `versionCode`; Play enforces cross-release monotonicity. CI now explicitly runs staging app unit tests | Matched |
+| 16 — Release Engineering | signing, staging identity, version validation, internal track | Local script validates semver + positive/range-safe `versionCode`; Play enforces cross-release monotonicity. Staging is covered by real `lintStaging` + `assembleStaging`; supported unit tests run on the debug test variant | Matched |
 | 17 — Launch Readiness | education, permission recovery, support, analytics decision, runbook, production evidence tooling | Client/readiness tooling implemented; production read-only smoke is GET-only and freshness-aware. External legal/provider/runtime evidence remains separately evidence-gated | Repository matched; external evidence ledger authoritative |
 
 ## Reconciliations applied by this audit
@@ -61,7 +61,7 @@ Historical phase CI remains evidence that each phase worked at its checkpoint, b
 7. **Market cache trust boundary fixed** — Room market rows are product-scoped independently of network mappers and always restore stale.
 8. **Baseline Profile drift fixed** — current design-system theme class is targeted.
 9. **Release-version documentation corrected** — repository validation no longer overclaims knowledge of Play release history; Play monotonicity remains platform-enforced.
-10. **Staging unit-test gate made real** — Android CI explicitly runs `:app:testStagingUnitTest` rather than only documenting it.
+10. **Staging validation corrected** — the AGP configuration has no `:app:testStagingUnitTest`; CI therefore uses supported `:app:lintStaging` + `:app:assembleStaging` and keeps unit-test coverage on the supported debug variant. No nonexistent task is claimed or required.
 11. **Permanent reconciliation gate added** — `scripts/quality/check-cross-phase-consistency.py` rejects future drift in module map, bottom navigation, auth env naming, Signal identity, freshness policy, cache scope, Baseline Profile and read-only production smoke.
 
 ## Non-regression truth invariants after reconciliation
