@@ -14,6 +14,7 @@ import json
 import math
 import os
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -21,6 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ALLOWED_SYMBOLS = {"XAUUSD", "XAGUSD"}
+FUTURE_SKEW_MS = 10_000
 
 
 def fail(message: str) -> None:
@@ -58,12 +60,28 @@ def normalize_symbols(raw: str) -> list[str]:
     if not values:
         fail("At least one smoke symbol is required")
     for value in values:
-        if value not in ALLOWED_SYMBOLS and not value.endswith("USDT"):
+        if value not in ALLOWED_SYMBOLS and not (value.endswith("USDT") and len(value) > 4):
             fail(f"Unsupported smoke symbol: {value}")
     return values
 
 
-def validate_snapshot(payload: dict, symbols: list[str]) -> list[dict]:
+def first_present(value: dict, *names: str):
+    for name in names:
+        if name in value and value[name] is not None:
+            return value[name]
+    return None
+
+
+def quote_freshness_threshold_ms(source: str) -> int:
+    lowered = source.lower()
+    if "lbank" in lowered:
+        return 15_000
+    if "finnhub" in lowered:
+        return 90_000
+    return 30_000
+
+
+def validate_snapshot(payload: dict, symbols: list[str], now_ms: int) -> list[dict]:
     prices = payload.get("prices")
     if not isinstance(prices, dict):
         fail("Market snapshot is missing prices object")
@@ -74,19 +92,34 @@ def validate_snapshot(payload: dict, symbols: list[str]) -> list[dict]:
         if not isinstance(quote, dict):
             fail(f"Market snapshot missing requested symbol {symbol}")
         value = quote.get("price")
-        timestamp = quote.get("ts") or quote.get("receivedAtMs")
-        source = quote.get("source") or quote.get("venue")
+        timestamp = first_present(quote, "ts", "received_at_ms", "receivedAtMs")
+        source = first_present(quote, "source", "venue")
         if not isinstance(value, (int, float)) or not math.isfinite(float(value)) or float(value) <= 0:
             fail(f"Invalid price for {symbol}")
         if not isinstance(timestamp, int) or timestamp <= 0:
             fail(f"Missing/invalid source timestamp for {symbol}")
         if not isinstance(source, str) or not source.strip():
             fail(f"Missing provider/source identity for {symbol}")
+
+        source = source.strip()
+        age_ms = now_ms - timestamp
+        threshold_ms = quote_freshness_threshold_ms(source)
+        if age_ms < -FUTURE_SKEW_MS:
+            fail(f"Source timestamp for {symbol} is implausibly in the future")
+        if age_ms > threshold_ms:
+            fail(
+                f"Stale production quote for {symbol}: age={age_ms}ms exceeds "
+                f"{threshold_ms}ms threshold for {source}"
+            )
+
         evidence.append(
             {
                 "symbol": symbol,
-                "source": source.strip(),
+                "source": source,
                 "timestamp_ms": timestamp,
+                "age_ms": age_ms,
+                "freshness_threshold_ms": threshold_ms,
+                "fresh": True,
                 "price_present_and_positive": True,
             }
         )
@@ -128,15 +161,12 @@ def sanitize_ai_vision(payload: dict) -> dict:
     if not isinstance(job, dict):
         fail("AI Vision response is missing job object")
     result = job.get("result")
+    signal_id = first_present(result, "signal_id", "signalId") if isinstance(result, dict) else None
     return {
         "status": str(job.get("status") or "unknown")[:50],
         "has_structured_result": isinstance(result, dict),
         "validated": bool(result.get("validated", False)) if isinstance(result, dict) else False,
-        "has_positive_signal_id": bool(
-            isinstance(result, dict)
-            and isinstance(result.get("signalId"), int)
-            and result.get("signalId") > 0
-        ),
+        "has_positive_signal_id": isinstance(signal_id, int) and signal_id > 0,
     }
 
 
@@ -161,13 +191,14 @@ def main() -> None:
     snapshot = get_json(base_url, f"ws/snapshot?{query}", token)
     connections = get_json(base_url, "user/signals/execution/connections", token)
     executions = get_json(base_url, "user/signals/execution/executions?limit=10", token)
+    now_ms = int(time.time() * 1000)
 
     evidence = {
-        "schema": 1,
+        "schema": 2,
         "mode": "production-readonly",
         "writes_performed": False,
         "checked_at": datetime.now(timezone.utc).isoformat(),
-        "market": validate_snapshot(snapshot, symbols),
+        "market": validate_snapshot(snapshot, symbols, now_ms),
         "connections": sanitize_connections(connections),
         "execution_history": sanitize_execution_history(executions),
         "ai_vision": {"checked": False},
