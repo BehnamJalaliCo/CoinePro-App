@@ -88,7 +88,7 @@ Delivered:
 
 Status: Complete
 
-Milestone: `feat/phase8-ai-vision` → `10844e48e65b90e9bcd8d60bb5c7ecfea982c18b` → Run #97 success.
+Final audited milestone: `feat/phase8-ai-vision` → `85ed5a681b9f3a548fdc1d30faeea8dacb3d88b1` → Run #101 success.
 
 Delivered:
 - `core:aivision` typed multimodal upload/job/result contract
@@ -97,6 +97,7 @@ Delivered:
 - Android document/gallery picker without broad storage permission
 - screenshot/image upload
 - EXIF orientation normalization and outbound metadata stripping through JPEG re-encoding
+- temporary CameraX cache capture deleted after preparation, including error paths
 - maximum 2048 px image edge with adaptive compression under 6 MB
 - exact queued / running / done / failed / expired server-truth lifecycle
 - explicit actionable / low-confidence / unknown / unsupported assessments
@@ -109,11 +110,11 @@ Delivered:
 - Phase 8 mapper/controller tests in cumulative Android CI
 
 Exit state:
-- EXIF/privacy rules defined
+- EXIF/privacy rules defined and camera temp files do not linger after preprocessing
 - unclear/unsupported images have explicit state
 - no fake multimodal progress
 - raw or unvalidated model output cannot execute
-- Run #97 passed Phase 8 tests, all prior core tests, app lint, app tests, debug assembly and APK upload
+- Run #101 passed Phase 8 tests, all prior core tests, app lint, app tests, debug assembly and APK upload
 
 ## Phase 9 — AI Assistant
 
@@ -324,7 +325,8 @@ Create modules when boundaries become useful; do not create empty architecture f
 6. Signal-scoped execution contract — client safety boundary implemented in Phase 6; live provider validation Phase 17
 7. AI Signal job schema — client implemented in Phase 7 with server-truth lifecycle and persisted-Signal trust boundary
 8. AI Vision upload/job/result schema — client implemented in Phase 8 with image privacy preprocessing, structured assessments and persisted-Signal trust boundary
-9. News/calendar timestamps and impact schema — Phase 10
+9. AI Assistant contextual chat schema — Phase 9
+10. News/calendar timestamps and impact schema — Phase 10
 
 ## Definition of Done
 
