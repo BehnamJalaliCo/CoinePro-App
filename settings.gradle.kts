@@ -16,6 +16,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "CoinePro-App"
 include(":app")
+include(":benchmark")
 include(":core:common")
 include(":core:model")
 include(":core:network")
