@@ -7,7 +7,7 @@ import org.junit.Test
 class TraderToolsCalculatorTest {
     @Test
     fun `risk calculator returns deterministic risk amount`() {
-        val result = TraderToolsCalculator.risk(10_000.0, 1.25) as ToolCalculation.Success
+        val result = TraderToolsCalculator.risk(10_000.0, 1.25) as ToolCalculation.Success<RiskResult>
         assertEquals(125.0, result.value.riskAmount, 0.000001)
         assertEquals(9_875.0, result.value.capitalAfterRisk, 0.000001)
     }
@@ -23,7 +23,7 @@ class TraderToolsCalculatorTest {
 
     @Test
     fun `position size uses explicit pip value assumption`() {
-        val result = TraderToolsCalculator.positionSize(100.0, 50.0, 10.0) as ToolCalculation.Success
+        val result = TraderToolsCalculator.positionSize(100.0, 50.0, 10.0) as ToolCalculation.Success<PositionSizeResult>
         assertEquals(0.2, result.value.lots, 0.000001)
     }
 
@@ -34,10 +34,10 @@ class TraderToolsCalculatorTest {
 
     @Test
     fun `risk reward validates long and short geometry`() {
-        val longResult = TraderToolsCalculator.riskReward(2000.0, 1990.0, 2030.0, TradeDirection.LONG) as ToolCalculation.Success
+        val longResult = TraderToolsCalculator.riskReward(2000.0, 1990.0, 2030.0, TradeDirection.LONG) as ToolCalculation.Success<RiskRewardResult>
         assertEquals(3.0, longResult.value.ratio, 0.000001)
 
-        val shortResult = TraderToolsCalculator.riskReward(2000.0, 2010.0, 1970.0, TradeDirection.SHORT) as ToolCalculation.Success
+        val shortResult = TraderToolsCalculator.riskReward(2000.0, 2010.0, 1970.0, TradeDirection.SHORT) as ToolCalculation.Success<RiskRewardResult>
         assertEquals(3.0, shortResult.value.ratio, 0.000001)
 
         assertInvalid(TraderToolsCalculator.riskReward(2000.0, 2010.0, 2030.0, TradeDirection.LONG))
@@ -46,22 +46,22 @@ class TraderToolsCalculatorTest {
 
     @Test
     fun `profit calculator respects direction contract size and lots`() {
-        val longResult = TraderToolsCalculator.profit(2000.0, 2010.0, 0.5, 100.0, TradeDirection.LONG) as ToolCalculation.Success
-        val shortResult = TraderToolsCalculator.profit(2010.0, 2000.0, 0.5, 100.0, TradeDirection.SHORT) as ToolCalculation.Success
+        val longResult = TraderToolsCalculator.profit(2000.0, 2010.0, 0.5, 100.0, TradeDirection.LONG) as ToolCalculation.Success<ProfitResult>
+        val shortResult = TraderToolsCalculator.profit(2010.0, 2000.0, 0.5, 100.0, TradeDirection.SHORT) as ToolCalculation.Success<ProfitResult>
         assertEquals(500.0, longResult.value.pnl, 0.000001)
         assertEquals(500.0, shortResult.value.pnl, 0.000001)
     }
 
     @Test
     fun `pip calculator derives signed pips and pnl`() {
-        val result = TraderToolsCalculator.pips(1.1000, 1.1050, 1.0, 0.0001, 10.0, TradeDirection.LONG) as ToolCalculation.Success
+        val result = TraderToolsCalculator.pips(1.1000, 1.1050, 1.0, 0.0001, 10.0, TradeDirection.LONG) as ToolCalculation.Success<PipResult>
         assertEquals(50.0, result.value.pips, 0.000001)
         assertEquals(500.0, result.value.pnl, 0.000001)
     }
 
     @Test
     fun `crypto pnl includes fees on entry and exit notional`() {
-        val result = TraderToolsCalculator.cryptoPnl(100.0, 110.0, 2.0, 0.1, TradeDirection.LONG) as ToolCalculation.Success
+        val result = TraderToolsCalculator.cryptoPnl(100.0, 110.0, 2.0, 0.1, TradeDirection.LONG) as ToolCalculation.Success<CryptoPnlResult>
         assertEquals(20.0, result.value.grossPnl, 0.000001)
         assertEquals(0.42, result.value.fees, 0.000001)
         assertEquals(19.58, result.value.netPnl, 0.000001)
@@ -76,14 +76,14 @@ class TraderToolsCalculatorTest {
 
     @Test
     fun `compound calculator compounds per period`() {
-        val result = TraderToolsCalculator.compound(1000.0, 10.0, 2) as ToolCalculation.Success
+        val result = TraderToolsCalculator.compound(1000.0, 10.0, 2) as ToolCalculation.Success<CompoundResult>
         assertEquals(1210.0, result.value.endingBalance, 0.000001)
         assertEquals(210.0, result.value.profit, 0.000001)
     }
 
     @Test
     fun `compound calculator allows bounded negative returns but rejects total loss rate`() {
-        val result = TraderToolsCalculator.compound(1000.0, -10.0, 2) as ToolCalculation.Success
+        val result = TraderToolsCalculator.compound(1000.0, -10.0, 2) as ToolCalculation.Success<CompoundResult>
         assertEquals(810.0, result.value.endingBalance, 0.000001)
         assertInvalid(TraderToolsCalculator.compound(1000.0, -100.0, 2))
         assertInvalid(TraderToolsCalculator.compound(1000.0, 10.0, 0))
@@ -91,7 +91,7 @@ class TraderToolsCalculatorTest {
 
     @Test
     fun `drawdown simulator compounds consecutive losses and recovery requirement`() {
-        val result = TraderToolsCalculator.drawdown(1000.0, 10.0, 2) as ToolCalculation.Success
+        val result = TraderToolsCalculator.drawdown(1000.0, 10.0, 2) as ToolCalculation.Success<DrawdownResult>
         assertEquals(810.0, result.value.endingBalance, 0.000001)
         assertEquals(190.0, result.value.drawdownAmount, 0.000001)
         assertEquals(19.0, result.value.drawdownPercent, 0.000001)
