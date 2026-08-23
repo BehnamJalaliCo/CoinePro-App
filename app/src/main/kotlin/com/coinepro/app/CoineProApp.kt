@@ -58,6 +58,7 @@ private const val AI_VISION_ROUTE = "ai/vision"
 private const val AI_ASSISTANT_ROUTE = "ai/assistant"
 private const val NEWS_ROUTE = "market/news"
 private const val CALENDAR_ROUTE = "market/calendar"
+private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
 private fun signalDetailRoute(signalId: Long) = "signal/$signalId"
 private fun executionRoute(signalId: Long) = "execution/$signalId"
 
@@ -76,8 +77,11 @@ fun CoineProApp(
     backgroundSyncScheduler: BackgroundSyncScheduler,
     launchSignalId: Long?,
     launchActivity: Boolean,
+    notificationPermissionState: NotificationPermissionUiState,
     onSignalLaunchConsumed: () -> Unit,
     onActivityLaunchConsumed: () -> Unit,
+    onRequestNotificationPermission: () -> Unit,
+    onSendFeedback: () -> Unit,
 ) {
     LaunchedEffect(sessionController) { sessionController.start() }
     val session by sessionController.state.collectAsStateWithLifecycle()
@@ -117,8 +121,11 @@ fun CoineProApp(
                 marketIntelController = marketIntelController,
                 launchSignalId = launchSignalId,
                 launchActivity = launchActivity,
+                notificationPermissionState = notificationPermissionState,
                 onSignalLaunchConsumed = onSignalLaunchConsumed,
                 onActivityLaunchConsumed = onActivityLaunchConsumed,
+                onRequestNotificationPermission = onRequestNotificationPermission,
+                onSendFeedback = onSendFeedback,
                 onMarketRetry = marketDataController::retry,
                 onLogout = {
                     scope.launch {
@@ -153,8 +160,11 @@ private fun MainShell(
     marketIntelController: MarketIntelController,
     launchSignalId: Long?,
     launchActivity: Boolean,
+    notificationPermissionState: NotificationPermissionUiState,
     onSignalLaunchConsumed: () -> Unit,
     onActivityLaunchConsumed: () -> Unit,
+    onRequestNotificationPermission: () -> Unit,
+    onSendFeedback: () -> Unit,
     onMarketRetry: () -> Unit,
     onLogout: () -> Unit,
 ) {
@@ -169,6 +179,7 @@ private fun MainShell(
         AI_ASSISTANT_ROUTE,
         NEWS_ROUTE,
         CALENDAR_ROUTE,
+        LAUNCH_READINESS_ROUTE,
     )
     val subTitle = when (currentRoute) {
         SIGNAL_DETAIL_PATTERN -> "Signal"
@@ -178,6 +189,7 @@ private fun MainShell(
         AI_ASSISTANT_ROUTE -> "AI Assistant"
         NEWS_ROUTE -> "Market Intelligence"
         CALENDAR_ROUTE -> "Economic Calendar"
+        LAUNCH_READINESS_ROUTE -> "Launch & safety"
         else -> "CoinePro"
     }
 
@@ -210,7 +222,10 @@ private fun MainShell(
             } else {
                 TopAppBar(
                     title = { Text("CoinePro") },
-                    actions = { TextButton(onClick = onLogout) { Text("Logout") } },
+                    actions = {
+                        TextButton(onClick = { navController.navigate(LAUNCH_READINESS_ROUTE) }) { Text("Safety") }
+                        TextButton(onClick = onLogout) { Text("Logout") }
+                    },
                 )
             }
         },
@@ -321,6 +336,13 @@ private fun MainShell(
                     executionController = executionController,
                     signalController = signalController,
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
+                )
+            }
+            composable(LAUNCH_READINESS_ROUTE) {
+                LaunchReadinessScreen(
+                    notificationPermissionState = notificationPermissionState,
+                    onRequestNotificationPermission = onRequestNotificationPermission,
+                    onSendFeedback = onSendFeedback,
                 )
             }
         }
