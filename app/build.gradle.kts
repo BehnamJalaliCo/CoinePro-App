@@ -5,21 +5,57 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+val configuredVersionCode = providers.gradleProperty("COINEPRO_VERSION_CODE")
+    .orElse("1")
+    .get()
+    .toIntOrNull()
+    ?: error("COINEPRO_VERSION_CODE must be an integer.")
+require(configuredVersionCode > 0) { "COINEPRO_VERSION_CODE must be positive." }
+
+val configuredVersionName = providers.gradleProperty("COINEPRO_VERSION_NAME")
+    .orElse("0.1.0")
+    .get()
+require(Regex("^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$").matches(configuredVersionName)) {
+    "COINEPRO_VERSION_NAME must use semantic version form, for example 1.2.3 or 1.2.3-rc.1."
+}
+
 val debugApiBaseUrl = providers.gradleProperty("COINEPRO_DEBUG_API_BASE_URL")
-    .orElse("https://example.invalid/")
+    .orElse("https://debug.example.invalid/")
     .get()
 val debugFirebaseProjectId = providers.gradleProperty("COINEPRO_DEBUG_FIREBASE_PROJECT_ID").orElse("").get()
 val debugFirebaseApplicationId = providers.gradleProperty("COINEPRO_DEBUG_FIREBASE_APPLICATION_ID").orElse("").get()
 val debugFirebaseApiKey = providers.gradleProperty("COINEPRO_DEBUG_FIREBASE_API_KEY").orElse("").get()
 val debugFirebaseSenderId = providers.gradleProperty("COINEPRO_DEBUG_FIREBASE_SENDER_ID").orElse("").get()
 
-val releaseApiBaseUrl = providers.gradleProperty("COINEPRO_API_BASE_URL")
-    .orElse("https://example.invalid/")
+val stagingApiBaseUrl = providers.gradleProperty("COINEPRO_STAGING_API_BASE_URL")
+    .orElse("https://staging.example.invalid/")
     .get()
-val releaseFirebaseProjectId = providers.gradleProperty("COINEPRO_FIREBASE_PROJECT_ID").orElse("").get()
-val releaseFirebaseApplicationId = providers.gradleProperty("COINEPRO_FIREBASE_APPLICATION_ID").orElse("").get()
-val releaseFirebaseApiKey = providers.gradleProperty("COINEPRO_FIREBASE_API_KEY").orElse("").get()
-val releaseFirebaseSenderId = providers.gradleProperty("COINEPRO_FIREBASE_SENDER_ID").orElse("").get()
+val stagingFirebaseProjectId = providers.gradleProperty("COINEPRO_STAGING_FIREBASE_PROJECT_ID").orElse("").get()
+val stagingFirebaseApplicationId = providers.gradleProperty("COINEPRO_STAGING_FIREBASE_APPLICATION_ID").orElse("").get()
+val stagingFirebaseApiKey = providers.gradleProperty("COINEPRO_STAGING_FIREBASE_API_KEY").orElse("").get()
+val stagingFirebaseSenderId = providers.gradleProperty("COINEPRO_STAGING_FIREBASE_SENDER_ID").orElse("").get()
+
+val productionApiBaseUrl = providers.gradleProperty("COINEPRO_PRODUCTION_API_BASE_URL")
+    .orElse("https://production.example.invalid/")
+    .get()
+val productionFirebaseProjectId = providers.gradleProperty("COINEPRO_PRODUCTION_FIREBASE_PROJECT_ID").orElse("").get()
+val productionFirebaseApplicationId = providers.gradleProperty("COINEPRO_PRODUCTION_FIREBASE_APPLICATION_ID").orElse("").get()
+val productionFirebaseApiKey = providers.gradleProperty("COINEPRO_PRODUCTION_FIREBASE_API_KEY").orElse("").get()
+val productionFirebaseSenderId = providers.gradleProperty("COINEPRO_PRODUCTION_FIREBASE_SENDER_ID").orElse("").get()
+
+require(stagingApiBaseUrl != productionApiBaseUrl) {
+    "Staging and production API base URLs must be different."
+}
+
+val releaseStoreFile = providers.gradleProperty("COINEPRO_RELEASE_STORE_FILE").orNull?.takeIf { it.isNotBlank() }
+val releaseStorePassword = providers.gradleProperty("COINEPRO_RELEASE_STORE_PASSWORD").orNull?.takeIf { it.isNotBlank() }
+val releaseKeyAlias = providers.gradleProperty("COINEPRO_RELEASE_KEY_ALIAS").orNull?.takeIf { it.isNotBlank() }
+val releaseKeyPassword = providers.gradleProperty("COINEPRO_RELEASE_KEY_PASSWORD").orNull?.takeIf { it.isNotBlank() }
+val releaseSigningValues = listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword)
+val releaseSigningConfigured = releaseSigningValues.all { it != null }
+require(releaseSigningValues.none { it != null } || releaseSigningConfigured) {
+    "Release signing is partially configured. Supply all COINEPRO_RELEASE_* signing properties or none."
+}
 
 fun escapedBuildConfig(value: String): String = "\"${value.replace("\"", "\\\"")}\""
 
@@ -31,8 +67,8 @@ android {
         applicationId = "com.coinepro.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = configuredVersionCode
+        versionName = configuredVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -41,8 +77,20 @@ android {
         buildConfig = true
     }
 
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("release") {
+                storeFile = rootProject.file(checkNotNull(releaseStoreFile))
+                storePassword = checkNotNull(releaseStorePassword)
+                keyAlias = checkNotNull(releaseKeyAlias)
+                keyPassword = checkNotNull(releaseKeyPassword)
+            }
+        }
+    }
+
     buildTypes {
         debug {
+            buildConfigField("String", "BUILD_ENVIRONMENT", escapedBuildConfig("debug"))
             buildConfigField("String", "API_BASE_URL", escapedBuildConfig(debugApiBaseUrl))
             buildConfigField("String", "FIREBASE_PROJECT_ID", escapedBuildConfig(debugFirebaseProjectId))
             buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(debugFirebaseApplicationId))
@@ -53,21 +101,48 @@ android {
             isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
-            buildConfigField("String", "API_BASE_URL", escapedBuildConfig(releaseApiBaseUrl))
-            buildConfigField("String", "FIREBASE_PROJECT_ID", escapedBuildConfig(releaseFirebaseProjectId))
-            buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(releaseFirebaseApplicationId))
-            buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(releaseFirebaseApiKey))
-            buildConfigField("String", "FIREBASE_SENDER_ID", escapedBuildConfig(releaseFirebaseSenderId))
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+            buildConfigField("String", "BUILD_ENVIRONMENT", escapedBuildConfig("production"))
+            buildConfigField("String", "API_BASE_URL", escapedBuildConfig(productionApiBaseUrl))
+            buildConfigField("String", "FIREBASE_PROJECT_ID", escapedBuildConfig(productionFirebaseProjectId))
+            buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(productionFirebaseApplicationId))
+            buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(productionFirebaseApiKey))
+            buildConfigField("String", "FIREBASE_SENDER_ID", escapedBuildConfig(productionFirebaseSenderId))
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+        }
+        create("staging") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".staging"
+            versionNameSuffix = "-staging"
+            matchingFallbacks += listOf("release")
+            signingConfig = if (releaseSigningConfigured) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
+            buildConfigField("String", "BUILD_ENVIRONMENT", escapedBuildConfig("staging"))
+            buildConfigField("String", "API_BASE_URL", escapedBuildConfig(stagingApiBaseUrl))
+            buildConfigField("String", "FIREBASE_PROJECT_ID", escapedBuildConfig(stagingFirebaseProjectId))
+            buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(stagingFirebaseApplicationId))
+            buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(stagingFirebaseApiKey))
+            buildConfigField("String", "FIREBASE_SENDER_ID", escapedBuildConfig(stagingFirebaseSenderId))
         }
         create("benchmark") {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
             isDebuggable = false
+            buildConfigField("String", "BUILD_ENVIRONMENT", escapedBuildConfig("benchmark"))
+            buildConfigField("String", "API_BASE_URL", escapedBuildConfig("https://benchmark.example.invalid/"))
+            buildConfigField("String", "FIREBASE_PROJECT_ID", escapedBuildConfig(""))
+            buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(""))
+            buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(""))
+            buildConfigField("String", "FIREBASE_SENDER_ID", escapedBuildConfig(""))
         }
     }
 
