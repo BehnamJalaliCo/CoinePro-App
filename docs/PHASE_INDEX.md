@@ -30,7 +30,8 @@ This file is the canonical map between delivery phases, Git branches, milestone 
 | 12 | Activity, History & Performance | `feat/phase12-activity-history-performance` | `23f7113d83acdcfda74798380f04da1c7447be9f` | Android Run #132 — success |
 | 13 | Offline, Reliability & Background Work | `feat/phase13-offline-reliability-background-work` | `a6b664f035e047afd51515b3481452d57ecd1ee9` | Android Run #159 — success |
 | 14 | Security Hardening | `feat/phase14-security-hardening` | `8abdb6909beb2468ec10c911ebd22ad8411a1b5f` | Android Run #184 + Security Run #16 — success |
-| 15 | Quality, Performance & Accessibility | `feat/phase15-quality-performance-accessibility` | `97d3ebc0165be27e86ad97dceef16494f7a7b428` | Android Run #208 + Security Run #40 — success |
+| 15 | Quality, Performance & Accessibility | `feat/phase15-quality-performance-accessibility` | `97d3ebc0165be27e86ad97dceef16494f7a7b428` | Android Run #208 + Security Run #40 — success; final docs Head `a8d26b7df6332f569f963756a2e041ad31b3cdab` passed Android #212 + Security #44 |
+| 16 | Release Engineering | `feat/phase16-release-engineering` | `0681a763cf504275b60e50495d3c64d13f73ac79` | Android Run #226 + Security Run #58 — success; final docs Head is the closure gate |
 
 ## Phase 1–6 audit closure
 
@@ -305,11 +306,50 @@ Phase 15 code checkpoint:
 - Android CI Run #208: **success**
 - Security CI Run #40: **success**
 
+Final Phase 15 closure:
+
+- documentation Head: `a8d26b7df6332f569f963756a2e041ad31b3cdab`
+- Android CI Run #212: **success**
+- Security CI Run #44: **success**
+
+## Phase 16 status
+
+**Complete at validated code checkpoint; the exact documentation Head containing this entry is the final closure gate.**
+
+Validated behavior:
+
+- semantic `versionName` and positive monotonic `versionCode` validation
+- dedicated debug, staging, production and benchmark configuration namespaces
+- staging uses application id `com.coinepro.app.staging` and cannot inherit production endpoint configuration
+- protected release signing requires all signing properties together; partial configuration fails
+- CI creates an ephemeral one-run JKS outside the repository, signs a release AAB and verifies that it is actually signed
+- signature verification intentionally does not treat the expected trust-chain warning of a self-signed ephemeral CI certificate as an unsigned artifact
+- manual `play-internal` workflow builds/signs the staging AAB and publishes through Android Publisher edit/upload/internal-track/commit flow
+- incomplete Play edits are cleaned up and runner signing material is removed
+- `CHANGELOG.md` is the release-note ledger
+- Android Vitals / Play Console is the baseline crash/ANR source; no new telemetry SDK is introduced before Phase 17 privacy review
+- Android CI covers cumulative tests plus debug/staging/release/benchmark variants, Compose/benchmark smoke and protected signing
+- Security CI covers secret scanning, resolved OSV dependencies and debug/staging/production/benchmark BuildConfig isolation
+- Phase 16 makes no claim that production market data, broker/exchange lifecycle or Play production rollout has been validated
+- contract documented in `PHASE16_RELEASE_ENGINEERING_CONTRACT.md`
+
+Phase 16 code checkpoint:
+
+- SHA: `0681a763cf504275b60e50495d3c64d13f73ac79`
+- Android CI Run #226: **success**
+- Security CI Run #58: **success**
+
+Final Phase 16 closure rule:
+
+- the exact documentation Head containing this Phase 16 ledger entry must pass Android CI and Security CI
+- Phase 17 must branch from that exact final green Head
+- PR #12 remains Draft and unmerged unless merge is explicitly requested
+
 ## Next phase
 
-**Phase 16 — Release Engineering**
+**Phase 17 — Launch Readiness**
 
-Status: **Ready after the final Phase 15 documentation Head passes Android CI and Security CI.**
+Status: **Ready to start only after the final Phase 16 documentation Head passes Android CI and Security CI.**
 
 ## Branch rule from Phase 11 onward
 
