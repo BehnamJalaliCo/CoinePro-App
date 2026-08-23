@@ -3,8 +3,10 @@ package com.coinepro.app
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -49,6 +51,7 @@ class MainActivity : ComponentActivity() {
     private val notificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) {
+        launchPreferences().edit().putBoolean(KEY_NOTIFICATION_PERMISSION_REQUESTED, true).apply()
         updateNotificationPermissionState()
     }
 
@@ -76,6 +79,7 @@ class MainActivity : ComponentActivity() {
                 onSignalLaunchConsumed = { launchSignalId = null },
                 onActivityLaunchConsumed = { launchActivity = false },
                 onRequestNotificationPermission = ::requestNotificationPermission,
+                onOpenNotificationSettings = ::openNotificationSettings,
                 onSendFeedback = ::sendFeedback,
             )
         }
@@ -109,12 +113,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun updateNotificationPermissionState() {
+        val previouslyRequested = launchPreferences().getBoolean(KEY_NOTIFICATION_PERMISSION_REQUESTED, false)
         notificationPermissionState = when {
             BuildConfig.FIREBASE_PROJECT_ID.isBlank() -> NotificationPermissionUiState.NOT_CONFIGURED
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU -> NotificationPermissionUiState.NOT_REQUIRED
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED -> {
                 NotificationPermissionUiState.GRANTED
             }
+            previouslyRequested -> NotificationPermissionUiState.DENIED
             else -> NotificationPermissionUiState.AVAILABLE_TO_REQUEST
         }
     }
@@ -125,8 +131,24 @@ class MainActivity : ComponentActivity() {
             BuildConfig.FIREBASE_PROJECT_ID.isNotBlank() &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
+            launchPreferences().edit().putBoolean(KEY_NOTIFICATION_PERMISSION_REQUESTED, true).apply()
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+    }
+
+    private fun openNotificationSettings() {
+        val notificationIntent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+        }
+        runCatching { startActivity(notificationIntent) }
+            .onFailure {
+                startActivity(
+                    Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.fromParts("package", packageName, null),
+                    ),
+                )
+            }
     }
 
     private fun sendFeedback() {
@@ -142,6 +164,13 @@ class MainActivity : ComponentActivity() {
             putExtra(Intent.EXTRA_SUBJECT, "CoinePro Android feedback")
             putExtra(Intent.EXTRA_TEXT, body)
         }
-        startActivity(Intent.createChooser(intent, "Send CoinePro feedback"))
+        runCatching { startActivity(Intent.createChooser(intent, "Send CoinePro feedback")) }
+    }
+
+    private fun launchPreferences() = getSharedPreferences(LAUNCH_PREFERENCES, MODE_PRIVATE)
+
+    companion object {
+        private const val LAUNCH_PREFERENCES = "launch_readiness"
+        private const val KEY_NOTIFICATION_PERMISSION_REQUESTED = "notification_permission_requested"
     }
 }
