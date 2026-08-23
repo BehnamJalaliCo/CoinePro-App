@@ -18,6 +18,8 @@
         android:theme="@style/Theme.CoinePro"
         android:usesCleartextTraffic="false">
 
+        <profileable android:shell="true" />
+
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"
