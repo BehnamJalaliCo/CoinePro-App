@@ -45,6 +45,7 @@ jobs:
         run: |
           set -euo pipefail
           bash -n scripts/release/validate-version.sh scripts/release/publish-play-internal.sh
+          python3 -m py_compile scripts/release/production-readonly-smoke.py
           bash scripts/release/validate-version.sh "0.2.0-rc.1" "200001"
           if bash scripts/release/validate-version.sh "invalid-version" "0"; then
             echo "::error::Invalid release version unexpectedly passed validation."
