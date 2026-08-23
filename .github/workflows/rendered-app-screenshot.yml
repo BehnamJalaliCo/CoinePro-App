@@ -1,6 +1,8 @@
 name: Actual App Menu Screenshot
 
 on:
+  pull_request:
+    branches: [main, bootstrap/android-foundation]
   push:
     branches: [feat/phase17-launch-readiness]
   workflow_dispatch:
