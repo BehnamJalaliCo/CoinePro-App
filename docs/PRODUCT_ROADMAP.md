@@ -1,6 +1,6 @@
 # CoinePro Android Product Roadmap
 
-Status: Phases 0 through 10 complete — Phase 11 next
+Status: Phases 0 through 11 complete — Phase 12 next
 
 The canonical phase-to-branch/SHA/CI mapping lives in `PHASE_INDEX.md`.
 
@@ -183,26 +183,41 @@ Exit state:
 
 ## Phase 11 — Trader Tools
 
-Status: Next
+Status: Complete
 
-Deliverables:
-- Risk Calculator
-- Position Size / Lot Calculator
-- Risk/Reward
-- Profit Calculator
-- Pip Calculator
-- Crypto PnL
-- Compound Calculator
-- Drawdown Simulator
+Final code milestone: `feat/phase11-trader-tools` → `11d91b2cb90a484611a1b1c773187b7c2b2795e4` → Run #126 success.
 
-Exit criteria:
-- deterministic formula tests
-- precision/contract assumptions documented
-- calculations remain separate from execution
+Delivered:
+- premium Trader Toolkit dashboard in existing `feature:tools`
+- Risk Calculator with deterministic account-risk math
+- Position Size / Lot Calculator with explicit pip-value assumptions
+- Risk / Reward Calculator with strict long/short level geometry
+- Profit Calculator with explicit lots and contract size
+- Pip Calculator with explicit pip size and pip value per lot
+- Crypto PnL Calculator for USDT-quoted pairs with entry and exit fees
+- Compound Calculator with arithmetic-only growth assumptions
+- Drawdown Simulator with compounded loss and recovery requirement
+- formula, units, precision and assumptions visible in the UI
+- designed missing-input, validation-error and result states plus per-tool reset
+- zero, negative, invalid and non-finite input handling per formula contract
+- successful results pass a final finite-number guard so `NaN` / Infinity cannot enter UI
+- financial outputs use deterministic Latin precision, Unicode LTR isolates and Compose LTR text direction for RTL safety
+- calculator engine remains local and fully separate from execution; no calculator can send an order
+- connected News, Calendar and Connections remain separate source-backed surfaces
+- no fake realtime, AI progress, broker state, execution state, urgency animation or price count-up
+- `docs/PHASE11_TRADER_TOOLS_CONTRACT.md` documents formulas, assumptions, precision and truth boundaries
+- `:feature:tools:testDebugUnitTest` added to cumulative Android CI
+
+Exit state:
+- all eight formula families and important invalid-input paths are unit-tested
+- assumptions and display precision are documented
+- RTL financial LTR isolation is unit-tested
+- Run #126 passed Phase 11 tests, all prior cumulative core tests, app lint, app tests, debug assembly and APK upload
+- final phase closure still requires the latest documentation Head to pass the same Android CI gate
 
 ## Phase 12 — Activity, History & Performance
 
-Status: Planned
+Status: Next
 
 Deliverables:
 - executed-signal history
@@ -361,6 +376,7 @@ Create modules when boundaries become useful; do not create empty architecture f
 8. AI Vision upload/job/result schema — client implemented in Phase 8 with image privacy preprocessing, structured assessments and persisted-Signal trust boundary
 9. AI Assistant contextual chat schema — client implemented in Phase 9 with structured context provenance, stable conversation identity and explicit history policy
 10. News/calendar timestamps and impact schema — client implemented in Phase 10 with strict timestamp/stale/unknown truth boundaries and active-signal high-impact risk context
+11. Trader Tools formulas — local deterministic Phase 11 contract; no execution side effect and explicit numeric/precision/RTL boundaries
 
 ## Definition of Done
 
