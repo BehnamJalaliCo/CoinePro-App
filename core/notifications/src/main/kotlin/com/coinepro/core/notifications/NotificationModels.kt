@@ -28,7 +28,7 @@ data class AppNotification(
     val read: Boolean,
 ) {
     val signalId: Long?
-        get() = data["signal_id"]?.toLongOrNull()
+        get() = data["signal_id"]?.toLongOrNull()?.takeIf { it > 0L }
 }
 
 data class PriceAlert(
