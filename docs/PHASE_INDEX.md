@@ -27,7 +27,8 @@ This file is the canonical map between delivery phases, Git branches, milestone 
 | 9 | AI Assistant | `feat/phase9-ai-assistant` | `3d158c9d0fc72724e9bbf402ae81540300950cc3` | Run #114 — success |
 | 10 | News & Economic Calendar | `feat/phase10-news-economic-calendar` | `cfef5ba5c20be8ccf189de137ca9e6a9a199def4` | Run #121 — success |
 | 11 | Trader Tools | `feat/phase11-trader-tools` | `11d91b2cb90a484611a1b1c773187b7c2b2795e4` | Run #126 — success |
-| 12 | Activity, History & Performance | `feat/phase12-activity-history-performance` | `d592401d6a775254f60850cfc6f2772d4483ee6f` | Run #131 — success |
+| 12 | Activity, History & Performance | `feat/phase12-activity-history-performance` | `23f7113d83acdcfda74798380f04da1c7447be9f` | Run #132 — success |
+| 13 | Offline, Reliability & Background Work | `feat/phase13-offline-reliability-background-work` | `fd8d56be5023b03ae136a5af633addaf3edee3a7` | Run #155 — success |
 
 ## Phase 1–6 audit closure
 
@@ -181,7 +182,7 @@ Final Phase 11 code checkpoint:
 
 ## Phase 12 status
 
-**Closed / Complete at code checkpoint; final closure Head validation pending after this documentation update.**
+**Closed / Complete.**
 
 Validated behavior:
 
@@ -207,17 +208,48 @@ Validated behavior:
 - contract and evidence rules documented in `PHASE12_ACTIVITY_HISTORY_PERFORMANCE_CONTRACT.md`
 - Phase 12 truth/denominator/pagination tests run inside the existing `:core:signals:testDebugUnitTest` cumulative CI gate
 
-Final Phase 12 code checkpoint:
+Final Phase 12 closure:
 
-- SHA: `d592401d6a775254f60850cfc6f2772d4483ee6f`
-- Android CI Run #131: **success**
-- Run #131 passed Phase 12 tests, every previous cumulative core gate, app lint, app unit tests, debug assembly and debug APK upload.
+- code checkpoint SHA: `d592401d6a775254f60850cfc6f2772d4483ee6f` — Run #131 success
+- final documentation Head: `23f7113d83acdcfda74798380f04da1c7447be9f` — Run #132 success
+
+## Phase 13 status
+
+**Closed / Complete at code checkpoint; final documentation Head validation pending after this closure update.**
+
+Validated behavior:
+
+- `core:database` Room 2.8.4 boundary persists only safe read models
+- cached market snapshots restore with explicit `CACHE` origin and stale truth; cache cannot claim realtime `LIVE`
+- market cache rejects invalid/non-finite/out-of-scope rows and network-origin cache writes are throttled
+- closed signal-history cache intentionally drops live quote/live P&L authority
+- nullable target-hit evidence remains nullable through cache round-trips
+- cached closed history can render as fallback with explicit cache provenance and storage time
+- successful server refresh replaces history cache and removes cached provenance
+- membership loss/logout clears account-scoped cached history
+- authenticated app resume refreshes server-backed market, signals/history, execution history, notifications and market intelligence
+- WorkManager 2.11.2 durable sync is read-only and has no execution/broker-write dependency
+- periodic sync requires network and battery-not-low; immediate sync requires network
+- unique periodic/immediate work plus update/replace semantics make scheduling idempotent at the Android boundary
+- retryable read failures use exponential WorkManager backoff; missing session is a no-op rather than a retry loop
+- after process death, the worker may hydrate the existing secure session token into memory only for authenticated reads
+- HTTP 401 clears secure/in-memory session state and emits the existing unauthorized signal
+- the WorkManager default initializer is removed so HiltWorkerFactory application configuration is used without lint suppression
+- contract documented in `PHASE13_OFFLINE_RELIABILITY_BACKGROUND_CONTRACT.md`
+- Phase 13 cache, controller and background reliability tests are included in cumulative Android CI
+- background work never executes/closes a signal, submits broker writes, creates AI jobs or fabricates execution success
+
+Phase 13 code checkpoint:
+
+- SHA: `fd8d56be5023b03ae136a5af633addaf3edee3a7`
+- Android CI Run #155: **success**
+- Run #155 passed cumulative core tests, database/signals tests, app lint, app unit tests, debug assembly and debug APK upload.
 
 ## Next phase
 
-**Phase 13 — Offline, Reliability & Background Work**
+**Phase 14 — Security Hardening**
 
-Status: **Ready after the final Phase 12 documentation Head passes Android CI.**
+Status: **Ready after the final Phase 13 documentation Head passes Android CI.**
 
 ## Branch rule from Phase 11 onward
 
