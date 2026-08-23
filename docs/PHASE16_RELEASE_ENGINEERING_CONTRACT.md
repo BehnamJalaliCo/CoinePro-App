@@ -1,10 +1,12 @@
 # Phase 16 — Release Engineering Contract
 
-Status: Active until the final Phase 16 code/documentation Head passes Android CI and Security CI.
+Status: Closure candidate. Phase 16 code is validated; this documentation Head must pass Android CI and Security CI before the phase is formally closed.
 
 Repository scope: `BehnamJalaliCo/CoinePro-App` only.
 
 Base checkpoint: Phase 15 final green Head `a8d26b7df6332f569f963756a2e041ad31b3cdab` (Android Run #212, Security Run #44).
+
+Validated Phase 16 code checkpoint: `0681a763cf504275b60e50495d3c64d13f73ac79` (Android Run #226, Security Run #58).
 
 ## Release identities
 
@@ -47,9 +49,9 @@ No production or staging credential is committed to the Android repository.
 
 Production/staging protected signing is opt-in and all four signing properties must be supplied together. Partial signing configuration fails Gradle configuration.
 
-Normal pull-request CI does not use a production key. Instead it creates a one-run ephemeral JKS under `$RUNNER_TEMP`, builds a signed release AAB and verifies the bundle signature with `jarsigner`. This proves the signing plumbing without exposing or depending on production key material.
+Normal pull-request CI does not use a production key. Instead it creates a one-run ephemeral JKS under `$RUNNER_TEMP`, builds a signed release AAB and verifies that `jarsigner` reports the bundle as signed. CI does not use `-strict` because a deliberately self-signed ephemeral CI certificate has no external trust chain; trust-chain warnings are not evidence that the AAB is unsigned. This proves the signing plumbing without exposing or depending on production key material.
 
-The manual internal-release workflow materializes the encrypted/base64-provided upload keystore only under `$RUNNER_TEMP`, sets restrictive file permissions, signs the staging AAB, publishes it, and removes the temporary keystore in an `always()` cleanup step.
+The manual internal-release workflow materializes the encrypted/base64-provided upload keystore only under `$RUNNER_TEMP`, sets restrictive file permissions, signs the staging AAB, verifies that the bundle is signed, publishes it, and removes the temporary keystore in an `always()` cleanup step.
 
 Tracked-secret CI continues to reject keystores/private-key files, and `.gitignore` excludes JKS/keystore/PEM/key files plus generated Google auth credential files.
 
@@ -120,6 +122,16 @@ Security CI must pass:
 - resolved dependency OSV audit including staging runtime dependencies;
 - debug/staging/production/benchmark BuildConfig isolation.
 
+## Validated code evidence
+
+On `0681a763cf504275b60e50495d3c64d13f73ac79`:
+- Android CI Run #226: **success**
+- Security CI Run #58: **success**
+- protected release-signing AAB smoke: **success**
+- debug/staging/release/benchmark cumulative build: **success**
+- Compose accessibility + benchmark wiring smoke: **success**
+- tracked-secret, OSV and BuildConfig-isolation gates: **success**
+
 ## Explicit non-claims
 
 Phase 16 does not claim:
@@ -138,5 +150,5 @@ Phase 16 is complete only when:
 - staging release identity cannot inherit production endpoint configuration;
 - internal-track workflow and version validation are committed;
 - changelog and monitoring decision are documented;
-- final Android CI and Security CI are green on the exact final Phase 16 Head;
+- final Android CI and Security CI are green on the exact final Phase 16 documentation Head;
 - PR remains Draft/unmerged unless merge is explicitly approved.
