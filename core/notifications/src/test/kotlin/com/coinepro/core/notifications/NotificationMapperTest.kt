@@ -49,4 +49,25 @@ class NotificationMapperTest {
         assertEquals(PriceAlertTrigger.RECURRING, alert.trigger)
         assertEquals(true, alert.active)
     }
+
+    @Test
+    fun `alert symbol normalization stays inside product scope`() {
+        assertEquals("XAUUSD", normalizeProductAlertSymbol("xau/usd"))
+        assertEquals("BTCUSDT", normalizeProductAlertSymbol("btc-usdt"))
+        assertNull(normalizeProductAlertSymbol("EURUSD"))
+        assertNull(normalizeProductAlertSymbol("BTCUSD"))
+    }
+
+    @Test
+    fun `non finite alert payload is rejected`() {
+        assertNull(
+            PriceAlertDto(
+                id = "a1",
+                symbol = "XAUUSD",
+                condition = "cross_up",
+                value = Double.NaN,
+                trigger = "once",
+            ).toDomain(),
+        )
+    }
 }
