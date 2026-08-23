@@ -1,0 +1,142 @@
+# Phase 16 — Release Engineering Contract
+
+Status: Active until the final Phase 16 code/documentation Head passes Android CI and Security CI.
+
+Repository scope: `BehnamJalaliCo/CoinePro-App` only.
+
+Base checkpoint: Phase 15 final green Head `a8d26b7df6332f569f963756a2e041ad31b3cdab` (Android Run #212, Security Run #44).
+
+## Release identities
+
+CoinePro Android has distinct build environments:
+
+- `debug` — developer-only configuration namespace.
+- `staging` — release-like, non-debuggable build with application id `com.coinepro.app.staging` and staging-only service properties.
+- `release` — production application id `com.coinepro.app` and production-only service properties.
+- `benchmark` — release-like benchmark build pinned to non-routable `https://benchmark.example.invalid/` and empty Firebase configuration.
+
+`staging` and `release` API base URLs are required to differ. Staging does not fall back to production Gradle properties. The client boundary is defense in depth only: server-side authentication, environment-specific accounts, entitlements and execution validation remain authoritative.
+
+## Configuration namespaces
+
+Debug:
+- `COINEPRO_DEBUG_API_BASE_URL`
+- `COINEPRO_DEBUG_FIREBASE_*`
+
+Staging:
+- `COINEPRO_STAGING_API_BASE_URL`
+- `COINEPRO_STAGING_FIREBASE_*`
+
+Production:
+- `COINEPRO_PRODUCTION_API_BASE_URL`
+- `COINEPRO_PRODUCTION_FIREBASE_*`
+
+Release signing:
+- `COINEPRO_RELEASE_STORE_FILE`
+- `COINEPRO_RELEASE_STORE_PASSWORD`
+- `COINEPRO_RELEASE_KEY_ALIAS`
+- `COINEPRO_RELEASE_KEY_PASSWORD`
+
+Versioning:
+- `COINEPRO_VERSION_NAME`
+- `COINEPRO_VERSION_CODE`
+
+No production or staging credential is committed to the Android repository.
+
+## Signing contract
+
+Production/staging protected signing is opt-in and all four signing properties must be supplied together. Partial signing configuration fails Gradle configuration.
+
+Normal pull-request CI does not use a production key. Instead it creates a one-run ephemeral JKS under `$RUNNER_TEMP`, builds a signed release AAB and verifies the bundle signature with `jarsigner`. This proves the signing plumbing without exposing or depending on production key material.
+
+The manual internal-release workflow materializes the encrypted/base64-provided upload keystore only under `$RUNNER_TEMP`, sets restrictive file permissions, signs the staging AAB, publishes it, and removes the temporary keystore in an `always()` cleanup step.
+
+Tracked-secret CI continues to reject keystores/private-key files, and `.gitignore` excludes JKS/keystore/PEM/key files plus generated Google auth credential files.
+
+## Versioning contract
+
+`versionName` uses semantic version form such as `1.2.3` or `1.2.3-rc.1`.
+
+`versionCode` is a positive monotonically increasing integer and must not exceed `2100000000`.
+
+The manual internal-release workflow requires both values explicitly and validates them before signing or publishing.
+
+## Internal testing pipeline
+
+`.github/workflows/internal-release.yml` is manual (`workflow_dispatch`) and targets GitHub Environment `play-internal`.
+
+Required protected secrets include:
+- upload keystore material and passwords/alias
+- staging API/Firebase configuration
+- Google Play service-account JSON with Android Publisher access
+
+The workflow:
+1. validates version inputs and required secrets;
+2. materializes the upload keystore outside the repository;
+3. authenticates to Android Publisher;
+4. builds and verifies `app-staging.aab`;
+5. creates a Google Play edit;
+6. uploads the AAB;
+7. assigns the uploaded version to the `internal` track;
+8. commits the edit;
+9. uploads the AAB/mapping as short-lived CI evidence;
+10. removes runner signing material.
+
+If the Play edit is not committed, the publishing script attempts to delete the incomplete edit.
+
+No production Play deployment is introduced in Phase 16. Production external/runtime activation remains Phase 17 launch-readiness work.
+
+## Changelog and release notes
+
+`CHANGELOG.md` is the repository-level user-visible change ledger.
+
+Rules:
+- unreleased changes stay under `[Unreleased]`;
+- release names match `COINEPRO_VERSION_NAME`;
+- user-visible behavior, security-relevant behavior and migration notes are recorded;
+- internal implementation churn that does not affect release behavior is not required in the changelog.
+
+## Crash / ANR monitoring decision
+
+Phase 16 does not add a new third-party crash-reporting SDK.
+
+For Play-distributed internal/production builds, Android Vitals / Play Console is the baseline crash/ANR source. This avoids adding another telemetry/retention surface before Phase 17 privacy/analytics review.
+
+If a future crash SDK is added, it requires an explicit privacy/retention contract, environment separation, secret review and user-data review. Crash telemetry must never contain bearer tokens, broker credentials, image bytes, raw AI prompts containing sensitive data, or execution secrets.
+
+## CI gates
+
+Android CI must pass:
+- cumulative core/feature unit tests;
+- debug/staging/release lint;
+- debug/staging/release/benchmark assembly;
+- staging app unit-test variant;
+- protected release-signing AAB smoke with an ephemeral CI key;
+- existing Compose accessibility tests;
+- existing macrobenchmark dry-run wiring.
+
+Security CI must pass:
+- tracked-secret scan;
+- resolved dependency OSV audit including staging runtime dependencies;
+- debug/staging/production/benchmark BuildConfig isolation.
+
+## Explicit non-claims
+
+Phase 16 does not claim:
+- that a client-side environment flag is a server trust boundary;
+- that staging credentials/accounts can access production execution;
+- that production vendor/broker connectivity has been validated;
+- that Play production rollout has been enabled;
+- that a new crash analytics vendor has user consent or approved retention;
+- that CI ephemeral signing keys are production keys.
+
+## Exit criteria
+
+Phase 16 is complete only when:
+- protected signing plumbing is green in CI;
+- staging and production BuildConfig isolation is green;
+- staging release identity cannot inherit production endpoint configuration;
+- internal-track workflow and version validation are committed;
+- changelog and monitoring decision are documented;
+- final Android CI and Security CI are green on the exact final Phase 16 Head;
+- PR remains Draft/unmerged unless merge is explicitly approved.
