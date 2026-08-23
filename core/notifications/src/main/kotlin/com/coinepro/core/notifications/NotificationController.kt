@@ -63,9 +63,17 @@ class NotificationController(
         value: Double,
         trigger: PriceAlertTrigger,
     ) {
-        if (symbol.isBlank() || value <= 0) return
+        val safeSymbol = normalizeProductAlertSymbol(symbol)
+        if (safeSymbol == null) {
+            _state.update { it.copy(lastError = "Unsupported alert symbol") }
+            return
+        }
+        if (!value.isFinite() || value <= 0.0) {
+            _state.update { it.copy(lastError = "Alert value must be a positive finite number") }
+            return
+        }
         scope.launch {
-            runCatching { gateway.createAlert(symbol, condition, value, trigger) }
+            runCatching { gateway.createAlert(safeSymbol, condition, value, trigger) }
                 .onSuccess { created ->
                     _state.update { it.copy(alerts = listOf(created) + it.alerts, lastError = null) }
                 }
