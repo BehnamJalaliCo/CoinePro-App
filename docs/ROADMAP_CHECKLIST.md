@@ -11,13 +11,13 @@ Use this as the execution checklist beside `PRODUCT_ROADMAP.md` and the canonica
 
 ## Global gates for every phase
 
-- [ ] API contract documented before UI integration
-- [ ] Loading / empty / error / offline states implemented where applicable
-- [ ] RTL layout and LTR financial values verified
-- [ ] Security and logging implications reviewed
-- [ ] Unit/UI tests added for critical paths
-- [ ] CI green
-- [ ] No fake realtime state, execution state or AI progress
+- [x] API contract documented before UI integration
+- [x] Loading / empty / error / offline states implemented where applicable
+- [x] RTL layout and LTR financial values verified
+- [x] Security and logging implications reviewed
+- [x] Unit/UI tests added for critical paths
+- [x] CI green
+- [x] No fake realtime state, execution state or AI progress
 
 ## Phase progress
 
@@ -30,7 +30,7 @@ Use this as the execution checklist beside `PRODUCT_ROADMAP.md` and the canonica
 - [x] Phase 4 — Signals Core
 - [x] Phase 5 — Alerts & Push
 - [x] Phase 6 — Connections & Signal Execution Bridge
-- [ ] Phase 7 — AI Generated Market Signal
+- [x] Phase 7 — AI Generated Market Signal
 - [ ] Phase 8 — AI Vision Flagship
 - [ ] Phase 9 — AI Assistant
 - [ ] Phase 10 — News & Economic Calendar
@@ -69,8 +69,8 @@ Use this as the execution checklist beside `PRODUCT_ROADMAP.md` and the canonica
 - server profile fields are treated as entitlement truth
 - no refresh token is invented by Android
 - production/staging API base URL is injected by Gradle property and is not committed
-- SessionController tests cover signed-out restore, valid restore, unauthorized clearing and free-user entitlement
-- milestone: `feat/android-mobile-auth` → `12cc837ac02e378f3ca4452a95bfed224ad3222b` → CI Run #11 success
+- SessionController tests cover signed-out restore, valid restore, unauthorized clearing, network revalidation failure and free-user entitlement
+- milestone: `feat/android-mobile-auth` → `12cc837ac02e378f3ca4452a95bfed224ad3222b` → CI Run #11 success; coverage remains in the cumulative CI gate
 
 ## Phase 3 delivered
 
@@ -81,6 +81,7 @@ Use this as the execution checklist beside `PRODUCT_ROADMAP.md` and the canonica
 - a socket connection alone never creates a fake `LIVE` state; at least one fresh quote is required
 - stale quotes are explicitly represented and degrade live state
 - Home Market Pulse renders real quote state only
+- out-of-scope market symbols are rejected instead of guessed
 - milestone: `feat/phase3-realtime-market-data` → `7158a78ef6ee378ec531576bf7d9364816d25b56` → CI Run #14 success
 - final production vendor connectivity/whitelist smoke testing is intentionally deferred to Phase 17
 
@@ -95,6 +96,7 @@ Use this as the execution checklist beside `PRODUCT_ROADMAP.md` and the canonica
 - missing fields render as missing; no invented values or fake live state
 - invalid/neutral directions are rejected rather than displayed as actionable trades
 - financial values remain LTR inside RTL-capable UI
+- product scope is enforced in the Android mapper
 - milestone: `feat/phase4-signals-core` → `adbefeb33b1e39eddd65f28ddd89ad40b70bafdb` → CI Run #17 success
 
 ## Phase 5 delivered
@@ -108,6 +110,7 @@ Use this as the execution checklist beside `PRODUCT_ROADMAP.md` and the canonica
 - notification deep-links route to Signal Detail or Activity
 - Firebase runtime configuration is injected at build time; no `google-services.json` or production credential is committed
 - notification mapper tests are part of Android CI
+- outgoing and incoming alert symbols/values are validated against product scope and finite positive values
 - milestone: `feat/phase5-alerts-push` → `60dfd64259ec92775b38288f2a4dc8e4c50169e9` → CI Run #41 success
 - real production push delivery smoke testing remains Phase 17
 
@@ -119,16 +122,35 @@ Use this as the execution checklist beside `PRODUCT_ROADMAP.md` and the canonica
 - execution is signal-scoped; no generic New Trade surface exists
 - venue and quantity validation before request submission
 - idempotency request ID on execution requests
-- explicit `QUEUED / SUBMITTED / OPEN / CLOSE_REQUESTED / CLOSED / FAILED / CANCELLED` truth states
-- socket/UI state never claims an execution is open before provider truth says `OPEN`
-- active executed signals can be loaded and tracked
-- LBank close is deliberately not exposed after submission/open until the provider lifecycle is verified; a queued intent may be cancelled before provider acknowledgement
+- explicit `QUEUED / SUBMITTED / OPEN / CLOSE_REQUESTED / CLOSED / FAILED / CANCELLED / UNKNOWN` truth states
+- UI never claims an execution is open before provider truth says `OPEN`
+- active executed signals are rendered and tracked in Activity
+- duplicate close requests after `CLOSE_REQUESTED` are blocked
+- LBank close is deliberately not exposed after submission/open; a queued intent may be cancelled before provider acknowledgement
 - trading credentials are not persisted by the Android client and are not rendered back into UI/logs
-- milestone: `feat/phase6-signal-execution` → `710ede98b19c74244e61048174fdd3939b0cb98a` → CI Run #65 success
+- audited milestone: `feat/phase6-signal-execution` → `d8173f79df1aee18b169e8ccbbdcd7c776f7fa26` → CI Run #86 success
 - production broker/exchange connectivity and end-to-end execution smoke remain Phase 17
+
+## Phase 7 delivered
+
+- `core:aisignal` AI Signal domain, Retrofit gateway and server-truth controller
+- `docs/PHASE7_AI_SIGNAL_CONTRACT.md` defines the authenticated job/trust contract
+- AI request UI supports product-scoped symbol, timeframe and risk controls
+- server-derived quota and entitlement states
+- exact `QUEUED / RUNNING / DONE / FAILED / EXPIRED` job lifecycle
+- pending state uses server polling without invented percentage or fake success
+- failed and expired jobs can be retried or replaced
+- structured AI result must be `validated=true` and match the original symbol/timeframe request
+- invalid direction, prices, targets, confidence, product scope or request/result mismatches block the result
+- raw model text is not part of the Android execution contract
+- AI result CTA opens only a persisted validated `signal_id`
+- no direct execution call exists on the AI screen; execution remains Signal Detail → Execution
+- AI state clears on sign-out
+- `core:aisignal` mapper/controller tests cover trust boundary, quota, entitlement, pending→done and expiry
+- audited milestone: `feat/phase7-ai-generated-market-signal` → `f718d9ad310ab37d4b109297c4fadcb33e287775` → CI Run #91 success
 
 ## Current next milestone
 
-Phase 7 — AI Generated Market Signal.
+Phase 8 — AI Vision Flagship.
 
-There are 11 phases remaining: Phase 7 through Phase 17.
+There are 10 phases remaining: Phase 8 through Phase 17.
