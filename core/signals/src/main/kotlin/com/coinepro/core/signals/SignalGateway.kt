@@ -70,7 +70,7 @@ internal data class SignalDto(
 )
 
 internal data class EntryZoneDto(val low: Double? = null, val high: Double? = null)
-internal data class SignalTargetDto(val level: Int = 0, val price: Double? = null, val hit: Boolean = false)
+internal data class SignalTargetDto(val level: Int = 0, val price: Double? = null, val hit: Boolean? = null)
 internal data class SignalQuoteDto(
     val price: Double? = null,
     val bid: Double? = null,

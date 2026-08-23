@@ -18,7 +18,7 @@ enum class SignalStatusFilter(val wireValue: String) {
 data class SignalTarget(
     val level: Int,
     val price: Double?,
-    val hit: Boolean,
+    val hit: Boolean?,
 )
 
 data class SignalEntryZone(

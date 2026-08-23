@@ -66,8 +66,12 @@ fun summarizeSignalPerformance(
     val breakeven = pnlEvidence.count { it == 0.0 }
     val unknownPnl = signals.size - pnlEvidence.size
 
-    val targetEvidence = signals.filter { it.targets.isNotEmpty() }
-    val targetHits = targetEvidence.count { signal -> signal.targets.any(SignalTarget::hit) }
+    val targetEvidence = signals.filter { signal ->
+        signal.targets.any { target -> target.hit != null }
+    }
+    val targetHits = targetEvidence.count { signal ->
+        signal.targets.any { target -> target.hit == true }
+    }
 
     val closeReasonEvidence = signals.filter { !it.closeReason.isNullOrBlank() }
     val stopLossHits = closeReasonEvidence.count { isExplicitStopLossReason(it.closeReason) }

@@ -110,12 +110,15 @@ class SignalController(
             )
             expectedTotal = page.total.coerceAtLeast(0)
             items += page.items
-            offset += page.items.size
 
             if (page.items.isEmpty()) {
                 complete = offset >= expectedTotal
                 break
             }
+
+            // Offset belongs to the server row-set, not to the subset that survived Android mapping.
+            // Advancing by mapped item count could repeat pages when an invalid row is rejected locally.
+            offset += HISTORY_PAGE_SIZE
             if (items.size >= MAX_HISTORY_RECORDS && offset < expectedTotal) {
                 complete = false
                 break
