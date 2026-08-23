@@ -22,6 +22,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.coinepro.app.notifications.PushCoordinator
+import com.coinepro.app.sync.BackgroundSyncScheduler
 import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.aivision.AiVisionController
@@ -72,6 +73,7 @@ fun CoineProApp(
     aiAssistantController: AiAssistantController,
     marketIntelController: MarketIntelController,
     pushCoordinator: PushCoordinator,
+    backgroundSyncScheduler: BackgroundSyncScheduler,
     launchSignalId: Long?,
     launchActivity: Boolean,
     onSignalLaunchConsumed: () -> Unit,
@@ -88,7 +90,9 @@ fun CoineProApp(
         if (signedIn) {
             marketDataController.start()
             pushCoordinator.registerCurrentToken()
+            backgroundSyncScheduler.enableForAuthenticatedSession()
         } else {
+            backgroundSyncScheduler.disable()
             marketDataController.stop()
             signalController.clear()
             notificationController.clear()
