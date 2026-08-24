@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="auth_secure_sign_in">ورود امن</string>
+    <string name="auth_wordmark_description">کوین‌پرو</string>
 </resources>

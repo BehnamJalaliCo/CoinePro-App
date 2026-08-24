@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,16 +21,30 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * The CoinePro name, set in the brand's two-tone treatment.
+ * The CoinePro wordmark, as supplied.
  *
- * Typeset rather than shipped as a raster. The supplied wordmark is a JPEG on a white ground whose
- * "Coine" glyphs are themselves near-white, so no cut-out can separate them cleanly — every
- * attempt leaves the product's most prominent asset visibly ragged. Live text renders crisp at any
- * density, mirrors correctly, and stays selectable by accessibility services. Replace this with the
- * real vector wordmark if one is ever supplied.
+ * The artwork's bevelled metal cannot be reproduced by typesetting, so this is the real asset
+ * rather than styled text. It is cut from a black-ground master by clearing every genuinely black
+ * region — including the enclosed counters of o, e and P, which a border-only fill cannot reach.
  */
 @Composable
 fun CoineProWordmark(
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null,
+) {
+    Image(
+        painter = painterResource(R.drawable.coinepro_wordmark),
+        contentDescription = contentDescription,
+        modifier = modifier,
+    )
+}
+
+/**
+ * The name as live text, for places a raster cannot go — a notification title, a share subject, or
+ * any surface that must stay selectable. Prefer [CoineProWordmark] wherever an image will do.
+ */
+@Composable
+fun CoineProWordmarkText(
     modifier: Modifier = Modifier,
     style: TextStyle = LocalTextStyle.current,
 ) {
@@ -57,19 +72,25 @@ fun CoineProMark(
     )
 }
 
-/** Mark above the name, the standard lockup for full-screen surfaces such as sign-in. */
+/** Mark above the wordmark, the standard lockup for full-screen surfaces such as sign-in. */
 @Composable
 fun CoineProLockup(
     modifier: Modifier = Modifier,
     markSize: Dp = 96.dp,
-    style: TextStyle = LocalTextStyle.current,
+    wordmarkWidth: Dp = 168.dp,
+    contentDescription: String? = null,
 ) {
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
     ) {
         CoineProMark(size = markSize)
-        CoineProWordmark(style = style)
+        // The lockup as a whole names the product, so the description sits on the wordmark and the
+        // mark above it stays decorative rather than announcing the name twice.
+        CoineProWordmark(
+            modifier = Modifier.width(wordmarkWidth),
+            contentDescription = contentDescription,
+        )
     }
 }

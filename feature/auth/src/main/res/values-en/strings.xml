@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="auth_secure_sign_in">Secure sign-in</string>
+    <string name="auth_wordmark_description">CoinePro</string>
 </resources>

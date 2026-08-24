@@ -50,8 +50,9 @@ fun AuthScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         CoineProLockup(
-            markSize = 108.dp,
-            style = MaterialTheme.typography.headlineLarge,
+            markSize = 112.dp,
+            wordmarkWidth = 190.dp,
+            contentDescription = stringResource(R.string.auth_wordmark_description),
         )
         Spacer(Modifier.height(12.dp))
         Text(
