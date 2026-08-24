@@ -1,6 +1,9 @@
 name: Staging Test APK
 
 on:
+  pull_request:
+    branches:
+      - bootstrap/android-foundation
   push:
     branches:
       - feat/phase17-launch-readiness
@@ -10,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: coinepro-staging-test-apk
+  group: coinepro-staging-test-apk-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
