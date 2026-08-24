@@ -22,6 +22,7 @@ fun CoineProTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = CoineProDarkColorScheme,
         shapes = CoineProShapes,
+        typography = CoineProTypography,
         content = content,
     )
 }
