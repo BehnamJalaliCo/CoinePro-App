@@ -34,3 +34,6 @@ out/
 generated/
 .externalNativeBuild/
 .cxx/
+
+# Screenshot renders
+app/build/screenshots/
