@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launcher background. Slightly lifted off the app's stage colour so the mark still reads
+         as an icon against a black wallpaper instead of dissolving into it. -->
+    <color name="ic_launcher_background">#0E1118</color>
+</resources>

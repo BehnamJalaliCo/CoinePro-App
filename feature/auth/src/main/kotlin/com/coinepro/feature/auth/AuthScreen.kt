@@ -25,8 +25,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.coinepro.core.designsystem.CoineProLockup
 import com.coinepro.core.auth.LoginConfigState
 import com.coinepro.core.auth.SessionState
 import com.coinepro.core.auth.TelegramAuthPayload
@@ -47,9 +49,15 @@ fun AuthScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("CoinePro", style = MaterialTheme.typography.headlineLarge)
+        CoineProLockup(
+            markSize = 108.dp,
+            style = MaterialTheme.typography.headlineLarge,
+        )
         Spacer(Modifier.height(12.dp))
-        Text("Secure sign-in", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            stringResource(R.string.auth_secure_sign_in),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Spacer(Modifier.height(16.dp))
         Text(
             "Signal → Analysis → Entry / SL / TP → explicit execution confirmation → Monitor → Result / History",

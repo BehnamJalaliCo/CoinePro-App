@@ -310,7 +310,7 @@ private fun ActivityHeader(
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("ACTIVITY / PERFORMANCE", color = CoineProColors.Lapis, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Text("ACTIVITY / PERFORMANCE", color = CoineProColors.Gold, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 Text("Your trading record, from server evidence.", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             }
             TextButton(onClick = onRefresh, enabled = !refreshing) { Text(if (refreshing) "Refreshing" else "Refresh") }
@@ -324,7 +324,7 @@ private fun ActivityHeader(
             HeaderMetric(
                 value = if (expectedSignals > loadedSignals) "$loadedSignals / $expectedSignals" else loadedSignals.toString(),
                 label = "signals loaded",
-                accent = CoineProColors.Lapis,
+                accent = CoineProColors.Gold,
                 modifier = Modifier.weight(1f),
             )
             HeaderMetric(executionCount.toString(), "executions", CoineProColors.Silver, Modifier.weight(1f))
@@ -364,7 +364,7 @@ private fun PerformanceSection(
                 label = "Signals",
                 value = if (hasRecords) summary.totalLoaded.toString() else "—",
                 detail = if (hasRecords) "filtered records" else "no records",
-                accent = CoineProColors.Lapis,
+                accent = CoineProColors.Gold,
                 modifier = Modifier.weight(1f),
             )
             PerformanceMetric(
@@ -504,9 +504,9 @@ private fun HistoryFilters(
 private fun FilterPill(label: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
         modifier = Modifier.clickable(onClick = onClick),
-        color = if (selected) CoineProColors.Lapis.copy(alpha = 0.18f) else CoineProColors.Surface,
+        color = if (selected) CoineProColors.Gold.copy(alpha = 0.18f) else CoineProColors.Surface,
         shape = RoundedCornerShape(999.dp),
-        border = BorderStroke(1.dp, if (selected) CoineProColors.Lapis.copy(alpha = 0.7f) else CoineProColors.Border),
+        border = BorderStroke(1.dp, if (selected) CoineProColors.Gold.copy(alpha = 0.7f) else CoineProColors.Border),
     ) {
         Text(
             label,
@@ -580,7 +580,7 @@ private fun ExecutionHistoryCard(execution: SignalExecution, onOpenSignal: (Long
         ExecutionStatus.FAILED, ExecutionStatus.CANCELLED -> CoineProColors.Sell
         ExecutionStatus.CLOSED -> CoineProColors.Silver
         ExecutionStatus.UNKNOWN -> CoineProColors.Warning
-        else -> CoineProColors.Lapis
+        else -> CoineProColors.Gold
     }
     PremiumCard(modifier = Modifier.clickable { onOpenSignal(execution.signalId) }) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

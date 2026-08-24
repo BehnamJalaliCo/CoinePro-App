@@ -12,8 +12,10 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 
 private val CoineProDarkColorScheme = darkColorScheme(
-    primary = CoineProColors.Lapis,
-    onPrimary = CoineProColors.TextPrimary,
+    primary = CoineProColors.Gold,
+    // Dark on gold, not light: the brand gold is a mid-tone, so near-white label text on a filled
+    // gold button measures 2.0:1 and fails contrast. Against the stage colour it measures 9.0:1.
+    onPrimary = CoineProColors.Stage,
     background = CoineProColors.Stage,
     onBackground = CoineProColors.TextPrimary,
     surface = CoineProColors.Surface,

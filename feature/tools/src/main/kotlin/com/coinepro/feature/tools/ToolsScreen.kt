@@ -151,7 +151,7 @@ private fun ToolkitHeader(expanded: ToolId?, onQuickOpen: (ToolId) -> Unit) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text("TRADER TOOLKIT", color = CoineProColors.Lapis, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        Text("TRADER TOOLKIT", color = CoineProColors.Gold, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         Text("Decision math, without execution risk.", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Text(
             "Eight local calculators. Deterministic formulas. No order routing, no broker state and no invented market data.",
@@ -159,7 +159,7 @@ private fun ToolkitHeader(expanded: ToolId?, onQuickOpen: (ToolId) -> Unit) {
             style = MaterialTheme.typography.bodyMedium,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricPill("8", "calculators", CoineProColors.Lapis, Modifier.weight(1f))
+            MetricPill("8", "calculators", CoineProColors.Gold, Modifier.weight(1f))
             MetricPill("0", "orders sent", CoineProColors.Buy, Modifier.weight(1f))
             MetricPill("LOCAL", "calculation", CoineProColors.Silver, Modifier.weight(1f))
         }
@@ -195,9 +195,9 @@ private fun MetricPill(value: String, label: String, accent: Color, modifier: Mo
 private fun QuickChip(label: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
         modifier = Modifier.clickable(onClick = onClick),
-        color = if (selected) CoineProColors.Lapis.copy(alpha = 0.18f) else CoineProColors.SurfaceElevated,
+        color = if (selected) CoineProColors.Gold.copy(alpha = 0.18f) else CoineProColors.SurfaceElevated,
         shape = RoundedCornerShape(999.dp),
-        border = BorderStroke(1.dp, if (selected) CoineProColors.Lapis.copy(alpha = 0.65f) else CoineProColors.Border),
+        border = BorderStroke(1.dp, if (selected) CoineProColors.Gold.copy(alpha = 0.65f) else CoineProColors.Border),
     ) {
         Text(
             label,
@@ -225,7 +225,7 @@ private fun CalculatorCard(tool: ToolId, expanded: Boolean, onToggle: () -> Unit
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         colors = CardDefaults.cardColors(containerColor = CoineProColors.SurfaceElevated),
-        border = BorderStroke(1.dp, if (expanded) CoineProColors.Lapis.copy(alpha = 0.5f) else CoineProColors.Border),
+        border = BorderStroke(1.dp, if (expanded) CoineProColors.Gold.copy(alpha = 0.5f) else CoineProColors.Border),
         shape = RoundedCornerShape(22.dp),
     ) {
         Column(Modifier.fillMaxWidth()) {
@@ -235,15 +235,15 @@ private fun CalculatorCard(tool: ToolId, expanded: Boolean, onToggle: () -> Unit
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(tool.eyebrow, color = CoineProColors.Lapis, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    Text(tool.eyebrow, color = CoineProColors.Gold, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     Text(tool.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text(tool.description, color = CoineProColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
                 }
                 Spacer(Modifier.width(12.dp))
                 Surface(
-                    color = if (expanded) CoineProColors.Lapis.copy(alpha = 0.16f) else CoineProColors.Surface,
+                    color = if (expanded) CoineProColors.Gold.copy(alpha = 0.16f) else CoineProColors.Surface,
                     shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, if (expanded) CoineProColors.Lapis.copy(alpha = 0.45f) else CoineProColors.Border),
+                    border = BorderStroke(1.dp, if (expanded) CoineProColors.Gold.copy(alpha = 0.45f) else CoineProColors.Border),
                 ) {
                     Text(
                         if (expanded) "Close" else "Open",
@@ -455,7 +455,7 @@ private fun NumericField(label: String, value: String, onValueChange: (String) -
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = CoineProColors.Lapis,
+            focusedBorderColor = CoineProColors.Gold,
             unfocusedBorderColor = CoineProColors.Border,
             focusedContainerColor = CoineProColors.Surface,
             unfocusedContainerColor = CoineProColors.Surface,
@@ -475,7 +475,7 @@ private fun IntegerField(label: String, value: String, onValueChange: (String) -
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = CoineProColors.Lapis,
+            focusedBorderColor = CoineProColors.Gold,
             unfocusedBorderColor = CoineProColors.Border,
             focusedContainerColor = CoineProColors.Surface,
             unfocusedContainerColor = CoineProColors.Surface,
@@ -532,9 +532,9 @@ private fun CalculationResultPanel(result: ToolCalculation<*>?, rows: (Any) -> L
 
 @Composable
 private fun ResultRows(rows: List<Pair<String, String>>) {
-    Surface(color = CoineProColors.Lapis.copy(alpha = 0.08f), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, CoineProColors.Lapis.copy(alpha = 0.34f))) {
+    Surface(color = CoineProColors.Gold.copy(alpha = 0.08f), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, CoineProColors.Gold.copy(alpha = 0.34f))) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("CALCULATED RESULT", color = CoineProColors.Lapis, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+            Text("CALCULATED RESULT", color = CoineProColors.Gold, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
             rows.forEachIndexed { index, row ->
                 if (index > 0) HorizontalDivider(color = CoineProColors.Border.copy(alpha = 0.7f))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
