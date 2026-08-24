@@ -9,6 +9,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -40,7 +41,7 @@ class ActualAppMenuScreenshotTest {
                                     selected = destination == AppDestination.HOME,
                                     onClick = {},
                                     icon = { Text(destination.mark) },
-                                    label = { Text(destination.label) },
+                                    label = { Text(stringResource(destination.labelRes)) },
                                 )
                             }
                         }

@@ -1,5 +1,6 @@
 package com.coinepro.core.signals
 
+import com.coinepro.core.common.UiMessage
 import com.coinepro.core.model.MarketType
 
 data class SignalHistoryState(
@@ -8,7 +9,7 @@ data class SignalHistoryState(
     val expectedTotal: Int = 0,
     val coverageComplete: Boolean = true,
     val membershipRequired: Boolean = false,
-    val error: String? = null,
+    val error: UiMessage? = null,
     val fromCache: Boolean = false,
     val cacheStoredAtEpochMillis: Long? = null,
 )

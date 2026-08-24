@@ -13,6 +13,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -247,7 +248,7 @@ private fun MainShell(
                                 }
                             },
                             icon = { Text(destination.mark) },
-                            label = { Text(destination.label) },
+                            label = { Text(stringResource(destination.labelRes)) },
                         )
                     }
                 }

@@ -1,5 +1,7 @@
 package com.coinepro.core.signals
 
+import com.coinepro.core.common.MessageKey
+import com.coinepro.core.common.UiMessage
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.SignalDirection
 import java.io.IOException
@@ -43,7 +45,16 @@ class SignalControllerCacheTest {
         assertFalse(state.coverageComplete)
         assertTrue(state.fromCache)
         assertEquals(1234L, state.cacheStoredAtEpochMillis)
-        assertEquals("Cached history shown. offline", state.error)
+        // The refresh failure is reported as owned copy behind the cached-provenance lead-in.
+        // The IOException's own text is deliberately not surfaced: it is diagnostic output, not
+        // something a reader can act on, and it would be untranslatable.
+        assertEquals(
+            UiMessage.Prefixed(
+                MessageKey.CACHED_HISTORY_SHOWN,
+                UiMessage.Local(MessageKey.SIGNAL_HISTORY_UNAVAILABLE),
+            ),
+            state.error,
+        )
     }
 
     @Test

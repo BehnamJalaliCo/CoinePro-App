@@ -18,6 +18,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aisignal.AiSignalController
@@ -87,6 +88,27 @@ class ScreenshotRenderTest {
         val controller = SignalController(FakeSignalGateway(), scope)
         controller.refresh()
         capture("02-signals") { SignalsScreen(controller = controller, onOpenSignal = {}) }
+    }
+
+    /**
+     * The pilot screen in the shipping default language. Robolectric picks resources from the
+     * `qualifiers` on the test, so this renders the same widget tree a Persian device would draw:
+     * translated copy, mirrored layout, and Latin price columns held left-to-right.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun signalsPersian() {
+        val controller = SignalController(FakeSignalGateway(), scope)
+        controller.refresh()
+        capture("12-signals-fa") { SignalsScreen(controller = controller, onOpenSignal = {}) }
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "en-rUS-w411dp-h914dp-xxhdpi")
+    fun signalsEnglish() {
+        val controller = SignalController(FakeSignalGateway(), scope)
+        controller.refresh()
+        capture("13-signals-en") { SignalsScreen(controller = controller, onOpenSignal = {}) }
     }
 
     @Test
@@ -205,7 +227,7 @@ class ScreenshotRenderTest {
                             selected = destination == AppDestination.HOME,
                             onClick = {},
                             icon = { Text(destination.mark) },
-                            label = { Text(destination.label) },
+                            label = { Text(stringResource(destination.labelRes)) },
                         )
                     }
                 }

@@ -2,6 +2,7 @@ package com.coinepro.core.signals
 
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.QuoteSource
+import com.coinepro.core.common.UiMessage
 import com.coinepro.core.model.SignalDirection
 
 enum class SignalMarketFilter(val wireValue: String) {
@@ -83,7 +84,7 @@ data class SignalsState(
     val items: List<TradingSignal> = emptyList(),
     val loading: Boolean = false,
     val membershipRequired: Boolean = false,
-    val error: String? = null,
+    val error: UiMessage? = null,
 )
 
 data class SignalDetailState(
@@ -91,7 +92,7 @@ data class SignalDetailState(
     val signal: TradingSignal? = null,
     val loading: Boolean = false,
     val membershipRequired: Boolean = false,
-    val error: String? = null,
+    val error: UiMessage? = null,
 )
 
 class SignalMembershipRequiredException : Exception("Signal membership required")

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default language: Persian. English lives in values-en. -->
+<resources>
+    <string name="message_signals_unavailable">سیگنال‌ها در دسترس نیستند.</string>
+    <string name="message_signal_history_unavailable">تاریخچهٔ سیگنال‌ها در دسترس نیست.</string>
+    <string name="message_signal_details_unavailable">جزئیات سیگنال در دسترس نیست.</string>
+    <string name="message_cached_history_shown">تاریخچهٔ ذخیره‌شده نمایش داده می‌شود.</string>
+</resources>

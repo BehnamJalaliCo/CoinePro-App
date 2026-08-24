@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default language: Persian. Numbers stay Latin so prices match broker and exchange terminals. -->
+<resources>
+    <string name="signals_title">سیگنال‌ها</string>
+    <string name="signals_subtitle">موقعیت‌های قابل اجرا با ورود، حد ضرر و اهداف، بر پایهٔ داده‌های سرور.</string>
+
+    <string name="signals_market_forex">فارکس</string>
+    <string name="signals_market_crypto">کریپتو</string>
+    <string name="signals_status_active">فعال</string>
+    <string name="signals_status_recent">اخیر</string>
+    <string name="signals_status_closed">بسته‌شده</string>
+
+    <string name="signals_retry">تلاش دوباره</string>
+    <string name="signals_empty">سیگنالی در این نما وجود ندارد.</string>
+    <string name="signals_refreshing">در حال به‌روزرسانی…</string>
+
+    <string name="signals_membership_title">سیگنال‌های ویژه</string>
+    <string name="signals_membership_body">سطوح معاملاتی فعال با اشتراک فعال در دسترس هستند.</string>
+    <string name="signals_membership_action">بررسی دوبارهٔ دسترسی</string>
+
+    <string name="signals_direction_buy">خرید</string>
+    <string name="signals_direction_sell">فروش</string>
+    <string name="signals_direction_neutral">خنثی</string>
+    <string name="signals_confidence">اطمینان %1$s</string>
+
+    <string name="signals_metric_entry">ورود</string>
+    <string name="signals_metric_stop_loss">حد ضرر</string>
+    <string name="signals_metric_target_one">هدف اول</string>
+    <string name="signals_quote_current">قیمت لحظه‌ای</string>
+    <string name="signals_quote_last">آخرین قیمت</string>
+    <string name="signals_value_missing">—</string>
+</resources>

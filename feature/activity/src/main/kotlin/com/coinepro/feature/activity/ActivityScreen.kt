@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.execution.ExecutionController
@@ -135,7 +136,8 @@ fun ActivityScreen(
             item {
                 StatePanel(
                     title = "Signal history unavailable",
-                    body = historyState.error ?: "The server did not return signal history.",
+                    body = historyState.error?.resolve()
+                        ?: "The server did not return signal history.",
                     action = "Retry",
                     onAction = signalController::refreshHistory,
                 )

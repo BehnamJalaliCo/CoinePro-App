@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="signals_title">Signals</string>
+    <string name="signals_subtitle">Actionable setups with server-truth entry, risk and targets.</string>
+
+    <string name="signals_market_forex">Forex</string>
+    <string name="signals_market_crypto">Crypto</string>
+    <string name="signals_status_active">Active</string>
+    <string name="signals_status_recent">Recent</string>
+    <string name="signals_status_closed">Closed</string>
+
+    <string name="signals_retry">Retry</string>
+    <string name="signals_empty">No signals in this view.</string>
+    <string name="signals_refreshing">Refreshing…</string>
+
+    <string name="signals_membership_title">VIP Signals</string>
+    <string name="signals_membership_body">Active trade levels are available with an active subscription.</string>
+    <string name="signals_membership_action">Check access again</string>
+
+    <string name="signals_direction_buy">BUY</string>
+    <string name="signals_direction_sell">SELL</string>
+    <string name="signals_direction_neutral">NEUTRAL</string>
+    <string name="signals_confidence">%1$s confidence</string>
+
+    <string name="signals_metric_entry">Entry</string>
+    <string name="signals_metric_stop_loss">SL</string>
+    <string name="signals_metric_target_one">TP1</string>
+    <string name="signals_quote_current">Current</string>
+    <string name="signals_quote_last">Last price</string>
+    <string name="signals_value_missing">—</string>
+</resources>

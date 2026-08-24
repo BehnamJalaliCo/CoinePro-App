@@ -1,5 +1,6 @@
 package com.coinepro.feature.tools
 
+import com.coinepro.core.common.BidiText
 import kotlin.math.abs
 import kotlin.math.pow
 
@@ -151,10 +152,7 @@ object TraderToolsCalculator {
 }
 
 object TraderToolsFormat {
-    private const val LRI = '\u2066'
-    private const val PDI = '\u2069'
-
-    fun ltr(value: String): String = "$LRI$value$PDI"
+    fun ltr(value: String): String = BidiText.isolateLtr(value)
     fun decimal(value: Double, decimals: Int): String = ltr("%.${decimals}f".format(java.util.Locale.US, value))
     fun percent(value: Double, decimals: Int = 2): String = ltr("%.${decimals}f%%".format(java.util.Locale.US, value))
     fun money(value: Double, symbol: String = "$", decimals: Int = 2): String = ltr("$symbol%.${decimals}f".format(java.util.Locale.US, value))

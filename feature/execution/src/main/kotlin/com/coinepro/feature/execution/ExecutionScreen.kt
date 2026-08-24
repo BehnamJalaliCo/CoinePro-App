@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.ExecutionStatus
@@ -94,7 +95,7 @@ fun ExecutionScreen(
         )
 
         if (signalState.loading || connectionState.loading) CircularProgressIndicator()
-        signalState.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        signalState.error?.let { Text(it.resolve(), color = MaterialTheme.colorScheme.error) }
         connectionState.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
         if (signal != null) {

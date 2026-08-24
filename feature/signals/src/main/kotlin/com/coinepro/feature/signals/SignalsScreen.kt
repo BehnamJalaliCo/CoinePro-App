@@ -20,14 +20,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.MarketNumberFormatter
@@ -37,6 +35,9 @@ import com.coinepro.core.model.SignalDirection
 import com.coinepro.core.signals.SignalController
 import com.coinepro.core.signals.SignalMarketFilter
 import com.coinepro.core.signals.SignalStatusFilter
+import com.coinepro.core.common.BidiText
+import com.coinepro.core.designsystem.LtrDirection
+import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.signals.TradingSignal
 
 @Composable
@@ -53,9 +54,9 @@ fun SignalsScreen(
             .padding(horizontal = CoineProSpacing.Two),
     ) {
         Spacer(Modifier.height(CoineProSpacing.Two))
-        Text("Signals", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.signals_title), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
         Text(
-            "Actionable setups with server-truth entry, risk and targets.",
+            stringResource(R.string.signals_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = CoineProColors.TextSecondary,
         )
@@ -65,12 +66,12 @@ fun SignalsScreen(
             FilterChip(
                 selected = state.market == SignalMarketFilter.FOREX,
                 onClick = { controller.selectMarket(SignalMarketFilter.FOREX) },
-                label = { Text("Forex") },
+                label = { Text(stringResource(R.string.signals_market_forex)) },
             )
             FilterChip(
                 selected = state.market == SignalMarketFilter.CRYPTO,
                 onClick = { controller.selectMarket(SignalMarketFilter.CRYPTO) },
-                label = { Text("Crypto") },
+                label = { Text(stringResource(R.string.signals_market_crypto)) },
             )
         }
         Spacer(Modifier.height(CoineProSpacing.One))
@@ -79,7 +80,7 @@ fun SignalsScreen(
                 FilterChip(
                     selected = state.status == filter,
                     onClick = { controller.selectStatus(filter) },
-                    label = { Text(filter.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                    label = { Text(stringResource(filter.labelRes())) },
                 )
             }
         }
@@ -90,19 +91,22 @@ fun SignalsScreen(
             state.membershipRequired -> MembershipRequired(onRetry = controller::refresh)
             state.error != null && state.items.isEmpty() -> CenterMessage {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(state.error ?: "Signals are unavailable", color = CoineProColors.TextSecondary)
+                    Text(
+                        state.error?.resolve() ?: stringResource(R.string.signals_empty),
+                        color = CoineProColors.TextSecondary,
+                    )
                     Spacer(Modifier.height(CoineProSpacing.One))
-                    Button(onClick = controller::refresh) { Text("Retry") }
+                    Button(onClick = controller::refresh) { Text(stringResource(R.string.signals_retry)) }
                 }
             }
             state.items.isEmpty() -> CenterMessage {
-                Text("No signals in this view.", color = CoineProColors.TextSecondary)
+                Text(stringResource(R.string.signals_empty), color = CoineProColors.TextSecondary)
             }
             else -> LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
             ) {
                 if (state.loading) {
-                    item { Text("Refreshing…", color = CoineProColors.TextMuted) }
+                    item { Text(stringResource(R.string.signals_refreshing), color = CoineProColors.TextMuted) }
                 }
                 items(state.items, key = { it.id }) { signal ->
                     SignalCard(signal = signal, onClick = { onOpenSignal(signal.id) })
@@ -129,14 +133,14 @@ private fun MembershipRequired(onRetry: () -> Unit) {
         border = BorderStroke(1.dp, CoineProColors.Border),
     ) {
         Column(Modifier.padding(CoineProSpacing.Two)) {
-            Text("VIP Signals", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.signals_membership_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(CoineProSpacing.One))
             Text(
-                "Active trade levels are available with an active subscription.",
+                stringResource(R.string.signals_membership_body),
                 color = CoineProColors.TextSecondary,
             )
             Spacer(Modifier.height(CoineProSpacing.OneHalf))
-            Button(onClick = onRetry) { Text("Check access again") }
+            Button(onClick = onRetry) { Text(stringResource(R.string.signals_membership_action)) }
         }
     }
 }
@@ -174,9 +178,15 @@ private fun SignalCard(signal: TradingSignal, onClick: () -> Unit) {
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(signal.direction.name, color = directionColor, fontWeight = FontWeight.Bold)
+                    Text(stringResource(signal.direction.labelRes()), color = directionColor, fontWeight = FontWeight.Bold)
                     signal.confidence?.let {
-                        Text("$it% confidence", style = MaterialTheme.typography.bodySmall, color = CoineProColors.TextSecondary)
+                        Text(
+                            // The percent sign belongs inside the isolate: left outside it, bidi reordering pushes it
+                            // to the far side of the number and "78%" renders as "%78".
+                            stringResource(R.string.signals_confidence, BidiText.isolateLtr("$it%")),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = CoineProColors.TextSecondary,
+                        )
                     }
                 }
             }
@@ -186,15 +196,20 @@ private fun SignalCard(signal: TradingSignal, onClick: () -> Unit) {
             Spacer(Modifier.height(CoineProSpacing.OneHalf))
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                PriceMetric("Entry", signal.entry, signal.symbol)
-                PriceMetric("SL", signal.stopLoss, signal.symbol)
-                PriceMetric("TP1", signal.targets.firstOrNull { it.level == 1 }?.price, signal.symbol)
+                PriceMetric(R.string.signals_metric_entry, signal.entry, signal.symbol)
+                PriceMetric(R.string.signals_metric_stop_loss, signal.stopLoss, signal.symbol)
+                PriceMetric(R.string.signals_metric_target_one, signal.targets.firstOrNull { it.level == 1 }?.price, signal.symbol)
             }
 
             signal.currentQuote?.let { quote ->
                 Spacer(Modifier.height(CoineProSpacing.OneHalf))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(if (quote.isStale) "Last price" else "Current", color = CoineProColors.TextMuted)
+                    Text(
+                        stringResource(
+                            if (quote.isStale) R.string.signals_quote_last else R.string.signals_quote_current,
+                        ),
+                        color = CoineProColors.TextMuted,
+                    )
                     FinancialText(formatPrice(signal.symbol, quote.price))
                 }
             }
@@ -203,16 +218,16 @@ private fun SignalCard(signal: TradingSignal, onClick: () -> Unit) {
 }
 
 @Composable
-private fun PriceMetric(label: String, value: Double?, symbol: String) {
+private fun PriceMetric(labelRes: Int, value: Double?, symbol: String) {
     Column {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = CoineProColors.TextMuted)
-        FinancialText(value?.let { formatPrice(symbol, it) } ?: "—")
+        Text(stringResource(labelRes), style = MaterialTheme.typography.labelSmall, color = CoineProColors.TextMuted)
+        FinancialText(value?.let { formatPrice(symbol, it) } ?: stringResource(R.string.signals_value_missing))
     }
 }
 
 @Composable
 private fun FinancialText(value: String) {
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+    LtrDirection {
         Text(value, color = CoineProColors.TextPrimary, fontWeight = FontWeight.Medium)
     }
 }
@@ -226,4 +241,20 @@ private fun formatPrice(symbol: String, value: Double): String {
         else -> 6
     }
     return MarketNumberFormatter.price(value, decimals)
+}
+
+/**
+ * Filter and direction names are shown to the reader, so they resolve through resources rather than
+ * through the enum's Kotlin name. The wire values these enums carry stay untouched.
+ */
+private fun SignalStatusFilter.labelRes(): Int = when (this) {
+    SignalStatusFilter.ACTIVE -> R.string.signals_status_active
+    SignalStatusFilter.RECENT -> R.string.signals_status_recent
+    SignalStatusFilter.CLOSED -> R.string.signals_status_closed
+}
+
+private fun SignalDirection.labelRes(): Int = when (this) {
+    SignalDirection.BUY -> R.string.signals_direction_buy
+    SignalDirection.SELL -> R.string.signals_direction_sell
+    SignalDirection.NEUTRAL -> R.string.signals_direction_neutral
 }

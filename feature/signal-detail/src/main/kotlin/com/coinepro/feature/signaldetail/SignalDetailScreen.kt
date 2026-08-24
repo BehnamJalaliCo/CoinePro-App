@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -72,7 +73,10 @@ fun SignalDetailScreen(
         state.membershipRequired -> Center { Text("An active subscription is required for this signal.") }
         state.error != null -> Center {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(state.error ?: "Signal details are unavailable", color = CoineProColors.TextSecondary)
+                Text(
+                    state.error?.resolve().orEmpty(),
+                    color = CoineProColors.TextSecondary,
+                )
                 Spacer(Modifier.height(CoineProSpacing.One))
                 Button(onClick = { controller.loadDetail(signalId) }) { Text("Retry") }
             }

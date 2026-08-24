@@ -48,16 +48,28 @@ def check_module_map() -> None:
 
 
 def check_bottom_navigation() -> None:
+    """Bottom navigation identity and order are repository-owned; the labels are not.
+
+    Display labels moved to string resources when Persian became the default language, so asserting
+    them here would assert one translation. Route names stay constant because deep links, saved
+    back-stack state and server payloads all key off them.
+    """
     text = read("core/navigation/src/main/kotlin/com/coinepro/core/navigation/AppDestination.kt")
-    entries = re.findall(r'^\s*([A-Z]+)\("([^"]+)",\s*"([^"]+)",', text, flags=re.MULTILINE)
+    entries = re.findall(r'^\s*([A-Z]+)\("([^"]+)",', text, flags=re.MULTILINE)
     expected = [
-        ("HOME", "home", "Home"),
-        ("SIGNALS", "signals", "Signals"),
-        ("AI", "ai", "AI"),
-        ("TOOLS", "tools", "Tools"),
-        ("ACTIVITY", "activity", "Activity"),
+        ("HOME", "home"),
+        ("SIGNALS", "signals"),
+        ("AI", "ai"),
+        ("TOOLS", "tools"),
+        ("ACTIVITY", "activity"),
     ]
     require(entries == expected, f"Bottom navigation contract drifted: {entries}")
+
+    for language, directory in (("Persian", "values"), ("English", "values-en")):
+        labels = read(f"core/navigation/src/main/res/{directory}/strings.xml")
+        for destination, _ in expected:
+            key = f'name="nav_{destination.lower()}"'
+            require(key in labels, f"{language} bottom-navigation label missing: {key}")
 
 
 def check_environment_contract() -> None:

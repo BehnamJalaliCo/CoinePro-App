@@ -1,5 +1,8 @@
 package com.coinepro.core.signals
 
+import com.coinepro.core.common.MessageKey
+import com.coinepro.core.common.UiMessage
+import com.coinepro.core.common.toUiMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,7 +66,7 @@ class SignalController(
             } catch (_: SignalMembershipRequiredException) {
                 _state.update { it.copy(items = emptyList(), loading = false, membershipRequired = true, error = null) }
             } catch (error: Exception) {
-                _state.update { it.copy(loading = false, error = error.message ?: "Signals are unavailable") }
+                _state.update { it.copy(loading = false, error = error.toUiMessage(MessageKey.SIGNALS_UNAVAILABLE)) }
             }
         }
     }
@@ -88,10 +91,14 @@ class SignalController(
                 _historyState.value = SignalHistoryState(membershipRequired = true)
             } catch (error: Exception) {
                 _historyState.update { current ->
-                    val message = error.message ?: "Signal history is unavailable"
+                    val message = error.toUiMessage(MessageKey.SIGNAL_HISTORY_UNAVAILABLE)
                     current.copy(
                         loading = false,
-                        error = if (current.fromCache) "Cached history shown. $message" else message,
+                        error = if (current.fromCache) {
+                            UiMessage.Prefixed(MessageKey.CACHED_HISTORY_SHOWN, message)
+                        } else {
+                            message
+                        },
                     )
                 }
             }
@@ -126,7 +133,7 @@ class SignalController(
             } catch (error: Exception) {
                 _detailState.value = SignalDetailState(
                     signalId = signalId,
-                    error = error.message ?: "Signal details are unavailable",
+                    error = error.toUiMessage(MessageKey.SIGNAL_DETAILS_UNAVAILABLE),
                 )
             }
         }

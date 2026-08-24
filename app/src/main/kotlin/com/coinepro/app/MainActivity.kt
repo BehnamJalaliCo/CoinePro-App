@@ -1,6 +1,7 @@
 package com.coinepro.app
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -53,6 +54,10 @@ class MainActivity : ComponentActivity() {
     ) {
         launchPreferences().edit().putBoolean(KEY_NOTIFICATION_PERMISSION_REQUESTED, true).apply()
         updateNotificationPermissionState()
+    }
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLanguageStore.apply(newBase))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

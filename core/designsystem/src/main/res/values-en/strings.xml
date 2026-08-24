@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="message_signals_unavailable">Signals are unavailable.</string>
+    <string name="message_signal_history_unavailable">Signal history is unavailable.</string>
+    <string name="message_signal_details_unavailable">Signal details are unavailable.</string>
+    <string name="message_cached_history_shown">Cached history shown.</string>
+</resources>
