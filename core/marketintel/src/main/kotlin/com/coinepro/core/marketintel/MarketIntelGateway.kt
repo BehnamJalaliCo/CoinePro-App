@@ -2,6 +2,7 @@ package com.coinepro.core.marketintel
 
 import java.net.URI
 import java.time.Instant
+import com.coinepro.core.model.MarketPlatform
 import retrofit2.Retrofit
 import retrofit2.http.GET
 
@@ -9,20 +10,39 @@ interface MarketIntelGateway {
     suspend fun snapshot(): MarketIntelSnapshot
 }
 
+/**
+ * One reader per backend.
+ *
+ * The two platforms have nothing in common here beyond the shape of the answer: CoinePro-FX reports
+ * on gold, silver and the macro calendar that moves them; TradeYar reports on the coins it lists.
+ * Asking one for the other's news is not a degraded result but a wrong one — a rate decision has no
+ * bearing on a listing, and a token unlock has none on bullion. So the platform picks the path, and
+ * nothing merges the two.
+ */
 class NetworkMarketIntelGateway private constructor(
     private val api: MarketIntelApi,
+    private val platform: MarketPlatform,
 ) : MarketIntelGateway {
-    override suspend fun snapshot(): MarketIntelSnapshot = api.snapshot().toDomain()
+    override suspend fun snapshot(): MarketIntelSnapshot = when (platform) {
+        // The prefix is not decoration: TradeYar serves every mobile route under `api/mobile/v1`
+        // and CoinePro-FX under `user`. A path built for one reaches nothing on the other, and
+        // arrives as an ordinary HTTP error rather than as anything resembling a wiring mistake.
+        MarketPlatform.COINEPRO_FX -> api.forexSnapshot()
+        MarketPlatform.TRADEYAR -> api.cryptoSnapshot()
+    }.toDomain()
 
     companion object {
-        fun create(retrofit: Retrofit): MarketIntelGateway =
-            NetworkMarketIntelGateway(retrofit.create(MarketIntelApi::class.java))
+        fun create(retrofit: Retrofit, platform: MarketPlatform): MarketIntelGateway =
+            NetworkMarketIntelGateway(retrofit.create(MarketIntelApi::class.java), platform)
     }
 }
 
 private interface MarketIntelApi {
     @GET("user/market-intelligence")
-    suspend fun snapshot(): MarketIntelSnapshotDto
+    suspend fun forexSnapshot(): MarketIntelSnapshotDto
+
+    @GET("api/mobile/v1/market-intelligence")
+    suspend fun cryptoSnapshot(): MarketIntelSnapshotDto
 }
 
 internal data class MarketIntelSnapshotDto(

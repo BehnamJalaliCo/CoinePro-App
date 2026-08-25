@@ -28,6 +28,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -76,6 +77,7 @@ fun HomeScreen(
     displayName: String? = null,
     briefing: HomeBriefing = HomeBriefing.Resting,
     portfolio: HomePortfolio? = null,
+    subscription: HomeSubscription? = null,
     openSignals: List<HomeSignal> = emptyList(),
     onGenerateSignal: () -> Unit = {},
     onSendChart: () -> Unit = {},
@@ -136,6 +138,10 @@ fun HomeScreen(
                 )
             }
         }
+
+        // Only for someone who has one. There is no counterpart for everyone else, because there is
+        // nothing they are missing: the app withholds no feature from an account without a plan.
+        subscription?.let { item { SubscriptionCard(it) } }
 
         if (portfolio != null && portfolio.holdings.isNotEmpty()) {
             item { HoldingsCard(portfolio.holdings) }
@@ -306,6 +312,60 @@ private fun HoldingsCard(holdings: List<HomeHolding>) {
                         color = if (holding.isUp) CoineProColors.Buy else CoineProColors.Sell,
                         fontWeight = FontWeight.Normal,
                     )
+                }
+            }
+        }
+    }
+}
+
+/* ------------------------------------------------------------ subscription */
+
+@Composable
+private fun SubscriptionCard(subscription: HomeSubscription) {
+    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+        CardLabel(stringResource(R.string.home_subscription_title))
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.Row),
+            horizontalArrangement = Arrangement.spacedBy(13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    // The server's own name for the plan, as written.
+                    text = subscription.planLabel,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = CoineProColors.TextPrimary,
+                )
+                if (subscription.isVip) {
+                    Text(
+                        text = stringResource(R.string.home_subscription_vip),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CoineProColors.Accent,
+                        fontWeight = FontWeight.Normal,
+                    )
+                }
+            }
+            subscription.expiresLabel?.let { expires ->
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = expires,
+                        style = CoineProTextStyles.RowFigure,
+                        color = CoineProColors.TextPrimary,
+                    )
+                    subscription.daysRemaining?.let { days ->
+                        Text(
+                            text = pluralStringResource(R.plurals.home_subscription_days, days, days),
+                            style = MaterialTheme.typography.labelSmall,
+                            // Warning rather than muted only near the end: colouring every renewal
+                            // date as a problem would make the one that is a problem invisible.
+                            color = if (subscription.endingSoon) {
+                                CoineProColors.Warning
+                            } else {
+                                CoineProColors.TextMuted
+                            },
+                            fontWeight = FontWeight.Normal,
+                        )
+                    }
                 }
             }
         }

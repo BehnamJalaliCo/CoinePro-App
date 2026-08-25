@@ -81,9 +81,11 @@ import com.coinepro.core.diagnostics.AdminController
 import com.coinepro.feature.admin.AdminScreen
 import com.coinepro.feature.home.HomeBriefing
 import com.coinepro.feature.home.HomePortfolio
+import com.coinepro.feature.home.HomeSubscription
 import com.coinepro.feature.home.HomeScreen
 import com.coinepro.feature.home.toHomeBriefing
 import com.coinepro.feature.home.toHomePortfolio
+import com.coinepro.feature.home.toHomeSubscription
 import com.coinepro.feature.news.NewsScreen
 import com.coinepro.feature.signaldetail.SignalDetailScreen
 import com.coinepro.feature.signals.SignalsScreen
@@ -118,7 +120,7 @@ fun CoineProApp(
     aiSignalController: AiSignalController,
     aiVisionController: AiVisionController,
     aiAssistantController: AiAssistantController,
-    marketIntelController: MarketIntelController,
+    marketIntelControllers: Map<MarketPlatform, MarketIntelController>,
     pushCoordinator: PushCoordinator,
     backgroundSyncScheduler: BackgroundSyncScheduler,
     launchSignalId: Long?,
@@ -146,6 +148,10 @@ fun CoineProApp(
     // The account reads follow the same rule as the feed: one platform at a time, and the balance
     // on screen always belongs to the backend named above it.
     val accountController = accountControllers.getValue(activePlatform)
+    // News and the calendar follow the platform for the same reason, and a stronger one: a rate
+    // decision has no bearing on a listing and a token unlock has none on bullion, so the wrong
+    // market's headlines are not a degraded answer but a misleading one.
+    val marketIntelController = marketIntelControllers.getValue(activePlatform)
     val briefingState by accountController.briefing.collectAsStateWithLifecycle()
     val portfolioState by accountController.portfolio.collectAsStateWithLifecycle()
     // Read once per briefing rather than on every recomposition, so the age is fixed at the moment
@@ -173,8 +179,14 @@ fun CoineProApp(
             aiSignalController.clear()
             aiVisionController.clear()
             aiAssistantController.clear()
-            marketIntelController.clear()
+            marketIntelControllers.values.forEach(MarketIntelController::clear)
         }
+    }
+
+    // Refreshed here rather than in onResume, so a platform switch reads that platform's news
+    // instead of leaving the previous market's headlines under the new market's heading.
+    LaunchedEffect(signedIn, marketIntelController) {
+        if (signedIn) marketIntelController.refresh()
     }
 
     val notificationState by notificationController.state.collectAsStateWithLifecycle()
@@ -246,7 +258,7 @@ fun CoineProApp(
     )
 
     CoineProTheme {
-        when (session) {
+        when (val current = session) {
             is SessionState.SignedIn -> MainShell(
                 marketState = marketState,
                 adminController = adminController,
@@ -254,6 +266,7 @@ fun CoineProApp(
                 hubActions = hubActions,
                 briefing = briefingState.toHomeBriefing(briefingReadAt),
                 portfolio = portfolioState.toHomePortfolio(),
+                subscription = current.entitlement.toHomeSubscription(),
                 onRefreshAccount = accountController::refresh,
                 signalController = signalController,
                 notificationController = notificationController,
@@ -349,6 +362,7 @@ private fun MainShell(
     hubActions: HubActions,
     briefing: HomeBriefing,
     portfolio: HomePortfolio?,
+    subscription: HomeSubscription?,
     onRefreshAccount: () -> Unit,
     launchSignalId: Long?,
     launchActivity: Boolean,
@@ -471,6 +485,7 @@ private fun MainShell(
                     state = marketState,
                     briefing = briefing,
                     portfolio = portfolio,
+                    subscription = subscription,
                     onRetry = {
                         onMarketRetry()
                         onRefreshAccount()

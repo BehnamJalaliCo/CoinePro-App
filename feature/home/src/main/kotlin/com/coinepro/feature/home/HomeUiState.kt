@@ -61,6 +61,35 @@ data class HomeHolding(
     val isUp: Boolean,
 )
 
+/**
+ * A subscription the reader actually holds.
+ *
+ * Null everywhere means no subscription, and no subscription means nothing on screen. It is
+ * deliberately not an empty state or an offer: nothing in this app is withheld from someone without
+ * one — signals, execution and the rest are open to every signed-in account — so a card announcing
+ * an absence would be selling, not informing, and would take the top of the home screen to do it.
+ *
+ * [planLabel] is the server's own name for the plan and is shown as written. The app has no better
+ * name for a plan it did not define, and translating one would put words in the service's mouth.
+ */
+data class HomeSubscription(
+    val planLabel: String,
+    /** The expiry as the server dated it, already formatted; null when it does not expire. */
+    val expiresLabel: String? = null,
+    /**
+     * Whole days left, when that could be worked out.
+     *
+     * Carried separately from [expiresLabel] because it is the part a reader acts on, and because
+     * it is prose rather than a market figure — so it is written in Persian digits while the date
+     * beside it stays Latin and comparable.
+     */
+    val daysRemaining: Int? = null,
+    /** Whether the plan is close enough to its end to say so rather than only show a date. */
+    val endingSoon: Boolean = false,
+    /** The server's VIP flag, shown only when set. */
+    val isVip: Boolean = false,
+)
+
 /** An open position the reader can jump into. */
 data class HomeSignal(
     val id: Long,

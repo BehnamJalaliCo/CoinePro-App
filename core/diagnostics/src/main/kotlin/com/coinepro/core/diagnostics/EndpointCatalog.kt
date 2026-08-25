@@ -121,6 +121,7 @@ object EndpointCatalog {
         CatalogedEndpoint("GET", "api/mobile/v1/portfolio", AREA_HOME),
 
         CatalogedEndpoint("GET", "api/mobile/v1/ws/snapshot", AREA_MARKET),
+        CatalogedEndpoint("GET", "api/mobile/v1/market-intelligence", AREA_NEWS),
         CatalogedEndpoint("GET", "api/mobile/v1/signals", AREA_SIGNALS),
 
         CatalogedEndpoint("GET", "api/mobile/v1/executions", AREA_EXECUTION),

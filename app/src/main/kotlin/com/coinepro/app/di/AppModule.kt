@@ -400,8 +400,15 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun marketIntelGateway(retrofit: Retrofit): MarketIntelGateway =
-        NetworkMarketIntelGateway.create(retrofit)
+    @ForexPlatform
+    fun forexMarketIntelGateway(@ForexPlatform retrofit: Retrofit): MarketIntelGateway =
+        NetworkMarketIntelGateway.create(retrofit, MarketPlatform.COINEPRO_FX)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoMarketIntelGateway(@CryptoPlatform retrofit: Retrofit): MarketIntelGateway =
+        NetworkMarketIntelGateway.create(retrofit, MarketPlatform.TRADEYAR)
 
     @Provides
     @Singleton
@@ -569,10 +576,38 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun marketIntelController(
-        gateway: MarketIntelGateway,
+    @ForexPlatform
+    fun forexMarketIntelController(
+        @ForexPlatform gateway: MarketIntelGateway,
         scope: CoroutineScope,
     ): MarketIntelController = MarketIntelController(gateway, scope)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoMarketIntelController(
+        @CryptoPlatform gateway: MarketIntelGateway,
+        scope: CoroutineScope,
+    ): MarketIntelController = MarketIntelController(gateway, scope)
+
+    /**
+     * The news readers keyed by platform, so the screen shows the market it is named after.
+     *
+     * Two controllers rather than one with a switch: each holds the last snapshot it read, and a
+     * shared one would either drop that on every platform change or — worse — leave yesterday's
+     * gold headlines on screen under a crypto heading while the new read is in flight.
+     */
+    @Provides
+    @Singleton
+    fun marketIntelControllers(
+        @ForexPlatform forex: MarketIntelController,
+        @CryptoPlatform crypto: MarketIntelController,
+    ): Map<MarketPlatform, MarketIntelController> = buildMap {
+        put(MarketPlatform.COINEPRO_FX, forex)
+        if (isPlatformConfigured(BuildConfig.TRADEYAR_API_BASE_URL)) {
+            put(MarketPlatform.TRADEYAR, crypto)
+        }
+    }
 
     /**
      * A base URL still on its `.invalid` placeholder was never supplied for this build.

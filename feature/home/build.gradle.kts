@@ -16,6 +16,7 @@ android {
 
 dependencies {
     implementation(project(":core:account"))
+    implementation(project(":core:auth"))
     implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:marketdata"))
@@ -24,4 +25,5 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
+    testImplementation(libs.junit)
 }

@@ -54,4 +54,10 @@
 
     <string name="home_platform_crypto">کریپتو</string>
     <string name="home_platform_forex">فارکس</string>
+    <string name="home_subscription_title">اشتراک شما</string>
+    <string name="home_subscription_vip">عضو ویژه</string>
+    <plurals name="home_subscription_days">
+        <item quantity="one">%1$d روز باقی مانده</item>
+        <item quantity="other">%1$d روز باقی مانده</item>
+    </plurals>
 </resources>

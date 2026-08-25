@@ -57,7 +57,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var aiSignalController: AiSignalController
     @Inject lateinit var aiVisionController: AiVisionController
     @Inject lateinit var aiAssistantController: AiAssistantController
-    @Inject lateinit var marketIntelController: MarketIntelController
+    @Inject lateinit var marketIntelControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketIntelController>
     @Inject lateinit var pushCoordinator: PushCoordinator
     @Inject lateinit var backgroundSyncScheduler: BackgroundSyncScheduler
 
@@ -98,7 +98,7 @@ class MainActivity : ComponentActivity() {
                 aiSignalController = aiSignalController,
                 aiVisionController = aiVisionController,
                 aiAssistantController = aiAssistantController,
-                marketIntelController = marketIntelController,
+                marketIntelControllers = marketIntelControllers,
                 pushCoordinator = pushCoordinator,
                 backgroundSyncScheduler = backgroundSyncScheduler,
                 launchSignalId = launchSignalId,
@@ -127,7 +127,6 @@ class MainActivity : ComponentActivity() {
         signalController.refreshHistory()
         executionController.refreshExecutions()
         notificationController.refresh()
-        marketIntelController.refresh()
         backgroundSyncScheduler.requestImmediate()
     }
 

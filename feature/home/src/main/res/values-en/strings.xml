@@ -53,4 +53,10 @@
 
     <string name="home_platform_crypto">Crypto</string>
     <string name="home_platform_forex">Forex</string>
+    <string name="home_subscription_title">Your subscription</string>
+    <string name="home_subscription_vip">VIP member</string>
+    <plurals name="home_subscription_days">
+        <item quantity="one">%1$d day left</item>
+        <item quantity="other">%1$d days left</item>
+    </plurals>
 </resources>

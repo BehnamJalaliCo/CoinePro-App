@@ -6,7 +6,13 @@ import androidx.compose.ui.res.stringResource
 import com.coinepro.core.account.AccountPortfolio
 import com.coinepro.core.account.BriefingState
 import com.coinepro.core.account.PortfolioState
+import com.coinepro.core.auth.EntitlementSnapshot
+import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 
 /**
@@ -118,3 +124,33 @@ private fun String.symbol(): String = when (uppercase()) {
     "GBP" -> "£"
     else -> "${uppercase()} "
 }
+
+/**
+ * Turns the session's entitlement into the subscription card, or into nothing.
+ *
+ * Returns null unless the server says there is a live subscription. "Live" is the server's own
+ * judgement — [EntitlementSnapshot.isPaid] or [EntitlementSnapshot.isVip] — never a date this app
+ * compared for itself: a plan whose stored expiry has passed but which the server still honours is
+ * the server's to decide, and hiding it on a device whose clock is a day fast would take something
+ * away that the reader is still paying for.
+ *
+ * The expiry date, by contrast, is only ever shown, never acted on, so parsing it loosely is safe:
+ * an unreadable one simply goes unmentioned.
+ */
+fun EntitlementSnapshot.toHomeSubscription(now: Instant = Instant.now()): HomeSubscription? {
+    if (!isPaid && !isVip) return null
+    val expiry = expiresAt?.let { raw -> runCatching { Instant.parse(raw.trim()) }.getOrNull() }
+    val days = expiry?.let { Duration.between(now, it).toDays().toInt() }?.takeIf { it >= 0 }
+    return HomeSubscription(
+        planLabel = plan.trim().takeIf(String::isNotEmpty) ?: return null,
+        expiresLabel = expiry?.let { BidiText.isolateLtr(DATE_ONLY.format(it)) },
+        daysRemaining = days,
+        // A week is the point at which knowing changes what someone does about it. Sooner than that
+        // and the warning arrives too late to renew calmly; much earlier and it is nagging.
+        endingSoon = days != null && days <= 7,
+        isVip = isVip,
+    )
+}
+
+private val DATE_ONLY: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.systemDefault())
