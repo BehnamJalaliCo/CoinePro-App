@@ -117,6 +117,7 @@ object AppModule {
         bearerToken = memory::token,
         onUnauthorized = memory::notifyUnauthorized,
         installId = installIds.providerFor(MarketPlatform.COINEPRO_FX),
+        appVersion = BuildConfig.VERSION_NAME,
         enableHttpLogging = BuildConfig.DEBUG,
     )
 
@@ -159,6 +160,7 @@ object AppModule {
         bearerToken = memory::token,
         onUnauthorized = memory::notifyUnauthorized,
         installId = installIds.providerFor(MarketPlatform.TRADEYAR),
+        appVersion = BuildConfig.VERSION_NAME,
         enableHttpLogging = BuildConfig.DEBUG,
     )
 

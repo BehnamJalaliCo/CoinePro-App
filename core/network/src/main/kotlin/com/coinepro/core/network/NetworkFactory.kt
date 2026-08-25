@@ -21,6 +21,7 @@ object NetworkFactory {
         bearerToken: () -> String? = { null },
         onUnauthorized: () -> Unit = {},
         installId: () -> String? = { null },
+        appVersion: String? = null,
         enableHttpLogging: Boolean = false,
     ): OkHttpClient {
         val auth = Interceptor { chain ->
@@ -31,6 +32,11 @@ object NetworkFactory {
             // the failure would be invisible from here — the request succeeds, the limiter just
             // never sees the value and falls back to bucketing everyone by IP again.
             installId()?.takeIf { it.isNotBlank() }?.let { builder.header("X-Install-Id", it) }
+            // Recorded against the session server-side. Sent on every request rather than at
+            // sign-in because a session outlives an update, and the version that matters when
+            // diagnosing a report is the one that made the call.
+            builder.header("X-App-Platform", "android")
+            appVersion?.takeIf { it.isNotBlank() }?.let { builder.header("X-App-Version", it) }
             val request = builder.build()
             val response = chain.proceed(request)
             if (token != null && response.code == 401) onUnauthorized()
