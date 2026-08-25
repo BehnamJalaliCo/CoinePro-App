@@ -1,17 +1,28 @@
 package com.coinepro.core.aisignal
 
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.SignalDirection
+import com.google.gson.annotations.SerializedName
 import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
-import retrofit2.http.Path
+import retrofit2.http.Url
 
 interface AiSignalGateway {
     suspend fun quota(): AiSignalQuota
     suspend fun createJob(request: AiSignalRequest): AiSignalJob
-    suspend fun job(jobId: String): AiSignalJob
+
+    /**
+     * [request] is what was asked for, carried by the caller.
+     *
+     * Neither server echoes it back — the polling response is a status and, when it is ready, a
+     * result. The app already knows what it asked for, and the alternative is either dropping the
+     * request from the job or reconstructing it from the answer, which would mean the screen
+     * describing the question in the model's words instead of the reader's.
+     */
+    suspend fun job(jobId: String, request: AiSignalRequest): AiSignalJob
 }
 
 class AiSignalEntitlementRequiredException : Exception("AI Signal entitlement required")
@@ -19,19 +30,34 @@ class AiSignalQuotaExhaustedException : Exception("AI Signal quota exhausted")
 class AiSignalJobExpiredException : Exception("AI Signal job expired")
 class AiSignalRequestRejectedException(message: String) : Exception(message)
 
-/**
- * Paths follow CoinePro-FX, which mounts this router at `/user/ai-signal`. The client previously
- * called `user/signals/ai/…`, which the server has never served.
- */
 internal interface AiSignalApi {
-    @GET("user/ai-signal/quota")
-    suspend fun quota(): AiSignalQuotaResponseDto
+    @GET
+    suspend fun quota(@Url path: String): AiSignalQuotaDto
 
-    @POST("user/ai-signal/generate")
-    suspend fun createJob(@Body body: AiSignalCreateJobDto): AiSignalJobResponseDto
+    @POST
+    suspend fun createJob(@Url path: String, @Body body: AiSignalCreateJobDto): AiSignalJobDto
 
-    @GET("user/ai-signal/result/{jobId}")
-    suspend fun job(@Path("jobId") jobId: String): AiSignalJobResponseDto
+    @GET
+    suspend fun job(@Url path: String): AiSignalJobDto
+}
+
+/**
+ * The same three calls under each backend's own prefix.
+ *
+ * CoinePro-FX mounts this router at `/user/ai-signal`; TradeYar serves it under `/ai` inside its
+ * mobile prefix. The two are otherwise the same endpoint, which is why one gateway serves both.
+ */
+internal class AiSignalPaths(private val prefix: String) {
+    val quota = "$prefix/quota"
+    val generate = "$prefix/generate"
+    fun result(jobId: String) = "$prefix/result/$jobId"
+
+    companion object {
+        fun of(platform: MarketPlatform): AiSignalPaths = when (platform) {
+            MarketPlatform.COINEPRO_FX -> AiSignalPaths("user/ai-signal")
+            MarketPlatform.TRADEYAR -> AiSignalPaths("api/mobile/v1/ai")
+        }
+    }
 }
 
 internal data class AiSignalCreateJobDto(
@@ -49,14 +75,21 @@ internal data class AiSignalCreateJobDto(
     val balance: Double? = null,
 )
 
+/**
+ * The quota, flat.
+ *
+ * Neither server wraps it. CoinePro-FX also sends `used` rather than `remaining` alongside the
+ * limit, so the remainder is worked out here when it is missing rather than treated as absent —
+ * a quota of "unknown" would grey out a button that works.
+ */
 internal data class AiSignalQuotaDto(
     val remaining: Int? = null,
+    val used: Int? = null,
     val limit: Int? = null,
     val resetAt: String? = null,
-)
-
-internal data class AiSignalQuotaResponseDto(
-    val quota: AiSignalQuotaDto? = null,
+    /** CoinePro-FX lists what may be asked for here; TradeYar does not send them. */
+    val symbols: List<String> = emptyList(),
+    val timeframes: List<String> = emptyList(),
 )
 
 internal data class AiSignalRequestDto(
@@ -82,23 +115,48 @@ internal data class AiCandleDto(
     val c: Double? = null,
 )
 
+/**
+ * The generated signal, in the one flat shape both servers write.
+ *
+ * Neither sends `targets`, `stop_loss` or `risk_reward_tp1`: it is `sl`, `tp1`, `tp2`, `tp3` and
+ * `rr`, and the levels become targets here. `entry_zone` and the indicator block exist on neither
+ * and stay null rather than being invented.
+ */
 internal data class AiGeneratedSignalDto(
-    val validated: Boolean = false,
     val signalId: Long? = null,
     val symbol: String? = null,
     val direction: String? = null,
     val timeframe: String? = null,
     val entry: Double? = null,
     val entryZone: AiSignalEntryZoneDto? = null,
+    @SerializedName(value = "sl", alternate = ["stop_loss", "stopLoss"])
     val stopLoss: Double? = null,
-    val targets: List<AiSignalTargetDto> = emptyList(),
-    val confidence: Int? = null,
+    val tp1: Double? = null,
+    val tp2: Double? = null,
+    val tp3: Double? = null,
+    /**
+     * Two different scales.
+     *
+     * CoinePro-FX writes a whole number out of a hundred; TradeYar's prompt asks the model for a
+     * fraction between zero and one. Read raw, a TradeYar confidence of 0.82 becomes "1%" on
+     * screen — a strong call rendered as a worthless one. [toDomain] rescales rather than
+     * demanding either server change, because both are internally consistent.
+     */
+    val confidence: Double? = null,
+    @SerializedName(value = "rr", alternate = ["risk_reward_tp1", "riskRewardTp1"])
     val riskRewardTp1: Double? = null,
     val rationale: String? = null,
+    /** CoinePro-FX only, and its ISO form is what dates the advice. */
+    @SerializedName(value = "generated_at", alternate = ["validated_at", "validatedAt"])
     val validatedAt: String? = null,
+    /** CoinePro-FX only: whether its own arithmetic check on the levels passed. */
+    @SerializedName(value = "valid", alternate = ["validated"])
+    val validated: Boolean? = null,
     val lot: Double? = null,
     val strategy: String? = null,
-    val warnings: List<String> = emptyList(),
+    /** A single string on CoinePro-FX and a list on TradeYar; [warningLines] reads either. */
+    val warnings: Any? = null,
+    @SerializedName(value = "price_now", alternate = ["priceNow"])
     val priceNow: Double? = null,
     val ema20: Double? = null,
     val ema50: Double? = null,
@@ -115,9 +173,11 @@ internal data class AiGeneratedSignalDto(
 )
 
 internal data class AiSignalJobDto(
+    @SerializedName(value = "id", alternate = ["job_id", "jobId"])
     val id: String? = null,
     val status: String? = null,
-    val request: AiSignalRequestDto? = null,
+    /** Present in the create response on both servers, absent when polling. */
+    val quota: AiSignalQuotaDto? = null,
     val result: AiGeneratedSignalDto? = null,
     val errorCode: String? = null,
     val errorMessage: String? = null,
@@ -132,9 +192,10 @@ internal data class AiSignalJobResponseDto(
 
 class NetworkAiSignalGateway private constructor(
     private val api: AiSignalApi,
+    private val paths: AiSignalPaths,
 ) : AiSignalGateway {
     override suspend fun quota(): AiSignalQuota = translate {
-        requireNotNull(api.quota().quota?.toDomain()) { "Invalid AI Signal quota response" }
+        requireNotNull(api.quota(paths.quota).toDomain()) { "Invalid AI Signal quota response" }
     }
 
     override suspend fun createJob(request: AiSignalRequest): AiSignalJob = translate {
@@ -142,6 +203,7 @@ class NetworkAiSignalGateway private constructor(
             "Unsupported AI Signal symbol"
         }
         val response = api.createJob(
+            paths.generate,
             AiSignalCreateJobDto(
                 symbol = safeSymbol,
                 timeframe = request.timeframe.wireValue,
@@ -155,15 +217,16 @@ class NetworkAiSignalGateway private constructor(
                 balance = request.balance?.takeIf { it.isFinite() && it >= 0.0 },
             ),
         )
-        requireNotNull(response.job?.toDomain(response.quota?.toDomain())) {
+        requireNotNull(response.toDomain(request, fallbackId = null)) {
             "Invalid AI Signal job response"
         }
     }
 
-    override suspend fun job(jobId: String): AiSignalJob = translate {
+    override suspend fun job(jobId: String, request: AiSignalRequest): AiSignalJob = translate {
         require(jobId.isNotBlank()) { "Missing AI Signal job ID" }
-        val response = api.job(jobId)
-        requireNotNull(response.job?.toDomain(response.quota?.toDomain())) {
+        // Neither server repeats the job id when polled, for the same reason as chart analysis:
+        // the caller just used it to ask. Requiring it back would fail every poll.
+        requireNotNull(api.job(paths.result(jobId)).toDomain(request, fallbackId = jobId)) {
             "Invalid AI Signal job response"
         }
     }
@@ -181,14 +244,20 @@ class NetworkAiSignalGateway private constructor(
     }
 
     companion object {
-        fun create(retrofit: Retrofit): NetworkAiSignalGateway =
-            NetworkAiSignalGateway(retrofit.create(AiSignalApi::class.java))
+        fun create(retrofit: Retrofit, platform: MarketPlatform): NetworkAiSignalGateway =
+            NetworkAiSignalGateway(
+                api = retrofit.create(AiSignalApi::class.java),
+                paths = AiSignalPaths.of(platform),
+            )
     }
 }
 
 internal fun AiSignalQuotaDto.toDomain(): AiSignalQuota? {
     val safeLimit = limit?.takeIf { it >= 0 } ?: return null
-    val safeRemaining = remaining?.takeIf { it >= 0 } ?: return null
+    // CoinePro-FX reports what has been spent, TradeYar what is left. Either answers the question.
+    val safeRemaining = remaining?.takeIf { it >= 0 }
+        ?: used?.takeIf { it >= 0 }?.let { (safeLimit - it).coerceAtLeast(0) }
+        ?: return null
     return AiSignalQuota(
         remaining = safeRemaining.coerceAtMost(safeLimit),
         limit = safeLimit,
@@ -207,10 +276,12 @@ internal fun AiSignalRequestDto.toDomain(): AiSignalRequest? {
     return AiSignalRequest(safeSymbol, safeTimeframe, safeRisk)
 }
 
-internal fun AiSignalJobDto.toDomain(quota: AiSignalQuota?): AiSignalJob? {
-    val safeId = id?.takeIf { it.isNotBlank() } ?: return null
-    val safeStatus = AiSignalJobStatus.entries.firstOrNull { it.wireValue == status?.lowercase() } ?: return null
-    val safeRequest = request?.toDomain() ?: return null
+internal fun AiSignalJobDto.toDomain(
+    safeRequest: AiSignalRequest,
+    fallbackId: String?,
+): AiSignalJob? {
+    val safeId = id?.takeIf { it.isNotBlank() } ?: fallbackId?.takeIf { it.isNotBlank() } ?: return null
+    val safeStatus = readStatus(status) ?: return null
     val safeResult = result?.toDomain(safeRequest)
 
     return AiSignalJob(
@@ -220,15 +291,18 @@ internal fun AiSignalJobDto.toDomain(quota: AiSignalQuota?): AiSignalJob? {
         result = safeResult,
         errorCode = errorCode,
         errorMessage = errorMessage,
-        quota = quota,
+        quota = quota?.toDomain(),
         createdAt = createdAt,
         expiresAt = expiresAt,
     )
 }
 
 internal fun AiGeneratedSignalDto.toDomain(expected: AiSignalRequest): AiGeneratedSignal? {
-    if (!validated) return null
-    val safeSignalId = signalId?.takeIf { it > 0L } ?: return null
+    // Only an explicit refusal blocks the result. CoinePro-FX checks its own arithmetic on the
+    // levels and says so; TradeYar has no such field, and reading its silence as "not validated"
+    // would discard every analysis it ever returns.
+    if (validated == false) return null
+    val safeSignalId = signalId?.takeIf { it > 0L }
     val safeSymbol = AiSignalProductScope.normalizeSymbol(symbol.orEmpty()) ?: return null
     if (safeSymbol != expected.symbol) return null
     val safeDirection = when (direction?.uppercase()) {
@@ -236,20 +310,26 @@ internal fun AiGeneratedSignalDto.toDomain(expected: AiSignalRequest): AiGenerat
         "SELL" -> SignalDirection.SELL
         else -> return null
     }
-    val safeTimeframe = timeframe?.takeIf {
-        it.equals(expected.timeframe.wireValue, ignoreCase = true)
-    } ?: return null
+    // TradeYar's result carries no timeframe; the one that was asked for is the one it answers
+    // about. A mismatch from CoinePro-FX, which does send it, still refuses the result.
+    val safeTimeframe = when {
+        timeframe.isNullOrBlank() -> expected.timeframe.wireValue
+        timeframe.equals(expected.timeframe.wireValue, ignoreCase = true) -> timeframe
+        else -> return null
+    }
     val safeEntry = entry?.takeIf { it.isFinite() && it > 0.0 } ?: return null
     val safeStop = stopLoss?.takeIf { it.isFinite() && it > 0.0 } ?: return null
-    val safeConfidence = confidence?.takeIf { it in 0..100 } ?: return null
-    val safeTargets = targets.mapNotNull { target ->
-        val level = target.level?.takeIf { it in 1..3 } ?: return@mapNotNull null
-        val price = target.price?.takeIf { it.isFinite() && it > 0.0 } ?: return@mapNotNull null
-        AiSignalTarget(level, price)
+    val safeConfidence = confidence?.toPercent() ?: return null
+    val safeTargets = listOfNotNull(
+        tp1?.let { 1 to it },
+        tp2?.let { 2 to it },
+        tp3?.let { 3 to it },
+    ).mapNotNull { (level, price) ->
+        price.takeIf { it.isFinite() && it > 0.0 }?.let { AiSignalTarget(level, it) }
     }
-        .distinctBy { it.level }
-        .sortedBy { it.level }
-    if (safeTargets.isEmpty() || safeTargets.size != targets.size) return null
+    // The first target is what the whole call is built around, so a result without one is not a
+    // partial answer but an unusable one. Second and third are genuinely optional on both servers.
+    if (safeTargets.none { it.level == 1 }) return null
 
     val safeZone = entryZone?.let { zone ->
         val low = zone.low?.takeIf { it.isFinite() && it > 0.0 } ?: return null
@@ -295,7 +375,7 @@ internal fun AiGeneratedSignalDto.toDomain(expected: AiSignalRequest): AiGenerat
         validatedAt = validatedAt,
         lot = lot?.takeIf { it.isFinite() && it > 0.0 },
         strategy = strategy?.trim()?.takeIf { it.isNotBlank() },
-        warnings = warnings.mapNotNull { it.trim().takeIf(String::isNotEmpty) },
+        warnings = warningLines(),
         snapshot = snapshot.takeIf { it.hasAny },
         recentCandles = candles,
     )
@@ -311,4 +391,48 @@ internal fun AiCandleDto.toDomain(): AiCandle? {
     val close = c.finiteOrNull()?.takeIf { it > 0.0 } ?: return null
     if (high < low || high < open || high < close || low > open || low > close) return null
     return AiCandle(open = open, high = high, low = low, close = close)
+}
+
+/**
+ * Rescales a confidence into whole percent.
+ *
+ * A value at or below one is read as a fraction, which is the form TradeYar's prompt asks the model
+ * for; anything above is already a percentage, which is what CoinePro-FX writes. The ambiguous case
+ * — exactly 1 — is read as one hundred percent rather than one percent, because no model returns a
+ * one-in-a-hundred call and labelling a certain one as worthless is the worse mistake by far.
+ */
+private fun Double.toPercent(): Int? {
+    if (!isFinite() || this < 0.0) return null
+    val percent = if (this <= 1.0) this * 100.0 else this
+    return percent.toInt().takeIf { it in 0..100 }
+}
+
+/**
+ * Reads the warnings whichever way they arrived.
+ *
+ * CoinePro-FX writes one string, TradeYar a list. Typed as [Any] because Gson has no way to declare
+ * "either", and a mismatch would otherwise throw inside the parser — where the failure is
+ * indistinguishable from the network being down.
+ */
+private fun AiGeneratedSignalDto.warningLines(): List<String> = when (val raw = warnings) {
+    is String -> raw.split('\n', '؛', ';')
+    is List<*> -> raw.map { it?.toString().orEmpty() }
+    else -> emptyList()
+}.mapNotNull { it.trim().takeIf(String::isNotEmpty) }
+
+/**
+ * Reads the job status under either server's vocabulary.
+ *
+ * They name the same three states differently: CoinePro-FX calls a job it has not started
+ * `pending` and a failed one `error`, TradeYar `queued` and `failed`. Recognising only one set
+ * would leave the other's jobs in a state the screen has no case for, which reads as the analysis
+ * never finishing.
+ */
+private fun readStatus(raw: String?): AiSignalJobStatus? = when (raw?.trim()?.lowercase()) {
+    "queued", "pending" -> AiSignalJobStatus.QUEUED
+    "running" -> AiSignalJobStatus.RUNNING
+    "done" -> AiSignalJobStatus.DONE
+    "failed", "error" -> AiSignalJobStatus.FAILED
+    "expired" -> AiSignalJobStatus.EXPIRED
+    else -> null
 }

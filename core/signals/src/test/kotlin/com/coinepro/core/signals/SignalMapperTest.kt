@@ -1,5 +1,6 @@
 package com.coinepro.core.signals
 
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.QuoteSource
 import com.coinepro.core.model.SignalDirection
@@ -25,7 +26,7 @@ class SignalMapperTest {
             rationale = null,
         )
 
-        val signal = dto.toDomain(nowMs = 10_000L)!!
+        val signal = dto.toDomain(nowMs = 10_000L, MarketPlatform.COINEPRO_FX)!!
         assertEquals(42L, signal.id)
         assertEquals(MarketType.FOREX, signal.market)
         assertEquals("XAUUSD", signal.symbol)
@@ -35,8 +36,8 @@ class SignalMapperTest {
 
     @Test
     fun `persisted signal id must be positive`() {
-        assertNull(SignalDto(id = 0, market = "forex", symbol = "XAUUSD", direction = "BUY").toDomain(0L))
-        assertNull(SignalDto(id = -1, market = "forex", symbol = "XAUUSD", direction = "BUY").toDomain(0L))
+        assertNull(SignalDto(id = 0, market = "forex", symbol = "XAUUSD", direction = "BUY").toDomain(0L, MarketPlatform.COINEPRO_FX))
+        assertNull(SignalDto(id = -1, market = "forex", symbol = "XAUUSD", direction = "BUY").toDomain(0L, MarketPlatform.COINEPRO_FX))
     }
 
     @Test
@@ -58,24 +59,24 @@ class SignalMapperTest {
 
     @Test
     fun `unknown market is rejected instead of guessed`() {
-        assertNull(SignalDto(id = 1, market = "stocks", symbol = "AAPL", direction = "BUY").toDomain(0L))
+        assertNull(SignalDto(id = 1, market = "stocks", symbol = "AAPL", direction = "BUY").toDomain(0L, MarketPlatform.COINEPRO_FX))
     }
 
     @Test
     fun `non actionable direction is rejected instead of displayed as a trade`() {
-        assertNull(SignalDto(id = 1, market = "forex", symbol = "XAUUSD", direction = "neutral").toDomain(0L))
+        assertNull(SignalDto(id = 1, market = "forex", symbol = "XAUUSD", direction = "neutral").toDomain(0L, MarketPlatform.COINEPRO_FX))
     }
 
     @Test
     fun `forex signal outside gold and silver scope is rejected`() {
-        assertNull(SignalDto(id = 1, market = "forex", symbol = "EURUSD", direction = "BUY").toDomain(0L))
+        assertNull(SignalDto(id = 1, market = "forex", symbol = "EURUSD", direction = "BUY").toDomain(0L, MarketPlatform.COINEPRO_FX))
         assertTrue(isProductSignalSymbol(MarketType.FOREX, "XAUUSD"))
         assertTrue(isProductSignalSymbol(MarketType.FOREX, "XAGUSD"))
     }
 
     @Test
     fun `crypto signal must use lbank style usdt pair`() {
-        assertNull(SignalDto(id = 1, market = "crypto", symbol = "BTCUSD", direction = "BUY").toDomain(0L))
+        assertNull(SignalDto(id = 1, market = "crypto", symbol = "BTCUSD", direction = "BUY").toDomain(0L, MarketPlatform.COINEPRO_FX))
         assertTrue(isProductSignalSymbol(MarketType.CRYPTO, "BTCUSDT"))
         assertFalse(isProductSignalSymbol(MarketType.CRYPTO, "USDT"))
     }

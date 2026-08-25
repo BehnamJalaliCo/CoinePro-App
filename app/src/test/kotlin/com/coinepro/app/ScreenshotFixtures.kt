@@ -827,6 +827,6 @@ class FakeAiSignalGateway(
     override suspend fun createJob(request: AiSignalRequest): AiSignalJob =
         job ?: throw IllegalStateException("not used by the screenshot render")
 
-    override suspend fun job(jobId: String): AiSignalJob =
+    override suspend fun job(jobId: String, request: AiSignalRequest): AiSignalJob =
         job ?: throw IllegalStateException("not used by the screenshot render")
 }

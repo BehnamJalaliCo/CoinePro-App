@@ -216,7 +216,7 @@ class MarketDataController(
     }
 
     private suspend fun refreshSnapshot() {
-        val snapshot = runCatching { api.snapshot(symbols.joinToString(",")) }.getOrElse { error ->
+        val snapshot = runCatching { api.snapshot(platform.snapshotPath(), symbols.joinToString(",")) }.getOrElse { error ->
             if (_state.value.connection != MarketConnectionState.LIVE) {
                 val state = _state.value
                 val hasNetworkQuotes = state.origin == MarketDataOrigin.NETWORK && state.quotes.isNotEmpty()

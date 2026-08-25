@@ -18,8 +18,8 @@ class AiSignalAnalysisMapperTest {
         timeframe = "H1",
         entry = 2400.0,
         stopLoss = 2380.0,
-        targets = listOf(AiSignalTargetDto(level = 1, price = 2440.0)),
-        confidence = 70,
+        tp1 = 2440.0,
+        confidence = 70.0,
         recentCandles = recentCandles,
     ).block().toDomain(AiSignalRequest("XAUUSD", AiSignalTimeframe.H1, AiSignalRisk.MEDIUM))
 

@@ -76,7 +76,7 @@ class AiSignalController(
             try {
                 val job = gateway.createJob(safeRequest)
                 applyJob(job, submitting = false)
-                if (job.isPending) startPolling(job.id)
+                if (job.isPending) startPolling(job.id, safeRequest)
             } catch (_: AiSignalEntitlementRequiredException) {
                 _state.update {
                     it.copy(
@@ -108,7 +108,7 @@ class AiSignalController(
 
     fun refreshCurrent() {
         val current = _state.value.job ?: return
-        scope.launch { refreshJob(current.id, resumePolling = true) }
+        scope.launch { refreshJob(current.id, current.request, resumePolling = true) }
     }
 
     fun retryCurrent() {
@@ -128,24 +128,28 @@ class AiSignalController(
         _state.value = AiSignalState()
     }
 
-    private fun startPolling(jobId: String) {
+    private fun startPolling(jobId: String, request: AiSignalRequest) {
         pollJob?.cancel()
         pollJob = scope.launch {
             while (true) {
                 delay(pollIntervalMs)
                 val current = _state.value.job
                 if (current?.id != jobId || !current.isPending) return@launch
-                val shouldContinue = refreshJob(jobId, resumePolling = false)
+                val shouldContinue = refreshJob(jobId, request, resumePolling = false)
                 if (!shouldContinue) return@launch
             }
         }
     }
 
-    private suspend fun refreshJob(jobId: String, resumePolling: Boolean): Boolean {
+    private suspend fun refreshJob(
+        jobId: String,
+        request: AiSignalRequest,
+        resumePolling: Boolean,
+    ): Boolean {
         return try {
-            val job = gateway.job(jobId)
+            val job = gateway.job(jobId, request)
             applyJob(job, submitting = false)
-            if (resumePolling && job.isPending) startPolling(job.id)
+            if (resumePolling && job.isPending) startPolling(job.id, request)
             job.isPending
         } catch (_: AiSignalJobExpiredException) {
             val current = _state.value.job

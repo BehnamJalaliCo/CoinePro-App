@@ -38,9 +38,9 @@ class BackgroundReadSyncEngineTest {
         val engine = BackgroundReadSyncEngine(
             storage = storage,
             memory = memory,
-            marketGateway = marketGateway,
+            marketGateways = mapOf(MarketPlatform.TRADEYAR to marketGateway),
             marketCache = NoOpMarketDataCache,
-            signalGateway = EmptySignalGateway(),
+            signalGateways = mapOf(MarketPlatform.TRADEYAR to EmptySignalGateway()),
             signalCache = signalCache,
             activePlatform = { MarketPlatform.TRADEYAR },
         )
@@ -63,14 +63,16 @@ class BackgroundReadSyncEngineTest {
         val engine = BackgroundReadSyncEngine(
             storage = storage,
             memory = memory,
-            marketGateway = object : MarketSnapshotGateway {
+            marketGateways = mapOf(
+                MarketPlatform.TRADEYAR to object : MarketSnapshotGateway {
                 override suspend fun load(symbols: List<String>): MarketSnapshot {
                     marketCalls++
                     return MarketSnapshot(emptyList(), null)
                 }
             },
+            ),
             marketCache = NoOpMarketDataCache,
-            signalGateway = signalGateway,
+            signalGateways = mapOf(MarketPlatform.TRADEYAR to signalGateway),
             signalCache = FakeSignalCache(),
             activePlatform = { MarketPlatform.TRADEYAR },
         )
@@ -89,12 +91,14 @@ class BackgroundReadSyncEngineTest {
         val engine = BackgroundReadSyncEngine(
             storage = FakeStorage(null),
             memory = memory,
-            marketGateway = object : MarketSnapshotGateway {
+            marketGateways = mapOf(
+                MarketPlatform.TRADEYAR to object : MarketSnapshotGateway {
                 override suspend fun load(symbols: List<String>): MarketSnapshot =
                     throw IOException("network unavailable")
             },
+            ),
             marketCache = NoOpMarketDataCache,
-            signalGateway = EmptySignalGateway(),
+            signalGateways = mapOf(MarketPlatform.TRADEYAR to EmptySignalGateway()),
             signalCache = signalCache,
             activePlatform = { MarketPlatform.TRADEYAR },
         )
@@ -113,11 +117,14 @@ class BackgroundReadSyncEngineTest {
         val engine = BackgroundReadSyncEngine(
             storage = FakeStorage(null),
             memory = memory,
-            marketGateway = object : MarketSnapshotGateway {
+            marketGateways = mapOf(
+                MarketPlatform.TRADEYAR to object : MarketSnapshotGateway {
                 override suspend fun load(symbols: List<String>) = MarketSnapshot(emptyList(), null)
             },
+            ),
             marketCache = NoOpMarketDataCache,
-            signalGateway = object : SignalGateway {
+            signalGateways = mapOf(
+                MarketPlatform.TRADEYAR to object : SignalGateway {
                 override suspend fun list(
                     market: SignalMarketFilter,
                     status: SignalStatusFilter,
@@ -127,6 +134,7 @@ class BackgroundReadSyncEngineTest {
 
                 override suspend fun detail(signalId: Long): TradingSignal = error("unused")
             },
+            ),
             signalCache = signalCache,
             activePlatform = { MarketPlatform.TRADEYAR },
         )

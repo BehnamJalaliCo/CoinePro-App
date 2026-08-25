@@ -13,7 +13,7 @@ import retrofit2.http.GET
 import retrofit2.http.HTTP
 import retrofit2.http.PATCH
 import retrofit2.http.POST
-import retrofit2.http.Path
+import retrofit2.http.Url
 import retrofit2.http.Query
 
 interface NotificationGateway {
@@ -54,38 +54,57 @@ data class NotificationPage(
 )
 
 internal interface NotificationApi {
-    @POST("user/mobile/push/devices")
-    suspend fun registerDevice(@Body body: DeviceRegistrationDto): DeviceRegistrationResponseDto
+    @POST
+    suspend fun registerDevice(@Url path: String, @Body body: DeviceRegistrationDto): DeviceRegistrationResponseDto
 
-    @HTTP(method = "DELETE", path = "user/mobile/push/devices", hasBody = true)
-    suspend fun unregisterDevice(@Body body: DeviceUnregisterDto): DeviceUnregisterResponseDto
+    @HTTP(method = "DELETE", hasBody = true)
+    suspend fun unregisterDevice(@Url path: String, @Body body: DeviceUnregisterDto): DeviceUnregisterResponseDto
 
-    @GET("user/mobile/push/preferences")
-    suspend fun preferences(): PreferencesResponseDto
+    @GET
+    suspend fun preferences(@Url path: String): PreferencesResponseDto
 
-    @PATCH("user/mobile/push/preferences")
-    suspend fun updatePreferences(@Body body: PushPreferencesDto): PreferencesResponseDto
+    @PATCH
+    suspend fun updatePreferences(@Url path: String, @Body body: PushPreferencesDto): PreferencesResponseDto
 
-    @GET("user/mobile/notifications")
-    suspend fun notifications(@Query("limit") limit: Int): NotificationResponseDto
+    @GET
+    suspend fun notifications(@Url path: String, @Query("limit") limit: Int): NotificationResponseDto
 
-    @POST("user/mobile/notifications/read")
-    suspend fun markNotificationsRead(): MarkReadResponseDto
+    @POST
+    suspend fun markNotificationsRead(@Url path: String): MarkReadResponseDto
 
-    @GET("user/mobile/alerts")
-    suspend fun alerts(): AlertListResponseDto
+    @GET
+    suspend fun alerts(@Url path: String): AlertListResponseDto
 
-    @POST("user/mobile/alerts")
-    suspend fun createAlert(@Body body: PriceAlertCreateDto): AlertResponseDto
+    @POST
+    suspend fun createAlert(@Url path: String, @Body body: PriceAlertCreateDto): AlertResponseDto
 
-    @PATCH("user/mobile/alerts/{alertId}")
-    suspend fun patchAlert(
-        @Path("alertId") alertId: String,
-        @Body body: PriceAlertPatchDto,
-    ): AlertResponseDto
+    @PATCH
+    suspend fun patchAlert(@Url path: String, @Body body: PriceAlertPatchDto): AlertResponseDto
 
-    @DELETE("user/mobile/alerts/{alertId}")
-    suspend fun deleteAlert(@Path("alertId") alertId: String): DeleteAlertResponseDto
+    @HTTP(method = "DELETE")
+    suspend fun deleteAlert(@Url path: String): DeleteAlertResponseDto
+}
+
+/**
+ * Push, notifications and alerts, under each backend's own prefix.
+ *
+ * CoinePro-FX groups all three under `user/mobile`; TradeYar mounts them as three siblings inside
+ * its mobile prefix. Same nine calls either way.
+ */
+internal class NotificationPaths(private val prefix: String) {
+    val devices = "$prefix/push/devices"
+    val preferences = "$prefix/push/preferences"
+    val notifications = "$prefix/notifications"
+    val markRead = "$prefix/notifications/read"
+    val alerts = "$prefix/alerts"
+    fun alert(alertId: String) = "$prefix/alerts/$alertId"
+
+    companion object {
+        fun of(platform: MarketPlatform): NotificationPaths = when (platform) {
+            MarketPlatform.COINEPRO_FX -> NotificationPaths("user/mobile")
+            MarketPlatform.TRADEYAR -> NotificationPaths("api/mobile/v1")
+        }
+    }
 }
 
 internal data class DeviceRegistrationDto(
@@ -158,20 +177,21 @@ internal data class MarkReadResponseDto(val ok: Boolean = false, val marked: Int
 class NetworkNotificationGateway private constructor(
     private val api: NotificationApi,
     private val platform: MarketPlatform,
+    private val paths: NotificationPaths,
 ) : NotificationGateway {
     override suspend fun registerDevice(token: String, appVersion: String?, locale: String?): Boolean =
-        api.registerDevice(DeviceRegistrationDto(token = token, appVersion = appVersion, locale = locale)).registered
+        api.registerDevice(paths.devices, DeviceRegistrationDto(token = token, appVersion = appVersion, locale = locale)).registered
 
     override suspend fun unregisterDevice(token: String): Boolean =
-        api.unregisterDevice(DeviceUnregisterDto(token)).removed
+        api.unregisterDevice(paths.devices, DeviceUnregisterDto(token)).removed
 
-    override suspend fun preferences(): PushPreferences = api.preferences().preferences.toDomain()
+    override suspend fun preferences(): PushPreferences = api.preferences(paths.preferences).preferences.toDomain()
 
     override suspend fun updatePreferences(preferences: PushPreferences): PushPreferences =
-        api.updatePreferences(preferences.toDto()).preferences.toDomain()
+        api.updatePreferences(paths.preferences, preferences.toDto()).preferences.toDomain()
 
     override suspend fun notifications(limit: Int): NotificationPage {
-        val response = api.notifications(limit)
+        val response = api.notifications(paths.notifications, limit)
         return NotificationPage(
             items = response.items.mapNotNull { it.toDomain() },
             unread = response.unread.coerceAtLeast(0),
@@ -180,10 +200,10 @@ class NetworkNotificationGateway private constructor(
     }
 
     override suspend fun markNotificationsRead(): Int =
-        api.markNotificationsRead().marked.coerceAtLeast(0)
+        api.markNotificationsRead(paths.markRead).marked.coerceAtLeast(0)
 
     override suspend fun alerts(): List<PriceAlert> =
-        api.alerts().items.mapNotNull { it.toDomain(platform) }
+        api.alerts(paths.alerts).items.mapNotNull { it.toDomain(platform) }
 
     override suspend fun createAlert(
         symbol: String,
@@ -195,6 +215,7 @@ class NetworkNotificationGateway private constructor(
         require(value.isFinite() && value > 0.0) { "Alert value must be a positive finite number" }
         return requireNotNull(
             api.createAlert(
+                paths.alerts,
                 PriceAlertCreateDto(
                     symbol = safeSymbol,
                     condition = condition.wireValue,
@@ -206,14 +227,18 @@ class NetworkNotificationGateway private constructor(
     }
 
     override suspend fun setAlertActive(alertId: String, active: Boolean): PriceAlert = requireNotNull(
-        api.patchAlert(alertId, PriceAlertPatchDto(active)).alert?.toDomain(platform),
+        api.patchAlert(paths.alert(alertId), PriceAlertPatchDto(active)).alert?.toDomain(platform),
     ) { "Invalid alert payload" }
 
-    override suspend fun deleteAlert(alertId: String): Boolean = api.deleteAlert(alertId).removed
+    override suspend fun deleteAlert(alertId: String): Boolean = api.deleteAlert(paths.alert(alertId)).removed
 
     companion object {
         fun create(retrofit: Retrofit, platform: MarketPlatform): NetworkNotificationGateway =
-            NetworkNotificationGateway(retrofit.create(NotificationApi::class.java), platform)
+            NetworkNotificationGateway(
+                api = retrofit.create(NotificationApi::class.java),
+                platform = platform,
+                paths = NotificationPaths.of(platform),
+            )
     }
 }
 

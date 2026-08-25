@@ -1,6 +1,7 @@
 package com.coinepro.core.marketdata
 
 import com.coinepro.core.model.MarketQuote
+import com.coinepro.core.model.MarketPlatform
 import retrofit2.Retrofit
 
 data class MarketSnapshot(
@@ -18,10 +19,11 @@ interface MarketSnapshotGateway {
 
 class NetworkMarketSnapshotGateway private constructor(
     private val api: MarketDataApi,
+    private val path: String,
     private val nowMillis: () -> Long,
 ) : MarketSnapshotGateway {
     override suspend fun load(symbols: List<String>): MarketSnapshot {
-        val response = api.snapshot(symbols.joinToString(","))
+        val response = api.snapshot(path, symbols.joinToString(","))
         return MarketSnapshot(
             quotes = response.prices.values.mapNotNull { it.toDomain(nowMillis()) },
             serverTimeEpochMillis = response.serverTimeMs,
@@ -31,9 +33,11 @@ class NetworkMarketSnapshotGateway private constructor(
     companion object {
         fun create(
             retrofit: Retrofit,
+            platform: MarketPlatform,
             nowMillis: () -> Long = System::currentTimeMillis,
         ): NetworkMarketSnapshotGateway = NetworkMarketSnapshotGateway(
             api = retrofit.create(MarketDataApi::class.java),
+            path = platform.snapshotPath(),
             nowMillis = nowMillis,
         )
     }

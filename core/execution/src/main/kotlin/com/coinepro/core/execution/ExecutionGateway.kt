@@ -1,13 +1,14 @@
 package com.coinepro.core.execution
 
+import com.coinepro.core.model.MarketPlatform
 import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.POST
-import retrofit2.http.PUT
-import retrofit2.http.Path
+import retrofit2.http.Url
 import retrofit2.http.Query
 
 interface ExecutionGateway {
@@ -27,6 +28,15 @@ interface ExecutionGateway {
     suspend fun requestClose(executionId: String): SignalExecution
 }
 
+/**
+ * This deployment has no order-execution surface at all.
+ *
+ * Distinct from a failure: nothing went wrong and retrying will not help. The screen shows the
+ * feature as absent rather than as broken, which is the difference between "not here" and "we lost
+ * your order".
+ */
+class ExecutionUnsupportedException : Exception("Order execution is not available on this platform")
+
 class ExecutionRateLimitedException : Exception(
     "Execution request was rate limited. No automatic retry was sent.",
 )
@@ -36,35 +46,49 @@ class ExecutionRequestRejectedException : Exception(
 )
 
 internal interface ExecutionApi {
-    @GET("user/signals/execution/connections")
-    suspend fun connections(): ConnectionsResponseDto
+    @GET
+    suspend fun venue(@Url path: String): ConnectionDto
 
-    @POST("user/signals/execution/connections/mt5")
-    suspend fun connectMt5(@Body body: Mt5ConnectionDto): Map<String, Any?>
+    @POST
+    suspend fun connectLbank(@Url path: String, @Body body: LbankConnectionDto): ConnectionDto
 
-    @DELETE("user/signals/execution/connections/mt5")
-    suspend fun disconnectMt5(): Map<String, Any?>
+    @HTTP(method = "DELETE")
+    suspend fun disconnectLbank(@Url path: String): ConnectionDto
 
-    @PUT("user/signals/execution/connections/lbank")
-    suspend fun connectLbank(@Body body: LbankConnectionDto): Map<String, Any?>
+    @POST
+    suspend fun executeSignal(@Url path: String, @Body body: ExecuteSignalDto): ExecutionResponseDto
 
-    @DELETE("user/signals/execution/connections/lbank")
-    suspend fun disconnectLbank(): Map<String, Any?>
+    @GET
+    suspend fun executions(@Url path: String, @Query("limit") limit: Int): ExecutionListResponseDto
 
-    @POST("user/signals/execution/signals/{signalId}/execute")
-    suspend fun executeSignal(
-        @Path("signalId") signalId: Long,
-        @Body body: ExecuteSignalDto,
-    ): ExecutionResponseDto
+    @GET
+    suspend fun execution(@Url path: String): ExecutionResponseDto
 
-    @GET("user/signals/execution/executions")
-    suspend fun executions(@Query("limit") limit: Int): ExecutionListResponseDto
+    @POST
+    suspend fun requestClose(@Url path: String): ExecutionResponseDto
+}
 
-    @GET("user/signals/execution/executions/{executionId}")
-    suspend fun execution(@Path("executionId") executionId: String): ExecutionResponseDto
+/**
+ * Where order execution lives, which is only one of the two platforms.
+ *
+ * TradeYar places orders on LBank on the reader's behalf and serves the whole surface below.
+ * CoinePro-FX has no equivalent: its routes for this were never built, and its own model is copy
+ * trading — the reader links a broker account and a service trades it, rather than sending an
+ * order per signal. So this returns null there, and the gateway says the feature is absent instead
+ * of posting to addresses that answer 404 in wording that reads like an outage.
+ */
+internal class ExecutionPaths(private val prefix: String) {
+    val venue = "$prefix/venues/lbank"
+    val executions = "$prefix/executions"
+    fun execution(executionId: String) = "$prefix/executions/$executionId"
+    fun close(executionId: String) = "$prefix/executions/$executionId/close"
 
-    @POST("user/signals/execution/executions/{executionId}/close")
-    suspend fun requestClose(@Path("executionId") executionId: String): ExecutionResponseDto
+    companion object {
+        fun of(platform: MarketPlatform): ExecutionPaths? = when (platform) {
+            MarketPlatform.TRADEYAR -> ExecutionPaths("api/mobile/v1")
+            MarketPlatform.COINEPRO_FX -> null
+        }
+    }
 }
 
 internal data class Mt5ConnectionDto(
@@ -81,6 +105,7 @@ internal data class LbankConnectionDto(
 )
 
 internal data class ExecuteSignalDto(
+    val signalId: Long,
     val venue: String,
     val quantity: Double,
     val clientRequestId: String,
@@ -137,29 +162,38 @@ internal data class ExecutionListResponseDto(val items: List<ExecutionDto> = emp
 
 class NetworkExecutionGateway private constructor(
     private val api: ExecutionApi,
+    private val paths: ExecutionPaths?,
 ) : ExecutionGateway {
+    private fun paths(): ExecutionPaths = paths ?: throw ExecutionUnsupportedException()
+
     override suspend fun connections(): Pair<VenueConnection?, VenueConnection?> = translate {
-        val response = api.connections()
-        response.mt5?.toDomain(ExecutionVenue.MT5) to response.lbank?.toDomain(ExecutionVenue.LBANK)
+        // The venue read is a single object, not a pair. Only one venue exists on the platform
+        // that has this surface at all, so MT5 is reported absent rather than guessed at.
+        null to api.venue(paths().venue).toDomain(ExecutionVenue.LBANK)
     }
 
-    override suspend fun connectMt5(broker: String, server: String, login: String, password: String) = translate {
-        api.connectMt5(Mt5ConnectionDto(broker, server, login, password))
-        Unit
+    /**
+     * MetaTrader is not reachable from here on either platform.
+     *
+     * CoinePro-FX links a broker account through its copy-trading configuration, which is a
+     * different surface and a different model; TradeYar trades crypto and has no MT5 at all. A
+     * method that quietly did nothing would leave the reader believing an account was linked.
+     */
+    override suspend fun connectMt5(broker: String, server: String, login: String, password: String) {
+        throw ExecutionUnsupportedException()
     }
 
-    override suspend fun disconnectMt5() = translate {
-        api.disconnectMt5()
-        Unit
+    override suspend fun disconnectMt5() {
+        throw ExecutionUnsupportedException()
     }
 
     override suspend fun connectLbank(apiKey: String, apiSecret: String, permission: LbankPermission) = translate {
-        api.connectLbank(LbankConnectionDto(apiKey, apiSecret, permission.wireValue))
+        api.connectLbank(paths().venue, LbankConnectionDto(apiKey, apiSecret, permission.wireValue))
         Unit
     }
 
     override suspend fun disconnectLbank() = translate {
-        api.disconnectLbank()
+        api.disconnectLbank(paths().venue)
         Unit
     }
 
@@ -174,8 +208,11 @@ class NetworkExecutionGateway private constructor(
         require(clientRequestId.isNotBlank()) { "Missing idempotency request ID" }
         requireNotNull(
             api.executeSignal(
-                signalId,
+                paths().executions,
+                // The signal id travels in the body. It used to be a path segment, which is the
+                // kind of difference that answers 404 rather than failing in a way anyone reads.
                 ExecuteSignalDto(
+                    signalId = signalId,
                     venue = venue.wireValue,
                     quantity = quantity,
                     clientRequestId = clientRequestId,
@@ -185,19 +222,19 @@ class NetworkExecutionGateway private constructor(
     }
 
     override suspend fun executions(limit: Int): List<SignalExecution> = translate {
-        api.executions(limit.coerceIn(1, 100)).items.mapNotNull { it.toDomain() }
+        api.executions(paths().executions, limit.coerceIn(1, 100)).items.mapNotNull { it.toDomain() }
     }
 
     override suspend fun execution(executionId: String): SignalExecution = translate {
         require(executionId.isNotBlank()) { "Missing execution ID" }
-        requireNotNull(api.execution(executionId).execution?.toDomain()) {
+        requireNotNull(api.execution(paths().execution(executionId)).execution?.toDomain()) {
             "Invalid execution response"
         }
     }
 
     override suspend fun requestClose(executionId: String): SignalExecution = translate {
         require(executionId.isNotBlank()) { "Missing execution ID" }
-        requireNotNull(api.requestClose(executionId).execution?.toDomain()) {
+        requireNotNull(api.requestClose(paths().close(executionId)).execution?.toDomain()) {
             "Invalid execution response"
         }
     }
@@ -213,8 +250,11 @@ class NetworkExecutionGateway private constructor(
     }
 
     companion object {
-        fun create(retrofit: Retrofit): NetworkExecutionGateway =
-            NetworkExecutionGateway(retrofit.create(ExecutionApi::class.java))
+        fun create(retrofit: Retrofit, platform: MarketPlatform): NetworkExecutionGateway =
+            NetworkExecutionGateway(
+                api = retrofit.create(ExecutionApi::class.java),
+                paths = ExecutionPaths.of(platform),
+            )
     }
 }
 

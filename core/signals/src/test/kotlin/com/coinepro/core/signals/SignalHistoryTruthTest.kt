@@ -1,5 +1,6 @@
 package com.coinepro.core.signals
 
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.SignalDirection
 import kotlinx.coroutines.CoroutineScope
@@ -20,7 +21,7 @@ class SignalHistoryTruthTest {
             direction = "BUY",
             status = "closed",
             targets = listOf(SignalTargetDto(level = 1, price = 2500.0)),
-        ).toDomain(nowMs = 0L)!!
+        ).toDomain(nowMs = 0L, MarketPlatform.COINEPRO_FX)!!
 
         assertNull(mapped.targets.single().hit)
 

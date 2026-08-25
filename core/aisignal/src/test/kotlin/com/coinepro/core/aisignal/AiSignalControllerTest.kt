@@ -131,7 +131,7 @@ class AiSignalControllerTest {
             return requireNotNull(create)
         }
 
-        override suspend fun job(jobId: String): AiSignalJob {
+        override suspend fun job(jobId: String, request: AiSignalRequest): AiSignalJob {
             refreshCount++
             refreshError?.let { throw it }
             return requireNotNull(refresh)

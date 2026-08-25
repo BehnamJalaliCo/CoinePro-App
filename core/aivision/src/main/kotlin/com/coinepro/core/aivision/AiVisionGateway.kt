@@ -1,6 +1,7 @@
 package com.coinepro.core.aivision
 
 import com.coinepro.core.aisignal.AiSignalProductScope
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.SignalDirection
 import com.google.gson.annotations.SerializedName
 import okhttp3.MediaType.Companion.toMediaType
@@ -12,7 +13,7 @@ import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
-import retrofit2.http.Path
+import retrofit2.http.Url
 
 interface AiVisionGateway {
     suspend fun createJob(upload: AiVisionImageUpload): AiVisionJob
@@ -28,11 +29,27 @@ class AiVisionRateLimitedException : Exception("AI Vision rate limit reached")
 
 internal interface AiVisionApi {
     @Multipart
-    @POST("user/ai-vision/jobs")
-    suspend fun createJob(@Part image: MultipartBody.Part): AiVisionJobDto
+    @POST
+    suspend fun createJob(@Url path: String, @Part image: MultipartBody.Part): AiVisionJobDto
 
-    @GET("user/ai-vision/jobs/{jobId}")
-    suspend fun job(@Path("jobId") jobId: String): AiVisionJobDto
+    @GET
+    suspend fun job(@Url path: String): AiVisionJobDto
+}
+
+/**
+ * CoinePro-FX hyphenates it as `ai-vision` under `user`; TradeYar nests it under `ai/vision` inside
+ * its mobile prefix. The app called neither correctly until both servers published their routes.
+ */
+internal class AiVisionPaths(private val prefix: String) {
+    val jobs = "$prefix/jobs"
+    fun job(jobId: String) = "$prefix/jobs/$jobId"
+
+    companion object {
+        fun of(platform: MarketPlatform): AiVisionPaths = when (platform) {
+            MarketPlatform.COINEPRO_FX -> AiVisionPaths("user/ai-vision")
+            MarketPlatform.TRADEYAR -> AiVisionPaths("api/mobile/v1/ai/vision")
+        }
+    }
 }
 
 internal data class AiVisionEntryZoneDto(
@@ -85,12 +102,13 @@ internal data class AiVisionJobDto(
 
 class NetworkAiVisionGateway private constructor(
     private val api: AiVisionApi,
+    private val paths: AiVisionPaths,
 ) : AiVisionGateway {
     override suspend fun createJob(upload: AiVisionImageUpload): AiVisionJob = translate {
         require(upload.isSupported) { "Invalid AI Vision image upload" }
         val body = upload.bytes.toRequestBody(upload.mimeType.toMediaType())
         val part = MultipartBody.Part.createFormData("image", upload.fileName, body)
-        requireNotNull(api.createJob(part).toDomain(fallbackId = null)) {
+        requireNotNull(api.createJob(paths.jobs, part).toDomain(fallbackId = null)) {
             "Invalid AI Vision job response"
         }
     }
@@ -100,7 +118,7 @@ class NetworkAiVisionGateway private constructor(
         // The polling response says what the job is doing and never which job it is. Requiring the
         // server to repeat an id the caller just used to ask would fail every poll, which is not a
         // missing job but a missing field.
-        requireNotNull(api.job(jobId).toDomain(fallbackId = jobId)) {
+        requireNotNull(api.job(paths.job(jobId)).toDomain(fallbackId = jobId)) {
             "Invalid AI Vision job response"
         }
     }
@@ -120,8 +138,11 @@ class NetworkAiVisionGateway private constructor(
     }
 
     companion object {
-        fun create(retrofit: Retrofit): NetworkAiVisionGateway =
-            NetworkAiVisionGateway(retrofit.create(AiVisionApi::class.java))
+        fun create(retrofit: Retrofit, platform: MarketPlatform): NetworkAiVisionGateway =
+            NetworkAiVisionGateway(
+                api = retrofit.create(AiVisionApi::class.java),
+                paths = AiVisionPaths.of(platform),
+            )
     }
 }
 

@@ -15,6 +15,7 @@ import androidx.work.WorkerParameters
 import com.coinepro.core.auth.SessionMemory
 import com.coinepro.core.auth.SessionTokenStorage
 import com.coinepro.core.marketdata.MarketDataCache
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.datastore.ActivePlatformSelector
 import com.coinepro.core.marketdata.MarketDataSymbols
 import com.coinepro.core.marketdata.MarketSnapshotGateway
@@ -39,9 +40,9 @@ enum class BackgroundSyncOutcome {
 class BackgroundReadSyncEngine @Inject constructor(
     private val storage: SessionTokenStorage,
     private val memory: SessionMemory,
-    private val marketGateway: MarketSnapshotGateway,
+    private val marketGateways: Map<MarketPlatform, @JvmSuppressWildcards MarketSnapshotGateway>,
     private val marketCache: MarketDataCache,
-    private val signalGateway: SignalGateway,
+    private val signalGateways: Map<MarketPlatform, @JvmSuppressWildcards SignalGateway>,
     private val signalCache: SignalHistoryCache,
     private val activePlatform: ActivePlatformSelector,
 ) {
@@ -54,12 +55,13 @@ class BackgroundReadSyncEngine @Inject constructor(
         if (hydratedForWorker) memory.setToken(token)
 
         var retryableFailure = false
+        // The background refresh warms the cache for the platform the reader left the app on.
+        // Fetching both would write a mixed snapshot into a cache the screen restores from before
+        // the network answers, and the two backends hold different markets.
+        val platform = activePlatform.current()
         try {
             try {
-                // The background refresh warms the cache for the platform the reader left the app
-                // on. Fetching both would write a mixed snapshot into a cache the screen restores
-                // from before the network answers.
-                val snapshot = marketGateway.load(MarketDataSymbols.forPlatform(activePlatform.current()))
+                val snapshot = marketGateways.getValue(platform).load(MarketDataSymbols.forPlatform(platform))
                 if (snapshot.quotes.isNotEmpty()) {
                     marketCache.replace(snapshot.quotes, System.currentTimeMillis())
                 }
@@ -72,7 +74,7 @@ class BackgroundReadSyncEngine @Inject constructor(
             }
 
             try {
-                val history = SignalHistoryLoader(signalGateway).load()
+                val history = SignalHistoryLoader(signalGateways.getValue(platform)).load()
                 signalCache.replace(history)
             } catch (_: SignalMembershipRequiredException) {
                 signalCache.clear()

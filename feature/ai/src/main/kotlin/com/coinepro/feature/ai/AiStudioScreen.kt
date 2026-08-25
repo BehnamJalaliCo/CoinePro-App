@@ -316,11 +316,16 @@ private fun AiResultPanel(signal: AiGeneratedSignal, onOpenSignal: (Long) -> Uni
                 AiNotice(warning, CoineProColors.Warning)
             }
 
-            CoineProSecondaryButton(
-                text = stringResource(R.string.ai_open_signal),
-                onClick = { onOpenSignal(signal.signalId) },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            // Only when there is a stored signal to open. Neither server writes the model's output
+            // into its signals table — both call it advice rather than a published call — so the
+            // button would otherwise open a detail screen for a signal that does not exist.
+            signal.signalId?.let { signalId ->
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.ai_open_signal),
+                    onClick = { onOpenSignal(signalId) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }

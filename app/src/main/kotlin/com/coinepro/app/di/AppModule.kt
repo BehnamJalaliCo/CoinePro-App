@@ -361,41 +361,113 @@ object AppModule {
     fun emailAuthController(@ForexPlatform controller: EmailAuthController): EmailAuthController =
         controller
 
-    @Provides
-    @Singleton
-    fun signalGateway(retrofit: Retrofit): SignalGateway = NetworkSignalGateway.create(retrofit)
+    // ── One pair of bindings per surface ───────────────────────────────────────────────────────
+    // Each of these used to exist once, against the CoinePro-FX client, which is why the whole
+    // crypto half of the app reached nothing: a path built for one backend is not an error on the
+    // other, it is a 404 worded like an outage. Every gateway now takes the platform it is for and
+    // builds that platform's own addresses.
 
     @Provides
     @Singleton
-    fun marketSnapshotGateway(retrofit: Retrofit): MarketSnapshotGateway =
-        NetworkMarketSnapshotGateway.create(retrofit)
+    @ForexPlatform
+    fun forexSignalGateway(@ForexPlatform retrofit: Retrofit): SignalGateway =
+        NetworkSignalGateway.create(retrofit, MarketPlatform.COINEPRO_FX)
 
     @Provides
     @Singleton
-    // Still the unqualified (CoinePro-FX) client, so the platform is named to match rather than
-    // left to a default. When the crypto notification surface is wired, this becomes a pair of
-    // qualified bindings like the account and auth gateways above it.
-    fun notificationGateway(retrofit: Retrofit): NotificationGateway =
+    @CryptoPlatform
+    fun cryptoSignalGateway(@CryptoPlatform retrofit: Retrofit): SignalGateway =
+        NetworkSignalGateway.create(retrofit, MarketPlatform.TRADEYAR)
+
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexMarketSnapshotGateway(@ForexPlatform retrofit: Retrofit): MarketSnapshotGateway =
+        NetworkMarketSnapshotGateway.create(retrofit, MarketPlatform.COINEPRO_FX)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoMarketSnapshotGateway(@CryptoPlatform retrofit: Retrofit): MarketSnapshotGateway =
+        NetworkMarketSnapshotGateway.create(retrofit, MarketPlatform.TRADEYAR)
+
+    @Provides
+    @Singleton
+    fun marketSnapshotGateways(
+        @ForexPlatform forex: MarketSnapshotGateway,
+        @CryptoPlatform crypto: MarketSnapshotGateway,
+    ): Map<MarketPlatform, MarketSnapshotGateway> = platformMap(forex, crypto)
+
+    @Provides
+    @Singleton
+    fun signalGateways(
+        @ForexPlatform forex: SignalGateway,
+        @CryptoPlatform crypto: SignalGateway,
+    ): Map<MarketPlatform, SignalGateway> = platformMap(forex, crypto)
+
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexNotificationGateway(@ForexPlatform retrofit: Retrofit): NotificationGateway =
         NetworkNotificationGateway.create(retrofit, MarketPlatform.COINEPRO_FX)
 
     @Provides
     @Singleton
-    fun executionGateway(retrofit: Retrofit): ExecutionGateway =
-        NetworkExecutionGateway.create(retrofit)
+    @CryptoPlatform
+    fun cryptoNotificationGateway(@CryptoPlatform retrofit: Retrofit): NotificationGateway =
+        NetworkNotificationGateway.create(retrofit, MarketPlatform.TRADEYAR)
 
     @Provides
     @Singleton
-    fun aiSignalGateway(retrofit: Retrofit): AiSignalGateway =
-        NetworkAiSignalGateway.create(retrofit)
+    fun notificationGateway(@ForexPlatform gateway: NotificationGateway): NotificationGateway =
+        gateway
 
     @Provides
     @Singleton
-    fun aiVisionGateway(retrofit: Retrofit): AiVisionGateway =
-        NetworkAiVisionGateway.create(retrofit)
+    @ForexPlatform
+    fun forexExecutionGateway(@ForexPlatform retrofit: Retrofit): ExecutionGateway =
+        NetworkExecutionGateway.create(retrofit, MarketPlatform.COINEPRO_FX)
 
     @Provides
     @Singleton
-    fun aiAssistantGateway(retrofit: Retrofit): AiAssistantGateway =
+    @CryptoPlatform
+    fun cryptoExecutionGateway(@CryptoPlatform retrofit: Retrofit): ExecutionGateway =
+        NetworkExecutionGateway.create(retrofit, MarketPlatform.TRADEYAR)
+
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexAiSignalGateway(@ForexPlatform retrofit: Retrofit): AiSignalGateway =
+        NetworkAiSignalGateway.create(retrofit, MarketPlatform.COINEPRO_FX)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoAiSignalGateway(@CryptoPlatform retrofit: Retrofit): AiSignalGateway =
+        NetworkAiSignalGateway.create(retrofit, MarketPlatform.TRADEYAR)
+
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexAiVisionGateway(@ForexPlatform retrofit: Retrofit): AiVisionGateway =
+        NetworkAiVisionGateway.create(retrofit, MarketPlatform.COINEPRO_FX)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoAiVisionGateway(@CryptoPlatform retrofit: Retrofit): AiVisionGateway =
+        NetworkAiVisionGateway.create(retrofit, MarketPlatform.TRADEYAR)
+
+    /**
+     * The conversational assistant exists on CoinePro-FX only.
+     *
+     * TradeYar reports `assistant: false` and serves no such route, so there is nothing to bind for
+     * it. The screen is gated on the capability flag instead of being handed a client that would
+     * post into thin air.
+     */
+    @Provides
+    @Singleton
+    fun aiAssistantGateway(@ForexPlatform retrofit: Retrofit): AiAssistantGateway =
         NetworkAiAssistantGateway.create(retrofit)
 
     @Provides
@@ -527,45 +599,145 @@ object AppModule {
         available = MarketPlatform.entries.filter { it in controllers },
     )
 
+    /**
+     * Keys a pair of per-platform instances, offering TradeYar only where this build can reach it.
+     *
+     * The same filter as [platformSessions] and for the same reason: a base URL still on its
+     * non-routable placeholder means the environment was never configured for that platform, and
+     * offering a screen that cannot load is worse than not offering it.
+     */
+    private fun <T> platformMap(forex: T, crypto: T): Map<MarketPlatform, T> = buildMap {
+        put(MarketPlatform.COINEPRO_FX, forex)
+        if (isPlatformConfigured(BuildConfig.TRADEYAR_API_BASE_URL)) {
+            put(MarketPlatform.TRADEYAR, crypto)
+        }
+    }
+
     @Provides
     @Singleton
     fun activePlatformSelector(store: ActivePlatformStore): ActivePlatformSelector = store.selector()
 
+    // Each controller holds the last thing it read, so there is one per platform rather than one
+    // with a switch: a shared instance would either drop that on every platform change or leave
+    // the previous market's signals on screen under the new market's heading while a read is in
+    // flight. The maps below are what let the shell follow whichever platform is on screen.
+
     @Provides
     @Singleton
-    fun signalController(
-        gateway: SignalGateway,
+    @ForexPlatform
+    fun forexSignalController(
+        @ForexPlatform gateway: SignalGateway,
         scope: CoroutineScope,
         historyCache: SignalHistoryCache,
     ): SignalController = SignalController(gateway, scope, historyCache)
 
     @Provides
     @Singleton
-    fun notificationController(
-        gateway: NotificationGateway,
+    @CryptoPlatform
+    fun cryptoSignalController(
+        @CryptoPlatform gateway: SignalGateway,
+        scope: CoroutineScope,
+        historyCache: SignalHistoryCache,
+    ): SignalController = SignalController(gateway, scope, historyCache)
+
+    @Provides
+    @Singleton
+    fun signalControllers(
+        @ForexPlatform forex: SignalController,
+        @CryptoPlatform crypto: SignalController,
+    ): Map<MarketPlatform, SignalController> = platformMap(forex, crypto)
+
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexNotificationController(
+        @ForexPlatform gateway: NotificationGateway,
         scope: CoroutineScope,
     ): NotificationController = NotificationController(gateway, scope, MarketPlatform.COINEPRO_FX)
 
     @Provides
     @Singleton
-    fun executionController(
-        gateway: ExecutionGateway,
+    @CryptoPlatform
+    fun cryptoNotificationController(
+        @CryptoPlatform gateway: NotificationGateway,
+        scope: CoroutineScope,
+    ): NotificationController = NotificationController(gateway, scope, MarketPlatform.TRADEYAR)
+
+    @Provides
+    @Singleton
+    fun notificationControllers(
+        @ForexPlatform forex: NotificationController,
+        @CryptoPlatform crypto: NotificationController,
+    ): Map<MarketPlatform, NotificationController> = platformMap(forex, crypto)
+
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexExecutionController(
+        @ForexPlatform gateway: ExecutionGateway,
         scope: CoroutineScope,
     ): ExecutionController = ExecutionController(gateway, scope)
 
     @Provides
     @Singleton
-    fun aiSignalController(
-        gateway: AiSignalGateway,
+    @CryptoPlatform
+    fun cryptoExecutionController(
+        @CryptoPlatform gateway: ExecutionGateway,
+        scope: CoroutineScope,
+    ): ExecutionController = ExecutionController(gateway, scope)
+
+    @Provides
+    @Singleton
+    fun executionControllers(
+        @ForexPlatform forex: ExecutionController,
+        @CryptoPlatform crypto: ExecutionController,
+    ): Map<MarketPlatform, ExecutionController> = platformMap(forex, crypto)
+
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexAiSignalController(
+        @ForexPlatform gateway: AiSignalGateway,
         scope: CoroutineScope,
     ): AiSignalController = AiSignalController(gateway, scope)
 
     @Provides
     @Singleton
-    fun aiVisionController(
-        gateway: AiVisionGateway,
+    @CryptoPlatform
+    fun cryptoAiSignalController(
+        @CryptoPlatform gateway: AiSignalGateway,
+        scope: CoroutineScope,
+    ): AiSignalController = AiSignalController(gateway, scope)
+
+    @Provides
+    @Singleton
+    fun aiSignalControllers(
+        @ForexPlatform forex: AiSignalController,
+        @CryptoPlatform crypto: AiSignalController,
+    ): Map<MarketPlatform, AiSignalController> = platformMap(forex, crypto)
+
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexAiVisionController(
+        @ForexPlatform gateway: AiVisionGateway,
         scope: CoroutineScope,
     ): AiVisionController = AiVisionController(gateway, scope)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoAiVisionController(
+        @CryptoPlatform gateway: AiVisionGateway,
+        scope: CoroutineScope,
+    ): AiVisionController = AiVisionController(gateway, scope)
+
+    @Provides
+    @Singleton
+    fun aiVisionControllers(
+        @ForexPlatform forex: AiVisionController,
+        @CryptoPlatform crypto: AiVisionController,
+    ): Map<MarketPlatform, AiVisionController> = platformMap(forex, crypto)
 
     @Provides
     @Singleton

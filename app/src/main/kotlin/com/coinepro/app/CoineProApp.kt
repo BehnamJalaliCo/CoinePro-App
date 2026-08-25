@@ -114,11 +114,11 @@ fun CoineProApp(
     platformSessions: PlatformSessions,
     marketDataCache: MarketDataCache,
     activePlatformStore: ActivePlatformStore,
-    signalController: SignalController,
-    notificationController: NotificationController,
-    executionController: ExecutionController,
-    aiSignalController: AiSignalController,
-    aiVisionController: AiVisionController,
+    signalControllers: Map<MarketPlatform, SignalController>,
+    notificationControllers: Map<MarketPlatform, NotificationController>,
+    executionControllers: Map<MarketPlatform, ExecutionController>,
+    aiSignalControllers: Map<MarketPlatform, AiSignalController>,
+    aiVisionControllers: Map<MarketPlatform, AiVisionController>,
     aiAssistantController: AiAssistantController,
     marketIntelControllers: Map<MarketPlatform, MarketIntelController>,
     pushCoordinator: PushCoordinator,
@@ -152,6 +152,13 @@ fun CoineProApp(
     // decision has no bearing on a listing and a token unlock has none on bullion, so the wrong
     // market's headlines are not a degraded answer but a misleading one.
     val marketIntelController = marketIntelControllers.getValue(activePlatform)
+    // Everything else that reads from a backend follows the same rule: the screen belongs to the
+    // platform named above it, and no controller is ever handed the other one's data.
+    val signalController = signalControllers.getValue(activePlatform)
+    val notificationController = notificationControllers.getValue(activePlatform)
+    val executionController = executionControllers.getValue(activePlatform)
+    val aiSignalController = aiSignalControllers.getValue(activePlatform)
+    val aiVisionController = aiVisionControllers.getValue(activePlatform)
     val briefingState by accountController.briefing.collectAsStateWithLifecycle()
     val portfolioState by accountController.portfolio.collectAsStateWithLifecycle()
     // Read once per briefing rather than on every recomposition, so the age is fixed at the moment
@@ -173,11 +180,11 @@ fun CoineProApp(
         } else {
             backgroundSyncScheduler.disable()
             marketDataController.stop()
-            signalController.clear()
-            notificationController.clear()
-            executionController.clear()
-            aiSignalController.clear()
-            aiVisionController.clear()
+            signalControllers.values.forEach(SignalController::clear)
+            notificationControllers.values.forEach(NotificationController::clear)
+            executionControllers.values.forEach(ExecutionController::clear)
+            aiSignalControllers.values.forEach(AiSignalController::clear)
+            aiVisionControllers.values.forEach(AiVisionController::clear)
             aiAssistantController.clear()
             marketIntelControllers.values.forEach(MarketIntelController::clear)
         }

@@ -103,7 +103,14 @@ data class AiSignalTarget(
 )
 
 data class AiGeneratedSignal(
-    val signalId: Long,
+    /**
+     * The stored signal this advice corresponds to, when there is one.
+     *
+     * Null on both servers today, and for the same stated reason: neither writes the model's
+     * output into its signals table, because it is advice rather than a published call. So there
+     * is nothing to open, and the screen must not offer to.
+     */
+    val signalId: Long? = null,
     val symbol: String,
     val direction: SignalDirection,
     val timeframe: String,

@@ -51,11 +51,11 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var platformSessions: PlatformSessions
     @Inject lateinit var marketDataCache: MarketDataCache
     @Inject lateinit var activePlatformStore: ActivePlatformStore
-    @Inject lateinit var signalController: SignalController
-    @Inject lateinit var notificationController: NotificationController
-    @Inject lateinit var executionController: ExecutionController
-    @Inject lateinit var aiSignalController: AiSignalController
-    @Inject lateinit var aiVisionController: AiVisionController
+    @Inject lateinit var signalControllers: Map<MarketPlatform, @JvmSuppressWildcards SignalController>
+    @Inject lateinit var notificationControllers: Map<MarketPlatform, @JvmSuppressWildcards NotificationController>
+    @Inject lateinit var executionControllers: Map<MarketPlatform, @JvmSuppressWildcards ExecutionController>
+    @Inject lateinit var aiSignalControllers: Map<MarketPlatform, @JvmSuppressWildcards AiSignalController>
+    @Inject lateinit var aiVisionControllers: Map<MarketPlatform, @JvmSuppressWildcards AiVisionController>
     @Inject lateinit var aiAssistantController: AiAssistantController
     @Inject lateinit var marketIntelControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketIntelController>
     @Inject lateinit var pushCoordinator: PushCoordinator
@@ -92,11 +92,11 @@ class MainActivity : ComponentActivity() {
                 platformSessions = platformSessions,
                 marketDataCache = marketDataCache,
                 activePlatformStore = activePlatformStore,
-                signalController = signalController,
-                notificationController = notificationController,
-                executionController = executionController,
-                aiSignalController = aiSignalController,
-                aiVisionController = aiVisionController,
+                signalControllers = signalControllers,
+                notificationControllers = notificationControllers,
+                executionControllers = executionControllers,
+                aiSignalControllers = aiSignalControllers,
+                aiVisionControllers = aiVisionControllers,
                 aiAssistantController = aiAssistantController,
                 marketIntelControllers = marketIntelControllers,
                 pushCoordinator = pushCoordinator,
@@ -119,14 +119,18 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         updateNotificationPermissionState()
         if (sessionController.state.value !is SessionState.SignedIn) return
-        // Only the platform on screen is refreshed; the other one is not running.
+        // Only the platform on screen is refreshed; the other one is not running, and reading it
+        // would spend requests on screens nobody is looking at.
         lifecycleScope.launch {
-            marketDataControllers.getValue(activePlatformStore.active.first()).syncOnResume()
+            val platform = activePlatformStore.active.first()
+            marketDataControllers.getValue(platform).syncOnResume()
+            signalControllers[platform]?.apply {
+                refresh()
+                refreshHistory()
+            }
+            executionControllers[platform]?.refreshExecutions()
+            notificationControllers[platform]?.refresh()
         }
-        signalController.refresh()
-        signalController.refreshHistory()
-        executionController.refreshExecutions()
-        notificationController.refresh()
         backgroundSyncScheduler.requestImmediate()
     }
 

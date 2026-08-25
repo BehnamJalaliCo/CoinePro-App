@@ -50,12 +50,23 @@ class AiSignalContractTest {
     }
 
     @Test
-    fun `invalid target invalidates the whole structured result`() {
-        val result = validResult().copy(
-            targets = listOf(AiSignalTargetDto(level = 1, price = Double.NaN)),
-        ).toDomain(requireNotNull(request.toDomain()))
+    fun `a result with no first target is unusable, not partial`() {
+        // The whole call is built around it. Second and third are genuinely optional on both
+        // servers, but an analysis with nowhere to take profit is not a partial answer.
+        val result = validResult().copy(tp1 = Double.NaN).toDomain(requireNotNull(request.toDomain()))
 
         assertNull(result)
+    }
+
+    @Test
+    fun `a confidence written as a fraction is read as percent, not as one percent`() {
+        // TradeYar's prompt asks the model for a value between zero and one; CoinePro-FX writes a
+        // whole number. Read raw, a strong TradeYar call would render as worthless.
+        val fraction = validResult().copy(confidence = 0.82).toDomain(requireNotNull(request.toDomain()))
+        assertEquals(82, requireNotNull(fraction).confidence)
+
+        val percent = validResult().copy(confidence = 82.0).toDomain(requireNotNull(request.toDomain()))
+        assertEquals(82, requireNotNull(percent).confidence)
     }
 
     @Test
@@ -95,11 +106,9 @@ class AiSignalContractTest {
         entry = 2500.0,
         entryZone = AiSignalEntryZoneDto(low = 2498.0, high = 2502.0),
         stopLoss = 2485.0,
-        targets = listOf(
-            AiSignalTargetDto(level = 1, price = 2520.0),
-            AiSignalTargetDto(level = 2, price = 2540.0),
-        ),
-        confidence = 82,
+        tp1 = 2520.0,
+        tp2 = 2540.0,
+        confidence = 82.0,
         riskRewardTp1 = 1.5,
         rationale = "Structured server-validated rationale",
     )
