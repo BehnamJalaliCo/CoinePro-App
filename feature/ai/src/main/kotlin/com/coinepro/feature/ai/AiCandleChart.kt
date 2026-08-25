@@ -40,22 +40,28 @@ internal fun AiCandleChart(
     val high = (candles.maxOf { it.high }.let { c -> levels.maxOrNull()?.coerceAtLeast(c) ?: c })
     val span = (high - low).takeIf { it > 0.0 } ?: return
 
+    // Resolved before the Canvas: the draw lambda is a DrawScope, not a composable, so theme
+    // colours have to be read out here.
+    val riseColour = CoineProColors.Buy
+    val fallColour = CoineProColors.Sell
+    val entryColour = CoineProColors.GoldBright
+
     Canvas(modifier.fillMaxWidth().height(height)) {
         // A little headroom so wicks and the outermost level never touch the frame.
         val pad = size.height * 0.06f
         val plotHeight = size.height - pad * 2
         fun y(value: Double): Float = pad + ((high - value) / span).toFloat() * plotHeight
 
-        entry?.let { drawLevel(y(it), CoineProColors.GoldBright) }
-        stopLoss?.let { drawLevel(y(it), CoineProColors.Sell) }
-        targets.forEach { drawLevel(y(it), CoineProColors.Buy) }
+        entry?.let { drawLevel(y(it), entryColour) }
+        stopLoss?.let { drawLevel(y(it), fallColour) }
+        targets.forEach { drawLevel(y(it), riseColour) }
 
         val slot = size.width / candles.size
         val bodyWidth = (slot * 0.62f).coerceAtLeast(1f)
         candles.forEachIndexed { index, candle ->
             val centre = slot * (index + 0.5f)
             val rising = candle.close >= candle.open
-            val colour = if (rising) CoineProColors.Buy else CoineProColors.Sell
+            val colour = if (rising) riseColour else fallColour
 
             drawLine(
                 color = colour.copy(alpha = 0.7f),

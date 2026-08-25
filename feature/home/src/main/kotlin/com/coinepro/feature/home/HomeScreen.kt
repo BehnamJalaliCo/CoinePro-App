@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -42,6 +43,7 @@ import com.coinepro.core.model.MarketQuote
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private val cacheTimeFormatter = DateTimeFormatter.ofPattern("MMM d · HH:mm")
 
@@ -60,11 +62,13 @@ private val cacheTimeFormatter = DateTimeFormatter.ofPattern("MMM d · HH:mm")
 fun HomeScreen(
     state: MarketDataState,
     onRetry: () -> Unit,
+    displayName: String? = null,
     briefing: HomeBriefing = HomeBriefing.Resting,
     portfolio: HomePortfolio? = null,
     openSignals: List<HomeSignal> = emptyList(),
     onGenerateSignal: () -> Unit = {},
     onSendChart: () -> Unit = {},
+    onOpenMarket: () -> Unit = {},
     onOpenSignal: (Long) -> Unit = {},
 ) {
     val quotes = state.quotes.values.sortedWith(
@@ -76,6 +80,10 @@ fun HomeScreen(
         contentPadding = PaddingValues(horizontal = 22.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
+        if (displayName != null) {
+            item { GreetingRow(displayName) }
+        }
+
         item { BalanceBlock(portfolio = portfolio, state = state) }
 
         item {
@@ -90,7 +98,16 @@ fun HomeScreen(
                     onClick = onSendChart,
                     modifier = Modifier.weight(1f),
                 )
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.home_action_market),
+                    onClick = onOpenMarket,
+                    modifier = Modifier.weight(1f),
+                )
             }
+        }
+
+        if (portfolio != null && portfolio.holdings.isNotEmpty()) {
+            item { HoldingsCard(portfolio.holdings) }
         }
 
         if (quotes.isEmpty()) {
@@ -115,6 +132,30 @@ fun HomeScreen(
                 )
             }
         }
+    }
+}
+
+/* ------------------------------------------------------------------ greeting */
+
+@Composable
+private fun GreetingRow(displayName: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.home_greeting, displayName),
+            style = MaterialTheme.typography.bodyLarge,
+            color = CoineProColors.TextSecondary,
+        )
+        // The reader's own initial rather than a generic avatar glyph: it is the one place on the
+        // screen that says whose account this is.
+        CoineProAssetToken(
+            label = displayName.trim().take(1),
+            tint = CoineProColors.Accent,
+            size = 34.dp,
+        )
     }
 }
 
@@ -156,26 +197,62 @@ private fun BalanceBlock(portfolio: HomePortfolio?, state: MarketDataState) {
     }
 }
 
+/* ------------------------------------------------------------------ holdings */
+
+@Composable
+private fun HoldingsCard(holdings: List<HomeHolding>) {
+    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+        CardLabel(stringResource(R.string.home_holdings_title))
+        holdings.forEachIndexed { index, holding ->
+            if (index > 0) RowDivider()
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 11.dp),
+                horizontalArrangement = Arrangement.spacedBy(13.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CoineProAssetToken(
+                    label = assetInitial(holding.symbol),
+                    tint = CoineProColors.assetTint(holding.symbol),
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = holding.displayName,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = CoineProColors.TextPrimary,
+                    )
+                    Text(
+                        text = holding.quantityLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CoineProColors.TextMuted,
+                        fontWeight = FontWeight.Normal,
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = holding.valueLabel,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = CoineProColors.TextPrimary,
+                    )
+                    Text(
+                        text = holding.changeLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (holding.isUp) CoineProColors.Buy else CoineProColors.Sell,
+                        fontWeight = FontWeight.Normal,
+                    )
+                }
+            }
+        }
+    }
+}
+
 /* ------------------------------------------------------------------ market */
 
 @Composable
 private fun MarketCard(quotes: List<MarketQuote>) {
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = stringResource(R.string.home_market_title),
-            style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextSecondary,
-        )
-        Spacer(Modifier.height(6.dp))
+        CardLabel(stringResource(R.string.home_market_title))
         quotes.forEachIndexed { index, quote ->
-            if (index > 0) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(CoineProColors.Border),
-                )
-            }
+            if (index > 0) RowDivider()
             QuoteRow(quote)
         }
     }
@@ -192,7 +269,7 @@ private fun QuoteRow(quote: MarketQuote) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoineProAssetToken(
-            label = quote.instrument.displayName.take(1).uppercase(),
+            label = assetInitial(quote.instrument.symbol),
             tint = CoineProColors.assetTint(quote.instrument.symbol),
         )
         Column(modifier = Modifier.weight(1f)) {
@@ -276,21 +353,9 @@ private fun EmptyMarket(state: MarketDataState, onRetry: () -> Unit) {
 @Composable
 private fun SignalsCard(signals: List<HomeSignal>, onOpenSignal: (Long) -> Unit) {
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = stringResource(R.string.home_signals_title),
-            style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextSecondary,
-        )
-        Spacer(Modifier.height(6.dp))
+        CardLabel(stringResource(R.string.home_signals_title))
         signals.forEachIndexed { index, signal ->
-            if (index > 0) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(CoineProColors.Border),
-                )
-            }
+            if (index > 0) RowDivider()
             Row(
                 // The whole row is the target rather than a chevron, so the touch area matches what
                 // the reader sees.
@@ -439,7 +504,44 @@ private fun cacheLabel(epochMillis: Long?): String {
     return stringResource(R.string.home_cache_stored, BidiText.isolateLtr(formatted))
 }
 
+/** The quiet label at the top of a card. */
+@Composable
+private fun CardLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = CoineProColors.TextSecondary,
+    )
+    Spacer(Modifier.height(6.dp))
+}
+
+/** A hairline between rows *inside* one card. Cards themselves are never divided by rules. */
+@Composable
+private fun RowDivider() {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(CoineProColors.Border),
+    )
+}
+
 /* ------------------------------------------------------------------ helpers */
+
+/**
+ * The letter on an asset's round token, taken from the wire symbol rather than the display name.
+ *
+ * The display name is translated, so in Persian it yields an Arabic-script letter that no exchange
+ * shows and that renders as a bare stroke at token size. The symbol is Latin in every language.
+ */
+private fun assetInitial(symbol: String): String =
+    when (val base = symbol.removeSuffix("USDT").removeSuffix("USD")) {
+        // Both metals start with X in their wire symbols, so a first letter would label gold and
+        // silver identically. Their element symbols are what every terminal shows anyway.
+        "XAU" -> "Au"
+        "XAG" -> "Ag"
+        else -> base.take(1).uppercase(Locale.US)
+    }
 
 private fun MarketQuote.decimals(): Int = when (instrument.symbol) {
     "XAUUSD", "XAGUSD" -> 2
@@ -457,6 +559,8 @@ private fun MarketDataState.connectionLabel(): Int = when {
     else -> R.string.home_status_offline
 }
 
+@Composable
+@ReadOnlyComposable
 private fun MarketDataState.connectionColour() = when {
     origin == MarketDataOrigin.CACHE -> CoineProColors.Warning
     connection == MarketConnectionState.LIVE -> CoineProColors.Buy

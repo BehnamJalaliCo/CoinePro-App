@@ -30,13 +30,33 @@ sealed interface HomeBriefing {
 }
 
 /**
- * The account total, already formatted.
+ * The account total and what it is made of, already formatted.
  *
  * Formatting happens at the call site because only the caller knows the currency and the precision
  * the server reported; the screen must not re-round a balance.
+ *
+ * [changeLabel] carries the whole change phrase — amount, percentage and period together — rather
+ * than three fields the screen would have to assemble. Word order differs between Persian and
+ * English, so composing it here would bake one language's grammar into the layout.
  */
 data class HomePortfolio(
     val totalLabel: String,
+    val changeLabel: String,
+    val isUp: Boolean,
+    val holdings: List<HomeHolding> = emptyList(),
+)
+
+/**
+ * One position in the account.
+ *
+ * [quantityLabel] is the amount held with its unit ("0.1482 BTC") and [valueLabel] is what that is
+ * worth in the account currency. Both come formatted, for the same reason as [HomePortfolio].
+ */
+data class HomeHolding(
+    val symbol: String,
+    val displayName: String,
+    val quantityLabel: String,
+    val valueLabel: String,
     val changeLabel: String,
     val isUp: Boolean,
 )

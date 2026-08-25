@@ -5,8 +5,13 @@
     <string name="home_agent_working_body">Reading the market and your holdings. A briefing follows shortly.</string>
     <string name="home_agent_resting_body">No briefing for this window yet. Generate a signal, or send a chart screenshot for analysis.</string>
     <string name="home_agent_unavailable">Live briefing is unavailable.</string>
-    <string name="home_action_signal">Generate signal</string>
-    <string name="home_action_chart">Analyse chart</string>
+    <string name="home_greeting">Hi %1$s 👋</string>
+
+    <string name="home_action_signal">Signal</string>
+    <string name="home_action_chart">Chart</string>
+    <string name="home_action_market">Market</string>
+
+    <string name="home_holdings_title">Your holdings</string>
 
     <string name="home_portfolio_total">Total balance</string>
 

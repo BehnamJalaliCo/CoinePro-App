@@ -268,6 +268,7 @@ private fun MainShell(
                     // pills lead to the AI section, which is where the work actually happens.
                     onGenerateSignal = { navController.navigate(AppDestination.AI.route) },
                     onSendChart = { navController.navigate(AI_VISION_ROUTE) },
+                    onOpenMarket = { navController.navigate(AppDestination.SIGNALS.route) },
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
                 )
             }

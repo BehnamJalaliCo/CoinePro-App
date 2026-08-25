@@ -86,42 +86,48 @@ class ScreenshotRenderTest {
 
     /**
      * Home in the shipping default language, with every section populated. This is the reference
-     * render for the "همراه" direction: the assistant's briefing above the balance, the balance
-     * above the market, and a lit stage behind all of it.
+     * render for the "آرام" direction: the balance as the hero, one gold object on the page, and
+     * cards separated by gap rather than by rules.
      */
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
-    fun homePersian() = capture("17-home-fa") {
-        HomeScreen(
-            state = ScreenshotFixtures.marketState(),
-            onRetry = {},
-            briefing = ScreenshotFixtures.homeBriefing,
-            portfolio = ScreenshotFixtures.homePortfolio,
-            openSignals = ScreenshotFixtures.homeSignals,
-        )
-    }
+    fun homePersian() = capture("17-home-fa") { PopulatedHome() }
 
-    /** The same screen on a tall viewport, so the sections below the fold are visible for review. */
+    /** The same screen in the light theme, which must hold the same structure rather than invert. */
     @Test
-    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1500dp-xxhdpi")
-    fun homePersianFullPage() = capture("18-home-fa-full") {
-        HomeScreen(
-            state = ScreenshotFixtures.marketState(),
-            onRetry = {},
-            briefing = ScreenshotFixtures.homeBriefing,
-            portfolio = ScreenshotFixtures.homePortfolio,
-            openSignals = ScreenshotFixtures.homeSignals,
-        )
-    }
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun homePersianLight() = capture("17-home-fa-light", darkTheme = false) { PopulatedHome() }
+
+    /** The full page, so the sections below the fold are visible for review. */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1800dp-xxhdpi")
+    fun homePersianFullPage() = capture("18-home-fa-full") { PopulatedHome() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1800dp-xxhdpi")
+    fun homePersianFullPageLight() =
+        capture("18-home-fa-full-light", darkTheme = false) { PopulatedHome() }
 
     /**
-     * The briefing card with nothing to report. The resting state has to look deliberate rather
-     * than broken, because it is what every reader sees before the server grows the endpoint.
+     * The screen with nothing signed in and nothing generated. The empty state has to look
+     * deliberate rather than broken, because it is what every reader sees first.
      */
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
     fun homePersianResting() = capture("19-home-fa-resting") {
         HomeScreen(state = ScreenshotFixtures.marketState(), onRetry = {})
+    }
+
+    @Composable
+    private fun PopulatedHome() {
+        HomeScreen(
+            state = ScreenshotFixtures.marketState(),
+            onRetry = {},
+            displayName = "بهنام",
+            briefing = ScreenshotFixtures.homeBriefing,
+            portfolio = ScreenshotFixtures.homePortfolio,
+            openSignals = ScreenshotFixtures.homeSignals,
+        )
     }
 
     @Test
@@ -330,7 +336,11 @@ class ScreenshotRenderTest {
         }
     }
 
-    private fun capture(name: String, content: @Composable () -> Unit) = captureRaw(name) {
+    private fun capture(
+        name: String,
+        darkTheme: Boolean = true,
+        content: @Composable () -> Unit,
+    ) = captureRaw(name, darkTheme) {
         Surface(modifier = Modifier.fillMaxSize()) { content() }
     }
 
@@ -338,9 +348,16 @@ class ScreenshotRenderTest {
      * Compose's own captureToImage goes through the platform window-capture path, which has no real
      * window under Robolectric. Drawing the decor view straight into a bitmap produces the same
      * pixels without needing one.
+     *
+     * [darkTheme] is pinned rather than left to the system setting, so a render captures the theme
+     * it is named for regardless of what the host configuration reports.
      */
-    private fun captureRaw(name: String, content: @Composable () -> Unit) {
-        composeRule.setContent { CoineProTheme { content() } }
+    private fun captureRaw(
+        name: String,
+        darkTheme: Boolean = true,
+        content: @Composable () -> Unit,
+    ) {
+        composeRule.setContent { CoineProTheme(darkTheme = darkTheme) { content() } }
         composeRule.waitForIdle()
         shadowOf(Looper.getMainLooper()).idle()
 

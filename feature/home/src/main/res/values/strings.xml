@@ -6,8 +6,13 @@
     <string name="home_agent_working_body">دارم بازار و دارایی‌هایت را می‌خوانم. تا چند لحظهٔ دیگر گزارش می‌دهم.</string>
     <string name="home_agent_resting_body">هنوز گزارشی برای این بازه ندارم. یک سیگنال بساز یا تصویر چارتت را بفرست تا تحلیل کنم.</string>
     <string name="home_agent_unavailable">گزارش لحظه‌ای در دسترس نیست.</string>
-    <string name="home_action_signal">سیگنال بساز</string>
-    <string name="home_action_chart">تحلیل چارت</string>
+    <string name="home_greeting">سلام %1$s 👋</string>
+
+    <string name="home_action_signal">سیگنال</string>
+    <string name="home_action_chart">چارت</string>
+    <string name="home_action_market">بازار</string>
+
+    <string name="home_holdings_title">دارایی‌های تو</string>
 
     <string name="home_portfolio_total">دارایی کل</string>
 

@@ -37,6 +37,7 @@ import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.QuoteSource
 import com.coinepro.core.model.SignalDirection
 import com.coinepro.feature.home.HomeBriefing
+import com.coinepro.feature.home.HomeHolding
 import com.coinepro.feature.home.HomePortfolio
 import com.coinepro.feature.home.HomeSignal
 import com.coinepro.core.notifications.AppNotification
@@ -95,9 +96,36 @@ object ScreenshotFixtures {
     )
 
     val homePortfolio = HomePortfolio(
-        totalLabel = MarketNumberFormatter.price(12_480.35),
-        changeLabel = MarketNumberFormatter.signedPercent(2.14),
+        totalLabel = MarketNumberFormatter.money(12_480.35),
+        changeLabel = MarketNumberFormatter.money(261.40, signed = true) + " · " +
+            MarketNumberFormatter.signedPercent(2.14) + " امروز",
         isUp = true,
+        holdings = listOf(
+            HomeHolding(
+                symbol = "BTCUSDT",
+                displayName = "بیت‌کوین",
+                quantityLabel = MarketNumberFormatter.quantity(0.1482, "BTC"),
+                valueLabel = MarketNumberFormatter.money(9_516.00),
+                changeLabel = MarketNumberFormatter.signedPercent(1.82),
+                isUp = true,
+            ),
+            HomeHolding(
+                symbol = "ETHUSDT",
+                displayName = "اتریوم",
+                quantityLabel = MarketNumberFormatter.quantity(0.7400, "ETH"),
+                valueLabel = MarketNumberFormatter.money(2_329.67),
+                changeLabel = MarketNumberFormatter.signedPercent(-0.64),
+                isUp = false,
+            ),
+            HomeHolding(
+                symbol = "SOLUSDT",
+                displayName = "سولانا",
+                quantityLabel = MarketNumberFormatter.quantity(3.6800, "SOL"),
+                valueLabel = MarketNumberFormatter.money(634.58),
+                changeLabel = MarketNumberFormatter.signedPercent(4.10),
+                isUp = true,
+            ),
+        ),
     )
 
     val homeSignals: List<HomeSignal> = listOf(

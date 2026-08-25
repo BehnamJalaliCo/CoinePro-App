@@ -92,10 +92,14 @@ fun CoineProStreamingBar(
         label = "head",
     )
 
+    // Read before the Canvas: the draw lambda is a DrawScope, not a composable, so a theme colour
+    // has to be resolved out here.
+    val trackColour = CoineProColors.Border
+
     Canvas(modifier.height(thickness)) {
         val width = size.width
         if (width <= 0f) return@Canvas
-        drawRect(color = CoineProColors.Border)
+        drawRect(color = trackColour)
         val bandWidth = width * 0.36f
         // A static three-quarter band when motion is off: still clearly a busy state, just still.
         val start = if (animate) head * (width + bandWidth) - bandWidth else width * 0.32f
