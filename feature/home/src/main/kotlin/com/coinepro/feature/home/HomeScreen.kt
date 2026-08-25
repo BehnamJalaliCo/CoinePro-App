@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProAgentOrb
+import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProAssetToken
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -54,7 +55,6 @@ import com.coinepro.core.model.MarketQuote
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 private val cacheTimeFormatter = DateTimeFormatter.ofPattern("MMM d · HH:mm")
 
@@ -280,10 +280,7 @@ private fun HoldingsCard(holdings: List<HomeHolding>) {
                 horizontalArrangement = Arrangement.spacedBy(13.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                CoineProAssetToken(
-                    label = assetInitial(holding.symbol),
-                    tint = CoineProColors.assetTint(holding.symbol),
-                )
+                CoineProAssetLogo(symbol = holding.symbol)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = holding.displayName,
@@ -338,10 +335,7 @@ private fun QuoteRow(quote: MarketQuote) {
         horizontalArrangement = Arrangement.spacedBy(13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CoineProAssetToken(
-            label = assetInitial(quote.instrument.symbol),
-            tint = CoineProColors.assetTint(quote.instrument.symbol),
-        )
+        CoineProAssetLogo(symbol = quote.instrument.symbol)
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = quote.instrument.displayName,
@@ -598,26 +592,11 @@ private fun RowDivider() {
 
 /* ------------------------------------------------------------------ helpers */
 
-/**
- * The letter on an asset's round token, taken from the wire symbol rather than the display name.
- *
- * The display name is translated, so in Persian it yields an Arabic-script letter that no exchange
- * shows and that renders as a bare stroke at token size. The symbol is Latin in every language.
- */
 @StringRes
 private fun MarketPlatform.labelRes(): Int = when (this) {
     MarketPlatform.TRADEYAR -> R.string.home_platform_crypto
     MarketPlatform.COINEPRO_FX -> R.string.home_platform_forex
 }
-
-private fun assetInitial(symbol: String): String =
-    when (val base = symbol.removeSuffix("USDT").removeSuffix("USD")) {
-        // Both metals start with X in their wire symbols, so a first letter would label gold and
-        // silver identically. Their element symbols are what every terminal shows anyway.
-        "XAU" -> "Au"
-        "XAG" -> "Ag"
-        else -> base.take(1).uppercase(Locale.US)
-    }
 
 private fun MarketQuote.decimals(): Int = when (instrument.symbol) {
     "XAUUSD", "XAGUSD" -> 2

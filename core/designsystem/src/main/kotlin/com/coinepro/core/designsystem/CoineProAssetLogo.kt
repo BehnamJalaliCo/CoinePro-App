@@ -76,7 +76,22 @@ private fun baseOf(symbol: String): String = symbol
     .removeSuffix("USD")
 
 /**
- * Symbol base to artwork. Empty until the artwork lands; every instrument falls back to its
- * lettered token until then, which is a complete and correct rendering rather than a gap.
+ * Symbol base to artwork.
+ *
+ * Only the markets the app quotes are here. The full archive lives in `design/asset-logos`, and
+ * `scripts/design/svg-to-vector.py` converts one on demand — so adding a market is a command
+ * rather than a design task, and six hundred unused vectors stay out of the APK.
+ *
+ * ADA is deliberately absent. Its artwork is built from a referenced shape that Android's vector
+ * format cannot express, and the converter refuses it rather than emitting an icon that is nearly
+ * right; the lettered token is the correct rendering for it.
  */
-private val logos: Map<String, Int> = emptyMap()
+private val logos: Map<String, Int> = mapOf(
+    "BTC" to R.drawable.asset_btc,
+    "ETH" to R.drawable.asset_eth,
+    "SOL" to R.drawable.asset_sol,
+    "BNB" to R.drawable.asset_bnb,
+    "XRP" to R.drawable.asset_xrp,
+    "DOGE" to R.drawable.asset_doge,
+    "TRX" to R.drawable.asset_trx,
+)
