@@ -2,6 +2,7 @@ package com.coinepro.core.marketintel
 
 import java.net.URI
 import java.time.Instant
+import com.coinepro.core.common.parseWireInstant
 import com.coinepro.core.model.MarketPlatform
 import retrofit2.Retrofit
 import retrofit2.http.GET
@@ -145,9 +146,7 @@ internal fun parseRelevance(values: List<String>): Set<MarketRelevance> = values
     }
 }.toSet()
 
-internal fun parseInstant(value: String?): Instant? = runCatching {
-    value?.trim()?.takeIf(String::isNotEmpty)?.let(Instant::parse)
-}.getOrNull()
+internal fun parseInstant(value: String?): Instant? = parseWireInstant(value)
 
 internal fun safeHttpsUrl(value: String?): String? = runCatching {
     value?.trim()?.takeIf(String::isNotEmpty)?.let { raw ->

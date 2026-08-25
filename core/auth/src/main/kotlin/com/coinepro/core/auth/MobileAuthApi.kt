@@ -108,9 +108,24 @@ internal data class AuthMethodsDto(
     val telegramBotUsername: String? = null,
     val push: Boolean = false,
     val chartVision: Boolean = false,
-    val assistant: Boolean = false,
-    val aiSignals: Boolean = false,
+    /**
+     * Nullable, unlike every other flag here, because only one of the two servers reports them.
+     * CoinePro-FX has both products and mentions neither, so reading an absent field as `false`
+     * would hide two working features on the platform that actually has them. Null means the server
+     * did not say, and the app then treats the feature as present until a request says otherwise.
+     */
+    val assistant: Boolean? = null,
+    val aiSignals: Boolean? = null,
 )
+
+/**
+ * How each backend answers the profile read.
+ *
+ * CoinePro-FX returns the profile bare; TradeYar wraps it in a `user` key. Parsed under the wrong
+ * one the result is not an error but an object of defaults — a profile with no name, no email and
+ * every entitlement false, which reads exactly like a new free account.
+ */
+internal data class MeEnvelopeDto(val user: AuthUserDto? = null)
 
 internal data class RegistrationStartDto(
     val registrationToken: String? = null,
@@ -144,7 +159,10 @@ internal data class TokenResponseDto(
  * as the primary name rather than left implied.
  */
 internal data class AuthUserDto(
-    @SerializedName(value = "telegram_id", alternate = ["telegramId"])
+    // TradeYar calls the same number `userId` — its accounts are not Telegram accounts, and the
+    // one it sends is its own platform id. Both spellings land here because both identify the
+    // account the token was issued for, which is all this field is used for.
+    @SerializedName(value = "telegram_id", alternate = ["telegramId", "user_id", "userId"])
     val telegramId: Long = 0,
     @SerializedName(value = "name", alternate = ["full_name", "fullName", "display_name", "displayName"])
     val name: String? = null,
@@ -153,7 +171,10 @@ internal data class AuthUserDto(
     val email: String? = null,
     @SerializedName(value = "email_verified", alternate = ["emailVerified"])
     val emailVerified: Boolean = false,
-    @SerializedName(value = "kyc_status", alternate = ["kycStatus"])
+    // TradeYar names the same idea `verificationStatus` and answers `pending` where nothing has
+    // been submitted. KycState.fromWire resolves anything it does not recognise to PENDING rather
+    // than APPROVED, so an unfamiliar value cannot open something it should not.
+    @SerializedName(value = "kyc_status", alternate = ["kycStatus", "verification_status", "verificationStatus"])
     val kycStatus: String? = null,
     @SerializedName(value = "is_vip", alternate = ["isVip", "vip"])
     val isVip: Boolean = false,

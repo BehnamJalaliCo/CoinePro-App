@@ -116,6 +116,73 @@ class AuthWireTest {
     }
 
     @Test
+    fun `TradeYar's own profile shape parses, field names and all`() {
+        // Copied from app/api/mobile/identity.py::build_user_payload.
+        val profile = gson.fromJson(
+            """
+            {
+              "userId": 4821,
+              "username": null,
+              "fullName": "بهنام",
+              "verificationStatus": "pending",
+              "lbankUid": "77120",
+              "email": "a@b.co",
+              "phone": null,
+              "source": "web",
+              "createdAt": "2026-01-04T09:12:00+00:00"
+            }
+            """.trimIndent(),
+            AuthUserDto::class.java,
+        ).toDomain()
+
+        assertEquals("It calls the account id userId, not telegram_id", 4821L, profile.telegramId)
+        assertEquals("بهنام", profile.name)
+        assertEquals("pending", profile.kycStatus)
+        assertEquals("a@b.co", profile.email)
+    }
+
+    @Test
+    fun `only one backend wraps the profile, and the app knows which`() {
+        assertTrue(SessionPaths.of(MarketPlatform.TRADEYAR).profileIsWrapped)
+        assertTrue(!SessionPaths.of(MarketPlatform.COINEPRO_FX).profileIsWrapped)
+
+        val wrapped = gson.fromJson(
+            """{"user": {"userId": 9, "fullName": "نام"}}""",
+            MeEnvelopeDto::class.java,
+        )
+        assertEquals("نام", wrapped.user?.toDomain()?.name)
+
+        // Read under the wrong shape it does not fail — it produces an object of defaults, which
+        // is why the two are distinguished by the platform rather than by trying one and falling
+        // back to the other.
+        val misread = gson.fromJson(
+            """{"user": {"userId": 9, "fullName": "نام"}}""",
+            AuthUserDto::class.java,
+        ).toDomain()
+        assertEquals("", misread.name)
+        assertEquals(0L, misread.telegramId)
+    }
+
+    @Test
+    fun `the two AI flags stay unknown when a server does not mention them`() {
+        // CoinePro-FX's /auth/methods reports neither, and it has both products.
+        val methods = gson.fromJson(
+            """{"email_password": true, "google": false, "push": true, "chart_vision": true}""",
+            AuthMethodsDto::class.java,
+        )
+        assertNull("Silence from the older server is not a refusal", methods.assistant)
+        assertNull(methods.aiSignals)
+        assertTrue(methods.chartVision)
+
+        val tradeYar = gson.fromJson(
+            """{"email_password": true, "ai_signals": true, "assistant": false}""",
+            AuthMethodsDto::class.java,
+        )
+        assertEquals(true, tradeYar.aiSignals)
+        assertEquals(false, tradeYar.assistant)
+    }
+
+    @Test
     fun `an empty profile keeps the defaults rather than inventing a name`() {
         val profile = gson.fromJson("{}", AuthUserDto::class.java).toDomain()
 

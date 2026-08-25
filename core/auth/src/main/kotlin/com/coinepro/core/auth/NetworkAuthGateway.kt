@@ -25,7 +25,13 @@ class NetworkAuthGateway internal constructor(
         }
     }
 
-    override suspend fun me(): AppResult<UserProfile> = call { api.me(paths.me).toDomain() }
+    override suspend fun me(): AppResult<UserProfile> = call {
+        if (paths.profileIsWrapped) {
+            requireNotNull(api.wrappedMe(paths.me).user) { "A profile response with no profile." }
+        } else {
+            api.me(paths.me)
+        }.toDomain()
+    }
 
     private suspend fun <T> call(block: suspend () -> T): AppResult<T> = try {
         AppResult.Success(block())

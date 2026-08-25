@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.common.MarketNumberFormatter
+import com.coinepro.core.common.parseWireInstant
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -815,7 +816,8 @@ private fun finitePrice(value: Double?, symbol: String): String {
 
 private fun formatTimestamp(raw: String?): String {
     if (raw.isNullOrBlank()) return "—"
-    return runCatching { Instant.parse(raw).atZone(ZoneId.systemDefault()).format(activityTimeFormatter) }.getOrDefault("—")
+    val moment = parseWireInstant(raw) ?: return "—"
+    return runCatching { moment.atZone(ZoneId.systemDefault()).format(activityTimeFormatter) }.getOrDefault("—")
 }
 
 @androidx.annotation.StringRes

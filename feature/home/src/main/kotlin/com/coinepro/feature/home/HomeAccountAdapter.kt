@@ -9,6 +9,7 @@ import com.coinepro.core.account.PortfolioState
 import com.coinepro.core.auth.EntitlementSnapshot
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
+import com.coinepro.core.common.parseWireInstant
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
@@ -139,7 +140,7 @@ private fun String.symbol(): String = when (uppercase()) {
  */
 fun EntitlementSnapshot.toHomeSubscription(now: Instant = Instant.now()): HomeSubscription? {
     if (!isPaid && !isVip) return null
-    val expiry = expiresAt?.let { raw -> runCatching { Instant.parse(raw.trim()) }.getOrNull() }
+    val expiry = parseWireInstant(expiresAt)
     val days = expiry?.let { Duration.between(now, it).toDays().toInt() }?.takeIf { it >= 0 }
     return HomeSubscription(
         planLabel = plan.trim().takeIf(String::isNotEmpty) ?: return null,

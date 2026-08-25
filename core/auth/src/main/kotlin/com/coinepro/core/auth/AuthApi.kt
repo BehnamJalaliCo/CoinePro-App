@@ -26,6 +26,9 @@ internal interface AuthApi {
 
     @GET
     suspend fun me(@Url path: String): AuthUserDto
+
+    @GET
+    suspend fun wrappedMe(@Url path: String): MeEnvelopeDto
 }
 
 /**
@@ -37,6 +40,8 @@ internal interface AuthApi {
 internal class SessionPaths(
     val me: String,
     val telegram: TelegramPaths?,
+    /** Whether the profile arrives inside a `user` key rather than on its own. */
+    val profileIsWrapped: Boolean,
 ) {
     class TelegramPaths(val config: String, val login: String)
 
@@ -45,10 +50,12 @@ internal class SessionPaths(
             MarketPlatform.COINEPRO_FX -> SessionPaths(
                 me = "user/me",
                 telegram = TelegramPaths("user/auth/config", "user/auth/telegram"),
+                profileIsWrapped = false,
             )
             MarketPlatform.TRADEYAR -> SessionPaths(
                 me = "api/mobile/v1/me",
                 telegram = null,
+                profileIsWrapped = true,
             )
         }
     }

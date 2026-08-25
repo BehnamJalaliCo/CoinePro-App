@@ -1,5 +1,6 @@
 package com.coinepro.core.signals
 
+import com.coinepro.core.common.parseWireInstant
 import java.time.Instant
 
 private const val HISTORY_PAGE_SIZE = 50
@@ -68,5 +69,5 @@ class SignalHistoryLoader(
 
 private fun historyInstant(signal: TradingSignal): Instant? {
     val raw = signal.closedAt ?: signal.createdAt ?: return null
-    return runCatching { Instant.parse(raw) }.getOrNull()
+    return parseWireInstant(raw)
 }
