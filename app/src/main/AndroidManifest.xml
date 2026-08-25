@@ -59,16 +59,23 @@
             <!--
                 Password recovery arrives as an https link rather than a coinepro:// one, because
                 it carries a reset token. An App Link is verified by the system against
-                /.well-known/assetlinks.json on the domain, so no other app can intercept it;
-                a custom scheme offers no such guarantee.
+                /.well-known/assetlinks.json on the host, so no other app can intercept it; a
+                custom scheme offers no such guarantee.
 
-                Until the Play signing certificate exists, assetlinks.json cannot be published and
-                verification fails — which is harmless. The link opens in the browser and the web
-                page completes the reset, exactly as it must anyway for someone who opened the
-                email on a desktop. Publishing assetlinks.json later turns the same link into an
-                in-app one with no change here and no change to the email.
+                The host is TradeYar's user-facing web app, where sign-in and registration already
+                live and where the reset page joins them. It is named exactly rather than as a
+                wildcard: verification is performed per host, and a pattern host is not verified.
 
-                CoinePro-FX's own domain joins this list once it is known.
+                Only /reset is claimed. The rest of that site — sign-in, registration — stays with
+                the browser, where someone who is not carrying the app can still use it.
+
+                Until the Play signing certificate exists the fingerprint in assetlinks.json cannot
+                be the real one, so verification fails and the link opens in the browser. That is
+                harmless and has to work anyway, for anyone who opens the email on a desktop.
+                Correcting the fingerprint later turns the same link into an in-app one with no
+                change here and no change to the email already sent.
+
+                CoinePro-FX's own host joins this list once it is known.
             -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
@@ -76,8 +83,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="https"
-                    android:host="trade-future.ir"
-                    android:pathPrefix="/app/" />
+                    android:host="user.tradeyar.trade-future.ir"
+                    android:pathPrefix="/reset" />
             </intent-filter>
         </activity>
 
