@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default language: Persian. -->
+<resources>
+    <string name="news_title">اخبار بازار</string>
+    <string name="news_subtitle">خبرِ ساختاریافته با منبع مشخص</string>
+    <string name="news_calendar">تقویم</string>
+    <string name="news_filter_all">همه</string>
+    <string name="news_loading">در حال دریافت اخبار تأییدشده…</string>
+    <string name="news_unavailable">اخبار بازار در دسترس نیست.</string>
+    <string name="news_empty">خبری با این فیلتر پیدا نشد.</string>
+    <string name="news_retry">تلاش دوباره</string>
+    <string name="news_refresh">به‌روزرسانی</string>
+    <string name="news_refreshing">در حال به‌روزرسانی زمانِ منابع…</string>
+    <string name="news_timestamp_note">زمان انتشار از تایم‌استمپ ISO سرور نرمال‌سازی شده است.</string>
+    <string name="news_stale">کهنه</string>
+    <string name="news_relevance_gold">طلا</string>
+    <string name="news_relevance_silver">نقره</string>
+    <string name="news_relevance_crypto">کریپتو</string>
+    <string name="news_relevance_general">بازار عمومی</string>
+    <string name="news_impact_high">تأثیر بالا</string>
+    <string name="news_impact_medium">تأثیر متوسط</string>
+    <string name="news_impact_low">تأثیر کم</string>
+    <string name="news_impact_unknown">تأثیر نامشخص</string>
+    <string name="news_sentiment_bullish">صعودی</string>
+    <string name="news_sentiment_bearish">نزولی</string>
+    <string name="news_sentiment_neutral">خنثی</string>
+    <string name="news_sentiment_unknown">جهت نامشخص</string>
+</resources>

@@ -375,6 +375,7 @@ private fun MainShell(
             }
             composable(NEWS_ROUTE) {
                 NewsScreen(
+                    platform = activePlatform,
                     controller = marketIntelController,
                     onOpenCalendar = { navController.navigate(CALENDAR_ROUTE) },
                 )

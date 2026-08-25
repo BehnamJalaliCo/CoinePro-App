@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="detail_membership">An active subscription is required for this signal.</string>
+    <string name="detail_retry">Retry</string>
+    <string name="detail_not_found">Signal not found.</string>
+    <string name="detail_confidence">%1$s confidence</string>
+    <string name="detail_value_missing">—</string>
+    <string name="detail_direction_buy">Buy</string>
+    <string name="detail_direction_sell">Sell</string>
+    <string name="detail_direction_neutral">Neutral</string>
+    <string name="detail_current_price">Current price</string>
+    <string name="detail_last_price">Last known price</string>
+    <string name="detail_stale_note">The realtime quote is stale; no live status is implied.</string>
+    <string name="detail_setup">Trade setup</string>
+    <string name="detail_entry">Entry</string>
+    <string name="detail_zone_low">Entry zone low</string>
+    <string name="detail_zone_high">Entry zone high</string>
+    <string name="detail_stop">Stop loss</string>
+    <string name="detail_target">Target %1$d</string>
+    <string name="detail_hit">hit</string>
+    <string name="detail_rr">Risk to reward at target 1</string>
+    <string name="detail_why">Why this setup</string>
+    <string name="detail_evidence">Signal evidence</string>
+    <string name="detail_score_technical">Technical</string>
+    <string name="detail_score_pattern">Pattern</string>
+    <string name="detail_score_ml">Model</string>
+    <string name="detail_result">Result</string>
+    <string name="detail_pnl">P&amp;L</string>
+    <string name="detail_source">Source: %1$s</string>
+    <string name="detail_execute">Execute this signal</string>
+    <string name="detail_execute_note">Execution uses this exact server-owned signal; there is no manual trade form.</string>
+    <string name="detail_high_impact_title">High-impact event window</string>
+    <string name="detail_high_impact_body">Calendar events near this active signal. This is a risk warning, not a prediction.</string>
+</resources>

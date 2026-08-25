@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="news_title">Market news</string>
+    <string name="news_subtitle">Structured news with named sources</string>
+    <string name="news_calendar">Calendar</string>
+    <string name="news_filter_all">All</string>
+    <string name="news_loading">Loading verified market news…</string>
+    <string name="news_unavailable">Market news is unavailable.</string>
+    <string name="news_empty">No news matches this filter.</string>
+    <string name="news_retry">Retry</string>
+    <string name="news_refresh">Refresh</string>
+    <string name="news_refreshing">Refreshing source timestamps…</string>
+    <string name="news_timestamp_note">Publication times are normalised from the server ISO timestamps.</string>
+    <string name="news_stale">Stale</string>
+    <string name="news_relevance_gold">Gold</string>
+    <string name="news_relevance_silver">Silver</string>
+    <string name="news_relevance_crypto">Crypto</string>
+    <string name="news_relevance_general">General market</string>
+    <string name="news_impact_high">High impact</string>
+    <string name="news_impact_medium">Medium impact</string>
+    <string name="news_impact_low">Low impact</string>
+    <string name="news_impact_unknown">Impact unknown</string>
+    <string name="news_sentiment_bullish">Bullish</string>
+    <string name="news_sentiment_bearish">Bearish</string>
+    <string name="news_sentiment_neutral">Neutral</string>
+    <string name="news_sentiment_unknown">Sentiment unknown</string>
+</resources>

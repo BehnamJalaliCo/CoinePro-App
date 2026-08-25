@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default language: Persian. -->
+<resources>
+    <string name="detail_membership">برای دیدن این سیگنال اشتراک فعال لازم است.</string>
+    <string name="detail_retry">تلاش دوباره</string>
+    <string name="detail_not_found">سیگنالی پیدا نشد.</string>
+    <string name="detail_confidence">اطمینان %1$s</string>
+    <string name="detail_value_missing">—</string>
+    <string name="detail_direction_buy">خرید</string>
+    <string name="detail_direction_sell">فروش</string>
+    <string name="detail_direction_neutral">خنثی</string>
+    <string name="detail_current_price">قیمت لحظه‌ای</string>
+    <string name="detail_last_price">آخرین قیمت شناخته‌شده</string>
+    <string name="detail_stale_note">قیمت لحظه‌ای کهنه است؛ هیچ ادعایی دربارهٔ زنده بودنش نمی‌شود.</string>
+    <string name="detail_setup">ستاپ معامله</string>
+    <string name="detail_entry">ورود</string>
+    <string name="detail_zone_low">کف محدودهٔ ورود</string>
+    <string name="detail_zone_high">سقف محدودهٔ ورود</string>
+    <string name="detail_stop">حد ضرر</string>
+    <string name="detail_target">هدف %1$d</string>
+    <string name="detail_hit">خورد</string>
+    <string name="detail_rr">ریسک به ریوارد تا هدف اول</string>
+    <string name="detail_why">چرا این ستاپ</string>
+    <string name="detail_evidence">شواهد سیگنال</string>
+    <string name="detail_score_technical">تکنیکال</string>
+    <string name="detail_score_pattern">الگو</string>
+    <string name="detail_score_ml">مدل</string>
+    <string name="detail_result">نتیجه</string>
+    <string name="detail_pnl">سود و زیان</string>
+    <string name="detail_source">منبع: %1$s</string>
+    <string name="detail_execute">اجرای این سیگنال</string>
+    <string name="detail_execute_note">اجرا دقیقاً از همین سیگنالِ سرور استفاده می‌کند؛ فرم معاملهٔ دستی وجود ندارد.</string>
+    <string name="detail_high_impact_title">بازهٔ خبر پرتأثیر</string>
+    <string name="detail_high_impact_body">رویدادهای تقویم اقتصادی نزدیک این سیگنال فعال. این هشدار ریسک است، نه پیش‌بینی.</string>
+</resources>
