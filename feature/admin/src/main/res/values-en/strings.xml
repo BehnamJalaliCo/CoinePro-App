@@ -47,4 +47,66 @@
     <string name="admin_no">No</string>
     <string name="admin_configured">Configured</string>
     <string name="admin_not_configured">Not configured</string>
+    <string name="admin_on">On</string>
+    <string name="admin_off">Off</string>
+    <string name="admin_unknown">Unknown</string>
+
+    <string name="admin_tile_session">Session</string>
+    <string name="admin_tile_feed">Market feed</string>
+    <string name="admin_tile_push">Push</string>
+    <string name="admin_tile_venue">Venue</string>
+    <string name="admin_tile_routes">Missing routes</string>
+    <string name="admin_tile_requests">Recent failures</string>
+
+    <string name="admin_session_title">Sessions</string>
+    <string name="admin_session_in">Signed in</string>
+    <string name="admin_session_out">Signed out</string>
+    <string name="admin_sign_out">Sign out</string>
+    <string name="admin_sign_out_everywhere">Sign out of both platforms</string>
+    <string name="admin_session_note">Signing out of one platform does not sign you out of the other. They are separate accounts on separate servers. Current platform: %1$s</string>
+
+    <string name="admin_feed_title">Market feed</string>
+    <string name="admin_feed_state">State</string>
+    <string name="admin_feed_symbols">Subscribed symbols</string>
+    <string name="admin_feed_cache">Last stored</string>
+    <string name="admin_feed_restart">Restart the feed</string>
+    <string name="admin_sync_now">Sync now</string>
+    <string name="admin_clear_market_cache">Clear the market cache</string>
+
+    <string name="admin_push_title">Notifications</string>
+    <string name="admin_push_permission">Android permission</string>
+    <string name="admin_push_server">Server</string>
+    <string name="admin_push_token">Device token</string>
+    <string name="admin_push_request">Ask for permission</string>
+    <string name="admin_push_settings">Open Android settings</string>
+    <string name="admin_push_reregister">Re-register the token</string>
+    <string name="admin_push_new_signals">New signals</string>
+    <string name="admin_push_signal_updates">Signal updates</string>
+    <string name="admin_push_price_alerts">Price alerts</string>
+    <string name="admin_push_not_configured">Not configured in this build</string>
+    <string name="admin_push_not_required">Not required on this Android version</string>
+    <string name="admin_push_available">Not asked for yet</string>
+    <string name="admin_push_denied">Denied</string>
+    <string name="admin_push_granted">Granted</string>
+
+    <string name="admin_venue_title">Venue connection</string>
+    <string name="admin_venue_name">Venue</string>
+    <string name="admin_venue_configured">Key stored</string>
+    <string name="admin_venue_connected">Venue verified it</string>
+    <string name="admin_venue_note">A stored key means configured, not connected. Only the venue\'s own verification turns "connected" on.</string>
+
+    <string name="admin_capabilities_title">Server capabilities</string>
+    <string name="admin_capability_email">Email sign-in</string>
+    <string name="admin_capability_google">Google sign-in</string>
+    <string name="admin_capability_telegram">Telegram sign-in</string>
+    <string name="admin_capability_push">Push delivery</string>
+    <string name="admin_capability_vision">Chart image analysis</string>
+    <string name="admin_capability_symbols">Symbols offered</string>
+    <string name="admin_capabilities_refresh">Read again from the server</string>
+    <string name="admin_capabilities_note">The server declares these. The app draws only what it says is on.</string>
+
+    <string name="admin_appearance_title">Language</string>
+    <string name="admin_language_fa">فارسی</string>
+    <string name="admin_language_en">English</string>
+    <string name="admin_language_note">Changing the language restarts the app.</string>
 </resources>

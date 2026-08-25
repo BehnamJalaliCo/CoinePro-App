@@ -40,4 +40,9 @@
     <string name="safety_support_body">برای ارسال بازخورد از منوی اشتراک‌گذاری اندروید و آپ دلخواه خودت استفاده کن. پیامِ آماده‌شده فقط نسخه و محیط آپ را دارد و هرگز توکن نشست، اطلاعات کارگزار، تصویر چارت یا اسرار اجرا را شامل نمی‌شود.</string>
     <string name="safety_send_feedback">ارسال بازخورد</string>
     <string name="safety_footer">اتصال محیط عملیاتی، تأیید ارائه‌دهنده و آمادگی اجرای زنده دروازه‌های جداگانه‌ای هستند و این صفحه آن‌ها را تضمین نمی‌کند.</string>
+    <string name="hub_feed_live">لحظه‌ای</string>
+    <string name="hub_feed_connecting">در حال اتصال</string>
+    <string name="hub_feed_degraded">تصویر HTTP</string>
+    <string name="hub_feed_offline">آفلاین</string>
+    <string name="hub_feed_idle">بی‌کار</string>
 </resources>

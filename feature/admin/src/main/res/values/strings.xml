@@ -48,4 +48,66 @@
     <string name="admin_no">خیر</string>
     <string name="admin_configured">تنظیم شده</string>
     <string name="admin_not_configured">تنظیم نشده</string>
+    <string name="admin_on">روشن</string>
+    <string name="admin_off">خاموش</string>
+    <string name="admin_unknown">نامعلوم</string>
+
+    <string name="admin_tile_session">نشست</string>
+    <string name="admin_tile_feed">جریان بازار</string>
+    <string name="admin_tile_push">اعلان</string>
+    <string name="admin_tile_venue">صرافی</string>
+    <string name="admin_tile_routes">مسیر گم‌شده</string>
+    <string name="admin_tile_requests">خطای اخیر</string>
+
+    <string name="admin_session_title">نشست‌ها</string>
+    <string name="admin_session_in">وارد شده</string>
+    <string name="admin_session_out">وارد نشده</string>
+    <string name="admin_sign_out">خروج</string>
+    <string name="admin_sign_out_everywhere">خروج از هر دو پلتفرم</string>
+    <string name="admin_session_note">خروج از یک پلتفرم، دیگری را خارج نمی‌کند. دو حساب جدا روی دو سرور جدا هستند. پلتفرم فعلی: %1$s</string>
+
+    <string name="admin_feed_title">جریان بازار</string>
+    <string name="admin_feed_state">وضعیت</string>
+    <string name="admin_feed_symbols">نمادهای مشترک‌شده</string>
+    <string name="admin_feed_cache">آخرین ذخیره</string>
+    <string name="admin_feed_restart">راه‌اندازی دوباره</string>
+    <string name="admin_sync_now">همگام‌سازی فوری</string>
+    <string name="admin_clear_market_cache">پاک کردن کش بازار</string>
+
+    <string name="admin_push_title">اعلان‌ها</string>
+    <string name="admin_push_permission">مجوز اندروید</string>
+    <string name="admin_push_server">سرور</string>
+    <string name="admin_push_token">توکن دستگاه</string>
+    <string name="admin_push_request">درخواست مجوز</string>
+    <string name="admin_push_settings">باز کردن تنظیمات اندروید</string>
+    <string name="admin_push_reregister">ثبت دوبارهٔ توکن</string>
+    <string name="admin_push_new_signals">سیگنال تازه</string>
+    <string name="admin_push_signal_updates">به‌روزرسانی سیگنال</string>
+    <string name="admin_push_price_alerts">هشدار قیمت</string>
+    <string name="admin_push_not_configured">در این بیلد تنظیم نشده</string>
+    <string name="admin_push_not_required">در این نسخهٔ اندروید لازم نیست</string>
+    <string name="admin_push_available">هنوز خواسته نشده</string>
+    <string name="admin_push_denied">رد شده</string>
+    <string name="admin_push_granted">داده شده</string>
+
+    <string name="admin_venue_title">اتصال صرافی</string>
+    <string name="admin_venue_name">صرافی</string>
+    <string name="admin_venue_configured">کلید ذخیره شده</string>
+    <string name="admin_venue_connected">صرافی تأیید کرده</string>
+    <string name="admin_venue_note">ذخیره شدن کلید یعنی تنظیم شده، نه متصل. فقط تأیید خود صرافی «متصل» را روشن می‌کند.</string>
+
+    <string name="admin_capabilities_title">قابلیت‌های سرور</string>
+    <string name="admin_capability_email">ورود با ایمیل</string>
+    <string name="admin_capability_google">ورود با گوگل</string>
+    <string name="admin_capability_telegram">ورود با تلگرام</string>
+    <string name="admin_capability_push">ارسال پوش</string>
+    <string name="admin_capability_vision">تحلیل تصویر چارت</string>
+    <string name="admin_capability_symbols">تعداد نمادها</string>
+    <string name="admin_capabilities_refresh">خواندن دوباره از سرور</string>
+    <string name="admin_capabilities_note">این‌ها را خود سرور اعلام می‌کند. اپ فقط چیزی را می‌کشد که سرور گفته روشن است.</string>
+
+    <string name="admin_appearance_title">زبان</string>
+    <string name="admin_language_fa">فارسی</string>
+    <string name="admin_language_en">English</string>
+    <string name="admin_language_note">تغییر زبان اپ را از نو باز می‌کند.</string>
 </resources>

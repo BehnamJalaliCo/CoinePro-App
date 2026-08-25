@@ -20,6 +20,8 @@ import androidx.lifecycle.lifecycleScope
 import com.coinepro.app.notifications.PushCoordinator
 import com.coinepro.app.sync.BackgroundSyncScheduler
 import com.coinepro.core.account.AccountController
+import com.coinepro.core.auth.PlatformSessions
+import com.coinepro.core.marketdata.MarketDataCache
 import com.coinepro.core.diagnostics.AdminController
 import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aisignal.AiSignalController
@@ -44,6 +46,8 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var marketDataControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketDataController>
     @Inject lateinit var accountControllers: Map<MarketPlatform, @JvmSuppressWildcards AccountController>
     @Inject lateinit var adminController: AdminController
+    @Inject lateinit var platformSessions: PlatformSessions
+    @Inject lateinit var marketDataCache: MarketDataCache
     @Inject lateinit var activePlatformStore: ActivePlatformStore
     @Inject lateinit var signalController: SignalController
     @Inject lateinit var notificationController: NotificationController
@@ -81,6 +85,8 @@ class MainActivity : ComponentActivity() {
                 marketDataControllers = marketDataControllers,
                 accountControllers = accountControllers,
                 adminController = adminController,
+                platformSessions = platformSessions,
+                marketDataCache = marketDataCache,
                 activePlatformStore = activePlatformStore,
                 signalController = signalController,
                 notificationController = notificationController,

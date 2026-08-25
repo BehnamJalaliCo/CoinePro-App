@@ -292,13 +292,7 @@ class ScreenshotRenderTest {
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1800dp-xxhdpi")
     fun adminPanel() = capture("23-admin-fa") {
-        AdminScreen(
-            state = ScreenshotFixtures.adminState,
-            onSelectPlatform = {},
-            onProbe = {},
-            onToggleFailuresOnly = {},
-            onClearRequests = {},
-        )
+        AdminScreen(state = ScreenshotFixtures.adminState, hub = ScreenshotFixtures.controlHub)
     }
 
     @Test

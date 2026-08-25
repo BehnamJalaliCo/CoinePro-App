@@ -55,6 +55,25 @@ import com.coinepro.feature.calendar.EconomicCalendarScreen
 import com.coinepro.feature.connections.ConnectionsScreen
 import com.coinepro.feature.execution.ExecutionScreen
 import com.coinepro.core.account.AccountController
+import android.app.Activity
+import androidx.annotation.StringRes
+import androidx.compose.ui.platform.LocalContext
+import com.coinepro.core.auth.PlatformSessions
+import com.coinepro.core.common.AppLanguage
+import com.coinepro.core.common.BidiText
+import com.coinepro.core.diagnostics.Appearance
+import com.coinepro.core.diagnostics.ControlHub
+import com.coinepro.core.diagnostics.FeedStatus
+import com.coinepro.core.diagnostics.HubActions
+import com.coinepro.core.diagnostics.HubTone
+import com.coinepro.core.diagnostics.PushPermission
+import com.coinepro.core.diagnostics.PushPreferenceKey
+import com.coinepro.core.diagnostics.PushStatus
+import com.coinepro.core.diagnostics.SessionRow
+import com.coinepro.core.diagnostics.VenueStatus
+import com.coinepro.core.execution.ConnectionsState
+import com.coinepro.core.marketdata.MarketConnectionState
+import com.coinepro.core.marketdata.MarketDataCache
 import com.coinepro.core.diagnostics.AdminController
 import com.coinepro.feature.admin.AdminScreen
 import com.coinepro.feature.home.HomeBriefing
@@ -86,6 +105,8 @@ fun CoineProApp(
     marketDataControllers: Map<MarketPlatform, MarketDataController>,
     accountControllers: Map<MarketPlatform, AccountController>,
     adminController: AdminController,
+    platformSessions: PlatformSessions,
+    marketDataCache: MarketDataCache,
     activePlatformStore: ActivePlatformStore,
     signalController: SignalController,
     notificationController: NotificationController,
@@ -148,11 +169,81 @@ fun CoineProApp(
         }
     }
 
+    val notificationState by notificationController.state.collectAsStateWithLifecycle()
+    val venueState by executionController.connections.collectAsStateWithLifecycle()
+    val sessionStates by platformSessions.states.collectAsStateWithLifecycle(initialValue = emptyMap())
+    val context = LocalContext.current
+
+    // Assembled here rather than inside the diagnostics module: every controller the hub reaches is
+    // already in this scope, and giving core:diagnostics a dependency on all of them would make the
+    // module that observes the app depend on nearly the whole app.
+    val hub = ControlHub(
+        sessions = activePlatformStore.available.map { platform ->
+            SessionRow(
+                platform = platform,
+                signedIn = sessionStates[platform] is SessionState.SignedIn,
+                detail = (sessionStates[platform] as? SessionState.RevalidationRequired)?.message,
+            )
+        },
+        feed = FeedStatus(
+            tone = marketState.connection.tone(),
+            label = stringResource(marketState.connection.labelRes()),
+            subscribedSymbols = marketState.quotes.size,
+            cacheAgeLabel = marketState.cacheStoredAtEpochMillis?.let { BidiText.isolateLtr(it.toString()) },
+        ),
+        push = PushStatus(
+            permission = notificationPermissionState.toHubPermission(),
+            // Null rather than false: the app has not asked the server yet, and reporting an
+            // unasked capability as off would put words in the server's mouth.
+            serverEnabled = null,
+            newSignals = notificationState.preferences.newSignals,
+            signalUpdates = notificationState.preferences.signalUpdates,
+            priceAlerts = notificationState.preferences.priceAlerts,
+        ),
+        venue = venueState.forPlatform(activePlatform),
+        appearance = Appearance(AppLanguageStore.current(context).tag),
+    )
+
+    val hubActions = HubActions(
+        onSelectPlatform = { platform ->
+            adminController.select(platform)
+            scope.launch { activePlatformStore.setActive(platform) }
+        },
+        onSignOut = { platform -> scope.launch { platformSessions.logout(platform) } },
+        onSignOutEverywhere = { scope.launch { platformSessions.logoutAll() } },
+        onRestartFeed = marketDataController::retry,
+        onSyncNow = backgroundSyncScheduler::requestImmediate,
+        onClearMarketCache = { scope.launch { marketDataCache.clear() } },
+        onRequestPushPermission = onRequestNotificationPermission,
+        onOpenPushSettings = onOpenNotificationSettings,
+        onReRegisterPushToken = { scope.launch { pushCoordinator.registerCurrentToken() } },
+        onSetPushPreference = { key, value ->
+            val current = notificationState.preferences
+            notificationController.updatePreferences(
+                when (key) {
+                    PushPreferenceKey.NEW_SIGNALS -> current.copy(newSignals = value)
+                    PushPreferenceKey.SIGNAL_UPDATES -> current.copy(signalUpdates = value)
+                    PushPreferenceKey.PRICE_ALERTS -> current.copy(priceAlerts = value)
+                },
+            )
+        },
+        onSetLanguage = { tag ->
+            AppLanguageStore.set(context, AppLanguage.fromTag(tag))
+            // The locale is read in attachBaseContext, so the change lands on the next creation.
+            (context as? Activity)?.recreate()
+        },
+        onProbe = adminController::probe,
+        onToggleFailuresOnly = adminController::toggleFailuresOnly,
+        onClearRequests = adminController::clearRequests,
+    )
+
     CoineProTheme {
         when (session) {
             is SessionState.SignedIn -> MainShell(
                 marketState = marketState,
                 adminController = adminController,
+                hub = hub,
+                hubActions = hubActions,
                 briefing = briefingState.toHomeBriefing(briefingReadAt),
                 portfolio = portfolioState.toHomePortfolio(),
                 onRefreshAccount = accountController::refresh,
@@ -210,6 +301,8 @@ private fun MainShell(
     aiAssistantController: AiAssistantController,
     marketIntelController: MarketIntelController,
     adminController: AdminController,
+    hub: ControlHub,
+    hubActions: HubActions,
     briefing: HomeBriefing,
     portfolio: HomePortfolio?,
     onRefreshAccount: () -> Unit,
@@ -355,10 +448,8 @@ private fun MainShell(
                 val adminState by adminController.state.collectAsStateWithLifecycle()
                 AdminScreen(
                     state = adminState,
-                    onSelectPlatform = adminController::select,
-                    onProbe = adminController::probe,
-                    onToggleFailuresOnly = adminController::toggleFailuresOnly,
-                    onClearRequests = adminController::clearRequests,
+                    hub = hub,
+                    actions = hubActions,
                 )
             }
             composable(AppDestination.SIGNALS.route) {
@@ -460,4 +551,55 @@ private fun MainShell(
             }
         }
     }
+}
+
+/* -------------------------------------------------------------- hub glue */
+
+/**
+ * The feed's own state, in the hub's four grades.
+ *
+ * Degraded is a warning rather than a failure on purpose: the socket is down but the HTTP snapshot
+ * is carrying quotes, so the screen is still telling the truth — just less often.
+ */
+private fun MarketConnectionState.tone(): HubTone = when (this) {
+    MarketConnectionState.LIVE -> HubTone.GOOD
+    MarketConnectionState.CONNECTING, MarketConnectionState.DEGRADED -> HubTone.WARN
+    MarketConnectionState.OFFLINE -> HubTone.BAD
+    MarketConnectionState.IDLE -> HubTone.IDLE
+}
+
+@StringRes
+private fun MarketConnectionState.labelRes(): Int = when (this) {
+    MarketConnectionState.LIVE -> R.string.hub_feed_live
+    MarketConnectionState.CONNECTING -> R.string.hub_feed_connecting
+    MarketConnectionState.DEGRADED -> R.string.hub_feed_degraded
+    MarketConnectionState.OFFLINE -> R.string.hub_feed_offline
+    MarketConnectionState.IDLE -> R.string.hub_feed_idle
+}
+
+private fun NotificationPermissionUiState.toHubPermission(): PushPermission = when (this) {
+    NotificationPermissionUiState.NOT_CONFIGURED -> PushPermission.NOT_CONFIGURED
+    NotificationPermissionUiState.NOT_REQUIRED -> PushPermission.NOT_REQUIRED
+    NotificationPermissionUiState.AVAILABLE_TO_REQUEST -> PushPermission.AVAILABLE
+    NotificationPermissionUiState.DENIED -> PushPermission.DENIED
+    NotificationPermissionUiState.GRANTED -> PushPermission.GRANTED
+}
+
+/**
+ * The venue that executes for one platform — MetaTrader 5 for forex, LBank for crypto.
+ *
+ * Never both. Showing a reader the other platform's broker is the same mixing bug as showing its
+ * symbols, and here it would invite someone to judge their execution readiness from an account
+ * this session is not even signed in to.
+ */
+private fun ConnectionsState.forPlatform(platform: MarketPlatform): VenueStatus {
+    val connection = when (platform) {
+        MarketPlatform.COINEPRO_FX -> mt5
+        MarketPlatform.TRADEYAR -> lbank
+    }
+    return VenueStatus(
+        name = if (platform == MarketPlatform.COINEPRO_FX) "MetaTrader 5" else "LBank",
+        configured = connection != null,
+        connected = connection?.connected == true,
+    )
 }

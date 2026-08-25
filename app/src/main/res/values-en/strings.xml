@@ -37,4 +37,9 @@
     <string name="safety_support_body">Send feedback through the Android share sheet using an app of your choice. The prepared message carries only app version and environment, and never a session token, broker credentials, a chart image or execution secrets.</string>
     <string name="safety_send_feedback">Send feedback</string>
     <string name="safety_footer">Production connectivity, provider whitelisting and live execution readiness are separate operational gates and are not implied by this screen.</string>
+    <string name="hub_feed_live">Live</string>
+    <string name="hub_feed_connecting">Connecting</string>
+    <string name="hub_feed_degraded">HTTP snapshot</string>
+    <string name="hub_feed_offline">Offline</string>
+    <string name="hub_feed_idle">Idle</string>
 </resources>

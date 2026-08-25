@@ -19,6 +19,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -40,35 +42,51 @@ import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.diagnostics.ABSENT
 import com.coinepro.core.diagnostics.AdminUiState
+import com.coinepro.core.diagnostics.Appearance
+import com.coinepro.core.diagnostics.ControlHub
 import com.coinepro.core.diagnostics.EndpointProbe
+import com.coinepro.core.diagnostics.FeedStatus
+import com.coinepro.core.diagnostics.HUB_ON
+import com.coinepro.core.diagnostics.HubActions
+import com.coinepro.core.diagnostics.HubSection
+import com.coinepro.core.diagnostics.HubTile
+import com.coinepro.core.diagnostics.HubTone
 import com.coinepro.core.diagnostics.PlatformPanel
 import com.coinepro.core.diagnostics.ProbeOutcome
+import com.coinepro.core.diagnostics.PushPermission
+import com.coinepro.core.diagnostics.PushPreferenceKey
+import com.coinepro.core.diagnostics.PushStatus
 import com.coinepro.core.diagnostics.RecordedRequest
-import com.coinepro.core.diagnostics.failureCount
+import com.coinepro.core.diagnostics.ServerCapabilities
+import com.coinepro.core.diagnostics.SessionRow
+import com.coinepro.core.diagnostics.VenueStatus
+import com.coinepro.core.diagnostics.hubTiles
 import com.coinepro.core.diagnostics.maskHost
 import com.coinepro.core.diagnostics.visibleRequests
 import com.coinepro.core.model.MarketPlatform
 
 /**
- * The diagnostic panel behind five taps on the version number.
+ * The control hub, five taps behind the version number.
  *
- * It is not a management console — the product's real admin panels live on each server, where the
- * data and the authority are. This one answers a question those cannot: what is *this build on this
- * handset* actually doing, and which of the two backends is answering it.
+ * The product's real admin panels live on each server, where the data and the authority are. This
+ * one owns the half neither of them can reach: the app on this handset. It is a hub rather than a
+ * report because every section here has a lever — sign a platform out, restart the feed, clear a
+ * cache, ask for the notification permission, flip a push preference, change the language, probe
+ * the routes.
  *
- * The layout follows the same rules as the rest of the app rather than inventing a "debug screen"
- * dialect. A verdict at hero size, the way Home leads with a balance; one figure per card carrying
- * the weight; cards separated by gap rather than by rules; and the single gold accent reserved for
- * the one action worth taking. A panel that looks like a log dump gets read like one — which is to
- * say, not at all, until something has already gone wrong.
+ * Compact by design. Six tiles answer "is anything wrong" in one glance, and the sections beneath
+ * them are where a reader goes once a tile has told them where to look. A tile and its section read
+ * the same field, so they can never disagree.
+ *
+ * Everything is scoped to the platform in the switch. The two backends are separate accounts on
+ * separate servers, and a hub that merged them would be the one screen in the product where they
+ * look like a single system.
  */
 @Composable
 fun AdminScreen(
     state: AdminUiState,
-    onSelectPlatform: (MarketPlatform) -> Unit,
-    onProbe: (MarketPlatform) -> Unit,
-    onToggleFailuresOnly: () -> Unit,
-    onClearRequests: () -> Unit,
+    hub: ControlHub = ControlHub(),
+    actions: HubActions = HubActions(),
 ) {
     val panel = state.panels[state.selected]
 
@@ -82,20 +100,31 @@ fun AdminScreen(
         ),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
     ) {
-        item { VerdictBlock(state, panel) }
+        item { Verdict(state, hub, panel) }
 
         item {
             CoineProSegmentedControl(
-                options = state.panels.keys.toList().map { it to it.tabLabel() },
+                options = state.panels.keys.toList().map { it to it.label() },
                 selected = state.selected,
-                onSelect = onSelectPlatform,
+                onSelect = actions.onSelectPlatform,
             )
         }
 
-        if (panel != null) {
-            item { ReachCard(panel, onProbe = { onProbe(panel.platform) }) }
-            item { ConnectionCard(panel) }
+        item { TileGrid(state.hubTiles(hub)) }
+
+        hub.sessions.takeIf { it.isNotEmpty() }?.let { sessions ->
+            item { SessionCard(sessions, state.selected, actions) }
         }
+        hub.feed?.let { item { FeedCard(it, actions) } }
+        hub.push?.let { item { PushCard(it, actions) } }
+        hub.venue?.let { item { VenueCard(it) } }
+        hub.capabilities[state.selected]?.let {
+            item { CapabilitiesCard(it, state.selected, actions) }
+        }
+        hub.appearance?.let { item { AppearanceCard(it, actions) } }
+
+        if (panel != null) item { RoutesCard(panel, actions) }
+        item { ConnectionCard(panel) }
         item { BuildCard(state) }
 
         item {
@@ -105,9 +134,9 @@ fun AdminScreen(
                 actionLabel = stringResource(
                     if (state.failuresOnly) R.string.admin_requests_all else R.string.admin_requests_failures,
                 ),
-                onAction = onToggleFailuresOnly,
+                onAction = actions.onToggleFailuresOnly,
                 secondaryLabel = stringResource(R.string.admin_requests_clear),
-                onSecondary = onClearRequests,
+                onSecondary = actions.onClearRequests,
             )
         }
 
@@ -116,37 +145,19 @@ fun AdminScreen(
             item { EmptyNote(R.string.admin_requests_empty) }
         } else {
             item {
-                CoineProCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(
-                        horizontal = CoineProSpacing.Two,
-                        vertical = CoineProSpacing.One,
-                    ),
-                ) {
-                    requests.forEachIndexed { index, request ->
-                        if (index > 0) Divider()
-                        RequestRow(request)
-                    }
-                }
+                Rows(requests.size) { index -> RequestRow(requests[index]) }
             }
         }
     }
 }
 
-/* ---------------------------------------------------------------- verdict */
+/* --------------------------------------------------------------- overview */
 
-/**
- * The one thing worth seeing before anything else: is this install healthy.
- *
- * Given hero treatment for the same reason the balance is on Home — a reader opens this screen
- * with one question, and a screen that makes them assemble the answer from six small rows has
- * answered a different one.
- */
 @Composable
-private fun VerdictBlock(state: AdminUiState, panel: PlatformPanel?) {
-    val failures = state.requests.count(RecordedRequest::failed)
+private fun Verdict(state: AdminUiState, hub: ControlHub, panel: PlatformPanel?) {
     val missing = panel?.probes.orEmpty().count { it.outcome == ProbeOutcome.NOT_FOUND }
-    val healthy = failures == 0 && missing == 0
+    val failures = state.requests.count(RecordedRequest::failed)
+    val healthy = missing == 0 && failures == 0
 
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
@@ -178,9 +189,7 @@ private fun VerdictBlock(state: AdminUiState, panel: PlatformPanel?) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                painter = painterResource(
-                    if (healthy) CoineProIcons.Success else CoineProIcons.Warning,
-                ),
+                painter = painterResource(if (healthy) CoineProIcons.Success else CoineProIcons.Warning),
                 contentDescription = null,
                 modifier = Modifier.size(15.dp),
                 tint = if (healthy) CoineProColors.Buy else CoineProColors.Warning,
@@ -194,23 +203,267 @@ private fun VerdictBlock(state: AdminUiState, panel: PlatformPanel?) {
     }
 }
 
+/** Six subsystems, three to a row. The whole point is that it fits without scrolling. */
+@Composable
+private fun TileGrid(tiles: List<HubTile>) {
+    Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+        tiles.chunked(3).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+                row.forEach { Tile(Modifier.weight(1f), it) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Tile(modifier: Modifier, tile: HubTile) {
+    val colour = tile.tone.colour()
+    Column(
+        modifier = modifier
+            .background(CoineProColors.Surface, MaterialTheme.shapes.medium)
+            .padding(vertical = CoineProSpacing.OneHalf, horizontal = CoineProSpacing.One),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Icon(
+            painter = painterResource(tile.section.icon()),
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = colour,
+        )
+        Text(
+            text = tile.value.asDisplayValue(),
+            style = CoineProTextStyles.RowFigure,
+            color = colour,
+        )
+        Text(
+            text = stringResource(tile.section.labelRes()),
+            style = MaterialTheme.typography.bodySmall,
+            color = CoineProColors.TextMuted,
+        )
+    }
+}
+
 /* ------------------------------------------------------------------ cards */
 
-/**
- * The route check, given the most prominent card because it is the panel's reason to exist.
- *
- * The three tallies are sized like figures rather than captions, and the one that matters — routes
- * serving nothing — is the only one allowed to turn red.
- */
 @Composable
-private fun ReachCard(panel: PlatformPanel, onProbe: () -> Unit) {
+private fun SessionCard(
+    sessions: List<SessionRow>,
+    selected: MarketPlatform,
+    actions: HubActions,
+) {
+    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+        CardHead(CoineProIcons.Locked, R.string.admin_session_title)
+        sessions.forEachIndexed { index, row ->
+            if (index > 0) Divider()
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = CoineProSpacing.One),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                StatusRail(if (row.signedIn) CoineProColors.Buy else CoineProColors.TextMuted)
+                Spacer(Modifier.width(CoineProSpacing.One))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = row.platform.label(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CoineProColors.TextPrimary,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        // Server wording where there is any; the app never restates a session's
+                        // condition in its own words.
+                        text = row.detail ?: stringResource(
+                            if (row.signedIn) R.string.admin_session_in else R.string.admin_session_out,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CoineProColors.TextMuted,
+                    )
+                }
+                if (row.signedIn) {
+                    TextButton(onClick = { actions.onSignOut(row.platform) }) {
+                        Text(
+                            stringResource(R.string.admin_sign_out),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = CoineProColors.Sell,
+                        )
+                    }
+                }
+            }
+        }
+        if (sessions.any(SessionRow::signedIn)) {
+            CoineProSecondaryButton(
+                text = stringResource(R.string.admin_sign_out_everywhere),
+                onClick = actions.onSignOutEverywhere,
+                modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.One),
+            )
+        }
+        Spacer(Modifier.height(0.dp))
+        // Named rather than implied: signing one platform out leaves the other signed in, which is
+        // the correct behaviour for two separate accounts and surprises people who expect otherwise.
+        Muted(stringResource(R.string.admin_session_note, selected.label()))
+    }
+}
+
+@Composable
+private fun FeedCard(feed: FeedStatus, actions: HubActions) {
+    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+        CardHead(CoineProIcons.TrendUp, R.string.admin_feed_title)
+        Field(R.string.admin_feed_state, feed.label, feed.tone.colour())
+        Field(R.string.admin_feed_symbols, BidiText.isolateLtr(feed.subscribedSymbols.toString()))
+        Field(R.string.admin_feed_cache, feed.cacheAgeLabel ?: ABSENT)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.One),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        ) {
+            CoineProSecondaryButton(
+                text = stringResource(R.string.admin_feed_restart),
+                onClick = actions.onRestartFeed,
+                modifier = Modifier.weight(1f),
+            )
+            CoineProSecondaryButton(
+                text = stringResource(R.string.admin_sync_now),
+                onClick = actions.onSyncNow,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        CoineProSecondaryButton(
+            text = stringResource(R.string.admin_clear_market_cache),
+            onClick = actions.onClearMarketCache,
+            modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.One),
+        )
+    }
+}
+
+@Composable
+private fun PushCard(push: PushStatus, actions: HubActions) {
+    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+        CardHead(CoineProIcons.Activity, R.string.admin_push_title)
+
+        // Both halves, separately. A granted permission on a server that cannot send is not "push
+        // is on", and the fix for each is in a different place.
+        Field(
+            R.string.admin_push_permission,
+            stringResource(push.permission.labelRes()),
+            if (push.permission == PushPermission.GRANTED) CoineProColors.Buy else CoineProColors.Warning,
+        )
+        Field(
+            R.string.admin_push_server,
+            stringResource(
+                when (push.serverEnabled) {
+                    true -> R.string.admin_on
+                    false -> R.string.admin_off
+                    null -> R.string.admin_unknown
+                },
+            ),
+            when (push.serverEnabled) {
+                true -> CoineProColors.Buy
+                false -> CoineProColors.Warning
+                null -> CoineProColors.TextMuted
+            },
+        )
+        Field(R.string.admin_push_token, BidiText.isolateLtr(push.tokenHint))
+
+        when (push.permission) {
+            PushPermission.AVAILABLE -> CoineProSecondaryButton(
+                text = stringResource(R.string.admin_push_request),
+                onClick = actions.onRequestPushPermission,
+                modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.One),
+            )
+            PushPermission.DENIED -> CoineProSecondaryButton(
+                text = stringResource(R.string.admin_push_settings),
+                onClick = actions.onOpenPushSettings,
+                modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.One),
+            )
+            else -> Unit
+        }
+
+        Divider()
+        Toggle(R.string.admin_push_new_signals, push.newSignals) {
+            actions.onSetPushPreference(PushPreferenceKey.NEW_SIGNALS, it)
+        }
+        Toggle(R.string.admin_push_signal_updates, push.signalUpdates) {
+            actions.onSetPushPreference(PushPreferenceKey.SIGNAL_UPDATES, it)
+        }
+        Toggle(R.string.admin_push_price_alerts, push.priceAlerts) {
+            actions.onSetPushPreference(PushPreferenceKey.PRICE_ALERTS, it)
+        }
+
+        CoineProSecondaryButton(
+            text = stringResource(R.string.admin_push_reregister),
+            onClick = actions.onReRegisterPushToken,
+            modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.One),
+        )
+    }
+}
+
+@Composable
+private fun VenueCard(venue: VenueStatus) {
+    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+        CardHead(CoineProIcons.Wallet, R.string.admin_venue_title)
+        Field(R.string.admin_venue_name, BidiText.isolateLtr(venue.name))
+        Field(
+            R.string.admin_venue_configured,
+            stringResource(if (venue.configured) R.string.admin_yes else R.string.admin_no),
+        )
+        Field(
+            R.string.admin_venue_connected,
+            stringResource(if (venue.connected) R.string.admin_yes else R.string.admin_no),
+            if (venue.connected) CoineProColors.Buy else CoineProColors.Warning,
+        )
+        Muted(stringResource(R.string.admin_venue_note))
+    }
+}
+
+@Composable
+private fun CapabilitiesCard(
+    capabilities: ServerCapabilities,
+    platform: MarketPlatform,
+    actions: HubActions,
+) {
+    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+        CardHead(CoineProIcons.Info, R.string.admin_capabilities_title)
+        Capability(R.string.admin_capability_email, capabilities.emailPassword)
+        Capability(R.string.admin_capability_google, capabilities.google)
+        Capability(R.string.admin_capability_telegram, capabilities.telegram)
+        Capability(R.string.admin_capability_push, capabilities.push)
+        Capability(R.string.admin_capability_vision, capabilities.chartVision)
+        Field(
+            R.string.admin_capability_symbols,
+            capabilities.symbolCount?.let { BidiText.isolateLtr(it.toString()) } ?: ABSENT,
+        )
+        CoineProSecondaryButton(
+            text = stringResource(R.string.admin_capabilities_refresh),
+            onClick = { actions.onRefreshCapabilities(platform) },
+            modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.One),
+        )
+        Muted(stringResource(R.string.admin_capabilities_note))
+    }
+}
+
+@Composable
+private fun AppearanceCard(appearance: Appearance, actions: HubActions) {
+    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+        CardHead(CoineProIcons.Settings, R.string.admin_appearance_title)
+        CoineProSegmentedControl(
+            options = listOf(
+                "fa" to stringResource(R.string.admin_language_fa),
+                "en" to stringResource(R.string.admin_language_en),
+            ),
+            selected = appearance.languageTag,
+            onSelect = actions.onSetLanguage,
+        )
+        Muted(stringResource(R.string.admin_language_note))
+    }
+}
+
+@Composable
+private fun RoutesCard(panel: PlatformPanel, actions: HubActions) {
     val reached = panel.probes.count { it.outcome == ProbeOutcome.REACHED }
     val alive = panel.probes.count { it.outcome == ProbeOutcome.UNAUTHORIZED }
     val missing = panel.probes.count { it.outcome == ProbeOutcome.NOT_FOUND }
 
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         CardHead(CoineProIcons.Link, R.string.admin_probe_title)
-
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.OneHalf),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
@@ -224,26 +477,17 @@ private fun ReachCard(panel: PlatformPanel, onProbe: () -> Unit) {
                 if (missing > 0) CoineProColors.Sell else CoineProColors.TextMuted,
             )
         }
-
-        Text(
-            text = stringResource(R.string.admin_probe_body),
-            modifier = Modifier.padding(top = CoineProSpacing.OneHalf),
-            style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextMuted,
-        )
-
+        Muted(stringResource(R.string.admin_probe_body))
         CoineProSecondaryButton(
             text = stringResource(
                 if (panel.probing) R.string.admin_probe_running else R.string.admin_probe_run,
             ),
-            onClick = { if (!panel.probing) onProbe() },
-            modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.OneHalf),
+            onClick = { if (!panel.probing) actions.onProbe(panel.platform) },
+            modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.One),
         )
-
-        // Failures first. A reader scanning this card is looking for what broke, and burying three
-        // red rows under twenty healthy ones makes them scroll to find their own bad news.
-        val ordered = panel.probes.sortedBy { it.outcome.severity() }
-        ordered.forEachIndexed { index, probe ->
+        // Failures first: a reader scanning for what broke should not scroll past twenty healthy
+        // routes to reach their own bad news.
+        panel.probes.sortedBy { it.outcome.severity() }.forEachIndexed { index, probe ->
             if (index > 0) Divider()
             ProbeRow(probe)
         }
@@ -251,24 +495,19 @@ private fun ReachCard(panel: PlatformPanel, onProbe: () -> Unit) {
 }
 
 @Composable
-private fun ConnectionCard(panel: PlatformPanel) {
+private fun ConnectionCard(panel: PlatformPanel?) {
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         CardHead(CoineProIcons.Secure, R.string.admin_platform_title)
-        Field(R.string.admin_base_url, BidiText.isolateLtr(maskHost(panel.build.baseUrl)))
+        Field(R.string.admin_base_url, BidiText.isolateLtr(maskHost(panel?.build?.baseUrl)))
         Field(
             R.string.admin_platform_configured,
             stringResource(
-                if (panel.build.configured) R.string.admin_configured else R.string.admin_not_configured,
+                if (panel?.build?.configured == true) R.string.admin_configured else R.string.admin_not_configured,
             ),
-            accent = if (panel.build.configured) CoineProColors.Buy else CoineProColors.Warning,
+            if (panel?.build?.configured == true) CoineProColors.Buy else CoineProColors.Warning,
         )
-        Field(R.string.admin_install_id, BidiText.isolateLtr(panel.installId))
-        Text(
-            text = stringResource(R.string.admin_masking_note),
-            modifier = Modifier.padding(top = CoineProSpacing.One),
-            style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextMuted,
-        )
+        Field(R.string.admin_install_id, BidiText.isolateLtr(panel?.installId ?: ABSENT))
+        Muted(stringResource(R.string.admin_masking_note))
     }
 }
 
@@ -283,7 +522,7 @@ private fun BuildCard(state: AdminUiState) {
             R.string.admin_debuggable,
             stringResource(if (state.build.debuggable) R.string.admin_yes else R.string.admin_no),
             // A debuggable build in a reader's hands is a finding, not a detail.
-            accent = if (state.build.debuggable) CoineProColors.Sell else CoineProColors.TextPrimary,
+            if (state.build.debuggable) CoineProColors.Sell else CoineProColors.TextPrimary,
         )
         Field(
             R.string.admin_firebase,
@@ -304,7 +543,7 @@ private fun ProbeRow(probe: EndpointProbe) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         StatusRail(probe.outcome.colour())
-        Column(modifier = Modifier.weight(1f)) {
+        Column(Modifier.weight(1f)) {
             Text(
                 text = BidiText.isolateLtr(probe.endpoint.path),
                 style = MaterialTheme.typography.bodySmall,
@@ -324,14 +563,14 @@ private fun ProbeRow(probe: EndpointProbe) {
 
 @Composable
 private fun RequestRow(request: RecordedRequest) {
+    val accent = if (request.failed) CoineProColors.Sell else CoineProColors.Buy
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = CoineProSpacing.One),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val accent = if (request.failed) CoineProColors.Sell else CoineProColors.Buy
         StatusRail(accent)
-        Column(modifier = Modifier.weight(1f)) {
+        Column(Modifier.weight(1f)) {
             Text(
                 text = BidiText.isolateLtr(request.path),
                 style = MaterialTheme.typography.bodySmall,
@@ -355,15 +594,66 @@ private fun RequestRow(request: RecordedRequest) {
 
 /* ------------------------------------------------------------------ parts */
 
-/** A short coloured bar rather than a dot: legible at a glance down a column of rows. */
+@Composable
+private fun Rows(count: Int, row: @Composable (Int) -> Unit) {
+    CoineProCard(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.One),
+    ) {
+        repeat(count) { index ->
+            if (index > 0) Divider()
+            row(index)
+        }
+    }
+}
+
+@Composable
+private fun Toggle(@StringRes label: Int, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(label),
+            style = MaterialTheme.typography.bodySmall,
+            color = CoineProColors.TextSecondary,
+        )
+        Switch(
+            checked = checked,
+            onCheckedChange = onChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = CoineProColors.OnAccent,
+                checkedTrackColor = CoineProColors.Accent,
+                uncheckedThumbColor = CoineProColors.TextMuted,
+                uncheckedTrackColor = CoineProColors.SurfaceElevated,
+            ),
+        )
+    }
+}
+
+@Composable
+private fun Capability(@StringRes label: Int, value: Boolean?) {
+    Field(
+        label,
+        stringResource(
+            when (value) {
+                true -> R.string.admin_on
+                false -> R.string.admin_off
+                null -> R.string.admin_unknown
+            },
+        ),
+        when (value) {
+            true -> CoineProColors.Buy
+            false -> CoineProColors.TextMuted
+            null -> CoineProColors.TextMuted
+        },
+    )
+}
+
 @Composable
 private fun StatusRail(colour: Color) {
-    Box(
-        Modifier
-            .width(3.dp)
-            .height(28.dp)
-            .background(colour, RoundedCornerShape(2.dp)),
-    )
+    Box(Modifier.width(3.dp).height(28.dp).background(colour, RoundedCornerShape(2.dp)))
 }
 
 @Composable
@@ -401,13 +691,9 @@ private fun Tally(modifier: Modifier, @StringRes label: Int, value: Int, colour:
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
+        Text(BidiText.isolateLtr(value.toString()), style = CoineProTextStyles.RowFigure, color = colour)
         Text(
-            text = BidiText.isolateLtr(value.toString()),
-            style = CoineProTextStyles.RowFigure,
-            color = colour,
-        )
-        Text(
-            text = stringResource(label),
+            stringResource(label),
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
         )
@@ -490,6 +776,16 @@ private fun Divider() {
 }
 
 @Composable
+private fun Muted(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier.padding(top = CoineProSpacing.One),
+        style = MaterialTheme.typography.bodySmall,
+        color = CoineProColors.TextMuted,
+    )
+}
+
+@Composable
 private fun EmptyNote(@StringRes text: Int) {
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -500,13 +796,58 @@ private fun EmptyNote(@StringRes text: Int) {
     }
 }
 
+/* ----------------------------------------------------------- translations */
+
 @Composable
-private fun MarketPlatform.tabLabel(): String = stringResource(
+private fun String.asDisplayValue(): String = when (this) {
+    HUB_ON -> stringResource(R.string.admin_on)
+    com.coinepro.core.diagnostics.HUB_OFF -> stringResource(R.string.admin_off)
+    else -> BidiText.isolateLtr(this)
+}
+
+@Composable
+private fun MarketPlatform.label(): String = stringResource(
     when (this) {
         MarketPlatform.COINEPRO_FX -> R.string.admin_platform_forex
         MarketPlatform.TRADEYAR -> R.string.admin_platform_crypto
     },
 )
+
+private fun HubSection.labelRes(): Int = when (this) {
+    HubSection.SESSION -> R.string.admin_tile_session
+    HubSection.FEED -> R.string.admin_tile_feed
+    HubSection.PUSH -> R.string.admin_tile_push
+    HubSection.VENUE -> R.string.admin_tile_venue
+    HubSection.ROUTES -> R.string.admin_tile_routes
+    HubSection.REQUESTS -> R.string.admin_tile_requests
+}
+
+@DrawableRes
+private fun HubSection.icon(): Int = when (this) {
+    HubSection.SESSION -> CoineProIcons.Locked
+    HubSection.FEED -> CoineProIcons.TrendUp
+    HubSection.PUSH -> CoineProIcons.Activity
+    HubSection.VENUE -> CoineProIcons.Wallet
+    HubSection.ROUTES -> CoineProIcons.Link
+    HubSection.REQUESTS -> CoineProIcons.Refresh
+}
+
+@Composable
+private fun HubTone.colour(): Color = when (this) {
+    HubTone.GOOD -> CoineProColors.Buy
+    HubTone.WARN -> CoineProColors.Warning
+    HubTone.BAD -> CoineProColors.Sell
+    HubTone.IDLE -> CoineProColors.TextMuted
+}
+
+@StringRes
+private fun PushPermission.labelRes(): Int = when (this) {
+    PushPermission.NOT_CONFIGURED -> R.string.admin_push_not_configured
+    PushPermission.NOT_REQUIRED -> R.string.admin_push_not_required
+    PushPermission.AVAILABLE -> R.string.admin_push_available
+    PushPermission.DENIED -> R.string.admin_push_denied
+    PushPermission.GRANTED -> R.string.admin_push_granted
+}
 
 /** Sort key: what is broken comes first, what was never fired comes last. */
 private fun ProbeOutcome.severity(): Int = when (this) {

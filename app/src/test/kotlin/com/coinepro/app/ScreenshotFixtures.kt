@@ -1,5 +1,14 @@
 package com.coinepro.app
 
+import com.coinepro.core.diagnostics.Appearance
+import com.coinepro.core.diagnostics.ControlHub
+import com.coinepro.core.diagnostics.FeedStatus
+import com.coinepro.core.diagnostics.HubTone
+import com.coinepro.core.diagnostics.PushPermission
+import com.coinepro.core.diagnostics.PushStatus
+import com.coinepro.core.diagnostics.ServerCapabilities
+import com.coinepro.core.diagnostics.SessionRow
+import com.coinepro.core.diagnostics.VenueStatus
 import com.coinepro.core.diagnostics.AdminBuildInfo
 import com.coinepro.core.diagnostics.AdminUiState
 import com.coinepro.core.diagnostics.CatalogedEndpoint
@@ -698,6 +707,40 @@ object ScreenshotFixtures {
         durationMillis = duration,
         elapsedRealtimeMillis = 0,
     )
+
+
+    /** A hub mid-life: signed in on one platform, feed live, push blocked by the reader. */
+    val controlHub: ControlHub
+        get() = ControlHub(
+            sessions = listOf(
+                SessionRow(MarketPlatform.COINEPRO_FX, signedIn = true),
+                SessionRow(MarketPlatform.TRADEYAR, signedIn = false),
+            ),
+            feed = FeedStatus(
+                tone = HubTone.GOOD,
+                label = "لحظه‌ای",
+                subscribedSymbols = 8,
+                cacheAgeLabel = "۲ دقیقه پیش",
+            ),
+            push = PushStatus(
+                permission = PushPermission.DENIED,
+                serverEnabled = true,
+                tokenHint = "…9c4d",
+                priceAlerts = false,
+            ),
+            venue = VenueStatus(name = "MetaTrader 5", configured = true, connected = false),
+            capabilities = mapOf(
+                MarketPlatform.COINEPRO_FX to ServerCapabilities(
+                    emailPassword = true,
+                    google = true,
+                    telegram = true,
+                    push = true,
+                    chartVision = true,
+                    symbolCount = 2,
+                ),
+            ),
+            appearance = Appearance(languageTag = "fa"),
+        )
 
 }
 
