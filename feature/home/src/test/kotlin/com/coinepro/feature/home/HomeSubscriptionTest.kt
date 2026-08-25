@@ -99,10 +99,37 @@ class HomeSubscriptionTest {
         assertFalse("Nothing that cannot end is ending soon", forever.endingSoon)
     }
 
+    @Test
+    fun `the server's own Persian name for the plan is what the card shows`() {
+        val card = requireNotNull(
+            entitlement(isPaid = true, plan = "monthly", planLabel = "ماهانه").toHomeSubscription(),
+        )
+        assertEquals("ماهانه", card.planLabel)
+    }
+
+    @Test
+    fun `a server that named no Persian plan gets its identifier back, not a local translation`() {
+        val card = requireNotNull(entitlement(isPaid = true, plan = "quarterly").toHomeSubscription())
+        assertEquals(
+            "Rendering `quarterly` as «سه‌ماهه» here would be the app naming a plan it did not define",
+            "quarterly",
+            card.planLabel,
+        )
+    }
+
+    @Test
+    fun `a Persian name on a free membership is still shown, because the server chose to send it`() {
+        val card = requireNotNull(
+            entitlement(isVip = true, plan = "free", planLabel = "تریال").toHomeSubscription(),
+        )
+        assertEquals("تریال", card.planLabel)
+    }
+
     private fun entitlement(
         isPaid: Boolean = false,
         isVip: Boolean = false,
         plan: String = "monthly",
+        planLabel: String? = null,
         expiresAt: String? = null,
     ) = EntitlementSnapshot(
         isVip = isVip,
@@ -110,6 +137,7 @@ class HomeSubscriptionTest {
         panelAllowed = true,
         panelState = "buy",
         plan = plan,
+        planLabel = planLabel,
         expiresAt = expiresAt,
     )
 }

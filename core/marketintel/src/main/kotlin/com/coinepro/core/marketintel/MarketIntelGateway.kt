@@ -39,7 +39,9 @@ class NetworkMarketIntelGateway private constructor(
 }
 
 private interface MarketIntelApi {
-    @GET("user/market-intelligence")
+    // Under `user/mobile` with the rest of the app's surface, not `user/` — the app asked for the
+    // shorter one and the server put it where its siblings live, which is the better address.
+    @GET("user/mobile/market-intelligence")
     suspend fun forexSnapshot(): MarketIntelSnapshotDto
 
     @GET("api/mobile/v1/market-intelligence")

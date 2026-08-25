@@ -40,6 +40,9 @@ import com.coinepro.core.diagnostics.EndpointProber
 import com.coinepro.core.diagnostics.PlatformBuildInfo
 import com.coinepro.core.diagnostics.RequestLog
 import com.coinepro.core.diagnostics.RequestLogInterceptor
+import com.coinepro.core.copytrade.CopyTradeController
+import com.coinepro.core.copytrade.CopyTradeGateway
+import com.coinepro.core.copytrade.NetworkCopyTradeGateway
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.ExecutionGateway
 import com.coinepro.core.execution.NetworkExecutionGateway
@@ -453,6 +456,18 @@ object AppModule {
     @Provides
     @Singleton
     @ForexPlatform
+    fun forexCopyTradeGateway(@ForexPlatform retrofit: Retrofit): CopyTradeGateway =
+        NetworkCopyTradeGateway.create(retrofit, MarketPlatform.COINEPRO_FX)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoCopyTradeGateway(@CryptoPlatform retrofit: Retrofit): CopyTradeGateway =
+        NetworkCopyTradeGateway.create(retrofit, MarketPlatform.TRADEYAR)
+
+    @Provides
+    @Singleton
+    @ForexPlatform
     fun forexAiSignalGateway(@ForexPlatform retrofit: Retrofit): AiSignalGateway =
         NetworkAiSignalGateway.create(retrofit, MarketPlatform.COINEPRO_FX)
 
@@ -708,6 +723,33 @@ object AppModule {
         @ForexPlatform forex: ExecutionController,
         @CryptoPlatform crypto: ExecutionController,
     ): Map<MarketPlatform, ExecutionController> = platformMap(forex, crypto)
+
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexCopyTradeController(
+        @ForexPlatform gateway: CopyTradeGateway,
+        scope: CoroutineScope,
+    ): CopyTradeController = CopyTradeController(gateway, scope)
+
+    // Bound for TradeYar as well, although its gateway has no paths and answers "unsupported" to
+    // everything. A controller that simply did not exist for one platform would make the screen's
+    // caller do the branching, and the one place that must never guess which platform it is on is
+    // the wiring — that is how the crypto gateways ended up asking CoinePro-FX's addresses.
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoCopyTradeController(
+        @CryptoPlatform gateway: CopyTradeGateway,
+        scope: CoroutineScope,
+    ): CopyTradeController = CopyTradeController(gateway, scope)
+
+    @Provides
+    @Singleton
+    fun copyTradeControllers(
+        @ForexPlatform forex: CopyTradeController,
+        @CryptoPlatform crypto: CopyTradeController,
+    ): Map<MarketPlatform, CopyTradeController> = platformMap(forex, crypto)
 
     @Provides
     @Singleton

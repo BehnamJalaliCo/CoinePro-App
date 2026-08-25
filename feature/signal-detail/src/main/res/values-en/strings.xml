@@ -29,6 +29,8 @@
     <string name="detail_source">Source: %1$s</string>
     <string name="detail_execute">Execute this signal</string>
     <string name="detail_execute_note">Execution uses this exact server-owned signal; there is no manual trade form.</string>
+    <string name="detail_copy_note">This signal reaches your MetaTrader account through copy trading, not from this screen.</string>
+    <string name="detail_open_copy">Open copy trading</string>
     <string name="detail_high_impact_title">High-impact event window</string>
     <string name="detail_high_impact_body">Calendar events near this active signal. This is a risk warning, not a prediction.</string>
 </resources>

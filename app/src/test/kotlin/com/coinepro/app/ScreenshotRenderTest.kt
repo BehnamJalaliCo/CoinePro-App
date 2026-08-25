@@ -36,6 +36,7 @@ import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.navigation.AppDestination
 import com.coinepro.core.notifications.NotificationController
+import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.signals.SignalController
 import com.coinepro.feature.activity.ActivityScreen
 import com.coinepro.feature.admin.AdminScreen
@@ -44,6 +45,7 @@ import com.coinepro.feature.auth.AuthScreen
 import com.coinepro.feature.auth.EmailAuthScreen
 import com.coinepro.feature.calendar.EconomicCalendarScreen
 import com.coinepro.feature.connections.ConnectionsScreen
+import com.coinepro.feature.copytrade.CopyTradeScreen
 import com.coinepro.feature.home.HomeScreen
 import com.coinepro.feature.news.NewsScreen
 import com.coinepro.feature.signaldetail.SignalDetailScreen
@@ -202,6 +204,34 @@ class ScreenshotRenderTest {
         )
         controller.submitKycLevel1("بهنام جلالی", "0012345678", "1370/05/12", "09121234567")
         KycScreen(controller = controller)
+    }
+
+    /**
+     * CoinePro-FX's copy-trading screen, live: a linked account, the switch on, one mirrored
+     * position, and the reason the last signal did not open.
+     *
+     * Rendered because that last card is the one nobody could see before. It is server text in
+     * Persian carrying a broker return code, sitting inside a right-to-left column beside Latin
+     * figures — exactly the mix that goes wrong silently, and only a render shows it.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun copyTrading() {
+        val controller = CopyTradeController(FakeCopyTradeGateway(), scope)
+        controller.refresh()
+        capture("27-copy-trading-fa") { CopyTradeScreen(controller = controller) }
+    }
+
+    /** The same screen with nothing linked yet — the form, and the warning above it. */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun copyTradingUnlinked() {
+        val controller = CopyTradeController(
+            FakeCopyTradeGateway(ScreenshotFixtures.copyTradeUnlinked),
+            scope,
+        )
+        controller.refresh()
+        capture("28-copy-trading-unlinked-fa") { CopyTradeScreen(controller = controller) }
     }
 
     @Test

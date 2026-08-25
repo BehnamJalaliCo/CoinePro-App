@@ -81,12 +81,12 @@ data class AuthMethods(
      * model: this is a thread, that is a one-shot analysis. TradeYar has the second and not the
      * first, and collapsing them would hide a working feature or offer a missing one.
      *
-     * Null rather than false when absent, and the difference matters: only TradeYar reports these
-     * two at all. CoinePro-FX has both products and mentions neither, so reading silence as "off"
-     * would switch off two working features on the platform that actually has them. The rule for
-     * every other flag here — a capability the server never mentioned is one the app must not
-     * assume it has — is inverted for exactly these two, because here silence is the older server's
-     * default rather than a refusal.
+     * Null rather than false when absent, and the difference matters. Both servers now report
+     * these two — CoinePro-FX from the model access it really has rather than a fixed flag — but
+     * an older deployment of either may not, and it was the platform with both products that used
+     * to say nothing about them. So the rule for every other flag here — a capability the server
+     * never mentioned is one the app must not assume it has — stays inverted for exactly these
+     * two: silence is an out-of-date server's default rather than a refusal.
      */
     val assistant: Boolean? = null,
     /**

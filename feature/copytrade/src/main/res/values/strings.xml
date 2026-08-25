@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="copy_title">کپی‌ترید</string>
+    <string name="copy_subtitle">حساب متاتریدر خود را وصل کنید تا سیگنال‌ها روی همان حساب باز شوند.</string>
+
+    <string name="copy_membership_default">این بخش برای حساب‌های دارای اشتراک باز است.</string>
+
+    <string name="copy_switch_title">کپی معاملات</string>
+    <string name="copy_switch_on">روشن — سیگنال‌های تازه روی حساب شما باز می‌شوند.</string>
+    <string name="copy_switch_off">خاموش — هیچ معامله‌ای روی حساب شما باز نمی‌شود.</string>
+    <string name="copy_switch_note">با روشن‌کردن، فقط سیگنال‌های بعد از همین لحظه باز می‌شوند؛ سیگنال‌های باز فعلی وارد حساب شما نمی‌شوند.</string>
+    <string name="copy_switch_needs_account">اول یک حساب وصل کنید.</string>
+
+    <string name="copy_terms_title">شرایطی که کپی با آن اجرا می‌شود</string>
+    <string name="copy_terms_note">تغییر این مقادیر از پنل وب انجام می‌شود.</string>
+    <string name="copy_risk_mode">روش ریسک</string>
+    <string name="copy_risk_mode_proportional">به نسبت حساب</string>
+    <string name="copy_risk_mode_fixed_lot">حجم ثابت</string>
+    <string name="copy_risk_mode_risk_percent">درصد ریسک</string>
+    <string name="copy_risk_value">مقدار ریسک</string>
+    <string name="copy_max_lot">بیشترین حجم</string>
+    <string name="copy_max_open">بیشترین معاملهٔ هم‌زمان</string>
+    <string name="copy_daily_loss">سقف زیان روزانه</string>
+    <string name="copy_stop_targets">حد ضرر و اهداف</string>
+    <string name="copy_stop_targets_on">از سیگنال گرفته می‌شود</string>
+    <string name="copy_stop_targets_off">گرفته نمی‌شود</string>
+    <string name="copy_symbols">نمادها</string>
+    <string name="copy_symbols_all">همهٔ نمادهای پشتیبانی‌شده</string>
+
+    <string name="copy_account_title">حساب متصل</string>
+    <string name="copy_account_none_title">هنوز حسابی وصل نشده</string>
+    <string name="copy_account_none_body">مشخصات حساب متاتریدر ۵ خود را وارد کنید. همان اطلاعاتی که با آن وارد ترمینال می‌شوید.</string>
+    <string name="copy_broker">بروکر</string>
+    <string name="copy_server">سرور</string>
+    <string name="copy_login">شمارهٔ حساب</string>
+    <string name="copy_password">رمز حساب</string>
+    <string name="copy_password_warning">این رمز به سرور فرستاده می‌شود تا ترمینال بتواند به حساب شما وارد شود. رمز «سرمایه‌گذار» (Investor) برای این کار کافی نیست و باید رمز اصلی حساب معاملاتی را وارد کنید — پس با همان دقتی که با یک رمز واقعی رفتار می‌کنید وارد کنید.</string>
+    <string name="copy_link">وصل کردن حساب</string>
+    <string name="copy_unlink">جدا کردن حساب</string>
+    <string name="copy_linking">در حال وصل کردن…</string>
+
+    <string name="copy_balance">موجودی</string>
+    <string name="copy_equity">ارزش خالص</string>
+    <string name="copy_margin_level">سطح مارجین</string>
+    <string name="copy_floating">سود/زیان باز</string>
+    <string name="copy_open_count">معاملهٔ باز</string>
+    <string name="copy_last_seen">آخرین گزارش ترمینال</string>
+    <string name="copy_terminal_quiet">ترمینال شما مدتی است گزارشی نفرستاده. تا وقتی گزارش نرسد، ارقام بالا مربوط به آخرین باری است که فرستاده.</string>
+    <string name="copy_terminal_never">هنوز هیچ گزارشی از ترمینال شما نرسیده است.</string>
+
+    <string name="copy_mismatch_title">ترمینال روی حساب دیگری است</string>
+    <string name="copy_mismatch_body">ترمینال به حساب %1$s وارد شده، نه حسابی که اینجا وصل کرده‌اید. تا وقتی این دو یکی نشوند، معامله‌ای از سیگنال‌ها روی حساب شما باز نمی‌شود و پوزیشن‌ها هم نشان داده نمی‌شوند.</string>
+    <string name="copy_mismatch_body_unknown">ترمینال به حسابی غیر از حساب وصل‌شده وارد شده است. تا وقتی این دو یکی نشوند، معامله‌ای از سیگنال‌ها روی حساب شما باز نمی‌شود و پوزیشن‌ها هم نشان داده نمی‌شوند.</string>
+
+    <string name="copy_mirrored_title">پوزیشن‌های شما</string>
+    <string name="copy_mirrored_empty">الان هیچ پوزیشنی روی حساب شما باز نیست.</string>
+    <string name="copy_master_title">پوزیشن‌های مرجع</string>
+    <string name="copy_master_empty">الان هیچ پوزیشنی روی حساب مرجع باز نیست.</string>
+    <string name="copy_lots">حجم</string>
+    <string name="copy_stop">حد ضرر</string>
+    <string name="copy_from_signal">از سیگنال %1$s</string>
+
+    <string name="copy_events_title">آخرین رویدادهای اجرا</string>
+    <string name="copy_events_note">هر بار که سیگنالی روی حساب شما باز شد یا نشد، دلیلش اینجا نوشته می‌شود.</string>
+    <string name="copy_events_empty">هنوز رویدادی ثبت نشده است.</string>
+
+    <string name="copy_retry">تلاش دوباره</string>
+    <string name="copy_unavailable_title">کپی‌ترید در این بازار نیست</string>
+    <string name="copy_unavailable_body">در این بازار هر سیگنال جداگانه و توسط خود شما اجرا می‌شود.</string>
+</resources>

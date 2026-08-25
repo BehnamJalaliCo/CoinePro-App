@@ -48,6 +48,7 @@ import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
+import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -68,7 +69,16 @@ fun SignalDetailScreen(
     controller: SignalController,
     marketIntelController: MarketIntelController,
     signalId: Long,
-    onExecute: (Long) -> Unit,
+    /**
+     * Sends this signal to the order screen, where the platform places orders per signal.
+     *
+     * Null where it does not. CoinePro-FX reaches a reader's account through copy trading instead,
+     * and a button leading to an order screen that could only report the feature as absent was
+     * worse than no button — it read as something broken rather than something elsewhere.
+     */
+    onExecute: ((Long) -> Unit)?,
+    /** Opens copy trading, on the platform whose signals arrive that way. */
+    onOpenCopyTrading: (() -> Unit)? = null,
 ) {
     LaunchedEffect(signalId) { controller.loadDetail(signalId) }
     LaunchedEffect(marketIntelController) { marketIntelController.refresh() }
@@ -99,7 +109,7 @@ fun SignalDetailScreen(
             } else {
                 emptyList()
             }
-            SignalContent(signal, warnings, onExecute)
+            SignalContent(signal, warnings, onExecute, onOpenCopyTrading)
         }
         else -> Center { Text(stringResource(R.string.detail_not_found), color = CoineProColors.TextSecondary) }
     }
@@ -118,7 +128,8 @@ private fun Center(content: @Composable () -> Unit) {
 private fun SignalContent(
     signal: TradingSignal,
     highImpactWarnings: List<EconomicEvent>,
-    onExecute: (Long) -> Unit,
+    onExecute: ((Long) -> Unit)?,
+    onOpenCopyTrading: (() -> Unit)?,
 ) {
     val directionColor = when (signal.direction) {
         SignalDirection.BUY -> CoineProColors.Buy
@@ -262,16 +273,31 @@ private fun SignalContent(
             signal.status == "active" &&
             signal.direction in setOf(SignalDirection.BUY, SignalDirection.SELL)
         ) {
-            CoineProPrimaryButton(
-                text = stringResource(R.string.detail_execute),
-                onClick = { onExecute(signal.id) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Text(
-                text = stringResource(R.string.detail_execute_note),
-                color = CoineProColors.TextMuted,
-                style = MaterialTheme.typography.bodySmall,
-            )
+            if (onExecute != null) {
+                CoineProPrimaryButton(
+                    text = stringResource(R.string.detail_execute),
+                    onClick = { onExecute(signal.id) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    text = stringResource(R.string.detail_execute_note),
+                    color = CoineProColors.TextMuted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            } else if (onOpenCopyTrading != null) {
+                // Says how this signal reaches an account here, which is not by pressing anything
+                // on this screen. Without it the absence of a button reads as an omission.
+                Text(
+                    text = stringResource(R.string.detail_copy_note),
+                    color = CoineProColors.TextMuted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.detail_open_copy),
+                    onClick = onOpenCopyTrading,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
 
         Spacer(Modifier.height(CoineProSpacing.Two))

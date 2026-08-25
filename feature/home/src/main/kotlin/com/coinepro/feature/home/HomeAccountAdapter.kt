@@ -150,7 +150,12 @@ fun EntitlementSnapshot.toHomeSubscription(now: Instant = Instant.now()): HomeSu
         // the card falls back to naming the membership rather than the absent plan. Anything the
         // server did name is printed exactly, including a trial: it is their word for it, and the
         // app must not dress a trial up as a purchase or trim one down to less than it is.
-        planLabel = plan.trim().takeIf { it.isNotEmpty() && !it.equals("free", ignoreCase = true) },
+        // The server's Persian name for the plan wins where it sent one, because it is the same
+        // plan said in the reader's language by the party that named it. Its absence falls back to
+        // the identifier, not to a translation of the identifier: `monthly` rendered as «ماهانه» by
+        // the app would be the app deciding what a plan it did not define is called.
+        planLabel = planLabel?.trim()?.takeIf(String::isNotEmpty)
+            ?: plan.trim().takeIf { it.isNotEmpty() && !it.equals("free", ignoreCase = true) },
         expiresLabel = expiry?.let { BidiText.isolateLtr(DATE_ONLY.format(it)) },
         daysRemaining = days,
         // A week is the point at which knowing changes what someone does about it. Sooner than that

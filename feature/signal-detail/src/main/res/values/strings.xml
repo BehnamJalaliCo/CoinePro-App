@@ -30,6 +30,8 @@
     <string name="detail_source">منبع: %1$s</string>
     <string name="detail_execute">اجرای این سیگنال</string>
     <string name="detail_execute_note">اجرا دقیقاً از همین سیگنالِ سرور استفاده می‌کند؛ فرم معاملهٔ دستی وجود ندارد.</string>
+    <string name="detail_copy_note">این سیگنال از راه کپی‌ترید روی حساب متاتریدر شما باز می‌شود، نه از این صفحه.</string>
+    <string name="detail_open_copy">رفتن به کپی‌ترید</string>
     <string name="detail_high_impact_title">بازهٔ خبر پرتأثیر</string>
     <string name="detail_high_impact_body">رویدادهای تقویم اقتصادی نزدیک این سیگنال فعال. این هشدار ریسک است، نه پیش‌بینی.</string>
 </resources>

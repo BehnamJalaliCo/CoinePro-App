@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "com.coinepro.core.signals"
+    namespace = "com.coinepro.core.copytrade"
     compileSdk = 36
     defaultConfig { minSdk = 26 }
     compileOptions {
@@ -20,4 +20,5 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

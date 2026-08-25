@@ -10,6 +10,7 @@
     <string name="screen_signal_detail">سیگنال</string>
     <string name="screen_execution">اجرای سیگنال</string>
     <string name="screen_connections">اتصال‌ها</string>
+    <string name="screen_copy_trading">کپی‌ترید</string>
     <string name="screen_kyc">احراز هویت</string>
     <string name="screen_ai_vision">تحلیل چارت</string>
     <string name="screen_ai_assistant">دستیار هوشمند</string>

@@ -88,7 +88,9 @@ async def public_active_signals(..., vip: dict = Depends(require_vip)):
 - `user/signals` و `user/signals/{id}` → فهرست زیر `public/signals/*` است.
   `/signals` و `/signals/{id}` وجود دارند ولی `Depends(get_current_admin)` دارند.
 - `user/signals/execution/*` (هر هشت‌تا) → هیچ معادلی ندارد.
-- `user/market-intelligence` → ساخته نشده. دادهٔ خام در `bn:news` و `bn:calendar`.
+- `user/market-intelligence` → ساخته شد، زیر `user/mobile/market-intelligence`.
+  ⚠️ فرض قبلی این سند دربارهٔ `bn:news` **غلط بود**: آن کلید روی سرور خالی است چون
+  `run_news_worker.py` اصلاً در docker-compose نیست. سرور از جدول `articles` می‌خواند.
 
 ### شکل شیء سیگنال FX (`_pub_signal`)
 
@@ -231,9 +233,46 @@ source, createdAt
 
 ---
 
+## ۳.۵. کپی‌ترید FX — شکل واقعیِ `copy-status` و `copy-config`
+
+خوانده‌شده از `src/api/routes/user_panel.py`. هر دو پشتِ `require_vip` — یعنی همان
+گیتِ اشتراک که سیگنال هم دارد، و همان چیزی که باید بماند.
+
+`GET /user/copy-status`:
+
+```
+account: {broker, server, login_masked, status, last_error, raw_status, alive,
+          status_source, health_evidence, balance, equity, margin, free_margin,
+          margin_level, floating_pnl, open_count, currency, last_seen}
+copy:    {enabled, risk_mode, risk_value, max_lot, max_open_trades, copy_sl_tp,
+          max_daily_loss_pct, symbols[], use_trailing, breakeven_at_tp1,
+          trail_distance_frac, close_on_signal_gone}
+demo, master: {open, positions[]}, mirrored[], mode, account_mismatch,
+live_account, exec_events[], slot_state
+```
+
+سه نکته‌ای که اپ روی آن‌ها حساب می‌کند:
+
+- `mirrored[].sl` برای «بدون حد ضرر» عددِ `0` می‌فرستد، نه `null`. اپ صفر را
+  «بدون حد ضرر» می‌خواند؛ چاپِ `0.00` کنارِ یک پوزیشنِ باز یعنی «حد ضرر روی صفر».
+- `account_mismatch=true` یعنی ترمینال روی حسابِ دیگری لاگین کرده و سرور عمداً
+  `mirrored` را خالی می‌فرستد. اپ هم چیزی نمی‌سازد و علتش را می‌نویسد.
+- `exec_events[].message` از قبل فارسیِ کامل است و علتِ فنی و کدِ بروکر داخلش هست
+  (`{ts, signal_id, code, outcome, retcode, symbol, message}`، `ts` ثانیهٔ یونیکس).
+  اپ آن را کلمه‌به‌کلمه نشان می‌دهد — چیزی که اپ ندیده را نمی‌تواند بهتر بنویسد.
+
+`POST /user/copy-config` نوشتنی است و فیلدِ نیامده یعنی «تغییر نده». اپ فقط
+`enabled` را می‌فرستد؛ برگرداندنِ کلِ شیء، پارامترهای ریسکی را که کاربر دست نزده
+با نسخهٔ چنددقیقه‌پیشِ کلاینت بازنویسی می‌کرد.
+
+اتصال حساب: `POST /user/account/link` با `{broker, server, login, password}` و
+`DELETE /user/account`.
+
+---
+
 ## ۴. آنچه هنوز از سورس نخوانده‌ام
 
 برای صداقت: این‌ها را باز نکردم و اگر لازم شد باید دوباره خوانده شوند —
 شکل دقیقِ `alerts`/`notifications`/`push` روی TradeYar (مسیرها تأیید شد، بدنه‌ها
 نه)، `ai/quota` و `ai/generate` روی هر دو، `portfolio` و `kyc` روی TradeYar، و
-`trade-history*` و `copy-*` روی FX.
+`trade-history*` روی FX. (`copy-*` دیگر در این فهرست نیست — بخش ۳.۵ از سورس خوانده شد.)

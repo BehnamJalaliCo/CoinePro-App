@@ -2,7 +2,7 @@ package com.coinepro.core.signals
 
 import com.coinepro.core.model.MarketPlatform
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -51,12 +51,11 @@ class SignalPathsTest {
     }
 
     @Test
-    fun `only TradeYar has a single-signal address`() {
+    fun `both backends now answer for a single signal`() {
         assertEquals("api/mobile/v1/signals/42", crypto.detail(42L))
-        assertNull(
-            "CoinePro-FX's single-signal route is its admin API; the app reads the list instead",
-            forex.detail(42L),
-        )
-        assertNotNull(crypto.detail(1L))
+        // Namespaced under `detail` rather than `public/signals/42`, which would collide with the
+        // two list addresses beside it.
+        assertEquals("public/signals/detail/42", forex.detail(42L))
+        assertNotEquals(forex.detail(42L), crypto.detail(42L))
     }
 }

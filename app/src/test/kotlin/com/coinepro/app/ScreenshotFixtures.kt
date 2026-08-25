@@ -75,6 +75,13 @@ import com.coinepro.core.signals.SignalScoreBreakdown
 import com.coinepro.core.signals.SignalStatusFilter
 import com.coinepro.core.signals.SignalTarget
 import com.coinepro.core.signals.TradingSignal
+import com.coinepro.core.copytrade.CopyAccount
+import com.coinepro.core.copytrade.CopyBook
+import com.coinepro.core.copytrade.CopyExecutionEvent
+import com.coinepro.core.copytrade.CopyPosition
+import com.coinepro.core.copytrade.CopyPreferences
+import com.coinepro.core.copytrade.CopyTradeGateway
+import com.coinepro.core.copytrade.CopyTradeStatus
 import java.time.Instant
 import com.coinepro.core.account.AccountBriefing
 import com.coinepro.core.account.AccountGateway
@@ -748,6 +755,87 @@ object ScreenshotFixtures {
             appearance = Appearance(languageTag = "fa"),
         )
 
+
+    /* -------------------------------------------------------------- copy trading */
+
+    /**
+     * A live CoinePro-FX copy account, as its `/user/copy-status` reports one.
+     *
+     * The execution event is real in shape and wording: the server assembles the Persian sentence,
+     * the technical cause and the broker's return code into one string, and the screen prints it
+     * exactly as sent.
+     */
+    val copyTradeLive = CopyTradeStatus(
+        account = CopyAccount(
+            broker = "OneRoyal",
+            server = "OneRoyal-Live",
+            loginMasked = "1••••89",
+            status = "connected",
+            lastError = null,
+            alive = true,
+            balance = 4821.5,
+            equity = 4903.1,
+            marginLevel = 312.0,
+            floatingPnl = 81.6,
+            openCount = 1,
+            currency = "USD",
+            lastSeen = Instant.parse("2026-08-25T09:12:04Z"),
+        ),
+        preferences = CopyPreferences(
+            enabled = true,
+            riskMode = "risk_percent",
+            riskValue = 1.0,
+            maxLot = 0.5,
+            maxOpenTrades = 5,
+            copyStopAndTargets = true,
+            maxDailyLossPercent = 10.0,
+            symbols = listOf("XAUUSD"),
+        ),
+        master = CopyBook(
+            open = 2,
+            positions = listOf(
+                CopyPosition(symbol = "XAUUSD", direction = "buy", lots = 0.5, profit = 214.0),
+            ),
+        ),
+        mirrored = listOf(
+            CopyPosition(
+                symbol = "XAUUSD",
+                direction = "buy",
+                lots = 0.05,
+                profit = 21.4,
+                stopLoss = 3312.4,
+                signalId = 9114,
+            ),
+        ),
+        mode = "live",
+        accountMismatch = false,
+        liveAccount = "1234589",
+        events = listOf(
+            CopyExecutionEvent(
+                at = Instant.parse("2026-08-25T08:40:00Z"),
+                signalId = 9114,
+                code = "open_failed",
+                outcome = "failed",
+                symbol = "XAGUSD",
+                message = "این سیگنال روی حسابِ شما اجرا نشد. " +
+                    "(علتِ فنی: حجمِ درخواستی از حداقلِ بروکر کمتر است) [کد بروکر: 10014]",
+            ),
+        ),
+        slotState = null,
+    )
+
+    /** Nothing linked yet: the form, and the warning that sits above it. */
+    val copyTradeUnlinked = CopyTradeStatus(
+        account = null,
+        preferences = CopyPreferences(),
+        master = CopyBook(),
+        mirrored = emptyList(),
+        mode = null,
+        accountMismatch = false,
+        liveAccount = null,
+        events = emptyList(),
+        slotState = null,
+    )
 }
 
 class FakeSignalGateway : SignalGateway {
@@ -843,6 +931,16 @@ class FakeAiSignalGateway(
  * Verification defaults to not-started because that is the state every reader meets first, and the
  * one the screen has to be legible in before any other.
  */
+internal class FakeCopyTradeGateway(
+    private val status: CopyTradeStatus = ScreenshotFixtures.copyTradeLive,
+) : CopyTradeGateway {
+    override suspend fun status(): CopyTradeStatus = status
+    override suspend fun setEnabled(enabled: Boolean): CopyPreferences =
+        status.preferences.copy(enabled = enabled)
+    override suspend fun linkAccount(broker: String, server: String, login: String, password: String) = Unit
+    override suspend fun unlinkAccount() = Unit
+}
+
 internal class FakeAccountGateway(
     private val submitResult: AppResult<KycStatus>? = null,
     private val status: KycStatus = KycStatus(level = 1, state = KycState.NOT_STARTED),

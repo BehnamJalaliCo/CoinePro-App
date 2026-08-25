@@ -140,7 +140,7 @@ class EndpointCatalogTest {
         // The addresses the app still asks for and the server has confirmed are absent. A row
         // missing from the list cannot report 404, which is how they went unnoticed to begin with.
         assertTrue(paths.any { it == "user/signals" })
-        assertTrue(paths.any { it == "user/market-intelligence" })
+        assertTrue(paths.any { it == "user/mobile/market-intelligence" })
         assertTrue(paths.any { it.startsWith("user/signals/execution/") })
     }
 

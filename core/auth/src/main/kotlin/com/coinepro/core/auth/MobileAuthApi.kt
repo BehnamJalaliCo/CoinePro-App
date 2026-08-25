@@ -187,6 +187,10 @@ internal data class AuthUserDto(
     @SerializedName(value = "panel_state", alternate = ["panelState"])
     val panelState: String? = null,
     val plan: String? = null,
+    // The same plan, named in Persian by the server that owns it. Sent by CoinePro-FX beside the
+    // machine-readable `plan`; absent elsewhere, which is why nothing depends on it.
+    @SerializedName(value = "plan_fa", alternate = ["planFa"])
+    val planFa: String? = null,
     @SerializedName(value = "plan_expires_at", alternate = ["planExpiresAt"])
     val planExpiresAt: String? = null,
     @SerializedName(value = "disclaimer_accepted", alternate = ["disclaimerAccepted"])
@@ -213,6 +217,7 @@ internal fun AuthUserDto.toDomain(): UserProfile = UserProfile(
     panelAllowed = panelAllowed,
     panelState = panelState?.trim()?.takeIf(String::isNotEmpty) ?: "buy",
     plan = plan?.trim()?.takeIf(String::isNotEmpty) ?: "free",
+    planLabel = planFa?.trim()?.takeIf(String::isNotEmpty),
     planExpiresAt = planExpiresAt?.trim()?.takeIf(String::isNotEmpty),
     disclaimerAccepted = disclaimerAccepted,
 )

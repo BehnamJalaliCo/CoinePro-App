@@ -1,6 +1,7 @@
 package com.coinepro.core.signals
 
 import com.coinepro.core.model.MarketPlatform
+import com.coinepro.core.network.ApiErrors
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.QuoteSource
 import com.coinepro.core.model.SignalDirection
@@ -61,9 +62,13 @@ internal class SignalPaths(private val platform: MarketPlatform) {
         MarketPlatform.COINEPRO_FX -> null
     }
 
-    fun detail(signalId: Long): String? = when (platform) {
+    fun detail(signalId: Long): String = when (platform) {
         MarketPlatform.TRADEYAR -> "api/mobile/v1/signals/$signalId"
-        MarketPlatform.COINEPRO_FX -> null
+        // Not `public/signals/{id}` — that shape would collide with the two list addresses, so it
+        // is namespaced under `detail`. Built at the app's request: opening a signal from a
+        // notification carries only its id, and searching a list for it was expensive and would
+        // have missed anything older than the page.
+        MarketPlatform.COINEPRO_FX -> "public/signals/detail/$signalId"
     }
 }
 
@@ -191,36 +196,40 @@ class NetworkSignalGateway private constructor(
 
     override suspend fun detail(signalId: Long): TradingSignal = translateAccess {
         require(signalId > 0L) { "Signal ID must be positive" }
-        val path = paths.detail(signalId)
-            // CoinePro-FX publishes no single-signal route for the app — the one it has is the
-            // admin API. Reading it out of the list is the only honest answer available, and it is
-            // the recent list rather than the active one so a closed call can still be opened from
-            // a notification.
-            ?: return@translateAccess requireNotNull(
-                list(
-                    market = if (platform == MarketPlatform.TRADEYAR) {
-                        SignalMarketFilter.CRYPTO
-                    } else {
-                        SignalMarketFilter.FOREX
-                    },
-                    status = SignalStatusFilter.RECENT,
-                    limit = 100,
-                    offset = 0,
-                ).items.firstOrNull { it.id == signalId },
-            ) { "Invalid signal payload" }
-        requireNotNull(api.signalDetail(path).signal?.toDomain(nowMillis(), platform)) {
+        requireNotNull(api.signalDetail(paths.detail(signalId)).signal?.toDomain(nowMillis(), platform)) {
             "Invalid signal payload"
         }
     }
 
+    /**
+     * Tells a missing subscription apart from a dead session, which both arrive as 403.
+     *
+     * Every 403 used to be read as "you need a subscription", which was wrong in the direction that
+     * costs the most: an expired token showed a subscription prompt to someone who had one, and the
+     * session was never renewed because nothing upstream heard about the refusal. CoinePro-FX now
+     * names which it is — `membership_required` against `auth_required` — and TradeYar says the same
+     * thing with a flag in a 200.
+     *
+     * A 403 with no code at all is left to fall through as an ordinary auth failure, so the session
+     * layer sees it and can renew. Guessing "subscription" for an unlabelled refusal is how the
+     * first version of this went wrong.
+     */
     private suspend fun <T> translateAccess(block: suspend () -> T): T = try {
         block()
     } catch (error: HttpException) {
-        if (error.code() == 403) throw SignalMembershipRequiredException()
+        if (error.code() == 403) {
+            val refusal = ApiErrors.from(error)
+            if (refusal.code == MEMBERSHIP_REQUIRED) {
+                throw SignalMembershipRequiredException(refusal.message?.trim()?.takeIf { it.isNotEmpty() })
+            }
+        }
         throw error
     }
 
     companion object {
+        /** CoinePro-FX's own name for it, as it now writes it into the 403 body. */
+        private const val MEMBERSHIP_REQUIRED = "membership_required"
+
         fun create(retrofit: Retrofit, platform: MarketPlatform): NetworkSignalGateway =
             NetworkSignalGateway(
                 api = retrofit.create(SignalApi::class.java),
@@ -262,7 +271,13 @@ internal fun SignalDto.toDomain(nowMs: Long, platform: MarketPlatform): TradingS
         direction = safeDirection,
         status = status.orEmpty(),
         timeframe = timeframe,
-        strategy = strategy,
+        // The same key means two different things on the two servers, which is exactly the kind of
+        // divergence that renders wrongly instead of failing. TradeYar sends a strategy name
+        // ("breakout"); CoinePro-FX sends the signal's strength ("MEDIUM"), and printing that
+        // beside the timeframe reads as a strategy called MEDIUM. Its strength is already here as
+        // `confidence`, out of a hundred, so dropping the word says nothing twice and nothing
+        // untrue.
+        strategy = strategy?.takeIf { platform == MarketPlatform.TRADEYAR },
         confidence = confidence?.coerceIn(0, 100),
         entry = entry,
         entryZone = entryZone?.let { SignalEntryZone(it.low, it.high) },

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="copy_title">Copy trading</string>
+    <string name="copy_subtitle">Link your MetaTrader account and signals open on it.</string>
+
+    <string name="copy_membership_default">This section is open to accounts holding a subscription.</string>
+
+    <string name="copy_switch_title">Copy trades</string>
+    <string name="copy_switch_on">On — new signals will open on your account.</string>
+    <string name="copy_switch_off">Off — nothing opens on your account.</string>
+    <string name="copy_switch_note">Turning this on takes only signals from this moment forward; positions already open will not be entered on your account.</string>
+    <string name="copy_switch_needs_account">Link an account first.</string>
+
+    <string name="copy_terms_title">The terms the copy runs under</string>
+    <string name="copy_terms_note">These are changed from the web panel.</string>
+    <string name="copy_risk_mode">Risk method</string>
+    <string name="copy_risk_mode_proportional">Proportional to account</string>
+    <string name="copy_risk_mode_fixed_lot">Fixed lot</string>
+    <string name="copy_risk_mode_risk_percent">Percent risk</string>
+    <string name="copy_risk_value">Risk value</string>
+    <string name="copy_max_lot">Maximum lot</string>
+    <string name="copy_max_open">Maximum open trades</string>
+    <string name="copy_daily_loss">Daily loss cap</string>
+    <string name="copy_stop_targets">Stop and targets</string>
+    <string name="copy_stop_targets_on">Taken from the signal</string>
+    <string name="copy_stop_targets_off">Not taken</string>
+    <string name="copy_symbols">Symbols</string>
+    <string name="copy_symbols_all">Every supported symbol</string>
+
+    <string name="copy_account_title">Linked account</string>
+    <string name="copy_account_none_title">No account linked yet</string>
+    <string name="copy_account_none_body">Enter your MetaTrader 5 account details — the same ones you sign into the terminal with.</string>
+    <string name="copy_broker">Broker</string>
+    <string name="copy_server">Server</string>
+    <string name="copy_login">Account number</string>
+    <string name="copy_password">Account password</string>
+    <string name="copy_password_warning">This password is sent to the server so the terminal can sign into your account. An Investor password is not enough — it has to be the trading account\'s own password, so enter it with the care a real password deserves.</string>
+    <string name="copy_link">Link account</string>
+    <string name="copy_unlink">Unlink account</string>
+    <string name="copy_linking">Linking…</string>
+
+    <string name="copy_balance">Balance</string>
+    <string name="copy_equity">Equity</string>
+    <string name="copy_margin_level">Margin level</string>
+    <string name="copy_floating">Floating P/L</string>
+    <string name="copy_open_count">Open trades</string>
+    <string name="copy_last_seen">Terminal last reported</string>
+    <string name="copy_terminal_quiet">Your terminal has not reported for a while. Until it does, the figures above are from the last time it did.</string>
+    <string name="copy_terminal_never">Your terminal has not reported at all yet.</string>
+
+    <string name="copy_mismatch_title">The terminal is on a different account</string>
+    <string name="copy_mismatch_body">The terminal signed into account %1$s, not the one linked here. Until the two match, no signal opens on your account and no positions are shown.</string>
+    <string name="copy_mismatch_body_unknown">The terminal signed into an account other than the linked one. Until the two match, no signal opens on your account and no positions are shown.</string>
+
+    <string name="copy_mirrored_title">Your positions</string>
+    <string name="copy_mirrored_empty">Nothing is open on your account right now.</string>
+    <string name="copy_master_title">Source positions</string>
+    <string name="copy_master_empty">Nothing is open on the source account right now.</string>
+    <string name="copy_lots">Lots</string>
+    <string name="copy_stop">Stop</string>
+    <string name="copy_from_signal">From signal %1$s</string>
+
+    <string name="copy_events_title">Recent execution events</string>
+    <string name="copy_events_note">Every time a signal opened on your account — or did not — the reason is written here.</string>
+    <string name="copy_events_empty">Nothing recorded yet.</string>
+
+    <string name="copy_retry">Try again</string>
+    <string name="copy_unavailable_title">No copy trading in this market</string>
+    <string name="copy_unavailable_body">Here each signal is executed separately, by you.</string>
+</resources>

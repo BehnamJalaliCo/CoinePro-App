@@ -40,6 +40,7 @@ import com.coinepro.core.datastore.ActivePlatformStore
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProTheme
+import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.marketdata.MarketDataController
 import com.coinepro.core.marketdata.MarketDataState
@@ -56,6 +57,7 @@ import com.coinepro.feature.auth.AuthScreen
 import com.coinepro.feature.auth.EmailAuthScreen
 import com.coinepro.feature.calendar.EconomicCalendarScreen
 import com.coinepro.feature.connections.ConnectionsScreen
+import com.coinepro.feature.copytrade.CopyTradeScreen
 import com.coinepro.feature.execution.ExecutionScreen
 import com.coinepro.core.account.AccountController
 import android.app.Activity
@@ -124,6 +126,7 @@ fun CoineProApp(
     signalControllers: Map<MarketPlatform, SignalController>,
     notificationControllers: Map<MarketPlatform, NotificationController>,
     executionControllers: Map<MarketPlatform, ExecutionController>,
+    copyTradeControllers: Map<MarketPlatform, CopyTradeController>,
     aiSignalControllers: Map<MarketPlatform, AiSignalController>,
     aiVisionControllers: Map<MarketPlatform, AiVisionController>,
     aiAssistantController: AiAssistantController,
@@ -164,6 +167,7 @@ fun CoineProApp(
     val signalController = signalControllers.getValue(activePlatform)
     val notificationController = notificationControllers.getValue(activePlatform)
     val executionController = executionControllers.getValue(activePlatform)
+    val copyTradeController = copyTradeControllers.getValue(activePlatform)
     val aiSignalController = aiSignalControllers.getValue(activePlatform)
     val aiVisionController = aiVisionControllers.getValue(activePlatform)
     val briefingState by accountController.briefing.collectAsStateWithLifecycle()
@@ -215,6 +219,7 @@ fun CoineProApp(
             signalControllers.values.forEach(SignalController::clear)
             notificationControllers.values.forEach(NotificationController::clear)
             executionControllers.values.forEach(ExecutionController::clear)
+            copyTradeControllers.values.forEach(CopyTradeController::clear)
             aiSignalControllers.values.forEach(AiSignalController::clear)
             aiVisionControllers.values.forEach(AiVisionController::clear)
             aiAssistantController.clear()
@@ -323,6 +328,7 @@ fun CoineProApp(
                 signalController = signalController,
                 notificationController = notificationController,
                 executionController = executionController,
+                copyTradeController = copyTradeController,
                 aiSignalController = aiSignalController,
                 aiVisionController = aiVisionController,
                 aiAssistantController = aiAssistantController,
@@ -425,6 +431,7 @@ private fun MainShell(
     signalController: SignalController,
     notificationController: NotificationController,
     executionController: ExecutionController,
+    copyTradeController: CopyTradeController,
     aiSignalController: AiSignalController,
     aiVisionController: AiVisionController,
     aiAssistantController: AiAssistantController,
@@ -475,7 +482,13 @@ private fun MainShell(
         ADMIN_ROUTE -> R.string.screen_diagnostics
         SIGNAL_DETAIL_PATTERN -> R.string.screen_signal_detail
         EXECUTION_PATTERN -> R.string.screen_execution
-        CONNECTIONS_ROUTE -> R.string.screen_connections
+        // Named for what the screen actually is on each platform. "Connections" over a
+        // copy-trading screen is not wrong so much as unhelpful: it is the reader's word for the
+        // wrong feature.
+        CONNECTIONS_ROUTE -> when (activePlatform) {
+            MarketPlatform.COINEPRO_FX -> R.string.screen_copy_trading
+            MarketPlatform.TRADEYAR -> R.string.screen_connections
+        }
         KYC_ROUTE -> R.string.screen_kyc
         AI_VISION_ROUTE -> R.string.screen_ai_vision
         AI_ASSISTANT_ROUTE -> R.string.screen_ai_assistant
@@ -615,7 +628,19 @@ private fun MainShell(
                     controller = signalController,
                     marketIntelController = marketIntelController,
                     signalId = signalId,
-                    onExecute = { navController.navigate(executionRoute(it)) },
+                    // Null where the platform places no orders. CoinePro-FX is the case: its
+                    // signals reach a reader's account through copy trading, so the button that
+                    // used to sit here led to a screen that could only say the feature was absent.
+                    onExecute = if (activePlatform == MarketPlatform.TRADEYAR) {
+                        { id -> navController.navigate(executionRoute(id)) }
+                    } else {
+                        null
+                    },
+                    onOpenCopyTrading = if (activePlatform == MarketPlatform.COINEPRO_FX) {
+                        { navController.navigate(CONNECTIONS_ROUTE) }
+                    } else {
+                        null
+                    },
                 )
             }
             composable(
@@ -634,7 +659,16 @@ private fun MainShell(
                 KycScreen(controller = accountController)
             }
             composable(CONNECTIONS_ROUTE) {
-                ConnectionsScreen(controller = executionController, platform = activePlatform)
+                // One route, two entirely different surfaces, because the two products are
+                // different: TradeYar takes an exchange key and places orders per signal, while
+                // CoinePro-FX links a broker account once and a service trades it. Sending an FX
+                // reader to the venue form gave them a screen whose every field was answered by a
+                // 404, worded as though the connection had failed.
+                when (activePlatform) {
+                    MarketPlatform.COINEPRO_FX -> CopyTradeScreen(controller = copyTradeController)
+                    MarketPlatform.TRADEYAR ->
+                        ConnectionsScreen(controller = executionController, platform = activePlatform)
+                }
             }
             composable(AppDestination.AI.route) {
                 // AiStudioScreen, not the older AiScreen: the two carried the same generator, and

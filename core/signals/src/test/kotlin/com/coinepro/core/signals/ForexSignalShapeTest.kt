@@ -142,6 +142,28 @@ class ForexSignalShapeTest {
     }
 
     @Test
+    fun `CoinePro-FX's strategy field is a strength and is not printed as a strategy`() {
+        // Its `strategy` column holds MEDIUM/HIGH, not a strategy name. Beside the timeframe that
+        // renders as "H1 MEDIUM", which reads as a strategy called MEDIUM. The same fact is
+        // already here as confidence, out of a hundred.
+        val forex = parse(
+            """{"id": 5, "symbol": "XAUUSD", "direction": "BUY", "entry_price": 2400.0,
+                "tp1": 2440.0, "strategy": "MEDIUM", "signal_score": 61}""",
+            MarketPlatform.COINEPRO_FX,
+        )
+        assertNull(requireNotNull(forex).strategy)
+        assertEquals(61, forex.confidence)
+
+        // TradeYar's is a real name and survives untouched.
+        val crypto = parse(
+            """{"id": 6, "market": "crypto", "symbol": "BTCUSDT", "direction": "BUY",
+                "entry": 90000.0, "targets": [{"level": 1, "price": 95000.0}], "strategy": "breakout"}""",
+            MarketPlatform.TRADEYAR,
+        )
+        assertEquals("breakout", requireNotNull(crypto).strategy)
+    }
+
+    @Test
     fun `the two envelopes both yield a total`() {
         // CoinePro-FX calls it `count`; TradeYar reports none at all.
         val forex = gson.fromJson("""{"items": [], "count": 12}""", SignalListResponseDto::class.java)

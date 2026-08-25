@@ -87,13 +87,23 @@ object EndpointCatalog {
         CatalogedEndpoint("GET", "public/signals/active", AREA_SIGNALS),
         CatalogedEndpoint("GET", "public/signals/recent", AREA_SIGNALS),
 
-        // Listed although the server has confirmed all four are absent. The panel's job is to say
-        // which of the app's calls reach something, and a row that is missing from the list cannot
-        // report 404 — which is how these went unnoticed in the first place.
+        CatalogedEndpoint("GET", "public/signals/detail/1", AREA_SIGNALS),
+        CatalogedEndpoint("GET", "user/mobile/market-intelligence", AREA_NEWS),
+
+        // The copy-trading surface, which is what this server has instead of order execution.
+        CatalogedEndpoint("GET", "user/copy-status", AREA_COPY),
+        CatalogedEndpoint("GET", "user/copy-config", AREA_COPY),
+        CatalogedEndpoint("POST", "user/copy-config", AREA_COPY, safeToProbe = false),
+        CatalogedEndpoint("POST", "user/account/link", AREA_COPY, safeToProbe = false),
+        CatalogedEndpoint("DELETE", "user/account", AREA_COPY, safeToProbe = false),
+        CatalogedEndpoint("GET", "user/broker-servers", AREA_COPY),
+
+        // Listed although the server has confirmed they are absent. The panel's job is to say which
+        // of the app's calls reach something, and a row missing from the list cannot report 404 —
+        // which is how these went unnoticed in the first place.
         CatalogedEndpoint("GET", "user/signals", AREA_SIGNALS),
         CatalogedEndpoint("GET", "user/signals/execution/connections", AREA_EXECUTION),
         CatalogedEndpoint("GET", "user/signals/execution/executions", AREA_EXECUTION),
-        CatalogedEndpoint("GET", "user/market-intelligence", AREA_NEWS),
     )
 
     /**
@@ -158,4 +168,5 @@ object EndpointCatalog {
     private const val AREA_SIGNALS = "signals"
     private const val AREA_EXECUTION = "execution"
     private const val AREA_NEWS = "news"
+    private const val AREA_COPY = "copy-trading"
 }

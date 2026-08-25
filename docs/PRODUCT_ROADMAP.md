@@ -288,6 +288,7 @@ core:marketdata
 core:signals
 core:notifications
 core:execution
+core:copytrade
 core:aisignal
 core:aivision
 core:aiassistant
@@ -303,6 +304,7 @@ feature:signal-detail
 feature:connections
 feature:execution
 feature:kyc
+feature:copytrade
 feature:ai
 feature:ai-vision
 feature:ai-assistant
