@@ -18,6 +18,10 @@ dependencies {
     implementation(project(":core:network"))
     api(libs.kotlinx.coroutines.core)
     implementation(libs.retrofit.core)
+    // For @SerializedName: the two backends spell the same profile object differently, and one
+    // naming policy cannot read both.
+    implementation(libs.gson)
     testImplementation(libs.junit)
+    testImplementation(libs.gson)
     testImplementation(libs.kotlinx.coroutines.test)
 }

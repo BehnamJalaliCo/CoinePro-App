@@ -8,17 +8,24 @@ import retrofit2.HttpException
 
 class NetworkAuthGateway internal constructor(
     private val api: AuthApi,
+    private val paths: SessionPaths,
 ) : AuthGateway {
-    override suspend fun authConfig(): AppResult<AuthConfig> = call {
-        AuthConfig(api.authConfig().botUsername)
+    override suspend fun authConfig(): AppResult<AuthConfig> {
+        // A deployment without Telegram sign-in is not a broken one. Reporting it as unconfigured
+        // is what makes the screen leave the button out, rather than draw one that cannot work.
+        val telegram = paths.telegram ?: return AppResult.Success(AuthConfig(botUsername = ""))
+        return call { AuthConfig(api.authConfig(telegram.config).botUsername) }
     }
 
-    override suspend fun loginTelegram(payload: TelegramAuthPayload): AppResult<AuthSession> = call {
-        val response = api.loginTelegram(payload)
-        AuthSession(response.token, response.profile)
+    override suspend fun loginTelegram(payload: TelegramAuthPayload): AppResult<AuthSession> {
+        val telegram = paths.telegram ?: return AppResult.Failure(ErrorKind.AUTH)
+        return call {
+            val response = api.loginTelegram(telegram.login, payload)
+            AuthSession(response.token, response.profile.toDomain())
+        }
     }
 
-    override suspend fun me(): AppResult<UserProfile> = call { api.me() }
+    override suspend fun me(): AppResult<UserProfile> = call { api.me(paths.me).toDomain() }
 
     private suspend fun <T> call(block: suspend () -> T): AppResult<T> = try {
         AppResult.Success(block())
@@ -50,7 +57,12 @@ class NetworkAuthGateway internal constructor(
     }
 
     companion object {
-        fun create(retrofit: retrofit2.Retrofit): NetworkAuthGateway =
-            NetworkAuthGateway(retrofit.create(AuthApi::class.java))
+        fun create(
+            retrofit: retrofit2.Retrofit,
+            platform: com.coinepro.core.model.MarketPlatform,
+        ): NetworkAuthGateway = NetworkAuthGateway(
+            api = retrofit.create(AuthApi::class.java),
+            paths = SessionPaths.of(platform),
+        )
     }
 }

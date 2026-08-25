@@ -3,25 +3,32 @@ package com.coinepro.core.auth
 import com.coinepro.core.common.AppResult
 import com.coinepro.core.common.ErrorKind
 import com.coinepro.core.common.RetryAfter
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.network.ApiErrors
 import java.io.IOException
 import retrofit2.HttpException
 import retrofit2.Retrofit
 
 /**
- * The email-first flow against CoinePro-FX's live surface.
+ * The email-first flow against one platform's live surface.
  *
- * Written from the server's own captured responses rather than from the design document, so the
+ * Written from the servers' own captured responses rather than from the design document, so the
  * places where the two differ are settled in favour of the server: the code field is `otp`, the
  * recovery token is a short dashed code rather than an opaque blob, refresh returns no profile, and
- * a 429's wait arrives in the body instead of a header.
+ * a 429's wait arrives in the body on CoinePro-FX but only in a header on TradeYar.
+ *
+ * [paths] is what makes one implementation serve both deployments. The routes are the same eight
+ * names under different prefixes, and building them in one place is what keeps a crypto sign-in
+ * from being posted to a forex path — which does not fail loudly, it simply 404s in wording that
+ * reads like an outage.
  */
 class NetworkEmailAuthGateway internal constructor(
     private val api: MobileAuthApi,
+    private val paths: AuthPaths,
 ) : EmailAuthGateway {
 
     override suspend fun methods(): AppResult<AuthMethods> = call {
-        api.methods().let {
+        api.methods(paths.methods).let {
             AuthMethods(
                 emailPassword = it.emailPassword,
                 google = it.google,
@@ -41,7 +48,7 @@ class NetworkEmailAuthGateway internal constructor(
         password: String,
         fullName: String,
     ): AppResult<RegistrationChallenge> = call {
-        val response = api.registerStart(RegisterStartRequest(email, password, fullName))
+        val response = api.registerStart(paths.registerStart, RegisterStartRequest(email, password, fullName))
         RegistrationChallenge(
             registrationToken = requireNotNull(response.registrationToken) {
                 "The server accepted the registration without issuing a token."
@@ -54,30 +61,30 @@ class NetworkEmailAuthGateway internal constructor(
         registrationToken: String,
         code: String,
     ): AppResult<EmailAuthSession> = call {
-        api.registerVerify(RegisterVerifyRequest(registrationToken, code)).toSession()
+        api.registerVerify(paths.registerVerify, RegisterVerifyRequest(registrationToken, code)).toSession()
     }
 
     override suspend fun signIn(email: String, password: String): AppResult<EmailAuthSession> =
-        call { api.login(LoginRequest(email, password)).toSession() }
+        call { api.login(paths.login, LoginRequest(email, password)).toSession() }
 
     override suspend fun signInWithGoogle(idToken: String): AppResult<EmailAuthSession> =
-        call { api.google(GoogleRequest(idToken)).toSession() }
+        call { api.google(paths.google, GoogleRequest(idToken)).toSession() }
 
     override suspend fun requestPasswordReset(email: String): AppResult<Unit> =
-        call { api.forgotPassword(ForgotPasswordRequest(email)) }
+        call { api.forgotPassword(paths.forgotPassword, ForgotPasswordRequest(email)) }
 
     override suspend fun resetPassword(
         resetToken: String,
         newPassword: String,
     ): AppResult<Unit> = call {
-        api.resetPassword(ResetPasswordRequest(normalizeResetCode(resetToken), newPassword))
+        api.resetPassword(paths.resetPassword, ResetPasswordRequest(normalizeResetCode(resetToken), newPassword))
     }
 
     override suspend fun refresh(refreshToken: String): AppResult<AuthTokens> =
-        call { api.refresh(RefreshRequest(refreshToken)).toTokens() }
+        call { api.refresh(paths.refresh, RefreshRequest(refreshToken)).toTokens() }
 
     override suspend fun signOut(refreshToken: String): AppResult<Unit> =
-        call { api.logout(RefreshRequest(refreshToken)) }
+        call { api.logout(paths.logout, RefreshRequest(refreshToken)) }
 
     private fun TokenResponseDto.toTokens() = AuthTokens(
         accessToken = requireNotNull(accessToken) { "A token response without an access token." },
@@ -89,7 +96,7 @@ class NetworkEmailAuthGateway internal constructor(
 
     private fun TokenResponseDto.toSession() = EmailAuthSession(
         tokens = toTokens(),
-        profile = requireNotNull(user) { "A sign-in response without a profile." },
+        profile = requireNotNull(user) { "A sign-in response without a profile." }.toDomain(),
     )
 
     private suspend fun <T> call(block: suspend () -> T): AppResult<T> = try {
@@ -123,8 +130,11 @@ class NetworkEmailAuthGateway internal constructor(
     }
 
     companion object {
-        fun create(retrofit: Retrofit): NetworkEmailAuthGateway =
-            NetworkEmailAuthGateway(retrofit.create(MobileAuthApi::class.java))
+        fun create(retrofit: Retrofit, platform: MarketPlatform): NetworkEmailAuthGateway =
+            NetworkEmailAuthGateway(
+                api = retrofit.create(MobileAuthApi::class.java),
+                paths = AuthPaths.of(platform),
+            )
 
         /**
          * The recovery code is emailed as `XXXX-XXXX` from an alphabet with the ambiguous letters

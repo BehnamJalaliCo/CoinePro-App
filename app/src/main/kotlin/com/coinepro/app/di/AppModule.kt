@@ -255,7 +255,7 @@ object AppModule {
     @Singleton
     @ForexPlatform
     fun forexAuthGateway(@ForexPlatform retrofit: Retrofit): AuthGateway =
-        NetworkAuthGateway.create(retrofit)
+        NetworkAuthGateway.create(retrofit, MarketPlatform.COINEPRO_FX)
 
     @Provides
     @Singleton
@@ -310,19 +310,19 @@ object AppModule {
     @Singleton
     @ForexPlatform
     fun forexEmailAuthGateway(@ForexPlatform retrofit: Retrofit): EmailAuthGateway =
-        NetworkEmailAuthGateway.create(retrofit)
+        NetworkEmailAuthGateway.create(retrofit, MarketPlatform.COINEPRO_FX)
 
     @Provides
     @Singleton
     @CryptoPlatform
     fun cryptoEmailAuthGateway(@CryptoPlatform retrofit: Retrofit): EmailAuthGateway =
-        NetworkEmailAuthGateway.create(retrofit)
+        NetworkEmailAuthGateway.create(retrofit, MarketPlatform.TRADEYAR)
 
     @Provides
     @Singleton
     @CryptoPlatform
     fun cryptoAuthGateway(@CryptoPlatform retrofit: Retrofit): AuthGateway =
-        NetworkAuthGateway.create(retrofit)
+        NetworkAuthGateway.create(retrofit, MarketPlatform.TRADEYAR)
 
     /**
      * The sign-in flow's own controller, one per platform.
