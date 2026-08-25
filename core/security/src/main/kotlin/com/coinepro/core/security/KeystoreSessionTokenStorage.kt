@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.coinepro.core.auth.SessionTokenStorage
+import com.coinepro.core.model.MarketPlatform
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -17,17 +18,27 @@ import kotlinx.coroutines.flow.first
 
 private val Context.secureSessionDataStore by preferencesDataStore(name = "secure_session")
 
+/**
+ * Encrypted token storage for one platform.
+ *
+ * The platform's [MarketPlatform.id] selects the preference key, so CoinePro-FX and TradeYar
+ * credentials sit side by side in the same store and clearing one never signs the user out of the
+ * other. The AES key in the Android keystore stays shared: it protects the store, and both entries
+ * belong to the same person on the same device.
+ */
 class KeystoreSessionTokenStorage(
     context: Context,
+    private val platform: MarketPlatform,
 ) : SessionTokenStorage {
     private val appContext = context.applicationContext
+    private val tokenKey = stringPreferencesKey("session_ciphertext_${platform.id}")
 
     override suspend fun readToken(): String? {
-        val encoded = appContext.secureSessionDataStore.data.first()[TOKEN] ?: return null
+        val encoded = appContext.secureSessionDataStore.data.first()[tokenKey] ?: return null
         return try {
             decrypt(encoded)
         } catch (_: Exception) {
-            appContext.secureSessionDataStore.edit { it.remove(TOKEN) }
+            appContext.secureSessionDataStore.edit { it.remove(tokenKey) }
             null
         }
     }
@@ -35,11 +46,11 @@ class KeystoreSessionTokenStorage(
     override suspend fun writeToken(token: String) {
         require(token.isNotBlank())
         val encrypted = encrypt(token)
-        appContext.secureSessionDataStore.edit { it[TOKEN] = encrypted }
+        appContext.secureSessionDataStore.edit { it[tokenKey] = encrypted }
     }
 
     override suspend fun clear() {
-        appContext.secureSessionDataStore.edit { it.remove(TOKEN) }
+        appContext.secureSessionDataStore.edit { it.remove(tokenKey) }
     }
 
     private fun encrypt(value: String): String {
@@ -78,7 +89,6 @@ class KeystoreSessionTokenStorage(
     }
 
     private companion object {
-        val TOKEN = stringPreferencesKey("session_ciphertext")
         const val KEY_ALIAS = "coinepro_session_v1"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
     }

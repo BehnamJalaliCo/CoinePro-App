@@ -19,6 +19,9 @@ require(Regex("^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$").matches(confi
     "COINEPRO_VERSION_NAME must use semantic version form, for example 1.2.3 or 1.2.3-rc.1."
 }
 
+val debugTradeYarBaseUrl = providers.gradleProperty("COINEPRO_DEBUG_TRADEYAR_API_BASE_URL")
+    .orElse("https://debug-tradeyar.example.invalid/")
+    .get()
 val debugApiBaseUrl = providers.gradleProperty("COINEPRO_DEBUG_API_BASE_URL")
     .orElse("https://debug.example.invalid/")
     .get()
@@ -27,6 +30,9 @@ val debugFirebaseApplicationId = providers.gradleProperty("COINEPRO_DEBUG_FIREBA
 val debugFirebaseApiKey = providers.gradleProperty("COINEPRO_DEBUG_FIREBASE_API_KEY").orElse("").get()
 val debugFirebaseSenderId = providers.gradleProperty("COINEPRO_DEBUG_FIREBASE_SENDER_ID").orElse("").get()
 
+val stagingTradeYarBaseUrl = providers.gradleProperty("COINEPRO_STAGING_TRADEYAR_API_BASE_URL")
+    .orElse("https://staging-tradeyar.example.invalid/")
+    .get()
 val stagingApiBaseUrl = providers.gradleProperty("COINEPRO_STAGING_API_BASE_URL")
     .orElse("https://staging.example.invalid/")
     .get()
@@ -35,6 +41,9 @@ val stagingFirebaseApplicationId = providers.gradleProperty("COINEPRO_STAGING_FI
 val stagingFirebaseApiKey = providers.gradleProperty("COINEPRO_STAGING_FIREBASE_API_KEY").orElse("").get()
 val stagingFirebaseSenderId = providers.gradleProperty("COINEPRO_STAGING_FIREBASE_SENDER_ID").orElse("").get()
 
+val productionTradeYarBaseUrl = providers.gradleProperty("COINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL")
+    .orElse("https://production-tradeyar.example.invalid/")
+    .get()
 val productionApiBaseUrl = providers.gradleProperty("COINEPRO_PRODUCTION_API_BASE_URL")
     .orElse("https://production.example.invalid/")
     .get()
@@ -45,6 +54,20 @@ val productionFirebaseSenderId = providers.gradleProperty("COINEPRO_PRODUCTION_F
 
 require(stagingApiBaseUrl != productionApiBaseUrl) {
     "Staging and production API base URLs must be different."
+}
+require(stagingTradeYarBaseUrl != productionTradeYarBaseUrl) {
+    "Staging and production TradeYar API base URLs must be different."
+}
+// The two platforms are separate systems with separate user tables. Pointing both at one host
+// would silently send a TradeYar token to CoinePro-FX.
+listOf(
+    "debug" to (debugApiBaseUrl to debugTradeYarBaseUrl),
+    "staging" to (stagingApiBaseUrl to stagingTradeYarBaseUrl),
+    "production" to (productionApiBaseUrl to productionTradeYarBaseUrl),
+).forEach { (name, urls) ->
+    require(urls.first != urls.second) {
+        "CoinePro-FX and TradeYar base URLs must differ for the $name environment."
+    }
 }
 
 val releaseStoreFile = providers.gradleProperty("COINEPRO_RELEASE_STORE_FILE").orNull?.takeIf { it.isNotBlank() }
@@ -92,6 +115,7 @@ android {
         debug {
             buildConfigField("String", "BUILD_ENVIRONMENT", escapedBuildConfig("debug"))
             buildConfigField("String", "API_BASE_URL", escapedBuildConfig(debugApiBaseUrl))
+            buildConfigField("String", "TRADEYAR_API_BASE_URL", escapedBuildConfig(debugTradeYarBaseUrl))
             buildConfigField("String", "FIREBASE_PROJECT_ID", escapedBuildConfig(debugFirebaseProjectId))
             buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(debugFirebaseApplicationId))
             buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(debugFirebaseApiKey))
@@ -106,6 +130,7 @@ android {
             }
             buildConfigField("String", "BUILD_ENVIRONMENT", escapedBuildConfig("production"))
             buildConfigField("String", "API_BASE_URL", escapedBuildConfig(productionApiBaseUrl))
+            buildConfigField("String", "TRADEYAR_API_BASE_URL", escapedBuildConfig(productionTradeYarBaseUrl))
             buildConfigField("String", "FIREBASE_PROJECT_ID", escapedBuildConfig(productionFirebaseProjectId))
             buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(productionFirebaseApplicationId))
             buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(productionFirebaseApiKey))
@@ -127,6 +152,7 @@ android {
             }
             buildConfigField("String", "BUILD_ENVIRONMENT", escapedBuildConfig("staging"))
             buildConfigField("String", "API_BASE_URL", escapedBuildConfig(stagingApiBaseUrl))
+            buildConfigField("String", "TRADEYAR_API_BASE_URL", escapedBuildConfig(stagingTradeYarBaseUrl))
             buildConfigField("String", "FIREBASE_PROJECT_ID", escapedBuildConfig(stagingFirebaseProjectId))
             buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(stagingFirebaseApplicationId))
             buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(stagingFirebaseApiKey))
@@ -139,6 +165,7 @@ android {
             isDebuggable = false
             buildConfigField("String", "BUILD_ENVIRONMENT", escapedBuildConfig("benchmark"))
             buildConfigField("String", "API_BASE_URL", escapedBuildConfig("https://benchmark.example.invalid/"))
+            buildConfigField("String", "TRADEYAR_API_BASE_URL", escapedBuildConfig("https://benchmark-tradeyar.example.invalid/"))
             buildConfigField("String", "FIREBASE_PROJECT_ID", escapedBuildConfig(""))
             buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(""))
             buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(""))

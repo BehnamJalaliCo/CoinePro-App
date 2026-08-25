@@ -15,6 +15,7 @@ import com.coinepro.core.auth.AuthGateway
 import com.coinepro.core.auth.NetworkAuthGateway
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionMemory
+import com.coinepro.core.auth.PlatformSessions
 import com.coinepro.core.auth.SessionTokenStorage
 import com.coinepro.core.database.CoineProDatabase
 import com.coinepro.core.database.CoineProDatabaseFactory
@@ -24,6 +25,7 @@ import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.ExecutionGateway
 import com.coinepro.core.execution.NetworkExecutionGateway
 import com.coinepro.core.marketdata.MarketDataCache
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.marketdata.MarketDataController
 import com.coinepro.core.marketdata.MarketSnapshotGateway
 import com.coinepro.core.marketdata.NetworkMarketSnapshotGateway
@@ -54,18 +56,33 @@ import retrofit2.Retrofit
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
-    @Provides
-    @Singleton
-    fun sessionMemory(): SessionMemory = SessionMemory()
+    // ── CoinePro-FX (Forex) ────────────────────────────────────────────────────────────────────
+    // The unqualified bindings stay pointed at CoinePro-FX so every existing gateway keeps working
+    // unchanged while the crypto side is wired up screen by screen.
 
     @Provides
     @Singleton
-    fun tokenStorage(@ApplicationContext context: Context): SessionTokenStorage =
-        KeystoreSessionTokenStorage(context)
+    @ForexPlatform
+    fun forexSessionMemory(): SessionMemory = SessionMemory()
 
     @Provides
     @Singleton
-    fun okHttp(memory: SessionMemory): OkHttpClient = NetworkFactory.okHttpClient(
+    fun sessionMemory(@ForexPlatform memory: SessionMemory): SessionMemory = memory
+
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexTokenStorage(@ApplicationContext context: Context): SessionTokenStorage =
+        KeystoreSessionTokenStorage(context, MarketPlatform.COINEPRO_FX)
+
+    @Provides
+    @Singleton
+    fun tokenStorage(@ForexPlatform storage: SessionTokenStorage): SessionTokenStorage = storage
+
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexOkHttp(@ForexPlatform memory: SessionMemory): OkHttpClient = NetworkFactory.okHttpClient(
         bearerToken = memory::token,
         onUnauthorized = memory::notifyUnauthorized,
         enableHttpLogging = BuildConfig.DEBUG,
@@ -73,8 +90,47 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun retrofit(client: OkHttpClient): Retrofit =
+    fun okHttp(@ForexPlatform client: OkHttpClient): OkHttpClient = client
+
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexRetrofit(@ForexPlatform client: OkHttpClient): Retrofit =
         NetworkFactory.retrofit(BuildConfig.API_BASE_URL, client)
+
+    @Provides
+    @Singleton
+    fun retrofit(@ForexPlatform retrofit: Retrofit): Retrofit = retrofit
+
+    // ── TradeYar (Crypto) ──────────────────────────────────────────────────────────────────────
+    // A separate client and token: the two platforms are separate accounts, and sharing either
+    // would send one platform's credential to the other's host.
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoSessionMemory(): SessionMemory = SessionMemory()
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoTokenStorage(@ApplicationContext context: Context): SessionTokenStorage =
+        KeystoreSessionTokenStorage(context, MarketPlatform.TRADEYAR)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoOkHttp(@CryptoPlatform memory: SessionMemory): OkHttpClient = NetworkFactory.okHttpClient(
+        bearerToken = memory::token,
+        onUnauthorized = memory::notifyUnauthorized,
+        enableHttpLogging = BuildConfig.DEBUG,
+    )
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoRetrofit(@CryptoPlatform client: OkHttpClient): Retrofit =
+        NetworkFactory.retrofit(BuildConfig.TRADEYAR_API_BASE_URL, client)
 
     @Provides
     @Singleton
@@ -93,7 +149,19 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun authGateway(retrofit: Retrofit): AuthGateway = NetworkAuthGateway.create(retrofit)
+    @ForexPlatform
+    fun forexAuthGateway(@ForexPlatform retrofit: Retrofit): AuthGateway =
+        NetworkAuthGateway.create(retrofit)
+
+    @Provides
+    @Singleton
+    fun authGateway(@ForexPlatform gateway: AuthGateway): AuthGateway = gateway
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoAuthGateway(@CryptoPlatform retrofit: Retrofit): AuthGateway =
+        NetworkAuthGateway.create(retrofit)
 
     @Provides
     @Singleton
@@ -140,12 +208,48 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun sessionController(
-        storage: SessionTokenStorage,
-        memory: SessionMemory,
-        gateway: AuthGateway,
+    @ForexPlatform
+    fun forexSessionController(
+        @ForexPlatform storage: SessionTokenStorage,
+        @ForexPlatform memory: SessionMemory,
+        @ForexPlatform gateway: AuthGateway,
         scope: CoroutineScope,
     ): SessionController = SessionController(storage, memory, gateway, scope)
+
+    @Provides
+    @Singleton
+    fun sessionController(@ForexPlatform controller: SessionController): SessionController = controller
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoSessionController(
+        @CryptoPlatform storage: SessionTokenStorage,
+        @CryptoPlatform memory: SessionMemory,
+        @CryptoPlatform gateway: AuthGateway,
+        scope: CoroutineScope,
+    ): SessionController = SessionController(storage, memory, gateway, scope)
+
+    /**
+     * Only platforms this build can actually reach are offered. A base URL left at its
+     * non-routable placeholder means the environment was never configured for that platform, and
+     * surfacing a sign-in that cannot complete is worse than not showing it.
+     */
+    @Provides
+    @Singleton
+    fun platformSessions(
+        @ForexPlatform forex: SessionController,
+        @CryptoPlatform crypto: SessionController,
+        scope: CoroutineScope,
+    ): PlatformSessions = PlatformSessions(
+        controllers = buildMap {
+            put(MarketPlatform.COINEPRO_FX, forex)
+            if (isPlatformConfigured(BuildConfig.TRADEYAR_API_BASE_URL)) {
+                put(MarketPlatform.TRADEYAR, crypto)
+            }
+        },
+        scope = scope,
+    )
 
     @Provides
     @Singleton
@@ -210,4 +314,11 @@ object AppModule {
         gateway: MarketIntelGateway,
         scope: CoroutineScope,
     ): MarketIntelController = MarketIntelController(gateway, scope)
+
+    /**
+     * A base URL still on its `.invalid` placeholder was never supplied for this build.
+     * `NetworkFactory` would accept it and every call would simply fail DNS.
+     */
+    private fun isPlatformConfigured(baseUrl: String): Boolean =
+        baseUrl.isNotBlank() && !baseUrl.contains(".invalid")
 }
