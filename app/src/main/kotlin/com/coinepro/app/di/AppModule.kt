@@ -5,6 +5,9 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.coinepro.app.BuildConfig
+import com.coinepro.core.account.AccountController
+import com.coinepro.core.account.AccountGateway
+import com.coinepro.core.account.NetworkAccountGateway
 import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aiassistant.AiAssistantGateway
 import com.coinepro.core.aiassistant.NetworkAiAssistantGateway
@@ -189,6 +192,49 @@ object AppModule {
     @Provides
     @Singleton
     fun authGateway(@ForexPlatform gateway: AuthGateway): AuthGateway = gateway
+
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexAccountGateway(@ForexPlatform retrofit: Retrofit): AccountGateway =
+        NetworkAccountGateway.create(retrofit)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoAccountGateway(@CryptoPlatform retrofit: Retrofit): AccountGateway =
+        NetworkAccountGateway.create(retrofit)
+
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexAccountController(
+        @ForexPlatform gateway: AccountGateway,
+        scope: CoroutineScope,
+    ): AccountController = AccountController(gateway, scope)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoAccountController(
+        @CryptoPlatform gateway: AccountGateway,
+        scope: CoroutineScope,
+    ): AccountController = AccountController(gateway, scope)
+
+    /**
+     * Keyed by platform so the screen reads the controller for whichever backend is on screen. The
+     * two hold different accounts, and showing one platform's balance under the other's name would
+     * be the same class of bug as mixing their symbols.
+     */
+    @Provides
+    @Singleton
+    fun accountControllers(
+        @ForexPlatform forex: AccountController,
+        @CryptoPlatform crypto: AccountController,
+    ): Map<MarketPlatform, AccountController> = mapOf(
+        MarketPlatform.COINEPRO_FX to forex,
+        MarketPlatform.TRADEYAR to crypto,
+    )
 
     // The email-first flow, per platform: the two backends have separate accounts, and a token
     // minted by one is meaningless to the other.

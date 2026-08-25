@@ -15,6 +15,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:account"))
     implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:marketdata"))

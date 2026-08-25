@@ -15,6 +15,13 @@
     <string name="home_holdings_title">دارایی‌های تو</string>
 
     <string name="home_portfolio_total">دارایی کل</string>
+    <!-- Both values arrive already isolated as left-to-right runs. -->
+    <string name="home_change_amount_and_percent">%1$s (%2$s)</string>
+
+    <string name="home_age_moments">همین حالا</string>
+    <string name="home_age_minutes">%1$d دقیقه پیش</string>
+    <string name="home_age_hours">%1$d ساعت پیش</string>
+    <string name="home_age_days">%1$d روز پیش</string>
 
     <string name="home_market_title">بازار</string>
     <string name="home_market_empty">هنوز داده‌ای از بازار نرسیده است.</string>

@@ -204,6 +204,7 @@ dependencies {
     implementation(project(":core:execution"))
     implementation(project(":core:aisignal"))
     implementation(project(":core:aivision"))
+    implementation(project(":core:account"))
     implementation(project(":core:aiassistant"))
     implementation(project(":core:marketintel"))
     implementation(project(":core:designsystem"))

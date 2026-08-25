@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.coinepro.app.notifications.PushCoordinator
 import com.coinepro.app.sync.BackgroundSyncScheduler
+import com.coinepro.core.account.AccountController
 import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.aivision.AiVisionController
@@ -40,6 +41,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     @Inject lateinit var sessionController: SessionController
     @Inject lateinit var marketDataControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketDataController>
+    @Inject lateinit var accountControllers: Map<MarketPlatform, @JvmSuppressWildcards AccountController>
     @Inject lateinit var activePlatformStore: ActivePlatformStore
     @Inject lateinit var signalController: SignalController
     @Inject lateinit var notificationController: NotificationController
@@ -75,6 +77,7 @@ class MainActivity : ComponentActivity() {
             CoineProApp(
                 sessionController = sessionController,
                 marketDataControllers = marketDataControllers,
+                accountControllers = accountControllers,
                 activePlatformStore = activePlatformStore,
                 signalController = signalController,
                 notificationController = notificationController,

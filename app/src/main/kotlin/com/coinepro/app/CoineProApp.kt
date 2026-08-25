@@ -14,6 +14,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -53,7 +54,12 @@ import com.coinepro.feature.auth.AuthScreen
 import com.coinepro.feature.calendar.EconomicCalendarScreen
 import com.coinepro.feature.connections.ConnectionsScreen
 import com.coinepro.feature.execution.ExecutionScreen
+import com.coinepro.core.account.AccountController
+import com.coinepro.feature.home.HomeBriefing
+import com.coinepro.feature.home.HomePortfolio
 import com.coinepro.feature.home.HomeScreen
+import com.coinepro.feature.home.toHomeBriefing
+import com.coinepro.feature.home.toHomePortfolio
 import com.coinepro.feature.news.NewsScreen
 import com.coinepro.feature.signaldetail.SignalDetailScreen
 import com.coinepro.feature.signals.SignalsScreen
@@ -75,6 +81,7 @@ private fun executionRoute(signalId: Long) = "execution/$signalId"
 fun CoineProApp(
     sessionController: SessionController,
     marketDataControllers: Map<MarketPlatform, MarketDataController>,
+    accountControllers: Map<MarketPlatform, AccountController>,
     activePlatformStore: ActivePlatformStore,
     signalController: SignalController,
     notificationController: NotificationController,
@@ -103,6 +110,15 @@ fun CoineProApp(
         .collectAsStateWithLifecycle(initialValue = activePlatformStore.available.first())
     val marketDataController = marketDataControllers.getValue(activePlatform)
     val marketState by marketDataController.state.collectAsStateWithLifecycle()
+    // The account reads follow the same rule as the feed: one platform at a time, and the balance
+    // on screen always belongs to the backend named above it.
+    val accountController = accountControllers.getValue(activePlatform)
+    val briefingState by accountController.briefing.collectAsStateWithLifecycle()
+    val portfolioState by accountController.portfolio.collectAsStateWithLifecycle()
+    // Read once per briefing rather than on every recomposition, so the age is fixed at the moment
+    // the briefing arrived. It is deliberately not a ticking clock: the label is coarse enough that
+    // a second-by-second update would buy nothing and would be continuous motion for its own sake.
+    val briefingReadAt = remember(briefingState) { System.currentTimeMillis() / 1_000 }
     val scope = rememberCoroutineScope()
     val signedIn = session is SessionState.SignedIn
 
@@ -112,6 +128,7 @@ fun CoineProApp(
         }
         if (signedIn) {
             marketDataController.start()
+            accountController.refresh()
             pushCoordinator.registerCurrentToken()
             backgroundSyncScheduler.enableForAuthenticatedSession()
         } else {
@@ -131,6 +148,9 @@ fun CoineProApp(
         when (session) {
             is SessionState.SignedIn -> MainShell(
                 marketState = marketState,
+                briefing = briefingState.toHomeBriefing(briefingReadAt),
+                portfolio = portfolioState.toHomePortfolio(),
+                onRefreshAccount = accountController::refresh,
                 signalController = signalController,
                 notificationController = notificationController,
                 executionController = executionController,
@@ -184,6 +204,9 @@ private fun MainShell(
     aiVisionController: AiVisionController,
     aiAssistantController: AiAssistantController,
     marketIntelController: MarketIntelController,
+    briefing: HomeBriefing,
+    portfolio: HomePortfolio?,
+    onRefreshAccount: () -> Unit,
     launchSignalId: Long?,
     launchActivity: Boolean,
     notificationPermissionState: NotificationPermissionUiState,
@@ -301,9 +324,13 @@ private fun MainShell(
             composable(AppDestination.HOME.route) {
                 HomeScreen(
                     state = marketState,
-                    onRetry = onMarketRetry,
-                    // The briefing stays in its resting state until a server produces one. Both
-                    // pills lead to the AI section, which is where the work actually happens.
+                    briefing = briefing,
+                    portfolio = portfolio,
+                    onRetry = {
+                        onMarketRetry()
+                        onRefreshAccount()
+                    },
+                    // Both pills lead to the AI section, which is where the work actually happens.
                     onGenerateSignal = { navController.navigate(AppDestination.AI.route) },
                     onSendChart = { navController.navigate(AI_VISION_ROUTE) },
                     onOpenMarket = { navController.navigate(AppDestination.SIGNALS.route) },

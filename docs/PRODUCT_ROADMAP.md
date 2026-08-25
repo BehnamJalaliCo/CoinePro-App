@@ -292,6 +292,7 @@ core:aisignal
 core:aivision
 core:aiassistant
 core:marketintel
+core:account
 core:database
 feature:auth
 feature:home
