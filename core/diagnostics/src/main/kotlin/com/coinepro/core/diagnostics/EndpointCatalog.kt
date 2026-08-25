@@ -90,18 +90,55 @@ object EndpointCatalog {
     )
 
     /**
-     * TradeYar, which has not published its route table to this side yet.
+     * TradeYar, from its published contract.
      *
-     * Its own summary says the mobile surface lives under `api/mobile/v1` and the older one under
-     * `api/user/v1`, while the app currently builds every crypto call from CoinePro-FX's paths and
-     * only swaps the base URL. So this list is what the app *sends today*, not what TradeYar
-     * answers — and probing it is expected to fail almost completely until the contract arrives.
-     * Leaving it accurate rather than aspirational is the point: the prober's job is to show the
-     * gap, not to hide it behind paths nobody has confirmed.
+     * Every path carries the full `api/mobile/v1` prefix, and that is the whole story of this list:
+     * the app's crypto gateways still build CoinePro-FX's `user/…` paths against TradeYar's base
+     * URL, so every crypto call currently reaches nothing. Probing this catalogue against the app's
+     * own client is what makes that visible — the rows below are what TradeYar serves, and until
+     * the gateways are rewritten the app is asking for something else entirely.
+     *
+     * Three of them differ beyond the path and are the dangerous ones, because they answer rather
+     * than 404: the venue read is a single object where the app expects a list, executing a signal
+     * moves the id from the path into the body, and the briefing replaces market-intelligence with
+     * a different shape and a 204.
      */
-    private val tradeYar: List<CatalogedEndpoint> = coineProFx.map { endpoint ->
-        endpoint.copy(area = endpoint.area)
-    }
+    private val tradeYar: List<CatalogedEndpoint> = listOf(
+        CatalogedEndpoint("GET", "api/mobile/v1/auth/methods", AREA_AUTH, requiresAuth = false),
+        CatalogedEndpoint("POST", "api/mobile/v1/auth/login", AREA_AUTH, requiresAuth = false, safeToProbe = false),
+        CatalogedEndpoint("POST", "api/mobile/v1/auth/register/start", AREA_AUTH, requiresAuth = false, safeToProbe = false),
+        CatalogedEndpoint("POST", "api/mobile/v1/auth/register/verify", AREA_AUTH, requiresAuth = false, safeToProbe = false),
+        CatalogedEndpoint("POST", "api/mobile/v1/auth/password/forgot", AREA_AUTH, requiresAuth = false, safeToProbe = false),
+        CatalogedEndpoint("POST", "api/mobile/v1/auth/password/reset", AREA_AUTH, requiresAuth = false, safeToProbe = false),
+        CatalogedEndpoint("POST", "api/mobile/v1/auth/google", AREA_AUTH, requiresAuth = false, safeToProbe = false),
+        CatalogedEndpoint("POST", "api/mobile/v1/auth/refresh", AREA_AUTH, requiresAuth = false, safeToProbe = false),
+        CatalogedEndpoint("POST", "api/mobile/v1/auth/logout", AREA_AUTH, safeToProbe = false),
+        CatalogedEndpoint("GET", "api/mobile/v1/me", AREA_AUTH),
+
+        CatalogedEndpoint("GET", "api/mobile/v1/kyc", AREA_ACCOUNT),
+        CatalogedEndpoint("POST", "api/mobile/v1/kyc/level1", AREA_ACCOUNT, safeToProbe = false),
+        CatalogedEndpoint("GET", "api/mobile/v1/briefing", AREA_HOME),
+        CatalogedEndpoint("GET", "api/mobile/v1/portfolio", AREA_HOME),
+
+        CatalogedEndpoint("GET", "api/mobile/v1/ws/snapshot", AREA_MARKET),
+        CatalogedEndpoint("GET", "api/mobile/v1/signals", AREA_SIGNALS),
+
+        CatalogedEndpoint("GET", "api/mobile/v1/executions", AREA_EXECUTION),
+        CatalogedEndpoint("POST", "api/mobile/v1/executions", AREA_EXECUTION, safeToProbe = false),
+        CatalogedEndpoint("GET", "api/mobile/v1/venues/lbank", AREA_EXECUTION),
+        CatalogedEndpoint("POST", "api/mobile/v1/venues/lbank", AREA_EXECUTION, safeToProbe = false),
+
+        CatalogedEndpoint("GET", "api/mobile/v1/alerts", AREA_ALERTS),
+        CatalogedEndpoint("POST", "api/mobile/v1/alerts", AREA_ALERTS, safeToProbe = false),
+        CatalogedEndpoint("GET", "api/mobile/v1/notifications", AREA_NOTIFICATIONS),
+        CatalogedEndpoint("POST", "api/mobile/v1/notifications/read", AREA_NOTIFICATIONS, safeToProbe = false),
+        CatalogedEndpoint("GET", "api/mobile/v1/push/preferences", AREA_NOTIFICATIONS),
+        CatalogedEndpoint("POST", "api/mobile/v1/push/devices", AREA_NOTIFICATIONS, safeToProbe = false),
+
+        CatalogedEndpoint("GET", "api/mobile/v1/ai/quota", AREA_AI),
+        CatalogedEndpoint("POST", "api/mobile/v1/ai/generate", AREA_AI, safeToProbe = false),
+        CatalogedEndpoint("POST", "api/mobile/v1/ai/vision/jobs", AREA_AI, safeToProbe = false),
+    )
 
     private const val AREA_AUTH = "auth"
     private const val AREA_ACCOUNT = "account"

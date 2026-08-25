@@ -138,6 +138,31 @@ class EndpointCatalogTest {
     }
 
     @Test
+    fun `every TradeYar path carries the prefix its contract requires`() {
+        // The app's crypto gateways still build CoinePro-FX's user/… paths against TradeYar's base
+        // URL, so every crypto call currently reaches nothing. This is the list that proves it.
+        val paths = EndpointCatalog.forPlatform(MarketPlatform.TRADEYAR).map { it.path }
+
+        assertTrue(paths.isNotEmpty())
+        assertTrue(
+            "There is no user/ segment anywhere on TradeYar's mobile surface",
+            paths.none { it.startsWith("user/") },
+        )
+        assertTrue(paths.all { it.startsWith("api/mobile/v1/") })
+    }
+
+    @Test
+    fun `the two catalogues share no path, because the two servers share no surface`() {
+        val forex = EndpointCatalog.forPlatform(MarketPlatform.COINEPRO_FX).map { it.path }.toSet()
+        val crypto = EndpointCatalog.forPlatform(MarketPlatform.TRADEYAR).map { it.path }.toSet()
+
+        assertTrue(
+            "A shared path would mean one platform's gateway is pointed at the other's server",
+            forex.intersect(crypto).isEmpty(),
+        )
+    }
+
+    @Test
     fun `no path is absolute, since each is resolved against a platform base url`() {
         for (platform in MarketPlatform.entries) {
             for (endpoint in EndpointCatalog.forPlatform(platform)) {

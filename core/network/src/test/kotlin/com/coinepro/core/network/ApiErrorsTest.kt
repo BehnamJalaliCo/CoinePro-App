@@ -50,18 +50,36 @@ class ApiErrorsTest {
 
         assertEquals("unsupported_symbol", error.code)
         assertEquals("این نماد پشتیبانی نمی‌شود.", error.message)
+        assertEquals("Bad Request", error.untranslatedDetail)
     }
 
     @Test
-    fun `falls back to a 7807 title when it carries no detail`() {
+    fun `a 7807 title without a detail is diagnostic, not a message`() {
         val error = ApiErrors.parse("""{"title":"Too Many Requests","status":429,"code":"rate_limited"}""")
 
         assertEquals("rate_limited", error.code)
-        assertEquals("Too Many Requests", error.message)
+        assertNull(error.message)
+        assertEquals("Too Many Requests", error.untranslatedDetail)
     }
 
     @Test
-    fun `reads FastAPI's validation array and keeps every complaint`() {
+    fun `English pydantic defaults never reach the reader, but do name the fields`() {
+        // Captured from TradeYar's legacy surface. Rendering "Field required" verbatim to a Persian
+        // reader is a language failure wearing honesty's clothes.
+        val error = ApiErrors.parse(
+            """{"detail":[
+                 {"type":"missing","loc":["body","email"],"msg":"Field required","input":{}},
+                 {"type":"missing","loc":["body","phone"],"msg":"Field required","input":{}}]}""",
+        )
+
+        assertNull("English server text must not be shown as though written for the reader", error.message)
+        assertEquals("Field required", error.untranslatedDetail)
+        assertEquals(listOf("email", "phone"), error.fields)
+        assertEquals("email", error.field)
+    }
+
+    @Test
+    fun `a Persian validation array is reader-facing and keeps every complaint`() {
         val error = ApiErrors.parse(
             """{"detail":[{"loc":["body","email"],"msg":"ایمیل نامعتبر است.","type":"value_error"},
                          {"loc":["body","password"],"msg":"رمز کوتاه است.","type":"value_error"}]}""",
@@ -72,6 +90,7 @@ class ApiErrorsTest {
             "ایمیل نامعتبر است. رمز کوتاه است.",
             error.message,
         )
+        assertEquals(listOf("email", "password"), error.fields)
     }
 
     @Test
@@ -81,6 +100,38 @@ class ApiErrorsTest {
         )
 
         assertEquals("این فیلد لازم است.", error.message)
+    }
+
+    @Test
+    fun `a bare English detail is diagnostic, a bare Persian one is for the reader`() {
+        // Both shapes are live: TradeYar's older paths answer {"detail":"Unauthorized"} while
+        // CoinePro-FX's panel routes answer a Persian sentence in the same position.
+        val english = ApiErrors.parse("""{"detail":"Unauthorized"}""")
+        assertNull(english.message)
+        assertEquals("Unauthorized", english.untranslatedDetail)
+
+        val persian = ApiErrors.parse("""{"detail":"دسترسی ندارید."}""")
+        assertEquals("دسترسی ندارید.", persian.message)
+        assertNull(persian.untranslatedDetail)
+    }
+
+    @Test
+    fun `carries the field, trace id and code a 7807 body names`() {
+        val error = ApiErrors.parse(
+            """{"type":"https://api.tradeyar.io/errors/TYR-017","title":"Validation Field Invalid",
+                "status":422,"detail":"رمز عبور باید حداقل 10 کاراکتر باشد.","code":"TYR-017",
+                "trace_id":"143770cc2b090c509ea8293082dab532","field":"password"}""",
+        )
+
+        assertEquals("TYR-017", error.code)
+        assertEquals("رمز عبور باید حداقل 10 کاراکتر باشد.", error.message)
+        assertEquals("A named field lets the form mark the box, not just the page", "password", error.field)
+        assertEquals("143770cc2b090c509ea8293082dab532", error.traceId)
+        assertEquals(
+            "The English title is kept, but only where a log can use it",
+            "Validation Field Invalid",
+            error.untranslatedDetail,
+        )
     }
 
     @Test
