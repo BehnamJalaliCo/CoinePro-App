@@ -15,4 +15,28 @@
     <string name="screen_news">اخبار بازار</string>
     <string name="screen_calendar">تقویم اقتصادی</string>
     <string name="screen_launch_readiness">ایمنی و انتشار</string>
+
+    <string name="safety_title">ایمنی و انتشار</string>
+    <string name="safety_subtitle">پیش از استفاده از قابلیت‌های پرریسک، ببین کوین‌پرو با سیگنال، دسترسی‌ها، ارائه‌دهنده‌های بیرونی و پشتیبانی چطور رفتار می‌کند.</string>
+    <string name="safety_how_title">کوین‌پرو چطور کار می‌کند</string>
+    <string name="safety_how_body">سیگنال ← تحلیل ← ورود / حد ضرر / اهداف ← اجرا ← پایش ← بستن یا خوردن هدف ← نتیجه. اجرا همیشه مسیر تأیید صریح دارد و آپ هرگز نتیجهٔ کارگزار یا صرافی را از خودش نمی‌سازد.</string>
+    <string name="safety_permissions_title">دسترسی‌ها</string>
+    <string name="safety_camera_body">دسترسی دوربین فقط وقتی خواسته می‌شود که در تحلیل چارت «دوربین» را انتخاب کنی. انتخاب از گالری بدون آن در دسترس می‌ماند.</string>
+    <string name="safety_push_not_configured">اعلان‌ها برای این نسخه پیکربندی نشده‌اند، پس آپ دسترسی اعلان نمی‌خواهد.</string>
+    <string name="safety_push_not_required">این نسخهٔ اندروید به دسترسی اعلانِ زمان‌اجرا نیاز ندارد.</string>
+    <string name="safety_push_available">اعلان‌ها می‌توانند به‌روزرسانی سیگنال و فعالیت را که سرور می‌فرستد به تو خبر دهند. این دسترسی اختیاری است و فقط بعد از زدن دکمهٔ زیر خواسته می‌شود.</string>
+    <string name="safety_push_denied">دسترسی اعلان رد شد. کوین‌پرو بدون آن هم کار می‌کند. هر وقت خواستی می‌توانی از تنظیمات اندروید عوضش کنی.</string>
+    <string name="safety_push_granted">دسترسی اعلان داده شده است. رسیدن اعلان همچنان به سرویس پوش و وضعیت سرور بستگی دارد.</string>
+    <string name="safety_enable_notifications">فعال‌کردن اعلان‌ها</string>
+    <string name="safety_open_settings">باز کردن تنظیمات اعلان</string>
+    <string name="safety_risk_title">ریسک معامله و هوش مصنوعی</string>
+    <string name="safety_risk_body">معامله و سرمایه‌گذاری ریسکِ زیان دارد. سیگنال، تحلیل و خروجی هوش مصنوعی تضمینِ نتیجه نیستند. اجرا به ارائه‌دهندهٔ بیرونی، دسترسی‌های حساب، شرایط بازار و تأیید سرور بستگی دارد. نتایج گذشته یا نمایش‌داده‌شده تضمینی برای آینده نیست. هر سفارش را پیش از تأیید بازبینی کن.</string>
+    <string name="safety_provider_title">حقیقتِ ارائه‌دهنده</string>
+    <string name="safety_provider_body">اتصالی که روی دستگاه تنظیم شده با اتصال تأییدشدهٔ زنده یکی نیست. کوین‌پرو کارهای وابسته به ارائه‌دهنده را فقط با شواهد صریحِ سرور فعال می‌کند؛ حالت‌های ناموجود، کهنه یا ناموفق در معرض دید می‌مانند.</string>
+    <string name="safety_privacy_title">حریم خصوصی</string>
+    <string name="safety_privacy_body">تحلیل‌گر رفتاری خاموش است. هیچ SDK رویداد یا ردیابی تازه‌ای اضافه نمی‌شود مگر آنکه هدف، فیلدها، رضایت و نگهداری، و مالکیتش صریحاً بررسی شده باشد.</string>
+    <string name="safety_support_title">پشتیبانی و بازخورد</string>
+    <string name="safety_support_body">برای ارسال بازخورد از منوی اشتراک‌گذاری اندروید و آپ دلخواه خودت استفاده کن. پیامِ آماده‌شده فقط نسخه و محیط آپ را دارد و هرگز توکن نشست، اطلاعات کارگزار، تصویر چارت یا اسرار اجرا را شامل نمی‌شود.</string>
+    <string name="safety_send_feedback">ارسال بازخورد</string>
+    <string name="safety_footer">اتصال محیط عملیاتی، تأیید ارائه‌دهنده و آمادگی اجرای زنده دروازه‌های جداگانه‌ای هستند و این صفحه آن‌ها را تضمین نمی‌کند.</string>
 </resources>

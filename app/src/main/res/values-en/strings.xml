@@ -12,4 +12,28 @@
     <string name="screen_news">Market intelligence</string>
     <string name="screen_calendar">Economic calendar</string>
     <string name="screen_launch_readiness">Launch &amp; safety</string>
+
+    <string name="safety_title">Safety and launch</string>
+    <string name="safety_subtitle">Before using anything with consequences, see how CoinePro handles signals, permissions, external providers and support.</string>
+    <string name="safety_how_title">How CoinePro works</string>
+    <string name="safety_how_body">Signal → analysis → entry / stop / targets → execute → monitor → close or target hit → result. Execution always requires an explicit confirmation path, and the app never invents a broker or exchange outcome.</string>
+    <string name="safety_permissions_title">Permissions</string>
+    <string name="safety_camera_body">Camera access is requested only when you choose Camera in chart analysis. Gallery selection stays available without it.</string>
+    <string name="safety_push_not_configured">Push is not configured for this build, so the app will not request notification permission.</string>
+    <string name="safety_push_not_required">This Android version does not require the runtime notification permission.</string>
+    <string name="safety_push_available">Notifications can alert you to the signal and activity updates the server sends. Permission is optional and is requested only after you tap the button below.</string>
+    <string name="safety_push_denied">Notification permission was denied. CoinePro still works without it, and you can change this in Android settings at any time.</string>
+    <string name="safety_push_granted">Notification permission is granted. Delivery still depends on the push service and server state.</string>
+    <string name="safety_enable_notifications">Enable notifications</string>
+    <string name="safety_open_settings">Open notification settings</string>
+    <string name="safety_risk_title">Trading and AI risk</string>
+    <string name="safety_risk_body">Trading and investment carry the risk of loss. Signals, analysis and AI output are not guaranteed outcomes. Execution depends on the external provider, account permissions, market conditions and server confirmation. Past or displayed results do not guarantee future performance. Review every order before confirming it.</string>
+    <string name="safety_provider_title">Provider truth</string>
+    <string name="safety_provider_body">A connection configured on the device is not the same as a verified live one. CoinePro enables provider-dependent actions only from explicit server evidence; missing, stale or failed states stay visible.</string>
+    <string name="safety_privacy_title">Privacy</string>
+    <string name="safety_privacy_body">Behavioural analytics are off. No event SDK or new tracking is introduced until its purpose, fields, consent and retention, and ownership have been explicitly reviewed.</string>
+    <string name="safety_support_title">Support and feedback</string>
+    <string name="safety_support_body">Send feedback through the Android share sheet using an app of your choice. The prepared message carries only app version and environment, and never a session token, broker credentials, a chart image or execution secrets.</string>
+    <string name="safety_send_feedback">Send feedback</string>
+    <string name="safety_footer">Production connectivity, provider whitelisting and live execution readiness are separate operational gates and are not implied by this screen.</string>
 </resources>
