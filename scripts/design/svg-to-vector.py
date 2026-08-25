@@ -30,10 +30,11 @@ UI_ARCHIVE = REPO / "design" / "ui-icons"
 DRAWABLE = REPO / "core" / "designsystem" / "src" / "main" / "res" / "drawable"
 
 SVG_NS = "{http://www.w3.org/2000/svg}"
+XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
 
 # Elements Android's vector format has no faithful equivalent for. Refused rather than dropped: a
 # silently missing gradient reads as a solid black coin.
-UNSUPPORTED = ("linearGradient", "radialGradient", "use", "image")
+UNSUPPORTED = ("linearGradient", "radialGradient", "image")
 
 # Subtrees that define rather than draw. Skipped wholesale — what matters is whether a drawn shape
 # *references* them, which is checked separately.
@@ -92,8 +93,10 @@ def collect(
     drop_shadows: bool,
     stroke: str | None = None,
     width: str | None = None,
+    ids: dict[str, ET.Element] | None = None,
 ) -> None:
     """Walk the tree, resolving inherited fill and fill-rule down to individual paths."""
+    ids = ids if ids is not None else {}
     tag = local(element.tag)
     if tag in DEFINITIONS:
         return
@@ -102,8 +105,29 @@ def collect(
     for attribute in HARD_REFERENCES:
         if element.get(attribute):
             raise Unsupported(f"{attribute}= changes the shape and cannot be flattened")
-    if element.get("filter") and not drop_shadows:
-        raise Unsupported("filter= is a drop shadow; pass --drop-shadows to convert without it")
+    if element.get("filter"):
+        if not drop_shadows:
+            raise Unsupported("filter= is a drop shadow; pass --drop-shadows to convert without it")
+        # The shadow is drawn as its own copy of the glyph. Dropping only the filter would leave a
+        # solid black duplicate sitting under the real one, so the whole element goes.
+        return
+
+    if tag == "use":
+        target = ids.get((element.get("href") or element.get(XLINK_HREF) or "").lstrip("#"))
+        if target is None:
+            raise Unsupported("<use> points at a shape that is not in this file")
+        # A <use> is the referenced shape wearing the reference's own paint.
+        collect(
+            target,
+            element.get("fill") or fill,
+            element.get("fill-rule") or rule,
+            out,
+            drop_shadows,
+            element.get("stroke") or stroke,
+            element.get("stroke-width") or width,
+            ids,
+        )
+        return
 
     own_fill = element.get("fill")
     own_rule = element.get("fill-rule") or element.get("clip-rule")
@@ -156,7 +180,7 @@ def collect(
             out.append(shape)
 
     for child in element:
-        collect(child, fill, rule, out, drop_shadows, stroke, width)
+        collect(child, fill, rule, out, drop_shadows, stroke, width, ids)
 
 
 # UI icons declare currentColor and are tinted by the caller. Android has no such keyword, so they
@@ -186,7 +210,9 @@ def convert(
     svg = ET.parse(source).getroot()
     width, height = viewport(svg)
     paths: list[dict] = []
-    collect(svg, None, None, paths, drop_shadows)
+    # <use> can point forward or into <defs>, so every id is indexed before the walk begins.
+    ids = {node.get("id"): node for node in svg.iter() if node.get("id")}
+    collect(svg, None, None, paths, drop_shadows, ids=ids)
     if not paths:
         raise Unsupported("no drawable shapes")
 

@@ -82,11 +82,13 @@ private fun baseOf(symbol: String): String = symbol
  * `scripts/design/svg-to-vector.py` converts one on demand — so adding a market is a command
  * rather than a design task, and six hundred unused vectors stay out of the APK.
  *
- * ADA is deliberately absent. Its artwork is built from a referenced shape that Android's vector
- * format cannot express, and the converter refuses it rather than emitting an icon that is nearly
- * right; the lettered token is the correct rendering for it.
+ * Where the vector set has no artwork for a market — TON and most of the 2024 listings — the
+ * archive also carries Binance's raster logos at 96px under `design/asset-logos/binance`. Those are
+ * the fallback of last resort before the lettered token: raster at one size, so they are only worth
+ * reaching for when no vector exists.
  */
 private val logos: Map<String, Int> = mapOf(
+    "ADA" to R.drawable.asset_ada,
     "BTC" to R.drawable.asset_btc,
     "ETH" to R.drawable.asset_eth,
     "SOL" to R.drawable.asset_sol,
