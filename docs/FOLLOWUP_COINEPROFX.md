@@ -14,6 +14,51 @@ Hand this to Claude Code on the **CoinePro-FX** server. Paste it as-is.
 
 ---
 
+## ۰. فوری‌ترین: فهرستِ مسیرها را با کدِ زنده مقابله کن
+
+هنگامِ وصل کردنِ کلاینت **دو اندپوینت پیدا شد که اپ سال‌ها بود اشتباه صدا می‌زد** و هیچ‌کس
+متوجه نشده بود، چون خرابی به‌شکلِ یک خطای HTTP می‌آمد که متنش فقط خطِ وضعیت بود:
+
+| اپ صدا می‌زد | درست (طبقِ قرارداد) |
+|---|---|
+| `user/signals/mobile/alerts` و بقیهٔ مسیرهای اعلان و پوش | `user/mobile/…` |
+| `user/ai/vision/jobs` | `user/ai-vision/jobs` |
+
+هر دو در اپ اصلاح شدند. ولی نکتهٔ مهم این است که این دو را فقط توانستم پیدا کنم چون قرارداد
+نامشان را برده بود.
+
+**اپ ۱۲ اندپوینتِ دیگر هم صدا می‌زند که در قرارداد اصلاً نیامده‌اند:**
+
+```
+GET    user/signals
+GET    user/signals/{signalId}
+GET    user/signals/execution/connections
+POST   user/signals/execution/connections/mt5
+PUT    user/signals/execution/connections/lbank
+DELETE user/signals/execution/connections/lbank
+DELETE user/signals/execution/connections/mt5
+GET    user/signals/execution/executions
+GET    user/signals/execution/executions/{executionId}
+POST   user/signals/execution/executions/{executionId}/close
+POST   user/signals/execution/signals/{signalId}/execute
+GET    user/market-intelligence
+POST   user/ai/assistant/messages
+GET    user/auth/config
+```
+
+هیچ راهی ندارم بفهمم این‌ها زنده‌اند یا نه. دو تا از سه مسیری که **می‌توانستم** بررسی کنم اشتباه
+بودند، پس دربارهٔ این‌ها هم بدبینم — مخصوصاً `user/ai/assistant/messages` که دقیقاً همان شکلِ
+`user/ai/vision/jobs`ِ خراب را دارد (`ai/` به‌جای `ai-`).
+
+**لطفاً هر کدام را با کدِ زنده مقابله کن و بگو کدام درست است، کدام مسیرِ دیگری دارد، و کدام
+اصلاً وجود ندارد.** یک `grep` روی روترها کافی است. این از هر کارِ دیگری در این فهرست
+فوری‌تر است: تا وقتی معلوم نشود، ممکن است دارم اندپوینتی را درست می‌کنم که اصلاً وجود ندارد.
+
+و اگر وجود دارند، شکلِ پاسخشان را هم به `MOBILE_API_CONTRACT.md` اضافه کن. اپ به آن‌ها وابسته
+است و سند فعلی فقط نیمی از سطحی را که اپ استفاده می‌کند پوشش می‌دهد.
+
+---
+
 ## ۱. چیزهایی که کلاینت مجبور شد حدس بزند
 
 سند این‌ها را نگفته بود. حدس زدم و در کد نوشتم که حدس است. هر کدام را تأیید یا تصحیح کن.
@@ -30,6 +75,12 @@ Hand this to Claude Code on the **CoinePro-FX** server. Paste it as-is.
 پارامتر را ذکر نکرده. آیا پذیرفته می‌شود، نادیده گرفته می‌شود، یا خطا می‌دهد؟ و اگر کاربر بیش از
 این تعداد اعلان داشته باشد چه می‌شود — صفحه‌بندی هست یا فهرست بریده می‌شود؟ اگر بریده می‌شود،
 کلاینت باید بگوید «قدیمی‌ترها نمایش داده نمی‌شوند» نه اینکه سکوت کند.
+
+**شکلِ پاسخِ تحلیلِ تصویر.** قرارداد می‌گوید `result` «همان شکلِ نتیجهٔ ai-signal» را دارد، ولی
+نمونهٔ واقعی‌ای که آورده‌ای مسطح است (`entry`, `sl`, `tp1`, `tp2`, `tp3`, `rr`) در حالی که کلاینتِ
+موجود برای ai-signalِ قدیمی شکلِ تودرتو می‌خواند (`entry_zone`, `stop_loss`, `targets[]`,
+`risk_reward_tp1`). این دو یکی نیستند. کدام درست است — یا هر دو، هر کدام برای اندپوینتِ خودش؟
+دارم تحلیلِ تصویر را بر اساسِ همان نمونهٔ مسطح بازنویسی می‌کنم؛ اگر اشتباه است الان بگو.
 
 **مقدارِ `signal_id` در اعلان.** در بخشِ ۷ نمونه `"data":{"signal_id":945}` است — عدد. در بخشِ ۵
 نوشتی در پیامِ FCM «رشتهٔ ده‌دهی» فرستاده می‌شود. کلاینت `data` را نگاشتِ رشته‌به‌رشته می‌خواند.
