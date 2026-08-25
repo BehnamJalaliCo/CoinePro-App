@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assistant_title">AI assistant</string>
+    <string name="assistant_new_chat">New chat</string>
+    <string name="assistant_subtitle">Chat grounded in server-verified context. Assistant prose never creates positions, signals or execution state.</string>
+    <string name="assistant_empty_title">Verified sources only</string>
+    <string name="assistant_empty_body">Ask about active signals, market context, news and calendar, risk or tools. The cards under each reply show exactly what the server supplied.</string>
+    <string name="assistant_thinking">Thinking…</string>
+    <string name="assistant_input_label">Ask the assistant</string>
+    <string name="assistant_send">Send</string>
+    <string name="assistant_role_you">You</string>
+    <string name="assistant_role_assistant">Assistant</string>
+    <string name="assistant_no_context">No structured source was attached to this reply.</string>
+    <string name="assistant_context_used">Sources used</string>
+    <string name="assistant_open_signal">Open signal</string>
+    <string name="assistant_history_title">Conversation history</string>
+    <string name="assistant_history_ephemeral">The server declares this chat ephemeral. The Android app does not persist the transcript either.</string>
+    <string name="assistant_history_account">Server account history is enabled. The Android app still does not persist the transcript.</string>
+    <string name="assistant_history_account_days">Server account history is enabled (retained %1$s days). The Android app still does not persist the transcript.</string>
+    <string name="assistant_history_unknown">The app does not persist history locally. The server retention policy has not been reported yet.</string>
+    <string name="assistant_kind_signal">Active signal</string>
+    <string name="assistant_kind_market">Market</string>
+    <string name="assistant_kind_news">News</string>
+    <string name="assistant_kind_calendar">Calendar</string>
+    <string name="assistant_kind_risk">Risk</string>
+    <string name="assistant_kind_tool">Tool</string>
+    <string name="assistant_fresh">Fresh</string>
+    <string name="assistant_stale">Stale</string>
+    <string name="assistant_freshness_unknown">Freshness unknown</string>
+</resources>

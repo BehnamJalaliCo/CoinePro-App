@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,7 +29,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
@@ -43,7 +47,16 @@ import com.coinepro.core.aivision.AiVisionJob
 import com.coinepro.core.aivision.AiVisionJobStatus
 import com.coinepro.core.aivision.AiVisionResult
 import com.coinepro.core.common.MarketNumberFormatter
+import com.coinepro.core.common.BidiText
+import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProPrimaryButton
+import com.coinepro.core.designsystem.CoineProSecondaryButton
+import com.coinepro.core.designsystem.CoineProSkeleton
+import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.CoineProStreamingBar
+import com.coinepro.core.designsystem.CoineProTextStyles
+import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.model.SignalDirection
 import kotlinx.coroutines.launch
 
@@ -59,6 +72,9 @@ fun AiVisionScreen(
     var preparing by remember { mutableStateOf(false) }
     var selectionError by remember { mutableStateOf<String?>(null) }
     var showCamera by remember { mutableStateOf(false) }
+    // Resolved out here: the failure handlers below are not composable scopes.
+    val prepareFailure = stringResource(R.string.vision_prepare_failed)
+    val cameraDenied = stringResource(R.string.vision_camera_denied)
 
     fun prepare(uri: Uri) {
         scope.launch {
@@ -66,7 +82,7 @@ fun AiVisionScreen(
             selectionError = null
             runCatching { prepareVisionImage(context, uri) }
                 .onSuccess { prepared = it }
-                .onFailure { selectionError = it.message ?: "Could not prepare the selected image." }
+                .onFailure { selectionError = it.message ?: prepareFailure }
             preparing = false
         }
     }
@@ -78,7 +94,7 @@ fun AiVisionScreen(
         if (granted) {
             showCamera = true
         } else {
-            selectionError = "Camera permission was denied. Gallery / file remains available without camera permission."
+            selectionError = cameraDenied
         }
     }
 
@@ -93,19 +109,25 @@ fun AiVisionScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(CoineProColors.Stage)
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(CoineProSpacing.Gutter),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
     ) {
-        Text("AI Vision", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
         Text(
-            "Capture or choose a chart screenshot. The image is re-encoded before upload so EXIF metadata is removed. Analysis progress and results come only from server job state.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = stringResource(R.string.vision_title),
+            style = MaterialTheme.typography.headlineSmall,
+            color = CoineProColors.TextPrimary,
+        )
+        Text(
+            text = stringResource(R.string.vision_subtitle),
+            style = MaterialTheme.typography.bodyMedium,
+            color = CoineProColors.TextSecondary,
         )
 
         if (showCamera) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(12.dp)) {
+            CoineProCard(modifier = Modifier.fillMaxWidth()) {
+                Column {
                     CameraCapturePanel(
                         onCaptured = { uri ->
                             showCamera = false
@@ -117,48 +139,69 @@ fun AiVisionScreen(
                 }
             }
         } else {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Text("Chart image", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            CoineProCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf)) {
                     Text(
-                        "Camera permission is requested only if you choose Camera below. Gallery / file selection does not require camera permission, so denying Camera does not block image analysis from an existing file.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = stringResource(R.string.vision_source_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = CoineProColors.TextPrimary,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = ::openCamera) { Text("Camera") }
-                        TextButton(onClick = { documentPicker.launch(arrayOf("image/*")) }) {
-                            Text("Gallery / file")
-                        }
+                    Text(
+                        text = stringResource(R.string.vision_permission_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CoineProColors.TextMuted,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+                        CoineProSecondaryButton(
+                            text = stringResource(R.string.vision_camera),
+                            onClick = ::openCamera,
+                            modifier = Modifier.weight(1f),
+                        )
+                        CoineProSecondaryButton(
+                            text = stringResource(R.string.vision_gallery),
+                            onClick = { documentPicker.launch(arrayOf("image/*")) },
+                            modifier = Modifier.weight(1f),
+                        )
                     }
                     if (preparing) {
-                        CircularProgressIndicator()
-                        Text("Preparing image…")
+                        CoineProSkeleton(Modifier.fillMaxWidth(), height = 14.dp)
+                        Text(
+                            text = stringResource(R.string.vision_preparing),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = CoineProColors.TextSecondary,
+                        )
                     }
                     prepared?.let { image ->
-                        Text("Prepared JPEG · ${image.bytes.size / 1024} KB")
                         Text(
-                            "Orientation normalized, image resized if needed, and original metadata removed before upload.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            text = stringResource(
+                                R.string.vision_prepared,
+                                BidiText.isolateLtr("${image.bytes.size / 1024} KB"),
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = CoineProColors.TextPrimary,
                         )
-                        Button(
-                            onClick = { controller.submit(image) },
-                            enabled = !state.uploading && state.job?.isPending != true,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(if (state.uploading) "Uploading…" else "Analyze chart")
-                        }
+                        Text(
+                            text = stringResource(R.string.vision_prepared_note),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = CoineProColors.TextMuted,
+                        )
+                        val ready = !state.uploading && state.job?.isPending != true
+                        CoineProPrimaryButton(
+                            text = stringResource(
+                                if (state.uploading) R.string.vision_uploading else R.string.vision_analyze,
+                            ),
+                            onClick = { if (ready) controller.submit(image) },
+                            modifier = Modifier.fillMaxWidth().alpha(if (ready) 1f else 0.45f),
+                        )
                     }
                 }
             }
         }
 
-        selectionError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        // Both are messages someone else produced — the platform or the server — so both are shown
+        // as they came rather than reworded into a friendlier local sentence.
+        selectionError?.let { VisionNotice(it, CoineProColors.Sell) }
+        state.error?.let { VisionNotice(it, CoineProColors.Sell) }
 
         state.job?.let { job ->
             VisionJobCard(
@@ -171,8 +214,21 @@ fun AiVisionScreen(
             )
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(CoineProSpacing.Three))
     }
+}
+
+@Composable
+private fun VisionNotice(message: String, accent: androidx.compose.ui.graphics.Color) {
+    Text(
+        text = message,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(accent.copy(alpha = 0.10f), MaterialTheme.shapes.medium)
+            .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.OneHalf),
+        style = MaterialTheme.typography.bodySmall,
+        color = accent,
+    )
 }
 
 @Composable
@@ -184,50 +240,90 @@ private fun VisionJobCard(
     onDismiss: () -> Unit,
     onOpenSignal: (Long) -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text("Vision analysis", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text("Status: ${job.status.name.replace('_', ' ')}", fontWeight = FontWeight.SemiBold)
+    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf)) {
+            Text(
+                text = stringResource(R.string.vision_analysis_title),
+                style = MaterialTheme.typography.bodySmall,
+                color = CoineProColors.TextSecondary,
+            )
             when (job.status) {
                 AiVisionJobStatus.QUEUED,
                 AiVisionJobStatus.RUNNING,
                 -> {
-                    CircularProgressIndicator()
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CoineProThinkingDots()
+                        Text(
+                            text = stringResource(
+                                if (job.status == AiVisionJobStatus.QUEUED) {
+                                    R.string.vision_state_queued
+                                } else {
+                                    R.string.vision_state_running
+                                },
+                            ),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = CoineProColors.TextPrimary,
+                        )
+                    }
+                    // Indeterminate on purpose. The server reports queued or running and never a
+                    // percentage, so a filling bar would be a number the client made up about how
+                    // close someone's analysis is to done.
+                    CoineProStreamingBar(Modifier.fillMaxWidth())
                     Text(
-                        "Waiting for the server. No fake percentage or locally invented completion state is shown.",
+                        text = stringResource(R.string.vision_waiting_note),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = CoineProColors.TextMuted,
                     )
-                    TextButton(onClick = onRefresh) { Text("Refresh status") }
+                    CoineProSecondaryButton(
+                        text = stringResource(R.string.vision_refresh),
+                        onClick = onRefresh,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
 
                 AiVisionJobStatus.DONE -> {
                     val result = job.result
                     if (result == null) {
-                        Text("No validated structured result was returned.", color = MaterialTheme.colorScheme.error)
+                        VisionNotice(stringResource(R.string.vision_no_result), CoineProColors.Sell)
                     } else {
                         VisionResultCard(result, onOpenSignal)
                     }
-                    TextButton(onClick = onDismiss) { Text("Analyze another image") }
+                    CoineProSecondaryButton(
+                        text = stringResource(R.string.vision_another),
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
 
                 AiVisionJobStatus.FAILED,
                 AiVisionJobStatus.EXPIRED,
                 -> {
-                    Text(
-                        job.errorMessage ?: if (job.status == AiVisionJobStatus.EXPIRED) {
-                            "This analysis expired."
-                        } else {
-                            "Vision analysis failed."
-                        },
-                        color = MaterialTheme.colorScheme.error,
+                    VisionNotice(
+                        // The server's reason when it gave one. "It failed" with no cause sends a
+                        // reader back to the camera to repeat the same unreadable screenshot.
+                        message = job.errorMessage ?: stringResource(
+                            if (job.status == AiVisionJobStatus.EXPIRED) {
+                                R.string.vision_expired
+                            } else {
+                                R.string.vision_failed
+                            },
+                        ),
+                        accent = CoineProColors.Sell,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = onRetry, enabled = canRetry) { Text("Try again") }
-                        TextButton(onClick = onDismiss) { Text("Choose another image") }
+                    Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+                        CoineProPrimaryButton(
+                            text = stringResource(R.string.vision_try_again),
+                            onClick = { if (canRetry) onRetry() },
+                            modifier = Modifier.weight(1f).alpha(if (canRetry) 1f else 0.45f),
+                        )
+                        CoineProSecondaryButton(
+                            text = stringResource(R.string.vision_another),
+                            onClick = onDismiss,
+                            modifier = Modifier.weight(1f),
+                        )
                     }
                 }
             }
@@ -240,58 +336,77 @@ private fun VisionResultCard(
     result: AiVisionResult,
     onOpenSignal: (Long) -> Unit,
 ) {
-    val assessmentText = when (result.assessment) {
-        AiVisionAssessment.ACTIONABLE -> "Actionable validated setup"
-        AiVisionAssessment.LOW_CONFIDENCE -> "Low confidence"
-        AiVisionAssessment.UNKNOWN -> "Unknown / unclear"
-        AiVisionAssessment.UNSUPPORTED -> "Unsupported image"
-    }
+    val actionable = result.assessment == AiVisionAssessment.ACTIONABLE
+    val assessmentColour = if (actionable) CoineProColors.Buy else CoineProColors.Warning
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(assessmentText, fontWeight = FontWeight.SemiBold)
-        result.symbol?.let { Text("$it${result.timeframe?.let { tf -> " · $tf" }.orEmpty()}") }
-        result.confidence?.let { Text("$it% confidence", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        result.trendBias?.let { LabeledText("Trend / bias", it) }
-        result.marketStructure?.let { LabeledText("Market structure", it) }
-        result.setup?.let { LabeledText("Setup", it) }
+    Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+        Text(
+            text = stringResource(result.assessment.labelRes()),
+            style = MaterialTheme.typography.titleMedium,
+            color = assessmentColour,
+        )
+        result.symbol?.let {
+            Text(
+                text = BidiText.isolateLtr(it + (result.timeframe?.let { tf -> " · $tf" }.orEmpty())),
+                style = MaterialTheme.typography.bodyMedium,
+                color = CoineProColors.TextSecondary,
+            )
+        }
+        result.confidence?.let {
+            Text(
+                // The percent sign belongs inside the isolate; outside it, bidi reordering renders
+                // "78%" as "%78".
+                text = stringResource(R.string.vision_confidence, BidiText.isolateLtr("$it%")),
+                style = MaterialTheme.typography.bodySmall,
+                color = CoineProColors.TextMuted,
+            )
+        }
+        result.trendBias?.let { LabeledText(stringResource(R.string.vision_trend), it) }
+        result.marketStructure?.let { LabeledText(stringResource(R.string.vision_structure), it) }
+        result.setup?.let { LabeledText(stringResource(R.string.vision_setup), it) }
 
-        if (result.assessment == AiVisionAssessment.ACTIONABLE) {
+        if (actionable) {
             val directionColor = when (result.direction) {
                 SignalDirection.BUY -> CoineProColors.Buy
                 SignalDirection.SELL -> CoineProColors.Sell
                 else -> CoineProColors.TextSecondary
             }
-            result.direction?.let { Text(it.name, color = directionColor, fontWeight = FontWeight.Bold) }
+            result.direction?.let {
+                Text(
+                    text = stringResource(it.labelRes()),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = directionColor,
+                )
+            }
             result.entryZone?.let {
-                FinancialRow("Entry low", it.low)
-                FinancialRow("Entry high", it.high)
+                FinancialRow(stringResource(R.string.vision_entry_low), it.low)
+                FinancialRow(stringResource(R.string.vision_entry_high), it.high)
             }
-            result.stopLoss?.let { FinancialRow("Stop loss", it, CoineProColors.Sell) }
+            result.stopLoss?.let { FinancialRow(stringResource(R.string.vision_stop), it, CoineProColors.Sell) }
             result.targets.forEach { target ->
-                FinancialRow("TP${target.level}", target.price, CoineProColors.Buy)
+                FinancialRow(stringResource(R.string.vision_target, target.level), target.price, CoineProColors.Buy)
             }
-            result.risk?.let { LabeledText("Risk", it.replaceFirstChar(Char::uppercase)) }
-            result.reasoning?.let { LabeledText("Reasoning", it) }
+            result.risk?.let { LabeledText(stringResource(R.string.vision_risk), it) }
+            result.reasoning?.let { LabeledText(stringResource(R.string.vision_reasoning), it) }
             val signalId = result.signalId
             if (result.canOpenValidatedSignal && signalId != null) {
-                Button(
+                CoineProPrimaryButton(
+                    text = stringResource(R.string.vision_open_signal),
                     onClick = { onOpenSignal(signalId) },
                     modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Open validated Signal")
-                }
+                )
             }
             Text(
-                "AI Vision never executes directly. Any eligible action continues through the persisted Signal flow.",
+                text = stringResource(R.string.vision_no_direct_execution),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = CoineProColors.TextMuted,
             )
         } else {
-            result.reasoning?.let { LabeledText("Why no trade setup", it) }
+            result.reasoning?.let { LabeledText(stringResource(R.string.vision_why_no_setup), it) }
             Text(
-                "No execution action is available for low-confidence, unknown, or unsupported analysis.",
+                text = stringResource(R.string.vision_no_action),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = CoineProColors.TextMuted,
             )
         }
     }
@@ -299,8 +414,26 @@ private fun VisionResultCard(
 
 @Composable
 private fun LabeledText(label: String, value: String) {
-    Text(label, style = MaterialTheme.typography.labelLarge)
-    Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = CoineProColors.TextMuted)
+        // Model prose, shown as written: this is the part a reader judges the setup by.
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = CoineProColors.TextSecondary)
+    }
+}
+
+@androidx.annotation.StringRes
+private fun AiVisionAssessment.labelRes(): Int = when (this) {
+    AiVisionAssessment.ACTIONABLE -> R.string.vision_assessment_actionable
+    AiVisionAssessment.LOW_CONFIDENCE -> R.string.vision_assessment_low_confidence
+    AiVisionAssessment.UNKNOWN -> R.string.vision_assessment_unknown
+    AiVisionAssessment.UNSUPPORTED -> R.string.vision_assessment_unsupported
+}
+
+@androidx.annotation.StringRes
+private fun SignalDirection.labelRes(): Int = when (this) {
+    SignalDirection.BUY -> R.string.vision_direction_buy
+    SignalDirection.SELL -> R.string.vision_direction_sell
+    SignalDirection.NEUTRAL -> R.string.vision_direction_neutral
 }
 
 @Composable
@@ -310,13 +443,13 @@ private fun FinancialRow(
     color: androidx.compose.ui.graphics.Color = CoineProColors.TextPrimary,
 ) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-            Text(
-                MarketNumberFormatter.price(value, 6).trimEnd('0').trimEnd('.'),
-                color = color,
-                fontWeight = FontWeight.Medium,
-            )
-        }
+        Text(label, style = MaterialTheme.typography.bodySmall, color = CoineProColors.TextMuted)
+        Text(
+            text = BidiText.isolateLtr(
+                BidiText.strip(MarketNumberFormatter.price(value, 6)).trimEnd('0').trimEnd('.'),
+            ),
+            style = CoineProTextStyles.RowFigure,
+            color = color,
+        )
     }
 }

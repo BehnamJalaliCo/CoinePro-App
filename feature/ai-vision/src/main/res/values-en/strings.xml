@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vision_title">Chart analysis</string>
+    <string name="vision_subtitle">Capture or choose a chart screenshot. The image is re-encoded before upload so EXIF metadata is removed. Progress and results come only from server job state.</string>
+    <string name="vision_source_title">Chart image</string>
+    <string name="vision_permission_note">Camera permission is requested only if you choose Camera. Gallery selection needs no camera permission, so denying it does not block analysis.</string>
+    <string name="vision_camera">Camera</string>
+    <string name="vision_gallery">Gallery</string>
+    <string name="vision_preparing">Preparing image…</string>
+    <string name="vision_prepared">JPEG ready · %1$s</string>
+    <string name="vision_prepared_note">Orientation normalised, resized if needed, and original metadata removed before upload.</string>
+    <string name="vision_uploading">Uploading…</string>
+    <string name="vision_analyze">Analyse chart</string>
+    <string name="vision_prepare_failed">The selected image could not be prepared.</string>
+    <string name="vision_camera_denied">Camera permission was denied. Gallery selection still works without it.</string>
+    <string name="vision_analysis_title">Image analysis</string>
+    <string name="vision_state_queued">Queued</string>
+    <string name="vision_state_running">Analysing</string>
+    <string name="vision_waiting_note">Waiting for the server. No invented percentage or locally assumed completion is shown.</string>
+    <string name="vision_refresh">Check status again</string>
+    <string name="vision_no_result">No validated structured result was returned.</string>
+    <string name="vision_another">Analyse another image</string>
+    <string name="vision_try_again">Try again</string>
+    <string name="vision_expired">This analysis expired.</string>
+    <string name="vision_failed">Image analysis failed.</string>
+    <string name="vision_assessment_actionable">Actionable validated setup</string>
+    <string name="vision_assessment_low_confidence">Low confidence</string>
+    <string name="vision_assessment_unknown">Unknown</string>
+    <string name="vision_assessment_unsupported">Unsupported image</string>
+    <string name="vision_confidence">%1$s confidence</string>
+    <string name="vision_trend">Trend</string>
+    <string name="vision_structure">Market structure</string>
+    <string name="vision_setup">Setup</string>
+    <string name="vision_direction_buy">Buy</string>
+    <string name="vision_direction_sell">Sell</string>
+    <string name="vision_direction_neutral">Neutral</string>
+    <string name="vision_entry_low">Entry low</string>
+    <string name="vision_entry_high">Entry high</string>
+    <string name="vision_stop">Stop loss</string>
+    <string name="vision_target">Target %1$d</string>
+    <string name="vision_risk">Risk</string>
+    <string name="vision_reasoning">Reasoning</string>
+    <string name="vision_why_no_setup">Why there is no setup</string>
+    <string name="vision_open_signal">Open validated signal</string>
+    <string name="vision_no_direct_execution">Chart analysis never executes directly. Any action continues through the persisted signal flow.</string>
+    <string name="vision_no_action">No execution action is available for low-confidence, unknown or unsupported analysis.</string>
+</resources>

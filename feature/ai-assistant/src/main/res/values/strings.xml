@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default language: Persian. -->
+<resources>
+    <string name="assistant_title">دستیار هوشمند</string>
+    <string name="assistant_new_chat">گفت‌وگوی نو</string>
+    <string name="assistant_subtitle">گفت‌وگو با تکیه بر داده‌های تأییدشدهٔ سرور. متن دستیار هرگز موقعیت، سیگنال یا وضعیت اجرا نمی‌سازد.</string>
+    <string name="assistant_empty_title">فقط منابع تأییدشده</string>
+    <string name="assistant_empty_body">دربارهٔ سیگنال‌های فعال، شرایط بازار، اخبار و تقویم، ریسک یا ابزارها بپرس. زیر هر پاسخ، کارت‌های منبع دقیقاً نشان می‌دهند سرور چه داده‌ای داده است.</string>
+    <string name="assistant_thinking">در حال فکر کردن…</string>
+    <string name="assistant_input_label">از دستیار بپرس</string>
+    <string name="assistant_send">ارسال</string>
+    <string name="assistant_role_you">تو</string>
+    <string name="assistant_role_assistant">دستیار</string>
+    <string name="assistant_no_context">هیچ منبع ساختاریافته‌ای به این پاسخ پیوست نشده است.</string>
+    <string name="assistant_context_used">منابعِ استفاده‌شده</string>
+    <string name="assistant_open_signal">باز کردن سیگنال</string>
+    <string name="assistant_history_title">تاریخچهٔ گفت‌وگو</string>
+    <string name="assistant_history_ephemeral">سرور این گفت‌وگو را گذرا اعلام کرده است. آپ اندروید هم متن را روی دستگاه ذخیره نمی‌کند.</string>
+    <string name="assistant_history_account">تاریخچهٔ حساب روی سرور فعال است. آپ اندروید همچنان متن را روی دستگاه ذخیره نمی‌کند.</string>
+    <string name="assistant_history_account_days">تاریخچهٔ حساب روی سرور فعال است (نگهداری %1$s روز). آپ اندروید همچنان متن را روی دستگاه ذخیره نمی‌کند.</string>
+    <string name="assistant_history_unknown">آپ تاریخچه را روی دستگاه ذخیره نمی‌کند. سیاست نگهداری سرور هنوز گزارش نشده است.</string>
+    <string name="assistant_kind_signal">سیگنال فعال</string>
+    <string name="assistant_kind_market">بازار</string>
+    <string name="assistant_kind_news">خبر</string>
+    <string name="assistant_kind_calendar">تقویم</string>
+    <string name="assistant_kind_risk">ریسک</string>
+    <string name="assistant_kind_tool">ابزار</string>
+    <string name="assistant_fresh">تازه</string>
+    <string name="assistant_stale">کهنه</string>
+    <string name="assistant_freshness_unknown">تازگی نامشخص</string>
+</resources>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default language: Persian. -->
+<resources>
+    <string name="vision_title">تحلیل چارت</string>
+    <string name="vision_subtitle">اسکرین‌شات چارت را بگیر یا انتخاب کن. تصویر پیش از ارسال دوباره کدگذاری می‌شود تا اطلاعات EXIF حذف شود. پیشرفت و نتیجه فقط از وضعیت کارِ سرور می‌آید.</string>
+    <string name="vision_source_title">تصویر چارت</string>
+    <string name="vision_permission_note">دسترسی دوربین فقط وقتی خواسته می‌شود که «دوربین» را بزنی. انتخاب از گالری به دسترسی دوربین نیاز ندارد، پس رد کردن آن جلوی تحلیل را نمی‌گیرد.</string>
+    <string name="vision_camera">دوربین</string>
+    <string name="vision_gallery">گالری</string>
+    <string name="vision_preparing">در حال آماده‌سازی تصویر…</string>
+    <string name="vision_prepared">JPEG آماده شد · %1$s</string>
+    <string name="vision_prepared_note">جهت تصویر اصلاح شد، در صورت نیاز کوچک شد، و فراداده‌های اصلی پیش از ارسال حذف شدند.</string>
+    <string name="vision_uploading">در حال ارسال…</string>
+    <string name="vision_analyze">تحلیل چارت</string>
+    <string name="vision_prepare_failed">آماده‌سازی تصویر انتخاب‌شده ممکن نشد.</string>
+    <string name="vision_camera_denied">دسترسی دوربین رد شد. انتخاب از گالری بدون این دسترسی همچنان کار می‌کند.</string>
+    <string name="vision_analysis_title">تحلیل تصویر</string>
+    <string name="vision_state_queued">در صف</string>
+    <string name="vision_state_running">در حال تحلیل</string>
+    <string name="vision_waiting_note">منتظر سرور. هیچ درصد ساختگی یا حالتِ «تمام‌شده»‌ای که آپ از خودش درآورده باشد نشان داده نمی‌شود.</string>
+    <string name="vision_refresh">بررسی دوبارهٔ وضعیت</string>
+    <string name="vision_no_result">نتیجهٔ ساختاریافتهٔ معتبری برنگشت.</string>
+    <string name="vision_another">تصویر دیگری تحلیل کن</string>
+    <string name="vision_try_again">تلاش دوباره</string>
+    <string name="vision_expired">این تحلیل منقضی شد.</string>
+    <string name="vision_failed">تحلیل تصویر ناموفق بود.</string>
+    <string name="vision_assessment_actionable">ستاپ معتبر و قابل اجرا</string>
+    <string name="vision_assessment_low_confidence">اطمینان پایین</string>
+    <string name="vision_assessment_unknown">نامشخص</string>
+    <string name="vision_assessment_unsupported">تصویر پشتیبانی‌نشده</string>
+    <string name="vision_confidence">اطمینان %1$s</string>
+    <string name="vision_trend">روند</string>
+    <string name="vision_structure">ساختار بازار</string>
+    <string name="vision_setup">ستاپ</string>
+    <string name="vision_direction_buy">خرید</string>
+    <string name="vision_direction_sell">فروش</string>
+    <string name="vision_direction_neutral">خنثی</string>
+    <string name="vision_entry_low">کف ورود</string>
+    <string name="vision_entry_high">سقف ورود</string>
+    <string name="vision_stop">حد ضرر</string>
+    <string name="vision_target">هدف %1$d</string>
+    <string name="vision_risk">ریسک</string>
+    <string name="vision_reasoning">استدلال</string>
+    <string name="vision_why_no_setup">چرا ستاپی نیست</string>
+    <string name="vision_open_signal">باز کردن سیگنالِ معتبر</string>
+    <string name="vision_no_direct_execution">تحلیل تصویر هرگز مستقیم اجرا نمی‌کند. هر اقدامی از مسیر سیگنالِ ثبت‌شده ادامه پیدا می‌کند.</string>
+    <string name="vision_no_action">برای تحلیلِ کم‌اطمینان، نامشخص یا پشتیبانی‌نشده هیچ اقدام اجرایی در دسترس نیست.</string>
+</resources>
