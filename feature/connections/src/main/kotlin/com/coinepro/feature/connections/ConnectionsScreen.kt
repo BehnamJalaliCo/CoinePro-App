@@ -22,7 +22,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -338,10 +337,9 @@ private fun Caution(message: String, accent: Color = CoineProColors.Warning) {
 private fun Submit(text: String, enabled: Boolean, onClick: () -> Unit) {
     CoineProPrimaryButton(
         text = text,
-        onClick = { if (enabled) onClick() },
-        modifier = Modifier
-            .fillMaxWidth()
-            .alpha(if (enabled) 1f else 0.45f),
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        enabled = enabled,
     )
 }
 

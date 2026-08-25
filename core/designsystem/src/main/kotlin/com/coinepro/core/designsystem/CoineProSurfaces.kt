@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -57,16 +58,22 @@ fun CoineProCard(
  *
  * Dark label on gold rather than light: the brand gold is a mid-tone, and near-white on it measures
  * 2.0:1. Against the stage colour the same pairing measures 9.0:1.
+ *
+ * When [enabled] is false the button dims rather than disappearing. A form's action that vanishes
+ * while the form is incomplete leaves a reader looking for what they did wrong; one that is visibly
+ * present but dim says the same thing without the search.
  */
 @Composable
 fun CoineProPrimaryButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.alpha(if (enabled) 1f else DISABLED_ALPHA),
+        enabled = enabled,
         shape = CoineProPillShape,
         color = CoineProColors.Gold,
     ) {
@@ -157,3 +164,6 @@ fun CoineProAgentOrb(
         )
     }
 }
+
+/** Dim enough to read as unavailable, light enough that the label stays legible. */
+private const val DISABLED_ALPHA = 0.45f

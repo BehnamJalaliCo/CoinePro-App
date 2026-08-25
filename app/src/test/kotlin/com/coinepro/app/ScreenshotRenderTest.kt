@@ -22,6 +22,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aisignal.AiSignalController
+import com.coinepro.core.auth.AuthFailure
+import com.coinepro.core.auth.AuthFailureReason
+import com.coinepro.core.auth.AuthMethods
+import com.coinepro.core.auth.EmailAuthNotice
+import com.coinepro.core.auth.EmailAuthStep
+import com.coinepro.core.auth.EmailAuthUiState
 import com.coinepro.core.auth.LoginConfigState
 import com.coinepro.core.auth.SessionState
 import com.coinepro.core.designsystem.CoineProTheme
@@ -34,6 +40,7 @@ import com.coinepro.core.signals.SignalController
 import com.coinepro.feature.activity.ActivityScreen
 import com.coinepro.feature.ai.AiStudioScreen
 import com.coinepro.feature.auth.AuthScreen
+import com.coinepro.feature.auth.EmailAuthScreen
 import com.coinepro.feature.calendar.EconomicCalendarScreen
 import com.coinepro.feature.connections.ConnectionsScreen
 import com.coinepro.feature.home.HomeScreen
@@ -277,6 +284,82 @@ class ScreenshotRenderTest {
             onRequestNotificationPermission = {},
             onOpenNotificationSettings = {},
             onSendFeedback = {},
+        )
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun emailSignIn() = capture("20-auth-email-sign-in") {
+        EmailAuthScreen(
+            state = EmailAuthUiState(
+                methods = AuthMethods(emailPassword = true, google = true),
+                methodsKnown = true,
+            ),
+            onSignIn = { _, _ -> },
+            onRegister = { _, _, _ -> },
+            onVerify = {},
+            onResend = {},
+            onRequestReset = {},
+            onResetPassword = { _, _ -> },
+            onGoTo = {},
+            onRetryMethods = {},
+            onGoogleSignIn = {},
+        )
+    }
+
+    /**
+     * The state the whole flow turns on: a code was sent, the server's cooldown is running, and a
+     * previous attempt was refused in the server's own words. If any of the three is drawn wrongly
+     * the reader is either told something untrue or left tapping a button that cannot work.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun emailVerify() = capture("21-auth-email-verify") {
+        EmailAuthScreen(
+            state = EmailAuthUiState(
+                methods = AuthMethods(emailPassword = true),
+                methodsKnown = true,
+                step = EmailAuthStep.VERIFY_CODE,
+                pendingEmail = "reader@example.com",
+                notice = EmailAuthNotice.CODE_SENT,
+                resendAvailableIn = 42,
+            ),
+            onSignIn = { _, _ -> },
+            onRegister = { _, _, _ -> },
+            onVerify = {},
+            onResend = {},
+            onRequestReset = {},
+            onResetPassword = { _, _ -> },
+            onGoTo = {},
+            onRetryMethods = {},
+            onGoogleSignIn = {},
+        )
+    }
+
+    /** Google disabled server-side: the button is absent, not present and doomed. */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun emailSignInWithoutGoogle() = capture("22-auth-email-no-google-light", darkTheme = false) {
+        EmailAuthScreen(
+            state = EmailAuthUiState(
+                methods = AuthMethods(emailPassword = true, google = false),
+                methodsKnown = true,
+                failure = AuthFailure(
+                    reason = AuthFailureReason.RATE_LIMITED,
+                    message = "بیش از حد تلاش شد. کمی بعد دوباره امتحان کنید.",
+                    retryAfterSeconds = 90,
+                ),
+                retryAvailableIn = 90,
+            ),
+            onSignIn = { _, _ -> },
+            onRegister = { _, _, _ -> },
+            onVerify = {},
+            onResend = {},
+            onRequestReset = {},
+            onResetPassword = { _, _ -> },
+            onGoTo = {},
+            onRetryMethods = {},
+            onGoogleSignIn = {},
         )
     }
 
