@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -14,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -32,6 +35,7 @@ import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionState
 import com.coinepro.core.datastore.ActivePlatformStore
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.marketdata.MarketDataController
@@ -247,8 +251,12 @@ private fun MainShell(
                     title = { Text(stringResource(subTitleRes)) },
                     navigationIcon = {
                         if (isSubScreen) {
-                            TextButton(onClick = { navController.popBackStack() }) {
-                                Text(stringResource(R.string.action_back))
+                            IconButton(onClick = { navController.popBackStack() }) {
+                                Icon(
+                                    painter = painterResource(CoineProIcons.Back),
+                                    contentDescription = stringResource(R.string.action_back),
+                                    tint = CoineProColors.TextPrimary,
+                                )
                             }
                         }
                     },

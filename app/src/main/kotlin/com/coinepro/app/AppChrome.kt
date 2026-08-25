@@ -1,7 +1,9 @@
 package com.coinepro.app
 
 import androidx.compose.foundation.background
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -11,7 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProColors
@@ -43,9 +45,13 @@ fun CoineProBottomBar(
                 selected = currentRoute == destination.route,
                 onClick = { onSelect(destination) },
                 icon = {
+                    val selected = currentRoute == destination.route
                     Icon(
-                        imageVector = destination.icon(),
+                        // Weight marks the selection, not colour: the gold belongs to the screen's
+                        // primary action, and a gold tab would put a second one on every screen.
+                        painter = painterResource(destination.icon(selected)),
                         contentDescription = null,
+                        modifier = Modifier.size(26.dp),
                     )
                 },
                 label = {
@@ -70,10 +76,11 @@ fun CoineProBottomBar(
  * Kept here rather than on [AppDestination] so `core:navigation` stays a plain module with no
  * Compose dependency — it is consumed by code that has no UI at all.
  */
-private fun AppDestination.icon(): ImageVector = when (this) {
-    AppDestination.HOME -> CoineProIcons.Home
-    AppDestination.SIGNALS -> CoineProIcons.Signal
-    AppDestination.AI -> CoineProIcons.Ai
-    AppDestination.TOOLS -> CoineProIcons.Tools
-    AppDestination.ACTIVITY -> CoineProIcons.Activity
+@DrawableRes
+private fun AppDestination.icon(selected: Boolean): Int = when (this) {
+    AppDestination.HOME -> if (selected) CoineProIcons.Filled.Home else CoineProIcons.Home
+    AppDestination.SIGNALS -> if (selected) CoineProIcons.Filled.Signals else CoineProIcons.Signals
+    AppDestination.AI -> if (selected) CoineProIcons.Filled.Ai else CoineProIcons.Ai
+    AppDestination.TOOLS -> if (selected) CoineProIcons.Filled.Tools else CoineProIcons.Tools
+    AppDestination.ACTIVITY -> if (selected) CoineProIcons.Filled.Activity else CoineProIcons.Activity
 }

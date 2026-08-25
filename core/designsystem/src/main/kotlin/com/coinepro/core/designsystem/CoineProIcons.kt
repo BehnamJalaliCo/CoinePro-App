@@ -1,81 +1,90 @@
 package com.coinepro.core.designsystem
 
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathFillType
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.addPathNodes
-import androidx.compose.ui.unit.dp
+import androidx.annotation.DrawableRes
 
 /**
- * The product's own icon set.
+ * The product's UI icon set.
  *
- * Drawn here rather than pulled from an icon library for two reasons. Every glyph in this direction
- * is a plain geometric silhouette on a 24-unit grid with the same optical weight, which no
- * general-purpose set gives you for free — mixing a house from one family with a sparkle from
- * another shows immediately in a five-item bar. And a path is a few hundred bytes with no
- * dependency and no raster asset at five densities.
+ * Phosphor Icons (MIT), converted from `design/ui-icons/phosphor-regular` by
+ * `scripts/design/svg-to-vector.py`. Chosen rather than drawn here, and rather than lifted out of
+ * another product, for three reasons that all point the same way: it is the family the Pro-Chart
+ * web app already runs on, so the two products look related; every glyph in it is built on one
+ * grid with one stroke weight, which is exactly what a hand-assembled set fails to give you the
+ * moment a fifth icon lands beside four others; and it is a thousand-odd icons rather than the
+ * dozen anyone would draw, so a screen never has to settle for the nearest available shape.
  *
- * Each icon is a single filled path. Colour comes from the caller's tint, so the same vector serves
- * the selected and unselected states and both themes.
+ * The archive holds the whole family in both weights. Only the icons the app uses are converted,
+ * so the APK carries thirty-eight vectors rather than three thousand, and adding one is a command:
+ *
+ *     python3 scripts/design/svg-to-vector.py --ui --set phosphor-regular --prefix icon_ <name>
+ *
+ * Every icon here is a tintable black silhouette — Android has no `currentColor` — so **every call
+ * site must pass a tint**. An untinted one renders black on black.
+ *
+ * [Filled] is the same five navigation glyphs in Phosphor's fill weight, for the selected tab.
+ * Weight is what marks the selection; the accent gold stays on the screen's primary action.
  */
 object CoineProIcons {
 
-    /** A house. The doorway is punched out by [PathFillType.EvenOdd], not drawn as a second shape. */
-    val Home: ImageVector = icon(
-        name = "Home",
-        pathData = "M12 2.6 L21.6 10.4 V20.2 A0.8 0.8 0 0 1 20.8 21 H3.2 " +
-            "A0.8 0.8 0 0 1 2.4 20.2 V10.4 Z " +
-            "M9.9 21 V14.4 H14.1 V21 Z",
-        evenOdd = true,
-    )
+    /* ---------------------------------------------------------------- navigation */
+
+    @DrawableRes val Home = R.drawable.icon_house
+    @DrawableRes val Signals = R.drawable.icon_chart_line_up
+    @DrawableRes val Ai = R.drawable.icon_sparkle
+    @DrawableRes val Tools = R.drawable.icon_sliders_horizontal
+    @DrawableRes val Activity = R.drawable.icon_bell
+
+    /* ---------------------------------------------------------------- direction */
 
     /**
-     * A rhombus, outlined. This is the mark a trading setup carries throughout the product — entry,
-     * stop and target all sit on one axis, and the diamond is that axis seen end-on.
+     * Auto-mirrored: these point along the reading direction, so in a right-to-left layout a back
+     * arrow has to point right. Marked on the drawable rather than swapped at the call site, so no
+     * screen can forget.
      */
-    val Signal: ImageVector = icon(
-        name = "Signal",
-        pathData = "M12 2.4 L21.6 12 L12 21.6 L2.4 12 Z " +
-            "M12 7.2 L7.2 12 L12 16.8 L16.8 12 Z",
-        evenOdd = true,
-    )
+    @DrawableRes val Back = R.drawable.icon_arrow_left
+    @DrawableRes val ChevronBackward = R.drawable.icon_caret_left
+    @DrawableRes val ChevronForward = R.drawable.icon_caret_right
 
-    /** A four-point sparkle, for the assistant. */
-    val Ai: ImageVector = icon(
-        name = "Ai",
-        pathData = "M12 2 C12.7 7.6 16.4 11.3 22 12 C16.4 12.7 12.7 16.4 12 22 " +
-            "C11.3 16.4 7.6 12.7 2 12 C7.6 11.3 11.3 7.6 12 2 Z",
-    )
+    /* ---------------------------------------------------------------- actions */
 
-    /** Two sliders, for the calculators and converters. */
-    val Tools: ImageVector = icon(
-        name = "Tools",
-        pathData = "M2.6 6.2 H21.4 V7.8 H2.6 Z " +
-            "M16 7 m -3 0 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0 " +
-            "M2.6 16.2 H21.4 V17.8 H2.6 Z " +
-            "M8 17 m -3 0 a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0",
-    )
+    @DrawableRes val Refresh = R.drawable.icon_arrows_clockwise
+    @DrawableRes val Close = R.drawable.icon_x
+    @DrawableRes val Search = R.drawable.icon_magnifying_glass
+    @DrawableRes val Settings = R.drawable.icon_gear_six
+    @DrawableRes val Filter = R.drawable.icon_funnel
+    @DrawableRes val Add = R.drawable.icon_plus
+    @DrawableRes val Copy = R.drawable.icon_copy
+    @DrawableRes val SignOut = R.drawable.icon_sign_out
+    @DrawableRes val Camera = R.drawable.icon_camera
+    @DrawableRes val Image = R.drawable.icon_image
+    @DrawableRes val Link = R.drawable.icon_link_simple
 
-    /** A bell, for notifications, fills and history. */
-    val Activity: ImageVector = icon(
-        name = "Activity",
-        pathData = "M12 2.4 A5.4 5.4 0 0 0 6.6 7.8 V11 L4.7 14.6 V15.8 H19.3 V14.6 " +
-            "L17.4 11 V7.8 A5.4 5.4 0 0 0 12 2.4 Z " +
-            "M9.7 17.2 A2.3 2.3 0 0 0 14.3 17.2 Z",
-    )
+    /* ---------------------------------------------------------------- state */
 
-    private fun icon(name: String, pathData: String, evenOdd: Boolean = false): ImageVector =
-        ImageVector.Builder(
-            name = name,
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 24f,
-            viewportHeight = 24f,
-        ).addPath(
-            pathData = addPathNodes(pathData),
-            // White, so the caller's tint is what decides the colour in every state and theme.
-            fill = SolidColor(Color.White),
-            pathFillType = if (evenOdd) PathFillType.EvenOdd else PathFillType.NonZero,
-        ).build()
+    @DrawableRes val Warning = R.drawable.icon_warning
+    @DrawableRes val Success = R.drawable.icon_check_circle
+    @DrawableRes val Info = R.drawable.icon_info
+    @DrawableRes val Secure = R.drawable.icon_shield_check
+    @DrawableRes val Locked = R.drawable.icon_lock_key
+    @DrawableRes val Visible = R.drawable.icon_eye
+    @DrawableRes val Pending = R.drawable.icon_clock
+
+    /* ---------------------------------------------------------------- domain */
+
+    @DrawableRes val Wallet = R.drawable.icon_wallet
+    @DrawableRes val Calendar = R.drawable.icon_calendar_dots
+    @DrawableRes val News = R.drawable.icon_newspaper
+    @DrawableRes val TrendUp = R.drawable.icon_trend_up
+    @DrawableRes val TrendDown = R.drawable.icon_trend_down
+    @DrawableRes val Balance = R.drawable.icon_currency_circle_dollar
+    @DrawableRes val Assistant = R.drawable.icon_robot
+
+    /** The navigation glyphs in the fill weight, for the selected tab. */
+    object Filled {
+        @DrawableRes val Home = R.drawable.icon_filled_house
+        @DrawableRes val Signals = R.drawable.icon_filled_chart_line_up
+        @DrawableRes val Ai = R.drawable.icon_filled_sparkle
+        @DrawableRes val Tools = R.drawable.icon_filled_sliders_horizontal
+        @DrawableRes val Activity = R.drawable.icon_filled_bell
+    }
 }
