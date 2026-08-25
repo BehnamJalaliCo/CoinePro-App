@@ -46,10 +46,12 @@ class AccountController(
     private val briefingMutable = MutableStateFlow<BriefingState>(BriefingState.Idle)
     private val portfolioMutable = MutableStateFlow<PortfolioState>(PortfolioState.Idle)
     private val kycMutable = MutableStateFlow<KycStatus?>(null)
+    private val kycSubmissionMutable = MutableStateFlow<KycSubmission>(KycSubmission.Idle)
 
     val briefing: StateFlow<BriefingState> = briefingMutable.asStateFlow()
     val portfolio: StateFlow<PortfolioState> = portfolioMutable.asStateFlow()
     val kyc: StateFlow<KycStatus?> = kycMutable.asStateFlow()
+    val kycSubmission: StateFlow<KycSubmission> = kycSubmissionMutable.asStateFlow()
 
     /**
      * Refreshes both cards.
@@ -99,8 +101,44 @@ class AccountController(
         }
     }
 
-    // Submitting level-1 verification is deliberately not exposed here yet. The gateway can do it,
-    // but a submission needs somewhere to put a refusal — the server rejects an invalid national ID
-    // with wording the reader has to see — and that belongs with the screen that will collect the
-    // fields. A method that dropped those refusals silently would be worse than none.
+    /**
+     * Submits level-1 verification.
+     *
+     * The refusal is the point. A server rejects an invalid national id or an unreadable birth date
+     * in its own words, and those words are the only useful thing the reader gets — so they are
+     * carried into [kycSubmission] verbatim rather than replaced with a generic failure. The app has
+     * no better explanation for why a particular id was refused, and inventing one in the service's
+     * voice would be worse than saying nothing.
+     */
+    fun submitKycLevel1(fullName: String, nationalId: String, birthDate: String, phone: String) {
+        if (kycSubmissionMutable.value is KycSubmission.Sending) return
+        kycSubmissionMutable.value = KycSubmission.Sending
+        scope.launch {
+            when (val result = gateway.submitKycLevel1(fullName, nationalId, birthDate, phone)) {
+                is AppResult.Success -> {
+                    kycMutable.value = result.value
+                    kycSubmissionMutable.value = KycSubmission.Accepted
+                }
+                is AppResult.Failure ->
+                    kycSubmissionMutable.value = KycSubmission.Refused(result.message)
+            }
+        }
+    }
+
+    /** Clears a finished submission so the screen can be reopened without its last outcome. */
+    fun clearKycSubmission() {
+        kycSubmissionMutable.value = KycSubmission.Idle
+    }
+}
+
+/** Where a level-1 submission has got to. */
+sealed interface KycSubmission {
+    data object Idle : KycSubmission
+    data object Sending : KycSubmission
+
+    /** The server took it. What happens next is in [AccountController.kyc], not here. */
+    data object Accepted : KycSubmission
+
+    /** [message] is the server's own wording, shown as written; null when it gave none. */
+    data class Refused(val message: String?) : KycSubmission
 }

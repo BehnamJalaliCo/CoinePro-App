@@ -83,6 +83,7 @@ fun HomeScreen(
     onSendChart: () -> Unit = {},
     onOpenMarket: () -> Unit = {},
     onOpenSignal: (Long) -> Unit = {},
+    onOpenVerification: (() -> Unit)? = null,
     onOpenSafety: (() -> Unit)? = null,
     onLogout: (() -> Unit)? = null,
     platforms: List<MarketPlatform> = emptyList(),
@@ -102,7 +103,7 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
     ) {
         if (displayName != null) {
-            item { GreetingRow(displayName, onOpenSafety, onLogout) }
+            item { GreetingRow(displayName, onOpenVerification, onOpenSafety, onLogout) }
         }
 
         // Only when the build actually serves both. A one-option switch is a label pretending to be
@@ -177,11 +178,12 @@ fun HomeScreen(
 @Composable
 private fun GreetingRow(
     displayName: String,
+    onOpenVerification: (() -> Unit)?,
     onOpenSafety: (() -> Unit)?,
     onLogout: (() -> Unit)?,
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
-    val hasMenu = onOpenSafety != null || onLogout != null
+    val hasMenu = onOpenVerification != null || onOpenSafety != null || onLogout != null
     // Resolved out here: the semantics block is not a composable scope.
     val accountMenuLabel = stringResource(R.string.home_menu_account)
 
@@ -217,6 +219,12 @@ private fun GreetingRow(
                     onDismissRequest = { menuOpen = false },
                     containerColor = CoineProColors.SurfaceElevated,
                 ) {
+                    onOpenVerification?.let { action ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.home_menu_verification)) },
+                            onClick = { menuOpen = false; action() },
+                        )
+                    }
                     onOpenSafety?.let { action ->
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.home_menu_safety)) },

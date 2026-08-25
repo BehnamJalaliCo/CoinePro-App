@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="kyc_state_not_started">Identity not verified</string>
+    <string name="kyc_state_pending">Under review</string>
+    <string name="kyc_state_approved">Identity verified</string>
+    <string name="kyc_state_rejected">Verification refused</string>
+
+    <string name="kyc_body_not_started">Enter these four details to open the rest of your account.</string>
+    <string name="kyc_body_pending">Your details were received and are being reviewed. Nothing more is needed for now.</string>
+    <string name="kyc_body_approved">Your account is verified.</string>
+    <string name="kyc_body_rejected">The details were not accepted. Read the note below and send them again.</string>
+
+    <string name="kyc_full_name">Full name</string>
+    <string name="kyc_national_id">National ID</string>
+    <string name="kyc_birth_date">Date of birth</string>
+    <string name="kyc_phone">Mobile number</string>
+
+    <string name="kyc_submit">Send for review</string>
+    <string name="kyc_sending">Sending…</string>
+    <string name="kyc_refused_unexplained">The server did not accept these details and gave no reason.</string>
+    <string name="kyc_required_fields">Fields the server requires: %1$s</string>
+</resources>

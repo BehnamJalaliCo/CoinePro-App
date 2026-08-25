@@ -49,6 +49,7 @@
     <string name="home_note_stream_recovering">جریان لحظه‌ای در حال بازیابی است. آخرین تصویر شبکه باقی می‌ماند.</string>
 
     <string name="home_menu_account">حساب کاربری</string>
+    <string name="home_menu_verification">احراز هویت</string>
     <string name="home_menu_safety">ایمنی</string>
     <string name="home_menu_logout">خروج از حساب</string>
 

@@ -114,6 +114,24 @@ class EmailAuthController(
         gateway.signInWithGoogle(idToken).authenticated()
     }
 
+    /**
+     * Google refused before the server was ever asked.
+     *
+     * Reported here so the one screen shows one failure area rather than two. [message] is Google's
+     * own wording where it gave one and is shown as written; where it gave none the screen falls
+     * back to its own copy, because inventing a reason on Google's behalf would be a guess in
+     * somebody else's voice.
+     */
+    fun reportGoogleFailure(message: String?) {
+        stateMutable.update {
+            it.copy(
+                busy = false,
+                notice = null,
+                failure = AuthFailure(AuthFailureReason.UNREACHABLE, message),
+            )
+        }
+    }
+
     fun startRegistration(email: String, password: String, fullName: String) = run {
         val address = email.trim()
         when (val result = gateway.startRegistration(address, password, fullName.trim())) {

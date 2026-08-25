@@ -302,6 +302,7 @@ feature:signals
 feature:signal-detail
 feature:connections
 feature:execution
+feature:kyc
 feature:ai
 feature:ai-vision
 feature:ai-assistant

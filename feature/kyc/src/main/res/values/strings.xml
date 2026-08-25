@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="kyc_state_not_started">احراز هویت انجام نشده</string>
+    <string name="kyc_state_pending">در انتظار بررسی</string>
+    <string name="kyc_state_approved">احراز هویت تأیید شد</string>
+    <string name="kyc_state_rejected">احراز هویت رد شد</string>
+
+    <string name="kyc_body_not_started">برای باز شدن امکانات حساب، این چهار مورد را وارد کنید.</string>
+    <string name="kyc_body_pending">اطلاعات شما ثبت شد و در حال بررسی است. تا اعلام نتیجه کاری لازم نیست.</string>
+    <string name="kyc_body_approved">حساب شما احراز شده است.</string>
+    <string name="kyc_body_rejected">اطلاعات ارسالی پذیرفته نشد. توضیح زیر را بخوانید و دوباره بفرستید.</string>
+
+    <string name="kyc_full_name">نام و نام خانوادگی</string>
+    <string name="kyc_national_id">کد ملی</string>
+    <string name="kyc_birth_date">تاریخ تولد</string>
+    <string name="kyc_phone">شمارهٔ موبایل</string>
+
+    <string name="kyc_submit">ارسال برای بررسی</string>
+    <string name="kyc_sending">در حال ارسال…</string>
+    <string name="kyc_refused_unexplained">سرور این اطلاعات را نپذیرفت و دلیلی اعلام نکرد.</string>
+    <string name="kyc_required_fields">موارد لازم از نظر سرور: %1$s</string>
+</resources>

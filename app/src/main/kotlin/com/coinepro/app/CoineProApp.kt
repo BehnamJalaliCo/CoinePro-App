@@ -27,6 +27,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.coinepro.app.auth.GoogleSignInClient
+import com.coinepro.app.auth.GoogleSignInOutcome
 import com.coinepro.app.notifications.PushCoordinator
 import com.coinepro.app.sync.BackgroundSyncScheduler
 import com.coinepro.core.aiassistant.AiAssistantController
@@ -85,6 +87,7 @@ import com.coinepro.feature.home.HomeBriefing
 import com.coinepro.feature.home.HomePortfolio
 import com.coinepro.feature.home.HomeSubscription
 import com.coinepro.feature.home.HomeScreen
+import com.coinepro.feature.kyc.KycScreen
 import com.coinepro.feature.home.toHomeBriefing
 import com.coinepro.feature.home.toHomePortfolio
 import com.coinepro.feature.home.toHomeSubscription
@@ -103,6 +106,7 @@ private const val NEWS_ROUTE = "market/news"
 private const val CALENDAR_ROUTE = "market/calendar"
 private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
 private const val ADMIN_ROUTE = "diagnostics"
+private const val KYC_ROUTE = "account/verify"
 private fun signalDetailRoute(signalId: Long) = "signal/$signalId"
 private fun executionRoute(signalId: Long) = "execution/$signalId"
 
@@ -228,6 +232,7 @@ fun CoineProApp(
     val venueState by executionController.connections.collectAsStateWithLifecycle()
     val sessionStates by platformSessions.states.collectAsStateWithLifecycle(initialValue = emptyMap())
     val context = LocalContext.current
+    val googleSignIn = remember(context) { GoogleSignInClient(context) }
 
     // Assembled here rather than inside the diagnostics module: every controller the hub reaches is
     // already in this scope, and giving core:diagnostics a dependency on all of them would make the
@@ -322,6 +327,7 @@ fun CoineProApp(
                 aiVisionController = aiVisionController,
                 aiAssistantController = aiAssistantController,
                 marketIntelController = marketIntelController,
+                accountController = accountController,
                 launchSignalId = launchSignalId,
                 launchActivity = launchActivity,
                 notificationPermissionState = deliverablePermissionState,
@@ -373,10 +379,25 @@ fun CoineProApp(
                     },
                     onGoTo = emailAuthController::goTo,
                     onRetryMethods = emailAuthController::loadMethods,
-                    // Google sign-in needs the Play Services client, which is not wired yet. The
-                    // button only appears when the server reports the method, so this stays
-                    // unreachable rather than dead until that arrives.
-                    onGoogleSignIn = {},
+                    onGoogleSignIn = {
+                        // The audience is the server's own client id, not one compiled in: the two
+                        // deployments have separate Google configuration, and a token minted for
+                        // one carries an `aud` the other refuses.
+                        val audience = emailAuthState.methods.googleClientId
+                        if (!audience.isNullOrBlank()) {
+                            scope.launch {
+                                when (val outcome = googleSignIn.requestIdToken(audience)) {
+                                    is GoogleSignInOutcome.Token ->
+                                        emailAuthController.signInWithGoogle(outcome.idToken)
+                                    // Closing the sheet is a decision, not a failure. Saying
+                                    // anything here would report a problem where there was none.
+                                    GoogleSignInOutcome.Cancelled -> Unit
+                                    is GoogleSignInOutcome.Failed ->
+                                        emailAuthController.reportGoogleFailure(outcome.message)
+                                }
+                            }
+                        }
+                    },
                     onTelegramPayload = { payload ->
                         scope.launch { sessionController.completeTelegramLogin(payload) }
                     },
@@ -408,6 +429,7 @@ private fun MainShell(
     aiVisionController: AiVisionController,
     aiAssistantController: AiAssistantController,
     marketIntelController: MarketIntelController,
+    accountController: AccountController,
     adminController: AdminController,
     hub: ControlHub,
     hubActions: HubActions,
@@ -443,6 +465,7 @@ private fun MainShell(
         CONNECTIONS_ROUTE,
         AI_VISION_ROUTE,
         AI_ASSISTANT_ROUTE,
+        KYC_ROUTE,
         NEWS_ROUTE,
         CALENDAR_ROUTE,
         LAUNCH_READINESS_ROUTE,
@@ -453,6 +476,7 @@ private fun MainShell(
         SIGNAL_DETAIL_PATTERN -> R.string.screen_signal_detail
         EXECUTION_PATTERN -> R.string.screen_execution
         CONNECTIONS_ROUTE -> R.string.screen_connections
+        KYC_ROUTE -> R.string.screen_kyc
         AI_VISION_ROUTE -> R.string.screen_ai_vision
         AI_ASSISTANT_ROUTE -> R.string.screen_ai_assistant
         NEWS_ROUTE -> R.string.screen_news
@@ -559,6 +583,7 @@ private fun MainShell(
                     onOpenMarket = { navController.navigate(AppDestination.SIGNALS.route) },
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
                     // Home carries no top bar, so the account actions hang off the avatar.
+                    onOpenVerification = { navController.navigate(KYC_ROUTE) },
                     onOpenSafety = { navController.navigate(LAUNCH_READINESS_ROUTE) },
                     onLogout = onLogout,
                     platforms = platforms,
@@ -604,6 +629,9 @@ private fun MainShell(
                     executionController = executionController,
                     onOpenConnections = { navController.navigate(CONNECTIONS_ROUTE) },
                 )
+            }
+            composable(KYC_ROUTE) {
+                KycScreen(controller = accountController)
             }
             composable(CONNECTIONS_ROUTE) {
                 ConnectionsScreen(controller = executionController, platform = activePlatform)

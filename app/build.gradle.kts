@@ -210,6 +210,9 @@ android {
 
 dependencies {
     implementation(project(":core:auth"))
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.google.id)
     implementation(project(":core:security"))
     implementation(project(":core:network"))
     implementation(project(":core:database"))
@@ -233,6 +236,7 @@ dependencies {
     implementation(project(":feature:signal-detail"))
     implementation(project(":feature:connections"))
     implementation(project(":feature:execution"))
+    implementation(project(":feature:kyc"))
     implementation(project(":feature:ai"))
     implementation(project(":feature:ai-vision"))
     implementation(project(":feature:ai-assistant"))
