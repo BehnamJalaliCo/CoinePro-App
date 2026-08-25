@@ -1,5 +1,7 @@
 package com.coinepro.feature.tools
 
+import androidx.annotation.StringRes
+
 import com.coinepro.core.common.BidiText
 import kotlin.math.abs
 import kotlin.math.pow
@@ -8,7 +10,14 @@ enum class TradeDirection { LONG, SHORT }
 
 sealed interface ToolCalculation<out T> {
     data class Success<T>(val value: T) : ToolCalculation<T>
-    data class Invalid(val field: String, val message: String) : ToolCalculation<Nothing>
+    /**
+     * A refusal, carrying resource ids rather than resolved text.
+     *
+     * The calculators are plain functions the UI calls from ordinary code, and resolving a string
+     * needs a composable scope. Holding ids lets the maths stay callable from anywhere and the
+     * wording stay translated.
+     */
+    data class Invalid(@StringRes val fieldRes: Int, @StringRes val messageRes: Int) : ToolCalculation<Nothing>
 }
 
 data class RiskResult(val riskAmount: Double, val capitalAfterRisk: Double)
@@ -22,39 +31,48 @@ data class DrawdownResult(val endingBalance: Double, val drawdownAmount: Double,
 
 object TraderToolsCalculator {
     fun risk(capital: Double, riskPercent: Double): ToolCalculation<RiskResult> {
-        invalidPositive("Capital", capital)?.let { return it }
-        invalidPercent("Risk %", riskPercent, allowHundred = true)?.let { return it }
+        invalidPositive(R.string.tools_field_capital, capital)?.let { return it }
+        invalidPercent(R.string.tools_field_risk_percent, riskPercent, allowHundred = true)?.let { return it }
         val risk = capital * (riskPercent / 100.0)
         return finiteResult(RiskResult(risk, capital - risk))
     }
 
     fun positionSize(riskAmount: Double, stopLossPips: Double, pipValuePerLot: Double): ToolCalculation<PositionSizeResult> {
-        invalidPositive("Risk amount", riskAmount)?.let { return it }
-        invalidPositive("Stop-loss pips", stopLossPips)?.let { return it }
-        invalidPositive("Pip value / lot", pipValuePerLot)?.let { return it }
+        invalidPositive(R.string.tools_field_risk_amount, riskAmount)?.let { return it }
+        invalidPositive(R.string.tools_field_stop_pips, stopLossPips)?.let { return it }
+        invalidPositive(R.string.tools_field_pip_value, pipValuePerLot)?.let { return it }
         val lots = riskAmount / (stopLossPips * pipValuePerLot)
         return finiteResult(PositionSizeResult(lots, riskAmount))
     }
 
     fun riskReward(entry: Double, stop: Double, takeProfit: Double, direction: TradeDirection): ToolCalculation<RiskRewardResult> {
-        invalidPositive("Entry", entry)?.let { return it }
-        invalidPositive("Stop", stop)?.let { return it }
-        invalidPositive("Take profit", takeProfit)?.let { return it }
+        invalidPositive(R.string.tools_field_entry, entry)?.let { return it }
+        invalidPositive(R.string.tools_field_stop, stop)?.let { return it }
+        invalidPositive(R.string.tools_field_target, takeProfit)?.let { return it }
         val geometryValid = when (direction) {
             TradeDirection.LONG -> stop < entry && takeProfit > entry
             TradeDirection.SHORT -> stop > entry && takeProfit < entry
         }
-        if (!geometryValid) return ToolCalculation.Invalid("Trade levels", "SL and TP must be on the valid side of entry for ${direction.name.lowercase()}.")
+        if (!geometryValid) {
+            return ToolCalculation.Invalid(
+                R.string.tools_field_levels,
+                if (direction == TradeDirection.LONG) {
+                    R.string.tools_rule_geometry_long
+                } else {
+                    R.string.tools_rule_geometry_short
+                },
+            )
+        }
         val risk = abs(entry - stop)
         val reward = abs(takeProfit - entry)
         return finiteResult(RiskRewardResult(risk, reward, reward / risk))
     }
 
     fun profit(entry: Double, exit: Double, lots: Double, contractSize: Double, direction: TradeDirection): ToolCalculation<ProfitResult> {
-        invalidPositive("Entry", entry)?.let { return it }
-        invalidPositive("Exit", exit)?.let { return it }
-        invalidPositive("Lots", lots)?.let { return it }
-        invalidPositive("Contract size", contractSize)?.let { return it }
+        invalidPositive(R.string.tools_field_entry, entry)?.let { return it }
+        invalidPositive(R.string.tools_field_exit, exit)?.let { return it }
+        invalidPositive(R.string.tools_field_lots, lots)?.let { return it }
+        invalidPositive(R.string.tools_field_contract, contractSize)?.let { return it }
         val signedMove = when (direction) {
             TradeDirection.LONG -> exit - entry
             TradeDirection.SHORT -> entry - exit
@@ -64,11 +82,11 @@ object TraderToolsCalculator {
     }
 
     fun pips(entry: Double, exit: Double, lotSize: Double, pipSize: Double, pipValuePerLot: Double, direction: TradeDirection): ToolCalculation<PipResult> {
-        invalidPositive("Entry", entry)?.let { return it }
-        invalidPositive("Exit", exit)?.let { return it }
-        invalidPositive("Lots", lotSize)?.let { return it }
-        invalidPositive("Pip size", pipSize)?.let { return it }
-        invalidPositive("Pip value / lot", pipValuePerLot)?.let { return it }
+        invalidPositive(R.string.tools_field_entry, entry)?.let { return it }
+        invalidPositive(R.string.tools_field_exit, exit)?.let { return it }
+        invalidPositive(R.string.tools_field_lots, lotSize)?.let { return it }
+        invalidPositive(R.string.tools_field_pip_size, pipSize)?.let { return it }
+        invalidPositive(R.string.tools_field_pip_value, pipValuePerLot)?.let { return it }
         val signedDistance = when (direction) {
             TradeDirection.LONG -> exit - entry
             TradeDirection.SHORT -> entry - exit
@@ -79,10 +97,10 @@ object TraderToolsCalculator {
     }
 
     fun cryptoPnl(entry: Double, exit: Double, quantity: Double, feePercentPerSide: Double, direction: TradeDirection): ToolCalculation<CryptoPnlResult> {
-        invalidPositive("Entry", entry)?.let { return it }
-        invalidPositive("Exit", exit)?.let { return it }
-        invalidPositive("Quantity", quantity)?.let { return it }
-        invalidPercent("Fee % / side", feePercentPerSide, allowZero = true, allowHundred = false)?.let { return it }
+        invalidPositive(R.string.tools_field_entry, entry)?.let { return it }
+        invalidPositive(R.string.tools_field_exit, exit)?.let { return it }
+        invalidPositive(R.string.tools_field_quantity, quantity)?.let { return it }
+        invalidPercent(R.string.tools_field_fee, feePercentPerSide, allowZero = true, allowHundred = false)?.let { return it }
         val gross = when (direction) {
             TradeDirection.LONG -> (exit - entry) * quantity
             TradeDirection.SHORT -> (entry - exit) * quantity
@@ -96,19 +114,19 @@ object TraderToolsCalculator {
     }
 
     fun compound(principal: Double, ratePercentPerPeriod: Double, periods: Int): ToolCalculation<CompoundResult> {
-        invalidPositive("Principal", principal)?.let { return it }
+        invalidPositive(R.string.tools_field_principal, principal)?.let { return it }
         if (!ratePercentPerPeriod.isFinite() || ratePercentPerPeriod <= -100.0) {
-            return ToolCalculation.Invalid("Rate %", "Rate must be finite and greater than -100%.")
+            return ToolCalculation.Invalid(R.string.tools_field_rate, R.string.tools_rule_rate)
         }
-        if (periods <= 0) return ToolCalculation.Invalid("Periods", "Periods must be greater than zero.")
+        if (periods <= 0) return ToolCalculation.Invalid(R.string.tools_field_periods, R.string.tools_rule_positive)
         val ending = principal * (1.0 + ratePercentPerPeriod / 100.0).pow(periods)
         return finiteResult(CompoundResult(ending, ending - principal))
     }
 
     fun drawdown(startingBalance: Double, lossPercentPerTrade: Double, consecutiveLosses: Int): ToolCalculation<DrawdownResult> {
-        invalidPositive("Starting balance", startingBalance)?.let { return it }
-        invalidPercent("Loss % / trade", lossPercentPerTrade, allowHundred = false)?.let { return it }
-        if (consecutiveLosses <= 0) return ToolCalculation.Invalid("Losses", "Consecutive losses must be greater than zero.")
+        invalidPositive(R.string.tools_field_start, startingBalance)?.let { return it }
+        invalidPercent(R.string.tools_field_loss_percent, lossPercentPerTrade, allowHundred = false)?.let { return it }
+        if (consecutiveLosses <= 0) return ToolCalculation.Invalid(R.string.tools_field_losses, R.string.tools_rule_positive)
         val ending = startingBalance * (1.0 - lossPercentPerTrade / 100.0).pow(consecutiveLosses)
         val amount = startingBalance - ending
         val drawdownPercent = (amount / startingBalance) * 100.0
@@ -116,20 +134,32 @@ object TraderToolsCalculator {
         return finiteResult(DrawdownResult(ending, amount, drawdownPercent, recoveryPercent))
     }
 
-    private fun invalidPositive(field: String, value: Double): ToolCalculation.Invalid? = when {
-        !value.isFinite() -> ToolCalculation.Invalid(field, "$field must be a finite number.")
-        value <= 0.0 -> ToolCalculation.Invalid(field, "$field must be greater than zero.")
+    // Every refusal names the field it is about, so the message string carries a %1$s and the
+    // field name is passed as a resource rather than baked into English prose.
+    private fun invalidPositive(@StringRes field: Int, value: Double): ToolCalculation.Invalid? = when {
+        !value.isFinite() -> ToolCalculation.Invalid(field, R.string.tools_rule_finite)
+        value <= 0.0 -> ToolCalculation.Invalid(field, R.string.tools_rule_positive)
         else -> null
     }
 
-    private fun invalidPercent(field: String, value: Double, allowZero: Boolean = false, allowHundred: Boolean = true): ToolCalculation.Invalid? {
-        if (!value.isFinite()) return ToolCalculation.Invalid(field, "$field must be a finite number.")
+    private fun invalidPercent(
+        @StringRes field: Int,
+        value: Double,
+        allowZero: Boolean = false,
+        allowHundred: Boolean = true,
+    ): ToolCalculation.Invalid? {
+        if (!value.isFinite()) return ToolCalculation.Invalid(field, R.string.tools_rule_finite)
         val minInvalid = if (allowZero) value < 0.0 else value <= 0.0
-        if (minInvalid) return ToolCalculation.Invalid(field, if (allowZero) "$field cannot be negative." else "$field must be greater than zero.")
+        if (minInvalid) {
+            return ToolCalculation.Invalid(
+                field,
+                if (allowZero) R.string.tools_rule_non_negative else R.string.tools_rule_positive,
+            )
+        }
         if (allowHundred) {
-            if (value > 100.0) return ToolCalculation.Invalid(field, "$field cannot exceed 100%.")
+            if (value > 100.0) return ToolCalculation.Invalid(field, R.string.tools_rule_max_hundred)
         } else if (value >= 100.0) {
-            return ToolCalculation.Invalid(field, "$field must be below 100%.")
+            return ToolCalculation.Invalid(field, R.string.tools_rule_under_hundred)
         }
         return null
     }
@@ -147,7 +177,7 @@ object TraderToolsCalculator {
             else -> emptyList()
         }
         return if (numbers.all(Double::isFinite)) ToolCalculation.Success(value)
-        else ToolCalculation.Invalid("Result", "Inputs produce a result outside the supported numeric range.")
+        else ToolCalculation.Invalid(R.string.tools_field_result, R.string.tools_rule_out_of_range)
     }
 }
 

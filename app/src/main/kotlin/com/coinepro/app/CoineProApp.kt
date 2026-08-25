@@ -388,6 +388,7 @@ private fun MainShell(
             }
             composable(AppDestination.TOOLS.route) {
                 ToolsScreen(
+                    platform = activePlatform,
                     onOpenConnections = { navController.navigate(CONNECTIONS_ROUTE) },
                     onOpenNews = { navController.navigate(NEWS_ROUTE) },
                     onOpenCalendar = { navController.navigate(CALENDAR_ROUTE) },

@@ -38,63 +38,65 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.annotation.StringRes
+import com.coinepro.core.common.BidiText
+import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProPrimaryButton
+import com.coinepro.core.designsystem.CoineProSecondaryButton
+import com.coinepro.core.model.MarketPlatform
+import com.coinepro.core.model.MarketType
 
+/**
+ * [market] is the platform a calculator only makes sense on. Pips and contract sizes are broker
+ * concepts, and a fee-per-side spot calculator is an exchange one; offering either to the wrong
+ * platform is offering arithmetic whose inputs that reader will never have. Null means it applies
+ * to both — risk, geometry and compounding are the same maths everywhere.
+ */
 private enum class ToolId(
-    val title: String,
-    val eyebrow: String,
-    val description: String,
-    val formula: String,
+    @StringRes val titleRes: Int,
+    @StringRes val eyebrowRes: Int,
+    @StringRes val descriptionRes: Int,
+    @StringRes val formulaRes: Int,
+    val market: MarketType? = null,
 ) {
-    RISK(
-        "Risk Calculator",
-        "RISK CONTROL",
-        "Convert account risk percentage into a fixed monetary risk budget.",
-        "Risk amount = Capital × Risk %",
-    ),
+    RISK(R.string.tool_risk_title, R.string.tool_risk_eyebrow, R.string.tool_risk_body, R.string.tool_risk_formula),
     POSITION_SIZE(
-        "Position Size / Lot",
-        "SIZING",
-        "Size a position from monetary risk, stop distance and pip value per standard lot.",
-        "Lots = Risk amount ÷ (SL pips × pip value / lot)",
+        R.string.tool_position_title,
+        R.string.tool_position_eyebrow,
+        R.string.tool_position_body,
+        R.string.tool_position_formula,
+        MarketType.FOREX,
     ),
-    RISK_REWARD(
-        "Risk / Reward",
-        "TRADE GEOMETRY",
-        "Validate entry, stop and target geometry before comparing reward with risk.",
-        "R:R = |TP − Entry| ÷ |Entry − SL|",
-    ),
-    DRAWDOWN(
-        "Drawdown Simulator",
-        "CAPITAL RESILIENCE",
-        "Model compounded consecutive losses and the recovery return required afterward.",
-        "Ending balance = Start × (1 − loss %) ^ losses",
-    ),
+    RISK_REWARD(R.string.tool_rr_title, R.string.tool_rr_eyebrow, R.string.tool_rr_body, R.string.tool_rr_formula),
+    DRAWDOWN(R.string.tool_drawdown_title, R.string.tool_drawdown_eyebrow, R.string.tool_drawdown_body, R.string.tool_drawdown_formula),
     PROFIT(
-        "Profit Calculator",
-        "FOREX / METALS",
-        "Estimate directional PnL from price movement, lots and the instrument contract size.",
-        "PnL = signed price move × lots × contract size",
+        R.string.tool_profit_title,
+        R.string.tool_profit_eyebrow,
+        R.string.tool_profit_body,
+        R.string.tool_profit_formula,
+        MarketType.FOREX,
     ),
     PIP(
-        "Pip Calculator",
-        "PRICE DISTANCE",
-        "Translate a price move into signed pips and monetary PnL with explicit pip assumptions.",
-        "Pips = signed price move ÷ pip size",
+        R.string.tool_pip_title,
+        R.string.tool_pip_eyebrow,
+        R.string.tool_pip_body,
+        R.string.tool_pip_formula,
+        MarketType.FOREX,
     ),
     CRYPTO_PNL(
-        "Crypto PnL",
-        "USDT PAIRS",
-        "Estimate spot-style directional PnL after entry and exit fees.",
-        "Net PnL = Gross PnL − entry fee − exit fee",
+        R.string.tool_crypto_title,
+        R.string.tool_crypto_eyebrow,
+        R.string.tool_crypto_body,
+        R.string.tool_crypto_formula,
+        MarketType.CRYPTO,
     ),
-    COMPOUND(
-        "Compound Calculator",
-        "GROWTH",
-        "Model deterministic period-by-period compounding without projecting future market returns.",
-        "Ending = Principal × (1 + rate %) ^ periods",
-    ),
+    COMPOUND(R.string.tool_compound_title, R.string.tool_compound_eyebrow, R.string.tool_compound_body, R.string.tool_compound_formula),
+    ;
+
+    fun servesMarket(marketType: MarketType): Boolean = market == null || market == marketType
 }
 
 private val riskTools = listOf(ToolId.RISK, ToolId.POSITION_SIZE, ToolId.RISK_REWARD, ToolId.DRAWDOWN)
@@ -102,6 +104,7 @@ private val pnlTools = listOf(ToolId.PROFIT, ToolId.PIP, ToolId.CRYPTO_PNL, Tool
 
 @Composable
 fun ToolsScreen(
+    platform: MarketPlatform = MarketPlatform.TRADEYAR,
     onOpenConnections: () -> Unit,
     onOpenNews: () -> Unit,
     onOpenCalendar: () -> Unit,
@@ -118,16 +121,16 @@ fun ToolsScreen(
                 onQuickOpen = { expanded = it },
             )
         }
-        item { SectionHeader("Risk & sizing", "Control exposure before any execution flow.") }
-        items(riskTools, key = ToolId::name) { tool ->
+        item { SectionHeader(stringResource(R.string.tools_risk_group), stringResource(R.string.tools_risk_group_body)) }
+        items(riskTools.filter { it.servesMarket(platform.marketType) }, key = ToolId::name) { tool ->
             CalculatorCard(
                 tool = tool,
                 expanded = expanded == tool,
                 onToggle = { expanded = if (expanded == tool) null else tool },
             )
         }
-        item { SectionHeader("PnL & growth", "Local deterministic math with explicit assumptions.") }
-        items(pnlTools, key = ToolId::name) { tool ->
+        item { SectionHeader(stringResource(R.string.tools_pnl_group), stringResource(R.string.tools_pnl_group_body)) }
+        items(pnlTools.filter { it.servesMarket(platform.marketType) }, key = ToolId::name) { tool ->
             CalculatorCard(
                 tool = tool,
                 expanded = expanded == tool,
@@ -151,19 +154,19 @@ private fun ToolkitHeader(expanded: ToolId?, onQuickOpen: (ToolId) -> Unit) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text("TRADER TOOLKIT", color = CoineProColors.Gold, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-        Text("Decision math, without execution risk.", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.tools_eyebrow), color = CoineProColors.Gold, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.tools_headline), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Text(
-            "Eight local calculators. Deterministic formulas. No order routing, no broker state and no invented market data.",
+            stringResource(R.string.tools_note),
             color = CoineProColors.TextSecondary,
             style = MaterialTheme.typography.bodyMedium,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricPill("8", "calculators", CoineProColors.Gold, Modifier.weight(1f))
             MetricPill("0", "orders sent", CoineProColors.Buy, Modifier.weight(1f))
-            MetricPill("LOCAL", "calculation", CoineProColors.Silver, Modifier.weight(1f))
+            MetricPill(stringResource(R.string.tools_local), "calculation", CoineProColors.Silver, Modifier.weight(1f))
         }
-        Text("Quick open", color = CoineProColors.TextMuted, style = MaterialTheme.typography.labelSmall)
+        Text(stringResource(R.string.tools_quick_open), color = CoineProColors.TextMuted, style = MaterialTheme.typography.labelSmall)
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -235,9 +238,21 @@ private fun CalculatorCard(tool: ToolId, expanded: Boolean, onToggle: () -> Unit
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(tool.eyebrow, color = CoineProColors.Gold, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    Text(tool.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(tool.description, color = CoineProColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        text = stringResource(tool.eyebrowRes),
+                        color = CoineProColors.Accent,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                    Text(
+                        text = stringResource(tool.titleRes),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = CoineProColors.TextPrimary,
+                    )
+                    Text(
+                        text = stringResource(tool.descriptionRes),
+                        color = CoineProColors.TextSecondary,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
                 Spacer(Modifier.width(12.dp))
                 Surface(
@@ -246,7 +261,7 @@ private fun CalculatorCard(tool: ToolId, expanded: Boolean, onToggle: () -> Unit
                     border = BorderStroke(1.dp, if (expanded) CoineProColors.Gold.copy(alpha = 0.45f) else CoineProColors.Border),
                 ) {
                     Text(
-                        if (expanded) "Close" else "Open",
+                        stringResource(if (expanded) R.string.tools_close else R.string.tools_open),
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                         color = if (expanded) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
                         style = MaterialTheme.typography.labelMedium,
@@ -257,7 +272,7 @@ private fun CalculatorCard(tool: ToolId, expanded: Boolean, onToggle: () -> Unit
             if (expanded) {
                 HorizontalDivider(color = CoineProColors.Border)
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    FormulaStrip(tool.formula)
+                    FormulaStrip(stringResource(tool.formulaRes))
                     when (tool) {
                         ToolId.RISK -> RiskCalculatorContent()
                         ToolId.POSITION_SIZE -> PositionSizeContent()
@@ -278,7 +293,7 @@ private fun CalculatorCard(tool: ToolId, expanded: Boolean, onToggle: () -> Unit
 private fun FormulaStrip(formula: String) {
     Surface(color = CoineProColors.Surface, shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, CoineProColors.Border)) {
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text("FORMULA", color = CoineProColors.TextMuted, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.tools_formula), color = CoineProColors.TextMuted, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
             FinancialText(formula, color = CoineProColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
         }
     }
@@ -345,7 +360,7 @@ private fun DrawdownContent() {
     IntegerField("Consecutive losses", losses, { losses = it }, "trades")
     val result: ToolCalculation<*>? = if (balance.isBlank() || lossPercent.isBlank() || losses.isBlank()) null else {
         val a = balance.toDoubleOrNull(); val b = lossPercent.toDoubleOrNull(); val c = losses.toIntOrNull()
-        if (a == null || b == null || c == null) ToolCalculation.Invalid("Input", "Use valid numeric values.") else TraderToolsCalculator.drawdown(a, b, c)
+        if (a == null || b == null || c == null) ToolCalculation.Invalid(R.string.tools_input, R.string.tools_invalid) else TraderToolsCalculator.drawdown(a, b, c)
     }
     CalculationResultPanel(result) { value ->
         val d = value as DrawdownResult
@@ -392,7 +407,7 @@ private fun PipContent() {
     NumericField("Pip value per lot", pipValue, { pipValue = it }, "currency / pip / lot")
     val result: ToolCalculation<*>? = if (listOf(entry, exit, lots, pipSize, pipValue).any(String::isBlank)) null else {
         val values = listOf(entry, exit, lots, pipSize, pipValue).map(String::toDoubleOrNull)
-        if (values.any { it == null }) ToolCalculation.Invalid("Input", "Use valid numeric values.")
+        if (values.any { it == null }) ToolCalculation.Invalid(R.string.tools_input, R.string.tools_invalid)
         else TraderToolsCalculator.pips(values[0]!!, values[1]!!, values[2]!!, values[3]!!, values[4]!!, direction)
     }
     CalculationResultPanel(result) { value ->
@@ -434,7 +449,7 @@ private fun CompoundContent() {
     IntegerField("Periods", periods, { periods = it }, "periods")
     val result: ToolCalculation<*>? = if (principal.isBlank() || rate.isBlank() || periods.isBlank()) null else {
         val a = principal.toDoubleOrNull(); val b = rate.toDoubleOrNull(); val c = periods.toIntOrNull()
-        if (a == null || b == null || c == null) ToolCalculation.Invalid("Input", "Use valid numeric values.") else TraderToolsCalculator.compound(a, b, c)
+        if (a == null || b == null || c == null) ToolCalculation.Invalid(R.string.tools_input, R.string.tools_invalid) else TraderToolsCalculator.compound(a, b, c)
     }
     CalculationResultPanel(result) { value ->
         val c = value as CompoundResult
@@ -487,10 +502,10 @@ private fun IntegerField(label: String, value: String, onValueChange: (String) -
 @Composable
 private fun DirectionSelector(direction: TradeDirection, onChange: (TradeDirection) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Direction", color = CoineProColors.TextMuted, style = MaterialTheme.typography.labelSmall)
+        Text(stringResource(R.string.tools_direction), color = CoineProColors.TextMuted, style = MaterialTheme.typography.labelSmall)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DirectionPill("Long", direction == TradeDirection.LONG, CoineProColors.Buy, Modifier.weight(1f)) { onChange(TradeDirection.LONG) }
-            DirectionPill("Short", direction == TradeDirection.SHORT, CoineProColors.Sell, Modifier.weight(1f)) { onChange(TradeDirection.SHORT) }
+            DirectionPill(stringResource(R.string.tools_long), direction == TradeDirection.LONG, CoineProColors.Buy, Modifier.weight(1f)) { onChange(TradeDirection.LONG) }
+            DirectionPill(stringResource(R.string.tools_short), direction == TradeDirection.SHORT, CoineProColors.Sell, Modifier.weight(1f)) { onChange(TradeDirection.SHORT) }
         }
     }
 }
@@ -518,12 +533,12 @@ private fun DirectionPill(label: String, selected: Boolean, accent: Color, modif
 private fun CalculationResultPanel(result: ToolCalculation<*>?, rows: (Any) -> List<Pair<String, String>>) {
     when (result) {
         null -> Surface(color = CoineProColors.Surface, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, CoineProColors.Border)) {
-            Text("Enter all inputs to calculate. Results update locally as values change.", modifier = Modifier.padding(14.dp), color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.tools_enter_all), modifier = Modifier.padding(14.dp), color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
         }
         is ToolCalculation.Invalid -> Surface(color = CoineProColors.Sell.copy(alpha = 0.08f), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, CoineProColors.Sell.copy(alpha = 0.35f))) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(result.field, color = CoineProColors.Sell, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                Text(result.message, color = CoineProColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(result.fieldRes), color = CoineProColors.Sell, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(result.messageRes, stringResource(result.fieldRes)), color = CoineProColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
         }
         is ToolCalculation.Success<*> -> ResultRows(rows(requireNotNull(result.value)))
@@ -534,7 +549,7 @@ private fun CalculationResultPanel(result: ToolCalculation<*>?, rows: (Any) -> L
 private fun ResultRows(rows: List<Pair<String, String>>) {
     Surface(color = CoineProColors.Gold.copy(alpha = 0.08f), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, CoineProColors.Gold.copy(alpha = 0.34f))) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("CALCULATED RESULT", color = CoineProColors.Gold, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.tools_result), color = CoineProColors.Gold, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
             rows.forEachIndexed { index, row ->
                 if (index > 0) HorizontalDivider(color = CoineProColors.Border.copy(alpha = 0.7f))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -559,13 +574,13 @@ private fun FinancialText(
 
 @Composable
 private fun Assumption(text: String) {
-    Text("Assumption · $text", color = CoineProColors.TextMuted, style = MaterialTheme.typography.labelSmall)
+    Text(stringResource(R.string.tools_assumption, text), color = CoineProColors.TextMuted, style = MaterialTheme.typography.labelSmall)
 }
 
 @Composable
 private fun ResetRow(onReset: () -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-        TextButton(onClick = onReset) { Text("Reset inputs") }
+        TextButton(onClick = onReset) { Text(stringResource(R.string.tools_reset)) }
     }
 }
 
@@ -575,11 +590,11 @@ private fun OperationalTools(onOpenNews: () -> Unit, onOpenCalendar: () -> Unit,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text("Connected tools", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text("Source-backed surfaces remain separate from local calculators.", color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
-        OperationalCard("Market Intelligence", "Structured news with source time, impact and sentiment.", "Open News", onOpenNews)
-        OperationalCard("Economic Calendar", "Actual, forecast and previous only when the provider supplies them.", "Open Calendar", onOpenCalendar)
-        OperationalCard("Connections", "Broker connections are used only by validated signal execution flows.", "MT5 & LBank", onOpenConnections)
+        Text(stringResource(R.string.tools_connected), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.tools_connected_body), color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
+        OperationalCard(stringResource(R.string.tools_news_title), stringResource(R.string.tools_news_body), stringResource(R.string.tools_news_open), onOpenNews)
+        OperationalCard(stringResource(R.string.tools_calendar_title), stringResource(R.string.tools_calendar_body), stringResource(R.string.tools_calendar_open), onOpenCalendar)
+        OperationalCard(stringResource(R.string.tools_connections_title), stringResource(R.string.tools_connections_body), "MT5 & LBank", onOpenConnections)
     }
 }
 
@@ -601,17 +616,17 @@ private fun OperationalCard(title: String, description: String, button: String, 
 private inline fun <T> calculateDoublePair(a: String, b: String, block: (Double, Double) -> ToolCalculation<T>): ToolCalculation<*>? {
     if (a.isBlank() || b.isBlank()) return null
     val av = a.toDoubleOrNull(); val bv = b.toDoubleOrNull()
-    return if (av == null || bv == null) ToolCalculation.Invalid("Input", "Use valid numeric values.") else block(av, bv)
+    return if (av == null || bv == null) ToolCalculation.Invalid(R.string.tools_input, R.string.tools_invalid) else block(av, bv)
 }
 
 private inline fun <T> calculateTriple(a: String, b: String, c: String, block: (Double, Double, Double) -> ToolCalculation<T>): ToolCalculation<*>? {
     if (a.isBlank() || b.isBlank() || c.isBlank()) return null
     val av = a.toDoubleOrNull(); val bv = b.toDoubleOrNull(); val cv = c.toDoubleOrNull()
-    return if (av == null || bv == null || cv == null) ToolCalculation.Invalid("Input", "Use valid numeric values.") else block(av, bv, cv)
+    return if (av == null || bv == null || cv == null) ToolCalculation.Invalid(R.string.tools_input, R.string.tools_invalid) else block(av, bv, cv)
 }
 
 private inline fun <T> calculateQuad(a: String, b: String, c: String, d: String, block: (Double, Double, Double, Double) -> ToolCalculation<T>): ToolCalculation<*>? {
     if (a.isBlank() || b.isBlank() || c.isBlank() || d.isBlank()) return null
     val av = a.toDoubleOrNull(); val bv = b.toDoubleOrNull(); val cv = c.toDoubleOrNull(); val dv = d.toDoubleOrNull()
-    return if (av == null || bv == null || cv == null || dv == null) ToolCalculation.Invalid("Input", "Use valid numeric values.") else block(av, bv, cv, dv)
+    return if (av == null || bv == null || cv == null || dv == null) ToolCalculation.Invalid(R.string.tools_input, R.string.tools_invalid) else block(av, bv, cv, dv)
 }

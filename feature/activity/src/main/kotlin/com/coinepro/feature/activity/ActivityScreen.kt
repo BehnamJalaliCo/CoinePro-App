@@ -1,6 +1,8 @@
 package com.coinepro.feature.activity
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -40,11 +42,16 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.common.MarketNumberFormatter
+import com.coinepro.core.common.BidiText
+import com.coinepro.core.designsystem.CoineProCard
+import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.ExecutionStatus
 import com.coinepro.core.execution.SignalExecution
@@ -122,23 +129,23 @@ fun ActivityScreen(
         }
 
         if (historyState.loading && historyState.items.isEmpty()) {
-            item { LoadingPanel("Loading closed signal history from the server…") }
+            item { LoadingPanel(stringResource(R.string.activity_history_loading)) }
         } else if (historyState.membershipRequired) {
             item {
                 StatePanel(
-                    title = "Signal history requires access",
-                    body = "The server did not grant access to closed signals. Performance metrics are not estimated locally.",
-                    action = "Check again",
+                    title = stringResource(R.string.activity_history_locked_title),
+                    body = stringResource(R.string.activity_history_locked_body),
+                    action = stringResource(R.string.activity_check_again),
                     onAction = signalController::refreshHistory,
                 )
             }
         } else if (historyState.error != null && historyState.items.isEmpty()) {
             item {
                 StatePanel(
-                    title = "Signal history unavailable",
+                    title = stringResource(R.string.activity_history_unavailable_title),
                     body = historyState.error?.resolve()
-                        ?: "The server did not return signal history.",
-                    action = "Retry",
+                        ?: stringResource(R.string.activity_history_unavailable_body),
+                    action = stringResource(R.string.activity_retry),
                     onAction = signalController::refreshHistory,
                 )
             }
@@ -149,8 +156,8 @@ fun ActivityScreen(
             historyState.error?.let { error ->
                 item {
                     NoticePanel(
-                        title = "Refresh failed",
-                        body = "$error Last loaded records remain visible; they are not presented as refreshed data.",
+                        title = stringResource(R.string.activity_refresh_failed),
+                        body = stringResource(R.string.activity_refresh_failed_body, error),
                         accent = CoineProColors.Warning,
                     )
                 }
@@ -180,16 +187,16 @@ fun ActivityScreen(
             if (historyState.items.isEmpty()) {
                 item {
                     StatePanel(
-                        title = "No closed signals yet",
-                        body = "The server returned no closed signal records. Rates remain missing, not zero.",
+                        title = stringResource(R.string.activity_history_empty_title),
+                        body = stringResource(R.string.activity_history_empty_body),
                     )
                 }
             } else if (filteredHistory.isEmpty()) {
                 item {
                     StatePanel(
-                        title = "No records match these filters",
-                        body = "Clear or change the filters. Existing performance totals are not reused for an empty filtered view.",
-                        action = "Clear filters",
+                        title = stringResource(R.string.activity_filtered_empty_title),
+                        body = stringResource(R.string.activity_filtered_empty_body),
+                        action = stringResource(R.string.activity_clear_filters),
                         onAction = {
                             marketFilter = null
                             resultFilter = PerformanceResultFilter.ALL
@@ -198,42 +205,42 @@ fun ActivityScreen(
                     )
                 }
             } else {
-                item { SectionHeader("Signal history", "Closed signals with explicit result evidence. Tap a record to inspect the persisted signal.") }
+                item { SectionHeader(stringResource(R.string.activity_history_title), stringResource(R.string.activity_history_subtitle)) }
                 items(filteredHistory, key = { "signal-${it.id}" }) { signal ->
                     SignalHistoryCard(signal = signal, onClick = { onOpenSignal(signal.id) })
                 }
             }
         }
 
-        item { SectionHeader("Execution ledger", "Server-reported execution lifecycle. No P&L or broker state is inferred.") }
+        item { SectionHeader(stringResource(R.string.activity_ledger_title), stringResource(R.string.activity_ledger_subtitle)) }
         if (executionState.loading && executionState.items.isEmpty()) {
-            item { LoadingPanel("Loading executed signals…") }
+            item { LoadingPanel(stringResource(R.string.activity_executions_loading)) }
         } else if (executionState.error != null && executionState.items.isEmpty()) {
             item {
                 StatePanel(
-                    title = "Execution history unavailable",
-                    body = executionState.error ?: "Execution history is unavailable.",
-                    action = "Retry",
+                    title = stringResource(R.string.activity_executions_unavailable_title),
+                    body = executionState.error ?: stringResource(R.string.activity_executions_unavailable_body),
+                    action = stringResource(R.string.activity_retry),
                     onAction = executionController::refreshExecutions,
                 )
             }
         } else if (executionState.items.isEmpty()) {
             item {
                 StatePanel(
-                    title = "No executed signals",
-                    body = "No execution records were returned by the server.",
+                    title = stringResource(R.string.activity_executions_empty_title),
+                    body = stringResource(R.string.activity_executions_empty_body),
                 )
             }
         } else {
             executionState.error?.let { error ->
-                item { NoticePanel("Execution refresh failed", error, CoineProColors.Warning) }
+                item { NoticePanel(stringResource(R.string.activity_execution_refresh_failed), error, CoineProColors.Warning) }
             }
             items(executionState.items, key = { "execution-${it.id}" }) { execution ->
                 ExecutionHistoryCard(execution, onOpenSignal)
             }
         }
 
-        item { SectionHeader("Alerts", "Price alerts and push preferences remain source-backed operational controls.") }
+        item { SectionHeader(stringResource(R.string.activity_alerts_title), stringResource(R.string.activity_alerts_subtitle)) }
         item {
             PreferenceCard(
                 value = notificationState.preferences,
@@ -272,9 +279,9 @@ fun ActivityScreen(
             }
         }
 
-        item { SectionHeader("Notifications", "Signal and account events received from the notification service.") }
+        item { SectionHeader(stringResource(R.string.activity_notifications_title), stringResource(R.string.activity_notifications_subtitle)) }
         if (notificationState.notifications.isEmpty() && !notificationState.loading) {
-            item { StatePanel("No notifications yet", "No notification records are available.") }
+            item { StatePanel(stringResource(R.string.activity_notifications_empty_title), stringResource(R.string.activity_notifications_empty_body)) }
         } else {
             items(notificationState.notifications) { notification ->
                 PremiumCard(
@@ -290,7 +297,7 @@ fun ActivityScreen(
             }
         }
         notificationState.lastError?.let { error ->
-            item { NoticePanel("Notification error", error, CoineProColors.Warning) }
+            item { NoticePanel(stringResource(R.string.activity_notification_error), error, CoineProColors.Warning) }
         }
         item { Spacer(Modifier.height(24.dp)) }
     }
@@ -310,25 +317,25 @@ private fun ActivityHeader(
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("ACTIVITY / PERFORMANCE", color = CoineProColors.Gold, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                Text("Your trading record, from server evidence.", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.activity_eyebrow), color = CoineProColors.Gold, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.activity_headline), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             }
-            TextButton(onClick = onRefresh, enabled = !refreshing) { Text(if (refreshing) "Refreshing" else "Refresh") }
+            TextButton(onClick = onRefresh, enabled = !refreshing) { Text(stringResource(if (refreshing) R.string.activity_refreshing else R.string.activity_refresh)) }
         }
         Text(
-            "Closed signals, execution lifecycle and performance evidence stay separate. Missing data stays missing.",
+            stringResource(R.string.activity_note),
             color = CoineProColors.TextSecondary,
             style = MaterialTheme.typography.bodyMedium,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             HeaderMetric(
-                value = if (expectedSignals > loadedSignals) "$loadedSignals / $expectedSignals" else loadedSignals.toString(),
-                label = "signals loaded",
+                value = if (expectedSignals > loadedSignals) BidiText.isolateLtr("$loadedSignals / $expectedSignals") else loadedSignals.toString(),
+                label = stringResource(R.string.activity_signals_loaded),
                 accent = CoineProColors.Gold,
                 modifier = Modifier.weight(1f),
             )
             HeaderMetric(executionCount.toString(), "executions", CoineProColors.Silver, Modifier.weight(1f))
-            HeaderMetric("SERVER", "truth source", CoineProColors.Buy, Modifier.weight(1f))
+            HeaderMetric(stringResource(R.string.activity_server), stringResource(R.string.activity_truth_source), CoineProColors.Buy, Modifier.weight(1f))
         }
     }
 }
@@ -358,63 +365,63 @@ private fun PerformanceSection(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        SectionHeaderContent("Performance evidence", if (coverageComplete) "Complete loaded history." else "Metrics use loaded evidence only; coverage is incomplete.")
+        SectionHeaderContent(stringResource(R.string.activity_performance_title), if (coverageComplete) stringResource(R.string.activity_coverage_complete) else stringResource(R.string.activity_coverage_partial))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PerformanceMetric(
-                label = "Signals",
+                label = stringResource(R.string.activity_metric_signals),
                 value = if (hasRecords) summary.totalLoaded.toString() else "—",
-                detail = if (hasRecords) "filtered records" else "no records",
+                detail = if (hasRecords) stringResource(R.string.activity_metric_filtered) else stringResource(R.string.activity_metric_no_records),
                 accent = CoineProColors.Gold,
                 modifier = Modifier.weight(1f),
             )
             PerformanceMetric(
-                label = "Win rate",
+                label = stringResource(R.string.activity_metric_win_rate),
                 value = percentOrMissing(summary.winRate.percent),
                 detail = denominatorLabel(summary.winRate.denominator),
                 accent = CoineProColors.Buy,
                 modifier = Modifier.weight(1f),
             )
             PerformanceMetric(
-                label = "Losses",
+                label = stringResource(R.string.activity_metric_losses),
                 value = if (hasRecords) summary.losses.toString() else "—",
-                detail = if (hasRecords) "explicit P&L" else "no records",
+                detail = if (hasRecords) stringResource(R.string.activity_metric_explicit_pnl) else stringResource(R.string.activity_metric_no_records),
                 accent = CoineProColors.Sell,
                 modifier = Modifier.weight(1f),
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PerformanceMetric(
-                label = "TP hit",
+                label = stringResource(R.string.activity_metric_tp_hit),
                 value = percentOrMissing(summary.tpHitRate.percent),
                 detail = denominatorLabel(summary.tpHitRate.denominator),
                 accent = CoineProColors.Buy,
                 modifier = Modifier.weight(1f),
             )
             PerformanceMetric(
-                label = "SL rate",
+                label = stringResource(R.string.activity_metric_sl_rate),
                 value = percentOrMissing(summary.stopLossRate.percent),
                 detail = denominatorLabel(summary.stopLossRate.denominator),
                 accent = CoineProColors.Sell,
                 modifier = Modifier.weight(1f),
             )
             PerformanceMetric(
-                label = "Avg R:R",
-                value = summary.averagePlannedRiskReward?.let { "1:${MarketNumberFormatter.price(it, 2)}" } ?: "—",
+                label = stringResource(R.string.activity_metric_avg_rr),
+                value = summary.averagePlannedRiskReward?.let { BidiText.isolateLtr("1:" + BidiText.strip(MarketNumberFormatter.price(it, 2))) } ?: "—",
                 detail = denominatorLabel(summary.riskRewardDenominator),
                 accent = CoineProColors.Gold,
                 modifier = Modifier.weight(1f),
             )
         }
         PremiumCard {
-            Text("Evidence coverage", style = MaterialTheme.typography.labelMedium, color = CoineProColors.TextMuted)
+            Text(stringResource(R.string.activity_evidence_coverage), style = MaterialTheme.typography.labelMedium, color = CoineProColors.TextMuted)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                EvidenceCount("Wins", summary.wins, CoineProColors.Buy)
-                EvidenceCount("Losses", summary.losses, CoineProColors.Sell)
-                EvidenceCount("Breakeven", summary.breakeven, CoineProColors.Silver)
-                EvidenceCount("PnL missing", summary.unknownPnl, CoineProColors.Warning)
+                EvidenceCount(stringResource(R.string.activity_wins), summary.wins, CoineProColors.Buy)
+                EvidenceCount(stringResource(R.string.activity_metric_losses), summary.losses, CoineProColors.Sell)
+                EvidenceCount(stringResource(R.string.activity_breakeven), summary.breakeven, CoineProColors.Silver)
+                EvidenceCount(stringResource(R.string.activity_pnl_missing), summary.unknownPnl, CoineProColors.Warning)
             }
             Text(
-                "Zero is shown only when explicit evidence produces zero. A missing denominator is shown as —.",
+                stringResource(R.string.activity_zero_note),
                 color = CoineProColors.TextMuted,
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -449,8 +456,12 @@ private fun EvidenceCount(label: String, value: Int, color: Color) {
 @Composable
 private fun CoverageNotice(state: SignalHistoryState) {
     NoticePanel(
-        title = "Partial signal history",
-        body = "Loaded ${state.items.size} of ${state.expectedTotal} server-reported closed signals. Performance metrics use only loaded evidence and are not presented as full-history statistics.",
+        title = stringResource(R.string.activity_partial_title),
+        body = stringResource(
+            R.string.activity_partial_body,
+            BidiText.isolateLtr("${state.items.size}"),
+            BidiText.isolateLtr("${state.expectedTotal}"),
+        ),
         accent = CoineProColors.Warning,
     )
 }
@@ -468,24 +479,24 @@ private fun HistoryFilters(
     PremiumCard {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
-                Text("Filters", fontWeight = FontWeight.Bold)
-                Text("Market, instrument and explicit result", color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.activity_filters), fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.activity_filters_subtitle), color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
             }
-            TextButton(onClick = onReset) { Text("Reset") }
+            TextButton(onClick = onReset) { Text(stringResource(R.string.activity_reset)) }
         }
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            FilterPill("All markets", market == null) { onMarket(null) }
-            FilterPill("Forex", market == MarketType.FOREX) { onMarket(MarketType.FOREX) }
-            FilterPill("Crypto", market == MarketType.CRYPTO) { onMarket(MarketType.CRYPTO) }
+            FilterPill(stringResource(R.string.activity_all_markets), market == null) { onMarket(null) }
+            FilterPill(stringResource(R.string.activity_market_forex), market == MarketType.FOREX) { onMarket(MarketType.FOREX) }
+            FilterPill(stringResource(R.string.activity_market_crypto), market == MarketType.CRYPTO) { onMarket(MarketType.CRYPTO) }
         }
         OutlinedTextField(
             value = symbol,
             onValueChange = onSymbol,
-            label = { Text("Instrument") },
-            placeholder = { Text("XAUUSD / BTCUSDT") },
+            label = { Text(stringResource(R.string.activity_instrument)) },
+            placeholder = { Text(BidiText.isolateLtr("BTCUSDT")) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -550,14 +561,14 @@ private fun SignalHistoryCard(signal: TradingSignal, onClick: () -> Unit) {
         }
         HorizontalDivider(color = CoineProColors.Border)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            HistoryValue("P&L", finitePnl(signal), resultColor)
-            HistoryValue("Entry", finitePrice(signal.entry, signal.symbol))
+            HistoryValue(stringResource(R.string.activity_pnl), finitePnl(signal), resultColor)
+            HistoryValue(stringResource(R.string.activity_entry), finitePrice(signal.entry, signal.symbol))
             HistoryValue("SL", finitePrice(signal.stopLoss, signal.symbol), CoineProColors.Sell)
-            HistoryValue("R:R", signal.riskRewardTp1?.takeIf { it.isFinite() && it > 0.0 }?.let { "1:${MarketNumberFormatter.price(it, 2)}" } ?: "—")
+            HistoryValue(stringResource(R.string.activity_rr), signal.riskRewardTp1?.takeIf { it.isFinite() && it > 0.0 }?.let { BidiText.isolateLtr("1:" + BidiText.strip(MarketNumberFormatter.price(it, 2))) } ?: "—")
         }
         val meta = listOfNotNull(
-            signal.closeReason?.takeIf { it.isNotBlank() }?.let { "Close: $it" },
-            signal.result?.source?.takeIf { it.isNotBlank() }?.let { "Result source: $it" },
+            signal.closeReason?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.activity_close, it) },
+            signal.result?.source?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.activity_result_source, it) },
         )
         if (meta.isNotEmpty()) {
             Text(meta.joinToString(" · "), color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
@@ -585,19 +596,24 @@ private fun ExecutionHistoryCard(execution: SignalExecution, onOpenSignal: (Long
     PremiumCard(modifier = Modifier.clickable { onOpenSignal(execution.signalId) }) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
-                Text(execution.signal?.symbol ?: "Signal #${execution.signalId}", fontWeight = FontWeight.Bold)
-                Text("${execution.venue.name} · ${execution.side.uppercase()}", color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
+                Text(execution.signal?.symbol ?: stringResource(R.string.activity_signal_number, BidiText.isolateLtr("${execution.signalId}")), fontWeight = FontWeight.Bold)
+                // Venue and side are wire identifiers, not prose: shown as the server names them.
+                Text(
+                    text = BidiText.isolateLtr("${execution.venue.name} · ${execution.side.uppercase()}"),
+                    color = CoineProColors.TextMuted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
             Text(execution.status.name.replace('_', ' '), color = statusColor, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
         }
         HorizontalDivider(color = CoineProColors.Border)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            HistoryValue("Quantity", execution.quantity)
-            HistoryValue("Created", formatTimestamp(execution.createdAt))
-            HistoryValue("Closed", formatTimestamp(execution.closedAt))
+            HistoryValue(stringResource(R.string.activity_quantity), execution.quantity)
+            HistoryValue(stringResource(R.string.activity_created), formatTimestamp(execution.createdAt))
+            HistoryValue(stringResource(R.string.activity_closed), formatTimestamp(execution.closedAt))
         }
         execution.providerOrderId?.takeIf { it.isNotBlank() }?.let {
-            Text("Provider order: $it", color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.activity_provider_order, BidiText.isolateLtr(it)), color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
         }
         execution.errorMessage?.takeIf { it.isNotBlank() }?.let {
             Text(it, color = CoineProColors.Sell, style = MaterialTheme.typography.bodySmall)
@@ -623,13 +639,10 @@ private fun SectionHeaderContent(title: String, subtitle: String) {
 
 @Composable
 private fun PremiumCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).then(modifier),
-        colors = CardDefaults.cardColors(containerColor = CoineProColors.SurfaceElevated),
-        border = BorderStroke(1.dp, CoineProColors.Border),
-        shape = RoundedCornerShape(20.dp),
+    CoineProCard(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = CoineProSpacing.Gutter).then(modifier),
     ) {
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
             content()
         }
     }
@@ -651,35 +664,37 @@ private fun StatePanel(title: String, body: String, action: String? = null, onAc
         Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
         Text(body, color = CoineProColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
         if (action != null && onAction != null) {
-            Button(onClick = onAction) { Text(action) }
+            CoineProPrimaryButton(text = action, onClick = onAction)
         }
     }
 }
 
 @Composable
 private fun NoticePanel(title: String, body: String, accent: Color) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        colors = CardDefaults.cardColors(containerColor = accent.copy(alpha = 0.08f)),
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.55f)),
-        shape = RoundedCornerShape(18.dp),
+    // Outlined because it is a warning. Everything else on this screen is separated by the gap.
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = CoineProSpacing.Gutter)
+            .background(accent.copy(alpha = 0.08f), MaterialTheme.shapes.large)
+            .border(1.dp, accent.copy(alpha = 0.55f), MaterialTheme.shapes.large)
+            .padding(CoineProSpacing.Two),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, color = accent, fontWeight = FontWeight.Bold)
-            Text(body, color = CoineProColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
-        }
+        Text(title, color = accent, style = MaterialTheme.typography.titleSmall)
+        Text(body, color = CoineProColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
     }
 }
 
 @Composable
 private fun PreferenceCard(value: PushPreferences, onChange: (PushPreferences) -> Unit) {
     PremiumCard {
-        Text("Push preferences", fontWeight = FontWeight.Bold)
-        PreferenceRow("New signals", value.newSignals) { onChange(value.copy(newSignals = it)) }
+        Text(stringResource(R.string.activity_push_prefs), fontWeight = FontWeight.Bold)
+        PreferenceRow(stringResource(R.string.activity_new_signals), value.newSignals) { onChange(value.copy(newSignals = it)) }
         HorizontalDivider(color = CoineProColors.Border)
-        PreferenceRow("Entry / TP / SL", value.signalUpdates) { onChange(value.copy(signalUpdates = it)) }
+        PreferenceRow(stringResource(R.string.activity_entry_tp_sl), value.signalUpdates) { onChange(value.copy(signalUpdates = it)) }
         HorizontalDivider(color = CoineProColors.Border)
-        PreferenceRow("Price alerts", value.priceAlerts) { onChange(value.copy(priceAlerts = it)) }
+        PreferenceRow(stringResource(R.string.activity_price_alerts), value.priceAlerts) { onChange(value.copy(priceAlerts = it)) }
     }
 }
 
@@ -702,9 +717,9 @@ private fun NewAlertCard(
     onCreate: () -> Unit,
 ) {
     PremiumCard {
-        Text("New price alert", fontWeight = FontWeight.Bold)
-        OutlinedTextField(value = symbol, onValueChange = onSymbol, label = { Text("Symbol") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = value, onValueChange = onValue, label = { Text("Price") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        Text(stringResource(R.string.activity_new_alert), fontWeight = FontWeight.Bold)
+        OutlinedTextField(value = symbol, onValueChange = onSymbol, label = { Text(stringResource(R.string.activity_symbol)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = value, onValueChange = onValue, label = { Text(stringResource(R.string.activity_price)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -717,7 +732,7 @@ private fun NewAlertCard(
             onClick = onCreate,
             enabled = symbol.isNotBlank() && value.toDoubleOrNull()?.let { it.isFinite() && it > 0.0 } == true,
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("Create alert") }
+        ) { Text(stringResource(R.string.activity_create_alert)) }
     }
 }
 
@@ -727,11 +742,17 @@ private fun AlertRow(alert: PriceAlert, onToggle: (Boolean) -> Unit, onDelete: (
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
                 Text(alert.symbol, fontWeight = FontWeight.Bold)
-                FinancialText("${alert.condition.name.replace('_', ' ')} ${MarketNumberFormatter.price(alert.value, 2)}", color = CoineProColors.TextSecondary)
+                FinancialText(
+                    value = stringResource(
+                        alert.condition.labelRes(),
+                        MarketNumberFormatter.price(alert.value, 2),
+                    ),
+                    color = CoineProColors.TextSecondary,
+                )
             }
             Switch(checked = alert.active, onCheckedChange = onToggle)
         }
-        TextButton(onClick = onDelete) { Text("Delete") }
+        TextButton(onClick = onDelete) { Text(stringResource(R.string.activity_delete)) }
     }
 }
 
@@ -746,14 +767,21 @@ private fun FinancialText(
     }
 }
 
-private fun percentOrMissing(value: Double?): String = value?.let { "${MarketNumberFormatter.price(it, 1)}%" } ?: "—"
-private fun denominatorLabel(value: Int): String = if (value == 0) "no evidence" else "n=$value"
+// The percent sign belongs inside the isolate; outside it, bidi reordering renders "62%" as "%62".
+private fun percentOrMissing(value: Double?): String =
+    value?.let { BidiText.isolateLtr(BidiText.strip(MarketNumberFormatter.price(it, 1)) + "%") } ?: "—"
+
+@Composable
+private fun denominatorLabel(value: Int): String =
+    if (value == 0) stringResource(R.string.activity_no_evidence) else BidiText.isolateLtr("n=$value")
+
+@Composable
 private fun resultLabel(value: PerformanceResultFilter): String = when (value) {
-    PerformanceResultFilter.ALL -> "All results"
-    PerformanceResultFilter.WIN -> "Win"
-    PerformanceResultFilter.LOSS -> "Loss"
-    PerformanceResultFilter.BREAKEVEN -> "Breakeven"
-    PerformanceResultFilter.UNKNOWN -> "Result missing"
+    PerformanceResultFilter.ALL -> stringResource(R.string.activity_all_results)
+    PerformanceResultFilter.WIN -> stringResource(R.string.activity_win)
+    PerformanceResultFilter.LOSS -> stringResource(R.string.activity_loss)
+    PerformanceResultFilter.BREAKEVEN -> stringResource(R.string.activity_breakeven)
+    PerformanceResultFilter.UNKNOWN -> stringResource(R.string.activity_result_missing)
 }
 
 private fun finitePnl(signal: TradingSignal): String {
@@ -777,4 +805,13 @@ private fun finitePrice(value: Double?, symbol: String): String {
 private fun formatTimestamp(raw: String?): String {
     if (raw.isNullOrBlank()) return "—"
     return runCatching { Instant.parse(raw).atZone(ZoneId.systemDefault()).format(activityTimeFormatter) }.getOrDefault("—")
+}
+
+@androidx.annotation.StringRes
+private fun PriceAlertCondition.labelRes(): Int = when (this) {
+    PriceAlertCondition.ABOVE -> R.string.activity_alert_above
+    PriceAlertCondition.BELOW -> R.string.activity_alert_below
+    PriceAlertCondition.CROSS_UP -> R.string.activity_alert_cross_up
+    PriceAlertCondition.CROSS_DOWN -> R.string.activity_alert_cross_down
+    PriceAlertCondition.CROSS -> R.string.activity_alert_cross
 }

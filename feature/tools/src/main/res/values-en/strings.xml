@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_risk_title">Risk calculator</string>
+    <string name="tool_risk_eyebrow">Risk control</string>
+    <string name="tool_risk_body">Turn an account risk percentage into a fixed monetary risk budget.</string>
+    <string name="tool_risk_formula">Risk amount = capital × risk %</string>
+    <string name="tool_position_title">Position size / lot</string>
+    <string name="tool_position_eyebrow">Sizing</string>
+    <string name="tool_position_body">Size a position from monetary risk, stop distance and pip value per standard lot.</string>
+    <string name="tool_position_formula">Lots = risk amount ÷ (stop pips × pip value per lot)</string>
+    <string name="tool_rr_title">Risk to reward</string>
+    <string name="tool_rr_eyebrow">Trade geometry</string>
+    <string name="tool_rr_body">Validate entry, stop and target geometry before comparing reward with risk.</string>
+    <string name="tool_rr_formula">Ratio = |target − entry| ÷ |entry − stop|</string>
+    <string name="tool_drawdown_title">Drawdown simulator</string>
+    <string name="tool_drawdown_eyebrow">Capital resilience</string>
+    <string name="tool_drawdown_body">Model compounded consecutive losses and the return needed to recover.</string>
+    <string name="tool_drawdown_formula">Ending balance = start × (1 − loss %) ^ losses</string>
+    <string name="tool_profit_title">Profit calculator</string>
+    <string name="tool_profit_eyebrow">Forex and metals</string>
+    <string name="tool_profit_body">Estimate directional P&amp;L from price movement, lots and contract size.</string>
+    <string name="tool_profit_formula">P&amp;L = signed price move × lots × contract size</string>
+    <string name="tool_pip_title">Pip calculator</string>
+    <string name="tool_pip_eyebrow">Price distance</string>
+    <string name="tool_pip_body">Translate a price move into signed pips and P&amp;L with explicit pip assumptions.</string>
+    <string name="tool_pip_formula">Pips = signed price move ÷ pip size</string>
+    <string name="tool_crypto_title">Crypto P&amp;L</string>
+    <string name="tool_crypto_eyebrow">USDT pairs</string>
+    <string name="tool_crypto_body">Estimate spot-style directional P&amp;L after entry and exit fees.</string>
+    <string name="tool_crypto_formula">Net = gross − entry fee − exit fee</string>
+    <string name="tool_compound_title">Compound calculator</string>
+    <string name="tool_compound_eyebrow">Growth</string>
+    <string name="tool_compound_body">Model period-by-period compounding without projecting future market returns.</string>
+    <string name="tool_compound_formula">Ending = principal × (1 + rate %) ^ periods</string>
+    <string name="tools_risk_group">Risk and sizing</string>
+    <string name="tools_risk_group_body">Control exposure before any execution flow.</string>
+    <string name="tools_pnl_group">P&amp;L and growth</string>
+    <string name="tools_pnl_group_body">Deterministic local maths with explicit assumptions.</string>
+    <string name="tools_eyebrow">Trader toolkit</string>
+    <string name="tools_headline">Decision maths, without execution risk.</string>
+    <string name="tools_note">Local calculators with deterministic formulas. No order routing, no broker state and no invented market data.</string>
+    <string name="tools_local">Local</string>
+    <string name="tools_quick_open">Quick open</string>
+    <string name="tools_close">Close</string>
+    <string name="tools_open">Open</string>
+    <string name="tools_formula">Formula</string>
+    <string name="tools_result">Calculated result</string>
+    <string name="tools_assumption">Assumption · %1$s</string>
+    <string name="tools_reset">Reset inputs</string>
+    <string name="tools_enter_all">Enter every input. Results update locally as values change.</string>
+    <string name="tools_connected">Connected surfaces</string>
+    <string name="tools_connected_body">Source-backed surfaces stay separate from local calculators.</string>
+    <string name="tools_news_title">Market news</string>
+    <string name="tools_news_body">Structured news with source time, impact and sentiment.</string>
+    <string name="tools_news_open">Open news</string>
+    <string name="tools_calendar_title">Economic calendar</string>
+    <string name="tools_calendar_body">Actual, forecast and previous only when the provider supplies them.</string>
+    <string name="tools_calendar_open">Open calendar</string>
+    <string name="tools_connections_title">Connections</string>
+    <string name="tools_connections_body">Account connections are used only by validated signal execution flows.</string>
+    <string name="tools_direction">Direction</string>
+    <string name="tools_long">Long</string>
+    <string name="tools_short">Short</string>
+    <string name="tools_input">Input</string>
+    <string name="tools_invalid">Use valid numeric values.</string>
+
+    <string name="tools_field_capital">Capital</string>
+    <string name="tools_field_risk_percent">Risk %</string>
+    <string name="tools_field_risk_amount">Risk amount</string>
+    <string name="tools_field_stop_pips">Stop-loss pips</string>
+    <string name="tools_field_pip_value">Pip value per lot</string>
+    <string name="tools_field_entry">Entry</string>
+    <string name="tools_field_stop">Stop loss</string>
+    <string name="tools_field_target">Take profit</string>
+    <string name="tools_field_lots">Lots</string>
+    <string name="tools_field_contract">Contract size</string>
+    <string name="tools_field_pip_size">Pip size</string>
+    <string name="tools_field_quantity">Quantity</string>
+    <string name="tools_field_fee">Fee % per side</string>
+    <string name="tools_field_principal">Principal</string>
+    <string name="tools_field_start">Starting balance</string>
+    <string name="tools_field_loss_percent">Loss % per trade</string>
+    <string name="tools_field_exit">Exit</string>
+    <string name="tools_field_price">Price</string>
+    <string name="tools_field_rate">Rate %</string>
+    <string name="tools_field_periods">Periods</string>
+    <string name="tools_field_losses">Losses</string>
+    <string name="tools_field_result">Result</string>
+    <string name="tools_field_levels">Trade levels</string>
+    <string name="tools_rule_finite">%1$s must be a finite number.</string>
+    <string name="tools_rule_positive">%1$s must be greater than zero.</string>
+    <string name="tools_rule_non_negative">%1$s cannot be negative.</string>
+    <string name="tools_rule_max_hundred">%1$s cannot exceed 100%%.</string>
+    <string name="tools_rule_under_hundred">%1$s must be below 100%%.</string>
+    <string name="tools_rule_rate">%1$s must be finite and greater than -100%%.</string>
+    <string name="tools_rule_out_of_range">These inputs produce a result outside the supported numeric range.</string>
+    <string name="tools_rule_geometry_long">For a long, the stop must sit below entry and the target above it.</string>
+    <string name="tools_rule_geometry_short">For a short, the stop must sit above entry and the target below it.</string>
+</resources>
