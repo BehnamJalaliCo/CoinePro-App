@@ -28,4 +28,6 @@
     <string name="assistant_fresh">تازه</string>
     <string name="assistant_stale">کهنه</string>
     <string name="assistant_freshness_unknown">تازگی نامشخص</string>
+    <string name="assistant_unavailable_title">دستیار در این پلتفرم نیست</string>
+    <string name="assistant_unavailable_body">این پلتفرم دستیار گفتگویی ندارد. برای تحلیل، از بخش سیگنال هوش مصنوعی استفاده کنید.</string>
 </resources>

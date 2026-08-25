@@ -27,4 +27,6 @@
     <string name="assistant_fresh">Fresh</string>
     <string name="assistant_stale">Stale</string>
     <string name="assistant_freshness_unknown">Freshness unknown</string>
+    <string name="assistant_unavailable_title">No assistant on this platform</string>
+    <string name="assistant_unavailable_body">This platform has no conversational assistant. Use AI signal analysis instead.</string>
 </resources>

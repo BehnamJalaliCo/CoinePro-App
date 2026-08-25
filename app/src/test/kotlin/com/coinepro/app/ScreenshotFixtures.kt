@@ -76,6 +76,12 @@ import com.coinepro.core.signals.SignalStatusFilter
 import com.coinepro.core.signals.SignalTarget
 import com.coinepro.core.signals.TradingSignal
 import java.time.Instant
+import com.coinepro.core.account.AccountBriefing
+import com.coinepro.core.account.AccountGateway
+import com.coinepro.core.account.AccountPortfolio
+import com.coinepro.core.account.KycState
+import com.coinepro.core.account.KycStatus
+import com.coinepro.core.common.AppResult
 
 /**
  * Deterministic sample data for the screenshot renders. The values are shaped like real server
@@ -829,4 +835,28 @@ class FakeAiSignalGateway(
 
     override suspend fun job(jobId: String, request: AiSignalRequest): AiSignalJob =
         job ?: throw IllegalStateException("not used by the screenshot render")
+}
+
+/**
+ * The account surface for the render fixtures.
+ *
+ * Verification defaults to not-started because that is the state every reader meets first, and the
+ * one the screen has to be legible in before any other.
+ */
+internal class FakeAccountGateway(
+    private val submitResult: AppResult<KycStatus>? = null,
+    private val status: KycStatus = KycStatus(level = 1, state = KycState.NOT_STARTED),
+) : AccountGateway {
+    override suspend fun briefing(): AppResult<AccountBriefing?> = AppResult.Success(null)
+
+    override suspend fun portfolio(): AppResult<AccountPortfolio> = AppResult.Success(AccountPortfolio())
+
+    override suspend fun kyc(): AppResult<KycStatus> = AppResult.Success(status)
+
+    override suspend fun submitKycLevel1(
+        fullName: String,
+        nationalId: String,
+        birthDate: String,
+        phone: String,
+    ): AppResult<KycStatus> = submitResult ?: AppResult.Success(status)
 }

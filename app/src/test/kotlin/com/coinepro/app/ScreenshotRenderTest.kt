@@ -60,6 +60,12 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import com.coinepro.feature.home.HomeSubscription
+import com.coinepro.feature.kyc.KycScreen
+import com.coinepro.core.account.AccountController
+import com.coinepro.core.common.AppResult
+import com.coinepro.core.common.BidiText
+import com.coinepro.core.common.ErrorKind
 
 /**
  * Renders the production screen composables off-device and writes the pixels to
@@ -138,6 +144,64 @@ class ScreenshotRenderTest {
             platforms = MarketPlatform.entries,
             activePlatform = MarketPlatform.TRADEYAR,
         )
+    }
+
+    /**
+     * The subscription card, which only a subscriber ever sees.
+     *
+     * Rendered with a plan a week from ending, because that is the state the card exists for: the
+     * date alone is a fact, and the countdown turning amber is the part that changes what someone
+     * does about it.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun homeWithSubscription() = capture("24-home-subscription-fa") {
+        HomeScreen(
+            state = ScreenshotFixtures.marketState(),
+            onRetry = {},
+            displayName = "بهنام",
+            briefing = ScreenshotFixtures.homeBriefing,
+            portfolio = ScreenshotFixtures.homePortfolio,
+            subscription = HomeSubscription(
+                planLabel = "اشتراک ماهانه",
+                expiresLabel = BidiText.isolateLtr("2026-09-01"),
+                daysRemaining = 6,
+                endingSoon = true,
+                isVip = true,
+            ),
+            openSignals = ScreenshotFixtures.homeSignals,
+            platforms = MarketPlatform.entries,
+            activePlatform = MarketPlatform.TRADEYAR,
+        )
+    }
+
+    /** Level-one verification, empty and waiting — the state every reader meets first. */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun verificationNotStarted() = capture("25-kyc-fa") {
+        KycScreen(controller = AccountController(FakeAccountGateway(), scope))
+    }
+
+    /**
+     * The same screen after the server refused, in the server's own words.
+     *
+     * The refusal is the whole point of the screen: the app cannot know why a particular national
+     * id was rejected, so what the server said is the only useful thing on it.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun verificationRefused() = capture("26-kyc-refused-fa") {
+        val controller = AccountController(
+            FakeAccountGateway(
+                submitResult = AppResult.Failure(
+                    kind = ErrorKind.VALIDATION,
+                    message = "کد ملی واردشده با تاریخ تولد هم‌خوانی ندارد.",
+                ),
+            ),
+            scope,
+        )
+        controller.submitKycLevel1("بهنام جلالی", "0012345678", "1370/05/12", "09121234567")
+        KycScreen(controller = controller)
     }
 
     @Test

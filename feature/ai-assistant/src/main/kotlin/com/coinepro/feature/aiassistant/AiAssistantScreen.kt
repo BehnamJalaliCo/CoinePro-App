@@ -53,9 +53,40 @@ import com.coinepro.core.aiassistant.AssistantRole
 fun AiAssistantScreen(
     controller: AiAssistantController,
     onOpenSignal: (Long) -> Unit,
+    /**
+     * Whether this deployment has an assistant at all.
+     *
+     * Checked here rather than only at the entry point that opens this screen. Switching platform
+     * does not pop the back stack, so a reader who opened this on the platform that has one and
+     * then switched would otherwise keep typing into a thread the platform on screen cannot serve —
+     * and the answers would come from the other backend without either of them saying so.
+     */
+    available: Boolean = true,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var draft by remember { mutableStateOf("") }
+
+    if (!available) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(CoineProColors.Stage)
+                .padding(CoineProSpacing.Gutter),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        ) {
+            Text(
+                text = stringResource(R.string.assistant_unavailable_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = CoineProColors.TextPrimary,
+            )
+            Text(
+                text = stringResource(R.string.assistant_unavailable_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = CoineProColors.TextSecondary,
+            )
+        }
+        return
+    }
 
     Column(
         modifier = Modifier

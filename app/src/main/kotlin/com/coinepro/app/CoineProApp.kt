@@ -660,6 +660,7 @@ private fun MainShell(
                 AiAssistantScreen(
                     controller = aiAssistantController,
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
+                    available = assistantAvailable,
                 )
             }
             composable(NEWS_ROUTE) {
