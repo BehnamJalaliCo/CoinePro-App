@@ -44,26 +44,39 @@ private fun coineProTextStyle(
     lineHeightStyle = PersianLineHeightStyle,
 )
 
+/**
+ * The scale, one step above Material's defaults across the board.
+ *
+ * Two reasons it is not the stock scale. Persian glyphs carry their meaning in marks and curves
+ * that are small relative to the letter body — a dot's position separates ب from ت from ث — so
+ * Persian needs more size than Latin to stay comfortable at the same reading distance. And this
+ * direction spends whitespace generously, which only reads as calm if the type is confident enough
+ * to hold the space; at Material's sizes the same layout reads as sparse instead.
+ *
+ * Letter spacing goes the other way. Material's positive tracking is tuned for Latin and pushes
+ * Persian glyphs apart at the joins, so it is dropped to zero everywhere except where a Latin
+ * all-caps run needs it.
+ */
 val CoineProTypography = Typography(
-    displayLarge = coineProTextStyle(57, 72, FontWeight.Bold, -0.25),
-    displayMedium = coineProTextStyle(45, 58, FontWeight.Bold),
-    displaySmall = coineProTextStyle(36, 48, FontWeight.Bold),
+    displayLarge = coineProTextStyle(60, 76, FontWeight.Bold, -0.5),
+    displayMedium = coineProTextStyle(48, 62, FontWeight.Bold, -0.25),
+    displaySmall = coineProTextStyle(38, 50, FontWeight.Bold),
 
-    headlineLarge = coineProTextStyle(32, 44, FontWeight.Bold),
-    headlineMedium = coineProTextStyle(28, 40, FontWeight.Bold),
-    headlineSmall = coineProTextStyle(24, 36, FontWeight.Bold),
+    headlineLarge = coineProTextStyle(34, 46, FontWeight.Bold),
+    headlineMedium = coineProTextStyle(30, 42, FontWeight.Bold),
+    headlineSmall = coineProTextStyle(26, 38, FontWeight.Bold),
 
-    titleLarge = coineProTextStyle(22, 34, FontWeight.Bold),
-    titleMedium = coineProTextStyle(16, 26, FontWeight.Bold, 0.15),
-    titleSmall = coineProTextStyle(14, 22, FontWeight.Bold, 0.1),
+    titleLarge = coineProTextStyle(24, 36, FontWeight.Bold),
+    titleMedium = coineProTextStyle(18, 28, FontWeight.Bold),
+    titleSmall = coineProTextStyle(16, 26, FontWeight.Bold),
 
-    bodyLarge = coineProTextStyle(16, 28, FontWeight.Normal, 0.5),
-    bodyMedium = coineProTextStyle(14, 24, FontWeight.Normal, 0.25),
-    bodySmall = coineProTextStyle(12, 20, FontWeight.Normal, 0.4),
+    bodyLarge = coineProTextStyle(17, 30, FontWeight.Normal),
+    bodyMedium = coineProTextStyle(15, 26, FontWeight.Normal),
+    bodySmall = coineProTextStyle(13, 22, FontWeight.Normal),
 
-    labelLarge = coineProTextStyle(14, 22, FontWeight.Bold, 0.1),
-    labelMedium = coineProTextStyle(12, 18, FontWeight.Bold, 0.5),
-    labelSmall = coineProTextStyle(11, 16, FontWeight.Bold, 0.5),
+    labelLarge = coineProTextStyle(16, 24, FontWeight.Bold),
+    labelMedium = coineProTextStyle(14, 20, FontWeight.Bold),
+    labelSmall = coineProTextStyle(13, 18, FontWeight.Bold),
 )
 
 /** Styles that carry a specific job rather than a place on the Material scale. */
@@ -73,9 +86,15 @@ object CoineProTextStyles {
      * The account total: the largest thing on any screen it appears on.
      *
      * Sized between [Typography.displaySmall] and [Typography.displayMedium] because neither is
-     * right — 36sp does not read as the hero of the screen and 45sp wraps a six-figure balance on a
-     * narrow phone. The negative tracking is what keeps a long Latin figure from looking loose
-     * beside the Persian label above it.
+     * right — the smaller does not read as the hero of the screen and the larger wraps a six-figure
+     * balance on a narrow phone. The negative tracking is what keeps a long Latin figure from
+     * looking loose beside the Persian label above it.
      */
-    val Balance: TextStyle = coineProTextStyle(42, 54, FontWeight.Bold, -1.0)
+    val Balance: TextStyle = coineProTextStyle(44, 58, FontWeight.Bold, -1.0)
+
+    /**
+     * A figure that is the subject of its row rather than an annotation on it — a price in a market
+     * list, a position's value. One step above the row's own title so the number leads.
+     */
+    val RowFigure: TextStyle = coineProTextStyle(17, 26, FontWeight.Bold, -0.2)
 }

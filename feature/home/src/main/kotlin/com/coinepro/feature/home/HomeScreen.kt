@@ -41,6 +41,7 @@ import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
+import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProStreamingBar
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.marketdata.MarketConnectionState
@@ -86,8 +87,11 @@ fun HomeScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),
-        contentPadding = PaddingValues(horizontal = 22.dp, vertical = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        contentPadding = PaddingValues(
+            horizontal = CoineProSpacing.Gutter,
+            vertical = CoineProSpacing.Gutter,
+        ),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
     ) {
         if (displayName != null) {
             item { GreetingRow(displayName, onOpenSafety, onLogout) }
@@ -254,7 +258,7 @@ private fun HoldingsCard(holdings: List<HomeHolding>) {
         holdings.forEachIndexed { index, holding ->
             if (index > 0) RowDivider()
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 11.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = CoineProSpacing.Row),
                 horizontalArrangement = Arrangement.spacedBy(13.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -278,7 +282,7 @@ private fun HoldingsCard(holdings: List<HomeHolding>) {
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = holding.valueLabel,
-                        style = MaterialTheme.typography.titleSmall,
+                        style = CoineProTextStyles.RowFigure,
                         color = CoineProColors.TextPrimary,
                     )
                     Text(
@@ -311,7 +315,7 @@ private fun QuoteRow(quote: MarketQuote) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 11.dp)
+            .padding(vertical = CoineProSpacing.Row)
             .clearAndSetSemantics { contentDescription = quote.instrument.symbol },
         horizontalArrangement = Arrangement.spacedBy(13.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -336,7 +340,7 @@ private fun QuoteRow(quote: MarketQuote) {
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = MarketNumberFormatter.price(quote.price, quote.decimals()),
-                style = MaterialTheme.typography.titleSmall,
+                style = CoineProTextStyles.RowFigure,
                 color = CoineProColors.TextPrimary,
             )
             ChangeText(quote)
@@ -410,7 +414,7 @@ private fun SignalsCard(signals: List<HomeSignal>, onOpenSignal: (Long) -> Unit)
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onOpenSignal(signal.id) }
-                    .padding(vertical = 12.dp),
+                    .padding(vertical = CoineProSpacing.Row),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -560,7 +564,7 @@ private fun CardLabel(text: String) {
         style = MaterialTheme.typography.bodySmall,
         color = CoineProColors.TextSecondary,
     )
-    Spacer(Modifier.height(6.dp))
+    Spacer(Modifier.height(CoineProSpacing.One))
 }
 
 /** A hairline between rows *inside* one card. Cards themselves are never divided by rules. */

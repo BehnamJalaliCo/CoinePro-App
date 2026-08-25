@@ -37,7 +37,10 @@ import androidx.compose.ui.unit.dp
 fun CoineProCard(
     modifier: Modifier = Modifier,
     shape: Shape = MaterialTheme.shapes.large,
-    contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
+    contentPadding: PaddingValues = PaddingValues(
+        horizontal = CoineProSpacing.CardHorizontal,
+        vertical = CoineProSpacing.CardVertical,
+    ),
     elevated: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -69,9 +72,9 @@ fun CoineProPrimaryButton(
     ) {
         Text(
             text = text,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 13.dp),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
             style = MaterialTheme.typography.labelLarge,
-            color = CoineProColors.Stage,
+            color = CoineProColors.OnAccent,
             textAlign = TextAlign.Center,
         )
     }
@@ -92,7 +95,7 @@ fun CoineProSecondaryButton(
     ) {
         Text(
             text = text,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 13.dp),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
             style = MaterialTheme.typography.labelLarge,
             color = CoineProColors.TextPrimary,
             textAlign = TextAlign.Center,
@@ -111,7 +114,7 @@ fun CoineProAssetToken(
     label: String,
     tint: Color,
     modifier: Modifier = Modifier,
-    size: Dp = 36.dp,
+    size: Dp = 42.dp,
 ) {
     Box(
         modifier = modifier

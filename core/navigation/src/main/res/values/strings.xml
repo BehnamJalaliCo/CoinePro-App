@@ -2,7 +2,8 @@
 <resources>
     <string name="nav_home">خانه</string>
     <string name="nav_signals">سیگنال‌ها</string>
-    <string name="nav_ai">هوش مصنوعی</string>
+    <!-- Kept to one word: at the shipping type scale a two-word label wraps and grows the bar. -->
+    <string name="nav_ai">هوش</string>
     <string name="nav_tools">ابزارها</string>
     <string name="nav_activity">فعالیت</string>
 </resources>
