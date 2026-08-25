@@ -28,8 +28,10 @@ import androidx.compose.ui.unit.dp
  * The CoinePro wordmark, as supplied.
  *
  * The artwork's bevelled metal cannot be reproduced by typesetting, so this is the real asset
- * rather than styled text. It is cut from a black-ground master by clearing every genuinely black
- * region — including the enclosed counters of o, e and P, which a border-only fill cannot reach.
+ * rather than styled text. It is cropped straight out of the owner's transparent master — see
+ * `core/designsystem/brand/` — which replaced an earlier cut made by clearing black out of a
+ * black-ground JPEG. That cut worked, but every edge it produced was an approximation of an alpha
+ * channel that now simply exists.
  *
  * On a light background it keeps its own colours and is given a dark plate to sit on. The silver
  * half of the name is very nearly white, so on a pale surface "Coine" disappears and only "Pro"

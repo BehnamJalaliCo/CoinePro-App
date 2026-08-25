@@ -233,11 +233,12 @@ Found in a full review of `main`; none are fixed yet. Roughly by severity.
 
 - **Font**: IRANYekanX (Eco), Regular and Bold only. Proprietary; licence code is recorded in
   `core/designsystem/FONT_LICENSE.txt`. The Latin-numeral variant is installed on purpose.
-- **Logo**: supplied only as JPEGs on a white ground. The mark was cut out by filling inward from
-  the borders (a brightness threshold punches holes through its near-white silver). The wordmark
-  could not be cut cleanly at all — its "Coine" glyphs are themselves near-white — so the name is
-  typeset as live text in `CoineProBrand.kt`. **Ask for an SVG or transparent PNG**; it would
-  improve both.
+- **Logo**: the owner supplied a proper transparent master (1672×941 RGBA, mark and wordmark on
+  one canvas). It is kept at `core/designsystem/brand/` and **every brand raster is generated from
+  it** — the five densities of `coinepro_mark` and `coinepro_wordmark`, and the adaptive launcher
+  foreground. Nothing is hand-cut any more; the earlier black-ground JPEG cut is gone. A vector
+  original would still be better for the Play listing and any print use, but nothing in the app
+  needs one.
 - **Icons**: the owner wants TradingView/Binance-style icons and has explicitly accepted the legal
   responsibility, so do not relitigate it. Practical constraint only: those companies' asset files
   cannot be fetched and their artwork cannot be reproduced from memory. Either the owner supplies
