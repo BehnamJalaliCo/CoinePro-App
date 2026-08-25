@@ -163,3 +163,22 @@ Phase 16 is complete because:
 - changelog and monitoring decision are documented;
 - final Android CI and Security CI are green on exact Head `5a1a02daf72acc60581665b3aee27dec713b400c`;
 - PR remains Draft/unmerged unless merge is explicitly approved.
+
+## App Links — the recovery link
+
+The app claims `https://user.tradeyar.trade-future.ir/reset` with `autoVerify="true"`. Android
+checks that claim on install by fetching
+`https://user.tradeyar.trade-future.ir/.well-known/assetlinks.json`.
+
+**Until that file is served, the recovery email opens a browser rather than the app, and nothing
+anywhere reports why.** There is no error, no log line and no failed request the app can see — the
+link simply behaves like an ordinary link.
+
+`scripts/release/print-assetlinks.sh` prints the file from a keystore. The fingerprint it needs is
+the one **Google** signs releases with, which is not the upload key while Play App Signing is on —
+take that from Play Console → Release → Setup → App signing. Running the script against the local
+keystore prints the upload key's fingerprint, which is correct only for a directly installed APK.
+Listing both is usually right during a rollout.
+
+The file must be served as `application/json`, without a redirect, and without authentication.
+Confirm afterwards on a device with `adb shell pm get-app-links com.coinepro.app`.

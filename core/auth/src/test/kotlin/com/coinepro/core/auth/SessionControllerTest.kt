@@ -3,6 +3,7 @@ package com.coinepro.core.auth
 import com.coinepro.core.common.AppResult
 import com.coinepro.core.common.ErrorKind
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -194,6 +195,102 @@ class SessionControllerTest {
             storage.refreshToken,
         )
         assertEquals("access", memory.token())
+    }
+
+    @Test
+    fun `the token is renewed before the server said it runs out`() = runTest {
+        val storage = FakeStorage(null)
+        val memory = SessionMemory()
+        val emailAuth = FakeEmailAuthGateway(
+            AppResult.Success(
+                AuthTokens(accessToken = "second", refreshToken = "refresh-2", accessValidForSeconds = 900),
+            ),
+        )
+        val controller = SessionController(
+            storage,
+            memory,
+            FakeGateway(),
+            backgroundScope,
+            emailAuth,
+        )
+
+        controller.adoptSession(
+            EmailAuthSession(
+                tokens = AuthTokens(
+                    accessToken = "first",
+                    refreshToken = "refresh-1",
+                    accessValidForSeconds = 900,
+                ),
+                profile = profile(),
+            ),
+        )
+        runCurrent()
+        assertEquals("first", storage.token)
+
+        // A minute short of the fifteen the server named, so a request in flight is not racing the
+        // expiry it was issued against.
+        advanceTimeBy(839_000)
+        runCurrent()
+        assertEquals("Renewed a second too early would be a guess, not a schedule", "first", storage.token)
+
+        advanceTimeBy(2_000)
+        runCurrent()
+        assertEquals("second", storage.token)
+        assertEquals("refresh-1", emailAuth.refreshedWith)
+        assertEquals("second", memory.token())
+    }
+
+    @Test
+    fun `a server that named no lifetime gets no timer`() = runTest {
+        val storage = FakeStorage(null)
+        val emailAuth = FakeEmailAuthGateway(AppResult.Failure(ErrorKind.NETWORK))
+        val controller = SessionController(storage, SessionMemory(), FakeGateway(), backgroundScope, emailAuth)
+
+        controller.adoptSession(
+            EmailAuthSession(
+                tokens = AuthTokens(accessToken = "only", refreshToken = "refresh"),
+                profile = profile(),
+            ),
+        )
+        advanceTimeBy(86_400_000)
+        runCurrent()
+
+        assertEquals(
+            "Without a lifetime there is nothing to schedule against, and the 401 path still covers it",
+            null,
+            emailAuth.refreshedWith,
+        )
+    }
+
+    @Test
+    fun `signing out cancels the pending renewal`() = runTest {
+        val storage = FakeStorage(null)
+        val emailAuth = FakeEmailAuthGateway(
+            AppResult.Success(AuthTokens(accessToken = "second", refreshToken = "refresh-2")),
+        )
+        val controller = SessionController(storage, SessionMemory(), FakeGateway(), backgroundScope, emailAuth)
+
+        controller.adoptSession(
+            EmailAuthSession(
+                tokens = AuthTokens(
+                    accessToken = "first",
+                    refreshToken = "refresh-1",
+                    accessValidForSeconds = 900,
+                ),
+                profile = profile(),
+            ),
+        )
+        runCurrent()
+        controller.logout()
+        advanceTimeBy(900_000)
+        runCurrent()
+
+        assertEquals(
+            "A timer nobody cancelled would revive a session the reader deliberately ended",
+            null,
+            emailAuth.refreshedWith,
+        )
+        assertEquals(null, storage.token)
     }
 
     private fun TestScope.controller(storage: FakeStorage, gateway: FakeGateway) =

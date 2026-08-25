@@ -1,15 +1,19 @@
 package com.coinepro.core.designsystem
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -26,18 +30,45 @@ import androidx.compose.ui.unit.dp
  * The artwork's bevelled metal cannot be reproduced by typesetting, so this is the real asset
  * rather than styled text. It is cut from a black-ground master by clearing every genuinely black
  * region — including the enclosed counters of o, e and P, which a border-only fill cannot reach.
+ *
+ * On a light background it keeps its own colours and is given a dark plate to sit on. The silver
+ * half of the name is very nearly white, so on a pale surface "Coine" disappears and only "Pro"
+ * survives — the brand reading as half of itself. Recolouring it was the alternative and would mean
+ * abandoning the bevel the artwork exists for; a plate keeps the mark exactly as drawn and changes
+ * only what is behind it.
  */
 @Composable
 fun CoineProWordmark(
     modifier: Modifier = Modifier,
     contentDescription: String? = null,
 ) {
+    val onLightSurface = !LocalCoineProPalette.current.isDark
     Image(
         painter = painterResource(R.drawable.coinepro_wordmark),
         contentDescription = contentDescription,
-        modifier = modifier,
+        modifier = modifier
+            .then(
+                if (onLightSurface) {
+                    Modifier
+                        .background(WORDMARK_PLATE, RoundedCornerShape(CoineProSpacing.One))
+                        // Enough that the plate reads as a deliberate ground rather than as a
+                        // rectangle the artwork failed to fill.
+                        .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One)
+                } else {
+                    Modifier
+                },
+            ),
     )
 }
+
+/**
+ * The plate behind the wordmark in light theme.
+ *
+ * Deliberately not [CoineProColors.Stage] inverted or any other palette entry: this is the ground
+ * the artwork was cut against, and matching it is what keeps the bevel reading as metal rather than
+ * as a sticker.
+ */
+private val WORDMARK_PLATE = Color(0xFF0B0D12)
 
 /**
  * The name as live text, for places a raster cannot go — a notification title, a share subject, or
