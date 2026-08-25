@@ -19,14 +19,18 @@ class AiSignalQuotaExhaustedException : Exception("AI Signal quota exhausted")
 class AiSignalJobExpiredException : Exception("AI Signal job expired")
 class AiSignalRequestRejectedException(message: String) : Exception(message)
 
+/**
+ * Paths follow CoinePro-FX, which mounts this router at `/user/ai-signal`. The client previously
+ * called `user/signals/ai/…`, which the server has never served.
+ */
 internal interface AiSignalApi {
-    @GET("user/signals/ai/quota")
+    @GET("user/ai-signal/quota")
     suspend fun quota(): AiSignalQuotaResponseDto
 
-    @POST("user/signals/ai/jobs")
+    @POST("user/ai-signal/generate")
     suspend fun createJob(@Body body: AiSignalCreateJobDto): AiSignalJobResponseDto
 
-    @GET("user/signals/ai/jobs/{jobId}")
+    @GET("user/ai-signal/result/{jobId}")
     suspend fun job(@Path("jobId") jobId: String): AiSignalJobResponseDto
 }
 
@@ -34,6 +38,15 @@ internal data class AiSignalCreateJobDto(
     val symbol: String,
     val timeframe: String,
     val risk: String,
+    // Null means the user left the control alone. Gson omits nulls by default, so an untouched
+    // control never reaches the model as a value it would then act on.
+    val tradeStyle: String? = null,
+    val riskAppetite: String? = null,
+    val directionBias: String? = null,
+    val minRr: Double? = null,
+    val lot: Double? = null,
+    val riskPct: Double? = null,
+    val balance: Double? = null,
 )
 
 internal data class AiSignalQuotaDto(
@@ -62,6 +75,13 @@ internal data class AiSignalTargetDto(
     val price: Double? = null,
 )
 
+internal data class AiCandleDto(
+    val o: Double? = null,
+    val h: Double? = null,
+    val l: Double? = null,
+    val c: Double? = null,
+)
+
 internal data class AiGeneratedSignalDto(
     val validated: Boolean = false,
     val signalId: Long? = null,
@@ -76,6 +96,22 @@ internal data class AiGeneratedSignalDto(
     val riskRewardTp1: Double? = null,
     val rationale: String? = null,
     val validatedAt: String? = null,
+    val lot: Double? = null,
+    val strategy: String? = null,
+    val warnings: List<String> = emptyList(),
+    val priceNow: Double? = null,
+    val ema20: Double? = null,
+    val ema50: Double? = null,
+    val ema200: Double? = null,
+    val rsi14: Double? = null,
+    val atr14: Double? = null,
+    val macd: Double? = null,
+    val bbUpper: Double? = null,
+    val bbLower: Double? = null,
+    val swingHigh20: Double? = null,
+    val swingLow20: Double? = null,
+    val changePct20: Double? = null,
+    val recentCandles: List<AiCandleDto> = emptyList(),
 )
 
 internal data class AiSignalJobDto(
@@ -110,6 +146,13 @@ class NetworkAiSignalGateway private constructor(
                 symbol = safeSymbol,
                 timeframe = request.timeframe.wireValue,
                 risk = request.risk.wireValue,
+                tradeStyle = request.tradeStyle?.wireValue,
+                riskAppetite = request.riskAppetite?.wireValue,
+                directionBias = request.directionBias?.wireValue,
+                minRr = request.minRiskReward?.takeIf { it.isFinite() && it > 0.0 },
+                lot = request.lot?.takeIf { it.isFinite() && it > 0.0 },
+                riskPct = request.riskPercent?.takeIf { it.isFinite() && it > 0.0 },
+                balance = request.balance?.takeIf { it.isFinite() && it >= 0.0 },
             ),
         )
         requireNotNull(response.job?.toDomain(response.quota?.toDomain())) {
@@ -219,6 +262,24 @@ internal fun AiGeneratedSignalDto.toDomain(expected: AiSignalRequest): AiGenerat
         it
     }
 
+    // Indicators are reported as-is. A value the server could not compute stays null rather than
+    // being coerced to zero, which would read on screen as a real reading of zero.
+    val snapshot = AiTechnicalSnapshot(
+        ema20 = ema20.finiteOrNull(),
+        ema50 = ema50.finiteOrNull(),
+        ema200 = ema200.finiteOrNull(),
+        rsi14 = rsi14.finiteOrNull(),
+        atr14 = atr14.finiteOrNull(),
+        macd = macd.finiteOrNull(),
+        bollingerUpper = bbUpper.finiteOrNull(),
+        bollingerLower = bbLower.finiteOrNull(),
+        swingHigh20 = swingHigh20.finiteOrNull(),
+        swingLow20 = swingLow20.finiteOrNull(),
+        changePercent20 = changePct20.finiteOrNull(),
+        priceNow = priceNow.finiteOrNull(),
+    )
+    val candles = recentCandles.mapNotNull { it.toDomain() }
+
     return AiGeneratedSignal(
         signalId = safeSignalId,
         symbol = safeSymbol,
@@ -232,5 +293,22 @@ internal fun AiGeneratedSignalDto.toDomain(expected: AiSignalRequest): AiGenerat
         riskRewardTp1 = safeRiskReward,
         rationale = rationale?.trim()?.takeIf { it.isNotBlank() },
         validatedAt = validatedAt,
+        lot = lot?.takeIf { it.isFinite() && it > 0.0 },
+        strategy = strategy?.trim()?.takeIf { it.isNotBlank() },
+        warnings = warnings.mapNotNull { it.trim().takeIf(String::isNotEmpty) },
+        snapshot = snapshot.takeIf { it.hasAny },
+        recentCandles = candles,
     )
+}
+
+private fun Double?.finiteOrNull(): Double? = this?.takeIf(Double::isFinite)
+
+/** A candle is only usable if every leg is present, positive and ordered. */
+internal fun AiCandleDto.toDomain(): AiCandle? {
+    val open = o.finiteOrNull()?.takeIf { it > 0.0 } ?: return null
+    val high = h.finiteOrNull()?.takeIf { it > 0.0 } ?: return null
+    val low = l.finiteOrNull()?.takeIf { it > 0.0 } ?: return null
+    val close = c.finiteOrNull()?.takeIf { it > 0.0 } ?: return null
+    if (high < low || high < open || high < close || low > open || low > close) return null
+    return AiCandle(open = open, high = high, low = low, close = close)
 }

@@ -3,6 +3,7 @@ package com.coinepro.core.aisignal
 import com.coinepro.core.model.SignalDirection
 
 enum class AiSignalTimeframe(val wireValue: String, val label: String) {
+    M5("M5", "5m"),
     M15("M15", "15m"),
     H1("H1", "1h"),
     H4("H4", "4h"),
@@ -47,10 +48,24 @@ object AiSignalProductScope {
     }
 }
 
+/**
+ * Everything the server will take into account when shaping a setup.
+ *
+ * Only [symbol] and [timeframe] are required. The rest narrow the result and are sent only when
+ * the user actually set them, so an untouched control stays absent from the request rather than
+ * being sent as a guess the model would then honour.
+ */
 data class AiSignalRequest(
     val symbol: String,
     val timeframe: AiSignalTimeframe,
     val risk: AiSignalRisk,
+    val tradeStyle: AiTradeStyle? = null,
+    val riskAppetite: AiRiskAppetite? = null,
+    val directionBias: AiDirectionBias? = null,
+    val minRiskReward: Double? = null,
+    val lot: Double? = null,
+    val riskPercent: Double? = null,
+    val balance: Double? = null,
 )
 
 data class AiSignalQuota(
@@ -84,6 +99,15 @@ data class AiGeneratedSignal(
     val riskRewardTp1: Double?,
     val rationale: String?,
     val validatedAt: String?,
+    /** Suggested position size, when the request supplied a balance or risk percentage. */
+    val lot: Double? = null,
+    val strategy: String? = null,
+    /** Server-raised caveats about the setup. Shown verbatim; never summarised away. */
+    val warnings: List<String> = emptyList(),
+    /** The indicator readings behind the setup, so the screen can show its reasoning. */
+    val snapshot: AiTechnicalSnapshot? = null,
+    /** The recent series the model reasoned over, oldest first. */
+    val recentCandles: List<AiCandle> = emptyList(),
 )
 
 data class AiSignalJob(
