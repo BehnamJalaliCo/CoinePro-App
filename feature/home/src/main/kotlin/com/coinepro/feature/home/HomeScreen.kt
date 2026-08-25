@@ -14,16 +14,23 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
@@ -70,6 +77,8 @@ fun HomeScreen(
     onSendChart: () -> Unit = {},
     onOpenMarket: () -> Unit = {},
     onOpenSignal: (Long) -> Unit = {},
+    onOpenSafety: (() -> Unit)? = null,
+    onLogout: (() -> Unit)? = null,
 ) {
     val quotes = state.quotes.values.sortedWith(
         compareBy<MarketQuote>({ marketRank(it) }, { it.instrument.symbol }),
@@ -81,7 +90,7 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         if (displayName != null) {
-            item { GreetingRow(displayName) }
+            item { GreetingRow(displayName, onOpenSafety, onLogout) }
         }
 
         item { BalanceBlock(portfolio = portfolio, state = state) }
@@ -138,7 +147,16 @@ fun HomeScreen(
 /* ------------------------------------------------------------------ greeting */
 
 @Composable
-private fun GreetingRow(displayName: String) {
+private fun GreetingRow(
+    displayName: String,
+    onOpenSafety: (() -> Unit)?,
+    onLogout: (() -> Unit)?,
+) {
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
+    val hasMenu = onOpenSafety != null || onLogout != null
+    // Resolved out here: the semantics block is not a composable scope.
+    val accountMenuLabel = stringResource(R.string.home_menu_account)
+
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -149,13 +167,43 @@ private fun GreetingRow(displayName: String) {
             style = MaterialTheme.typography.bodyLarge,
             color = CoineProColors.TextSecondary,
         )
-        // The reader's own initial rather than a generic avatar glyph: it is the one place on the
-        // screen that says whose account this is.
-        CoineProAssetToken(
-            label = displayName.trim().take(1),
-            tint = CoineProColors.Accent,
-            size = 34.dp,
-        )
+        Box {
+            // The reader's own initial rather than a generic avatar glyph: it is the one place on
+            // the screen that says whose account this is, and — since Home carries no top bar —
+            // the way into the account actions.
+            CoineProAssetToken(
+                label = displayName.trim().take(1),
+                tint = CoineProColors.Accent,
+                size = 34.dp,
+                modifier = if (hasMenu) {
+                    Modifier
+                        .clickable { menuOpen = true }
+                        .semantics { contentDescription = accountMenuLabel }
+                } else {
+                    Modifier
+                },
+            )
+            if (hasMenu) {
+                DropdownMenu(
+                    expanded = menuOpen,
+                    onDismissRequest = { menuOpen = false },
+                    containerColor = CoineProColors.SurfaceElevated,
+                ) {
+                    onOpenSafety?.let { action ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.home_menu_safety)) },
+                            onClick = { menuOpen = false; action() },
+                        )
+                    }
+                    onLogout?.let { action ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.home_menu_logout)) },
+                            onClick = { menuOpen = false; action() },
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

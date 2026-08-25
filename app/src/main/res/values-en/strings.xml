@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_back">Back</string>
+    <string name="action_safety">Safety</string>
+    <string name="action_logout">Log out</string>
+
+    <string name="screen_signal_detail">Signal</string>
+    <string name="screen_execution">Execute signal</string>
+    <string name="screen_connections">Connections</string>
+    <string name="screen_ai_vision">Chart analysis</string>
+    <string name="screen_ai_assistant">AI assistant</string>
+    <string name="screen_news">Market intelligence</string>
+    <string name="screen_calendar">Economic calendar</string>
+    <string name="screen_launch_readiness">Launch &amp; safety</string>
+</resources>

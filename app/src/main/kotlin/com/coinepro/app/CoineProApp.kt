@@ -8,6 +8,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,6 +30,7 @@ import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionState
+import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.marketdata.MarketDataController
@@ -186,17 +188,20 @@ private fun MainShell(
         CALENDAR_ROUTE,
         LAUNCH_READINESS_ROUTE,
     )
-    val subTitle = when (currentRoute) {
-        SIGNAL_DETAIL_PATTERN -> "Signal"
-        EXECUTION_PATTERN -> "Execute signal"
-        CONNECTIONS_ROUTE -> "Connections"
-        AI_VISION_ROUTE -> "AI Vision"
-        AI_ASSISTANT_ROUTE -> "AI Assistant"
-        NEWS_ROUTE -> "Market Intelligence"
-        CALENDAR_ROUTE -> "Economic Calendar"
-        LAUNCH_READINESS_ROUTE -> "Launch & safety"
-        else -> "CoinePro"
+    val subTitleRes = when (currentRoute) {
+        SIGNAL_DETAIL_PATTERN -> R.string.screen_signal_detail
+        EXECUTION_PATTERN -> R.string.screen_execution
+        CONNECTIONS_ROUTE -> R.string.screen_connections
+        AI_VISION_ROUTE -> R.string.screen_ai_vision
+        AI_ASSISTANT_ROUTE -> R.string.screen_ai_assistant
+        NEWS_ROUTE -> R.string.screen_news
+        CALENDAR_ROUTE -> R.string.screen_calendar
+        LAUNCH_READINESS_ROUTE -> R.string.screen_launch_readiness
+        else -> R.string.app_name
     }
+    // Home draws its own header — the greeting and the balance are the page's title — so a bar on
+    // top of it would be a second one saying less.
+    val showTopBar = isSubScreen || currentRoute != AppDestination.HOME.route
 
     LaunchedEffect(launchSignalId) {
         launchSignalId?.let { signalId ->
@@ -216,42 +221,48 @@ private fun MainShell(
     }
 
     Scaffold(
+        containerColor = CoineProColors.Stage,
         topBar = {
-            if (isSubScreen) {
+            if (showTopBar) {
                 TopAppBar(
-                    title = { Text(subTitle) },
+                    title = { Text(stringResource(subTitleRes)) },
                     navigationIcon = {
-                        TextButton(onClick = { navController.popBackStack() }) { Text("Back") }
+                        if (isSubScreen) {
+                            TextButton(onClick = { navController.popBackStack() }) {
+                                Text(stringResource(R.string.action_back))
+                            }
+                        }
                     },
-                )
-            } else {
-                TopAppBar(
-                    title = { Text("CoinePro") },
                     actions = {
-                        TextButton(onClick = { navController.navigate(LAUNCH_READINESS_ROUTE) }) { Text("Safety") }
-                        TextButton(onClick = onLogout) { Text("Logout") }
+                        if (!isSubScreen) {
+                            TextButton(onClick = { navController.navigate(LAUNCH_READINESS_ROUTE) }) {
+                                Text(stringResource(R.string.action_safety))
+                            }
+                            TextButton(onClick = onLogout) {
+                                Text(stringResource(R.string.action_logout))
+                            }
+                        }
                     },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = CoineProColors.Stage,
+                        titleContentColor = CoineProColors.TextPrimary,
+                        actionIconContentColor = CoineProColors.TextSecondary,
+                    ),
                 )
             }
         },
         bottomBar = {
             if (!isSubScreen) {
-                NavigationBar {
-                    AppDestination.entries.forEach { destination ->
-                        NavigationBarItem(
-                            selected = currentRoute == destination.route,
-                            onClick = {
-                                navController.navigate(destination.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = { Text(destination.mark) },
-                            label = { Text(stringResource(destination.labelRes)) },
-                        )
-                    }
-                }
+                CoineProBottomBar(
+                    currentRoute = currentRoute,
+                    onSelect = { destination ->
+                        navController.navigate(destination.route) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                )
             }
         },
     ) { innerPadding ->
@@ -270,6 +281,9 @@ private fun MainShell(
                     onSendChart = { navController.navigate(AI_VISION_ROUTE) },
                     onOpenMarket = { navController.navigate(AppDestination.SIGNALS.route) },
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
+                    // Home carries no top bar, so the account actions hang off the avatar.
+                    onOpenSafety = { navController.navigate(LAUNCH_READINESS_ROUTE) },
+                    onLogout = onLogout,
                 )
             }
             composable(AppDestination.SIGNALS.route) {

@@ -1,4 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Default language: Persian. app_name is the brand and is not translated. -->
 <resources>
-    <string name="app_name">CoinePro</string>
+    <string name="app_name" translatable="false">CoinePro</string>
+
+    <string name="action_back">بازگشت</string>
+    <string name="action_safety">ایمنی</string>
+    <string name="action_logout">خروج</string>
+
+    <string name="screen_signal_detail">سیگنال</string>
+    <string name="screen_execution">اجرای سیگنال</string>
+    <string name="screen_connections">اتصال‌ها</string>
+    <string name="screen_ai_vision">تحلیل چارت</string>
+    <string name="screen_ai_assistant">دستیار هوشمند</string>
+    <string name="screen_news">اخبار بازار</string>
+    <string name="screen_calendar">تقویم اقتصادی</string>
+    <string name="screen_launch_readiness">ایمنی و انتشار</string>
 </resources>

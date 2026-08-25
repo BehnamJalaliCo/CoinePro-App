@@ -38,4 +38,8 @@
 
     <string name="home_note_refresh_failed">Network refresh failed. The stored snapshot stays visible and remains marked stale.</string>
     <string name="home_note_stream_recovering">Realtime stream is recovering. The latest network snapshot remains visible.</string>
+
+    <string name="home_menu_account">Account</string>
+    <string name="home_menu_safety">Safety</string>
+    <string name="home_menu_logout">Log out</string>
 </resources>

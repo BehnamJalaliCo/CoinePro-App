@@ -304,35 +304,31 @@ class ScreenshotRenderTest {
         )
     }
 
-    /** The real app chrome from [MainShell], captured around a populated Home. */
+    /**
+     * The whole screen a reader actually sees: Home inside the app's own chrome, with the real
+     * bottom bar. Home carries no top bar by design, so this is the full page.
+     */
     @Test
-    fun appShell() = captureRaw("00-app-shell") {
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun appShellPersian() = captureRaw("00-app-shell-fa") { ShellAroundHome() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun appShellPersianLight() =
+        captureRaw("00-app-shell-fa-light", darkTheme = false) { ShellAroundHome() }
+
+    @Composable
+    private fun ShellAroundHome() {
         Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("CoinePro") },
-                    actions = {
-                        TextButton(onClick = {}) { Text("Safety") }
-                        TextButton(onClick = {}) { Text("Logout") }
-                    },
+            containerColor = com.coinepro.core.designsystem.CoineProColors.Stage,
+            bottomBar = {
+                CoineProBottomBar(
+                    currentRoute = AppDestination.HOME.route,
+                    onSelect = {},
                 )
             },
-            bottomBar = {
-                NavigationBar {
-                    AppDestination.entries.forEach { destination ->
-                        NavigationBarItem(
-                            selected = destination == AppDestination.HOME,
-                            onClick = {},
-                            icon = { Text(destination.mark) },
-                            label = { Text(stringResource(destination.labelRes)) },
-                        )
-                    }
-                }
-            },
         ) { innerPadding ->
-            Box(Modifier.padding(innerPadding)) {
-                HomeScreen(state = ScreenshotFixtures.marketState(), onRetry = {})
-            }
+            Box(Modifier.padding(innerPadding)) { PopulatedHome() }
         }
     }
 
