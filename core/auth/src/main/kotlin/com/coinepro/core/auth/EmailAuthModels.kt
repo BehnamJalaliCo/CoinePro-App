@@ -60,7 +60,20 @@ data class RegistrationChallenge(
 data class AuthMethods(
     val emailPassword: Boolean = false,
     val google: Boolean = false,
+    /** Supplied only when [google] is on; it is the audience Google Sign-In must be given. */
+    val googleClientId: String? = null,
     val telegram: Boolean = false,
+    val telegramBotUsername: String? = null,
+    /**
+     * Whether this deployment can actually deliver a push at all.
+     *
+     * False means the app must not ask for the notification permission. Asking spends the one
+     * prompt Android grants for a capability that would deliver nothing, and a reader who grants it
+     * and then never hears anything has been told something untrue by the request itself.
+     */
+    val push: Boolean = false,
+    /** Whether chart-image analysis exists here. False hides the screen rather than failing in it. */
+    val chartVision: Boolean = false,
 ) {
     val any: Boolean get() = emailPassword || google || telegram
 }

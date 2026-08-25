@@ -16,8 +16,8 @@
     <string name="auth_password">Password</string>
     <string name="auth_new_password">New password</string>
     <string name="auth_full_name">Full name</string>
-    <string name="auth_code">Six-digit code</string>
-    <string name="auth_reset_token">Recovery token</string>
+    <string name="auth_code">Verification code</string>
+    <string name="auth_reset_token">Recovery code</string>
 
     <string name="auth_sign_in">Sign in</string>
     <string name="auth_sign_in_title">Sign in</string>
@@ -27,10 +27,10 @@
     <string name="auth_have_account">Already have an account? Sign in</string>
     <string name="auth_forgot">I forgot my password</string>
     <string name="auth_forgot_title">Recover your password</string>
-    <string name="auth_forgot_body">Enter the account\'s email address. If an account exists for it, a recovery link is sent.</string>
-    <string name="auth_send_reset">Send recovery link</string>
+    <string name="auth_forgot_body">Enter the account\'s email address. If an account exists for it, a recovery code is sent.</string>
+    <string name="auth_send_reset">Send recovery code</string>
     <string name="auth_reset_title">A new password</string>
-    <string name="auth_reset_body">Paste the token from the email and choose a new password. Opening the emailed link on this phone fills the token in for you.</string>
+    <string name="auth_reset_body">Enter the eight-letter code from the email — it looks like ABCD-EFGH. The dash and lower case are both fine. Opening the emailed link on this phone fills it in for you.</string>
     <string name="auth_reset_submit">Change password</string>
     <string name="auth_continue_google">Continue with Google</string>
     <string name="auth_back_to_sign_in">Back to sign-in</string>
@@ -38,13 +38,13 @@
     <string name="auth_verify_title">Verify your email</string>
     <string name="auth_verify_body">A code was sent to %1$s. Enter it here.</string>
     <string name="auth_verify_submit">Verify and continue</string>
-    <string name="auth_resend">Send the code again</string>
-    <string name="auth_resend_in">Another code can be sent in %1$d seconds</string>
+    <string name="auth_start_over">Code did not arrive? Start again</string>
+    <string name="auth_start_over_in">If the code did not arrive, you can start again in %1$d seconds</string>
 
     <string name="auth_password_hint">At least 10 characters. A phrase you can remember beats a password you have to write down somewhere.</string>
 
     <string name="auth_notice_code_sent">The code was sent.</string>
-    <string name="auth_notice_reset_requested">If an account exists for that address, a recovery link was sent. Check your email.</string>
+    <string name="auth_notice_reset_requested">If an account exists for that address, a recovery code was sent. Check your email.</string>
     <string name="auth_notice_password_changed">Your password was changed. Sign in with the new one.</string>
 
     <string name="auth_error_rejected">The request was not accepted.</string>

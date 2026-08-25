@@ -63,19 +63,27 @@ class EmailAuthControllerTest {
     }
 
     @Test
-    fun `a resend inside the cooldown is not sent`() = runTest {
+    fun `starting over inside the cooldown does nothing`() = runTest {
         val gateway = FakeEmailAuthGateway()
         gateway.registration = AppResult.Success(RegistrationChallenge("reg-1", cooldownSeconds = 30))
         val controller = controller(gateway)
 
         controller.startRegistration("reader@example.com", "a-long-enough-password", "Reader")
         runCurrent()
-        val sent = gateway.resendCalls
 
-        controller.resendCode()
+        controller.startOver()
         runCurrent()
 
-        assertEquals("The cooldown must be respected client-side too", sent, gateway.resendCalls)
+        assertEquals(
+            "The server's cooldown governs starting again, so the step must not change yet",
+            EmailAuthStep.VERIFY_CODE,
+            controller.state.value.step,
+        )
+
+        advanceTimeBy(31_000)
+        controller.startOver()
+        runCurrent()
+        assertEquals(EmailAuthStep.REGISTER, controller.state.value.step)
     }
 
     @Test
@@ -189,7 +197,6 @@ private class FakeEmailAuthGateway : EmailAuthGateway {
     var signIn: AppResult<EmailAuthSession> = AppResult.Success(session())
 
     var signInCalls = 0
-    var resendCalls = 0
     var verifyCalls = 0
 
     override suspend fun methods() = methods
@@ -201,11 +208,6 @@ private class FakeEmailAuthGateway : EmailAuthGateway {
         AppResult<EmailAuthSession> {
         verifyCalls++
         return signIn
-    }
-
-    override suspend fun resendRegistrationCode(registrationToken: String): AppResult<RegistrationChallenge> {
-        resendCalls++
-        return registration
     }
 
     override suspend fun signIn(email: String, password: String): AppResult<EmailAuthSession> {

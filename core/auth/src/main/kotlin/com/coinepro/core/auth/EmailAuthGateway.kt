@@ -39,9 +39,6 @@ interface EmailAuthGateway {
         code: String,
     ): AppResult<EmailAuthSession>
 
-    /** Requests another code for a registration already in progress. */
-    suspend fun resendRegistrationCode(registrationToken: String): AppResult<RegistrationChallenge>
-
     suspend fun signIn(email: String, password: String): AppResult<EmailAuthSession>
 
     /** Verifies a Google ID token server-side. The app never trusts the token's own claims. */

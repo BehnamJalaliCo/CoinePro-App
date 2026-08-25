@@ -15,6 +15,8 @@ import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.aivision.AiVisionGateway
 import com.coinepro.core.aivision.NetworkAiVisionGateway
 import com.coinepro.core.auth.AuthGateway
+import com.coinepro.core.auth.EmailAuthGateway
+import com.coinepro.core.auth.NetworkEmailAuthGateway
 import com.coinepro.core.auth.NetworkAuthGateway
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionMemory
@@ -187,6 +189,20 @@ object AppModule {
     @Provides
     @Singleton
     fun authGateway(@ForexPlatform gateway: AuthGateway): AuthGateway = gateway
+
+    // The email-first flow, per platform: the two backends have separate accounts, and a token
+    // minted by one is meaningless to the other.
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexEmailAuthGateway(@ForexPlatform retrofit: Retrofit): EmailAuthGateway =
+        NetworkEmailAuthGateway.create(retrofit)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoEmailAuthGateway(@CryptoPlatform retrofit: Retrofit): EmailAuthGateway =
+        NetworkEmailAuthGateway.create(retrofit)
 
     @Provides
     @Singleton

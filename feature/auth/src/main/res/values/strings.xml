@@ -16,8 +16,8 @@
     <string name="auth_password">رمز عبور</string>
     <string name="auth_new_password">رمز عبور جدید</string>
     <string name="auth_full_name">نام و نام خانوادگی</string>
-    <string name="auth_code">کد شش‌رقمی</string>
-    <string name="auth_reset_token">توکن بازیابی</string>
+    <string name="auth_code">کد تأیید</string>
+    <string name="auth_reset_token">کد بازیابی</string>
 
     <string name="auth_sign_in">ورود</string>
     <string name="auth_sign_in_title">ورود به حساب</string>
@@ -27,10 +27,10 @@
     <string name="auth_have_account">حساب دارید؟ وارد شوید</string>
     <string name="auth_forgot">رمز عبور را فراموش کرده‌ام</string>
     <string name="auth_forgot_title">بازیابی رمز عبور</string>
-    <string name="auth_forgot_body">آدرس ایمیل حساب را بنویسید. اگر حسابی با آن آدرس وجود داشته باشد، لینک بازیابی فرستاده می‌شود.</string>
-    <string name="auth_send_reset">ارسال لینک بازیابی</string>
+    <string name="auth_forgot_body">آدرس ایمیل حساب را بنویسید. اگر حسابی با آن آدرس وجود داشته باشد، کد بازیابی فرستاده می‌شود.</string>
+    <string name="auth_send_reset">ارسال کد بازیابی</string>
     <string name="auth_reset_title">رمز عبور تازه</string>
-    <string name="auth_reset_body">توکن داخل ایمیل را اینجا بگذارید و رمز تازه را بنویسید. اگر لینک ایمیل را روی همین گوشی باز کنید، توکن خودش پر می‌شود.</string>
+    <string name="auth_reset_body">کد هشت‌حرفی داخل ایمیل را بنویسید — به شکل ABCD-EFGH. خط تیره و حروف کوچک هم پذیرفته می‌شود. اگر لینک ایمیل را روی همین گوشی باز کنید، کد خودش پر می‌شود.</string>
     <string name="auth_reset_submit">تغییر رمز عبور</string>
     <string name="auth_continue_google">ادامه با گوگل</string>
     <string name="auth_back_to_sign_in">بازگشت به ورود</string>
@@ -38,13 +38,13 @@
     <string name="auth_verify_title">تأیید ایمیل</string>
     <string name="auth_verify_body">کدی به %1$s فرستاده شد. همان را اینجا بنویسید.</string>
     <string name="auth_verify_submit">تأیید و ادامه</string>
-    <string name="auth_resend">ارسال دوبارهٔ کد</string>
-    <string name="auth_resend_in">ارسال دوبارهٔ کد تا %1$d ثانیهٔ دیگر</string>
+    <string name="auth_start_over">کد نرسید؟ از ابتدا شروع کنید</string>
+    <string name="auth_start_over_in">اگر کد نرسید، تا %1$d ثانیهٔ دیگر می‌توانید از ابتدا شروع کنید</string>
 
     <string name="auth_password_hint">دست‌کم ۱۰ نویسه. عبارتی که به یاد بسپارید بهتر از رمزی است که مجبور شوید جایی بنویسید.</string>
 
     <string name="auth_notice_code_sent">کد فرستاده شد.</string>
-    <string name="auth_notice_reset_requested">اگر حسابی با این آدرس وجود داشته باشد، لینک بازیابی فرستاده شد. ایمیل خود را ببینید.</string>
+    <string name="auth_notice_reset_requested">اگر حسابی با این آدرس وجود داشته باشد، کد بازیابی فرستاده شد. ایمیل خود را ببینید.</string>
     <string name="auth_notice_password_changed">رمز عبور عوض شد. حالا با رمز تازه وارد شوید.</string>
 
     <string name="auth_error_rejected">درخواست پذیرفته نشد.</string>

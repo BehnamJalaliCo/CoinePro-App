@@ -57,7 +57,7 @@ fun EmailAuthScreen(
     onSignIn: (email: String, password: String) -> Unit,
     onRegister: (email: String, password: String, fullName: String) -> Unit,
     onVerify: (code: String) -> Unit,
-    onResend: () -> Unit,
+    onStartOver: () -> Unit,
     onRequestReset: (email: String) -> Unit,
     onResetPassword: (token: String, newPassword: String) -> Unit,
     onGoTo: (EmailAuthStep) -> Unit,
@@ -86,7 +86,7 @@ fun EmailAuthScreen(
             when (state.step) {
                 EmailAuthStep.SIGN_IN -> SignInStep(state, onSignIn, onGoTo, onGoogleSignIn, onRetryMethods)
                 EmailAuthStep.REGISTER -> RegisterStep(state, onRegister, onGoTo)
-                EmailAuthStep.VERIFY_CODE -> VerifyStep(state, onVerify, onResend, onGoTo)
+                EmailAuthStep.VERIFY_CODE -> VerifyStep(state, onVerify, onStartOver, onGoTo)
                 EmailAuthStep.FORGOT_PASSWORD -> ForgotStep(state, onRequestReset, onGoTo)
                 EmailAuthStep.RESET_PASSWORD -> ResetStep(state, initialResetToken, onResetPassword, onGoTo)
             }
@@ -197,7 +197,7 @@ private fun RegisterStep(
 private fun VerifyStep(
     state: EmailAuthUiState,
     onVerify: (String) -> Unit,
-    onResend: () -> Unit,
+    onStartOver: () -> Unit,
     onGoTo: (EmailAuthStep) -> Unit,
 ) {
     var code by remember { mutableStateOf("") }
@@ -210,7 +210,10 @@ private fun VerifyStep(
 
     CoineProTextField(
         value = code,
-        onValueChange = { entered -> code = entered.filter(Char::isDigit).take(CODE_LENGTH) },
+        // Digits only, but no exact length is enforced: the contract names the field and not its
+        // shape, and a client that insisted on six would leave the button permanently dead if the
+        // server ever sent five. The server is what validates the code.
+        onValueChange = { entered -> code = entered.filter(Char::isDigit).take(MAX_CODE_LENGTH) },
         label = stringResource(R.string.auth_code),
         modifier = Modifier.fillMaxWidth(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
@@ -220,18 +223,19 @@ private fun VerifyStep(
     Action(
         text = stringResource(R.string.auth_verify_submit),
         state = state,
-        enabled = code.length == CODE_LENGTH,
+        enabled = code.length >= MIN_CODE_LENGTH,
     ) { onVerify(code) }
 
     Spacer(Modifier.height(CoineProSpacing.One))
-    // The countdown is the server's cooldown, shown rather than hidden: a button that does nothing
-    // when tapped teaches a reader to tap it repeatedly.
+    // There is no resend route: the server's cooldown governs starting registration again, and
+    // starting again is what sends another code. The countdown is shown rather than the control
+    // hidden, because a button that does nothing when tapped teaches a reader to tap it repeatedly.
     if (state.resendAvailableIn > 0) {
-        Hint(R.string.auth_resend_in, state.resendAvailableIn)
+        Hint(R.string.auth_start_over_in, state.resendAvailableIn)
     } else {
         CoineProSecondaryButton(
-            text = stringResource(R.string.auth_resend),
-            onClick = onResend,
+            text = stringResource(R.string.auth_start_over),
+            onClick = onStartOver,
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -459,4 +463,5 @@ private fun AuthFailureReason.copyRes(): Int = when (this) {
 
 /** Matches the server's stated minimum; the server is still what enforces it. */
 private const val MIN_PASSWORD = 10
-private const val CODE_LENGTH = 6
+private const val MIN_CODE_LENGTH = 4
+private const val MAX_CODE_LENGTH = 8

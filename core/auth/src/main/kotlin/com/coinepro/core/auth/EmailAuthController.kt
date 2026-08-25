@@ -137,17 +137,17 @@ class EmailAuthController(
         gateway.verifyRegistration(token, code.trim()).authenticated()
     }
 
-    fun resendCode() = run {
-        val token = registration?.registrationToken ?: return@run restartRegistration()
-        if (stateMutable.value.resendAvailableIn > 0) return@run
-        when (val result = gateway.resendRegistrationCode(token)) {
-            is AppResult.Success -> {
-                registration = result.value
-                stateMutable.update { it.copy(notice = EmailAuthNotice.CODE_SENT) }
-                startCooldown(result.value.cooldownSeconds)
-            }
-            is AppResult.Failure -> fail(result)
-        }
+    /**
+     * Abandons the half-finished registration and returns to the form.
+     *
+     * There is no resend endpoint — the server's `cooldown_seconds` governs how soon registration
+     * may be started again, and starting again is what sends another code. So the app offers
+     * exactly that, gated on the same cooldown, rather than a resend button that would have to be
+     * backed by keeping the reader's password in memory for the length of the wait.
+     */
+    fun startOver() {
+        if (stateMutable.value.resendAvailableIn > 0) return
+        restartRegistration()
     }
 
     fun requestPasswordReset(email: String) = run {
