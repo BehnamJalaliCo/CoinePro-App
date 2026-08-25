@@ -4,4 +4,11 @@
     <string name="message_signal_history_unavailable">Signal history is unavailable.</string>
     <string name="message_signal_details_unavailable">Signal details are unavailable.</string>
     <string name="message_cached_history_shown">Cached history shown.</string>
+    <string name="message_notification_center_unavailable">Notifications are unavailable.</string>
+    <string name="message_notification_preferences_not_saved">Notification settings were not saved; the previous setting still applies.</string>
+    <string name="message_alert_symbol_unsupported">This symbol cannot be alerted on in the current market.</string>
+    <string name="message_alert_value_invalid">An alert price has to be a positive number.</string>
+    <string name="message_alert_not_created">The alert was not created.</string>
+    <string name="message_alert_not_updated">The alert was not changed.</string>
+    <string name="message_alert_not_deleted">The alert was not deleted and is still armed.</string>
 </resources>

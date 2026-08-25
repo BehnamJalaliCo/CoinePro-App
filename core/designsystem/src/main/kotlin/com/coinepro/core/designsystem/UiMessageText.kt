@@ -24,4 +24,11 @@ private val MessageKey.resourceId: Int
         MessageKey.SIGNAL_HISTORY_UNAVAILABLE -> R.string.message_signal_history_unavailable
         MessageKey.SIGNAL_DETAILS_UNAVAILABLE -> R.string.message_signal_details_unavailable
         MessageKey.CACHED_HISTORY_SHOWN -> R.string.message_cached_history_shown
+        MessageKey.NOTIFICATION_CENTER_UNAVAILABLE -> R.string.message_notification_center_unavailable
+        MessageKey.NOTIFICATION_PREFERENCES_NOT_SAVED -> R.string.message_notification_preferences_not_saved
+        MessageKey.ALERT_SYMBOL_UNSUPPORTED -> R.string.message_alert_symbol_unsupported
+        MessageKey.ALERT_VALUE_INVALID -> R.string.message_alert_value_invalid
+        MessageKey.ALERT_NOT_CREATED -> R.string.message_alert_not_created
+        MessageKey.ALERT_NOT_UPDATED -> R.string.message_alert_not_updated
+        MessageKey.ALERT_NOT_DELETED -> R.string.message_alert_not_deleted
     }

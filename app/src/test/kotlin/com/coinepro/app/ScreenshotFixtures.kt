@@ -435,19 +435,22 @@ object ScreenshotFixtures {
             condition = PriceAlertCondition.CROSS,
             value = 2_400.0,
             trigger = PriceAlertTrigger.RECURRING,
-            expiresAt = null,
+            expiresAtEpochMillis = null,
             active = true,
             createdAtEpochMillis = NOW_MILLIS - 86_400_000L,
             lastTriggeredAtEpochMillis = NOW_MILLIS - 5_400_000L,
         ),
         PriceAlert(
             id = "alert_02",
-            market = "crypto",
-            symbol = "BTCUSDT",
+            // Both alerts belong to the forex platform, because the notification surface is bound
+            // to one backend at a time. A crypto pair beside gold here would be the render that
+            // made the original mixing bug look intentional.
+            market = "forex",
+            symbol = "XAGUSD",
             condition = PriceAlertCondition.BELOW,
-            value = 88_000.0,
+            value = 66.5,
             trigger = PriceAlertTrigger.ONCE,
-            expiresAt = null,
+            expiresAtEpochMillis = null,
             active = true,
             createdAtEpochMillis = NOW_MILLIS - 172_800_000L,
             lastTriggeredAtEpochMillis = null,

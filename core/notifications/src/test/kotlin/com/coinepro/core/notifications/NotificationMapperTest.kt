@@ -1,5 +1,7 @@
 package com.coinepro.core.notifications
 
+import com.coinepro.core.model.MarketPlatform
+
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -28,7 +30,7 @@ class NotificationMapperTest {
                 condition = "magic",
                 value = 2500.0,
                 trigger = "once",
-            ).toDomain(),
+            ).toDomain(MarketPlatform.COINEPRO_FX),
         )
     }
 
@@ -43,7 +45,7 @@ class NotificationMapperTest {
             trigger = "recurring",
             active = true,
             createdAtMs = 123L,
-        ).toDomain()!!
+        ).toDomain(MarketPlatform.COINEPRO_FX)!!
 
         assertEquals(PriceAlertCondition.CROSS_UP, alert.condition)
         assertEquals(PriceAlertTrigger.RECURRING, alert.trigger)
@@ -51,11 +53,38 @@ class NotificationMapperTest {
     }
 
     @Test
-    fun `alert symbol normalization stays inside product scope`() {
-        assertEquals("XAUUSD", normalizeProductAlertSymbol("xau/usd"))
-        assertEquals("BTCUSDT", normalizeProductAlertSymbol("btc-usdt"))
-        assertNull(normalizeProductAlertSymbol("EURUSD"))
-        assertNull(normalizeProductAlertSymbol("BTCUSD"))
+    fun `alert symbols stay inside the platform that is on screen`() {
+        val fx = MarketPlatform.COINEPRO_FX
+        val crypto = MarketPlatform.TRADEYAR
+
+        assertEquals("XAUUSD", normalizeProductAlertSymbol("xau/usd", fx))
+        assertEquals("BTCUSDT", normalizeProductAlertSymbol("btc-usdt", crypto))
+
+        // The two markets live on separate backends with separate accounts, so a symbol belonging
+        // to one is not merely unsupported on the other — it is the mixing bug this app is built
+        // to prevent, arriving through a form instead of through a watchlist.
+        assertNull("A crypto pair must not be alertable on the forex platform",
+            normalizeProductAlertSymbol("BTCUSDT", fx))
+        assertNull("Gold must not be alertable on the crypto platform",
+            normalizeProductAlertSymbol("XAUUSD", crypto))
+
+        assertNull(normalizeProductAlertSymbol("EURUSD", fx))
+        assertNull(normalizeProductAlertSymbol("BTCUSD", crypto))
+    }
+
+    @Test
+    fun `an alert naming the other platform's market is dropped on the way in too`() {
+        // A row stored by an older build, or a server that answered too broadly, must not reach a
+        // screen scoped to the other market.
+        assertNull(
+            PriceAlertDto(
+                id = "a1",
+                symbol = "BTCUSDT",
+                condition = "above",
+                value = 60000.0,
+                trigger = "once",
+            ).toDomain(MarketPlatform.COINEPRO_FX),
+        )
     }
 
     @Test
@@ -68,7 +97,7 @@ class NotificationMapperTest {
                 condition = "cross_up",
                 value = 1.1,
                 trigger = "once",
-            ).toDomain(),
+            ).toDomain(MarketPlatform.COINEPRO_FX),
         )
     }
 
@@ -81,7 +110,7 @@ class NotificationMapperTest {
                 condition = "cross_up",
                 value = Double.NaN,
                 trigger = "once",
-            ).toDomain(),
+            ).toDomain(MarketPlatform.COINEPRO_FX),
         )
     }
 }

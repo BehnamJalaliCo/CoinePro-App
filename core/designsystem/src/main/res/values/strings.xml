@@ -5,4 +5,11 @@
     <string name="message_signal_history_unavailable">تاریخچهٔ سیگنال‌ها در دسترس نیست.</string>
     <string name="message_signal_details_unavailable">جزئیات سیگنال در دسترس نیست.</string>
     <string name="message_cached_history_shown">تاریخچهٔ ذخیره‌شده نمایش داده می‌شود.</string>
+    <string name="message_notification_center_unavailable">اعلان‌ها در دسترس نیستند.</string>
+    <string name="message_notification_preferences_not_saved">تنظیمات اعلان ذخیره نشد؛ همان حالت قبلی برقرار است.</string>
+    <string name="message_alert_symbol_unsupported">این نماد در بازار فعلی هشدار نمی‌پذیرد.</string>
+    <string name="message_alert_value_invalid">قیمت هشدار باید یک عدد مثبت باشد.</string>
+    <string name="message_alert_not_created">هشدار ساخته نشد.</string>
+    <string name="message_alert_not_updated">هشدار تغییر نکرد.</string>
+    <string name="message_alert_not_deleted">هشدار حذف نشد و همچنان فعال است.</string>
 </resources>

@@ -1,5 +1,11 @@
 package com.coinepro.core.notifications
 
+import com.coinepro.core.common.MessageKey
+import com.coinepro.core.common.UiMessage
+import com.coinepro.core.model.MarketPlatform
+import com.coinepro.core.network.ApiErrors
+import java.io.IOException
+import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -34,37 +40,37 @@ data class NotificationPage(
 )
 
 internal interface NotificationApi {
-    @POST("user/signals/mobile/push/devices")
+    @POST("user/mobile/push/devices")
     suspend fun registerDevice(@Body body: DeviceRegistrationDto): DeviceRegistrationResponseDto
 
-    @HTTP(method = "DELETE", path = "user/signals/mobile/push/devices", hasBody = true)
+    @HTTP(method = "DELETE", path = "user/mobile/push/devices", hasBody = true)
     suspend fun unregisterDevice(@Body body: DeviceUnregisterDto): DeviceUnregisterResponseDto
 
-    @GET("user/signals/mobile/push/preferences")
+    @GET("user/mobile/push/preferences")
     suspend fun preferences(): PreferencesResponseDto
 
-    @PATCH("user/signals/mobile/push/preferences")
+    @PATCH("user/mobile/push/preferences")
     suspend fun updatePreferences(@Body body: PushPreferencesDto): PreferencesResponseDto
 
-    @GET("user/signals/mobile/notifications")
+    @GET("user/mobile/notifications")
     suspend fun notifications(@Query("limit") limit: Int): NotificationResponseDto
 
-    @POST("user/signals/mobile/notifications/read")
+    @POST("user/mobile/notifications/read")
     suspend fun markNotificationsRead()
 
-    @GET("user/signals/mobile/alerts")
+    @GET("user/mobile/alerts")
     suspend fun alerts(): AlertListResponseDto
 
-    @POST("user/signals/mobile/alerts")
+    @POST("user/mobile/alerts")
     suspend fun createAlert(@Body body: PriceAlertCreateDto): AlertResponseDto
 
-    @PATCH("user/signals/mobile/alerts/{alertId}")
+    @PATCH("user/mobile/alerts/{alertId}")
     suspend fun patchAlert(
         @Path("alertId") alertId: String,
         @Body body: PriceAlertPatchDto,
     ): AlertResponseDto
 
-    @DELETE("user/signals/mobile/alerts/{alertId}")
+    @DELETE("user/mobile/alerts/{alertId}")
     suspend fun deleteAlert(@Path("alertId") alertId: String): DeleteAlertResponseDto
 }
 
@@ -102,7 +108,7 @@ internal data class PriceAlertDto(
     val condition: String? = null,
     val value: Double? = null,
     val trigger: String? = null,
-    val expiresAt: String? = null,
+    val expiresAt: Long? = null,
     val active: Boolean = false,
     val createdAtMs: Long? = null,
     val lastTriggeredAtMs: Long? = null,
@@ -118,8 +124,17 @@ internal data class PriceAlertCreateDto(
 internal data class PriceAlertPatchDto(val active: Boolean)
 internal data class DeleteAlertResponseDto(val removed: Boolean = false)
 
+/**
+ * [platform] scopes which symbols may be alerted on.
+ *
+ * The two backends hold different markets, and an alert is created from whatever symbol is on
+ * screen — so without a boundary here a crypto pair could be posted to the forex platform, which is
+ * the same class of mistake as showing gold in a crypto watchlist. The server refuses it too, but a
+ * refusal the reader has to trigger is a worse answer than never offering it.
+ */
 class NetworkNotificationGateway private constructor(
     private val api: NotificationApi,
+    private val platform: MarketPlatform,
 ) : NotificationGateway {
     override suspend fun registerDevice(token: String, appVersion: String?, locale: String?): Boolean =
         api.registerDevice(DeviceRegistrationDto(token = token, appVersion = appVersion, locale = locale)).registered
@@ -144,7 +159,8 @@ class NetworkNotificationGateway private constructor(
         api.markNotificationsRead()
     }
 
-    override suspend fun alerts(): List<PriceAlert> = api.alerts().items.mapNotNull { it.toDomain() }
+    override suspend fun alerts(): List<PriceAlert> =
+        api.alerts().items.mapNotNull { it.toDomain(platform) }
 
     override suspend fun createAlert(
         symbol: String,
@@ -152,7 +168,7 @@ class NetworkNotificationGateway private constructor(
         value: Double,
         trigger: PriceAlertTrigger,
     ): PriceAlert {
-        val safeSymbol = requireNotNull(normalizeProductAlertSymbol(symbol)) { "Unsupported alert symbol" }
+        val safeSymbol = requireNotNull(normalizeProductAlertSymbol(symbol, platform)) { "Unsupported alert symbol" }
         require(value.isFinite() && value > 0.0) { "Alert value must be a positive finite number" }
         return requireNotNull(
             api.createAlert(
@@ -162,28 +178,27 @@ class NetworkNotificationGateway private constructor(
                     value = value,
                     trigger = trigger.wireValue,
                 ),
-            ).alert?.toDomain(),
+            ).alert?.toDomain(platform),
         ) { "Invalid alert payload" }
     }
 
     override suspend fun setAlertActive(alertId: String, active: Boolean): PriceAlert = requireNotNull(
-        api.patchAlert(alertId, PriceAlertPatchDto(active)).alert?.toDomain(),
+        api.patchAlert(alertId, PriceAlertPatchDto(active)).alert?.toDomain(platform),
     ) { "Invalid alert payload" }
 
     override suspend fun deleteAlert(alertId: String): Boolean = api.deleteAlert(alertId).removed
 
     companion object {
-        fun create(retrofit: Retrofit): NetworkNotificationGateway =
-            NetworkNotificationGateway(retrofit.create(NotificationApi::class.java))
+        fun create(retrofit: Retrofit, platform: MarketPlatform): NetworkNotificationGateway =
+            NetworkNotificationGateway(retrofit.create(NotificationApi::class.java), platform)
     }
 }
 
-internal fun normalizeProductAlertSymbol(raw: String): String? {
+internal fun normalizeProductAlertSymbol(raw: String, platform: MarketPlatform): String? {
     val normalized = raw.trim().uppercase().replace("/", "").replace("-", "")
-    return when {
-        normalized == "XAUUSD" || normalized == "XAGUSD" -> normalized
-        normalized.endsWith("USDT") && normalized.length > 4 -> normalized
-        else -> null
+    return when (platform) {
+        MarketPlatform.COINEPRO_FX -> normalized.takeIf { it == "XAUUSD" || it == "XAGUSD" }
+        MarketPlatform.TRADEYAR -> normalized.takeIf { it.endsWith("USDT") && it.length > 4 }
     }
 }
 
@@ -212,9 +227,12 @@ internal fun NotificationDto.toDomain(): AppNotification? {
     )
 }
 
-internal fun PriceAlertDto.toDomain(): PriceAlert? {
+internal fun PriceAlertDto.toDomain(platform: MarketPlatform): PriceAlert? {
     val safeId = id?.takeIf { it.isNotBlank() } ?: return null
-    val safeSymbol = normalizeProductAlertSymbol(symbol ?: return null) ?: return null
+    // Filtered on the way in as well as on the way out. A stored alert from an older build could
+    // name the other platform's market, and rendering it here would put a crypto pair on a forex
+    // screen just as surely as creating one would.
+    val safeSymbol = normalizeProductAlertSymbol(symbol ?: return null, platform) ?: return null
     val safeValue = value?.takeIf { it.isFinite() && it > 0.0 } ?: return null
     val safeCondition = PriceAlertCondition.entries.firstOrNull { it.wireValue == condition } ?: return null
     val safeTrigger = PriceAlertTrigger.entries.firstOrNull { it.wireValue == trigger } ?: return null
@@ -225,9 +243,23 @@ internal fun PriceAlertDto.toDomain(): PriceAlert? {
         condition = safeCondition,
         value = safeValue,
         trigger = safeTrigger,
-        expiresAt = expiresAt,
+        expiresAtEpochMillis = expiresAt,
         active = active,
         createdAtEpochMillis = createdAtMs ?: 0L,
         lastTriggeredAtEpochMillis = lastTriggeredAtMs,
     )
+}
+
+/**
+ * Turns a thrown failure into something a reader can act on.
+ *
+ * The server writes its refusals in Persian and means them to be shown — "the 20-alert limit is
+ * full, delete one and try again" tells someone exactly what to do next. An HttpException's own
+ * message is the status line, so reading that instead would replace real guidance with "HTTP 409".
+ * Anything that never reached a verdict falls back to owned copy.
+ */
+internal fun Throwable.toNotificationMessage(fallback: MessageKey): UiMessage = when (this) {
+    is HttpException -> UiMessage.fromServer(ApiErrors.from(this).message, fallback)
+    is IOException -> UiMessage.Local(fallback)
+    else -> UiMessage.Local(fallback)
 }

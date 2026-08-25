@@ -267,8 +267,11 @@ object AppModule {
 
     @Provides
     @Singleton
+    // Still the unqualified (CoinePro-FX) client, so the platform is named to match rather than
+    // left to a default. When the crypto notification surface is wired, this becomes a pair of
+    // qualified bindings like the account and auth gateways above it.
     fun notificationGateway(retrofit: Retrofit): NotificationGateway =
-        NetworkNotificationGateway.create(retrofit)
+        NetworkNotificationGateway.create(retrofit, MarketPlatform.COINEPRO_FX)
 
     @Provides
     @Singleton
@@ -427,7 +430,7 @@ object AppModule {
     fun notificationController(
         gateway: NotificationGateway,
         scope: CoroutineScope,
-    ): NotificationController = NotificationController(gateway, scope)
+    ): NotificationController = NotificationController(gateway, scope, MarketPlatform.COINEPRO_FX)
 
     @Provides
     @Singleton

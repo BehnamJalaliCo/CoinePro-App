@@ -427,6 +427,7 @@ private fun MainShell(
                     executionController = executionController,
                     signalController = signalController,
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
+                    platform = activePlatform,
                 )
             }
             composable(LAUNCH_READINESS_ROUTE) {

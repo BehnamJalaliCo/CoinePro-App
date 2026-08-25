@@ -1,5 +1,7 @@
 package com.coinepro.core.notifications
 
+import com.coinepro.core.common.UiMessage
+
 enum class PriceAlertCondition(val wireValue: String) {
     ABOVE("above"),
     BELOW("below"),
@@ -38,7 +40,8 @@ data class PriceAlert(
     val condition: PriceAlertCondition,
     val value: Double,
     val trigger: PriceAlertTrigger,
-    val expiresAt: String?,
+    /** Epoch milliseconds, like the two timestamps below it. Null when the server sent none. */
+    val expiresAtEpochMillis: Long?,
     val active: Boolean,
     val createdAtEpochMillis: Long,
     val lastTriggeredAtEpochMillis: Long?,
@@ -50,5 +53,9 @@ data class NotificationCenterState(
     val unread: Int = 0,
     val alerts: List<PriceAlert> = emptyList(),
     val preferences: PushPreferences = PushPreferences(),
-    val lastError: String? = null,
+    /**
+     * Server wording when the server gave any, and owned copy otherwise — never an exception's own
+     * text, which is a status line rather than something a reader can act on.
+     */
+    val lastMessage: UiMessage? = null,
 )

@@ -55,6 +55,7 @@ import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.ExecutionStatus
 import com.coinepro.core.execution.SignalExecution
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.SignalDirection
 import com.coinepro.core.notifications.NotificationController
@@ -81,14 +82,18 @@ fun ActivityScreen(
     executionController: ExecutionController,
     signalController: SignalController,
     onOpenSignal: (Long) -> Unit,
+    platform: MarketPlatform = MarketPlatform.COINEPRO_FX,
 ) {
     val notificationState by controller.state.collectAsStateWithLifecycle()
     val executionState by executionController.history.collectAsStateWithLifecycle()
     val historyState by signalController.historyState.collectAsStateWithLifecycle()
-    var marketFilter by remember { mutableStateOf<MarketType?>(null) }
+    // Fixed to the platform on screen rather than chosen. The two markets are separate accounts on
+    // separate backends, so a "crypto" filter here would either return nothing or — worse — return
+    // rows belonging to an account this session is not signed in to.
+    val marketFilter: MarketType = platform.marketType
     var resultFilter by remember { mutableStateOf(PerformanceResultFilter.ALL) }
     var symbolFilter by remember { mutableStateOf("") }
-    var alertSymbol by remember { mutableStateOf("XAUUSD") }
+    var alertSymbol by remember(platform) { mutableStateOf(platform.defaultAlertSymbol()) }
     var alertValue by remember { mutableStateOf("") }
     var alertCondition by remember { mutableStateOf(PriceAlertCondition.CROSS) }
 
@@ -171,14 +176,11 @@ fun ActivityScreen(
             }
             item {
                 HistoryFilters(
-                    market = marketFilter,
                     result = resultFilter,
                     symbol = symbolFilter,
-                    onMarket = { marketFilter = it },
                     onResult = { resultFilter = it },
                     onSymbol = { symbolFilter = it.uppercase().filter { ch -> ch.isLetterOrDigit() }.take(18) },
                     onReset = {
-                        marketFilter = null
                         resultFilter = PerformanceResultFilter.ALL
                         symbolFilter = ""
                     },
@@ -198,7 +200,6 @@ fun ActivityScreen(
                         body = stringResource(R.string.activity_filtered_empty_body),
                         action = stringResource(R.string.activity_clear_filters),
                         onAction = {
-                            marketFilter = null
                             resultFilter = PerformanceResultFilter.ALL
                             symbolFilter = ""
                         },
@@ -296,8 +297,16 @@ fun ActivityScreen(
                 }
             }
         }
-        notificationState.lastError?.let { error ->
-            item { NoticePanel(stringResource(R.string.activity_notification_error), error, CoineProColors.Warning) }
+        notificationState.lastMessage?.let { message ->
+            item {
+                // Server wording when the server gave any, resolved owned copy otherwise. Either
+                // way it is one sentence a reader can act on, not an HTTP status.
+                NoticePanel(
+                    stringResource(R.string.activity_notification_error),
+                    message.resolve(),
+                    CoineProColors.Warning,
+                )
+            }
         }
         item { Spacer(Modifier.height(24.dp)) }
     }
@@ -468,10 +477,8 @@ private fun CoverageNotice(state: SignalHistoryState) {
 
 @Composable
 private fun HistoryFilters(
-    market: MarketType?,
     result: PerformanceResultFilter,
     symbol: String,
-    onMarket: (MarketType?) -> Unit,
     onResult: (PerformanceResultFilter) -> Unit,
     onSymbol: (String) -> Unit,
     onReset: () -> Unit,
@@ -483,14 +490,6 @@ private fun HistoryFilters(
                 Text(stringResource(R.string.activity_filters_subtitle), color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
             }
             TextButton(onClick = onReset) { Text(stringResource(R.string.activity_reset)) }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FilterPill(stringResource(R.string.activity_all_markets), market == null) { onMarket(null) }
-            FilterPill(stringResource(R.string.activity_market_forex), market == MarketType.FOREX) { onMarket(MarketType.FOREX) }
-            FilterPill(stringResource(R.string.activity_market_crypto), market == MarketType.CRYPTO) { onMarket(MarketType.CRYPTO) }
         }
         OutlinedTextField(
             value = symbol,
@@ -814,4 +813,10 @@ private fun PriceAlertCondition.labelRes(): Int = when (this) {
     PriceAlertCondition.CROSS_UP -> R.string.activity_alert_cross_up
     PriceAlertCondition.CROSS_DOWN -> R.string.activity_alert_cross_down
     PriceAlertCondition.CROSS -> R.string.activity_alert_cross
+}
+
+/** The instrument the alert form opens on, which must belong to the platform being shown. */
+private fun MarketPlatform.defaultAlertSymbol(): String = when (this) {
+    MarketPlatform.COINEPRO_FX -> "XAUUSD"
+    MarketPlatform.TRADEYAR -> "BTCUSDT"
 }
