@@ -4,6 +4,7 @@ import com.coinepro.core.common.MessageKey
 import com.coinepro.core.common.UiMessage
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.network.ApiErrors
+import com.coinepro.core.network.toServerMessage
 import java.io.IOException
 import retrofit2.HttpException
 import retrofit2.Retrofit
@@ -306,8 +307,6 @@ internal fun PriceAlertDto.toDomain(platform: MarketPlatform): PriceAlert? {
  * message is the status line, so reading that instead would replace real guidance with "HTTP 409".
  * Anything that never reached a verdict falls back to owned copy.
  */
-internal fun Throwable.toNotificationMessage(fallback: MessageKey): UiMessage = when (this) {
-    is HttpException -> UiMessage.fromServer(ApiErrors.from(this).message, fallback)
-    is IOException -> UiMessage.Local(fallback)
-    else -> UiMessage.Local(fallback)
-}
+/** Kept as a name local to this module; the behaviour now lives in one place for every caller. */
+internal fun Throwable.toNotificationMessage(fallback: MessageKey): UiMessage =
+    toServerMessage(fallback)

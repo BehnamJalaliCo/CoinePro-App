@@ -214,6 +214,9 @@ fun ActivityScreen(
             }
         }
 
+        // The whole section is dropped where the platform places no orders at all. A ledger heading
+        // above an explanation of why there is no ledger is two things saying nothing.
+        if (!executionState.unsupported) {
         item { SectionHeader(stringResource(R.string.activity_ledger_title), stringResource(R.string.activity_ledger_subtitle)) }
         if (executionState.loading && executionState.items.isEmpty()) {
             item { LoadingPanel(stringResource(R.string.activity_executions_loading)) }
@@ -240,6 +243,7 @@ fun ActivityScreen(
             items(executionState.items, key = { "execution-${it.id}" }) { execution ->
                 ExecutionHistoryCard(execution, onOpenSignal)
             }
+        }
         }
 
         item { SectionHeader(stringResource(R.string.activity_alerts_title), stringResource(R.string.activity_alerts_subtitle)) }

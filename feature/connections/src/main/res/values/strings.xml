@@ -21,6 +21,8 @@
 
     <string name="connections_mt5_connect">اتصال متاتریدر ۵</string>
     <string name="connections_lbank_live_only">الْبانک محیط آزمایشی ندارد. هر کلیدی که این‌جا ذخیره کنید کلید حساب واقعی شماست و هر سفارشی که از اپ ثبت شود با پول واقعی اجرا می‌شود.</string>
+    <string name="connections_unsupported_title">اتصال صرافی در این پلتفرم نیست</string>
+    <string name="connections_unsupported_body">این پلتفرم سفارش را از داخل اپ ثبت نمی‌کند. اتصال حساب معاملاتی از مسیر دیگری انجام می‌شود و این‌جا چیزی برای تنظیم وجود ندارد.</string>
     <string name="connections_lbank_save">ذخیرهٔ اتصال الْبانک</string>
     <string name="connections_lbank_replace">جایگزینی اطلاعات</string>
     <string name="connections_lbank_remove">حذف اتصال الْبانک</string>

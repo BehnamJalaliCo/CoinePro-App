@@ -285,6 +285,14 @@ fun ExecutionScreen(
         }
 
         executionState.error?.let { item { Notice(it, CoineProColors.Sell) } }
+        // Its own line, and worded so nothing suggests an order may have gone through: none was
+        // sent, and the app deliberately does not retry an order on the reader's behalf.
+        if (executionState.rateLimited) {
+            item { Notice(stringResource(R.string.execution_rate_limited), CoineProColors.Warning) }
+        }
+        if (executionState.unsupported) {
+            item { Notice(stringResource(R.string.execution_unsupported), CoineProColors.TextMuted) }
+        }
 
         executionState.execution?.let { execution ->
             item {

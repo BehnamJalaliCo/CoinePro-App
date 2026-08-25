@@ -37,6 +37,15 @@ data class ConnectionsState(
     val loading: Boolean = false,
     val mt5: VenueConnection? = null,
     val lbank: VenueConnection? = null,
+    /**
+     * This platform has no venue-connection surface at all.
+     *
+     * A state rather than an error, and the distinction is the whole point: nothing went wrong,
+     * retrying will not help, and a screen showing a failure would send the reader looking for a
+     * problem that does not exist. CoinePro-FX is the case — it links a broker through copy
+     * trading instead, which is a different surface entirely.
+     */
+    val unsupported: Boolean = false,
     val error: String? = null,
     val message: String? = null,
 )
@@ -90,12 +99,24 @@ data class SignalExecution(
 data class ExecutionState(
     val loading: Boolean = false,
     val execution: SignalExecution? = null,
+    /**
+     * The server refused this attempt for coming too fast, and nothing was retried.
+     *
+     * Carried as its own flag because it is the one failure a reader must not read as "the order
+     * may have gone through". Nothing was sent, waiting fixes it, and the app deliberately does not
+     * retry on their behalf — an order is not something to send twice on a guess.
+     */
+    val rateLimited: Boolean = false,
+    /** This platform places no orders at all; see [ConnectionsState.unsupported]. */
+    val unsupported: Boolean = false,
     val error: String? = null,
 )
 
 data class ExecutionHistoryState(
     val loading: Boolean = false,
     val items: List<SignalExecution> = emptyList(),
+    /** This platform places no orders at all; see [ConnectionsState.unsupported]. */
+    val unsupported: Boolean = false,
     val error: String? = null,
 ) {
     val active: List<SignalExecution> get() = items.filter { it.isActive }

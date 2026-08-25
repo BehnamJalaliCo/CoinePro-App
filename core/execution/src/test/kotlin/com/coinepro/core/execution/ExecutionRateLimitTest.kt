@@ -22,7 +22,10 @@ class ExecutionRateLimitTest {
 
         assertEquals(1, gateway.executeCalls)
         assertFalse(controller.execution.value.loading)
-        assertTrue(controller.execution.value.error.orEmpty().contains("rate limited", ignoreCase = true))
+        // A flag rather than a message, so the screen can say it in the reader's language and say
+        // the part that matters: nothing was sent.
+        assertTrue(controller.execution.value.rateLimited)
+        assertEquals(null, controller.execution.value.error)
     }
 }
 

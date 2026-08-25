@@ -17,6 +17,8 @@
     <string name="connections_permission_futures">Futures</string>
     <string name="connections_mt5_connect">Connect MetaTrader 5</string>
     <string name="connections_lbank_live_only">LBank has no test environment. Any key saved here is a key to your real account, and any order placed from the app is executed with real money.</string>
+    <string name="connections_unsupported_title">No exchange connection on this platform</string>
+    <string name="connections_unsupported_body">This platform does not place orders from the app. Linking a trading account happens elsewhere, and there is nothing to set up here.</string>
     <string name="connections_lbank_save">Save LBank connection</string>
     <string name="connections_lbank_replace">Replace credentials</string>
     <string name="connections_lbank_remove">Remove LBank connection</string>

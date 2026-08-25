@@ -106,19 +106,40 @@ fun ConnectionsScreen(
         state.error?.let { item { Caution(it, CoineProColors.Sell) } }
         state.message?.let { item { Caution(it, CoineProColors.Buy) } }
 
-        item {
-            when (platform) {
-                MarketPlatform.COINEPRO_FX -> Mt5Card(
-                    connection = state.mt5,
-                    onConnect = controller::connectMt5,
-                    onDisconnect = controller::disconnectMt5,
-                )
+        if (state.unsupported) {
+            // Said plainly, not as a failure. This platform never had a venue-connection surface —
+            // it links a broker through copy trading, which lives somewhere else — so a card
+            // offering a connection that cannot be made would be worse than none.
+            item {
+                CoineProCard(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = stringResource(R.string.connections_unsupported_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = CoineProColors.TextPrimary,
+                    )
+                    Text(
+                        text = stringResource(R.string.connections_unsupported_body),
+                        modifier = Modifier.padding(top = CoineProSpacing.One),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = CoineProColors.TextSecondary,
+                    )
+                }
+            }
+        } else {
+            item {
+                when (platform) {
+                    MarketPlatform.COINEPRO_FX -> Mt5Card(
+                        connection = state.mt5,
+                        onConnect = controller::connectMt5,
+                        onDisconnect = controller::disconnectMt5,
+                    )
 
-                MarketPlatform.TRADEYAR -> LbankCard(
-                    connection = state.lbank,
-                    onConnect = controller::connectLbank,
-                    onDisconnect = controller::disconnectLbank,
-                )
+                    MarketPlatform.TRADEYAR -> LbankCard(
+                        connection = state.lbank,
+                        onConnect = controller::connectLbank,
+                        onDisconnect = controller::disconnectLbank,
+                    )
+                }
             }
         }
     }

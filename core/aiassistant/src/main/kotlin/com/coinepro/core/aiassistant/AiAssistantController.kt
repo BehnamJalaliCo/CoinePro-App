@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.coinepro.core.network.serverTextOrNull
 
 class AiAssistantController(
     private val gateway: AiAssistantGateway,
@@ -65,7 +66,7 @@ class AiAssistantController(
             } catch (error: AiAssistantRequestRejectedException) {
                 _state.update { it.copy(sending = false, error = error.message) }
             } catch (error: Exception) {
-                _state.update { it.copy(sending = false, error = error.message ?: "Could not send the assistant message.") }
+                _state.update { it.copy(sending = false, error = error.serverTextOrNull()) }
             }
         }
     }

@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.coinepro.core.network.serverTextOrNull
 
 class MarketIntelController(
     private val gateway: MarketIntelGateway,
@@ -36,7 +37,7 @@ class MarketIntelController(
                     mutableState.value = latest.copy(
                         loading = false,
                         refreshing = false,
-                        error = error.message ?: "Market intelligence is unavailable.",
+                        error = error.serverTextOrNull(),
                     )
                 }
         }

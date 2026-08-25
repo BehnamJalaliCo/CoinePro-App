@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.coinepro.core.network.serverTextOrNull
 
 class AiSignalController(
     private val gateway: AiSignalGateway,
@@ -53,7 +54,7 @@ class AiSignalController(
                 _state.update {
                     it.copy(
                         refreshingQuota = false,
-                        error = error.message ?: "AI Signal quota is unavailable.",
+                        error = error.serverTextOrNull(),
                     )
                 }
             }
@@ -99,7 +100,7 @@ class AiSignalController(
                 _state.update {
                     it.copy(
                         submitting = false,
-                        error = error.message ?: "AI Signal request failed.",
+                        error = error.serverTextOrNull(),
                     )
                 }
             }
@@ -175,7 +176,7 @@ class AiSignalController(
             false
         } catch (error: Exception) {
             _state.update {
-                it.copy(error = error.message ?: "Could not refresh AI Signal status.")
+                it.copy(error = error.serverTextOrNull())
             }
             false
         }

@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.coinepro.core.network.serverTextOrNull
 
 class ExecutionController(
     private val gateway: ExecutionGateway,
@@ -34,8 +35,15 @@ class ExecutionController(
                     _connections.value = ConnectionsState(mt5 = mt5, lbank = lbank)
                 }
                 .onFailure { error ->
+                    // Absent is not broken. A platform that never had this surface must not be
+                    // reported as one whose surface failed, or the reader goes looking for a
+                    // problem to fix.
+                    if (error is ExecutionUnsupportedException) {
+                        _connections.value = ConnectionsState(unsupported = true)
+                        return@onFailure
+                    }
                     _connections.update {
-                        it.copy(loading = false, error = error.message ?: "Connections unavailable")
+                        it.copy(loading = false, error = error.serverTextOrNull())
                     }
                 }
         }
@@ -47,8 +55,12 @@ class ExecutionController(
             runCatching { gateway.executions() }
                 .onSuccess { items -> _history.value = ExecutionHistoryState(items = items) }
                 .onFailure { error ->
+                    if (error is ExecutionUnsupportedException) {
+                        _history.value = ExecutionHistoryState(unsupported = true)
+                        return@onFailure
+                    }
                     _history.update {
-                        it.copy(loading = false, error = error.message ?: "Executed signals unavailable")
+                        it.copy(loading = false, error = error.serverTextOrNull())
                     }
                 }
         }
@@ -64,7 +76,7 @@ class ExecutionController(
                     refreshConnections()
                 }
                 .onFailure { error ->
-                    _connections.update { it.copy(loading = false, error = error.message ?: "MT5 connection failed") }
+                    _connections.update { it.copy(loading = false, error = error.serverTextOrNull()) }
                 }
         }
     }
@@ -87,7 +99,7 @@ class ExecutionController(
                     refreshConnections()
                 }
                 .onFailure { error ->
-                    _connections.update { it.copy(loading = false, error = error.message ?: "LBank connection failed") }
+                    _connections.update { it.copy(loading = false, error = error.serverTextOrNull()) }
                 }
         }
     }
@@ -123,7 +135,11 @@ class ExecutionController(
                     refreshExecutions()
                 }
                 .onFailure { error ->
-                    _execution.value = ExecutionState(error = error.message ?: "Execution request failed")
+                    _execution.value = when (error) {
+                        is ExecutionRateLimitedException -> ExecutionState(rateLimited = true)
+                        is ExecutionUnsupportedException -> ExecutionState(unsupported = true)
+                        else -> ExecutionState(error = error.serverTextOrNull())
+                    }
                 }
         }
     }
@@ -151,7 +167,7 @@ class ExecutionController(
                     refreshExecutions()
                 }
                 .onFailure { error ->
-                    _execution.update { it.copy(loading = false, error = error.message ?: "Close request failed") }
+                    _execution.update { it.copy(loading = false, error = error.serverTextOrNull()) }
                 }
         }
     }

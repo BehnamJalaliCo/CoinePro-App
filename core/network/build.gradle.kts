@@ -13,6 +13,7 @@ android {
 }
 
 dependencies {
+    api(project(":core:common"))
     api(libs.okhttp.core)
     api(libs.retrofit.core)
     implementation(libs.retrofit.gson)

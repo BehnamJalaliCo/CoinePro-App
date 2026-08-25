@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.coinepro.core.network.serverTextOrNull
 
 class AiVisionController(
     private val gateway: AiVisionGateway,
@@ -45,7 +46,7 @@ class AiVisionController(
             } catch (_: AiVisionRateLimitedException) {
                 _state.update { it.copy(uploading = false, error = "AI Vision is temporarily rate limited. Try again later.") }
             } catch (error: Exception) {
-                _state.update { it.copy(uploading = false, error = error.message ?: "AI Vision upload failed.") }
+                _state.update { it.copy(uploading = false, error = error.serverTextOrNull()) }
             }
         }
     }
@@ -104,7 +105,7 @@ class AiVisionController(
             _state.update { it.copy(error = "AI Vision status requires an active server entitlement.") }
             false
         } catch (error: Exception) {
-            _state.update { it.copy(error = error.message ?: "Could not refresh AI Vision status.") }
+            _state.update { it.copy(error = error.serverTextOrNull()) }
             false
         }
     }

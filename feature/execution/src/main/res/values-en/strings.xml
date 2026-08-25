@@ -44,4 +44,6 @@
     <string name="execution_explain_failed">The provider reported an execution failure.</string>
     <string name="execution_explain_cancelled">The queued request was cancelled before provider confirmation.</string>
     <string name="execution_explain_unknown">The provider state is unknown; the app makes no open or closed assumption.</string>
+    <string name="execution_rate_limited">The server refused this attempt for coming too fast. No order was sent, and the app does not retry one on your behalf. Wait a moment and try again.</string>
+    <string name="execution_unsupported">This platform does not place orders from the app.</string>
 </resources>

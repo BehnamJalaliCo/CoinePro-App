@@ -45,4 +45,6 @@
     <string name="execution_explain_failed">ارائه‌دهنده اجرا را ناموفق گزارش کرد.</string>
     <string name="execution_explain_cancelled">درخواستِ در صف پیش از تأیید ارائه‌دهنده لغو شد.</string>
     <string name="execution_explain_unknown">وضعیت ارائه‌دهنده نامشخص است؛ آپ باز یا بسته بودن را حدس نمی‌زند.</string>
+    <string name="execution_rate_limited">سرور این درخواست را به‌دلیل سرعت زیاد نپذیرفت. هیچ سفارشی ارسال نشد و اپ خودش دوباره تلاش نمی‌کند. چند لحظه صبر کنید و دوباره بزنید.</string>
+    <string name="execution_unsupported">این پلتفرم سفارش را از داخل اپ ثبت نمی‌کند.</string>
 </resources>

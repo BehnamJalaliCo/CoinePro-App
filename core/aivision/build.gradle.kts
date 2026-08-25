@@ -15,6 +15,7 @@ android {
 dependencies {
     api(project(":core:model"))
     implementation(project(":core:aisignal"))
+    implementation(project(":core:network"))
     implementation(libs.retrofit.core)
     implementation(libs.gson)
     implementation(libs.okhttp.core)
