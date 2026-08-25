@@ -312,6 +312,7 @@ private fun MainShell(
                 SignalsScreen(
                     controller = signalController,
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
+                    platform = activePlatform,
                 )
             }
             composable(
