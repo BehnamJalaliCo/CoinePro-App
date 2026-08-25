@@ -30,6 +30,8 @@ class NetworkEmailAuthGateway internal constructor(
                 telegramBotUsername = it.telegramBotUsername,
                 push = it.push,
                 chartVision = it.chartVision,
+                assistant = it.assistant,
+                aiSignals = it.aiSignals,
             )
         }
     }

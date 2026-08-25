@@ -72,6 +72,24 @@ class NotificationControllerTest {
     }
 
     @Test
+    fun `a write that marked no rows leaves the badge alone`() = runTest {
+        val gateway = FakeNotificationGateway(markedRowCount = 0)
+        val controller = controller(gateway)
+        controller.refresh()
+        runCurrent()
+
+        controller.markRead()
+        runCurrent()
+
+        assertEquals(
+            "The server changed nothing, so a zero here would be the app's own invention",
+            3,
+            controller.state.value.unread,
+        )
+        assertTrue(controller.state.value.notifications.none { it.read })
+    }
+
+    @Test
     fun `an alert for the other platform's market is refused before it is sent`() = runTest {
         val gateway = FakeNotificationGateway()
         val controller = controller(gateway)
@@ -155,6 +173,7 @@ private class FakeNotificationGateway(
     var preferencesError: Throwable? = null,
     var preferencesWriteError: Throwable? = null,
     var markReadError: Throwable? = null,
+    var markedRowCount: Int = 3,
     var deleteConfirms: Boolean = true,
 ) : NotificationGateway {
     var createCalls = 0
@@ -190,8 +209,9 @@ private class FakeNotificationGateway(
         )
     }
 
-    override suspend fun markNotificationsRead() {
+    override suspend fun markNotificationsRead(): Int {
         markReadError?.let { throw it }
+        return markedRowCount
     }
 
     override suspend fun alerts() = listOf(

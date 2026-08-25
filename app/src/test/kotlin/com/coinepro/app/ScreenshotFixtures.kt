@@ -800,7 +800,7 @@ class FakeNotificationGateway : NotificationGateway {
     override suspend fun notifications(limit: Int) =
         NotificationPage(ScreenshotFixtures.notifications, unread = 2)
 
-    override suspend fun markNotificationsRead() = Unit
+    override suspend fun markNotificationsRead() = 2
     override suspend fun alerts(): List<PriceAlert> = ScreenshotFixtures.alerts
 
     override suspend fun createAlert(

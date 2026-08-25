@@ -74,6 +74,21 @@ data class AuthMethods(
     val push: Boolean = false,
     /** Whether chart-image analysis exists here. False hides the screen rather than failing in it. */
     val chartVision: Boolean = false,
+    /**
+     * Whether a conversational assistant exists.
+     *
+     * Separate from [aiSignals] because the two are different products that happen to share a
+     * model: this is a thread, that is a one-shot analysis. TradeYar has the second and not the
+     * first, and collapsing them would hide a working feature or offer a missing one.
+     */
+    val assistant: Boolean = false,
+    /**
+     * Whether one-shot AI analysis is available *right now*.
+     *
+     * Tracks the model bridge's actual reachability rather than a static setting, so a sleeping
+     * bridge turns the screen off instead of filling it with failed jobs.
+     */
+    val aiSignals: Boolean = false,
 ) {
     val any: Boolean get() = emailPassword || google || telegram
 }

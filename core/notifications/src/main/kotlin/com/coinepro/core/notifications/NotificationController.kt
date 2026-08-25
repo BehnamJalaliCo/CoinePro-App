@@ -64,18 +64,30 @@ class NotificationController(
     /**
      * Marks everything read.
      *
-     * The count is cleared only after the server confirms. Clearing it optimistically would show a
-     * zero the server does not agree with, and the next refresh would silently bring the badge back
-     * — which reads as new mail arriving rather than as a write that failed.
+     * The screen follows the server's own count rather than assuming. A response of zero rows means
+     * nothing on the server changed, so nothing on screen changes either — clearing the badge there
+     * would show a zero the server does not agree with, and the next refresh would bring it back
+     * looking like new mail rather than like a write that did nothing.
      */
     fun markRead() {
         scope.launch {
             runCatching { gateway.markNotificationsRead() }
-                .onSuccess {
+                .onSuccess { marked ->
+                    if (marked <= 0) return@onSuccess
                     _state.update { current ->
                         current.copy(
                             unread = 0,
                             notifications = current.notifications.map { it.copy(read = true) },
+                            lastMessage = null,
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            lastMessage = error.toNotificationMessage(
+                                MessageKey.NOTIFICATION_CENTER_UNAVAILABLE,
+                            ),
                         )
                     }
                 }

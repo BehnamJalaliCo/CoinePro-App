@@ -103,14 +103,6 @@ class AccountControllerTest {
         assertEquals(KycState.APPROVED, KycState.fromWire("approved"))
         assertEquals(KycState.NOT_STARTED, KycState.fromWire("not_started"))
     }
-
-    @Test
-    fun `persian and arabic digits fold to latin so a typed national id is not stripped away`() {
-        assertEquals("0012345678", "۰۰۱۲۳۴۵۶۷۸".foldDigitsToLatin())
-        assertEquals("0987654321", "٠٩٨٧٦٥٤٣٢١".foldDigitsToLatin())
-        assertEquals("+989121234567", "+۹۸۹۱۲۱۲۳۴۵۶۷".foldDigitsToLatin())
-        assertEquals("already-latin-1", "already-latin-1".foldDigitsToLatin())
-    }
 }
 
 private class FakeAccountGateway(

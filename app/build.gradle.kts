@@ -41,11 +41,18 @@ val stagingFirebaseApplicationId = providers.gradleProperty("COINEPRO_STAGING_FI
 val stagingFirebaseApiKey = providers.gradleProperty("COINEPRO_STAGING_FIREBASE_API_KEY").orElse("").get()
 val stagingFirebaseSenderId = providers.gradleProperty("COINEPRO_STAGING_FIREBASE_SENDER_ID").orElse("").get()
 
+// The two production hosts, as their own teams published them. Both are public addresses rather
+// than anything secret, and naming them here is what makes a release build reach a real server —
+// the `.invalid` placeholders below are deliberate dead ends for environments nobody has stood up.
+//
+// The `/api` on CoinePro-FX is part of its base address, not a path the app adds: its routes are
+// documented as `user/…` and are served under that prefix. TradeYar carries its own prefix inside
+// each route instead (`api/mobile/v1/…`), so its base is the bare host.
 val productionTradeYarBaseUrl = providers.gradleProperty("COINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL")
-    .orElse("https://production-tradeyar.example.invalid/")
+    .orElse("https://tradeyar.trade-future.ir/")
     .get()
 val productionApiBaseUrl = providers.gradleProperty("COINEPRO_PRODUCTION_API_BASE_URL")
-    .orElse("https://production.example.invalid/")
+    .orElse("https://coineprofx.com/api/")
     .get()
 val productionFirebaseProjectId = providers.gradleProperty("COINEPRO_PRODUCTION_FIREBASE_PROJECT_ID").orElse("").get()
 val productionFirebaseApplicationId = providers.gradleProperty("COINEPRO_PRODUCTION_FIREBASE_APPLICATION_ID").orElse("").get()
@@ -67,6 +74,15 @@ listOf(
 ).forEach { (name, urls) ->
     require(urls.first != urls.second) {
         "CoinePro-FX and TradeYar base URLs must differ for the $name environment."
+    }
+    // Retrofit resolves a relative path against the base as a URL, not by joining strings: without
+    // the trailing slash the last segment is replaced rather than appended, so a base of
+    // `https://host/api` turns `user/auth/methods` into `https://host/user/auth/methods` and every
+    // request 404s in a way that reads like the server is down.
+    listOf(urls.first, urls.second).forEach { url ->
+        require(url.endsWith("/")) {
+            "The $name base URL must end with a slash, otherwise Retrofit drops its last path segment: $url"
+        }
     }
 }
 

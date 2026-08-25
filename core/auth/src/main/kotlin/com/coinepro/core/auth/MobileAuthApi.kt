@@ -73,6 +73,8 @@ internal data class AuthMethodsDto(
     val telegramBotUsername: String? = null,
     val push: Boolean = false,
     val chartVision: Boolean = false,
+    val assistant: Boolean = false,
+    val aiSignals: Boolean = false,
 )
 
 internal data class RegistrationStartDto(

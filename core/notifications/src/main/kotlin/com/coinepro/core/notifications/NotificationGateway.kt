@@ -22,7 +22,14 @@ interface NotificationGateway {
     suspend fun preferences(): PushPreferences
     suspend fun updatePreferences(preferences: PushPreferences): PushPreferences
     suspend fun notifications(limit: Int = 50): NotificationPage
-    suspend fun markNotificationsRead()
+    /**
+     * Marks everything read and reports how many rows this call changed.
+     *
+     * The count matters: clearing the badge optimistically shows a zero the server may not agree
+     * with, and the next refresh brings it back looking like new mail. Marking what the server
+     * says was marked is the only version that cannot lie.
+     */
+    suspend fun markNotificationsRead(): Int
     suspend fun alerts(): List<PriceAlert>
     suspend fun createAlert(
         symbol: String,
@@ -63,7 +70,7 @@ internal interface NotificationApi {
     suspend fun notifications(@Query("limit") limit: Int): NotificationResponseDto
 
     @POST("user/mobile/notifications/read")
-    suspend fun markNotificationsRead()
+    suspend fun markNotificationsRead(): MarkReadResponseDto
 
     @GET("user/mobile/alerts")
     suspend fun alerts(): AlertListResponseDto
@@ -116,7 +123,14 @@ internal data class PriceAlertDto(
     val condition: String? = null,
     val value: Double? = null,
     val trigger: String? = null,
+    /**
+     * The two backends spell the expiry differently: CoinePro-FX sends `expires_at`, TradeYar sends
+     * `expires_at_ms` alongside its two other `_ms` fields. Both are epoch milliseconds, so both are
+     * read and whichever arrived wins — a single spelling here would leave one platform's alerts
+     * looking as though they never expire.
+     */
     val expiresAt: Long? = null,
+    val expiresAtMs: Long? = null,
     val active: Boolean = false,
     val createdAtMs: Long? = null,
     val lastTriggeredAtMs: Long? = null,
@@ -131,6 +145,7 @@ internal data class PriceAlertCreateDto(
 )
 internal data class PriceAlertPatchDto(val active: Boolean)
 internal data class DeleteAlertResponseDto(val removed: Boolean = false)
+internal data class MarkReadResponseDto(val ok: Boolean = false, val marked: Int = 0)
 
 /**
  * [platform] scopes which symbols may be alerted on.
@@ -164,9 +179,8 @@ class NetworkNotificationGateway private constructor(
         )
     }
 
-    override suspend fun markNotificationsRead() {
-        api.markNotificationsRead()
-    }
+    override suspend fun markNotificationsRead(): Int =
+        api.markNotificationsRead().marked.coerceAtLeast(0)
 
     override suspend fun alerts(): List<PriceAlert> =
         api.alerts().items.mapNotNull { it.toDomain(platform) }
@@ -252,7 +266,7 @@ internal fun PriceAlertDto.toDomain(platform: MarketPlatform): PriceAlert? {
         condition = safeCondition,
         value = safeValue,
         trigger = safeTrigger,
-        expiresAtEpochMillis = expiresAt,
+        expiresAtEpochMillis = expiresAtMs ?: expiresAt,
         active = active,
         createdAtEpochMillis = createdAtMs ?: 0L,
         lastTriggeredAtEpochMillis = lastTriggeredAtMs,
