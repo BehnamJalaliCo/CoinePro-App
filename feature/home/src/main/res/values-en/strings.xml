@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_agent_name">Rasad</string>
+    <string name="home_agent_working">Working…</string>
+    <string name="home_agent_working_body">Reading the market and your holdings. A briefing follows shortly.</string>
+    <string name="home_agent_resting_body">No briefing for this window yet. Generate a signal, or send a chart screenshot for analysis.</string>
+    <string name="home_agent_unavailable">Live briefing is unavailable.</string>
+    <string name="home_action_signal">Generate signal</string>
+    <string name="home_action_chart">Analyse chart</string>
+
+    <string name="home_portfolio_total">Total balance</string>
+
+    <string name="home_market_title">Market</string>
+    <string name="home_market_empty">No market data has arrived yet.</string>
+    <string name="home_market_connecting">Connecting to market data…</string>
+    <string name="home_retry">Retry</string>
+    <string name="home_quote_stale">STALE</string>
+    <string name="home_value_missing">—</string>
+
+    <string name="home_signals_title">Open signals</string>
+    <string name="home_signal_levels">Entry %1$s · Stop %2$s · Target %3$s</string>
+
+    <string name="home_status_live">Realtime connected</string>
+    <string name="home_status_connecting">Connecting…</string>
+    <string name="home_status_idle">Market stream idle</string>
+    <string name="home_status_degraded">Realtime reconnecting · HTTP snapshot active</string>
+    <string name="home_status_offline">Market data offline</string>
+    <string name="home_status_cached">Cached snapshot · offline</string>
+    <string name="home_status_cached_refreshing">Cached snapshot · network refresh in progress</string>
+
+    <string name="home_cache_stored">Stored %1$s · values are not live</string>
+    <string name="home_cache_unknown">Stored market snapshot · age unknown</string>
+
+    <string name="home_note_refresh_failed">Network refresh failed. The stored snapshot stays visible and remains marked stale.</string>
+    <string name="home_note_stream_recovering">Realtime stream is recovering. The latest network snapshot remains visible.</string>
+</resources>

@@ -14,6 +14,7 @@ import com.coinepro.core.aisignal.AiSignalJob
 import com.coinepro.core.aisignal.AiSignalQuota
 import com.coinepro.core.aisignal.AiSignalRisk
 import com.coinepro.core.aisignal.AiSignalRequest
+import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.execution.ExecutionGateway
 import com.coinepro.core.execution.ExecutionStatus
 import com.coinepro.core.execution.ExecutionVenue
@@ -35,6 +36,9 @@ import com.coinepro.core.model.MarketQuote
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.QuoteSource
 import com.coinepro.core.model.SignalDirection
+import com.coinepro.feature.home.HomeBriefing
+import com.coinepro.feature.home.HomePortfolio
+import com.coinepro.feature.home.HomeSignal
 import com.coinepro.core.notifications.AppNotification
 import com.coinepro.core.notifications.NotificationGateway
 import com.coinepro.core.notifications.NotificationPage
@@ -77,6 +81,44 @@ object ScreenshotFixtures {
             quote("XRPUSDT", "XRP", MarketType.CRYPTO, 0.6218, QuoteSource.LBANK, -1.12),
             quote("ADAUSDT", "ADA", MarketType.CRYPTO, 0.4471, QuoteSource.LBANK, 0.88),
         ).associateBy { it.instrument.symbol },
+    )
+
+    /**
+     * A briefing in the shape the server is being asked to return: one short paragraph of plain
+     * text with the figures inline. The screen marks the figures up; it does not compose the
+     * sentence.
+     */
+    val homeBriefing = HomeBriefing.Ready(
+        body = "بیت‌کوین در شش ساعت گذشته 1.84% بالا رفت و از مقاومت 90,400 رد شد. " +
+            "حجم خرید بالاتر از میانگین هفته است. سولانا با 3.21% رشد، بهترین دارایی پرتفوی توست.",
+        ageLabel = "۴ دقیقه پیش",
+    )
+
+    val homePortfolio = HomePortfolio(
+        totalLabel = MarketNumberFormatter.price(12_480.35),
+        changeLabel = MarketNumberFormatter.signedPercent(2.14),
+        isUp = true,
+    )
+
+    val homeSignals: List<HomeSignal> = listOf(
+        HomeSignal(
+            id = 4821,
+            title = "خرید XAUUSD",
+            entryLabel = MarketNumberFormatter.price(2_408.40),
+            stopLabel = MarketNumberFormatter.price(2_396.00),
+            targetLabel = MarketNumberFormatter.price(2_431.50),
+            progressLabel = MarketNumberFormatter.signedPercent(0.18),
+            isUp = true,
+        ),
+        HomeSignal(
+            id = 4822,
+            title = "فروش ETHUSDT",
+            entryLabel = MarketNumberFormatter.price(3_140.00),
+            stopLabel = MarketNumberFormatter.price(3_205.00),
+            targetLabel = MarketNumberFormatter.price(3_010.00),
+            progressLabel = MarketNumberFormatter.signedPercent(-0.42),
+            isUp = false,
+        ),
     )
 
     private fun quote(

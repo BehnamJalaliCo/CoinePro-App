@@ -261,7 +261,15 @@ private fun MainShell(
             modifier = Modifier.padding(innerPadding),
         ) {
             composable(AppDestination.HOME.route) {
-                HomeScreen(state = marketState, onRetry = onMarketRetry)
+                HomeScreen(
+                    state = marketState,
+                    onRetry = onMarketRetry,
+                    // The briefing stays in its resting state until a server produces one. Both
+                    // pills lead to the AI section, which is where the work actually happens.
+                    onGenerateSignal = { navController.navigate(AppDestination.AI.route) },
+                    onSendChart = { navController.navigate(AI_VISION_ROUTE) },
+                    onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
+                )
             }
             composable(AppDestination.SIGNALS.route) {
                 SignalsScreen(

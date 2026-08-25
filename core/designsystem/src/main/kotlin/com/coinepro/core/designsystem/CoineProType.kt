@@ -65,3 +65,17 @@ val CoineProTypography = Typography(
     labelMedium = coineProTextStyle(12, 18, FontWeight.Bold, 0.5),
     labelSmall = coineProTextStyle(11, 16, FontWeight.Bold, 0.5),
 )
+
+/** Styles that carry a specific job rather than a place on the Material scale. */
+object CoineProTextStyles {
+
+    /**
+     * The account total: the largest thing on any screen it appears on.
+     *
+     * Sized between [Typography.displaySmall] and [Typography.displayMedium] because neither is
+     * right — 36sp does not read as the hero of the screen and 45sp wraps a six-figure balance on a
+     * narrow phone. The negative tracking is what keeps a long Latin figure from looking loose
+     * beside the Persian label above it.
+     */
+    val Balance: TextStyle = coineProTextStyle(42, 54, FontWeight.Bold, -1.0)
+}

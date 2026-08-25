@@ -4,10 +4,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
+/**
+ * Radii for the "آرام" direction.
+ *
+ * Generous, because this direction separates content with whitespace and corner radius instead of
+ * with rules and shadows. A card here has no border and no elevation, so the curve is the only
+ * thing that tells the reader where the surface ends.
+ *
+ * [extraSmall] stays tight: it carries chips and status pills, where a large radius would make a
+ * short Persian label look like a button.
+ */
 val CoineProShapes = Shapes(
-    extraSmall = RoundedCornerShape(4.dp),
-    small = RoundedCornerShape(8.dp),
-    medium = RoundedCornerShape(12.dp),
-    large = RoundedCornerShape(16.dp),
-    extraLarge = RoundedCornerShape(24.dp),
+    extraSmall = RoundedCornerShape(6.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(18.dp),
+    large = RoundedCornerShape(22.dp),
+    extraLarge = RoundedCornerShape(28.dp),
 )
+
+/** Fully rounded, for the row of primary actions under the balance. */
+val CoineProPillShape = RoundedCornerShape(percent = 50)

@@ -84,6 +84,46 @@ class ScreenshotRenderTest {
         HomeScreen(state = ScreenshotFixtures.marketState(), onRetry = {})
     }
 
+    /**
+     * Home in the shipping default language, with every section populated. This is the reference
+     * render for the "همراه" direction: the assistant's briefing above the balance, the balance
+     * above the market, and a lit stage behind all of it.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun homePersian() = capture("17-home-fa") {
+        HomeScreen(
+            state = ScreenshotFixtures.marketState(),
+            onRetry = {},
+            briefing = ScreenshotFixtures.homeBriefing,
+            portfolio = ScreenshotFixtures.homePortfolio,
+            openSignals = ScreenshotFixtures.homeSignals,
+        )
+    }
+
+    /** The same screen on a tall viewport, so the sections below the fold are visible for review. */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1500dp-xxhdpi")
+    fun homePersianFullPage() = capture("18-home-fa-full") {
+        HomeScreen(
+            state = ScreenshotFixtures.marketState(),
+            onRetry = {},
+            briefing = ScreenshotFixtures.homeBriefing,
+            portfolio = ScreenshotFixtures.homePortfolio,
+            openSignals = ScreenshotFixtures.homeSignals,
+        )
+    }
+
+    /**
+     * The briefing card with nothing to report. The resting state has to look deliberate rather
+     * than broken, because it is what every reader sees before the server grows the endpoint.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun homePersianResting() = capture("19-home-fa-resting") {
+        HomeScreen(state = ScreenshotFixtures.marketState(), onRetry = {})
+    }
+
     @Test
     fun signals() {
         val controller = SignalController(FakeSignalGateway(), scope)
