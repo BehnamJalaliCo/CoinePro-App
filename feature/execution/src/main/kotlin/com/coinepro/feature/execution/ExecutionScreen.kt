@@ -1,35 +1,49 @@
 package com.coinepro.feature.execution
 
+import androidx.annotation.StringRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.coinepro.core.designsystem.resolve
+import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
+import com.coinepro.core.designsystem.CoineProCard
+import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProPrimaryButton
+import com.coinepro.core.designsystem.CoineProSecondaryButton
+import com.coinepro.core.designsystem.CoineProSkeleton
+import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.CoineProTextField
+import com.coinepro.core.designsystem.CoineProTextStyles
+import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.ExecutionStatus
 import com.coinepro.core.execution.ExecutionVenue
@@ -38,6 +52,17 @@ import com.coinepro.core.model.SignalDirection
 import com.coinepro.core.signals.SignalController
 import java.util.UUID
 
+/**
+ * Sending one signal to a venue.
+ *
+ * The whole screen is built around a single distinction: a request that has been *queued* is not an
+ * open trade. Every status below says which of the two it is, in the venue's own words where there
+ * are any, because a reader who believes they are in a position when they are not will size their
+ * next one wrongly.
+ *
+ * Nothing about the setup is editable. Symbol, direction, entry, stop and targets belong to the
+ * server; the only thing this screen contributes is quantity and an explicit confirmation.
+ */
 @Composable
 fun ExecutionScreen(
     signalId: Long,
@@ -81,116 +106,244 @@ fun ExecutionScreen(
     val clientRequestId = remember(signalId) { UUID.randomUUID().toString() }
     val quantity = quantityText.toDoubleOrNull()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),
+        contentPadding = PaddingValues(
+            horizontal = CoineProSpacing.Gutter,
+            vertical = CoineProSpacing.Gutter,
+        ),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
     ) {
-        Text("Execute CoinePro signal", style = MaterialTheme.typography.headlineSmall)
-        Text(
-            "This screen can execute only the selected CoinePro signal. Symbol, direction, Entry, SL and TP are server-owned and cannot be replaced here.",
-            style = MaterialTheme.typography.bodyMedium,
-        )
+        item {
+            Column(
+                modifier = Modifier.padding(horizontal = CoineProSpacing.Half),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.execution_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = CoineProColors.TextPrimary,
+                )
+                Text(
+                    text = stringResource(R.string.execution_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CoineProColors.TextSecondary,
+                )
+            }
+        }
 
-        if (signalState.loading || connectionState.loading) CircularProgressIndicator()
-        signalState.error?.let { Text(it.resolve(), color = MaterialTheme.colorScheme.error) }
-        connectionState.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        if (signalState.loading || connectionState.loading) {
+            item {
+                CoineProCard(modifier = Modifier.fillMaxWidth()) {
+                    CoineProSkeleton(Modifier.fillMaxWidth(0.5f), height = 22.dp)
+                    Spacer(Modifier.height(CoineProSpacing.OneHalf))
+                    CoineProSkeleton(Modifier.fillMaxWidth(), height = 14.dp)
+                }
+            }
+        }
+
+        signalState.error?.let { item { Notice(it.resolve(), CoineProColors.Sell) } }
+        connectionState.error?.let { item { Notice(it, CoineProColors.Sell) } }
 
         if (signal != null) {
-            Card {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("${signal.symbol} · ${signal.direction.name}", style = MaterialTheme.typography.titleLarge)
-                    signal.timeframe?.let { Text("Timeframe: $it") }
-                    Text("Entry: ${signal.entry?.let(::priceText) ?: "—"}")
-                    Text("Stop: ${signal.stopLoss?.let(::priceText) ?: "—"}")
+            item {
+                CoineProCard(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = BidiText.isolateLtr(signal.symbol),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = CoineProColors.TextPrimary,
+                        )
+                        Text(
+                            text = stringResource(signal.direction.labelRes()),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = when (signal.direction) {
+                                SignalDirection.BUY -> CoineProColors.Buy
+                                SignalDirection.SELL -> CoineProColors.Sell
+                                SignalDirection.NEUTRAL -> CoineProColors.TextSecondary
+                            },
+                        )
+                    }
+                    Spacer(Modifier.height(CoineProSpacing.OneHalf))
+                    signal.timeframe?.let {
+                        Level(stringResource(R.string.execution_timeframe), it, CoineProColors.TextSecondary)
+                    }
+                    Level(
+                        stringResource(R.string.execution_entry),
+                        signal.entry?.let(::priceText),
+                        CoineProColors.TextPrimary,
+                    )
+                    Level(
+                        stringResource(R.string.execution_stop),
+                        signal.stopLoss?.let(::priceText),
+                        CoineProColors.Sell,
+                    )
                     signal.targets.sortedBy { it.level }.forEach { target ->
-                        Text("TP${target.level}: ${target.price?.let(::priceText) ?: "—"}")
+                        Level(
+                            stringResource(R.string.execution_target, target.level),
+                            target.price?.let(::priceText),
+                            CoineProColors.Buy,
+                        )
                     }
                 }
             }
         }
 
         if (venue != null) {
-            Card {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Venue: ${if (venue == ExecutionVenue.MT5) "MetaTrader 5" else "LBank"}")
+            item {
+                CoineProCard(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        when {
-                            connection == null -> "No connection configured."
-                            connection.connected -> "Connection confirmed by backend."
-                            venue == ExecutionVenue.LBANK -> "LBank credentials are saved; provider verification is pending. A request can be queued, but it is not an open trade until provider acknowledgement."
-                            else -> "Connection status: ${connection.status.ifBlank { "pending" }}"
+                        text = stringResource(R.string.execution_venue, venue.displayName()),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = CoineProColors.TextPrimary,
+                    )
+                    Spacer(Modifier.height(CoineProSpacing.One))
+                    Text(
+                        text = when {
+                            connection == null -> stringResource(R.string.execution_no_connection)
+                            connection.connected -> stringResource(R.string.execution_connection_confirmed)
+                            venue == ExecutionVenue.LBANK ->
+                                stringResource(R.string.execution_lbank_pending)
+                            // The venue's own words when it gave any, since only it knows why.
+                            connection.status.isNotBlank() ->
+                                stringResource(R.string.execution_connection_status, connection.status)
+                            else -> stringResource(R.string.execution_connection_pending)
                         },
-                        color = if (connectionUsable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (connectionUsable) CoineProColors.Buy else CoineProColors.Warning,
                     )
                     if (!connectionUsable) {
-                        Button(onClick = onOpenConnections) { Text("Open Connections") }
+                        Spacer(Modifier.height(CoineProSpacing.OneHalf))
+                        CoineProSecondaryButton(
+                            text = stringResource(R.string.execution_open_connections),
+                            onClick = onOpenConnections,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
                 }
             }
         }
 
         if (executionState.execution == null && signal != null && venue != null) {
-            OutlinedTextField(
-                value = quantityText,
-                onValueChange = { quantityText = it.filter { ch -> ch.isDigit() || ch == '.' } },
-                label = { Text(if (venue == ExecutionVenue.MT5) "Lot / execution quantity" else "Base-asset quantity") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Checkbox(checked = confirmed, onCheckedChange = { confirmed = it })
-                Text(
-                    "I confirm this exact signal execution request.",
-                    modifier = Modifier.padding(top = 12.dp),
-                )
-            }
-            Button(
-                onClick = {
-                    executionController.executeSignal(
-                        signalId = signal.id,
-                        venue = venue,
-                        quantity = requireNotNull(quantity),
-                        clientRequestId = clientRequestId,
+            item {
+                CoineProCard(modifier = Modifier.fillMaxWidth()) {
+                    CoineProTextField(
+                        value = quantityText,
+                        onValueChange = { raw -> quantityText = raw.filter { it.isDigit() || it == '.' } },
+                        label = stringResource(
+                            if (venue == ExecutionVenue.MT5) {
+                                R.string.execution_quantity_lot
+                            } else {
+                                R.string.execution_quantity_base
+                            },
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     )
-                },
-                enabled =
-                    connectionUsable &&
-                    signal.status == "active" &&
-                    signal.direction in setOf(SignalDirection.BUY, SignalDirection.SELL) &&
-                    quantity != null && quantity > 0 && confirmed && !executionState.loading,
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("Confirm execution") }
+                    Spacer(Modifier.height(CoineProSpacing.One))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = confirmed,
+                            onCheckedChange = { confirmed = it },
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = CoineProColors.Gold,
+                                checkmarkColor = CoineProColors.OnAccent,
+                                uncheckedColor = CoineProColors.TextMuted,
+                            ),
+                        )
+                        Text(
+                            text = stringResource(R.string.execution_confirm_checkbox),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = CoineProColors.TextSecondary,
+                        )
+                    }
+                    Spacer(Modifier.height(CoineProSpacing.One))
+
+                    val ready = connectionUsable &&
+                        signal.status == "active" &&
+                        signal.direction in setOf(SignalDirection.BUY, SignalDirection.SELL) &&
+                        quantity != null && quantity > 0 && confirmed && !executionState.loading
+                    CoineProPrimaryButton(
+                        text = stringResource(R.string.execution_confirm),
+                        onClick = {
+                            if (!ready) return@CoineProPrimaryButton
+                            executionController.executeSignal(
+                                signalId = signal.id,
+                                venue = venue,
+                                quantity = requireNotNull(quantity),
+                                clientRequestId = clientRequestId,
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth().alpha(if (ready) 1f else 0.45f),
+                    )
+                }
+            }
         }
 
-        executionState.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        executionState.error?.let { item { Notice(it, CoineProColors.Sell) } }
+
         executionState.execution?.let { execution ->
-            Card {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Execution status", style = MaterialTheme.typography.titleMedium)
-                    Text(execution.status.name.replace('_', ' '), style = MaterialTheme.typography.titleLarge)
-                    Text("Venue: ${execution.venue.name} · Product: ${execution.product.ifBlank { "—" }}")
-                    Text("Quantity: ${execution.quantity}")
-                    when (execution.status) {
-                        ExecutionStatus.QUEUED -> Text(
-                            "Queued only. The broker/exchange has not confirmed an open trade.",
-                            color = MaterialTheme.colorScheme.tertiary,
+            item {
+                CoineProCard(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = stringResource(R.string.execution_status_title),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CoineProColors.TextSecondary,
+                    )
+                    Text(
+                        text = stringResource(execution.status.labelRes()),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = execution.status.colour(),
+                    )
+                    Spacer(Modifier.height(CoineProSpacing.One))
+                    Level(stringResource(R.string.execution_venue_label), venue?.displayName(), CoineProColors.TextSecondary)
+                    Level(
+                        stringResource(R.string.execution_product),
+                        execution.product.takeIf { it.isNotBlank() },
+                        CoineProColors.TextSecondary,
+                    )
+                    Level(
+                        stringResource(R.string.execution_quantity),
+                        // Server-owned text, isolated rather than reparsed: re-rounding a quantity
+                        // the venue already accepted would show a number nobody submitted.
+                        execution.quantity.takeIf { it.isNotBlank() }?.let(BidiText::isolateLtr),
+                        CoineProColors.TextSecondary,
+                    )
+                    execution.providerOrderId?.let {
+                        Level(
+                            stringResource(R.string.execution_provider_order),
+                            BidiText.isolateLtr(it),
+                            CoineProColors.TextSecondary,
                         )
-                        ExecutionStatus.SUBMITTED -> Text("Submitted to provider; open state is not confirmed yet.")
-                        ExecutionStatus.OPEN -> Text("Provider has confirmed this execution as open.", color = MaterialTheme.colorScheme.primary)
-                        ExecutionStatus.CLOSE_REQUESTED -> Text("Close requested; waiting for provider confirmation.")
-                        ExecutionStatus.CLOSED -> Text("Provider has confirmed this execution as closed.")
-                        ExecutionStatus.FAILED -> Text(execution.errorMessage ?: "Provider reported execution failure.", color = MaterialTheme.colorScheme.error)
-                        ExecutionStatus.CANCELLED -> Text("Queued request was cancelled before provider confirmation.")
-                        ExecutionStatus.UNKNOWN -> Text("Unknown provider state; no open/closed assumption is made.", color = MaterialTheme.colorScheme.error)
                     }
-                    execution.providerOrderId?.let { Text("Provider order: $it") }
+
+                    Spacer(Modifier.height(CoineProSpacing.OneHalf))
+                    Notice(
+                        // A failure carries the provider's own message; everything else is a
+                        // description of a state the client can read off the enum.
+                        message = execution.errorMessage
+                            ?.takeIf { execution.status == ExecutionStatus.FAILED }
+                            ?: stringResource(execution.status.explanationRes()),
+                        accent = execution.status.colour(),
+                    )
+
                     if (execution.canRequestClose) {
-                        TextButton(onClick = executionController::requestClose) {
-                            Text(if (execution.status == ExecutionStatus.QUEUED) "Cancel queued request" else "Request close")
-                        }
+                        Spacer(Modifier.height(CoineProSpacing.OneHalf))
+                        CoineProSecondaryButton(
+                            text = stringResource(
+                                if (execution.status == ExecutionStatus.QUEUED) {
+                                    R.string.execution_cancel_queued
+                                } else {
+                                    R.string.execution_request_close
+                                },
+                            ),
+                            onClick = executionController::requestClose,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
                 }
             }
@@ -198,4 +351,85 @@ fun ExecutionScreen(
     }
 }
 
-private fun priceText(value: Double): String = MarketNumberFormatter.price(value, 6).trimEnd('0').trimEnd('.')
+@Composable
+private fun Level(label: String, value: String?, colour: Color) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = CoineProColors.TextMuted)
+        Text(
+            // A missing level is an em dash, never a zero: one says "not set", the other is a price.
+            text = value ?: stringResource(R.string.execution_value_missing),
+            style = CoineProTextStyles.RowFigure,
+            color = if (value == null) CoineProColors.TextMuted else colour,
+        )
+    }
+}
+
+@Composable
+private fun Notice(message: String, accent: Color) {
+    Text(
+        text = message,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(accent.copy(alpha = 0.10f), MaterialTheme.shapes.medium)
+            .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.OneHalf),
+        style = MaterialTheme.typography.bodySmall,
+        color = accent,
+    )
+}
+
+/** Six decimals is the widest any product needs; trailing zeros are noise, so they go. */
+private fun priceText(value: Double): String {
+    val plain = BidiText.strip(MarketNumberFormatter.price(value, 6))
+    return BidiText.isolateLtr(plain.trimEnd('0').trimEnd('.'))
+}
+
+private fun ExecutionVenue.displayName(): String =
+    if (this == ExecutionVenue.MT5) "MetaTrader 5" else "LBank"
+
+@StringRes
+private fun SignalDirection.labelRes(): Int = when (this) {
+    SignalDirection.BUY -> R.string.execution_direction_buy
+    SignalDirection.SELL -> R.string.execution_direction_sell
+    SignalDirection.NEUTRAL -> R.string.execution_direction_neutral
+}
+
+@StringRes
+private fun ExecutionStatus.labelRes(): Int = when (this) {
+    ExecutionStatus.QUEUED -> R.string.execution_state_queued
+    ExecutionStatus.SUBMITTED -> R.string.execution_state_submitted
+    ExecutionStatus.OPEN -> R.string.execution_state_open
+    ExecutionStatus.CLOSE_REQUESTED -> R.string.execution_state_close_requested
+    ExecutionStatus.CLOSED -> R.string.execution_state_closed
+    ExecutionStatus.FAILED -> R.string.execution_state_failed
+    ExecutionStatus.CANCELLED -> R.string.execution_state_cancelled
+    ExecutionStatus.UNKNOWN -> R.string.execution_state_unknown
+}
+
+@StringRes
+private fun ExecutionStatus.explanationRes(): Int = when (this) {
+    ExecutionStatus.QUEUED -> R.string.execution_explain_queued
+    ExecutionStatus.SUBMITTED -> R.string.execution_explain_submitted
+    ExecutionStatus.OPEN -> R.string.execution_explain_open
+    ExecutionStatus.CLOSE_REQUESTED -> R.string.execution_explain_close_requested
+    ExecutionStatus.CLOSED -> R.string.execution_explain_closed
+    ExecutionStatus.FAILED -> R.string.execution_explain_failed
+    ExecutionStatus.CANCELLED -> R.string.execution_explain_cancelled
+    ExecutionStatus.UNKNOWN -> R.string.execution_explain_unknown
+}
+
+/**
+ * Only [ExecutionStatus.OPEN] and [ExecutionStatus.CLOSED] are settled states the venue has
+ * confirmed. Everything between them is warning-coloured on purpose — the reader is waiting, and a
+ * green pending state is exactly the misread this screen exists to prevent.
+ */
+@Composable
+@ReadOnlyComposable
+private fun ExecutionStatus.colour(): Color = when (this) {
+    ExecutionStatus.OPEN -> CoineProColors.Buy
+    ExecutionStatus.CLOSED -> CoineProColors.TextSecondary
+    ExecutionStatus.FAILED, ExecutionStatus.UNKNOWN -> CoineProColors.Sell
+    else -> CoineProColors.Warning
+}

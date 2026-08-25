@@ -1,75 +1,127 @@
 package com.coinepro.feature.connections
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.coinepro.core.common.BidiText
+import com.coinepro.core.designsystem.CoineProCard
+import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProPillShape
+import com.coinepro.core.designsystem.CoineProPrimaryButton
+import com.coinepro.core.designsystem.CoineProSecondaryButton
+import com.coinepro.core.designsystem.CoineProSegmentedControl
+import com.coinepro.core.designsystem.CoineProSkeleton
+import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.LbankPermission
 import com.coinepro.core.execution.VenueConnection
+import com.coinepro.core.model.MarketPlatform
 
+/**
+ * Where a reader links the account their signals will execute through.
+ *
+ * Scoped to one venue, because a platform has one: MetaTrader 5 executes CoinePro-FX, LBank
+ * executes TradeYar. Showing both at once invited someone in a crypto session to hand over their
+ * broker password to a screen that would never use it.
+ *
+ * The screen is careful about a distinction the product depends on and readers routinely miss:
+ * entering credentials is *setup*, not connection. Only the backend can say a venue verified them,
+ * so nothing here turns green on a successful save.
+ */
 @Composable
-fun ConnectionsScreen(controller: ExecutionController) {
+fun ConnectionsScreen(
+    controller: ExecutionController,
+    platform: MarketPlatform = MarketPlatform.TRADEYAR,
+) {
     LaunchedEffect(controller) { controller.refreshConnections() }
     val state by controller.connections.collectAsStateWithLifecycle()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),
+        contentPadding = PaddingValues(
+            horizontal = CoineProSpacing.Gutter,
+            vertical = CoineProSpacing.Gutter,
+        ),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
     ) {
-        Text("Connections", style = MaterialTheme.typography.headlineSmall)
-        Text(
-            "Connect accounts only to execute CoinePro signals. Credentials are sent to the backend over HTTPS and are never stored by the Android app.",
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        Text(
-            "Values you enter are setup inputs, not proof of a live provider connection. Connected/verified state comes only from the backend/provider. If verification is missing or fails, execution stays unavailable or pending instead of being guessed locally.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (state.loading) CircularProgressIndicator()
-        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        state.message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+        item {
+            Column(
+                modifier = Modifier.padding(horizontal = CoineProSpacing.Half),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.connections_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = CoineProColors.TextPrimary,
+                )
+                Text(
+                    text = stringResource(R.string.connections_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CoineProColors.TextSecondary,
+                )
+            }
+        }
 
-        Mt5Card(
-            connection = state.mt5,
-            onConnect = controller::connectMt5,
-            onDisconnect = controller::disconnectMt5,
-        )
-        LbankCard(
-            connection = state.lbank,
-            onConnect = controller::connectLbank,
-            onDisconnect = controller::disconnectLbank,
-        )
+        item { Caution(stringResource(R.string.connections_setup_not_proof)) }
+
+        if (state.loading) {
+            item {
+                CoineProCard(modifier = Modifier.fillMaxWidth()) {
+                    CoineProSkeleton(Modifier.fillMaxWidth(0.4f), height = 20.dp)
+                    Row(Modifier.padding(top = CoineProSpacing.OneHalf)) {
+                        CoineProSkeleton(Modifier.fillMaxWidth(), height = 14.dp)
+                    }
+                }
+            }
+        }
+
+        // Server wording, shown verbatim: the client did not diagnose these and must not reword them.
+        state.error?.let { item { Caution(it, CoineProColors.Sell) } }
+        state.message?.let { item { Caution(it, CoineProColors.Buy) } }
+
+        item {
+            when (platform) {
+                MarketPlatform.COINEPRO_FX -> Mt5Card(
+                    connection = state.mt5,
+                    onConnect = controller::connectMt5,
+                    onDisconnect = controller::disconnectMt5,
+                )
+
+                MarketPlatform.TRADEYAR -> LbankCard(
+                    connection = state.lbank,
+                    onConnect = controller::connectLbank,
+                    onDisconnect = controller::disconnectLbank,
+                )
+            }
+        }
     }
 }
 
@@ -84,47 +136,61 @@ private fun Mt5Card(
     var login by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    Card {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text("MetaTrader 5", style = MaterialTheme.typography.titleLarge)
-            ConnectionStatus(connection, "MT5")
-            Text(
-                "Broker, server, login and trading password are account inputs you provide. CoinePro does not treat saving them as a successful MT5 connection; provider verification must be returned by the backend.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (connection == null) {
-                OutlinedTextField(broker, { broker = it }, label = { Text("Broker") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(server, { server = it }, label = { Text("MT5 server") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(
-                    login,
-                    { login = it },
-                    label = { Text("Login") },
+    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+        VenueHeader("MetaTrader 5", connection)
+        Text(
+            text = stringResource(R.string.connections_mt5_body),
+            modifier = Modifier.padding(top = CoineProSpacing.One),
+            style = MaterialTheme.typography.bodySmall,
+            color = CoineProColors.TextMuted,
+        )
+
+        if (connection == null) {
+            Column(
+                modifier = Modifier.padding(top = CoineProSpacing.OneHalf),
+                verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+            ) {
+                CoineProTextField(broker, { broker = it }, stringResource(R.string.connections_broker), Modifier.fillMaxWidth())
+                CoineProTextField(server, { server = it }, stringResource(R.string.connections_server), Modifier.fillMaxWidth())
+                CoineProTextField(
+                    value = login,
+                    onValueChange = { login = it },
+                    label = stringResource(R.string.connections_login),
+                    modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                )
+                CoineProTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = stringResource(R.string.connections_trading_password),
+                    modifier = Modifier.fillMaxWidth(),
+                    secret = true,
+                )
+                val ready = broker.isNotBlank() && server.isNotBlank() &&
+                    login.isNotBlank() && password.isNotBlank()
+                Submit(
+                    text = stringResource(R.string.connections_mt5_connect),
+                    enabled = ready,
+                ) {
+                    onConnect(broker.trim(), server.trim(), login.trim(), password)
+                    // Cleared the moment it is handed over: nothing keeps a trading password in
+                    // composition state a second longer than the request needs it.
+                    password = ""
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier.padding(top = CoineProSpacing.OneHalf),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                connection.broker?.let { Detail(stringResource(R.string.connections_broker), it) }
+                connection.server?.let { Detail(stringResource(R.string.connections_server), it) }
+                connection.loginMasked?.let { Detail(stringResource(R.string.connections_login), it) }
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.connections_disconnect),
+                    onClick = onDisconnect,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                OutlinedTextField(
-                    password,
-                    { password = it },
-                    label = { Text("Trading password") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Button(
-                    onClick = {
-                        onConnect(broker.trim(), server.trim(), login.trim(), password)
-                        password = ""
-                    },
-                    enabled = broker.isNotBlank() && server.isNotBlank() && login.isNotBlank() && password.isNotBlank(),
-                ) { Text("Connect MT5") }
-            } else {
-                connection.broker?.let { Text("Broker: $it") }
-                connection.server?.let { Text("Server: $it") }
-                connection.loginMasked?.let { Text("Login: $it") }
-                TextButton(onClick = onDisconnect) { Text("Disconnect") }
             }
         }
     }
@@ -140,75 +206,143 @@ private fun LbankCard(
     var apiSecret by remember { mutableStateOf("") }
     var permission by remember { mutableStateOf(LbankPermission.SPOT) }
 
-    Card {
+    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+        VenueHeader("LBank", connection)
+        Text(
+            text = stringResource(R.string.connections_lbank_body),
+            modifier = Modifier.padding(top = CoineProSpacing.One),
+            style = MaterialTheme.typography.bodySmall,
+            color = CoineProColors.TextMuted,
+        )
+
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(top = CoineProSpacing.OneHalf),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
         ) {
-            Text("LBank", style = MaterialTheme.typography.titleLarge)
-            ConnectionStatus(connection, "LBank")
-            Text(
-                "Use an LBank API key with only the permission you need: Spot or Futures. Withdrawal permission is not required. Saving credentials does not mean the exchange has verified them.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             if (connection != null) {
-                connection.keyHint?.let { Text("Key ending: ••••$it") }
-                connection.lbankPermission?.let { Text("Permission: ${it.name}") }
+                connection.keyHint?.let {
+                    Detail(
+                        stringResource(R.string.connections_key_ending),
+                        BidiText.isolateLtr("••••$it"),
+                    )
+                }
+                connection.lbankPermission?.let {
+                    Detail(stringResource(R.string.connections_permission), it.name)
+                }
                 if (!connection.connected) {
-                    Text(
-                        "Saved securely; provider verification is still pending. Execution remains QUEUED until LBank confirms it.",
-                        color = MaterialTheme.colorScheme.tertiary,
-                    )
+                    Caution(stringResource(R.string.connections_pending_verification))
                 }
-                TextButton(onClick = onDisconnect) { Text("Remove LBank connection") }
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.connections_lbank_remove),
+                    onClick = onDisconnect,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                LbankPermission.entries.forEach { option ->
-                    FilterChip(
-                        selected = permission == option,
-                        onClick = { permission = option },
-                        label = { Text(option.name) },
-                    )
-                }
-            }
-            OutlinedTextField(apiKey, { apiKey = it }, label = { Text("API Key") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(
-                apiSecret,
-                { apiSecret = it },
-                label = { Text("API Secret") },
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
+
+            CoineProSegmentedControl(
+                options = LbankPermission.entries.map { it to it.label() },
+                selected = permission,
+                onSelect = { permission = it },
             )
-            Button(
-                onClick = {
-                    onConnect(apiKey.trim(), apiSecret, permission)
-                    apiKey = ""
-                    apiSecret = ""
-                },
+            CoineProTextField(apiKey, { apiKey = it }, stringResource(R.string.connections_api_key), Modifier.fillMaxWidth())
+            CoineProTextField(
+                value = apiSecret,
+                onValueChange = { apiSecret = it },
+                label = stringResource(R.string.connections_api_secret),
+                modifier = Modifier.fillMaxWidth(),
+                secret = true,
+            )
+            Submit(
+                text = stringResource(
+                    if (connection == null) {
+                        R.string.connections_lbank_save
+                    } else {
+                        R.string.connections_lbank_replace
+                    },
+                ),
                 enabled = apiKey.isNotBlank() && apiSecret.isNotBlank(),
-            ) { Text(if (connection == null) "Save LBank connection" else "Replace credentials") }
+            ) {
+                onConnect(apiKey.trim(), apiSecret, permission)
+                apiKey = ""
+                apiSecret = ""
+            }
+        }
+    }
+}
+
+/* ------------------------------------------------------------------ parts */
+
+@Composable
+private fun VenueHeader(name: String, connection: VenueConnection?) {
+    val statusRes = when {
+        connection == null -> R.string.connections_status_not_configured
+        connection.connected -> R.string.connections_status_connected
+        else -> R.string.connections_status_configured
+    }
+    // Server status text wins when it has any, since only the venue knows why it is not connected.
+    val raw = connection?.status?.takeIf { it.isNotBlank() && !connection.connected }
+    val status = raw?.replace('_', ' ') ?: stringResource(statusRes)
+    val colour = when {
+        connection?.connected == true -> CoineProColors.Buy
+        connection == null -> CoineProColors.TextMuted
+        else -> CoineProColors.Warning
+    }
+    val label = stringResource(R.string.connections_status_of, name, status)
+
+    Row(
+        modifier = Modifier.fillMaxWidth().semantics { contentDescription = label },
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(name, style = MaterialTheme.typography.titleMedium, color = CoineProColors.TextPrimary)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.size(6.dp).background(colour, CoineProPillShape))
+            Text(status, style = MaterialTheme.typography.labelMedium, color = colour)
         }
     }
 }
 
 @Composable
-private fun ConnectionStatus(connection: VenueConnection?, venueName: String) {
-    val text = when {
-        connection == null -> "Not configured"
-        connection.connected -> "Connected"
-        connection.status.isNotBlank() -> connection.status.replace('_', ' ')
-        else -> "Configured"
+private fun Detail(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = CoineProColors.TextMuted)
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = CoineProColors.TextPrimary)
     }
-    val color = when {
-        connection?.connected == true -> MaterialTheme.colorScheme.primary
-        connection == null -> MaterialTheme.colorScheme.onSurfaceVariant
-        else -> MaterialTheme.colorScheme.tertiary
-    }
+}
+
+@Composable
+private fun Caution(message: String, accent: Color = CoineProColors.Warning) {
     Text(
-        text,
-        color = color,
-        style = MaterialTheme.typography.labelLarge,
-        modifier = Modifier.semantics { contentDescription = "$venueName connection status: $text" },
+        text = message,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(accent.copy(alpha = 0.10f), MaterialTheme.shapes.medium)
+            .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.OneHalf),
+        style = MaterialTheme.typography.bodySmall,
+        color = accent,
     )
+}
+
+/**
+ * The card's one gold action, dimmed rather than hidden when the form is incomplete — a button that
+ * disappears leaves a reader wondering what they did wrong.
+ */
+@Composable
+private fun Submit(text: String, enabled: Boolean, onClick: () -> Unit) {
+    CoineProPrimaryButton(
+        text = text,
+        onClick = { if (enabled) onClick() },
+        modifier = Modifier
+            .fillMaxWidth()
+            .alpha(if (enabled) 1f else 0.45f),
+    )
+}
+
+@Composable
+private fun LbankPermission.label(): String = when (this) {
+    LbankPermission.SPOT -> stringResource(R.string.connections_permission_spot)
+    LbankPermission.FUTURES -> stringResource(R.string.connections_permission_futures)
 }

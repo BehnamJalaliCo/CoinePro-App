@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="execution_title">Execute signal</string>
+    <string name="execution_subtitle">This screen executes only this signal. Symbol, direction, entry, stop and targets belong to the server and cannot be changed here.</string>
+    <string name="execution_timeframe">Timeframe</string>
+    <string name="execution_entry">Entry</string>
+    <string name="execution_stop">Stop loss</string>
+    <string name="execution_target">Target %1$d</string>
+    <string name="execution_value_missing">—</string>
+    <string name="execution_direction_buy">Buy</string>
+    <string name="execution_direction_sell">Sell</string>
+    <string name="execution_direction_neutral">Neutral</string>
+    <string name="execution_venue">Venue: %1$s</string>
+    <string name="execution_venue_label">Venue</string>
+    <string name="execution_no_connection">No connection configured.</string>
+    <string name="execution_connection_confirmed">Connection confirmed by the server.</string>
+    <string name="execution_lbank_pending">LBank credentials are saved but the exchange has not verified them. A request can be queued, but it is not an open trade until the exchange confirms.</string>
+    <string name="execution_connection_status">Connection status: %1$s</string>
+    <string name="execution_connection_pending">Connection state is not known yet.</string>
+    <string name="execution_open_connections">Open connections</string>
+    <string name="execution_quantity_lot">Lot size</string>
+    <string name="execution_quantity_base">Base-asset quantity</string>
+    <string name="execution_quantity">Quantity</string>
+    <string name="execution_confirm_checkbox">I confirm this exact signal execution request.</string>
+    <string name="execution_confirm">Confirm and send</string>
+    <string name="execution_status_title">Execution status</string>
+    <string name="execution_product">Product</string>
+    <string name="execution_provider_order">Provider order</string>
+    <string name="execution_cancel_queued">Cancel queued request</string>
+    <string name="execution_request_close">Request close</string>
+    <string name="execution_state_queued">Queued</string>
+    <string name="execution_state_submitted">Submitted</string>
+    <string name="execution_state_open">Open</string>
+    <string name="execution_state_close_requested">Close requested</string>
+    <string name="execution_state_closed">Closed</string>
+    <string name="execution_state_failed">Failed</string>
+    <string name="execution_state_cancelled">Cancelled</string>
+    <string name="execution_state_unknown">Unknown</string>
+    <string name="execution_explain_queued">Queued only. The broker or exchange has not confirmed an open trade.</string>
+    <string name="execution_explain_submitted">Submitted to the provider; open state is not confirmed yet.</string>
+    <string name="execution_explain_open">The provider has confirmed this execution as open.</string>
+    <string name="execution_explain_close_requested">Close requested; waiting for provider confirmation.</string>
+    <string name="execution_explain_closed">The provider has confirmed this execution as closed.</string>
+    <string name="execution_explain_failed">The provider reported an execution failure.</string>
+    <string name="execution_explain_cancelled">The queued request was cancelled before provider confirmation.</string>
+    <string name="execution_explain_unknown">The provider state is unknown; the app makes no open or closed assumption.</string>
+</resources>

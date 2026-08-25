@@ -348,7 +348,7 @@ private fun MainShell(
                 )
             }
             composable(CONNECTIONS_ROUTE) {
-                ConnectionsScreen(controller = executionController)
+                ConnectionsScreen(controller = executionController, platform = activePlatform)
             }
             composable(AppDestination.AI.route) {
                 // AiStudioScreen, not the older AiScreen: the two carried the same generator, and
