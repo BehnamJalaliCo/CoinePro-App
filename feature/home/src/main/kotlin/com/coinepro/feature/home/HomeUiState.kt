@@ -73,7 +73,8 @@ data class HomeHolding(
  * name for a plan it did not define, and translating one would put words in the service's mouth.
  */
 data class HomeSubscription(
-    val planLabel: String,
+    /** Null where the server named no plan — the card then names the membership instead. */
+    val planLabel: String?,
     /** The expiry as the server dated it, already formatted; null when it does not expire. */
     val expiresLabel: String? = null,
     /**

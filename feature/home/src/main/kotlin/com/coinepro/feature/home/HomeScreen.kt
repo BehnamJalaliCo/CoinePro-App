@@ -339,8 +339,10 @@ private fun SubscriptionCard(subscription: HomeSubscription) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    // The server's own name for the plan, as written.
-                    text = subscription.planLabel,
+                    // The server's own name for the plan, as written. Where it named none, the
+                    // membership itself is the only true thing left to say.
+                    text = subscription.planLabel
+                        ?: stringResource(R.string.home_subscription_active),
                     style = MaterialTheme.typography.titleSmall,
                     color = CoineProColors.TextPrimary,
                 )

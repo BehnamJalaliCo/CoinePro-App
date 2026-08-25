@@ -70,8 +70,33 @@ class HomeSubscriptionTest {
     }
 
     @Test
-    fun `a plan the server did not name draws nothing, since the app has no name for it`() {
-        assertNull(entitlement(isPaid = true, plan = "  ").toHomeSubscription(now))
+    fun `a membership with no plan behind it still shows, named as a membership`() {
+        // TradeYar writes `free` where a membership is held on balance or is a trial rather than a
+        // purchase. Printing that beside an active membership would read as a contradiction, and
+        // dropping the card would hide something the reader has.
+        val onBalance = entitlement(isVip = true, plan = "free").toHomeSubscription(now)
+        assertNull(requireNotNull(onBalance).planLabel)
+
+        val blank = entitlement(isPaid = true, plan = "  ").toHomeSubscription(now)
+        assertNull(requireNotNull(blank).planLabel)
+    }
+
+    @Test
+    fun `a trial keeps the server's own name for it, neither dressed up nor trimmed down`() {
+        val trial = entitlement(isVip = true, isPaid = false, plan = "آزمایشی ۴۸ ساعته")
+            .toHomeSubscription(now)
+
+        assertEquals("آزمایشی ۴۸ ساعته", requireNotNull(trial).planLabel)
+    }
+
+    @Test
+    fun `a membership that never expires shows no date rather than looking unfinished`() {
+        val forever = entitlement(isVip = true, expiresAt = null).toHomeSubscription(now)
+
+        assertTrue(forever != null)
+        assertNull(requireNotNull(forever).expiresLabel)
+        assertNull(forever.daysRemaining)
+        assertFalse("Nothing that cannot end is ending soon", forever.endingSoon)
     }
 
     private fun entitlement(

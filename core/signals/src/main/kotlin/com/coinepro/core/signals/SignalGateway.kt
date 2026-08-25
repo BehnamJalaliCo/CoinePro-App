@@ -78,6 +78,15 @@ internal data class SignalListResponseDto(
      * rather than a 403. Without it an empty list would read as "no signals right now".
      */
     val membershipRequired: Boolean = false,
+    /**
+     * How this deployment wants the subscription explained, in its own words.
+     *
+     * Worth carrying rather than replacing with copy of the app's own: how someone gets a
+     * subscription differs per platform and changes without the app being rebuilt. TradeYar's says
+     * to subscribe through Telegram or the web and sign in with the same account — which is a fact
+     * about their account model, not something a client could know.
+     */
+    val membershipMessage: String? = null,
 )
 
 internal data class SignalDetailResponseDto(
@@ -164,7 +173,9 @@ class NetworkSignalGateway private constructor(
         )
         // A subscription the reader does not have is not an empty market. Raised as the same
         // refusal a 403 produces, so one case on screen covers both servers' ways of saying it.
-        if (response.membershipRequired) throw SignalMembershipRequiredException()
+        if (response.membershipRequired) {
+            throw SignalMembershipRequiredException(response.membershipMessage?.trim()?.takeIf { it.isNotEmpty() })
+        }
         val now = nowMillis()
         val items = response.items
             .mapNotNull { it.toDomain(now, platform) }

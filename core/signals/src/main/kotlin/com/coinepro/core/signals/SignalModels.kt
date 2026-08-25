@@ -84,6 +84,8 @@ data class SignalsState(
     val items: List<TradingSignal> = emptyList(),
     val loading: Boolean = false,
     val membershipRequired: Boolean = false,
+    /** The server's own explanation of how to subscribe, shown as written when it gave one. */
+    val membershipMessage: String? = null,
     val error: UiMessage? = null,
 )
 
@@ -92,7 +94,18 @@ data class SignalDetailState(
     val signal: TradingSignal? = null,
     val loading: Boolean = false,
     val membershipRequired: Boolean = false,
+    /** The server's own explanation of how to subscribe, shown as written when it gave one. */
+    val membershipMessage: String? = null,
     val error: UiMessage? = null,
 )
 
-class SignalMembershipRequiredException : Exception("Signal membership required")
+/**
+ * The reader is signed in but has no subscription.
+ *
+ * [serverMessage] is the deployment's own explanation of how to get one, where it gave one. Shown
+ * as written: how someone subscribes differs per platform and changes without the app being
+ * rebuilt, so the app's own copy is only a fallback for a server that said nothing.
+ */
+class SignalMembershipRequiredException(
+    val serverMessage: String? = null,
+) : Exception(serverMessage ?: "Signal membership required")

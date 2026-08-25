@@ -140,10 +140,17 @@ private fun String.symbol(): String = when (uppercase()) {
  */
 fun EntitlementSnapshot.toHomeSubscription(now: Instant = Instant.now()): HomeSubscription? {
     if (!isPaid && !isVip) return null
+    // Null is ordinary, not missing data: a membership held on account balance has no end date at
+    // all, and one that is not shown is better than a date the app invented for it.
     val expiry = parseWireInstant(expiresAt)
     val days = expiry?.let { Duration.between(now, it).toDays().toInt() }?.takeIf { it >= 0 }
     return HomeSubscription(
-        planLabel = plan.trim().takeIf(String::isNotEmpty) ?: return null,
+        // `free` is what a server writes where a membership has no plan behind it — a trial, or one
+        // held on balance. Printing it beside an active membership would read as a contradiction, so
+        // the card falls back to naming the membership rather than the absent plan. Anything the
+        // server did name is printed exactly, including a trial: it is their word for it, and the
+        // app must not dress a trial up as a purchase or trim one down to less than it is.
+        planLabel = plan.trim().takeIf { it.isNotEmpty() && !it.equals("free", ignoreCase = true) },
         expiresLabel = expiry?.let { BidiText.isolateLtr(DATE_ONLY.format(it)) },
         daysRemaining = days,
         // A week is the point at which knowing changes what someone does about it. Sooner than that

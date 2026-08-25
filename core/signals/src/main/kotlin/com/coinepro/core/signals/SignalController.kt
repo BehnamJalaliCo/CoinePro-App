@@ -63,8 +63,16 @@ class SignalController(
                         old
                     }
                 }
-            } catch (_: SignalMembershipRequiredException) {
-                _state.update { it.copy(items = emptyList(), loading = false, membershipRequired = true, error = null) }
+            } catch (refusal: SignalMembershipRequiredException) {
+                _state.update {
+                    it.copy(
+                        items = emptyList(),
+                        loading = false,
+                        membershipRequired = true,
+                        membershipMessage = refusal.serverMessage,
+                        error = null,
+                    )
+                }
             } catch (error: Exception) {
                 _state.update { it.copy(loading = false, error = error.toUiMessage(MessageKey.SIGNALS_UNAVAILABLE)) }
             }
@@ -128,8 +136,12 @@ class SignalController(
                     signalId = signalId,
                     signal = gateway.detail(signalId),
                 )
-            } catch (_: SignalMembershipRequiredException) {
-                _detailState.value = SignalDetailState(signalId = signalId, membershipRequired = true)
+            } catch (refusal: SignalMembershipRequiredException) {
+                _detailState.value = SignalDetailState(
+                    signalId = signalId,
+                    membershipRequired = true,
+                    membershipMessage = refusal.serverMessage,
+                )
             } catch (error: Exception) {
                 _detailState.value = SignalDetailState(
                     signalId = signalId,

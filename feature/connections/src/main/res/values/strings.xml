@@ -20,6 +20,7 @@
     <string name="connections_permission_futures">فیوچرز</string>
 
     <string name="connections_mt5_connect">اتصال متاتریدر ۵</string>
+    <string name="connections_lbank_live_only">الْبانک محیط آزمایشی ندارد. هر کلیدی که این‌جا ذخیره کنید کلید حساب واقعی شماست و هر سفارشی که از اپ ثبت شود با پول واقعی اجرا می‌شود.</string>
     <string name="connections_lbank_save">ذخیرهٔ اتصال الْبانک</string>
     <string name="connections_lbank_replace">جایگزینی اطلاعات</string>
     <string name="connections_lbank_remove">حذف اتصال الْبانک</string>

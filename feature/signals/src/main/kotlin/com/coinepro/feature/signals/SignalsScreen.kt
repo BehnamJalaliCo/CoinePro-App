@@ -104,7 +104,9 @@ fun SignalsScreen(
                 Placeholder { CircularProgressIndicator(color = CoineProColors.Gold) }
             }
 
-            state.membershipRequired -> item { MembershipRequired(onRetry = controller::refresh) }
+            state.membershipRequired -> item {
+                MembershipRequired(state.membershipMessage, onRetry = controller::refresh)
+            }
 
             state.error != null && state.items.isEmpty() -> item {
                 CoineProCard(modifier = Modifier.fillMaxWidth()) {
@@ -162,7 +164,7 @@ private fun Placeholder(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun MembershipRequired(onRetry: () -> Unit) {
+private fun MembershipRequired(serverMessage: String?, onRetry: () -> Unit) {
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = stringResource(R.string.signals_membership_title),
@@ -171,7 +173,11 @@ private fun MembershipRequired(onRetry: () -> Unit) {
         )
         Spacer(Modifier.height(CoineProSpacing.One))
         Text(
-            text = stringResource(R.string.signals_membership_body),
+            // The server's own words where it gave them. How someone subscribes differs per
+            // platform and changes without the app being rebuilt, so the app's copy is a fallback
+            // for a server that said nothing rather than the usual case.
+            text = serverMessage?.takeIf { it.isNotBlank() }
+                ?: stringResource(R.string.signals_membership_body),
             style = MaterialTheme.typography.bodyMedium,
             color = CoineProColors.TextSecondary,
         )

@@ -213,6 +213,16 @@ private fun LbankCard(
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
         )
+        // Warning-coloured and above the fields, not muted below them. The exchange has no test
+        // environment at all — one production host, so every key is a real key and every order
+        // spends real money. That is the one thing on this screen that costs something if it is
+        // skimmed past, so it is not allowed to look like the rest of the copy.
+        Text(
+            text = stringResource(R.string.connections_lbank_live_only),
+            modifier = Modifier.padding(top = CoineProSpacing.One),
+            style = MaterialTheme.typography.bodyMedium,
+            color = CoineProColors.Warning,
+        )
 
         Column(
             modifier = Modifier.padding(top = CoineProSpacing.OneHalf),
