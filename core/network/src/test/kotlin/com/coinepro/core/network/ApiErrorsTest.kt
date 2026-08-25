@@ -35,6 +35,55 @@ class ApiErrorsTest {
     }
 
     @Test
+    fun `a deployment that sends only the header leaves the body wait absent`() {
+        // TradeYar puts the wait in Retry-After and nowhere else; the gateway falls back to the
+        // header, so finding nothing here has to stay a clean null rather than a zero.
+        assertNull(ApiErrors.parse("""{"detail":"تلاش‌های زیاد."}""").retryAfterSeconds)
+    }
+
+    @Test
+    fun `reads TradeYar's RFC 7807 shape, where the code sits beside detail rather than inside it`() {
+        val error = ApiErrors.parse(
+            """{"type":"about:blank","title":"Bad Request","status":400,
+                "detail":"این نماد پشتیبانی نمی‌شود.","code":"unsupported_symbol"}""",
+        )
+
+        assertEquals("unsupported_symbol", error.code)
+        assertEquals("این نماد پشتیبانی نمی‌شود.", error.message)
+    }
+
+    @Test
+    fun `falls back to a 7807 title when it carries no detail`() {
+        val error = ApiErrors.parse("""{"title":"Too Many Requests","status":429,"code":"rate_limited"}""")
+
+        assertEquals("rate_limited", error.code)
+        assertEquals("Too Many Requests", error.message)
+    }
+
+    @Test
+    fun `reads FastAPI's validation array and keeps every complaint`() {
+        val error = ApiErrors.parse(
+            """{"detail":[{"loc":["body","email"],"msg":"ایمیل نامعتبر است.","type":"value_error"},
+                         {"loc":["body","password"],"msg":"رمز کوتاه است.","type":"value_error"}]}""",
+        )
+
+        assertEquals(
+            "A form refused for two reasons that reports one sends the reader back twice",
+            "ایمیل نامعتبر است. رمز کوتاه است.",
+            error.message,
+        )
+    }
+
+    @Test
+    fun `does not repeat an identical validation message once per field`() {
+        val error = ApiErrors.parse(
+            """{"detail":[{"msg":"این فیلد لازم است."},{"msg":"این فیلد لازم است."}]}""",
+        )
+
+        assertEquals("این فیلد لازم است.", error.message)
+    }
+
+    @Test
     fun `an unreadable body yields no reason rather than a made-up one`() {
         for (body in listOf(null, "", "   ", "not json at all", "[]", """{"detail":null}""", "{}")) {
             val error = ApiErrors.parse(body)

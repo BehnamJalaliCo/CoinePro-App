@@ -51,6 +51,8 @@ data class NotificationCenterState(
     val loading: Boolean = false,
     val notifications: List<AppNotification> = emptyList(),
     val unread: Int = 0,
+    /** The server held back older entries; the screen says so rather than implying completeness. */
+    val hasMoreNotifications: Boolean = false,
     val alerts: List<PriceAlert> = emptyList(),
     val preferences: PushPreferences = PushPreferences(),
     /**

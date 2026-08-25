@@ -296,6 +296,18 @@ fun ActivityScreen(
                     }
                 }
             }
+            // A truncated list that says nothing looks like the whole history, and a reader hunting
+            // for something from last week concludes it was never recorded.
+            if (notificationState.hasMoreNotifications) {
+                item {
+                    Text(
+                        stringResource(R.string.activity_notifications_truncated),
+                        modifier = Modifier.padding(horizontal = CoineProSpacing.Half),
+                        color = CoineProColors.TextMuted,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
         }
         notificationState.lastMessage?.let { message ->
             item {

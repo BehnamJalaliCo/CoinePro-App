@@ -48,6 +48,7 @@ class NotificationController(
                     loading = false,
                     notifications = page.getOrNull()?.items ?: current.notifications,
                     unread = page.getOrNull()?.unread ?: current.unread,
+                    hasMoreNotifications = page.getOrNull()?.hasMore ?: current.hasMoreNotifications,
                     alerts = alertList.getOrNull() ?: current.alerts,
                     preferences = prefs.getOrNull() ?: current.preferences,
                     // Only the notification list is worth reporting a failure for: it is what the

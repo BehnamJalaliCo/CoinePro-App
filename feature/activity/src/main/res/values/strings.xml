@@ -37,6 +37,7 @@
     <string name="activity_alerts_subtitle">هشدار قیمت و تنظیمات اعلان، کنترل‌های عملیاتیِ متکی به سرور می‌مانند.</string>
     <string name="activity_notifications_title">اعلان‌ها</string>
     <string name="activity_notifications_subtitle">رویدادهای سیگنال و حساب که از سرویس اعلان می‌رسند.</string>
+    <string name="activity_notifications_truncated">تازه‌ترین اعلان‌ها نمایش داده شده‌اند؛ قدیمی‌ترها در این فهرست نیستند.</string>
     <string name="activity_notifications_empty_title">هنوز اعلانی نیست</string>
     <string name="activity_notifications_empty_body">هیچ رکورد اعلانی در دسترس نیست.</string>
     <string name="activity_notification_error">خطای اعلان</string>

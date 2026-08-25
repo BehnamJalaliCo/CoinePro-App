@@ -28,6 +28,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
+import com.coinepro.core.common.foldDigitsToLatin
 import com.coinepro.core.auth.AuthFailureReason
 import com.coinepro.core.auth.EmailAuthNotice
 import com.coinepro.core.auth.EmailAuthStep
@@ -210,10 +211,14 @@ private fun VerifyStep(
 
     CoineProTextField(
         value = code,
-        // Digits only, but no exact length is enforced: the contract names the field and not its
-        // shape, and a client that insisted on six would leave the button permanently dead if the
-        // server ever sent five. The server is what validates the code.
-        onValueChange = { entered -> code = entered.filter(Char::isDigit).take(MAX_CODE_LENGTH) },
+        // Folded before filtering, not after. A Persian keyboard produces ۰-۹ by default and those
+        // are Unicode category Nd, so isDigit() keeps them and the field would send Persian numerals
+        // while showing what looks like a correct code — the reader sees "wrong code" and has no way
+        // to spot the difference. The length stays unenforced: the contract names the field and not
+        // its shape, and insisting on six would kill the button for good if it were ever five.
+        onValueChange = { entered ->
+            code = entered.foldDigitsToLatin().filter(Char::isDigit).take(MAX_CODE_LENGTH)
+        },
         label = stringResource(R.string.auth_code),
         modifier = Modifier.fillMaxWidth(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),

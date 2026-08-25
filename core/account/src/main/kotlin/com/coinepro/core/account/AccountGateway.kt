@@ -3,6 +3,7 @@ package com.coinepro.core.account
 import com.coinepro.core.common.AppResult
 import com.coinepro.core.common.ErrorKind
 import com.coinepro.core.common.RetryAfter
+import com.coinepro.core.common.foldDigitsToLatin
 import com.coinepro.core.network.ApiErrors
 import java.io.IOException
 import retrofit2.HttpException
@@ -22,6 +23,15 @@ interface AccountGateway {
 
     suspend fun kyc(): AppResult<KycStatus>
 
+    /**
+     * Submits level-1 verification.
+     *
+     * [birthDate] is passed through untouched. CoinePro-FX accepts a Jalali date and converts it
+     * server-side, so the app must **not** convert: an Iranian reader knows their birthday in the
+     * Jalali calendar, and a client-side conversion would put a second implementation of a famously
+     * fiddly calendar in the path of a field whose refusal message says nothing about dates. One
+     * conversion, on the side that owns the answer.
+     */
     suspend fun submitKycLevel1(
         fullName: String,
         nationalId: String,
@@ -85,7 +95,9 @@ class NetworkAccountGateway internal constructor(
                 // Persian and Arabic-Indic digits are accepted by the server, but folding them here
                 // keeps what the app sends identical to what the reader believes they typed.
                 nationalId = nationalId.foldDigitsToLatin().filter(Char::isDigit),
-                birthDate = birthDate.trim(),
+                // Digits folded but the calendar left alone: the server reads Jalali and Gregorian
+                // both, and Persian numerals are what a Persian keyboard produces for either.
+                birthDate = birthDate.foldDigitsToLatin().trim(),
                 phone = phone.foldDigitsToLatin().filter { it.isDigit() || it == '+' },
             ),
         ).toStatus()
@@ -136,17 +148,3 @@ class NetworkAccountGateway internal constructor(
     }
 }
 
-/**
- * Rewrites Persian and Arabic-Indic digits as Latin ones, leaving everything else alone.
- *
- * A Persian keyboard produces ۰-۹ by default, so a reader typing their national ID types characters
- * a naive `isDigit` filter would strip to nothing — the field would appear to reject a number they
- * can plainly see they entered.
- */
-internal fun String.foldDigitsToLatin(): String = map { character ->
-    when (character) {
-        in '۰'..'۹' -> '0' + (character - '۰') // Persian
-        in '٠'..'٩' -> '0' + (character - '٠') // Arabic-Indic
-        else -> character
-    }
-}.joinToString("")

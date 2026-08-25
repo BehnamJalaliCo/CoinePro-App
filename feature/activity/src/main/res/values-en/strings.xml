@@ -36,6 +36,7 @@
     <string name="activity_alerts_subtitle">Price alerts and push preferences stay source-backed operational controls.</string>
     <string name="activity_notifications_title">Notifications</string>
     <string name="activity_notifications_subtitle">Signal and account events received from the notification service.</string>
+    <string name="activity_notifications_truncated">Showing the most recent notifications; older ones are not in this list.</string>
     <string name="activity_notifications_empty_title">No notifications yet</string>
     <string name="activity_notifications_empty_body">No notification records are available.</string>
     <string name="activity_notification_error">Notification error</string>

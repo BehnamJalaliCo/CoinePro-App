@@ -37,6 +37,13 @@ interface NotificationGateway {
 data class NotificationPage(
     val items: List<AppNotification>,
     val unread: Int,
+    /**
+     * Whether the server held back older entries.
+     *
+     * Worth carrying rather than ignoring: a truncated list that says nothing looks like the whole
+     * history, and a reader looking for something from last week concludes it was never recorded.
+     */
+    val hasMore: Boolean = false,
 )
 
 internal interface NotificationApi {
@@ -100,6 +107,7 @@ internal data class NotificationDto(
 internal data class NotificationResponseDto(
     val items: List<NotificationDto> = emptyList(),
     val unread: Int = 0,
+    val hasMore: Boolean = false,
 )
 internal data class PriceAlertDto(
     val id: String? = null,
@@ -152,6 +160,7 @@ class NetworkNotificationGateway private constructor(
         return NotificationPage(
             items = response.items.mapNotNull { it.toDomain() },
             unread = response.unread.coerceAtLeast(0),
+            hasMore = response.hasMore,
         )
     }
 
