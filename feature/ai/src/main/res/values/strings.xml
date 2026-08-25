@@ -42,4 +42,8 @@
     <string name="ai_chart_analysis_title">تحلیل تصویر چارت</string>
     <string name="ai_chart_analysis_body">عکس چارت خود را بفرستید تا نقاط ورود، حد ضرر و اهداف روی همان تصویر تحلیل شود.</string>
     <string name="ai_chart_analysis_open">فرستادن تصویر چارت</string>
+
+    <string name="ai_assistant_title">دستیار هوشمند</string>
+    <string name="ai_assistant_body">دربارهٔ سیگنال‌های فعال، شرایط بازار، اخبار و ریسک بپرس — با تازگیِ منبع در معرض دید.</string>
+    <string name="ai_assistant_open">گفت‌وگو با دستیار</string>
 </resources>

@@ -1,5 +1,6 @@
 package com.coinepro.core.aisignal
 
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.SignalDirection
 
 enum class AiSignalTimeframe(val wireValue: String, val label: String) {
@@ -25,18 +26,33 @@ enum class AiSignalJobStatus(val wireValue: String) {
 }
 
 object AiSignalProductScope {
-    val defaultSymbols: List<String> = listOf(
-        "XAUUSD",
-        "XAGUSD",
+
+    /** TradeYar — crypto, USDT-quoted. */
+    val cryptoSymbols: List<String> = listOf(
         "BTCUSDT",
         "ETHUSDT",
-        "BNBUSDT",
         "SOLUSDT",
+        "BNBUSDT",
         "XRPUSDT",
         "ADAUSDT",
         "DOGEUSDT",
         "TRXUSDT",
     )
+
+    /** CoinePro-FX — metals in the current product scope. */
+    val forexSymbols: List<String> = listOf("XAUUSD", "XAGUSD")
+
+    /**
+     * What a platform will generate a setup for.
+     *
+     * No combined list: offering a reader a symbol their platform does not serve produces a request
+     * the backend they are signed in to cannot answer, and the failure looks like a broken model
+     * rather than a wrong market.
+     */
+    fun symbolsFor(platform: MarketPlatform): List<String> = when (platform) {
+        MarketPlatform.TRADEYAR -> cryptoSymbols
+        MarketPlatform.COINEPRO_FX -> forexSymbols
+    }
 
     fun normalizeSymbol(raw: String): String? {
         val normalized = raw.trim().uppercase().replace("/", "").replace("-", "")

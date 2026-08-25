@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,6 +28,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -42,10 +44,16 @@ import com.coinepro.core.aisignal.AiSignalTimeframe
 import com.coinepro.core.aisignal.AiTechnicalSnapshot
 import com.coinepro.core.aisignal.AiTradeStyle
 import com.coinepro.core.common.MarketNumberFormatter
+import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProPrimaryButton
+import com.coinepro.core.designsystem.CoineProSecondaryButton
+import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProStreamingBar
+import com.coinepro.core.designsystem.CoineProStreamingText
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.common.BidiText
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.SignalDirection
 
 /**
@@ -64,11 +72,14 @@ fun AiStudioScreen(
     controller: AiSignalController,
     onOpenSignal: (Long) -> Unit,
     onOpenChartAnalysis: () -> Unit,
+    onOpenAssistant: () -> Unit = {},
+    platform: MarketPlatform = MarketPlatform.TRADEYAR,
     modifier: Modifier = Modifier,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
 
-    var symbol by rememberSaveable { mutableStateOf(AiSignalProductScope.defaultSymbols.first()) }
+    val symbols = AiSignalProductScope.symbolsFor(platform)
+    var symbol by rememberSaveable(platform) { mutableStateOf(symbols.first()) }
     var timeframe by rememberSaveable { mutableStateOf(AiSignalTimeframe.H1) }
     var tradeStyle by rememberSaveable { mutableStateOf<AiTradeStyle?>(null) }
     var riskAppetite by rememberSaveable { mutableStateOf<AiRiskAppetite?>(null) }
@@ -81,9 +92,14 @@ fun AiStudioScreen(
     val result = job?.result
 
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .background(CoineProColors.Stage),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            horizontal = CoineProSpacing.Gutter,
+            vertical = CoineProSpacing.Gutter,
+        ),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
     ) {
         item { AiHeader(quotaText = quotaText(state.quota?.remaining, state.quota?.limit)) }
 
@@ -91,7 +107,7 @@ fun AiStudioScreen(
             AiPanel(title = stringResource(R.string.ai_setup_title)) {
                 AiChoiceRow(
                     label = stringResource(R.string.ai_symbol),
-                    options = AiSignalProductScope.defaultSymbols.map { it to it },
+                    options = symbols.map { it to it },
                     selected = symbol,
                     onSelect = { symbol = it ?: symbol },
                 )
@@ -128,8 +144,15 @@ fun AiStudioScreen(
         }
 
         item {
-            Button(
+            val ready = !working && !state.entitlementRequired && !state.quotaExhausted
+            CoineProPrimaryButton(
+                text = if (working) {
+                    stringResource(R.string.ai_analysing)
+                } else {
+                    stringResource(R.string.ai_generate)
+                },
                 onClick = {
+                    if (!ready) return@CoineProPrimaryButton
                     controller.submit(
                         AiSignalRequest(
                             symbol = symbol,
@@ -141,17 +164,8 @@ fun AiStudioScreen(
                         ),
                     )
                 },
-                enabled = !working && !state.entitlementRequired && !state.quotaExhausted,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    if (working) {
-                        stringResource(R.string.ai_analysing)
-                    } else {
-                        stringResource(R.string.ai_generate)
-                    },
-                )
-            }
+                modifier = Modifier.fillMaxWidth().alpha(if (ready) 1f else 0.5f),
+            )
         }
 
         if (working) {
@@ -176,9 +190,26 @@ fun AiStudioScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = CoineProColors.TextSecondary,
                 )
-                OutlinedButton(onClick = onOpenChartAnalysis, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.ai_chart_analysis_open))
-                }
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.ai_chart_analysis_open),
+                    onClick = onOpenChartAnalysis,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        item {
+            AiPanel(title = stringResource(R.string.ai_assistant_title)) {
+                Text(
+                    stringResource(R.string.ai_assistant_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CoineProColors.TextSecondary,
+                )
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.ai_assistant_open),
+                    onClick = onOpenAssistant,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }
@@ -270,7 +301,14 @@ private fun AiResultPanel(signal: AiGeneratedSignal, onOpenSignal: (Long) -> Uni
             }
 
             signal.rationale?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = CoineProColors.TextSecondary)
+                CoineProStreamingText(
+                    text = it,
+                    // The result arrives whole, so this reveals once on first paint and never
+                    // re-performs. Replaying it on every recomposition would dramatise finished work.
+                    streaming = true,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CoineProColors.TextSecondary,
+                )
             }
 
             // Server caveats are shown verbatim and never folded into the rationale.
@@ -278,9 +316,11 @@ private fun AiResultPanel(signal: AiGeneratedSignal, onOpenSignal: (Long) -> Uni
                 AiNotice(warning, CoineProColors.Warning)
             }
 
-            TextButton(onClick = { onOpenSignal(signal.signalId) }) {
-                Text(stringResource(R.string.ai_open_signal))
-            }
+            CoineProSecondaryButton(
+                text = stringResource(R.string.ai_open_signal),
+                onClick = { onOpenSignal(signal.signalId) },
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
@@ -349,16 +389,8 @@ private fun AiLevelRow(
 
 @Composable
 private fun AiPanel(title: String?, content: @Composable () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        color = CoineProColors.Surface,
-        border = BorderStroke(1.dp, CoineProColors.Border),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf)) {
             title?.let {
                 Text(
                     it,

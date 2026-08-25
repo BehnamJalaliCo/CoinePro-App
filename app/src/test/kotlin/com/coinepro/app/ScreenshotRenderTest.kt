@@ -32,7 +32,6 @@ import com.coinepro.core.navigation.AppDestination
 import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.signals.SignalController
 import com.coinepro.feature.activity.ActivityScreen
-import com.coinepro.feature.ai.AiScreen
 import com.coinepro.feature.ai.AiStudioScreen
 import com.coinepro.feature.auth.AuthScreen
 import com.coinepro.feature.calendar.EconomicCalendarScreen
@@ -173,20 +172,6 @@ class ScreenshotRenderTest {
                 marketIntelController = intel,
                 signalId = 4821L,
                 onExecute = {},
-            )
-        }
-    }
-
-    @Test
-    fun ai() {
-        val controller = AiSignalController(FakeAiSignalGateway(), scope)
-        controller.refreshQuota()
-        capture("04-ai") {
-            AiScreen(
-                controller = controller,
-                onOpenSignal = {},
-                onOpenVision = {},
-                onOpenAssistant = {},
             )
         }
     }

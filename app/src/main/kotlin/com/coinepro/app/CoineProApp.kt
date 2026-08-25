@@ -46,7 +46,7 @@ import com.coinepro.core.navigation.AppDestination
 import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.signals.SignalController
 import com.coinepro.feature.activity.ActivityScreen
-import com.coinepro.feature.ai.AiScreen
+import com.coinepro.feature.ai.AiStudioScreen
 import com.coinepro.feature.aiassistant.AiAssistantScreen
 import com.coinepro.feature.aivision.AiVisionScreen
 import com.coinepro.feature.auth.AuthScreen
@@ -351,11 +351,14 @@ private fun MainShell(
                 ConnectionsScreen(controller = executionController)
             }
             composable(AppDestination.AI.route) {
-                AiScreen(
+                // AiStudioScreen, not the older AiScreen: the two carried the same generator, and
+                // only this one shows the evidence the server returns alongside the verdict.
+                AiStudioScreen(
                     controller = aiSignalController,
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
-                    onOpenVision = { navController.navigate(AI_VISION_ROUTE) },
+                    onOpenChartAnalysis = { navController.navigate(AI_VISION_ROUTE) },
                     onOpenAssistant = { navController.navigate(AI_ASSISTANT_ROUTE) },
+                    platform = activePlatform,
                 )
             }
             composable(AI_VISION_ROUTE) {

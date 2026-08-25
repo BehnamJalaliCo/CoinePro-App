@@ -42,4 +42,8 @@
     <string name="ai_chart_analysis_title">Chart image analysis</string>
     <string name="ai_chart_analysis_body">Send a screenshot of your chart to have entry, stop and targets analysed against that image.</string>
     <string name="ai_chart_analysis_open">Send a chart image</string>
+
+    <string name="ai_assistant_title">AI assistant</string>
+    <string name="ai_assistant_body">Ask about active signals, market context, news and risk, with source freshness on show.</string>
+    <string name="ai_assistant_open">Open the assistant</string>
 </resources>
