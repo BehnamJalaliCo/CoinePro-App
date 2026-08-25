@@ -59,6 +59,7 @@ import com.coinepro.core.account.AccountController
 import android.app.Activity
 import androidx.annotation.StringRes
 import androidx.compose.ui.platform.LocalContext
+import com.coinepro.core.auth.PlatformCapabilities
 import com.coinepro.core.auth.PlatformSessions
 import com.coinepro.core.auth.EmailAuthController
 import com.coinepro.core.auth.EmailAuthStep
@@ -72,6 +73,7 @@ import com.coinepro.core.diagnostics.HubTone
 import com.coinepro.core.diagnostics.PushPermission
 import com.coinepro.core.diagnostics.PushPreferenceKey
 import com.coinepro.core.diagnostics.PushStatus
+import com.coinepro.core.diagnostics.ServerCapabilities
 import com.coinepro.core.diagnostics.SessionRow
 import com.coinepro.core.diagnostics.VenueStatus
 import com.coinepro.core.execution.ConnectionsState
@@ -112,6 +114,7 @@ fun CoineProApp(
     accountControllers: Map<MarketPlatform, AccountController>,
     adminController: AdminController,
     platformSessions: PlatformSessions,
+    platformCapabilities: PlatformCapabilities,
     marketDataCache: MarketDataCache,
     activePlatformStore: ActivePlatformStore,
     signalControllers: Map<MarketPlatform, SignalController>,
@@ -167,6 +170,31 @@ fun CoineProApp(
     val briefingReadAt = remember(briefingState) { System.currentTimeMillis() / 1_000 }
     val scope = rememberCoroutineScope()
     val signedIn = session is SessionState.SignedIn
+
+    val capabilities by platformCapabilities.state.collectAsStateWithLifecycle()
+    // What each deployment offers. Read once on sign-in: it is server configuration, not live
+    // state, so re-reading it per screen would spend a request to be told the same thing.
+    LaunchedEffect(signedIn) {
+        if (signedIn) platformCapabilities.refresh() else platformCapabilities.clear()
+    }
+    val methods = capabilities[activePlatform]
+    // Only the two flags a single server reports are assumed present when unheard. Everything else
+    // stays hidden until a server has confirmed it — a button certain to fail is worse than one
+    // that appears a moment late.
+    val chartVisionAvailable = methods?.chartVision == true
+    val pushAvailable = methods?.push == true
+    val assistantAvailable = methods?.assistant ?: true
+    val aiSignalsAvailable = methods?.aiSignals ?: true
+    // Asking spends the one prompt Android grants, and it is spent for good: a reader who declines
+    // is not asked again. A deployment that cannot deliver a push would spend it on nothing, and
+    // one who granted it and then never heard anything has been told something untrue by the
+    // request itself. Unconfigured is already the case for a build without Firebase and reads the
+    // same way here, so it is reused rather than given a second name.
+    val deliverablePermissionState = if (pushAvailable) {
+        notificationPermissionState
+    } else {
+        NotificationPermissionUiState.NOT_CONFIGURED
+    }
 
     LaunchedEffect(signedIn, activePlatform) {
         marketDataControllers.forEach { (platform, controller) ->
@@ -228,6 +256,18 @@ fun CoineProApp(
             priceAlerts = notificationState.preferences.priceAlerts,
         ),
         venue = venueState.forPlatform(activePlatform),
+        // What each server said about itself, per platform. Null inside a row means that server
+        // has not answered yet, which the panel draws differently from a capability reported off —
+        // the whole point of asking is to tell those two apart.
+        capabilities = capabilities.mapValues { (_, methods) ->
+            ServerCapabilities(
+                emailPassword = methods.emailPassword,
+                google = methods.google,
+                telegram = methods.telegram,
+                push = methods.push,
+                chartVision = methods.chartVision,
+            )
+        },
         appearance = Appearance(AppLanguageStore.current(context).tag),
     )
 
@@ -284,7 +324,11 @@ fun CoineProApp(
                 marketIntelController = marketIntelController,
                 launchSignalId = launchSignalId,
                 launchActivity = launchActivity,
-                notificationPermissionState = notificationPermissionState,
+                notificationPermissionState = deliverablePermissionState,
+                chartVisionAvailable = chartVisionAvailable,
+                pushAvailable = pushAvailable,
+                assistantAvailable = assistantAvailable,
+                aiSignalsAvailable = aiSignalsAvailable,
                 onSignalLaunchConsumed = onSignalLaunchConsumed,
                 onActivityLaunchConsumed = onActivityLaunchConsumed,
                 onRequestNotificationPermission = onRequestNotificationPermission,
@@ -374,6 +418,11 @@ private fun MainShell(
     launchSignalId: Long?,
     launchActivity: Boolean,
     notificationPermissionState: NotificationPermissionUiState,
+    /** What this deployment reports it can do. A feature it does not offer is not drawn. */
+    chartVisionAvailable: Boolean,
+    pushAvailable: Boolean,
+    assistantAvailable: Boolean,
+    aiSignalsAvailable: Boolean,
     onSignalLaunchConsumed: () -> Unit,
     onActivityLaunchConsumed: () -> Unit,
     onRequestNotificationPermission: () -> Unit,
@@ -499,7 +548,14 @@ private fun MainShell(
                     },
                     // Both pills lead to the AI section, which is where the work actually happens.
                     onGenerateSignal = { navController.navigate(AppDestination.AI.route) },
-                    onSendChart = { navController.navigate(AI_VISION_ROUTE) },
+                    // Chart analysis is optional per deployment. Sending the reader to a screen the
+                    // server has switched off is a wait that ends in an error every time, so the
+                    // action falls back to the AI studio the server does serve.
+                    onSendChart = {
+                        navController.navigate(
+                            if (chartVisionAvailable) AI_VISION_ROUTE else AppDestination.AI.route,
+                        )
+                    },
                     onOpenMarket = { navController.navigate(AppDestination.SIGNALS.route) },
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
                     // Home carries no top bar, so the account actions hang off the avatar.
@@ -558,6 +614,9 @@ private fun MainShell(
                 AiStudioScreen(
                     controller = aiSignalController,
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
+                    chartVisionAvailable = chartVisionAvailable,
+                    assistantAvailable = assistantAvailable,
+                    aiSignalsAvailable = aiSignalsAvailable,
                     onOpenChartAnalysis = { navController.navigate(AI_VISION_ROUTE) },
                     onOpenAssistant = { navController.navigate(AI_ASSISTANT_ROUTE) },
                     platform = activePlatform,

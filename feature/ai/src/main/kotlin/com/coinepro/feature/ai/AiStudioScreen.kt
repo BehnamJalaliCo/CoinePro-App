@@ -73,6 +73,16 @@ fun AiStudioScreen(
     onOpenSignal: (Long) -> Unit,
     onOpenChartAnalysis: () -> Unit,
     onOpenAssistant: () -> Unit = {},
+    /**
+     * What this deployment reports it can do.
+     *
+     * Each defaults to available so a screen rendered without them — a preview, a screenshot —
+     * still shows its full self. In the app they arrive from the server, and a feature it has
+     * switched off is not drawn rather than drawn and failing.
+     */
+    chartVisionAvailable: Boolean = true,
+    assistantAvailable: Boolean = true,
+    aiSignalsAvailable: Boolean = true,
     platform: MarketPlatform = MarketPlatform.TRADEYAR,
     modifier: Modifier = Modifier,
 ) {
@@ -144,7 +154,8 @@ fun AiStudioScreen(
         }
 
         item {
-            val ready = !working && !state.entitlementRequired && !state.quotaExhausted
+            val ready = !working && !state.entitlementRequired && !state.quotaExhausted &&
+                aiSignalsAvailable
             CoineProPrimaryButton(
                 text = if (working) {
                     stringResource(R.string.ai_analysing)
@@ -183,7 +194,10 @@ fun AiStudioScreen(
             }
         }
 
-        item {
+        // Both panels below front optional features. A deployment without a vision model, or
+        // without a conversational assistant, has nothing behind them — so they are absent rather
+        // than present and failing.
+        if (chartVisionAvailable) item {
             AiPanel(title = stringResource(R.string.ai_chart_analysis_title)) {
                 Text(
                     stringResource(R.string.ai_chart_analysis_body),
@@ -198,7 +212,7 @@ fun AiStudioScreen(
             }
         }
 
-        item {
+        if (assistantAvailable) item {
             AiPanel(title = stringResource(R.string.ai_assistant_title)) {
                 Text(
                     stringResource(R.string.ai_assistant_body),

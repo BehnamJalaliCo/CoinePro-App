@@ -24,6 +24,7 @@ import com.coinepro.core.auth.NetworkEmailAuthGateway
 import com.coinepro.core.auth.NetworkAuthGateway
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionMemory
+import com.coinepro.core.auth.PlatformCapabilities
 import com.coinepro.core.auth.PlatformSessions
 import com.coinepro.core.auth.SessionTokenStorage
 import com.coinepro.core.database.CoineProDatabase
@@ -360,6 +361,21 @@ object AppModule {
     @Singleton
     fun emailAuthController(@ForexPlatform controller: EmailAuthController): EmailAuthController =
         controller
+
+    /**
+     * What each server says it can do, for every screen that fronts an optional feature.
+     *
+     * The same read the sign-in screen makes, kept rather than discarded: without it the app asks
+     * for a notification permission a server may not be able to use, and offers AI screens that a
+     * deployment has switched off.
+     */
+    @Provides
+    @Singleton
+    fun platformCapabilities(
+        @ForexPlatform forex: EmailAuthGateway,
+        @CryptoPlatform crypto: EmailAuthGateway,
+        scope: CoroutineScope,
+    ): PlatformCapabilities = PlatformCapabilities(platformMap(forex, crypto), scope)
 
     // ── One pair of bindings per surface ───────────────────────────────────────────────────────
     // Each of these used to exist once, against the CoinePro-FX client, which is why the whole
