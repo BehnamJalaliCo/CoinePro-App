@@ -22,6 +22,11 @@ object NetworkFactory {
         onUnauthorized: () -> Unit = {},
         installId: () -> String? = { null },
         appVersion: String? = null,
+        /**
+         * Installed ahead of the auth interceptor so it times the whole call, and so a request the
+         * auth layer never got to still appears in the log rather than vanishing.
+         */
+        recorder: Interceptor? = null,
         enableHttpLogging: Boolean = false,
     ): OkHttpClient {
         val auth = Interceptor { chain ->
@@ -48,6 +53,7 @@ object NetworkFactory {
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .pingInterval(20, TimeUnit.SECONDS)
+            .apply { recorder?.let(::addInterceptor) }
             .addInterceptor(auth)
 
         if (enableHttpLogging) {

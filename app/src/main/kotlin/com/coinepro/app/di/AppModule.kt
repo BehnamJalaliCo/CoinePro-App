@@ -32,6 +32,8 @@ import com.coinepro.core.database.RoomSignalHistoryCache
 import com.coinepro.core.datastore.ActivePlatformSelector
 import com.coinepro.core.datastore.ActivePlatformStore
 import com.coinepro.core.datastore.InstallIdStore
+import com.coinepro.core.diagnostics.RequestLog
+import com.coinepro.core.diagnostics.RequestLogInterceptor
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.ExecutionGateway
 import com.coinepro.core.execution.NetworkExecutionGateway
@@ -84,6 +86,17 @@ object AppModule {
     fun installIdStore(preferences: DataStore<Preferences>): InstallIdStore =
         InstallIdStore(preferences)
 
+    /**
+     * One log for both platforms, with each entry naming which one made the call.
+     *
+     * Shared rather than split because the admin panel's most useful view is the whole timeline in
+     * order — a crypto call failing right after a platform switch is the kind of thing two separate
+     * logs would hide.
+     */
+    @Provides
+    @Singleton
+    fun requestLog(): RequestLog = RequestLog()
+
     // ── CoinePro-FX (Forex) ────────────────────────────────────────────────────────────────────
     // The unqualified bindings stay pointed at CoinePro-FX so every existing gateway keeps working
     // unchanged while the crypto side is wired up screen by screen.
@@ -113,11 +126,13 @@ object AppModule {
     fun forexOkHttp(
         @ForexPlatform memory: SessionMemory,
         installIds: InstallIdStore,
+        requestLog: RequestLog,
     ): OkHttpClient = NetworkFactory.okHttpClient(
         bearerToken = memory::token,
         onUnauthorized = memory::notifyUnauthorized,
         installId = installIds.providerFor(MarketPlatform.COINEPRO_FX),
         appVersion = BuildConfig.VERSION_NAME,
+        recorder = RequestLogInterceptor(requestLog, MarketPlatform.COINEPRO_FX),
         enableHttpLogging = BuildConfig.DEBUG,
     )
 
@@ -156,11 +171,13 @@ object AppModule {
     fun cryptoOkHttp(
         @CryptoPlatform memory: SessionMemory,
         installIds: InstallIdStore,
+        requestLog: RequestLog,
     ): OkHttpClient = NetworkFactory.okHttpClient(
         bearerToken = memory::token,
         onUnauthorized = memory::notifyUnauthorized,
         installId = installIds.providerFor(MarketPlatform.TRADEYAR),
         appVersion = BuildConfig.VERSION_NAME,
+        recorder = RequestLogInterceptor(requestLog, MarketPlatform.TRADEYAR),
         enableHttpLogging = BuildConfig.DEBUG,
     )
 
