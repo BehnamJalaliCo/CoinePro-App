@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="admin_title">Diagnostics</string>
+    <string name="admin_subtitle">What this build actually is, and what the two servers behind it actually say. Nothing is managed here; only what exists is shown.</string>
+
+    <string name="admin_build_title">This build</string>
+    <string name="admin_version">Version</string>
+    <string name="admin_environment">Environment</string>
+    <string name="admin_application_id">Application id</string>
+    <string name="admin_debuggable">Debuggable</string>
+    <string name="admin_firebase">Firebase</string>
+
+    <string name="admin_platform_title">Selected platform</string>
+    <string name="admin_platform_forex">Forex</string>
+    <string name="admin_platform_crypto">Crypto</string>
+    <string name="admin_tab_with_failures">%1$s · %2$d failed</string>
+    <string name="admin_base_url">Base URL</string>
+    <string name="admin_platform_configured">Configuration</string>
+    <string name="admin_install_id">Install id</string>
+    <string name="admin_masking_note">Hosts and identifiers are masked. This screen opens in a shipping build and gets screenshotted.</string>
+
+    <string name="admin_probe_title">Route check</string>
+    <string name="admin_probe_body">Every read-only route is called once. Routes that write or spend quota are listed but never fired. A 401 means the address really exists; a 404 means the path is wrong.</string>
+    <string name="admin_probe_run">Run the check</string>
+    <string name="admin_probe_running">Running…</string>
+    <string name="admin_probe_reached">Answered</string>
+    <string name="admin_probe_alive">Alive, needs a token</string>
+    <string name="admin_probe_missing">Not found</string>
+
+    <string name="admin_outcome_reached">Answered</string>
+    <string name="admin_outcome_unauthorized">Alive, needs a token</string>
+    <string name="admin_outcome_not_found">Nothing is served at this address</string>
+    <string name="admin_outcome_server_error">Server error</string>
+    <string name="admin_outcome_unreachable">Could not be reached</string>
+    <string name="admin_outcome_skipped">Not fired</string>
+
+    <string name="admin_requests_title">Recent requests</string>
+    <string name="admin_requests_count">%1$d requests in memory</string>
+    <string name="admin_requests_failures">Failures only</string>
+    <string name="admin_requests_all">All</string>
+    <string name="admin_requests_clear">Clear</string>
+    <string name="admin_requests_empty">No requests recorded yet.</string>
+
+    <string name="admin_yes">Yes</string>
+    <string name="admin_no">No</string>
+    <string name="admin_configured">Configured</string>
+    <string name="admin_not_configured">Not configured</string>
+</resources>

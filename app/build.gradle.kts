@@ -210,6 +210,7 @@ dependencies {
     implementation(project(":core:marketintel"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:navigation"))
+    implementation(project(":feature:admin"))
     implementation(project(":feature:auth"))
     implementation(project(":feature:home"))
     implementation(project(":feature:signals"))

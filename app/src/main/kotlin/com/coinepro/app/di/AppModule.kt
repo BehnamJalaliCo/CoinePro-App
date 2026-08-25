@@ -32,6 +32,10 @@ import com.coinepro.core.database.RoomSignalHistoryCache
 import com.coinepro.core.datastore.ActivePlatformSelector
 import com.coinepro.core.datastore.ActivePlatformStore
 import com.coinepro.core.datastore.InstallIdStore
+import com.coinepro.core.diagnostics.AdminBuildInfo
+import com.coinepro.core.diagnostics.AdminController
+import com.coinepro.core.diagnostics.EndpointProber
+import com.coinepro.core.diagnostics.PlatformBuildInfo
 import com.coinepro.core.diagnostics.RequestLog
 import com.coinepro.core.diagnostics.RequestLogInterceptor
 import com.coinepro.core.execution.ExecutionController
@@ -96,6 +100,50 @@ object AppModule {
     @Provides
     @Singleton
     fun requestLog(): RequestLog = RequestLog()
+
+    /**
+     * The panel's own view of the build.
+     *
+     * Assembled here because BuildConfig belongs to the application, and a core module reaching
+     * into generated application code would tie the diagnostics to one app's build script.
+     */
+    @Provides
+    @Singleton
+    fun adminController(
+        @ForexPlatform forexClient: OkHttpClient,
+        @CryptoPlatform cryptoClient: OkHttpClient,
+        requestLog: RequestLog,
+        activePlatformStore: ActivePlatformStore,
+        scope: CoroutineScope,
+    ): AdminController = AdminController(
+        build = AdminBuildInfo(
+            versionName = BuildConfig.VERSION_NAME,
+            versionCode = BuildConfig.VERSION_CODE.toString(),
+            environment = BuildConfig.BUILD_ENVIRONMENT,
+            applicationId = BuildConfig.APPLICATION_ID,
+            debuggable = BuildConfig.DEBUG,
+            firebaseConfigured = BuildConfig.FIREBASE_PROJECT_ID.isNotBlank(),
+        ),
+        platforms = listOf(
+            PlatformBuildInfo(MarketPlatform.COINEPRO_FX, BuildConfig.API_BASE_URL),
+            PlatformBuildInfo(MarketPlatform.TRADEYAR, BuildConfig.TRADEYAR_API_BASE_URL),
+        ),
+        probers = mapOf(
+            MarketPlatform.COINEPRO_FX to EndpointProber(
+                forexClient,
+                BuildConfig.API_BASE_URL,
+                MarketPlatform.COINEPRO_FX,
+            ),
+            MarketPlatform.TRADEYAR to EndpointProber(
+                cryptoClient,
+                BuildConfig.TRADEYAR_API_BASE_URL,
+                MarketPlatform.TRADEYAR,
+            ),
+        ),
+        requestLog = requestLog,
+        scope = scope,
+        initialPlatform = activePlatformStore.available.first(),
+    )
 
     // ── CoinePro-FX (Forex) ────────────────────────────────────────────────────────────────────
     // The unqualified bindings stay pointed at CoinePro-FX so every existing gateway keeps working

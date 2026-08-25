@@ -55,6 +55,8 @@ import com.coinepro.feature.calendar.EconomicCalendarScreen
 import com.coinepro.feature.connections.ConnectionsScreen
 import com.coinepro.feature.execution.ExecutionScreen
 import com.coinepro.core.account.AccountController
+import com.coinepro.core.diagnostics.AdminController
+import com.coinepro.feature.admin.AdminScreen
 import com.coinepro.feature.home.HomeBriefing
 import com.coinepro.feature.home.HomePortfolio
 import com.coinepro.feature.home.HomeScreen
@@ -74,6 +76,7 @@ private const val AI_ASSISTANT_ROUTE = "ai/assistant"
 private const val NEWS_ROUTE = "market/news"
 private const val CALENDAR_ROUTE = "market/calendar"
 private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
+private const val ADMIN_ROUTE = "diagnostics"
 private fun signalDetailRoute(signalId: Long) = "signal/$signalId"
 private fun executionRoute(signalId: Long) = "execution/$signalId"
 
@@ -82,6 +85,7 @@ fun CoineProApp(
     sessionController: SessionController,
     marketDataControllers: Map<MarketPlatform, MarketDataController>,
     accountControllers: Map<MarketPlatform, AccountController>,
+    adminController: AdminController,
     activePlatformStore: ActivePlatformStore,
     signalController: SignalController,
     notificationController: NotificationController,
@@ -148,6 +152,7 @@ fun CoineProApp(
         when (session) {
             is SessionState.SignedIn -> MainShell(
                 marketState = marketState,
+                adminController = adminController,
                 briefing = briefingState.toHomeBriefing(briefingReadAt),
                 portfolio = portfolioState.toHomePortfolio(),
                 onRefreshAccount = accountController::refresh,
@@ -204,6 +209,7 @@ private fun MainShell(
     aiVisionController: AiVisionController,
     aiAssistantController: AiAssistantController,
     marketIntelController: MarketIntelController,
+    adminController: AdminController,
     briefing: HomeBriefing,
     portfolio: HomePortfolio?,
     onRefreshAccount: () -> Unit,
@@ -233,8 +239,10 @@ private fun MainShell(
         NEWS_ROUTE,
         CALENDAR_ROUTE,
         LAUNCH_READINESS_ROUTE,
+        ADMIN_ROUTE,
     )
     val subTitleRes = when (currentRoute) {
+        ADMIN_ROUTE -> R.string.screen_diagnostics
         SIGNAL_DETAIL_PATTERN -> R.string.screen_signal_detail
         EXECUTION_PATTERN -> R.string.screen_execution
         CONNECTIONS_ROUTE -> R.string.screen_connections
@@ -343,6 +351,16 @@ private fun MainShell(
                     onSelectPlatform = onSelectPlatform,
                 )
             }
+            composable(ADMIN_ROUTE) {
+                val adminState by adminController.state.collectAsStateWithLifecycle()
+                AdminScreen(
+                    state = adminState,
+                    onSelectPlatform = adminController::select,
+                    onProbe = adminController::probe,
+                    onToggleFailuresOnly = adminController::toggleFailuresOnly,
+                    onClearRequests = adminController::clearRequests,
+                )
+            }
             composable(AppDestination.SIGNALS.route) {
                 SignalsScreen(
                     controller = signalController,
@@ -436,6 +454,8 @@ private fun MainShell(
                     onRequestNotificationPermission = onRequestNotificationPermission,
                     onOpenNotificationSettings = onOpenNotificationSettings,
                     onSendFeedback = onSendFeedback,
+                    versionLabel = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                    onOpenDiagnostics = { navController.navigate(ADMIN_ROUTE) },
                 )
             }
         }

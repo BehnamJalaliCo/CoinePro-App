@@ -11,6 +11,7 @@
     <string name="screen_ai_assistant">AI assistant</string>
     <string name="screen_news">Market intelligence</string>
     <string name="screen_calendar">Economic calendar</string>
+    <string name="screen_diagnostics">Diagnostics</string>
     <string name="screen_launch_readiness">Launch &amp; safety</string>
 
     <string name="safety_title">Safety and launch</string>

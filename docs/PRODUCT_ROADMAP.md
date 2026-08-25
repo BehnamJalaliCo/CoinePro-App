@@ -295,6 +295,7 @@ core:marketintel
 core:account
 core:diagnostics
 core:database
+feature:admin
 feature:auth
 feature:home
 feature:signals

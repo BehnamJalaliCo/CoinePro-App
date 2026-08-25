@@ -1,5 +1,13 @@
 package com.coinepro.app
 
+import com.coinepro.core.diagnostics.AdminBuildInfo
+import com.coinepro.core.diagnostics.AdminUiState
+import com.coinepro.core.diagnostics.CatalogedEndpoint
+import com.coinepro.core.diagnostics.EndpointProbe
+import com.coinepro.core.diagnostics.PlatformBuildInfo
+import com.coinepro.core.diagnostics.PlatformPanel
+import com.coinepro.core.diagnostics.ProbeOutcome
+import com.coinepro.core.diagnostics.RecordedRequest
 import com.coinepro.core.aisignal.AiCandle
 import com.coinepro.core.aisignal.AiDirectionBias
 import com.coinepro.core.aisignal.AiGeneratedSignal
@@ -618,6 +626,79 @@ object ScreenshotFixtures {
         createdAt = NOW.minusSeconds(20).toString(),
         expiresAt = NOW.plusSeconds(600).toString(),
     )
+    /**
+     * A panel mid-diagnosis: one route answering, one alive but unauthenticated, and one that is
+     * simply not there. The last is the state the whole panel exists to make visible.
+     */
+    val adminState: AdminUiState
+        get() {
+            val forexProbes = listOf(
+                probe("GET", "user/auth/methods", "auth", ProbeOutcome.REACHED, 200),
+                probe("GET", "user/mobile/portfolio", "home", ProbeOutcome.UNAUTHORIZED, 401),
+                probe("GET", "user/mobile/alerts", "alerts", ProbeOutcome.UNAUTHORIZED, 401),
+                probe("GET", "user/ai/assistant/messages", "ai", ProbeOutcome.NOT_FOUND, 404),
+                probe("POST", "user/mobile/kyc/level1", "account", ProbeOutcome.SKIPPED, null),
+            )
+            return AdminUiState(
+                build = AdminBuildInfo(
+                    versionName = "1.0.0",
+                    versionCode = "1",
+                    environment = "staging",
+                    applicationId = "com.coinepro.app.staging",
+                    debuggable = false,
+                    firebaseConfigured = true,
+                ),
+                selected = MarketPlatform.COINEPRO_FX,
+                panels = mapOf(
+                    MarketPlatform.COINEPRO_FX to PlatformPanel(
+                        platform = MarketPlatform.COINEPRO_FX,
+                        build = PlatformBuildInfo(MarketPlatform.COINEPRO_FX, "https://api.example.invalid/"),
+                        probes = forexProbes,
+                        installId = "…3f7a",
+                    ),
+                    MarketPlatform.TRADEYAR to PlatformPanel(
+                        platform = MarketPlatform.TRADEYAR,
+                        build = PlatformBuildInfo(MarketPlatform.TRADEYAR, "https://crypto.example.invalid/"),
+                        installId = "…b210",
+                    ),
+                ),
+                requests = listOf(
+                    recorded(9, "GET", "user/mobile/portfolio", 200, 143),
+                    recorded(8, "GET", "user/ai/assistant/messages", 404, 88),
+                    recorded(7, "GET", "user/auth/methods", 200, 96),
+                ),
+            )
+        }
+
+    private fun probe(
+        method: String,
+        path: String,
+        area: String,
+        outcome: ProbeOutcome,
+        status: Int?,
+    ) = EndpointProbe(
+        endpoint = CatalogedEndpoint(method, path, area, safeToProbe = method == "GET"),
+        outcome = outcome,
+        status = status,
+        durationMillis = 120,
+    )
+
+    private fun recorded(
+        sequence: Long,
+        method: String,
+        path: String,
+        status: Int,
+        duration: Long,
+    ) = RecordedRequest(
+        sequence = sequence,
+        platform = MarketPlatform.COINEPRO_FX,
+        method = method,
+        path = path,
+        status = status,
+        durationMillis = duration,
+        elapsedRealtimeMillis = 0,
+    )
+
 }
 
 class FakeSignalGateway : SignalGateway {

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default language: Persian. Numbers stay Latin so they match server logs exactly. -->
+<resources>
+    <string name="admin_title">پنل تشخیص</string>
+    <string name="admin_subtitle">وضعیت واقعی این نسخه از اپ و دو سروری که با آن‌ها حرف می‌زند. اینجا چیزی مدیریت نمی‌شود؛ فقط آنچه هست نشان داده می‌شود.</string>
+
+    <string name="admin_build_title">این بیلد</string>
+    <string name="admin_version">نسخه</string>
+    <string name="admin_environment">محیط</string>
+    <string name="admin_application_id">شناسهٔ اپ</string>
+    <string name="admin_debuggable">قابل دیباگ</string>
+    <string name="admin_firebase">فایربیس</string>
+
+    <string name="admin_platform_title">پلتفرم انتخاب‌شده</string>
+    <string name="admin_platform_forex">فارکس</string>
+    <string name="admin_platform_crypto">کریپتو</string>
+    <!-- No middle dot before the count: Persian zero is itself a dot, so "· ۱" reads as "۱۰". -->
+    <string name="admin_tab_with_failures">%1$s، %2$d خطا</string>
+    <string name="admin_base_url">آدرس پایه</string>
+    <string name="admin_platform_configured">پیکربندی</string>
+    <string name="admin_install_id">شناسهٔ نصب</string>
+    <string name="admin_masking_note">آدرس‌ها و شناسه‌ها ماسک شده‌اند. این صفحه در بیلد نهایی هم باز می‌شود و ممکن است از آن اسکرین‌شات گرفته شود.</string>
+
+    <string name="admin_probe_title">آزمون مسیرها</string>
+    <string name="admin_probe_body">هر مسیر خواندنی یک بار صدا زده می‌شود. مسیرهایی که می‌نویسند یا سهمیه خرج می‌کنند فقط فهرست می‌شوند و اجرا نمی‌شوند. پاسخ ۴۰۱ یعنی آن آدرس واقعاً وجود دارد؛ ۴۰۴ یعنی مسیر اشتباه است.</string>
+    <string name="admin_probe_run">اجرای آزمون</string>
+    <string name="admin_probe_running">در حال اجرا…</string>
+    <string name="admin_probe_reached">پاسخ داد</string>
+    <string name="admin_probe_alive">زنده ولی بدون دسترسی</string>
+    <string name="admin_probe_missing">پیدا نشد</string>
+
+    <string name="admin_outcome_reached">پاسخ داد</string>
+    <string name="admin_outcome_unauthorized">زنده است، توکن لازم دارد</string>
+    <string name="admin_outcome_not_found">این آدرس چیزی سرو نمی‌کند</string>
+    <string name="admin_outcome_server_error">خطای سرور</string>
+    <string name="admin_outcome_unreachable">در دسترس نبود</string>
+    <string name="admin_outcome_skipped">اجرا نشد</string>
+
+    <string name="admin_requests_title">درخواست‌های اخیر</string>
+    <string name="admin_requests_count">%1$d درخواست در حافظه</string>
+    <string name="admin_requests_failures">فقط خطاها</string>
+    <string name="admin_requests_all">همه</string>
+    <string name="admin_requests_clear">پاک کردن</string>
+    <string name="admin_requests_empty">هنوز درخواستی ثبت نشده است.</string>
+
+    <string name="admin_yes">بله</string>
+    <string name="admin_no">خیر</string>
+    <string name="admin_configured">تنظیم شده</string>
+    <string name="admin_not_configured">تنظیم نشده</string>
+</resources>

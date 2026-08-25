@@ -38,6 +38,7 @@ import com.coinepro.core.navigation.AppDestination
 import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.signals.SignalController
 import com.coinepro.feature.activity.ActivityScreen
+import com.coinepro.feature.admin.AdminScreen
 import com.coinepro.feature.ai.AiStudioScreen
 import com.coinepro.feature.auth.AuthScreen
 import com.coinepro.feature.auth.EmailAuthScreen
@@ -284,6 +285,19 @@ class ScreenshotRenderTest {
             onRequestNotificationPermission = {},
             onOpenNotificationSettings = {},
             onSendFeedback = {},
+        )
+    }
+
+    /** The panel five taps behind the version number, with a dead route among the live ones. */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1800dp-xxhdpi")
+    fun adminPanel() = capture("23-admin-fa") {
+        AdminScreen(
+            state = ScreenshotFixtures.adminState,
+            onSelectPlatform = {},
+            onProbe = {},
+            onToggleFailuresOnly = {},
+            onClearRequests = {},
         )
     }
 

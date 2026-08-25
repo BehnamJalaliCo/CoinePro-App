@@ -13,7 +13,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.Composable
+import com.coinepro.core.common.BidiText
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -48,7 +56,14 @@ fun LaunchReadinessScreen(
     onRequestNotificationPermission: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
     onSendFeedback: () -> Unit,
+    versionLabel: String = "",
+    onOpenDiagnostics: () -> Unit = {},
 ) {
+    // Five taps, and they have to be consecutive: the counter resets whenever the gap between two
+    // taps grows past a deliberate rhythm, so an ordinary stray tap on a scrolling screen never
+    // accumulates toward opening the panel.
+    var taps by remember { mutableIntStateOf(0) }
+    var lastTapAt by remember { mutableLongStateOf(0L) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -131,8 +146,36 @@ fun LaunchReadinessScreen(
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
         )
+
+        if (versionLabel.isNotBlank()) {
+            Text(
+                text = BidiText.isolateLtr(versionLabel),
+                modifier = Modifier
+                    .padding(horizontal = CoineProSpacing.Half)
+                    .clickable(
+                        // No ripple and no content description hinting at what five taps do: this is
+                        // a version label to every reader, and a diagnostic entry point only to
+                        // someone who was told about it.
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                    ) {
+                        val now = System.currentTimeMillis()
+                        taps = if (now - lastTapAt <= TAP_WINDOW_MILLIS) taps + 1 else 1
+                        lastTapAt = now
+                        if (taps >= TAPS_TO_OPEN) {
+                            taps = 0
+                            onOpenDiagnostics()
+                        }
+                    },
+                style = MaterialTheme.typography.bodySmall,
+                color = CoineProColors.TextMuted,
+            )
+        }
     }
 }
+
+private const val TAPS_TO_OPEN = 5
+private const val TAP_WINDOW_MILLIS = 1_200L
 
 @Composable
 private fun SafetyCard(
