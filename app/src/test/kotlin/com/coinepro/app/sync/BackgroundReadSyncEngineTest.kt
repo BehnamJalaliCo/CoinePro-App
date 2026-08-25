@@ -5,6 +5,7 @@ import com.coinepro.core.auth.SessionTokenStorage
 import com.coinepro.core.marketdata.MarketSnapshot
 import com.coinepro.core.marketdata.MarketSnapshotGateway
 import com.coinepro.core.marketdata.NoOpMarketDataCache
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.signals.CachedSignalHistory
 import com.coinepro.core.signals.SignalGateway
 import com.coinepro.core.signals.SignalHistoryCache
@@ -41,6 +42,7 @@ class BackgroundReadSyncEngineTest {
             marketCache = NoOpMarketDataCache,
             signalGateway = EmptySignalGateway(),
             signalCache = signalCache,
+            activePlatform = { MarketPlatform.TRADEYAR },
         )
 
         val outcome = engine.sync()
@@ -70,6 +72,7 @@ class BackgroundReadSyncEngineTest {
             marketCache = NoOpMarketDataCache,
             signalGateway = signalGateway,
             signalCache = FakeSignalCache(),
+            activePlatform = { MarketPlatform.TRADEYAR },
         )
 
         val outcome = engine.sync()
@@ -93,6 +96,7 @@ class BackgroundReadSyncEngineTest {
             marketCache = NoOpMarketDataCache,
             signalGateway = EmptySignalGateway(),
             signalCache = signalCache,
+            activePlatform = { MarketPlatform.TRADEYAR },
         )
 
         val outcome = engine.sync()
@@ -124,6 +128,7 @@ class BackgroundReadSyncEngineTest {
                 override suspend fun detail(signalId: Long): TradingSignal = error("unused")
             },
             signalCache = signalCache,
+            activePlatform = { MarketPlatform.TRADEYAR },
         )
 
         val outcome = engine.sync()

@@ -197,6 +197,7 @@ dependencies {
     implementation(project(":core:security"))
     implementation(project(":core:network"))
     implementation(project(":core:database"))
+    implementation(project(":core:datastore"))
     implementation(project(":core:marketdata"))
     implementation(project(":core:signals"))
     implementation(project(":core:notifications"))

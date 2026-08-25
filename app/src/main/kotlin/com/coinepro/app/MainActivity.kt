@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.coinepro.app.notifications.PushCoordinator
 import com.coinepro.app.sync.BackgroundSyncScheduler
 import com.coinepro.core.aiassistant.AiAssistantController
@@ -24,17 +25,22 @@ import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionState
 import com.coinepro.core.execution.ExecutionController
+import com.coinepro.core.datastore.ActivePlatformStore
 import com.coinepro.core.marketdata.MarketDataController
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.signals.SignalController
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var sessionController: SessionController
-    @Inject lateinit var marketDataController: MarketDataController
+    @Inject lateinit var marketDataControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketDataController>
+    @Inject lateinit var activePlatformStore: ActivePlatformStore
     @Inject lateinit var signalController: SignalController
     @Inject lateinit var notificationController: NotificationController
     @Inject lateinit var executionController: ExecutionController
@@ -68,7 +74,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             CoineProApp(
                 sessionController = sessionController,
-                marketDataController = marketDataController,
+                marketDataControllers = marketDataControllers,
+                activePlatformStore = activePlatformStore,
                 signalController = signalController,
                 notificationController = notificationController,
                 executionController = executionController,
@@ -94,7 +101,10 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         updateNotificationPermissionState()
         if (sessionController.state.value !is SessionState.SignedIn) return
-        marketDataController.syncOnResume()
+        // Only the platform on screen is refreshed; the other one is not running.
+        lifecycleScope.launch {
+            marketDataControllers.getValue(activePlatformStore.active.first()).syncOnResume()
+        }
         signalController.refresh()
         signalController.refreshHistory()
         executionController.refreshExecutions()

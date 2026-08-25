@@ -1,5 +1,6 @@
 package com.coinepro.feature.home
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,12 +42,14 @@ import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
+import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProStreamingBar
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.marketdata.MarketConnectionState
 import com.coinepro.core.marketdata.MarketDataOrigin
 import com.coinepro.core.marketdata.MarketDataState
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketQuote
 import java.time.Instant
 import java.time.ZoneId
@@ -80,6 +83,9 @@ fun HomeScreen(
     onOpenSignal: (Long) -> Unit = {},
     onOpenSafety: (() -> Unit)? = null,
     onLogout: (() -> Unit)? = null,
+    platforms: List<MarketPlatform> = emptyList(),
+    activePlatform: MarketPlatform? = null,
+    onSelectPlatform: (MarketPlatform) -> Unit = {},
 ) {
     val quotes = state.quotes.values.sortedWith(
         compareBy<MarketQuote>({ marketRank(it) }, { it.instrument.symbol }),
@@ -95,6 +101,18 @@ fun HomeScreen(
     ) {
         if (displayName != null) {
             item { GreetingRow(displayName, onOpenSafety, onLogout) }
+        }
+
+        // Only when the build actually serves both. A one-option switch is a label pretending to be
+        // a control, and it would take the top of the screen to say nothing.
+        if (platforms.size > 1 && activePlatform != null) {
+            item {
+                CoineProSegmentedControl(
+                    options = platforms.map { it to stringResource(it.labelRes()) },
+                    selected = activePlatform,
+                    onSelect = onSelectPlatform,
+                )
+            }
         }
 
         item { BalanceBlock(portfolio = portfolio, state = state) }
@@ -586,6 +604,12 @@ private fun RowDivider() {
  * The display name is translated, so in Persian it yields an Arabic-script letter that no exchange
  * shows and that renders as a bare stroke at token size. The symbol is Latin in every language.
  */
+@StringRes
+private fun MarketPlatform.labelRes(): Int = when (this) {
+    MarketPlatform.TRADEYAR -> R.string.home_platform_crypto
+    MarketPlatform.COINEPRO_FX -> R.string.home_platform_forex
+}
+
 private fun assetInitial(symbol: String): String =
     when (val base = symbol.removeSuffix("USDT").removeSuffix("USD")) {
         // Both metals start with X in their wire symbols, so a first letter would label gold and

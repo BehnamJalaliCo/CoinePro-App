@@ -15,6 +15,7 @@ import androidx.work.WorkerParameters
 import com.coinepro.core.auth.SessionMemory
 import com.coinepro.core.auth.SessionTokenStorage
 import com.coinepro.core.marketdata.MarketDataCache
+import com.coinepro.core.datastore.ActivePlatformSelector
 import com.coinepro.core.marketdata.MarketDataSymbols
 import com.coinepro.core.marketdata.MarketSnapshotGateway
 import com.coinepro.core.signals.SignalHistoryCache
@@ -42,6 +43,7 @@ class BackgroundReadSyncEngine @Inject constructor(
     private val marketCache: MarketDataCache,
     private val signalGateway: SignalGateway,
     private val signalCache: SignalHistoryCache,
+    private val activePlatform: ActivePlatformSelector,
 ) {
     suspend fun sync(): BackgroundSyncOutcome {
         val existingToken = memory.token()
@@ -54,7 +56,10 @@ class BackgroundReadSyncEngine @Inject constructor(
         var retryableFailure = false
         try {
             try {
-                val snapshot = marketGateway.load(MarketDataSymbols.default)
+                // The background refresh warms the cache for the platform the reader left the app
+                // on. Fetching both would write a mixed snapshot into a cache the screen restores
+                // from before the network answers.
+                val snapshot = marketGateway.load(MarketDataSymbols.forPlatform(activePlatform.current()))
                 if (snapshot.quotes.isNotEmpty()) {
                     marketCache.replace(snapshot.quotes, System.currentTimeMillis())
                 }

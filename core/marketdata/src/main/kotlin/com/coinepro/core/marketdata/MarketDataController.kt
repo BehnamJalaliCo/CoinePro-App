@@ -1,6 +1,7 @@
 package com.coinepro.core.marketdata
 
 import com.coinepro.core.model.Instrument
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketQuote
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.QuoteSource
@@ -29,10 +30,14 @@ class MarketDataController(
     retrofit: Retrofit,
     private val client: OkHttpClient,
     private val scope: CoroutineScope,
-    private val symbols: List<String> = MarketDataSymbols.default,
+    private val platform: MarketPlatform,
+    private val symbols: List<String> = MarketDataSymbols.forPlatform(platform),
     private val nowMillis: () -> Long = System::currentTimeMillis,
     private val cache: MarketDataCache = NoOpMarketDataCache,
 ) {
+    private fun MarketQuote.belongsToPlatform(): Boolean =
+        instrument.marketType == platform.marketType
+
     private val api = retrofit.create(MarketDataApi::class.java)
     private val parser = MarketWireParser()
     private val baseUrl = retrofit.baseUrl()
@@ -113,7 +118,9 @@ class MarketDataController(
     private suspend fun restoreCacheIfNeeded() {
         if (_state.value.origin == MarketDataOrigin.NETWORK || _state.value.quotes.isNotEmpty()) return
         val cached = runCatching { cache.read() }.getOrNull() ?: return
-        val restored = cached.quotes.associateBy { it.instrument.symbol }
+        // The cache predates the platform split and can still hold a mixed snapshot written by an
+        // older build, so it is filtered on the way in exactly like a live feed.
+        val restored = cached.quotes.filter { it.belongsToPlatform() }.associateBy { it.instrument.symbol }
         if (restored.isEmpty()) return
         _state.update { old ->
             if (old.origin == MarketDataOrigin.NETWORK || old.quotes.isNotEmpty()) {
@@ -234,7 +241,11 @@ class MarketDataController(
         realtimeBatch: Boolean,
     ) {
         val now = nowMillis()
-        val mapped = wireQuotes.mapNotNull { it.toDomain(now) }
+        // Scoped to this controller's platform at the boundary, not by asking callers to filter.
+        // A feed that returns a symbol from the other market — a misconfigured subscription, a
+        // shared upstream, a symbol that means different things on two venues — must not be able to
+        // reach a screen that is showing the other platform.
+        val mapped = wireQuotes.mapNotNull { it.toDomain(now) }.filter { it.belongsToPlatform() }
         if (mapped.isEmpty()) return
         _state.update { old ->
             val merged = old.quotes.toMutableMap()

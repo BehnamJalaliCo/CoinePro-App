@@ -32,6 +32,7 @@ import com.coinepro.core.marketintel.MarketNewsItem
 import com.coinepro.core.marketintel.MarketRelevance
 import com.coinepro.core.marketintel.NewsSentiment
 import com.coinepro.core.model.Instrument
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketQuote
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.QuoteSource
@@ -68,7 +69,12 @@ object ScreenshotFixtures {
     const val NOW_MILLIS: Long = 1_772_000_000_000L
     private val NOW: Instant = Instant.ofEpochMilli(NOW_MILLIS)
 
-    fun marketState(): MarketDataState = MarketDataState(
+    /**
+     * [platform] is required, not defaulted: a fixture that quietly spans both platforms would
+     * render a screen the app can no longer produce, and the mixed watchlist is exactly the bug the
+     * platform split exists to prevent.
+     */
+    fun marketState(platform: MarketPlatform = MarketPlatform.TRADEYAR): MarketDataState = MarketDataState(
         connection = MarketConnectionState.LIVE,
         origin = MarketDataOrigin.NETWORK,
         lastServerTimeEpochMillis = NOW_MILLIS,
@@ -81,7 +87,8 @@ object ScreenshotFixtures {
             quote("SOLUSDT", "SOL", MarketType.CRYPTO, 184.62, QuoteSource.LBANK, 3.21),
             quote("XRPUSDT", "XRP", MarketType.CRYPTO, 0.6218, QuoteSource.LBANK, -1.12),
             quote("ADAUSDT", "ADA", MarketType.CRYPTO, 0.4471, QuoteSource.LBANK, 0.88),
-        ).associateBy { it.instrument.symbol },
+        ).filter { it.instrument.marketType == platform.marketType }
+            .associateBy { it.instrument.symbol },
     )
 
     /**
@@ -128,13 +135,14 @@ object ScreenshotFixtures {
         ),
     )
 
+    /** Crypto only, to match the crypto renders — a forex setup here would be the mixed screen. */
     val homeSignals: List<HomeSignal> = listOf(
         HomeSignal(
             id = 4821,
-            title = "خرید XAUUSD",
-            entryLabel = MarketNumberFormatter.price(2_408.40),
-            stopLabel = MarketNumberFormatter.price(2_396.00),
-            targetLabel = MarketNumberFormatter.price(2_431.50),
+            title = "خرید BTCUSDT",
+            entryLabel = MarketNumberFormatter.price(90_400.00),
+            stopLabel = MarketNumberFormatter.price(88_900.00),
+            targetLabel = MarketNumberFormatter.price(94_200.00),
             progressLabel = MarketNumberFormatter.signedPercent(0.18),
             isUp = true,
         ),

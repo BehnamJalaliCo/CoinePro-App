@@ -30,12 +30,14 @@ import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionState
+import com.coinepro.core.datastore.ActivePlatformStore
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.marketdata.MarketDataController
 import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.marketintel.MarketIntelController
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.navigation.AppDestination
 import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.signals.SignalController
@@ -68,7 +70,8 @@ private fun executionRoute(signalId: Long) = "execution/$signalId"
 @Composable
 fun CoineProApp(
     sessionController: SessionController,
-    marketDataController: MarketDataController,
+    marketDataControllers: Map<MarketPlatform, MarketDataController>,
+    activePlatformStore: ActivePlatformStore,
     signalController: SignalController,
     notificationController: NotificationController,
     executionController: ExecutionController,
@@ -90,11 +93,19 @@ fun CoineProApp(
     LaunchedEffect(sessionController) { sessionController.start() }
     val session by sessionController.state.collectAsStateWithLifecycle()
     val loginConfigState by sessionController.loginConfigState.collectAsStateWithLifecycle()
+    // Exactly one feed runs at a time. Switching platform stops the old controller before the new
+    // one starts, so two sockets are never open and the screen can never blend their quotes.
+    val activePlatform by activePlatformStore.active
+        .collectAsStateWithLifecycle(initialValue = activePlatformStore.available.first())
+    val marketDataController = marketDataControllers.getValue(activePlatform)
     val marketState by marketDataController.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val signedIn = session is SessionState.SignedIn
 
-    LaunchedEffect(signedIn) {
+    LaunchedEffect(signedIn, activePlatform) {
+        marketDataControllers.forEach { (platform, controller) ->
+            if (platform != activePlatform) controller.stop()
+        }
         if (signedIn) {
             marketDataController.start()
             pushCoordinator.registerCurrentToken()
@@ -132,6 +143,11 @@ fun CoineProApp(
                 onOpenNotificationSettings = onOpenNotificationSettings,
                 onSendFeedback = onSendFeedback,
                 onMarketRetry = marketDataController::retry,
+                platforms = activePlatformStore.available,
+                activePlatform = activePlatform,
+                onSelectPlatform = { platform ->
+                    scope.launch { activePlatformStore.setActive(platform) }
+                },
                 onLogout = {
                     scope.launch {
                         pushCoordinator.unregisterCurrentToken()
@@ -174,6 +190,9 @@ private fun MainShell(
     onSendFeedback: () -> Unit,
     onMarketRetry: () -> Unit,
     onLogout: () -> Unit,
+    platforms: List<MarketPlatform>,
+    activePlatform: MarketPlatform,
+    onSelectPlatform: (MarketPlatform) -> Unit,
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -284,6 +303,9 @@ private fun MainShell(
                     // Home carries no top bar, so the account actions hang off the avatar.
                     onOpenSafety = { navController.navigate(LAUNCH_READINESS_ROUTE) },
                     onLogout = onLogout,
+                    platforms = platforms,
+                    activePlatform = activePlatform,
+                    onSelectPlatform = onSelectPlatform,
                 )
             }
             composable(AppDestination.SIGNALS.route) {

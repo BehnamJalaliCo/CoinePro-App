@@ -1,6 +1,9 @@
 package com.coinepro.app.di
 
 import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
 import com.coinepro.app.BuildConfig
 import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aiassistant.AiAssistantGateway
@@ -21,6 +24,8 @@ import com.coinepro.core.database.CoineProDatabase
 import com.coinepro.core.database.CoineProDatabaseFactory
 import com.coinepro.core.database.RoomMarketDataCache
 import com.coinepro.core.database.RoomSignalHistoryCache
+import com.coinepro.core.datastore.ActivePlatformSelector
+import com.coinepro.core.datastore.ActivePlatformStore
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.ExecutionGateway
 import com.coinepro.core.execution.NetworkExecutionGateway
@@ -53,9 +58,21 @@ import kotlinx.coroutines.SupervisorJob
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 
+/**
+ * App-wide preferences. Deliberately a separate store from the encrypted session one: this holds
+ * choices a reader made, not credentials, and the two have different backup and clearing rules.
+ */
+private val Context.appPreferences by preferencesDataStore(name = "coinepro_preferences")
+
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+
+    @Provides
+    @Singleton
+    fun preferences(@ApplicationContext context: Context): DataStore<Preferences> =
+        context.appPreferences
+
     // ── CoinePro-FX (Forex) ────────────────────────────────────────────────────────────────────
     // The unqualified bindings stay pointed at CoinePro-FX so every existing gateway keeps working
     // unchanged while the crypto side is wired up screen by screen.
@@ -251,19 +268,75 @@ object AppModule {
         scope = scope,
     )
 
+    /**
+     * One market feed per platform, each pinned to its own backend and its own symbol list.
+     *
+     * Not one controller with a symbol argument: the two feeds have different upstreams — LBank's
+     * realtime socket for TradeYar, Finnhub for CoinePro-FX — different symbol spellings, and
+     * different credentials. Sharing one controller would mean one socket carrying both, which is
+     * exactly the arrangement that lets a metal appear in a crypto watchlist.
+     */
     @Provides
     @Singleton
-    fun marketDataController(
-        retrofit: Retrofit,
-        client: OkHttpClient,
+    @ForexPlatform
+    fun forexMarketDataController(
+        @ForexPlatform retrofit: Retrofit,
+        @ForexPlatform client: OkHttpClient,
         scope: CoroutineScope,
         cache: MarketDataCache,
     ): MarketDataController = MarketDataController(
         retrofit = retrofit,
         client = client,
         scope = scope,
+        platform = MarketPlatform.COINEPRO_FX,
         cache = cache,
     )
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoMarketDataController(
+        @CryptoPlatform retrofit: Retrofit,
+        @CryptoPlatform client: OkHttpClient,
+        scope: CoroutineScope,
+        cache: MarketDataCache,
+    ): MarketDataController = MarketDataController(
+        retrofit = retrofit,
+        client = client,
+        scope = scope,
+        platform = MarketPlatform.TRADEYAR,
+        cache = cache,
+    )
+
+    /**
+     * The feeds keyed by platform, so the shell can start and stop whichever one is on screen
+     * without knowing how either was built.
+     */
+    @Provides
+    @Singleton
+    fun marketDataControllers(
+        @ForexPlatform forex: MarketDataController,
+        @CryptoPlatform crypto: MarketDataController,
+    ): Map<MarketPlatform, MarketDataController> = buildMap {
+        put(MarketPlatform.COINEPRO_FX, forex)
+        if (isPlatformConfigured(BuildConfig.TRADEYAR_API_BASE_URL)) {
+            put(MarketPlatform.TRADEYAR, crypto)
+        }
+    }
+
+    @Provides
+    @Singleton
+    fun activePlatformStore(
+        preferences: DataStore<Preferences>,
+        controllers: Map<MarketPlatform, MarketDataController>,
+    ): ActivePlatformStore = ActivePlatformStore(
+        dataStore = preferences,
+        available = MarketPlatform.entries.filter { it in controllers },
+    )
+
+    @Provides
+    @Singleton
+    fun activePlatformSelector(store: ActivePlatformStore): ActivePlatformSelector = store.selector()
 
     @Provides
     @Singleton

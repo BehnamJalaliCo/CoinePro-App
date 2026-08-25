@@ -9,7 +9,11 @@ data class MarketSnapshot(
 )
 
 interface MarketSnapshotGateway {
-    suspend fun load(symbols: List<String> = MarketDataSymbols.default): MarketSnapshot
+    /**
+     * [symbols] has no default on purpose: a caller that forgets to name a platform's symbols
+     * should not silently get a list spanning both of them.
+     */
+    suspend fun load(symbols: List<String>): MarketSnapshot
 }
 
 class NetworkMarketSnapshotGateway private constructor(

@@ -42,4 +42,7 @@
     <string name="home_menu_account">Account</string>
     <string name="home_menu_safety">Safety</string>
     <string name="home_menu_logout">Log out</string>
+
+    <string name="home_platform_crypto">Crypto</string>
+    <string name="home_platform_forex">Forex</string>
 </resources>

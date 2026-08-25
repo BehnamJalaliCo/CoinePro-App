@@ -13,5 +13,8 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.datastore.preferences)
+    api(project(":core:model"))
+    // api, not implementation: DataStore<Preferences> is in ActivePlatformStore's constructor, so
+    // anything that builds one needs the type on its own classpath.
+    api(libs.androidx.datastore.preferences)
 }

@@ -27,6 +27,7 @@ import com.coinepro.core.auth.SessionState
 import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.marketintel.MarketIntelController
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.navigation.AppDestination
 import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.signals.SignalController
@@ -127,6 +128,8 @@ class ScreenshotRenderTest {
             briefing = ScreenshotFixtures.homeBriefing,
             portfolio = ScreenshotFixtures.homePortfolio,
             openSignals = ScreenshotFixtures.homeSignals,
+            platforms = MarketPlatform.entries,
+            activePlatform = MarketPlatform.TRADEYAR,
         )
     }
 

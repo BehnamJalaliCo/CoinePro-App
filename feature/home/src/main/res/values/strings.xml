@@ -44,4 +44,7 @@
     <string name="home_menu_account">حساب کاربری</string>
     <string name="home_menu_safety">ایمنی</string>
     <string name="home_menu_logout">خروج از حساب</string>
+
+    <string name="home_platform_crypto">کریپتو</string>
+    <string name="home_platform_forex">فارکس</string>
 </resources>
