@@ -16,6 +16,7 @@ dependencies {
     api(project(":core:model"))
     implementation(project(":core:aisignal"))
     implementation(libs.retrofit.core)
+    implementation(libs.gson)
     implementation(libs.okhttp.core)
     implementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.junit)

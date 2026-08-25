@@ -80,13 +80,20 @@ object EndpointCatalog {
         CatalogedEndpoint("POST", "user/ai-signal/generate", AREA_AI, safeToProbe = false),
         CatalogedEndpoint("POST", "user/ai-vision/jobs", AREA_AI, safeToProbe = false),
 
-        // Not in the published contract. Listed so the prober can answer the question the contract
-        // could not, which is how both known dead endpoints would have been caught on day one.
+        CatalogedEndpoint("POST", "user/ai/chat", AREA_AI, safeToProbe = false),
+
+        // Where the signal list actually lives. Under /public rather than /user, and still behind
+        // VIP — `showcase` is the one that is not, and it serves a closed signal on purpose.
+        CatalogedEndpoint("GET", "public/signals/active", AREA_SIGNALS),
+        CatalogedEndpoint("GET", "public/signals/recent", AREA_SIGNALS),
+
+        // Listed although the server has confirmed all four are absent. The panel's job is to say
+        // which of the app's calls reach something, and a row that is missing from the list cannot
+        // report 404 — which is how these went unnoticed in the first place.
         CatalogedEndpoint("GET", "user/signals", AREA_SIGNALS),
         CatalogedEndpoint("GET", "user/signals/execution/connections", AREA_EXECUTION),
         CatalogedEndpoint("GET", "user/signals/execution/executions", AREA_EXECUTION),
         CatalogedEndpoint("GET", "user/market-intelligence", AREA_NEWS),
-        CatalogedEndpoint("POST", "user/ai/assistant/messages", AREA_AI, safeToProbe = false),
     )
 
     /**

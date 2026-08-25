@@ -2,6 +2,7 @@ package com.coinepro.core.aivision
 
 import com.coinepro.core.aisignal.AiSignalProductScope
 import com.coinepro.core.model.SignalDirection
+import com.google.gson.annotations.SerializedName
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -27,11 +28,11 @@ class AiVisionRateLimitedException : Exception("AI Vision rate limit reached")
 
 internal interface AiVisionApi {
     @Multipart
-    @POST("user/ai/vision/jobs")
-    suspend fun createJob(@Part image: MultipartBody.Part): AiVisionJobResponseDto
+    @POST("user/ai-vision/jobs")
+    suspend fun createJob(@Part image: MultipartBody.Part): AiVisionJobDto
 
-    @GET("user/ai/vision/jobs/{jobId}")
-    suspend fun job(@Path("jobId") jobId: String): AiVisionJobResponseDto
+    @GET("user/ai-vision/jobs/{jobId}")
+    suspend fun job(@Path("jobId") jobId: String): AiVisionJobDto
 }
 
 internal data class AiVisionEntryZoneDto(
@@ -63,7 +64,16 @@ internal data class AiVisionResultDto(
     val validatedAt: String? = null,
 )
 
+/**
+ * The job, flat.
+ *
+ * Not wrapped in a `job` key: the server returns the object itself, and creating a job returns a
+ * different set of fields again — `job_id` and a quota, with no `id`. Both spellings of the
+ * identifier are read here, and the polling response carries neither, which is why [toDomain] takes
+ * the id the caller already knows rather than insisting the server repeat it.
+ */
 internal data class AiVisionJobDto(
+    @SerializedName(value = "id", alternate = ["job_id", "jobId"])
     val id: String? = null,
     val status: String? = null,
     val result: AiVisionResultDto? = null,
@@ -73,10 +83,6 @@ internal data class AiVisionJobDto(
     val expiresAt: String? = null,
 )
 
-internal data class AiVisionJobResponseDto(
-    val job: AiVisionJobDto? = null,
-)
-
 class NetworkAiVisionGateway private constructor(
     private val api: AiVisionApi,
 ) : AiVisionGateway {
@@ -84,12 +90,19 @@ class NetworkAiVisionGateway private constructor(
         require(upload.isSupported) { "Invalid AI Vision image upload" }
         val body = upload.bytes.toRequestBody(upload.mimeType.toMediaType())
         val part = MultipartBody.Part.createFormData("image", upload.fileName, body)
-        requireNotNull(api.createJob(part).job?.toDomain()) { "Invalid AI Vision job response" }
+        requireNotNull(api.createJob(part).toDomain(fallbackId = null)) {
+            "Invalid AI Vision job response"
+        }
     }
 
     override suspend fun job(jobId: String): AiVisionJob = translate {
         require(jobId.isNotBlank()) { "Missing AI Vision job ID" }
-        requireNotNull(api.job(jobId).job?.toDomain()) { "Invalid AI Vision job response" }
+        // The polling response says what the job is doing and never which job it is. Requiring the
+        // server to repeat an id the caller just used to ask would fail every poll, which is not a
+        // missing job but a missing field.
+        requireNotNull(api.job(jobId).toDomain(fallbackId = jobId)) {
+            "Invalid AI Vision job response"
+        }
     }
 
     private suspend fun <T> translate(block: suspend () -> T): T = try {
@@ -112,8 +125,10 @@ class NetworkAiVisionGateway private constructor(
     }
 }
 
-internal fun AiVisionJobDto.toDomain(): AiVisionJob? {
-    val safeId = id?.takeIf { it.isNotBlank() } ?: return null
+internal fun AiVisionJobDto.toDomain(fallbackId: String?): AiVisionJob? {
+    val safeId = id?.takeIf { it.isNotBlank() }
+        ?: fallbackId?.takeIf { it.isNotBlank() }
+        ?: return null
     val safeStatus = AiVisionJobStatus.entries.firstOrNull {
         it.wireValue == status?.lowercase()
     } ?: return null

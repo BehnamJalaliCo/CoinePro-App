@@ -60,15 +60,4 @@ data class AssistantState(
         get() = !sending
 }
 
-object AssistantContextScopes {
-    val requested: List<String> = listOf(
-        "active_signals",
-        "market",
-        "news",
-        "calendar",
-        "risk",
-        "tools",
-    )
-}
-
 const val ASSISTANT_MAX_MESSAGE_CHARS: Int = 4_000

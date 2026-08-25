@@ -130,11 +130,18 @@ class EndpointCatalogTest {
     fun `the catalogue covers the routes whose absence went unnoticed before`() {
         val paths = EndpointCatalog.forPlatform(MarketPlatform.COINEPRO_FX).map { it.path }
 
-        // Both of these were being called at a wrong address for a long time. They are in the
+        // Each of these was being called at a wrong address for a long time. They are in the
         // catalogue now so the prober answers in a second what took a published route table.
         assertTrue(paths.any { it == "user/mobile/alerts" })
         assertTrue(paths.any { it == "user/ai-vision/jobs" })
-        assertTrue("The unverified ones matter most", paths.any { it == "user/ai/assistant/messages" })
+        assertTrue("The assistant lives at ai/chat, not at a messages collection", paths.any { it == "user/ai/chat" })
+        assertTrue("The signal list is under public/, not user/", paths.any { it == "public/signals/active" })
+
+        // The addresses the app still asks for and the server has confirmed are absent. A row
+        // missing from the list cannot report 404, which is how they went unnoticed to begin with.
+        assertTrue(paths.any { it == "user/signals" })
+        assertTrue(paths.any { it == "user/market-intelligence" })
+        assertTrue(paths.any { it.startsWith("user/signals/execution/") })
     }
 
     @Test
