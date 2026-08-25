@@ -30,6 +30,13 @@ class SessionController(
     private val memory: SessionMemory,
     private val gateway: AuthGateway,
     private val scope: CoroutineScope,
+    /**
+     * How an expired access token is exchanged for a fresh one.
+     *
+     * Null means this session has no way to renew itself and a 401 ends it — which is the truth for
+     * a Telegram sign-in, since that flow issues no refresh token at all.
+     */
+    private val emailAuth: EmailAuthGateway? = null,
 ) {
     private val started = AtomicBoolean(false)
     private val stateMutable = MutableStateFlow<SessionState>(SessionState.Loading)
@@ -41,7 +48,7 @@ class SessionController(
     fun start() {
         if (!started.compareAndSet(false, true)) return
         scope.launch {
-            memory.unauthorized.collect { expireSession() }
+            memory.unauthorized.collect { renewOrExpire() }
         }
         scope.launch { restore() }
     }
@@ -102,6 +109,56 @@ class SessionController(
             is AppResult.Failure -> {
                 memory.setToken(null)
                 stateMutable.value = SessionState.SignedOut
+            }
+        }
+    }
+
+    /**
+     * Takes over a session the email flow already obtained.
+     *
+     * The credential work happened in [EmailAuthController]; this is the single place that decides
+     * the app is signed in, so that a second screen never gets to hold a second opinion about it.
+     * Both tokens are written before the state changes: a screen that reacts to [SignedIn] by
+     * making a request must not find storage half-populated.
+     */
+    suspend fun adoptSession(session: EmailAuthSession) {
+        storage.writeToken(session.tokens.accessToken)
+        storage.writeRefreshToken(session.tokens.refreshToken)
+        memory.setToken(session.tokens.accessToken)
+        stateMutable.value = session.profile.asSignedIn()
+    }
+
+    /**
+     * Answers a 401 by renewing rather than by signing out, when renewal is possible.
+     *
+     * An access token that has simply aged out is the ordinary case, not a failure, and ending the
+     * session for it would log the reader out roughly as often as the token expires — which reads
+     * as the app losing their account. Only a refusal to renew is treated as the session being
+     * genuinely over.
+     *
+     * A burst of parallel requests produces a burst of 401s, and these do not race: the unauthorized
+     * signal is collected one at a time, so a second pass reads whatever the first pass stored
+     * rather than re-spending a refresh token that has already been rotated.
+     */
+    private suspend fun renewOrExpire() {
+        val gateway = emailAuth ?: return expireSession()
+        val refreshToken = storage.readRefreshToken()
+        if (refreshToken.isNullOrBlank()) return expireSession()
+
+        when (val result = gateway.refresh(refreshToken)) {
+            is AppResult.Success -> {
+                storage.writeToken(result.value.accessToken)
+                storage.writeRefreshToken(result.value.refreshToken)
+                memory.setToken(result.value.accessToken)
+                // The profile is not re-fetched. Renewal changes which token is current and nothing
+                // about who the reader is, and a request here would put a network round trip
+                // between them and a screen that was already correct.
+            }
+            is AppResult.Failure -> {
+                // Anything other than a refusal leaves the session alone. A refresh that never
+                // reached the server proves nothing about whether the session is still valid, and
+                // signing out on a dropped connection would end sessions the server still honours.
+                if (result.kind == ErrorKind.AUTH) expireSession()
             }
         }
     }

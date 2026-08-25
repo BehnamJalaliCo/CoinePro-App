@@ -34,4 +34,25 @@ class DeepLinkValidationTest {
         assertNull(parseCoineProDeepLink("coinepro", "activity", listOf("extra")))
         assertNull(parseCoineProDeepLink("coinepro", "unknown", emptyList()))
     }
+
+    @Test
+    fun `a recovery token is taken only from the verified host over https`() {
+        val token = "a".repeat(32)
+        assertEquals(
+            CoineProDeepLink.PasswordReset(token),
+            parseCoineProDeepLink("https", "user.tradeyar.trade-future.ir", listOf("reset"), token),
+        )
+
+        // Another host may serve the same path; nobody proved it belongs to this app.
+        assertNull(parseCoineProDeepLink("https", "example.com", listOf("reset"), token))
+        // A custom scheme any installed app may register is not somewhere to accept a credential.
+        assertNull(parseCoineProDeepLink("coinepro", "reset", listOf("reset"), token))
+        // The App Link claims /reset only; the rest of that site stays in the browser.
+        assertNull(parseCoineProDeepLink("https", "user.tradeyar.trade-future.ir", listOf("login"), token))
+        assertNull(parseCoineProDeepLink("https", "user.tradeyar.trade-future.ir", listOf("reset"), null))
+        assertNull(parseCoineProDeepLink("https", "user.tradeyar.trade-future.ir", listOf("reset"), "short"))
+        assertNull(
+            parseCoineProDeepLink("https", "user.tradeyar.trade-future.ir", listOf("reset"), "$token <script>"),
+        )
+    }
 }

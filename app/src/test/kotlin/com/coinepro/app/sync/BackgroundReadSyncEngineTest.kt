@@ -142,6 +142,7 @@ class BackgroundReadSyncEngineTest {
         private var token: String?,
     ) : SessionTokenStorage {
         var cleared = false
+        private var refreshToken: String? = null
 
         override suspend fun readToken(): String? = token
 
@@ -149,8 +150,15 @@ class BackgroundReadSyncEngineTest {
             this.token = token
         }
 
+        override suspend fun readRefreshToken(): String? = refreshToken
+
+        override suspend fun writeRefreshToken(token: String) {
+            refreshToken = token
+        }
+
         override suspend fun clear() {
             token = null
+            refreshToken = null
             cleared = true
         }
     }

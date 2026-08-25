@@ -312,6 +312,7 @@ class ScreenshotRenderTest {
             onGoTo = {},
             onRetryMethods = {},
             onGoogleSignIn = {},
+            onTelegramPayload = {},
         )
     }
 
@@ -341,6 +342,7 @@ class ScreenshotRenderTest {
             onGoTo = {},
             onRetryMethods = {},
             onGoogleSignIn = {},
+            onTelegramPayload = {},
         )
     }
 
@@ -368,6 +370,7 @@ class ScreenshotRenderTest {
             onGoTo = {},
             onRetryMethods = {},
             onGoogleSignIn = {},
+            onTelegramPayload = {},
         )
     }
 

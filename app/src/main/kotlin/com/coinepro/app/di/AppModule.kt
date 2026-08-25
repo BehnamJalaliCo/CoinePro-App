@@ -18,6 +18,7 @@ import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.aivision.AiVisionGateway
 import com.coinepro.core.aivision.NetworkAiVisionGateway
 import com.coinepro.core.auth.AuthGateway
+import com.coinepro.core.auth.EmailAuthController
 import com.coinepro.core.auth.EmailAuthGateway
 import com.coinepro.core.auth.NetworkEmailAuthGateway
 import com.coinepro.core.auth.NetworkAuthGateway
@@ -323,6 +324,43 @@ object AppModule {
     fun cryptoAuthGateway(@CryptoPlatform retrofit: Retrofit): AuthGateway =
         NetworkAuthGateway.create(retrofit)
 
+    /**
+     * The sign-in flow's own controller, one per platform.
+     *
+     * It hands a completed sign-in to that platform's [SessionController] and keeps nothing: the
+     * app's idea of who is signed in stays in one place, and the screens most likely to be redrawn
+     * do not become a second one.
+     */
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexEmailAuthController(
+        @ForexPlatform gateway: EmailAuthGateway,
+        @ForexPlatform session: SessionController,
+        scope: CoroutineScope,
+    ): EmailAuthController = EmailAuthController(gateway, scope, session::adoptSession)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoEmailAuthController(
+        @CryptoPlatform gateway: EmailAuthGateway,
+        @CryptoPlatform session: SessionController,
+        scope: CoroutineScope,
+    ): EmailAuthController = EmailAuthController(gateway, scope, session::adoptSession)
+
+    /**
+     * The sign-in screen's controller.
+     *
+     * CoinePro-FX, matching the unqualified [SessionController]: that session is what gates the
+     * shell, so the screen that opens it must be the one that fills it. Signing in to TradeYar
+     * instead would leave the reader looking at a completed sign-in and a locked app.
+     */
+    @Provides
+    @Singleton
+    fun emailAuthController(@ForexPlatform controller: EmailAuthController): EmailAuthController =
+        controller
+
     @Provides
     @Singleton
     fun signalGateway(retrofit: Retrofit): SignalGateway = NetworkSignalGateway.create(retrofit)
@@ -376,8 +414,9 @@ object AppModule {
         @ForexPlatform storage: SessionTokenStorage,
         @ForexPlatform memory: SessionMemory,
         @ForexPlatform gateway: AuthGateway,
+        @ForexPlatform emailAuth: EmailAuthGateway,
         scope: CoroutineScope,
-    ): SessionController = SessionController(storage, memory, gateway, scope)
+    ): SessionController = SessionController(storage, memory, gateway, scope, emailAuth)
 
     @Provides
     @Singleton
@@ -390,8 +429,9 @@ object AppModule {
         @CryptoPlatform storage: SessionTokenStorage,
         @CryptoPlatform memory: SessionMemory,
         @CryptoPlatform gateway: AuthGateway,
+        @CryptoPlatform emailAuth: EmailAuthGateway,
         scope: CoroutineScope,
-    ): SessionController = SessionController(storage, memory, gateway, scope)
+    ): SessionController = SessionController(storage, memory, gateway, scope, emailAuth)
 
     /**
      * Only platforms this build can actually reach are offered. A base URL left at its

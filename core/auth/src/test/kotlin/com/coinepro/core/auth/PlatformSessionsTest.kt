@@ -18,13 +18,21 @@ import org.junit.Test
 class PlatformSessionsTest {
 
     private class FakeStorage(private var token: String? = null) : SessionTokenStorage {
+        private var refreshToken: String? = null
         override suspend fun readToken(): String? = token
         override suspend fun writeToken(token: String) {
             this.token = token
         }
 
+        override suspend fun readRefreshToken(): String? = refreshToken
+
+        override suspend fun writeRefreshToken(token: String) {
+            refreshToken = token
+        }
+
         override suspend fun clear() {
             token = null
+            refreshToken = null
         }
 
         fun peek(): String? = token

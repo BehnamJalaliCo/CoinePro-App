@@ -161,7 +161,7 @@ fun AuthScreen(
 
 @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
 @Composable
-private fun TelegramLoginWebView(
+internal fun TelegramLoginWebView(
     botUsername: String,
     onPayload: (TelegramAuthPayload) -> Unit,
 ) {

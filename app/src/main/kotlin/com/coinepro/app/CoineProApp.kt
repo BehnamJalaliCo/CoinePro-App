@@ -51,6 +51,7 @@ import com.coinepro.feature.ai.AiStudioScreen
 import com.coinepro.feature.aiassistant.AiAssistantScreen
 import com.coinepro.feature.aivision.AiVisionScreen
 import com.coinepro.feature.auth.AuthScreen
+import com.coinepro.feature.auth.EmailAuthScreen
 import com.coinepro.feature.calendar.EconomicCalendarScreen
 import com.coinepro.feature.connections.ConnectionsScreen
 import com.coinepro.feature.execution.ExecutionScreen
@@ -59,6 +60,8 @@ import android.app.Activity
 import androidx.annotation.StringRes
 import androidx.compose.ui.platform.LocalContext
 import com.coinepro.core.auth.PlatformSessions
+import com.coinepro.core.auth.EmailAuthController
+import com.coinepro.core.auth.EmailAuthStep
 import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.diagnostics.Appearance
@@ -102,6 +105,7 @@ private fun executionRoute(signalId: Long) = "execution/$signalId"
 @Composable
 fun CoineProApp(
     sessionController: SessionController,
+    emailAuthController: EmailAuthController,
     marketDataControllers: Map<MarketPlatform, MarketDataController>,
     accountControllers: Map<MarketPlatform, AccountController>,
     adminController: AdminController,
@@ -119,15 +123,19 @@ fun CoineProApp(
     backgroundSyncScheduler: BackgroundSyncScheduler,
     launchSignalId: Long?,
     launchActivity: Boolean,
+    /** Set when the recovery App Link opened the app; null on every other launch. */
+    launchResetToken: String?,
     notificationPermissionState: NotificationPermissionUiState,
     onSignalLaunchConsumed: () -> Unit,
     onActivityLaunchConsumed: () -> Unit,
+    onResetTokenConsumed: () -> Unit,
     onRequestNotificationPermission: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
     onSendFeedback: () -> Unit,
 ) {
     LaunchedEffect(sessionController) { sessionController.start() }
     val session by sessionController.state.collectAsStateWithLifecycle()
+    val emailAuthState by emailAuthController.state.collectAsStateWithLifecycle()
     val loginConfigState by sessionController.loginConfigState.collectAsStateWithLifecycle()
     // Exactly one feed runs at a time. Switching platform stops the old controller before the new
     // one starts, so two sockets are never open and the screen can never blend their quotes.
@@ -275,6 +283,42 @@ fun CoineProApp(
                     }
                 },
             )
+            // Signing in is the email flow's job now. The other two states are not sign-in at all —
+            // one is a session being restored, the other a session that exists but could not be
+            // revalidated — and putting credential fields in front of either would ask the reader
+            // to solve a problem that is not theirs.
+            SessionState.SignedOut -> {
+                LaunchedEffect(emailAuthController) { emailAuthController.loadMethods() }
+                // Arriving on a recovery link means the reader is mid-recovery, so the screen opens
+                // where they left off rather than on a sign-in form they cannot yet complete.
+                LaunchedEffect(launchResetToken) {
+                    if (launchResetToken != null) {
+                        emailAuthController.goTo(EmailAuthStep.RESET_PASSWORD)
+                    }
+                }
+                EmailAuthScreen(
+                    state = emailAuthState,
+                    onSignIn = emailAuthController::signIn,
+                    onRegister = emailAuthController::startRegistration,
+                    onVerify = emailAuthController::verifyCode,
+                    onStartOver = emailAuthController::startOver,
+                    onRequestReset = emailAuthController::requestPasswordReset,
+                    onResetPassword = { token, password ->
+                        onResetTokenConsumed()
+                        emailAuthController.resetPassword(token, password)
+                    },
+                    onGoTo = emailAuthController::goTo,
+                    onRetryMethods = emailAuthController::loadMethods,
+                    // Google sign-in needs the Play Services client, which is not wired yet. The
+                    // button only appears when the server reports the method, so this stays
+                    // unreachable rather than dead until that arrives.
+                    onGoogleSignIn = {},
+                    onTelegramPayload = { payload ->
+                        scope.launch { sessionController.completeTelegramLogin(payload) }
+                    },
+                    initialResetToken = launchResetToken.orEmpty(),
+                )
+            }
             else -> AuthScreen(
                 state = session,
                 loginConfigState = loginConfigState,

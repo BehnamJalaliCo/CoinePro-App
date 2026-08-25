@@ -26,6 +26,7 @@ import com.coinepro.core.diagnostics.AdminController
 import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.aivision.AiVisionController
+import com.coinepro.core.auth.EmailAuthController
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionState
 import com.coinepro.core.execution.ExecutionController
@@ -43,6 +44,7 @@ import kotlinx.coroutines.launch
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var sessionController: SessionController
+    @Inject lateinit var emailAuthController: EmailAuthController
     @Inject lateinit var marketDataControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketDataController>
     @Inject lateinit var accountControllers: Map<MarketPlatform, @JvmSuppressWildcards AccountController>
     @Inject lateinit var adminController: AdminController
@@ -61,6 +63,7 @@ class MainActivity : ComponentActivity() {
 
     private var launchSignalId by mutableStateOf<Long?>(null)
     private var launchActivity by mutableStateOf(false)
+    private var launchResetToken by mutableStateOf<String?>(null)
     private var notificationPermissionState by mutableStateOf(NotificationPermissionUiState.NOT_CONFIGURED)
 
     private val notificationPermission = registerForActivityResult(
@@ -82,6 +85,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             CoineProApp(
                 sessionController = sessionController,
+                emailAuthController = emailAuthController,
                 marketDataControllers = marketDataControllers,
                 accountControllers = accountControllers,
                 adminController = adminController,
@@ -99,9 +103,11 @@ class MainActivity : ComponentActivity() {
                 backgroundSyncScheduler = backgroundSyncScheduler,
                 launchSignalId = launchSignalId,
                 launchActivity = launchActivity,
+                launchResetToken = launchResetToken,
                 notificationPermissionState = notificationPermissionState,
                 onSignalLaunchConsumed = { launchSignalId = null },
                 onActivityLaunchConsumed = { launchActivity = false },
+                onResetTokenConsumed = { launchResetToken = null },
                 onRequestNotificationPermission = ::requestNotificationPermission,
                 onOpenNotificationSettings = ::openNotificationSettings,
                 onSendFeedback = ::sendFeedback,
@@ -133,9 +139,13 @@ class MainActivity : ComponentActivity() {
 
     private fun consumeDeepLink(intent: Intent?) {
         val uri = intent?.data ?: return
-        when (val target = parseCoineProDeepLink(uri.scheme, uri.host, uri.pathSegments)) {
+        // A malformed query throws rather than returning null, and a link the app cannot read is
+        // not a reason to fail to open.
+        val resetToken = runCatching { uri.getQueryParameter("token") }.getOrNull()
+        when (val target = parseCoineProDeepLink(uri.scheme, uri.host, uri.pathSegments, resetToken)) {
             is CoineProDeepLink.Signal -> launchSignalId = target.signalId
             CoineProDeepLink.Activity -> launchActivity = true
+            is CoineProDeepLink.PasswordReset -> launchResetToken = target.token
             null -> Unit
         }
     }

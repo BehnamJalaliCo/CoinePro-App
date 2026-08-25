@@ -4,6 +4,7 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -32,25 +33,42 @@ class KeystoreSessionTokenStorage(
 ) : SessionTokenStorage {
     private val appContext = context.applicationContext
     private val tokenKey = stringPreferencesKey("session_ciphertext_${platform.id}")
+    private val refreshKey = stringPreferencesKey("session_refresh_ciphertext_${platform.id}")
 
-    override suspend fun readToken(): String? {
-        val encoded = appContext.secureSessionDataStore.data.first()[tokenKey] ?: return null
+    override suspend fun readToken(): String? = read(tokenKey)
+
+    override suspend fun writeToken(token: String) = write(tokenKey, token)
+
+    override suspend fun readRefreshToken(): String? = read(refreshKey)
+
+    override suspend fun writeRefreshToken(token: String) = write(refreshKey, token)
+
+    /**
+     * Both tokens go together. A refresh token left behind after a sign-out is a live credential
+     * for an account nobody is signed in to, and it would let the next refresh silently restore a
+     * session the reader deliberately ended.
+     */
+    override suspend fun clear() {
+        appContext.secureSessionDataStore.edit {
+            it.remove(tokenKey)
+            it.remove(refreshKey)
+        }
+    }
+
+    private suspend fun read(key: Preferences.Key<String>): String? {
+        val encoded = appContext.secureSessionDataStore.data.first()[key] ?: return null
         return try {
             decrypt(encoded)
         } catch (_: Exception) {
-            appContext.secureSessionDataStore.edit { it.remove(tokenKey) }
+            appContext.secureSessionDataStore.edit { it.remove(key) }
             null
         }
     }
 
-    override suspend fun writeToken(token: String) {
+    private suspend fun write(key: Preferences.Key<String>, token: String) {
         require(token.isNotBlank())
         val encrypted = encrypt(token)
-        appContext.secureSessionDataStore.edit { it[tokenKey] = encrypted }
-    }
-
-    override suspend fun clear() {
-        appContext.secureSessionDataStore.edit { it.remove(tokenKey) }
+        appContext.secureSessionDataStore.edit { it[key] = encrypted }
     }
 
     private fun encrypt(value: String): String {
