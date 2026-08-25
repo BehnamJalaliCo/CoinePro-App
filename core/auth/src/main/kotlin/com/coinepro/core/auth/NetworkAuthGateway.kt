@@ -2,6 +2,7 @@ package com.coinepro.core.auth
 
 import com.coinepro.core.common.AppResult
 import com.coinepro.core.common.ErrorKind
+import com.coinepro.core.common.RetryAfter
 import java.io.IOException
 import retrofit2.HttpException
 
@@ -22,16 +23,25 @@ class NetworkAuthGateway internal constructor(
     private suspend fun <T> call(block: suspend () -> T): AppResult<T> = try {
         AppResult.Success(block())
     } catch (error: HttpException) {
+        val kind = when (error.code()) {
+            401, 403 -> ErrorKind.AUTH
+            422 -> ErrorKind.VALIDATION
+            429 -> ErrorKind.RATE_LIMIT
+            in 500..599 -> ErrorKind.SERVER
+            else -> ErrorKind.UNKNOWN
+        }
         AppResult.Failure(
-            kind = when (error.code()) {
-                401, 403 -> ErrorKind.AUTH
-                422 -> ErrorKind.VALIDATION
-                429 -> ErrorKind.RATE_LIMIT
-                in 500..599 -> ErrorKind.SERVER
-                else -> ErrorKind.UNKNOWN
-            },
+            kind = kind,
             message = error.message(),
             cause = error,
+            // Sign-in is the one place a rate limit is aimed at a person rather than a background
+            // job, so the wait is worth surfacing. Read only on 429: a Retry-After on any other
+            // status is not about this caller.
+            retryAfterSeconds = if (kind == ErrorKind.RATE_LIMIT) {
+                RetryAfter.parseSeconds(error.response()?.headers()?.get("Retry-After"))
+            } else {
+                null
+            },
         )
     } catch (error: IOException) {
         AppResult.Failure(ErrorKind.NETWORK, cause = error)

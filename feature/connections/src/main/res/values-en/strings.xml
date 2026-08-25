@@ -24,5 +24,6 @@
     <string name="connections_status_configured">Configured</string>
     <string name="connections_status_not_configured">Not configured</string>
     <string name="connections_status_of">%1$s connection status: %2$s</string>
-    <string name="connections_pending_verification">Saved securely; the exchange has not verified it yet. Execution stays queued until LBank confirms.</string>
+    <string name="connections_pending_verification">Saved; the exchange has not verified it yet. Execution stays queued until LBank confirms.</string>
+    <string name="connections_key_scope_advice">Create the key in LBank without withdrawal permission. If the key is ever exposed, that is the one thing standing between it and your funds.</string>
 </resources>

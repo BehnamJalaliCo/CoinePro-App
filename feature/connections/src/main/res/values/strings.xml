@@ -29,5 +29,6 @@
     <string name="connections_status_configured">تنظیم‌شده</string>
     <string name="connections_status_not_configured">تنظیم نشده</string>
     <string name="connections_status_of">وضعیت اتصال %1$s: %2$s</string>
-    <string name="connections_pending_verification">امن ذخیره شد؛ تأیید صرافی هنوز نیامده است. تا وقتی الْبانک تأیید نکند، اجرا در صف می‌ماند.</string>
+    <string name="connections_pending_verification">ذخیره شد؛ تأیید صرافی هنوز نیامده است. تا وقتی الْبانک تأیید نکند، اجرا در صف می‌ماند.</string>
+    <string name="connections_key_scope_advice">کلید را در الْبانک بدون مجوز برداشت بسازید. اگر کلید لو برود، این تنها چیزی است که جلوی خارج شدن دارایی را می‌گیرد.</string>
 </resources>

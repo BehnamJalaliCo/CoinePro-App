@@ -244,6 +244,10 @@ private fun LbankCard(
                 selected = permission,
                 onSelect = { permission = it },
             )
+            // Above the fields, not below them: the advice is only worth anything to someone who
+            // has not minted the key yet, and a key created with withdrawal rights cannot be
+            // narrowed afterwards — it has to be replaced.
+            Caution(stringResource(R.string.connections_key_scope_advice), CoineProColors.TextSecondary)
             CoineProTextField(apiKey, { apiKey = it }, stringResource(R.string.connections_api_key), Modifier.fillMaxWidth())
             CoineProTextField(
                 value = apiSecret,

@@ -26,6 +26,7 @@ import com.coinepro.core.database.RoomMarketDataCache
 import com.coinepro.core.database.RoomSignalHistoryCache
 import com.coinepro.core.datastore.ActivePlatformSelector
 import com.coinepro.core.datastore.ActivePlatformStore
+import com.coinepro.core.datastore.InstallIdStore
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.ExecutionGateway
 import com.coinepro.core.execution.NetworkExecutionGateway
@@ -73,6 +74,11 @@ object AppModule {
     fun preferences(@ApplicationContext context: Context): DataStore<Preferences> =
         context.appPreferences
 
+    @Provides
+    @Singleton
+    fun installIdStore(preferences: DataStore<Preferences>): InstallIdStore =
+        InstallIdStore(preferences)
+
     // ── CoinePro-FX (Forex) ────────────────────────────────────────────────────────────────────
     // The unqualified bindings stay pointed at CoinePro-FX so every existing gateway keeps working
     // unchanged while the crypto side is wired up screen by screen.
@@ -99,9 +105,13 @@ object AppModule {
     @Provides
     @Singleton
     @ForexPlatform
-    fun forexOkHttp(@ForexPlatform memory: SessionMemory): OkHttpClient = NetworkFactory.okHttpClient(
+    fun forexOkHttp(
+        @ForexPlatform memory: SessionMemory,
+        installIds: InstallIdStore,
+    ): OkHttpClient = NetworkFactory.okHttpClient(
         bearerToken = memory::token,
         onUnauthorized = memory::notifyUnauthorized,
+        installId = installIds.providerFor(MarketPlatform.COINEPRO_FX),
         enableHttpLogging = BuildConfig.DEBUG,
     )
 
@@ -137,9 +147,13 @@ object AppModule {
     @Provides
     @Singleton
     @CryptoPlatform
-    fun cryptoOkHttp(@CryptoPlatform memory: SessionMemory): OkHttpClient = NetworkFactory.okHttpClient(
+    fun cryptoOkHttp(
+        @CryptoPlatform memory: SessionMemory,
+        installIds: InstallIdStore,
+    ): OkHttpClient = NetworkFactory.okHttpClient(
         bearerToken = memory::token,
         onUnauthorized = memory::notifyUnauthorized,
+        installId = installIds.providerFor(MarketPlatform.TRADEYAR),
         enableHttpLogging = BuildConfig.DEBUG,
     )
 

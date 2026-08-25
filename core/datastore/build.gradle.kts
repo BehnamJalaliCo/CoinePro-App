@@ -17,4 +17,5 @@ dependencies {
     // api, not implementation: DataStore<Preferences> is in ActivePlatformStore's constructor, so
     // anything that builds one needs the type on its own classpath.
     api(libs.androidx.datastore.preferences)
+    implementation(libs.kotlinx.coroutines.core)
 }
