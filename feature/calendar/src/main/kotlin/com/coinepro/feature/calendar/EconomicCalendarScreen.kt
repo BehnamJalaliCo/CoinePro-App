@@ -9,8 +9,11 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,9 +41,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.coinepro.core.common.BidiText
+import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProPrimaryButton
+import com.coinepro.core.designsystem.CoineProSecondaryButton
+import com.coinepro.core.designsystem.CoineProSegmentedControl
+import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.marketintel.EconomicEvent
 import com.coinepro.core.marketintel.MarketImpact
 import com.coinepro.core.marketintel.MarketIntelController
@@ -58,19 +69,18 @@ fun EconomicCalendarScreen(
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var impact by remember { mutableStateOf<MarketImpact?>(null) }
-    var relevance by remember { mutableStateOf<MarketRelevance?>(null) }
 
     LaunchedEffect(controller) { controller.refresh() }
 
-    val filtered = remember(state.calendar, impact, relevance) {
-        state.calendar.filter { event ->
-            (impact == null || event.impact == impact) &&
-                (relevance == null || relevance in event.relevance)
-        }
+    val filtered = remember(state.calendar, impact) {
+        state.calendar.filter { event -> impact == null || event.impact == impact }
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(CoineProColors.Stage)
+            .padding(horizontal = CoineProSpacing.Gutter),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(
@@ -79,32 +89,32 @@ fun EconomicCalendarScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column {
-                Text("Economic Calendar", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Normalized time · explicit impact", color = CoineProColors.TextSecondary)
+                Text(
+                    text = stringResource(R.string.calendar_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = CoineProColors.TextPrimary,
+                )
+                Text(
+                    text = stringResource(R.string.calendar_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CoineProColors.TextSecondary,
+                )
             }
-            Button(onClick = onOpenNews) { Text("News") }
+            CoineProSecondaryButton(
+                text = stringResource(R.string.calendar_news),
+                onClick = onOpenNews,
+            )
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FilterChip(selected = impact == null, onClick = { impact = null }, label = { Text("All impact") })
-            FilterChip(selected = impact == MarketImpact.HIGH, onClick = { impact = MarketImpact.HIGH }, label = { Text("High") })
-            FilterChip(selected = impact == MarketImpact.MEDIUM, onClick = { impact = MarketImpact.MEDIUM }, label = { Text("Medium") })
-            FilterChip(selected = impact == MarketImpact.LOW, onClick = { impact = MarketImpact.LOW }, label = { Text("Low") })
-            FilterChip(selected = impact == MarketImpact.UNKNOWN, onClick = { impact = MarketImpact.UNKNOWN }, label = { Text("Unknown") })
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FilterChip(selected = relevance == null, onClick = { relevance = null }, label = { Text("All markets") })
-            FilterChip(selected = relevance == MarketRelevance.GOLD, onClick = { relevance = MarketRelevance.GOLD }, label = { Text("Gold") })
-            FilterChip(selected = relevance == MarketRelevance.SILVER, onClick = { relevance = MarketRelevance.SILVER }, label = { Text("Silver") })
-            FilterChip(selected = relevance == MarketRelevance.CRYPTO, onClick = { relevance = MarketRelevance.CRYPTO }, label = { Text("Crypto") })
-        }
+        // Impact is the only filter that survives. The market filter went with it: the calendar is
+        // macro data that moves both platforms, so filtering it by instrument hid the releases a
+        // reader most needed to see.
+        CoineProSegmentedControl(
+            options = listOf<MarketImpact?>(null, MarketImpact.HIGH, MarketImpact.MEDIUM, MarketImpact.LOW)
+                .map { it to (it?.let { i -> stringResource(i.shortLabelRes()) } ?: stringResource(R.string.calendar_impact_all)) },
+            selected = impact,
+            onSelect = { impact = it },
+        )
 
         AnimatedContent(
             targetState = when {
@@ -120,9 +130,18 @@ fun EconomicCalendarScreen(
             label = "calendar-state",
         ) { mode ->
             when (mode) {
-                "loading" -> CenterState("Loading economic events…", showProgress = true)
-                "error" -> CenterState(state.error ?: "Calendar is unavailable.", "Retry", controller::refresh)
-                "empty" -> CenterState("No events match these filters.", "Refresh", controller::refresh)
+                "loading" -> CenterState(stringResource(R.string.calendar_loading), showProgress = true)
+                // Server wording when there is any.
+                "error" -> CenterState(
+                    state.error ?: stringResource(R.string.calendar_unavailable),
+                    stringResource(R.string.calendar_retry),
+                    controller::refresh,
+                )
+                "empty" -> CenterState(
+                    stringResource(R.string.calendar_empty),
+                    stringResource(R.string.calendar_refresh),
+                    controller::refresh,
+                )
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -142,23 +161,30 @@ fun EconomicCalendarScreen(
 
 @Composable
 private fun CalendarFreshnessStrip(refreshing: Boolean, onRefresh: () -> Unit) {
-    Card(
+    CoineProCard(
         modifier = Modifier.fillMaxWidth().animateContentSize(),
-        colors = CardDefaults.cardColors(containerColor = CoineProColors.SurfaceElevated),
-        border = BorderStroke(1.dp, CoineProColors.Border),
+        shape = MaterialTheme.shapes.medium,
+        contentPadding = PaddingValues(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.OneHalf),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                if (refreshing) "Refreshing server event times…" else "Times shown in device timezone from normalized server instants.",
+                text = stringResource(
+                    if (refreshing) R.string.calendar_refreshing else R.string.calendar_timezone_note,
+                ),
                 color = CoineProColors.TextSecondary,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = onRefresh, enabled = !refreshing) { Text(if (refreshing) "…" else "Refresh") }
+            if (!refreshing) {
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.calendar_refresh),
+                    onClick = onRefresh,
+                )
+            }
         }
     }
 }
@@ -184,15 +210,22 @@ private fun TimelineEventCard(event: EconomicEvent, modifier: Modifier = Modifie
             Text(zoneTime.format(eventTimeFormatter), fontWeight = FontWeight.Bold, color = CoineProColors.TextPrimary)
             Text(zoneTime.format(eventDateFormatter), style = MaterialTheme.typography.labelSmall, color = CoineProColors.TextMuted)
         }
-        Card(
-            modifier = Modifier.weight(1f).animateContentSize(),
-            colors = CardDefaults.cardColors(containerColor = CoineProColors.SurfaceElevated),
-            border = BorderStroke(1.dp, impactColor.copy(alpha = if (event.impact == MarketImpact.HIGH && !event.isStale) 0.65f else 0.28f)),
+        // Only a live high-impact release is outlined. Outlining every card would make the edge mean
+        // "card" rather than "this is the one that moves the market you are in".
+        val urgent = event.impact == MarketImpact.HIGH && !event.isStale
+        CoineProCard(
+            modifier = Modifier
+                .weight(1f)
+                .animateContentSize()
+                .then(
+                    if (urgent) {
+                        Modifier.border(1.dp, impactColor.copy(alpha = 0.65f), MaterialTheme.shapes.large)
+                    } else {
+                        Modifier
+                    },
+                ),
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -200,31 +233,35 @@ private fun TimelineEventCard(event: EconomicEvent, modifier: Modifier = Modifie
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         ImpactBadge(event.impact)
-                        if (event.isStale) MetaBadge("Stale", CoineProColors.TextMuted)
+                        if (event.isStale) MetaBadge(stringResource(R.string.calendar_stale), CoineProColors.Warning)
                     }
                     Text(
-                        listOfNotNull(event.country, event.currency).joinToString(" · ").ifBlank { "Global" },
+                        listOfNotNull(event.country, event.currency).joinToString(" · ")
+                            .ifBlank { stringResource(R.string.calendar_global) },
                         color = CoineProColors.TextMuted,
                         style = MaterialTheme.typography.labelMedium,
                     )
                 }
-                Text(event.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(event.title, style = MaterialTheme.typography.titleSmall, color = CoineProColors.TextPrimary)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    ValueCell("Actual", event.actual, Modifier.weight(1f))
-                    ValueCell("Forecast", event.forecast, Modifier.weight(1f))
-                    ValueCell("Previous", event.previous, Modifier.weight(1f))
+                    ValueCell(stringResource(R.string.calendar_actual), event.actual, Modifier.weight(1f))
+                    ValueCell(stringResource(R.string.calendar_forecast), event.forecast, Modifier.weight(1f))
+                    ValueCell(stringResource(R.string.calendar_previous), event.previous, Modifier.weight(1f))
                 }
+                // Resolved before the join: stringResource cannot be called inside joinToString.
+                val relevanceLabels = event.relevance.map { stringResource(it.labelRes()) }
                 Text(
-                    event.relevance.joinToString(" · ") { it.name.lowercase().replaceFirstChar(Char::uppercase) }.ifBlank { "No instrument relevance supplied" },
+                    text = relevanceLabels.joinToString(" · ")
+                        .ifBlank { stringResource(R.string.calendar_no_relevance) },
                     color = CoineProColors.TextMuted,
                     style = MaterialTheme.typography.labelSmall,
                 )
                 if (event.impact == MarketImpact.UNKNOWN) {
                     Text(
-                        "Impact is unknown from the structured source and is not inferred by Android.",
+                        text = stringResource(R.string.calendar_impact_unknown_note),
                         color = CoineProColors.TextMuted,
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -242,9 +279,15 @@ private fun ValueCell(label: String, value: String?, modifier: Modifier = Modifi
         color = CoineProColors.Stage.copy(alpha = 0.55f),
         border = BorderStroke(1.dp, CoineProColors.Border),
     ) {
-        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(modifier = Modifier.padding(CoineProSpacing.OneHalf), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(label, color = CoineProColors.TextMuted, style = MaterialTheme.typography.labelSmall)
-            Text(value ?: "—", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                // A release with no number yet gets an em dash. Server values arrive as text and
+                // are shown as text — reparsing one would risk printing a figure nobody published.
+                text = value?.let(BidiText::isolateLtr) ?: stringResource(R.string.calendar_value_missing),
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (value == null) CoineProColors.TextMuted else CoineProColors.TextPrimary,
+            )
         }
     }
 }
@@ -257,7 +300,7 @@ private fun ImpactBadge(impact: MarketImpact) {
         MarketImpact.LOW -> CoineProColors.Buy
         MarketImpact.UNKNOWN -> CoineProColors.TextMuted
     }
-    MetaBadge(if (impact == MarketImpact.UNKNOWN) "Impact unknown" else impact.name.lowercase().replaceFirstChar(Char::uppercase), color)
+    MetaBadge(stringResource(impact.labelRes()), color)
 }
 
 @Composable
@@ -283,8 +326,34 @@ private fun CenterState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        if (showProgress) CircularProgressIndicator()
+        if (showProgress) CoineProThinkingDots()
         Text(message, color = CoineProColors.TextSecondary, modifier = Modifier.padding(16.dp))
-        if (action != null && onAction != null) Button(onClick = onAction) { Text(action) }
+        if (action != null && onAction != null) {
+            CoineProPrimaryButton(text = action, onClick = onAction)
+        }
     }
+}
+
+@androidx.annotation.StringRes
+private fun MarketRelevance.labelRes(): Int = when (this) {
+    MarketRelevance.GOLD -> R.string.calendar_relevance_gold
+    MarketRelevance.SILVER -> R.string.calendar_relevance_silver
+    MarketRelevance.CRYPTO -> R.string.calendar_relevance_crypto
+}
+
+@androidx.annotation.StringRes
+private fun MarketImpact.labelRes(): Int = when (this) {
+    MarketImpact.HIGH -> R.string.calendar_impact_high
+    MarketImpact.MEDIUM -> R.string.calendar_impact_medium
+    MarketImpact.LOW -> R.string.calendar_impact_low
+    MarketImpact.UNKNOWN -> R.string.calendar_impact_unknown
+}
+
+/** The short form, for the filter, where the word "impact" is already implied by the control. */
+@androidx.annotation.StringRes
+private fun MarketImpact.shortLabelRes(): Int = when (this) {
+    MarketImpact.HIGH -> R.string.calendar_impact_short_high
+    MarketImpact.MEDIUM -> R.string.calendar_impact_short_medium
+    MarketImpact.LOW -> R.string.calendar_impact_short_low
+    MarketImpact.UNKNOWN -> R.string.calendar_impact_short_unknown
 }

@@ -2,4 +2,13 @@
 <resources>
     <string name="auth_secure_sign_in">ورود امن</string>
     <string name="auth_wordmark_description">کوین‌پرو</string>
+
+    <string name="auth_flow">سیگنال ← تحلیل ← ورود / حد ضرر / اهداف ← تأیید صریح اجرا ← پایش ← نتیجه</string>
+    <string name="auth_risk">معامله ریسکِ زیان دارد. سیگنال و تحلیل هوش مصنوعی تضمینِ نتیجه نیستند، و آپ هرگز موفقیت اجرا را از خودش نمی‌سازد.</string>
+    <string name="auth_loading_config">در حال دریافت تنظیمات ورود…</string>
+    <string name="auth_retry_config">تلاش دوباره برای ورود با تلگرام</string>
+    <string name="auth_continue_telegram">ادامه با تلگرام</string>
+    <string name="auth_cancel">انصراف</string>
+    <string name="auth_retry">تلاش دوباره</string>
+    <string name="auth_sign_out">خروج از حساب</string>
 </resources>

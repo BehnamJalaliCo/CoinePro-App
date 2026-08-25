@@ -2,4 +2,13 @@
 <resources>
     <string name="auth_secure_sign_in">Secure sign-in</string>
     <string name="auth_wordmark_description">CoinePro</string>
+
+    <string name="auth_flow">Signal → analysis → entry / stop / targets → explicit execution confirmation → monitor → result</string>
+    <string name="auth_risk">Trading carries the risk of loss. Signals and AI analysis are not guaranteed outcomes, and the app never invents execution success.</string>
+    <string name="auth_loading_config">Loading sign-in configuration…</string>
+    <string name="auth_retry_config">Retry Telegram sign-in</string>
+    <string name="auth_continue_telegram">Continue with Telegram</string>
+    <string name="auth_cancel">Cancel</string>
+    <string name="auth_retry">Retry</string>
+    <string name="auth_sign_out">Sign out</string>
 </resources>

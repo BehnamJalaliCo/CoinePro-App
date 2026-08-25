@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="calendar_title">Economic calendar</string>
+    <string name="calendar_subtitle">Normalised time · explicit impact</string>
+    <string name="calendar_news">News</string>
+    <string name="calendar_impact_all">All</string>
+    <string name="calendar_impact_short_high">High</string>
+    <string name="calendar_impact_short_medium">Medium</string>
+    <string name="calendar_impact_short_low">Low</string>
+    <string name="calendar_impact_short_unknown">Unknown</string>
+    <string name="calendar_impact_high">High impact</string>
+    <string name="calendar_impact_medium">Medium impact</string>
+    <string name="calendar_impact_low">Low impact</string>
+    <string name="calendar_impact_unknown">Impact unknown</string>
+    <string name="calendar_loading">Loading economic events…</string>
+    <string name="calendar_unavailable">The calendar is unavailable.</string>
+    <string name="calendar_empty">No events match this filter.</string>
+    <string name="calendar_retry">Retry</string>
+    <string name="calendar_refresh">Refresh</string>
+    <string name="calendar_refreshing">Refreshing event times…</string>
+    <string name="calendar_timezone_note">Times shown in the device timezone, from normalised server instants.</string>
+    <string name="calendar_stale">Stale</string>
+    <string name="calendar_global">Global</string>
+    <string name="calendar_actual">Actual</string>
+    <string name="calendar_forecast">Forecast</string>
+    <string name="calendar_previous">Previous</string>
+    <string name="calendar_value_missing">—</string>
+    <string name="calendar_no_relevance">No instrument relevance supplied</string>
+    <string name="calendar_impact_unknown_note">The structured source did not state an impact, and the app does not infer one.</string>
+    <string name="calendar_relevance_gold">Gold</string>
+    <string name="calendar_relevance_silver">Silver</string>
+    <string name="calendar_relevance_crypto">Crypto</string>
+</resources>

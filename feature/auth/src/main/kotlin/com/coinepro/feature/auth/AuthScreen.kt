@@ -6,6 +6,7 @@ import android.os.Looper
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -26,9 +27,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProLockup
+import com.coinepro.core.designsystem.CoineProPrimaryButton
+import com.coinepro.core.designsystem.CoineProSecondaryButton
+import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.auth.LoginConfigState
 import com.coinepro.core.auth.SessionState
 import com.coinepro.core.auth.TelegramAuthPayload
@@ -45,7 +52,10 @@ fun AuthScreen(
 ) {
     var showTelegram by remember { mutableStateOf(false) }
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(CoineProColors.Stage)
+            .padding(CoineProSpacing.Three),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -56,57 +66,93 @@ fun AuthScreen(
         )
         Spacer(Modifier.height(12.dp))
         Text(
-            stringResource(R.string.auth_secure_sign_in),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = stringResource(R.string.auth_secure_sign_in),
+            style = MaterialTheme.typography.bodyLarge,
+            color = CoineProColors.TextSecondary,
+            textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(CoineProSpacing.Two))
         Text(
-            "Signal → Analysis → Entry / SL / TP → explicit execution confirmation → Monitor → Result / History",
+            text = stringResource(R.string.auth_flow),
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = CoineProColors.TextMuted,
+            textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(CoineProSpacing.One))
+        // The risk warning is the one thing on this screen that must not read as boilerplate, so
+        // it keeps a warning colour rather than joining the grey copy above it.
         Text(
-            "Trading involves risk of loss. Signals and AI analysis are not guaranteed outcomes, and Android never invents provider or execution success.",
+            text = stringResource(R.string.auth_risk),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = CoineProColors.Warning,
+            textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(CoineProSpacing.Four))
 
         when (state) {
-            SessionState.Loading -> CircularProgressIndicator()
+            SessionState.Loading -> CoineProThinkingDots()
             SessionState.SignedOut -> when (loginConfigState) {
                 LoginConfigState.Loading -> {
-                    CircularProgressIndicator()
-                    Spacer(Modifier.height(12.dp))
+                    CoineProThinkingDots()
+                    Spacer(Modifier.height(CoineProSpacing.OneHalf))
                     Text(
-                        "Loading Telegram sign-in configuration…",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = stringResource(R.string.auth_loading_config),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = CoineProColors.TextSecondary,
                     )
                 }
                 is LoginConfigState.Error -> {
+                    // Server wording, verbatim.
                     Text(
-                        loginConfigState.message,
-                        color = MaterialTheme.colorScheme.error,
+                        text = loginConfigState.message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = CoineProColors.Sell,
+                        textAlign = TextAlign.Center,
                     )
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick = onRetryLoginConfig) { Text("Retry Telegram login") }
+                    Spacer(Modifier.height(CoineProSpacing.Two))
+                    CoineProPrimaryButton(
+                        text = stringResource(R.string.auth_retry_config),
+                        onClick = onRetryLoginConfig,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
                 is LoginConfigState.Ready -> {
                     if (showTelegram) {
                         TelegramLoginWebView(loginConfigState.botUsername, onTelegramPayload)
-                        Spacer(Modifier.height(16.dp))
-                        OutlinedButton(onClick = { showTelegram = false }) { Text("Cancel") }
+                        Spacer(Modifier.height(CoineProSpacing.Two))
+                        CoineProSecondaryButton(
+                            text = stringResource(R.string.auth_cancel),
+                            onClick = { showTelegram = false },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     } else {
-                        Button(onClick = { showTelegram = true }) { Text("Continue with Telegram") }
+                        CoineProPrimaryButton(
+                            text = stringResource(R.string.auth_continue_telegram),
+                            onClick = { showTelegram = true },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
                 }
             }
             is SessionState.RevalidationRequired -> {
-                Text(state.message, style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(16.dp))
-                Button(onClick = onRetry) { Text("Retry") }
-                OutlinedButton(onClick = onLogout) { Text("Sign out") }
+                Text(
+                    text = state.message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CoineProColors.TextSecondary,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(CoineProSpacing.Two))
+                CoineProPrimaryButton(
+                    text = stringResource(R.string.auth_retry),
+                    onClick = onRetry,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(CoineProSpacing.One))
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.auth_sign_out),
+                    onClick = onLogout,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
             is SessionState.SignedIn -> Unit
         }
