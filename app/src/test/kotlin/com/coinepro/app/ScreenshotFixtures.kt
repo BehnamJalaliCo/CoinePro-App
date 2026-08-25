@@ -1,8 +1,18 @@
 package com.coinepro.app
 
+import com.coinepro.core.aisignal.AiCandle
+import com.coinepro.core.aisignal.AiDirectionBias
+import com.coinepro.core.aisignal.AiGeneratedSignal
+import com.coinepro.core.aisignal.AiRiskAppetite
 import com.coinepro.core.aisignal.AiSignalGateway
+import com.coinepro.core.aisignal.AiSignalJobStatus
+import com.coinepro.core.aisignal.AiSignalTarget
+import com.coinepro.core.aisignal.AiSignalTimeframe
+import com.coinepro.core.aisignal.AiTechnicalSnapshot
+import com.coinepro.core.aisignal.AiTradeStyle
 import com.coinepro.core.aisignal.AiSignalJob
 import com.coinepro.core.aisignal.AiSignalQuota
+import com.coinepro.core.aisignal.AiSignalRisk
 import com.coinepro.core.aisignal.AiSignalRequest
 import com.coinepro.core.execution.ExecutionGateway
 import com.coinepro.core.execution.ExecutionStatus
@@ -450,6 +460,83 @@ object ScreenshotFixtures {
     )
 
     val aiQuota = AiSignalQuota(remaining = 7, limit = 10, resetAt = NOW.plusSeconds(43_200).toString())
+
+    /** A walk that trends up so the rendered candles look like real price action. */
+    private val candles: List<AiCandle> = buildList {
+        var price = 2_386.0
+        repeat(28) { index ->
+            val drift = 1.6 + (index % 5) * 0.4
+            val open = price
+            val close = open + if (index % 3 == 0) -drift else drift
+            add(
+                AiCandle(
+                    open = open,
+                    high = maxOf(open, close) + 1.9,
+                    low = minOf(open, close) - 1.7,
+                    close = close,
+                ),
+            )
+            price = close
+        }
+    }
+
+    val aiRequest = AiSignalRequest(
+        symbol = "XAUUSD",
+        timeframe = AiSignalTimeframe.H1,
+        risk = AiSignalRisk.MEDIUM,
+        tradeStyle = AiTradeStyle.INTRADAY,
+        riskAppetite = AiRiskAppetite.BALANCED,
+        directionBias = AiDirectionBias.AUTO,
+    )
+
+    val aiResult = AiGeneratedSignal(
+        signalId = 5120L,
+        symbol = "XAUUSD",
+        direction = SignalDirection.BUY,
+        timeframe = "H1",
+        entry = 2_408.50,
+        entryZone = null,
+        stopLoss = 2_396.00,
+        targets = listOf(
+            AiSignalTarget(level = 1, price = 2_421.00),
+            AiSignalTarget(level = 2, price = 2_434.00),
+        ),
+        confidence = 74,
+        riskRewardTp1 = 2.4,
+        rationale = "Price reclaimed the prior demand block and momentum confirmed on the execution " +
+            "timeframe. Invalidation sits below the swing low.",
+        validatedAt = NOW.toString(),
+        lot = 0.18,
+        strategy = "Trend continuation",
+        warnings = listOf("Spread widens around the New York open; size accordingly."),
+        snapshot = AiTechnicalSnapshot(
+            ema20 = 2_404.10,
+            ema50 = 2_397.60,
+            ema200 = 2_371.25,
+            rsi14 = 61.4,
+            atr14 = 7.85,
+            macd = 0.0142,
+            bollingerUpper = 2_419.0,
+            bollingerLower = 2_389.0,
+            swingHigh20 = 2_421.4,
+            swingLow20 = 2_384.2,
+            changePercent20 = 1.12,
+            priceNow = 2_412.85,
+        ),
+        recentCandles = candles,
+    )
+
+    val aiJob = AiSignalJob(
+        id = "job_a91f",
+        status = AiSignalJobStatus.DONE,
+        request = aiRequest,
+        result = aiResult,
+        errorCode = null,
+        errorMessage = null,
+        quota = aiQuota,
+        createdAt = NOW.minusSeconds(20).toString(),
+        expiresAt = NOW.plusSeconds(600).toString(),
+    )
 }
 
 class FakeSignalGateway : SignalGateway {
@@ -528,11 +615,13 @@ class FakeMarketIntelGateway : MarketIntelGateway {
     override suspend fun snapshot(): MarketIntelSnapshot = ScreenshotFixtures.marketIntel()
 }
 
-class FakeAiSignalGateway : AiSignalGateway {
+class FakeAiSignalGateway(
+    private val job: AiSignalJob? = null,
+) : AiSignalGateway {
     override suspend fun quota(): AiSignalQuota = ScreenshotFixtures.aiQuota
     override suspend fun createJob(request: AiSignalRequest): AiSignalJob =
-        throw IllegalStateException("not used by the screenshot render")
+        job ?: throw IllegalStateException("not used by the screenshot render")
 
     override suspend fun job(jobId: String): AiSignalJob =
-        throw IllegalStateException("not used by the screenshot render")
+        job ?: throw IllegalStateException("not used by the screenshot render")
 }

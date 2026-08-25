@@ -32,6 +32,7 @@ import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.signals.SignalController
 import com.coinepro.feature.activity.ActivityScreen
 import com.coinepro.feature.ai.AiScreen
+import com.coinepro.feature.ai.AiStudioScreen
 import com.coinepro.feature.auth.AuthScreen
 import com.coinepro.feature.calendar.EconomicCalendarScreen
 import com.coinepro.feature.connections.ConnectionsScreen
@@ -137,6 +138,56 @@ class ScreenshotRenderTest {
                 onOpenSignal = {},
                 onOpenVision = {},
                 onOpenAssistant = {},
+            )
+        }
+    }
+
+    /** The AI section with a completed result, so the chart and evidence panels both render. */
+    @Test
+    fun aiStudio() {
+        val controller = AiSignalController(FakeAiSignalGateway(ScreenshotFixtures.aiJob), scope)
+        controller.refreshQuota()
+        controller.submit(ScreenshotFixtures.aiRequest)
+        capture("14-ai-studio") {
+            AiStudioScreen(
+                controller = controller,
+                onOpenSignal = {},
+                onOpenChartAnalysis = {},
+            )
+        }
+    }
+
+    /**
+     * A full-page render on an unusually tall viewport. A LazyColumn only composes what fits, so a
+     * phone-height capture stops at the fold and never shows the result. This is for design review
+     * only — no device is this tall.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "w411dp-h2600dp-xxhdpi")
+    fun aiStudioFullPage() {
+        val controller = AiSignalController(FakeAiSignalGateway(ScreenshotFixtures.aiJob), scope)
+        controller.refreshQuota()
+        controller.submit(ScreenshotFixtures.aiRequest)
+        capture("16-ai-studio-full") {
+            AiStudioScreen(
+                controller = controller,
+                onOpenSignal = {},
+                onOpenChartAnalysis = {},
+            )
+        }
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun aiStudioPersian() {
+        val controller = AiSignalController(FakeAiSignalGateway(ScreenshotFixtures.aiJob), scope)
+        controller.refreshQuota()
+        controller.submit(ScreenshotFixtures.aiRequest)
+        capture("15-ai-studio-fa") {
+            AiStudioScreen(
+                controller = controller,
+                onOpenSignal = {},
+                onOpenChartAnalysis = {},
             )
         }
     }
@@ -272,6 +323,7 @@ class ScreenshotRenderTest {
         /** Matches the w411dp-h914dp-xxhdpi qualifier on the class. */
         const val WIDTH_PX = 411 * 3
         const val HEIGHT_PX = 914 * 3
+
         val OUTPUT_DIR = File("build/screenshots")
     }
 }

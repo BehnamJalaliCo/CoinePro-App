@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_eyebrow">AI</string>
+    <string name="ai_headline">Build a trading setup</string>
+    <string name="ai_quota">%1$d of %2$d requests left today</string>
+    <string name="ai_quota_unknown">Today\'s quota is unavailable</string>
+
+    <string name="ai_setup_title">Request parameters</string>
+    <string name="ai_symbol">Symbol</string>
+    <string name="ai_timeframe">Timeframe</string>
+    <string name="ai_trade_style">Trade style</string>
+    <string name="ai_risk_appetite">Risk appetite</string>
+    <string name="ai_direction_bias">Direction bias</string>
+    <string name="ai_unset_means_server_decides">An unset control leaves the choice to the model. Tap an active chip again to clear it.</string>
+
+    <string name="ai_style_scalp">Scalp</string>
+    <string name="ai_style_intraday">Intraday</string>
+    <string name="ai_style_swing">Swing</string>
+    <string name="ai_appetite_conservative">Conservative</string>
+    <string name="ai_appetite_balanced">Balanced</string>
+    <string name="ai_appetite_aggressive">Aggressive</string>
+    <string name="ai_bias_auto">Auto</string>
+    <string name="ai_bias_long">Long</string>
+    <string name="ai_bias_short">Short</string>
+
+    <string name="ai_generate">Generate setup</string>
+    <string name="ai_analysing">Analysing…</string>
+    <string name="ai_working_body">The request is being processed on the server. Its duration is not known in advance, so no progress percentage is shown.</string>
+
+    <string name="ai_entry">Entry</string>
+    <string name="ai_stop">Stop loss</string>
+    <string name="ai_suggested_lot">Suggested lot</string>
+    <string name="ai_open_signal">Open signal</string>
+    <string name="ai_buy">BUY</string>
+    <string name="ai_sell">SELL</string>
+    <string name="ai_neutral">NEUTRAL</string>
+
+    <string name="ai_evidence_title">Technical evidence</string>
+    <string name="ai_evidence_footnote">These are the readings the model was given. A value the server could not compute shows as “—”, not zero.</string>
+    <string name="ai_reading_missing">—</string>
+
+    <string name="ai_chart_analysis_title">Chart image analysis</string>
+    <string name="ai_chart_analysis_body">Send a screenshot of your chart to have entry, stop and targets analysed against that image.</string>
+    <string name="ai_chart_analysis_open">Send a chart image</string>
+</resources>

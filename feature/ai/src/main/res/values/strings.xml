@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_eyebrow">هوش مصنوعی</string>
+    <string name="ai_headline">ستاپ معاملاتی بساز</string>
+    <string name="ai_quota">%1$d از %2$d درخواست امروز باقی مانده</string>
+    <string name="ai_quota_unknown">سهمیهٔ امروز در دسترس نیست</string>
+
+    <string name="ai_setup_title">پارامترهای درخواست</string>
+    <string name="ai_symbol">نماد</string>
+    <string name="ai_timeframe">تایم‌فریم</string>
+    <string name="ai_trade_style">سبک معامله</string>
+    <string name="ai_risk_appetite">اشتهای ریسک</string>
+    <string name="ai_direction_bias">جهت‌گیری</string>
+    <string name="ai_unset_means_server_decides">گزینهٔ انتخاب‌نشده یعنی تصمیم با مدل است. برای برداشتن انتخاب، دوباره روی آن بزنید.</string>
+
+    <string name="ai_style_scalp">اسکالپ</string>
+    <string name="ai_style_intraday">روزانه</string>
+    <string name="ai_style_swing">سوئینگ</string>
+    <string name="ai_appetite_conservative">محافظه‌کار</string>
+    <string name="ai_appetite_balanced">متعادل</string>
+    <string name="ai_appetite_aggressive">تهاجمی</string>
+    <string name="ai_bias_auto">خودکار</string>
+    <string name="ai_bias_long">خرید</string>
+    <string name="ai_bias_short">فروش</string>
+
+    <string name="ai_generate">ساخت ستاپ</string>
+    <string name="ai_analysing">در حال تحلیل…</string>
+    <string name="ai_working_body">درخواست روی سرور در حال پردازش است. مدت آن از پیش مشخص نیست، پس درصد پیشرفت نشان داده نمی‌شود.</string>
+
+    <string name="ai_entry">ورود</string>
+    <string name="ai_stop">حد ضرر</string>
+    <string name="ai_suggested_lot">حجم پیشنهادی</string>
+    <string name="ai_open_signal">باز کردن سیگنال</string>
+    <string name="ai_buy">خرید</string>
+    <string name="ai_sell">فروش</string>
+    <string name="ai_neutral">خنثی</string>
+
+    <string name="ai_evidence_title">شواهد تکنیکال</string>
+    <string name="ai_evidence_footnote">این مقادیر همان چیزی است که به مدل داده شد. مقدار محاسبه‌نشده «—» نشان داده می‌شود، نه صفر.</string>
+    <string name="ai_reading_missing">—</string>
+
+    <string name="ai_chart_analysis_title">تحلیل تصویر چارت</string>
+    <string name="ai_chart_analysis_body">عکس چارت خود را بفرستید تا نقاط ورود، حد ضرر و اهداف روی همان تصویر تحلیل شود.</string>
+    <string name="ai_chart_analysis_open">فرستادن تصویر چارت</string>
+</resources>
