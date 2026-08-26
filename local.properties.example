@@ -1,0 +1,6 @@
+# Copy to `local.properties` (which is gitignored) and fill in.
+# Never commit either this file's real values or the keystore itself.
+COINEPRO_RELEASE_STORE_FILE=coinepro-release.jks
+COINEPRO_RELEASE_STORE_PASSWORD=
+COINEPRO_RELEASE_KEY_ALIAS=coinepro
+COINEPRO_RELEASE_KEY_PASSWORD=

@@ -1,8 +1,27 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+}
+
+/**
+ * Firebase, only where it is actually configured.
+ *
+ * `google-services.json` carries a project's own identifiers and is deliberately not in the
+ * repository — `.gitignore` and `scripts/security/scan-secrets.sh` both refuse it. But the Google
+ * Services plugin fails the build outright when the file is missing, which would mean nobody could
+ * build this app without first being handed a Firebase project.
+ *
+ * So the plugin is applied only when the file is there. A build without it compiles, runs, and
+ * reports push as unconfigured — which is exactly what `PushCoordinator` already does, and is a
+ * truthful state rather than a broken one.
+ */
+val firebaseConfigured = file("google-services.json").exists()
+if (firebaseConfigured) {
+    apply(plugin = "com.google.gms.google-services")
 }
 
 val configuredVersionCode = providers.gradleProperty("COINEPRO_VERSION_CODE")
@@ -86,10 +105,28 @@ listOf(
     }
 }
 
-val releaseStoreFile = providers.gradleProperty("COINEPRO_RELEASE_STORE_FILE").orNull?.takeIf { it.isNotBlank() }
-val releaseStorePassword = providers.gradleProperty("COINEPRO_RELEASE_STORE_PASSWORD").orNull?.takeIf { it.isNotBlank() }
-val releaseKeyAlias = providers.gradleProperty("COINEPRO_RELEASE_KEY_ALIAS").orNull?.takeIf { it.isNotBlank() }
-val releaseKeyPassword = providers.gradleProperty("COINEPRO_RELEASE_KEY_PASSWORD").orNull?.takeIf { it.isNotBlank() }
+/**
+ * Signing credentials, from a Gradle property or from `local.properties`.
+ *
+ * CI passes them with `-P`; a developer machine keeps them in `local.properties`, which Android
+ * Studio creates, `.gitignore` already refuses, and `scan-secrets.sh` checks for. Gradle does not
+ * read that file on its own, which is why this fallback exists — without it a correctly configured
+ * machine silently produces an *unsigned* release APK and the build still says SUCCESSFUL.
+ *
+ * A Gradle property wins where both are set, so CI is never overridden by a stray local file.
+ */
+val localProperties: Properties? = rootProject.file("local.properties")
+    .takeIf { it.exists() }
+    ?.let { file -> Properties().apply { file.inputStream().use { load(it) } } }
+
+fun signingProperty(name: String): String? =
+    (providers.gradleProperty(name).orNull ?: localProperties?.getProperty(name))
+        ?.takeIf { it.isNotBlank() }
+
+val releaseStoreFile = signingProperty("COINEPRO_RELEASE_STORE_FILE")
+val releaseStorePassword = signingProperty("COINEPRO_RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = signingProperty("COINEPRO_RELEASE_KEY_ALIAS")
+val releaseKeyPassword = signingProperty("COINEPRO_RELEASE_KEY_PASSWORD")
 val releaseSigningValues = listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword)
 val releaseSigningConfigured = releaseSigningValues.all { it != null }
 require(releaseSigningValues.none { it != null } || releaseSigningConfigured) {
@@ -218,6 +255,7 @@ dependencies {
     implementation(project(":core:database"))
     implementation(project(":core:datastore"))
     implementation(project(":core:chart"))
+    implementation(project(":core:help"))
     implementation(project(":core:marketdata"))
     implementation(project(":core:signals"))
     implementation(project(":core:notifications"))

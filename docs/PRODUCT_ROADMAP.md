@@ -286,6 +286,7 @@ core:auth
 core:security
 core:marketdata
 core:chart
+core:help
 core:symbols
 core:signals
 core:notifications

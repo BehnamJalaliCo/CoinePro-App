@@ -44,7 +44,12 @@ import com.coinepro.core.auth.LoginConfigState
 import com.coinepro.core.auth.SessionState
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProAssetLogo
+import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.chart.ChartDecoration
+import com.coinepro.core.chart.ChartTypePicker
+import com.coinepro.core.chart.IndicatorPicker
+import com.coinepro.core.help.HelpBody
+import com.coinepro.core.help.HelpCatalog
 import com.coinepro.core.chart.ChartLine
 import com.coinepro.core.chart.ChartType
 import com.coinepro.core.chart.CoineProChart
@@ -779,6 +784,46 @@ class ScreenshotRenderTest {
                     interactive = false,
                 )
             }
+        }
+    }
+
+    /**
+     * The two pickers, and the «؟» that every row of them opens.
+     *
+     * The help is the reason the picker can offer Kagi and Point & Figure at all: a professional
+     * audience still contains people who have never used them, and the value of offering an unusual
+     * tool is that somebody can find out what it is without leaving the app.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun chartTypePicker() = capture("37-chart-type-picker-fa") {
+        ChartTypePicker(
+            selected = ChartType.HEIKIN_ASHI,
+            onSelect = {},
+            onHelp = {},
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun indicatorPicker() = capture("38-indicator-picker-fa") {
+        IndicatorPicker(
+            active = setOf("ema", "bollinger", "rsi"),
+            onToggle = {},
+            onHelp = {},
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun helpSheet() {
+        val catalog = HelpCatalog.load(
+            androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>().assets,
+        )
+        capture("39-help-rsi-fa") {
+            HelpBody(entry = catalog["rsi"]!!, modifier = Modifier.fillMaxSize())
         }
     }
 
