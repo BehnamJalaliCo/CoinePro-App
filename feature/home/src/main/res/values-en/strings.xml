@@ -51,6 +51,7 @@
     <string name="home_menu_verification">Verify identity</string>
     <string name="home_menu_safety">Safety</string>
     <string name="home_menu_logout">Log out</string>
+    <string name="home_menu_delete_account">Delete account</string>
 
     <string name="home_platform_crypto">Crypto</string>
     <string name="home_platform_forex">Forex</string>

@@ -52,6 +52,7 @@
     <string name="home_menu_verification">احراز هویت</string>
     <string name="home_menu_safety">ایمنی</string>
     <string name="home_menu_logout">خروج از حساب</string>
+    <string name="home_menu_delete_account">حذف حساب کاربری</string>
 
     <string name="home_platform_crypto">کریپتو</string>
     <string name="home_platform_forex">فارکس</string>

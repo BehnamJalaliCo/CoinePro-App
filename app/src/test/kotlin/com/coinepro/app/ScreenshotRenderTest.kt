@@ -124,6 +124,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import com.coinepro.feature.home.HomeSubscription
+import com.coinepro.feature.account.DeleteAccountScreen
 import com.coinepro.feature.kyc.KycScreen
 import com.coinepro.core.account.AccountController
 import com.coinepro.core.common.AppResult
@@ -265,6 +266,39 @@ class ScreenshotRenderTest {
         )
         controller.submitKycLevel1("بهنام جلالی", "0012345678", "1370/05/12", "09121234567")
         KycScreen(controller = controller)
+    }
+
+    /**
+     * Deleting the account, on a server that serves the route.
+     *
+     * Rendered because it is the one screen whose job is to be read rather than used: three cards
+     * of consequence before a field. If the "what is kept" card is not legible at a glance the
+     * screen has failed, and only a render says whether it is.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun deleteAccountSupported() = capture("64-delete-account-fa") {
+        DeleteAccountScreen(
+            controller = AccountController(FakeAccountGateway(), scope),
+            supported = true,
+            onDeleted = {},
+        )
+    }
+
+    /**
+     * The same screen where the server has no deletion route.
+     *
+     * The published out-of-app page replaces the field and the button. This is what ships today —
+     * neither backend serves deletion yet — so it is the state a Play reviewer will actually see.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun deleteAccountUnsupported() = capture("65-delete-account-web-fa") {
+        DeleteAccountScreen(
+            controller = AccountController(FakeAccountGateway(), scope),
+            supported = false,
+            onDeleted = {},
+        )
     }
 
     /**

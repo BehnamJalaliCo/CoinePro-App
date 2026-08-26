@@ -39,6 +39,7 @@ class NetworkEmailAuthGateway internal constructor(
                 chartVision = it.chartVision,
                 assistant = it.assistant,
                 aiSignals = it.aiSignals,
+                accountDeletion = it.accountDeletion,
             )
         }
     }

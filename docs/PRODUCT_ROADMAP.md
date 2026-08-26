@@ -314,6 +314,7 @@ feature:signal-detail
 feature:connections
 feature:execution
 feature:kyc
+feature:account
 feature:copytrade
 feature:ai
 feature:ai-vision

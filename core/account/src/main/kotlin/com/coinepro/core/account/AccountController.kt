@@ -39,6 +39,27 @@ sealed interface PortfolioState {
     data class Unavailable(val reason: String?) : PortfolioState
 }
 
+/**
+ * Where the reader is in deleting their account.
+ *
+ * [Unsupported] is deliberately not a [Refused]. The route not existing on this deployment is a
+ * fact about the server, not a rejection of the reader, and the screen answers it by showing the
+ * other way to be deleted rather than an error.
+ */
+sealed interface AccountDeletion {
+    data object Idle : AccountDeletion
+    data object Deleting : AccountDeletion
+
+    /** Gone. The caller signs out on this — the token it holds now names nobody. */
+    data object Done : AccountDeletion
+
+    /** The server has no deletion route. Show the out-of-app route instead. */
+    data object Unsupported : AccountDeletion
+
+    /** [reason] is the server's own wording, and null where it did not answer at all. */
+    data class Refused(val reason: String?) : AccountDeletion
+}
+
 class AccountController(
     private val gateway: AccountGateway,
     private val scope: CoroutineScope,
@@ -47,11 +68,13 @@ class AccountController(
     private val portfolioMutable = MutableStateFlow<PortfolioState>(PortfolioState.Idle)
     private val kycMutable = MutableStateFlow<KycStatus?>(null)
     private val kycSubmissionMutable = MutableStateFlow<KycSubmission>(KycSubmission.Idle)
+    private val deletionMutable = MutableStateFlow<AccountDeletion>(AccountDeletion.Idle)
 
     val briefing: StateFlow<BriefingState> = briefingMutable.asStateFlow()
     val portfolio: StateFlow<PortfolioState> = portfolioMutable.asStateFlow()
     val kyc: StateFlow<KycStatus?> = kycMutable.asStateFlow()
     val kycSubmission: StateFlow<KycSubmission> = kycSubmissionMutable.asStateFlow()
+    val deletion: StateFlow<AccountDeletion> = deletionMutable.asStateFlow()
 
     /**
      * Refreshes both cards.
@@ -126,6 +149,32 @@ class AccountController(
     }
 
     /** Clears a finished submission so the screen can be reopened without its last outcome. */
+    /**
+     * Deletes the account, once.
+     *
+     * Re-entry while a deletion is in flight is dropped rather than queued. A second DELETE would
+     * arrive after the first succeeded and be answered 401 by a server that no longer knows this
+     * token — which would put "your session expired" in front of someone whose account was in fact
+     * deleted correctly.
+     */
+    fun deleteAccount() {
+        if (deletionMutable.value is AccountDeletion.Deleting) return
+        deletionMutable.value = AccountDeletion.Deleting
+        scope.launch {
+            deletionMutable.value = when (val result = gateway.deleteAccount()) {
+                is AppResult.Success -> when (result.value) {
+                    DeletionOutcome.DELETED -> AccountDeletion.Done
+                    DeletionOutcome.UNSUPPORTED -> AccountDeletion.Unsupported
+                }
+                is AppResult.Failure -> AccountDeletion.Refused(result.message)
+            }
+        }
+    }
+
+    fun clearDeletion() {
+        deletionMutable.value = AccountDeletion.Idle
+    }
+
     fun clearKycSubmission() {
         kycSubmissionMutable.value = KycSubmission.Idle
     }

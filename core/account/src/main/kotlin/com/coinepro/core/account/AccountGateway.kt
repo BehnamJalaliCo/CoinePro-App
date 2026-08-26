@@ -4,6 +4,7 @@ import com.coinepro.core.common.AppResult
 import com.coinepro.core.common.ErrorKind
 import com.coinepro.core.common.RetryAfter
 import com.coinepro.core.common.foldDigitsToLatin
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.network.ApiErrors
 import java.io.IOException
 import retrofit2.HttpException
@@ -38,14 +39,34 @@ interface AccountGateway {
         birthDate: String,
         phone: String,
     ): AppResult<KycStatus>
+
+    /**
+     * Destroys the account and everything attributable to it.
+     *
+     * [DeletionOutcome.Unsupported] is not a failure and must not be reported as one. It means this
+     * deployment does not serve the route, and the screen then shows the out-of-app route instead —
+     * which is a working answer, where "something went wrong" in front of someone who has just
+     * asked to be forgotten is not.
+     */
+    suspend fun deleteAccount(): AppResult<DeletionOutcome>
+}
+
+/** What came back from asking for the account to be deleted. See [AccountGateway.deleteAccount]. */
+enum class DeletionOutcome {
+    /** Gone. The caller must sign out — the token it holds now names nobody. */
+    DELETED,
+
+    /** This server has no deletion route. Not an error; the reader is shown the other way. */
+    UNSUPPORTED,
 }
 
 class NetworkAccountGateway internal constructor(
     private val api: AccountApi,
+    private val paths: AccountPaths,
 ) : AccountGateway {
 
     override suspend fun briefing(): AppResult<AccountBriefing?> = call {
-        val response = api.briefing()
+        val response = api.briefing(paths.briefing)
         if (response.code() == 204) return@call null
         if (!response.isSuccessful) throw HttpException(response)
         val dto = response.body()
@@ -57,7 +78,7 @@ class NetworkAccountGateway internal constructor(
     }
 
     override suspend fun portfolio(): AppResult<AccountPortfolio> = call {
-        val dto = api.portfolio()
+        val dto = api.portfolio(paths.portfolio)
         AccountPortfolio(
             total = dto.total?.let { money ->
                 val amount = money.amount ?: return@let null
@@ -81,7 +102,7 @@ class NetworkAccountGateway internal constructor(
         )
     }
 
-    override suspend fun kyc(): AppResult<KycStatus> = call { api.kyc().toStatus() }
+    override suspend fun kyc(): AppResult<KycStatus> = call { api.kyc(paths.kyc).toStatus() }
 
     override suspend fun submitKycLevel1(
         fullName: String,
@@ -90,6 +111,7 @@ class NetworkAccountGateway internal constructor(
         phone: String,
     ): AppResult<KycStatus> = call {
         api.submitKycLevel1(
+            paths.kycLevel1,
             KycLevel1Request(
                 fullName = fullName.trim(),
                 // Persian and Arabic-Indic digits are accepted by the server, but folding them here
@@ -101,6 +123,17 @@ class NetworkAccountGateway internal constructor(
                 phone = phone.foldDigitsToLatin().filter { it.isDigit() || it == '+' },
             ),
         ).toStatus()
+    }
+
+    override suspend fun deleteAccount(): AppResult<DeletionOutcome> = call {
+        val response = api.deleteAccount(paths.deleteAccount)
+        when {
+            response.isSuccessful -> DeletionOutcome.DELETED
+            // 404 is the route not existing; 405 is the path existing for another verb. Both mean
+            // this deployment has not built deletion yet, which is a different thing from refusing.
+            response.code() == 404 || response.code() == 405 -> DeletionOutcome.UNSUPPORTED
+            else -> throw HttpException(response)
+        }
     }
 
     private fun KycDto.toStatus() = KycStatus(
@@ -143,8 +176,8 @@ class NetworkAccountGateway internal constructor(
     companion object {
         private const val UNKNOWN_CURRENCY = "USD"
 
-        fun create(retrofit: Retrofit): NetworkAccountGateway =
-            NetworkAccountGateway(retrofit.create(AccountApi::class.java))
+        fun create(retrofit: Retrofit, platform: MarketPlatform): NetworkAccountGateway =
+            NetworkAccountGateway(retrofit.create(AccountApi::class.java), AccountPaths.of(platform))
     }
 }
 

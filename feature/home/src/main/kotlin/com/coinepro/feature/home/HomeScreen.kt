@@ -86,6 +86,7 @@ fun HomeScreen(
     onOpenVerification: (() -> Unit)? = null,
     onOpenSafety: (() -> Unit)? = null,
     onLogout: (() -> Unit)? = null,
+    onDeleteAccount: (() -> Unit)? = null,
     platforms: List<MarketPlatform> = emptyList(),
     activePlatform: MarketPlatform? = null,
     onSelectPlatform: (MarketPlatform) -> Unit = {},
@@ -119,7 +120,7 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
     ) {
         if (displayName != null) {
-            item { GreetingRow(displayName, onOpenVerification, onOpenSafety, onLogout) }
+            item { GreetingRow(displayName, onOpenVerification, onOpenSafety, onLogout, onDeleteAccount) }
         }
 
         // Only when the build actually serves both. A one-option switch is a label pretending to be
@@ -197,9 +198,11 @@ private fun GreetingRow(
     onOpenVerification: (() -> Unit)?,
     onOpenSafety: (() -> Unit)?,
     onLogout: (() -> Unit)?,
+    onDeleteAccount: (() -> Unit)?,
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
-    val hasMenu = onOpenVerification != null || onOpenSafety != null || onLogout != null
+    val hasMenu = onOpenVerification != null || onOpenSafety != null || onLogout != null ||
+        onDeleteAccount != null
     // Resolved out here: the semantics block is not a composable scope.
     val accountMenuLabel = stringResource(R.string.home_menu_account)
 
@@ -250,6 +253,19 @@ private fun GreetingRow(
                     onLogout?.let { action ->
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.home_menu_logout)) },
+                            onClick = { menuOpen = false; action() },
+                        )
+                    }
+                    // Last, and in the refusal colour. It is the one item here that cannot be
+                    // undone, and it must not sit next to "sign out" looking like its neighbour.
+                    onDeleteAccount?.let { action ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = stringResource(R.string.home_menu_delete_account),
+                                    color = CoineProColors.Sell,
+                                )
+                            },
                             onClick = { menuOpen = false; action() },
                         )
                     }

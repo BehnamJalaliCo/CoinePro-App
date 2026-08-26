@@ -94,6 +94,7 @@ import java.time.Instant
 import com.coinepro.core.account.AccountBriefing
 import com.coinepro.core.account.AccountGateway
 import com.coinepro.core.account.AccountPortfolio
+import com.coinepro.core.account.DeletionOutcome
 import com.coinepro.core.account.KycState
 import com.coinepro.core.account.KycStatus
 import com.coinepro.core.common.AppResult
@@ -1476,6 +1477,7 @@ internal class FakeCopyTradeGateway(
 internal class FakeAccountGateway(
     private val submitResult: AppResult<KycStatus>? = null,
     private val status: KycStatus = KycStatus(level = 1, state = KycState.NOT_STARTED),
+    private val deletionResult: AppResult<DeletionOutcome> = AppResult.Success(DeletionOutcome.UNSUPPORTED),
 ) : AccountGateway {
     override suspend fun briefing(): AppResult<AccountBriefing?> = AppResult.Success(null)
 
@@ -1489,4 +1491,6 @@ internal class FakeAccountGateway(
         birthDate: String,
         phone: String,
     ): AppResult<KycStatus> = submitResult ?: AppResult.Success(status)
+
+    override suspend fun deleteAccount(): AppResult<DeletionOutcome> = deletionResult
 }

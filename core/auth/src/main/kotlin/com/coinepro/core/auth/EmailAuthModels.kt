@@ -96,6 +96,15 @@ data class AuthMethods(
      * so a sleeping bridge turns the screen off instead of filling it with failed jobs.
      */
     val aiSignals: Boolean? = null,
+    /**
+     * Whether this deployment can delete an account when asked.
+     *
+     * Off by default, like every other flag here, and for the usual reason turned sharp: a delete
+     * button that does nothing is the worst button in the app. Where the server has not said yes,
+     * the screen shows the out-of-app route instead — which works today, and is what Google Play
+     * requires be published anyway.
+     */
+    val accountDeletion: Boolean = false,
 ) {
     val any: Boolean get() = emailPassword || google || telegram
 }

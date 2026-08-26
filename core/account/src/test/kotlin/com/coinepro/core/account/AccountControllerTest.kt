@@ -105,10 +105,52 @@ class AccountControllerTest {
     }
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
+class AccountDeletionTest {
+
+    @Test
+    fun `a deleted account ends in Done, which is what signs the reader out`() = runTest {
+        val gateway = FakeAccountGateway(deletion = AppResult.Success(DeletionOutcome.DELETED))
+        val controller = AccountController(gateway, this)
+
+        controller.deleteAccount()
+        runCurrent()
+
+        assertEquals(AccountDeletion.Done, controller.deletion.value)
+    }
+
+    @Test
+    fun `a server with no deletion route is Unsupported, not a failure`() = runTest {
+        val gateway = FakeAccountGateway(deletion = AppResult.Success(DeletionOutcome.UNSUPPORTED))
+        val controller = AccountController(gateway, this)
+
+        controller.deleteAccount()
+        runCurrent()
+
+        // The distinction is the whole point: Refused would put an error in front of a reader who
+        // did nothing wrong, and hide the out-of-app route that does work.
+        assertEquals(AccountDeletion.Unsupported, controller.deletion.value)
+    }
+
+    @Test
+    fun `a refusal carries the server's own wording`() = runTest {
+        val gateway = FakeAccountGateway(
+            deletion = AppResult.Failure(ErrorKind.VALIDATION, message = "یک معاملهٔ باز دارید"),
+        )
+        val controller = AccountController(gateway, this)
+
+        controller.deleteAccount()
+        runCurrent()
+
+        assertEquals(AccountDeletion.Refused("یک معاملهٔ باز دارید"), controller.deletion.value)
+    }
+}
+
 private class FakeAccountGateway(
     var briefing: AppResult<AccountBriefing?> = AppResult.Success(null),
     var portfolio: AppResult<AccountPortfolio> = AppResult.Success(AccountPortfolio()),
     var kyc: AppResult<KycStatus> = AppResult.Success(KycStatus(0, KycState.NOT_STARTED)),
+    var deletion: AppResult<DeletionOutcome> = AppResult.Success(DeletionOutcome.DELETED),
 ) : AccountGateway {
     override suspend fun briefing() = briefing
     override suspend fun portfolio() = portfolio
@@ -119,4 +161,6 @@ private class FakeAccountGateway(
         birthDate: String,
         phone: String,
     ) = kyc
+
+    override suspend fun deleteAccount() = deletion
 }

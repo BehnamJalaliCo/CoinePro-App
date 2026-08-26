@@ -116,6 +116,7 @@ internal data class AuthMethodsDto(
      */
     val assistant: Boolean? = null,
     val aiSignals: Boolean? = null,
+    val accountDeletion: Boolean = false,
 )
 
 /**

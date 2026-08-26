@@ -9,6 +9,7 @@
     <string name="screen_connections">Connections</string>
     <string name="screen_copy_trading">Copy trading</string>
     <string name="screen_kyc">Verify identity</string>
+    <string name="screen_delete_account">Delete account</string>
     <string name="screen_ai_vision">Chart analysis</string>
     <string name="screen_ai_assistant">AI assistant</string>
     <string name="screen_market_search">Markets</string>

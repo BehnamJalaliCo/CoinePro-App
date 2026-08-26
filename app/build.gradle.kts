@@ -349,6 +349,7 @@ dependencies {
     implementation(project(":feature:connections"))
     implementation(project(":feature:execution"))
     implementation(project(":feature:kyc"))
+    implementation(project(":feature:account"))
     implementation(project(":feature:copytrade"))
     implementation(project(":feature:ai"))
     implementation(project(":feature:ai-vision"))

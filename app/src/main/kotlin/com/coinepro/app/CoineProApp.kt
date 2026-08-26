@@ -94,6 +94,7 @@ import com.coinepro.feature.home.HomeBriefing
 import com.coinepro.feature.home.HomePortfolio
 import com.coinepro.feature.home.HomeSubscription
 import com.coinepro.feature.home.HomeScreen
+import com.coinepro.feature.account.DeleteAccountScreen
 import com.coinepro.feature.kyc.KycScreen
 import com.coinepro.feature.home.toHomeBriefing
 import com.coinepro.feature.home.toHomePortfolio
@@ -131,6 +132,7 @@ private const val CALENDAR_ROUTE = "market/calendar"
 private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
 private const val ADMIN_ROUTE = "diagnostics"
 private const val KYC_ROUTE = "account/verify"
+private const val DELETE_ACCOUNT_ROUTE = "account/delete"
 private fun signalDetailRoute(signalId: Long) = "signal/$signalId"
 private fun executionRoute(signalId: Long) = "execution/$signalId"
 
@@ -256,6 +258,9 @@ fun CoineProApp(
     val pushAvailable = methods?.push == true
     val assistantAvailable = methods?.assistant ?: true
     val aiSignalsAvailable = methods?.aiSignals ?: true
+    // Off unless the server said yes. A delete button that does nothing is the worst button in the
+    // app; where this is false the screen shows the published out-of-app route, which works today.
+    val accountDeletionAvailable = methods?.accountDeletion == true
     // Asking spends the one prompt Android grants, and it is spent for good: a reader who declines
     // is not asked again. A deployment that cannot deliver a push would spend it on nothing, and
     // one who granted it and then never heard anything has been told something untrue by the
@@ -410,6 +415,7 @@ fun CoineProApp(
                 pushAvailable = pushAvailable,
                 assistantAvailable = assistantAvailable,
                 aiSignalsAvailable = aiSignalsAvailable,
+                accountDeletionAvailable = accountDeletionAvailable,
                 onSignalLaunchConsumed = onSignalLaunchConsumed,
                 onActivityLaunchConsumed = onActivityLaunchConsumed,
                 onRequestNotificationPermission = onRequestNotificationPermission,
@@ -529,6 +535,7 @@ private fun MainShell(
     pushAvailable: Boolean,
     assistantAvailable: Boolean,
     aiSignalsAvailable: Boolean,
+    accountDeletionAvailable: Boolean,
     onSignalLaunchConsumed: () -> Unit,
     onActivityLaunchConsumed: () -> Unit,
     onRequestNotificationPermission: () -> Unit,
@@ -558,6 +565,7 @@ private fun MainShell(
         AI_VISION_ROUTE,
         AI_ASSISTANT_ROUTE,
         KYC_ROUTE,
+        DELETE_ACCOUNT_ROUTE,
         NEWS_ROUTE,
         CALENDAR_ROUTE,
         LAUNCH_READINESS_ROUTE,
@@ -575,6 +583,7 @@ private fun MainShell(
             MarketPlatform.TRADEYAR -> R.string.screen_connections
         }
         KYC_ROUTE -> R.string.screen_kyc
+        DELETE_ACCOUNT_ROUTE -> R.string.screen_delete_account
         AI_VISION_ROUTE -> R.string.screen_ai_vision
         AI_ASSISTANT_ROUTE -> R.string.screen_ai_assistant
         MARKET_SEARCH_ROUTE -> R.string.screen_market_search
@@ -703,6 +712,7 @@ private fun MainShell(
                     // Home carries no top bar, so the account actions hang off the avatar.
                     onOpenVerification = { navController.navigate(KYC_ROUTE) },
                     onOpenSafety = { navController.navigate(LAUNCH_READINESS_ROUTE) },
+                    onDeleteAccount = { navController.navigate(DELETE_ACCOUNT_ROUTE) },
                     onLogout = onLogout,
                     platforms = platforms,
                     activePlatform = activePlatform,
@@ -767,6 +777,16 @@ private fun MainShell(
             }
             composable(KYC_ROUTE) {
                 KycScreen(controller = accountController)
+            }
+            composable(DELETE_ACCOUNT_ROUTE) {
+                DeleteAccountScreen(
+                    controller = accountController,
+                    supported = accountDeletionAvailable,
+                    // Signing out on the way rather than after: the token the app is holding names
+                    // an account that no longer exists, and the next request with it would be
+                    // answered 401 and reported to the reader as an expired session.
+                    onDeleted = onLogout,
+                )
             }
             composable(CONNECTIONS_ROUTE) {
                 // One route, two entirely different surfaces, because the two products are

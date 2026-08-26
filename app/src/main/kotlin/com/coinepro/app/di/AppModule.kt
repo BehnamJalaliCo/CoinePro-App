@@ -284,13 +284,13 @@ object AppModule {
     @Singleton
     @ForexPlatform
     fun forexAccountGateway(@ForexPlatform retrofit: Retrofit): AccountGateway =
-        NetworkAccountGateway.create(retrofit)
+        NetworkAccountGateway.create(retrofit, MarketPlatform.COINEPRO_FX)
 
     @Provides
     @Singleton
     @CryptoPlatform
     fun cryptoAccountGateway(@CryptoPlatform retrofit: Retrofit): AccountGateway =
-        NetworkAccountGateway.create(retrofit)
+        NetworkAccountGateway.create(retrofit, MarketPlatform.TRADEYAR)
 
     @Provides
     @Singleton

@@ -16,7 +16,11 @@ import androidx.compose.ui.graphics.Color
  * The rule this enforces is the one worth stating plainly: **a domain colour is never decorative.**
  * Blue on a chart screen does not mean "we liked blue here", it means "this is analysis".
  *
- * There are three, not four. The web terminal has a fourth — a premium gold, `#D4AF37`, distinct
+ * There are four. Three read a domain; the fourth, [DESTRUCTIVE], reads a consequence, and it
+ * earns its place by the same rule — it is not decoration, it means "this cannot be undone". A
+ * gold "delete my account" button is a domain colour used on an action it says nothing true about.
+ *
+ * The web terminal has another — a premium gold, `#D4AF37`, distinct
  * from its brand yellow `#F0B90B` — and that distinction does not survive here, because this app's
  * brand gold *is* `#D8A848`, which is the same metal. Shipping two golds a reader cannot tell
  * apart, under a rule claiming they mean different things, would be a rule with no teeth. Premium
@@ -32,6 +36,15 @@ enum class PageAccent {
 
     /** Copy trading and anything social. */
     SOCIAL,
+
+    /**
+     * Irreversible destruction — deleting an account, and nothing lighter.
+     *
+     * Deliberately not available for a cancel, a close or a sign-out. If every action that ends
+     * something were red, red would stop meaning anything, and the one screen that needs a reader
+     * to stop and read would look like the rest.
+     */
+    DESTRUCTIVE,
 }
 
 /**
@@ -66,7 +79,7 @@ val CoineProColors.onPageAccent: Color
     @Composable @ReadOnlyComposable get() = when (LocalPageAccent.current) {
         // White on blue and on green; near-black on gold, which is a mid-tone and fails contrast
         // under white in either theme.
-        PageAccent.ANALYSIS, PageAccent.SOCIAL -> Color.White
+        PageAccent.ANALYSIS, PageAccent.SOCIAL, PageAccent.DESTRUCTIVE -> Color.White
         PageAccent.BRAND -> LocalCoineProPalette.current.onAccent
     }
 
@@ -80,5 +93,8 @@ private fun accentColour(accent: PageAccent, fill: Boolean): Color {
         PageAccent.ANALYSIS -> palette.analysis
         PageAccent.SOCIAL -> palette.social
         PageAccent.BRAND -> if (fill) palette.accentFill else palette.accent
+        // The same red the app already uses for a losing position and a server refusal. A second
+        // red would be a second meaning nobody asked for.
+        PageAccent.DESTRUCTIVE -> palette.sell
     }
 }

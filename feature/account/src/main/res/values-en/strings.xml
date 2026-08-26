@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="delete_account_title">Delete account</string>
+    <string name="delete_account_irreversible">This cannot be undone. Your account and its data are deleted and you are signed out.</string>
+
+    <string name="delete_account_removed_title">What is deleted</string>
+    <string name="delete_account_removed_identity">The account, your e-mail and name, and any identity details you entered</string>
+    <string name="delete_account_removed_exchange">Your exchange UID and exchange API keys</string>
+    <string name="delete_account_removed_notifications">Notification preferences and token</string>
+    <string name="delete_account_removed_history">Saved signal history and price alerts</string>
+
+    <string name="delete_account_kept_title">What is kept</string>
+    <string name="delete_account_kept_trades">Trading records, as far as law or the exchange contract requires</string>
+    <string name="delete_account_kept_security">Security and anti-fraud logs, for at most 12 months</string>
+    <string name="delete_account_kept_note">Both are kept anonymised — no e-mail, name or UID — and are no longer attributable to you.</string>
+
+    <string name="delete_account_not_removed_title">What is not deleted</string>
+    <string name="delete_account_not_removed_exchange">Your account at the exchange. That account is yours; CoinePro neither created it nor can close it.</string>
+
+    <string name="delete_account_confirm_word">DELETE</string>
+    <string name="delete_account_type_to_confirm">Type “%1$s” to confirm.</string>
+    <string name="delete_account_action">Delete account</string>
+    <string name="delete_account_refused">The account was not deleted. Try again, or contact support.</string>
+    <string name="delete_account_unsupported">This service does not offer in-app deletion yet. The route below works today.</string>
+
+    <string name="delete_account_web_title">Delete from outside the app</string>
+    <string name="delete_account_web_body">The deletion page sets out the steps and the timescales, and does not require signing in.</string>
+    <string name="delete_account_web_action">Open the deletion page</string>
+
+    <string name="delete_account_policy_link">Retention and deletion are set out in full in the privacy policy, section 5.</string>
+    <string name="delete_account_open_policy">Privacy policy</string>
+</resources>
