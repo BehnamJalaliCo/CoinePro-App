@@ -66,13 +66,13 @@ class ChartCatalogTest {
 
     @Test
     fun `exactly these indicators have no help, and the list may only shrink`() {
-        // The web terminal's help was written before these were added to it, so there is nothing to
-        // point at. Pinned rather than merely tolerated: a nullable helpId makes it very easy to add
-        // one more without noticing, and "no help" is a gap to close, not a default.
+        // Pinned rather than merely tolerated: a nullable helpId makes it very easy to add one more
+        // without noticing, and "no help" is a gap to close, not a default. Nine indicators used to
+        // sit here because the web terminal's help predates them; they now have entries written for
+        // this app, and this list shrank by nine. It may only ever shrink again.
         val withoutHelp = ChartCatalog.INDICATORS.filter { it.helpId == null }.map { it.id }
         assertEquals(
             listOf(
-                "envelopes", "stddev", "hv", "mom", "roc", "trix", "fisher", "smiErgodic", "smi",
                 // The seven structure studies. Their help ids in the web terminal are attached to
                 // the drawing tools of the same name — `fib`, `hline` — which explain the tool a
                 // reader places by hand, not the study that places it for them. Pointing at those

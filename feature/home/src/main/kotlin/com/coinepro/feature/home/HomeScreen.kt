@@ -89,10 +89,24 @@ fun HomeScreen(
     platforms: List<MarketPlatform> = emptyList(),
     activePlatform: MarketPlatform? = null,
     onSelectPlatform: (MarketPlatform) -> Unit = {},
+    /**
+     * The symbols this screen is actually showing.
+     *
+     * TradeYar's crypto scope is 441 markets and a bare price subscription takes every one of
+     * them — several hundred updates a second into a phone rendering a dozen rows. Their team
+     * declined to cap it server-side, correctly, so the cap is here: the screen knows what it is
+     * drawing and nothing else does.
+     */
+    onVisibleSymbols: (Set<String>) -> Unit = {},
 ) {
     val quotes = state.quotes.values.sortedWith(
         compareBy<MarketQuote>({ marketRank(it) }, { it.instrument.symbol }),
     )
+
+    val visible = quotes.map { it.instrument.symbol }.toSet()
+    // Keyed on the set, so this fires when the list of markets changes and not on every price tick.
+    // Subscribing is a socket reconnect; doing it per tick would leave the feed permanently down.
+    androidx.compose.runtime.LaunchedEffect(visible) { onVisibleSymbols(visible) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),

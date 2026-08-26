@@ -353,6 +353,7 @@ fun CoineProApp(
                 onOpenNotificationSettings = onOpenNotificationSettings,
                 onSendFeedback = onSendFeedback,
                 onMarketRetry = marketDataController::retry,
+                onSubscribeSymbols = marketDataController::subscribe,
                 platforms = activePlatformStore.available,
                 activePlatform = activePlatform,
                 onSelectPlatform = { platform ->
@@ -465,6 +466,8 @@ private fun MainShell(
     onOpenNotificationSettings: () -> Unit,
     onSendFeedback: () -> Unit,
     onMarketRetry: () -> Unit,
+    /** Narrows the live price feed to what the markets list is showing. */
+    onSubscribeSymbols: (Set<String>) -> Unit = {},
     onLogout: () -> Unit,
     platforms: List<MarketPlatform>,
     activePlatform: MarketPlatform,
@@ -585,6 +588,7 @@ private fun MainShell(
             composable(AppDestination.HOME.route) {
                 HomeScreen(
                     state = marketState,
+                    onVisibleSymbols = onSubscribeSymbols,
                     briefing = briefing,
                     portfolio = portfolio,
                     subscription = subscription,

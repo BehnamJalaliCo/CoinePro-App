@@ -852,6 +852,35 @@ object ScreenshotFixtures {
      * a stretch of chop, because those are the shapes that expose a renderer. A clean wave would
      * make a broken wick or a collapsed body look fine.
      */
+    /**
+     * A chart controller already holding bars, for rendering the screen without a network.
+     *
+     * The gateway hands back the same walk `chartSeries` draws, so a reader comparing the screen
+     * render with the engine renders is looking at the same market.
+     */
+    fun chartController(
+        scope: kotlinx.coroutines.CoroutineScope,
+        symbol: String = "XAUUSD",
+    ): com.coinepro.feature.chart.ChartController {
+        val series = chartSeries()
+        val gateway = object : com.coinepro.core.marketdata.CandleGateway {
+            override suspend fun load(
+                symbol: String,
+                timeframe: com.coinepro.core.marketdata.Timeframe,
+                limit: Int,
+                before: Long?,
+            ) = com.coinepro.core.marketdata.CandlePage(
+                symbol = symbol,
+                timeframe = timeframe,
+                candles = series.bars.map {
+                    com.coinepro.core.marketdata.OhlcBar(it.t, it.o, it.h, it.l, it.c, it.v ?: 0.0)
+                },
+                hasMore = true,
+            )
+        }
+        return com.coinepro.feature.chart.ChartController(symbol, gateway, scope).also { it.start() }
+    }
+
     fun chartSeries(bars: Int = 200): CandleSeries {
         var seed = 20_260_826L
         fun random(): Double {

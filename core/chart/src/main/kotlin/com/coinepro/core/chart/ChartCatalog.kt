@@ -158,25 +158,25 @@ object ChartCatalog {
         IndicatorOption("mcginley", "مک‌گینلی داینامیک", "mcginley", IndicatorPane.PRICE, 0xFFFACC15, DesignR.drawable.tv_chart_line),
         IndicatorOption("linreg", "منحنی رگرسیون خطی", "linreg", IndicatorPane.PRICE, 0xFF38BDF8, DesignR.drawable.tv_tool_trend),
         IndicatorOption("lsma", "میانگین کمترین‌مربعات", "lsma", IndicatorPane.PRICE, 0xFFD8A848, DesignR.drawable.tv_tool_trend),
-        IndicatorOption("envelopes", "پاکت درصدی", null, IndicatorPane.PRICE, 0xFFB08BC7, DesignR.drawable.tv_tool_flatchannel),
+        IndicatorOption("envelopes", "پاکت درصدی", "envelopes", IndicatorPane.PRICE, 0xFFB08BC7, DesignR.drawable.tv_tool_flatchannel),
 
         // Volatility, on its own scale.
-        IndicatorOption("stddev", "انحراف معیار", null, IndicatorPane.SEPARATE, 0xFFFB7185, DesignR.drawable.tv_ruler),
-        IndicatorOption("hv", "نوسان تاریخی", null, IndicatorPane.SEPARATE, 0xFFF59E0B, DesignR.drawable.tv_ruler),
+        IndicatorOption("stddev", "انحراف معیار", "stddev", IndicatorPane.SEPARATE, 0xFFFB7185, DesignR.drawable.tv_ruler),
+        IndicatorOption("hv", "نوسان تاریخی", "hv", IndicatorPane.SEPARATE, 0xFFF59E0B, DesignR.drawable.tv_ruler),
         IndicatorOption("chaikinVol", "نوسان چایکین", "chaikinVol", IndicatorPane.SEPARATE, 0xFF0EA5E9, DesignR.drawable.tv_ruler),
         IndicatorOption("bbpercent", "باند بولینگر ٪B", "bbpercent", IndicatorPane.SEPARATE, 0xFF22D3EE, DesignR.drawable.tv_tool_sine),
         IndicatorOption("bbw", "پهنای باند بولینگر", "bbw", IndicatorPane.SEPARATE, 0xFF8E9BAE, DesignR.drawable.tv_ruler),
 
         // Momentum, on its own scale.
-        IndicatorOption("mom", "مومنتوم", null, IndicatorPane.SEPARATE, 0xFFD8A848, DesignR.drawable.tv_tool_sine),
-        IndicatorOption("roc", "نرخ تغییر", null, IndicatorPane.SEPARATE, 0xFFF472B6, DesignR.drawable.tv_tool_sine),
-        IndicatorOption("trix", "تریکس (TRIX)", null, IndicatorPane.SEPARATE, 0xFF34D399, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("mom", "مومنتوم", "mom", IndicatorPane.SEPARATE, 0xFFD8A848, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("roc", "نرخ تغییر", "roc", IndicatorPane.SEPARATE, 0xFFF472B6, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("trix", "تریکس (TRIX)", "trix", IndicatorPane.SEPARATE, 0xFF34D399, DesignR.drawable.tv_tool_sine),
         IndicatorOption("ac", "شتاب‌دهنده", "ac", IndicatorPane.SEPARATE, 0xFF22D3EE, DesignR.drawable.tv_chart_columns),
         IndicatorOption("uo", "اسیلاتور غایی", "uo", IndicatorPane.SEPARATE, 0xFFD8A848, DesignR.drawable.tv_tool_sine),
-        IndicatorOption("fisher", "تبدیل فیشر", null, IndicatorPane.SEPARATE, 0xFFFB923C, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("fisher", "تبدیل فیشر", "fisher", IndicatorPane.SEPARATE, 0xFFFB923C, DesignR.drawable.tv_tool_sine),
         IndicatorOption("crsi", "کانرز RSI", "crsi", IndicatorPane.SEPARATE, 0xFFE879F9, DesignR.drawable.tv_tool_sine),
-        IndicatorOption("smiErgodic", "SMI ارگودیک", null, IndicatorPane.SEPARATE, 0xFF38BDF8, DesignR.drawable.tv_tool_sine),
-        IndicatorOption("smi", "مومنتوم استوکاستیک", null, IndicatorPane.SEPARATE, 0xFFFACC15, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("smiErgodic", "SMI ارگودیک", "smiErgodic", IndicatorPane.SEPARATE, 0xFF38BDF8, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("smi", "مومنتوم استوکاستیک", "smi", IndicatorPane.SEPARATE, 0xFFFACC15, DesignR.drawable.tv_tool_sine),
         IndicatorOption("bop", "توازن قدرت", "bop", IndicatorPane.SEPARATE, 0xFFD8A848, DesignR.drawable.tv_chart_columns),
 
         // Volume, on its own scale.
@@ -293,14 +293,24 @@ object ChartCatalog {
                     ChartLine(cloud.spanB, 0xFFF6465D, widthDp = 0.9f),
                 )
             }
-            "supertrend" -> listOf(
-                ChartLine(
-                    Indicators.supertrend(high, low, close).line,
-                    option.colour,
-                    widthDp = 1.6f,
-                    label = "SuperTrend",
-                ),
-            )
+            "supertrend" -> Indicators.supertrend(high, low, close).let { result ->
+                // Broken at each flip rather than drawn as one continuous line.
+                //
+                // A SuperTrend jumps from below the price to above it when the trend turns, and a
+                // line that carries the pen across that jump draws a vertical stroke through the
+                // candles that no terminal draws and that reads as a real move. The values are
+                // untouched — they are parity-checked against the web app — and only the gap is
+                // added, which is exactly what a null in a `Line` means.
+                val trend = result.trend
+                val split = Line.of(series.size) { index ->
+                    val flipped = index > 0 &&
+                        trend.isPresent(index) &&
+                        trend.isPresent(index - 1) &&
+                        trend.raw(index) != trend.raw(index - 1)
+                    if (flipped) null else result.line[index]
+                }
+                listOf(ChartLine(split, option.colour, widthDp = 1.6f, label = "SuperTrend"))
+            }
             "vwap" -> listOf(
                 ChartLine(
                     Indicators.vwap(high, low, close, series.volume),

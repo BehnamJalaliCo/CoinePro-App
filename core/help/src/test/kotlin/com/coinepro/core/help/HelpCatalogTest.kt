@@ -10,17 +10,18 @@ import org.junit.Test
 /**
  * The shipped «؟» catalogue, checked as data rather than trusted.
  *
- * It is 177 entries exported from another product. Nothing in the Kotlin compiler can tell whether
- * a field went missing in the export, an image file was left behind, or a language is blank — and
- * all three would show up as an empty panel next to a tool somebody was trying to learn.
+ * It is 177 entries exported from another product plus nine written here for indicators that
+ * product never had. Nothing in the Kotlin compiler can tell whether a field went missing in the
+ * export, an image file was left behind, or a language is blank — and all three would show up as an
+ * empty panel next to a tool somebody was trying to learn.
  */
 class HelpCatalogTest {
 
     private val catalog = HelpCatalog.parse(assetFile("content.json").readText())
 
     @Test
-    fun `every entry the export promised is here`() {
-        assertEquals(177, catalog.size)
+    fun `every entry the export promised is here, plus the ones written since`() {
+        assertEquals(177 + 9, catalog.size)
     }
 
     @Test
@@ -63,6 +64,9 @@ class HelpCatalogTest {
 
     @Test
     fun `the illustrated entries are the ones the export said`() {
+        // Still 83, and deliberately so: every image in this catalogue is a real screenshot of the
+        // web terminal. The nine entries written here have none, because inventing a filename would
+        // give the gallery a tile that draws nothing — the exact failure the test above guards.
         val illustrated = catalog.ids.count { catalog[it]!!.hasImages }
         assertEquals(83, illustrated)
     }

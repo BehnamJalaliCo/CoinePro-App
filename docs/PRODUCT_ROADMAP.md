@@ -303,6 +303,7 @@ feature:admin
 feature:auth
 feature:home
 feature:search
+feature:chart
 feature:signals
 feature:signal-detail
 feature:connections

@@ -273,6 +273,7 @@ dependencies {
     implementation(project(":feature:auth"))
     implementation(project(":feature:home"))
     implementation(project(":feature:search"))
+    implementation(project(":feature:chart"))
     implementation(project(":feature:signals"))
     implementation(project(":feature:signal-detail"))
     implementation(project(":feature:connections"))

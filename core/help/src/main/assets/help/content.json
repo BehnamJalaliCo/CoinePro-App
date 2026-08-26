@@ -9583,5 +9583,320 @@
       "fa": "روی GBP/JPY در تایم‌فریمِ ۱ساعته ZLEMA ۲۱ گذاشته‌ای. در آغازِ یک حرکتِ نزولیِ پرقدرت، قیمت تقریباً هم‌زمان با شروعِ ریزش زیرِ ZLEMA بسته می‌شود؛ این هم‌زمانی، ورودِ فروش را چند کندل زودتر از EMA معمولی ممکن می‌کند.",
       "en": "On GBP/JPY in the 1-hour timeframe you've placed the ZLEMA 21. At the start of a strong downward move, price closes below the ZLEMA almost simultaneously with the start of the drop; this simultaneity makes a sell entry possible several candles earlier than the ordinary EMA."
     }
+  },
+  "envelopes": {
+    "title": {
+      "fa": "پاکتِ درصدی (Envelopes)",
+      "en": "Percentage Envelopes"
+    },
+    "useCase": {
+      "fa": "یک نوارِ ساده به فاصلهٔ درصدِ ثابت بالا و پایینِ میانگینِ متحرک، برای دیدنِ فاصلهٔ قیمت از میانگین.",
+      "en": "A simple band a fixed percentage above and below a moving average, to see how far price has stretched."
+    },
+    "useCaseSource": "editorial",
+    "what": {
+      "fa": "پاکت از یک میانگینِ متحرکِ ساده و دو خط به فاصلهٔ درصدِ ثابت از آن ساخته می‌شود. تفاوتش با باندِ بولینگر همین است: بولینگر پهنایش را از نوسانِ بازار می‌گیرد و در آرامش تنگ می‌شود، ولی پاکت پهنای ثابت دارد. همین سادگی نقطهٔ قوتش است — وقتی می‌خواهی بدانی «قیمت چند درصد از میانگین دور شده» پاسخِ مستقیم می‌دهد.",
+      "en": "Envelopes are a simple moving average with two lines a fixed percentage away. That is the difference from Bollinger Bands: Bollinger takes its width from volatility and tightens in calm markets, while an envelope keeps a constant width. That simplicity is the point — it answers 'how far from the average is price' directly."
+    },
+    "how": {
+      "fa": [
+        "اندیکاتورِ «پاکت درصدی» را از فهرست انتخاب کن؛ روی قیمت رسم می‌شود.",
+        "دوره را روی ۲۰ و درصد را روی ۱ نگه دار (پیش‌فرض)؛ برای نمادهای پرنوسان درصد را بالاتر ببر.",
+        "درصد را طوری تنظیم کن که در شرایطِ عادیِ همان نماد، قیمت بیشترِ وقت داخلِ پاکت بماند.",
+        "برخوردِ قیمت به لبهٔ پاکت را «کشیدگی» بخوان، نه سیگنالِ معکوس."
+      ],
+      "en": []
+    },
+    "tips": {
+      "fa": [
+        "درصدِ درست برای هر نماد و هر تایم‌فریم فرق می‌کند؛ عددِ ۱٪ که برای EURUSD زیاد است برای یک آلت‌کوین کم است.",
+        "در روندِ قوی قیمت می‌تواند مدت‌ها بیرونِ پاکت بماند؛ پاکت ابزارِ بازارِ رِنج است نه ابزارِ ضدِ روند."
+      ],
+      "en": []
+    },
+    "example": {
+      "fa": "روی XAUUSD در تایم‌فریمِ H1 پاکتِ ۲۰ با ۰٫۵٪ را بگذار. اگر قیمت به لبهٔ بالا برسد در حالی که میانگین صاف است، احتمالِ بازگشت به میانگین بیشتر است تا ادامهٔ حرکت؛ اما اگر همان برخورد وسطِ یک روندِ صعودیِ شیب‌دار رخ دهد، معنایش قدرت است نه اشباع.",
+      "en": ""
+    }
+  },
+  "stddev": {
+    "title": {
+      "fa": "انحرافِ معیار",
+      "en": "Standard Deviation"
+    },
+    "useCase": {
+      "fa": "اندازه‌گیریِ خامِ نوسان: قیمت چقدر حول میانگینِ خودش پخش شده است.",
+      "en": "The raw measure of volatility: how widely price is scattered around its own average."
+    },
+    "useCaseSource": "editorial",
+    "what": {
+      "fa": "انحرافِ معیار پایهٔ باندِ بولینگر است و به‌تنهایی هم خوانده می‌شود. عددِ بالا یعنی کندل‌ها از میانگین دورند — بازارِ پرتحرک؛ عددِ پایین یعنی جمع‌اند — بازارِ آرام. جهت را نمی‌گوید، فقط شدت را. برای همین هیچ‌وقت به‌تنهایی سیگنالِ خرید و فروش نیست.",
+      "en": "Standard deviation is the basis of Bollinger Bands and is also read on its own. A high value means candles sit far from the average — an active market; a low value means they are clustered — a quiet one. It says nothing about direction, only about intensity, which is why it is never a buy or sell signal by itself."
+    },
+    "how": {
+      "fa": [
+        "اندیکاتورِ «انحراف معیار» را انتخاب کن؛ در پنلِ زیرین رسم می‌شود.",
+        "دوره را روی ۲۰ نگه دار تا با باندِ بولینگرِ استاندارد هم‌خوان باشد.",
+        "کفِ تاریخیِ این خط را پیدا کن؛ آنجا بازار فشرده است و اغلب پیش از حرکتِ بزرگ رخ می‌دهد.",
+        "از آن برای اندازهٔ حدِ ضرر استفاده کن: در نوسانِ بالا حدِ ضررِ دورتر لازم است."
+      ],
+      "en": []
+    },
+    "tips": {
+      "fa": [
+        "انحرافِ معیارِ بالا نه صعودی است نه نزولی — فقط پرتحرک. اگر جهت می‌خواهی باید با اندیکاتورِ روند ترکیبش کنی.",
+        "مقدارش به قیمتِ نماد وابسته است؛ عددِ طلا با عددِ EURUSD قابلِ مقایسه نیست. همیشه نسبت به تاریخچهٔ خودِ نماد بخوانش."
+      ],
+      "en": []
+    },
+    "example": {
+      "fa": "پیش از انتشارِ داده‌های اقتصادیِ مهم انحرافِ معیار معمولاً به کفِ چندروزه می‌رسد. اگر دیدی خط به پایین‌ترین حدِ یک ماهِ اخیر رسیده، حدِ ضررهایت را تنگ‌تر نکن — احتمالِ یک حرکتِ سریع بالاست و حدِ ضررِ تنگ اولین قربانیِ آن است.",
+      "en": ""
+    }
+  },
+  "hv": {
+    "title": {
+      "fa": "نوسانِ تاریخی (HV)",
+      "en": "Historical Volatility"
+    },
+    "useCase": {
+      "fa": "نوسانِ واقعیِ گذشتهٔ نماد، سالانه‌شده و برحسبِ درصد — تا نمادها با هم قابلِ مقایسه شوند.",
+      "en": "The instrument's realised past volatility, annualised as a percentage so instruments can be compared."
+    },
+    "useCaseSource": "editorial",
+    "what": {
+      "fa": "نوسانِ تاریخی انحرافِ معیارِ بازدهِ لگاریتمی است که در جذرِ تعدادِ دوره‌های سال ضرب می‌شود. خروجی درصدِ سالانه است، و همین آن را از انحرافِ معیارِ خام متمایز می‌کند: عددِ ۴۵٪ برای بیت‌کوین و ۸٪ برای EURUSD مستقیماً با هم مقایسه‌شدنی‌اند. پیش‌بینی نمی‌کند؛ فقط گزارش می‌دهد که تا امروز چه گذشته است.",
+      "en": "Historical volatility is the standard deviation of log returns, scaled by the square root of the periods in a year. The output is an annual percentage, which is what separates it from raw standard deviation: 45% for Bitcoin and 8% for EURUSD are directly comparable. It does not forecast; it reports what has already happened."
+    },
+    "how": {
+      "fa": [
+        "اندیکاتورِ «نوسان تاریخی» را انتخاب کن؛ در پنلِ زیرین رسم می‌شود.",
+        "دوره را روی ۱۰ نگه دار برای نوسانِ کوتاه‌مدت، یا ۳۰ برای تصویرِ ماهانه.",
+        "عددِ سالانه‌سازی: برای کریپتو ۳۶۵ (بازار تعطیل نمی‌شود) و برای فارکس و شاخص ۲۵۲ (روزهای معاملاتی).",
+        "از آن برای انتخابِ نماد استفاده کن: اگر استراتژی‌ات به حرکت نیاز دارد، سراغِ نمادی با HV بالاتر برو."
+      ],
+      "en": []
+    },
+    "tips": {
+      "fa": [
+        "عددِ سالانه‌سازی را عوضی نگیر: همان نماد با ۳۶۵ حدودِ ۲۰٪ بزرگ‌تر از ۲۵۲ نشان داده می‌شود و دو عدد قابلِ مقایسه نیستند.",
+        "HV گذشته را می‌گوید. اگر می‌خواهی بدانی بازار انتظارِ چه نوسانی دارد، آن چیزِ دیگری است (نوسانِ ضمنی) و از قیمتِ آپشن می‌آید، نه از این خط."
+      ],
+      "en": []
+    },
+    "example": {
+      "fa": "دو آلت‌کوین را مقایسه کن: اگر یکی HV=۹۰٪ و دیگری HV=۳۵٪ دارد، با ریسکِ دلاریِ یکسان باید در اولی حجمِ به‌مراتب کمتری بگیری. نادیده‌گرفتنِ همین یک عدد رایج‌ترین راهِ از دست دادنِ حساب روی نمادهای پرنوسان است.",
+      "en": ""
+    }
+  },
+  "mom": {
+    "title": {
+      "fa": "مومنتوم",
+      "en": "Momentum"
+    },
+    "useCase": {
+      "fa": "ساده‌ترین سنجهٔ شتاب: تفاوتِ قیمتِ امروز با قیمتِ n کندل قبل.",
+      "en": "The simplest measure of thrust: today's price minus the price n bars ago."
+    },
+    "useCaseSource": "editorial",
+    "what": {
+      "fa": "مومنتوم فقط یک تفریق است: قیمتِ فعلی منهای قیمتِ n کندل پیش. عددِ مثبت یعنی بازار نسبت به آن نقطه بالاتر است و منفی یعنی پایین‌تر. سادگی‌اش عمدی است — هیچ هموارسازی و هیچ نرمال‌سازی ندارد، پس چیزی را پنهان نمی‌کند. برای همین هم نویزی‌تر از اندیکاتورهای هموارشده است.",
+      "en": "Momentum is a subtraction: current price minus the price n bars ago. Positive means the market is above that point, negative means below. The simplicity is deliberate — no smoothing, no normalisation, so it hides nothing. That also makes it noisier than smoothed indicators."
+    },
+    "how": {
+      "fa": [
+        "اندیکاتورِ «مومنتوم» را انتخاب کن؛ در پنلِ زیرین با خطِ راهنمای صفر رسم می‌شود.",
+        "دوره را روی ۱۰ نگه دار (پیش‌فرض) یا با تایم‌فریمت هماهنگش کن.",
+        "عبور از خطِ صفر را تغییرِ جهتِ کوتاه‌مدت بخوان.",
+        "واگرایی را ببین: قیمت سقفِ بالاتر و مومنتوم سقفِ پایین‌تر یعنی حرکت دارد جان می‌بازد."
+      ],
+      "en": []
+    },
+    "tips": {
+      "fa": [
+        "مقدارش واحد دارد و به قیمتِ نماد وابسته است — مومنتومِ ۵۰ روی طلا با مومنتومِ ۵۰ روی EURUSD ربطی به هم ندارند. اگر عددِ قابلِ مقایسه می‌خواهی «نرخِ تغییر» را بگذار که درصدی است.",
+        "روی داده‌های نویزی مومنتوم مدام از صفر رد می‌شود؛ به‌تنهایی سیستمِ معاملاتی نیست."
+      ],
+      "en": []
+    },
+    "example": {
+      "fa": "روی BTCUSDT در تایم‌فریمِ H4 مومنتومِ ۱۰ را بگذار. اگر قیمت سقفِ جدید بزند ولی مومنتوم به سقفِ قبلی‌اش نرسد، خریدارانِ تازه کم‌قدرت‌ترند؛ این نشانهٔ زودهنگامِ خستگیِ روند است، نه دستورِ فروش.",
+      "en": ""
+    }
+  },
+  "roc": {
+    "title": {
+      "fa": "نرخِ تغییر (ROC)",
+      "en": "Rate of Change"
+    },
+    "useCase": {
+      "fa": "همان مومنتوم، ولی درصدی — پس بینِ نمادها و تایم‌فریم‌ها قابلِ مقایسه است.",
+      "en": "Momentum expressed as a percentage, which makes it comparable across instruments and timeframes."
+    },
+    "useCaseSource": "editorial",
+    "what": {
+      "fa": "نرخِ تغییر درصدِ تغییرِ قیمت نسبت به n کندل قبل است. تفاوتِ مهمش با مومنتوم همین درصدی‌بودن است: ROC=۵٪ روی هر نمادی معنای یکسان دارد، در حالی که مومنتومِ خام واحد دارد. برای مقایسهٔ قدرتِ چند بازار با هم، ROC ابزارِ درست است.",
+      "en": "Rate of change is the percentage change in price relative to n bars ago. Being a percentage is the key difference from momentum: 5% means the same on any instrument, while raw momentum carries units. For comparing the strength of several markets, ROC is the right tool."
+    },
+    "how": {
+      "fa": [
+        "اندیکاتورِ «نرخ تغییر» را انتخاب کن؛ در پنلِ زیرین با خطِ صفر رسم می‌شود.",
+        "دوره را روی ۹ نگه دار (پیش‌فرض) یا برای تصویرِ بلندمدت‌تر ۲۵ بگذار.",
+        "چند نماد را با ROCِ هم‌دوره مقایسه کن تا ببینی کدام قوی‌ترین حرکت را دارد.",
+        "عبور از صفر و واگرایی را مثلِ مومنتوم بخوان."
+      ],
+      "en": []
+    },
+    "tips": {
+      "fa": [
+        "ROC روی قیمتِ نزدیک به صفر بی‌ثبات می‌شود؛ روی توکن‌های بسیار کم‌ارزش با احتیاط بخوانش.",
+        "برای چرخشِ سرمایه بینِ نمادها، ROC معیارِ استانداردِ صنعت است؛ همان چیزی است که پشتِ فهرست‌های «برترین‌های هفته» می‌نشیند."
+      ],
+      "en": []
+    },
+    "example": {
+      "fa": "سرِ هفته ROCِ ۹ را روی پنج نمادِ اصلیِ سبدت بگذار و مرتبشان کن. نمادی که بالاترین ROC را دارد قوی‌ترین حرکتِ اخیر را داشته — این نقطهٔ شروعِ خوبی برای انتخاب است، نه دلیلِ کافی برای ورود.",
+      "en": ""
+    }
+  },
+  "trix": {
+    "title": {
+      "fa": "تریکس (TRIX)",
+      "en": "TRIX"
+    },
+    "useCase": {
+      "fa": "نرخِ تغییرِ یک میانگینِ نماییِ سه‌بار هموارشده؛ نوسان‌سازی که نویزِ کوتاه‌مدت را تقریباً حذف می‌کند.",
+      "en": "The rate of change of a triple-smoothed exponential average — an oscillator that all but removes short-term noise."
+    },
+    "useCaseSource": "editorial",
+    "what": {
+      "fa": "تریکس قیمت را سه بار پشتِ سرِ هم با میانگینِ نمایی هموار می‌کند و بعد نرخِ تغییرِ نتیجه را می‌گیرد. سه‌بار هموارسازی تقریباً همهٔ چرخه‌های کوتاه‌تر از دوره را حذف می‌کند، پس آنچه می‌ماند روندِ زیرین است. قیمتی که بابتش می‌دهی تأخیر است: تریکس دیر می‌چرخد، ولی وقتی چرخید کمتر دروغ می‌گوید.",
+      "en": "TRIX smooths price three times with an exponential average, then takes the rate of change of the result. Triple smoothing removes almost every cycle shorter than the period, so what remains is the underlying trend. The price you pay is lag: TRIX turns late, but when it turns it lies less often."
+    },
+    "how": {
+      "fa": [
+        "اندیکاتورِ «تریکس» را انتخاب کن؛ در پنلِ زیرین با خطِ صفر و خطِ سیگنال رسم می‌شود.",
+        "دوره را روی ۱۸ و سیگنال را روی ۹ نگه دار (پیش‌فرض).",
+        "عبورِ تریکس از خطِ سیگنال را سیگنالِ اولیه و عبور از صفر را تأییدِ جهتِ روند بگیر.",
+        "در تایم‌فریمِ بالاتر از آن برای فیلترِ جهت استفاده کن و ورود را در تایم‌فریمِ پایین‌تر بگیر."
+      ],
+      "en": []
+    },
+    "tips": {
+      "fa": [
+        "تأخیرِ تریکس ذاتی است، نه عیب. اگر ورودِ سریع می‌خواهی این ابزار را عوض کن، نه دوره‌اش را کوتاه — تریکسِ کوتاه‌دوره فقط یک مکدیِ نویزی است.",
+        "در بازارِ رِنج تریکس دورِ صفر می‌چرخد و پیاپی سیگنالِ متضاد می‌دهد؛ اول روند را تأیید کن."
+      ],
+      "en": []
+    },
+    "example": {
+      "fa": "روی EURUSD در تایم‌فریمِ D1 تریکسِ ۱۸ را بگذار. تا وقتی تریکس بالای صفر است فقط دنبالِ خرید باش و سیگنال‌های فروشِ تایم‌فریمِ H1 را نادیده بگیر. همین یک فیلتر بیشترِ معاملاتِ خلافِ روند را حذف می‌کند.",
+      "en": ""
+    }
+  },
+  "fisher": {
+    "title": {
+      "fa": "تبدیلِ فیشر",
+      "en": "Fisher Transform"
+    },
+    "useCase": {
+      "fa": "قیمت را به توزیعی تبدیل می‌کند که چرخش‌ها در آن تیز و آشکار می‌شوند.",
+      "en": "Reshapes price into a distribution where turning points become sharp and obvious."
+    },
+    "useCaseSource": "editorial",
+    "what": {
+      "fa": "تبدیلِ فیشر جایگاهِ قیمت در بازهٔ اخیر را به یک تابعِ ریاضی می‌دهد که دُمِ توزیع را کش می‌آورد. نتیجه این است که سقف‌ها و کف‌ها به‌جای یک برآمدگیِ ملایم، به یک نوکِ تیز تبدیل می‌شوند. خطِ سیگنالش هم غیرمعمول است: مقدارِ کندلِ قبلی است، نه میانگینِ خط — برای همین تقاطع‌هایش زودتر از هر نوسان‌سازِ دیگری رخ می‌دهد.",
+      "en": "The Fisher Transform feeds price's position within its recent range through a function that stretches the tails of the distribution. Highs and lows become sharp spikes rather than gentle humps. Its signal line is unusual too: it is the previous bar's value, not an average — which is why its crossovers come earlier than any other oscillator's."
+    },
+    "how": {
+      "fa": [
+        "اندیکاتورِ «تبدیل فیشر» را انتخاب کن؛ در پنلِ زیرین با خطِ صفر رسم می‌شود.",
+        "دوره را روی ۹ نگه دار (پیش‌فرض).",
+        "تقاطعِ خطِ فیشر با خطِ سیگنال را هشدارِ چرخش بگیر.",
+        "نوکِ‌های تیزِ دور از صفر را نقاطِ کشیدگیِ شدید بخوان."
+      ],
+      "en": []
+    },
+    "tips": {
+      "fa": [
+        "سرعتِ فیشر هزینه دارد: در بازارِ رِنج پیاپی سیگنالِ اشتباه می‌دهد. حتماً با فیلترِ روند ترکیبش کن.",
+        "چون سیگنالش کندلِ قبلی است، هر تکانِ کوچک یک تقاطع می‌سازد؛ روی تایم‌فریمِ پایین تقریباً غیرقابلِ استفاده است."
+      ],
+      "en": []
+    },
+    "example": {
+      "fa": "روی XAGUSD در تایم‌فریمِ H4، وقتی فیشر به یک نوکِ تیزِ منفی می‌رسد و بعد خطِ سیگنال را رو به بالا قطع می‌کند، اولین نشانهٔ کف است. ولی تا وقتی قیمت سقفِ کندلِ چرخش را نشکسته، سیگنال تأیید نشده — فیشر زود می‌گوید، و «زود» گاهی یعنی «غلط».",
+      "en": ""
+    }
+  },
+  "smiErgodic": {
+    "title": {
+      "fa": "SMI ارگودیک",
+      "en": "SMI Ergodic"
+    },
+    "useCase": {
+      "fa": "شاخصِ قدرتِ واقعی (TSI) با خطِ سیگنال؛ مومنتومی که دو بار هموار شده تا جهت خوانا باشد.",
+      "en": "The True Strength Index with a signal line — momentum smoothed twice so direction stays readable."
+    },
+    "useCaseSource": "editorial",
+    "what": {
+      "fa": "SMI ارگودیک همان شاخصِ قدرتِ واقعی است: تغییرِ قیمت دو بار با میانگینِ نمایی هموار می‌شود و بر قدرِ مطلقِ همان تغییرِ دو بار هموارشده تقسیم می‌گردد. نتیجه بینِ ۱۰۰− و ۱۰۰+ می‌ماند و برخلافِ مومنتومِ خام تقریباً بدونِ نویز است. «ارگودیک» فقط نامی است که ویلیام بلاو روی نسخهٔ سیگنال‌دارش گذاشت.",
+      "en": "SMI Ergodic is the True Strength Index: price change smoothed twice with an exponential average, divided by the absolute change smoothed the same way. The result stays between −100 and +100 and, unlike raw momentum, is almost free of noise. 'Ergodic' is simply the name William Blau gave the version with a signal line."
+    },
+    "how": {
+      "fa": [
+        "اندیکاتورِ «SMI ارگودیک» را انتخاب کن؛ در پنلِ زیرین با خطِ صفر رسم می‌شود.",
+        "دوره‌های بلند ۲۰، کوتاه ۵ و سیگنال ۵ را نگه دار (پیش‌فرض).",
+        "بالای صفر را قلمروِ خریداران و پایینِ صفر را قلمروِ فروشندگان بگیر.",
+        "تقاطع با خطِ سیگنال را ورود و عبور از صفر را تأییدِ روند بخوان."
+      ],
+      "en": []
+    },
+    "tips": {
+      "fa": [
+        "هموارسازیِ دوگانه یعنی تأخیر؛ SMI ارگودیک برای تأییدِ روند خوب است نه برای شکارِ کف و سقف.",
+        "واگرایی روی این اندیکاتور به‌خاطرِ کم‌نویز بودنش قابلِ اعتمادتر از مومنتومِ خام است."
+      ],
+      "en": []
+    },
+    "example": {
+      "fa": "روی BTCUSDT در تایم‌فریمِ D1، تا وقتی SMI ارگودیک بالای صفر و بالای خطِ سیگنال است، اصلاح‌های میان‌راه فرصتِ خرید است نه هشدارِ بازگشت. لحظه‌ای که هر دو شرط بشکند، اصلاح دیگر اصلاح نیست.",
+      "en": ""
+    }
+  },
+  "smi": {
+    "title": {
+      "fa": "مومنتومِ استوکاستیک (SMI)",
+      "en": "Stochastic Momentum Index"
+    },
+    "useCase": {
+      "fa": "مثلِ استوکاستیک، ولی نسبت به وسطِ بازه اندازه‌گیری می‌کند نه نسبت به کفِ آن.",
+      "en": "Like the Stochastic, but measured against the midpoint of the range rather than its low."
+    },
+    "useCaseSource": "editorial",
+    "what": {
+      "fa": "استوکاستیکِ معمولی می‌گوید قیمت نسبت به کفِ n کندلِ اخیر کجاست و بینِ ۰ تا ۱۰۰ خوانده می‌شود. SMI همان کار را نسبت به وسطِ بازه انجام می‌دهد، پس خروجی‌اش بینِ ۱۰۰− تا ۱۰۰+ است و علامتش مستقیماً می‌گوید قیمت بالای وسطِ بازه است یا پایینِ آن. دو بار هموارسازی هم نویزش را از استوکاستیکِ خام کمتر می‌کند.",
+      "en": "A plain Stochastic says where price sits relative to the low of the last n bars and reads 0 to 100. SMI does the same against the midpoint of the range, so it reads −100 to +100 and its sign says directly whether price is above or below the middle. Double smoothing also makes it quieter than a raw Stochastic."
+    },
+    "how": {
+      "fa": [
+        "اندیکاتورِ «مومنتوم استوکاستیک» را انتخاب کن؛ در پنلِ زیرین با راهنماهای ۴۰− و ۴۰+ رسم می‌شود.",
+        "دوره ۱۰ و هر دو هموارساز را ۳ نگه دار (پیش‌فرض).",
+        "بالای ۴۰+ را اشباعِ خرید و زیرِ ۴۰− را اشباعِ فروش بگیر.",
+        "عبور از صفر را تغییرِ سمتِ بازار نسبت به وسطِ بازه بخوان."
+      ],
+      "en": []
+    },
+    "tips": {
+      "fa": [
+        "سطوحِ ۴۰± استانداردند ولی مقدس نیستند؛ برای نمادِ پرنوسان ۵۰± مناسب‌تر است.",
+        "در روندِ قوی SMI مدت‌ها در اشباع می‌ماند — همان تلهٔ همیشگیِ نوسان‌سازها. اشباع را در روند سیگنالِ معکوس نگیر."
+      ],
+      "en": []
+    },
+    "example": {
+      "fa": "روی EURUSD در تایم‌فریمِ H1، اگر SMI از زیرِ ۴۰− به بالا برگردد و همزمان قیمت بالای میانگینِ متحرکِ ۵۰ باشد، سیگنالِ خریدِ هم‌جهت با روند است. همان بازگشت وقتی قیمت زیرِ میانگین است، فقط یک اصلاح در روندِ نزولی است.",
+      "en": ""
+    }
   }
 }

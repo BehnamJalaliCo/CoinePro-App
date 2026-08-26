@@ -211,7 +211,16 @@ fun CoineProChart(
                 type == ChartType.BARS -> drawOhlcBars(view, palette)
                 else -> drawCandles(view, palette, hollow = type == ChartType.HOLLOW)
             }
-            decoration.overlays.forEach { drawOverlay(view, it, density.density) }
+            // Clipped, like the drawings below and for the same reason. An overlay is a value per
+            // bar and most of them stay near the price — but a pivot ladder, a SuperTrend after a
+            // flip, or a Bollinger band on a spike all resolve to a y outside the plot, and an
+            // unclipped Canvas paints them over the header and the axis. The first render of the
+            // chart screen had a pivot line drawn across the symbol name.
+            clipRect(0f, 0f, plotWidth, plotHeight) {
+                decoration.overlays.forEach { drawOverlay(view, it, density.density) }
+                decoration.levels.forEach { drawLevel(view, it, plotWidth, measurer) }
+                decoration.markers.forEach { drawMarker(view, it, density.density) }
+            }
             // The reader's own drawings go *over* the price — the opposite of the signal band. They
             // are annotations on the bars, and an annotation the bars cover is not one.
             //
@@ -237,10 +246,6 @@ fun CoineProChart(
                     }
                 }
             }
-            // Levels and markers sit over the price and under the reader's own drawings: they are
-            // computed structure, and an annotation somebody placed by hand outranks it.
-            decoration.levels.forEach { drawLevel(view, it, plotWidth, measurer) }
-            decoration.markers.forEach { drawMarker(view, it, density.density) }
             if (volumeHeight > 0) drawVolume(view, plotHeight, volumeHeight, palette)
             if (decoration.showAxes) {
                 drawPriceAxis(view, plotWidth, palette, measurer)
@@ -620,7 +625,7 @@ private fun axisStyle(colour: Color) = TextStyle(color = colour, fontSize = AXIS
  * 2,643.18 and a memecoin at 0.000018 cannot share a format, and rounding either to the other's
  * precision makes the number wrong rather than merely ugly.
  */
-internal fun decimalsFor(price: Double): Int {
+fun decimalsFor(price: Double): Int {
     val magnitude = abs(price)
     return when {
         magnitude >= 1_000 -> 1
@@ -638,7 +643,7 @@ internal fun decimalsFor(price: Double): Int {
  * a Persian decimal separator, on the axis of a chart. Market figures stay Latin and comparable
  * down a column; only prose counts are written in Persian digits.
  */
-internal fun formatPrice(value: Double, decimals: Int): String =
+fun formatPrice(value: Double, decimals: Int): String =
     String.format(Locale.US, "%.${decimals}f", value)
 
 /** `HH:mm` in UTC, which is what a bar's open time is in. Latin digits for the same reason. */

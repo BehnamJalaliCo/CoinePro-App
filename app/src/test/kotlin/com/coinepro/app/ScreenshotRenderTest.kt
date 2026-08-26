@@ -89,6 +89,7 @@ import com.coinepro.feature.ai.AiStudioScreen
 import com.coinepro.feature.auth.AuthScreen
 import com.coinepro.feature.auth.EmailAuthScreen
 import com.coinepro.feature.calendar.EconomicCalendarScreen
+import com.coinepro.feature.chart.ChartScreen
 import com.coinepro.feature.connections.ConnectionsScreen
 import com.coinepro.feature.copytrade.CopyTradeScreen
 import com.coinepro.feature.home.HomeScreen
@@ -986,6 +987,29 @@ class ScreenshotRenderTest {
                 ),
             )
         }
+    }
+
+    /**
+     * The chart screen — the one the whole module existed for and did not have.
+     *
+     * Fifty-six indicators, fifty-two tools, eleven chart types and eight timeframes were all
+     * built, tested and rendered before a single reader could reach any of them. This is the
+     * screen that makes them reachable, and the render is the check that the layout survives
+     * having all of it: header, timeframe row, chart, toolbar, and nothing crowded out.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun chartScreen() = capture("49-chart-screen-fa") {
+        ChartScreen(controller = ScreenshotFixtures.chartController(scope))
+    }
+
+    /** The same screen with four indicators on, which is what a real setup looks like. */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun chartScreenLoaded() = capture("50-chart-screen-loaded-fa") {
+        val controller = ScreenshotFixtures.chartController(scope)
+        listOf("ema", "bollinger", "supertrend", "pivots").forEach(controller::toggleIndicator)
+        ChartScreen(controller = controller)
     }
 
     /**
