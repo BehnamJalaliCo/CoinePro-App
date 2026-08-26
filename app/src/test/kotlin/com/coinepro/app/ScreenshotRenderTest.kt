@@ -94,6 +94,8 @@ import com.coinepro.feature.connections.ConnectionsScreen
 import com.coinepro.feature.copytrade.CopyTradeScreen
 import com.coinepro.feature.home.HomeScreen
 import com.coinepro.feature.news.NewsScreen
+import com.coinepro.core.academy.AcademyExtra
+import com.coinepro.feature.academy.AcademyExtraBody
 import com.coinepro.feature.academy.AcademyScreen
 import com.coinepro.feature.academy.LessonScreen
 import com.coinepro.feature.portfolio.PortfolioScreen
@@ -608,6 +610,39 @@ class ScreenshotRenderTest {
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1400dp-xxhdpi")
     fun designKitLight() {
         capture("56-design-kit-fa-light", darkTheme = false) { DesignKit() }
+    }
+
+    /**
+     * The three lists that hang off the roadmap — badges, leaderboard, glossary.
+     *
+     * Rendered as sheet bodies rather than through the sheets themselves: the capture takes the
+     * activity's decor view, and a ModalBottomSheet draws in its own window, so a screenshot of one
+     * comes out blank. Same reason `CoineProSheetBody` exists.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1000dp-xxhdpi")
+    fun academyExtras() {
+        val extras = ScreenshotFixtures.academyExtras()
+        capture("57-academy-extras-fa") {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                CoineProSheetBody(title = "نشان‌ها") {
+                    AcademyExtraBody(AcademyExtra.ACHIEVEMENTS, extras)
+                }
+                CoineProSheetBody(title = "جدول امتیازات") {
+                    AcademyExtraBody(AcademyExtra.LEADERBOARD, extras)
+                }
+            }
+        }
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1000dp-xxhdpi")
+    fun academyGlossary() {
+        capture("58-academy-glossary-fa") {
+            CoineProSheetBody(title = "واژه‌نامه") {
+                AcademyExtraBody(AcademyExtra.GLOSSARY, ScreenshotFixtures.academyExtras())
+            }
+        }
     }
 
     @Test

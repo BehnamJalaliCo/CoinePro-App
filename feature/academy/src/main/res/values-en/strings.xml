@@ -34,4 +34,13 @@
     <string name="academy_quiz_your_answer">Your answer</string>
 
     <string name="academy_close">Close</string>
+    <string name="academy_achievements">Badges</string>
+    <string name="academy_achievements_count">%1$s of %2$s</string>
+    <string name="academy_leaderboard">Leaderboard</string>
+    <string name="academy_leaderboard_rank">Your rank: %1$s of %2$s</string>
+    <string name="academy_leaderboard_unranked">You have not completed a lesson yet, so you are not ranked.</string>
+    <string name="academy_glossary">Glossary</string>
+    <string name="academy_glossary_search">Search a term</string>
+    <string name="academy_extra_failed">Could not be loaded.</string>
+    <string name="academy_extra_empty">Nothing here.</string>
 </resources>

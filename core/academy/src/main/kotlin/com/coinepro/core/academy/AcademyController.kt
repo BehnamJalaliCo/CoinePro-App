@@ -45,6 +45,23 @@ data class AcademyUiState(
         get() = currentLevel?.lessons?.firstOrNull { !it.completed && !it.locked }
 }
 
+/**
+ * The three lists that hang off the roadmap rather than sitting on it.
+ *
+ * Loaded on demand, one at a time, because each is a round trip a reader who never opens the sheet
+ * should not pay for — and the leaderboard in particular is a group-by over every student's
+ * progress, which is the most expensive read in the academy.
+ */
+data class AcademyExtrasState(
+    val achievements: Achievements? = null,
+    val leaderboard: Leaderboard? = null,
+    val glossary: List<GlossaryTerm> = emptyList(),
+    val loading: AcademyExtra? = null,
+    val failed: AcademyExtra? = null,
+)
+
+enum class AcademyExtra { ACHIEVEMENTS, LEADERBOARD, GLOSSARY }
+
 data class LessonUiState(
     val lesson: Lesson? = null,
     val quiz: Quiz? = null,
@@ -86,6 +103,9 @@ class AcademyController(
     private val _lesson = MutableStateFlow(LessonUiState())
     val lesson: StateFlow<LessonUiState> = _lesson.asStateFlow()
 
+    private val _extras = MutableStateFlow(AcademyExtrasState())
+    val extras: StateFlow<AcademyExtrasState> = _extras.asStateFlow()
+
     private var job: Job? = null
     private var lessonJob: Job? = null
 
@@ -116,6 +136,47 @@ class AcademyController(
                     _state.update { it.copy(loading = false, error = failure.toAcademyError()) }
                 }
             job = null
+        }
+    }
+
+    /**
+     * Fetch one of the three side lists, once.
+     *
+     * Already held means nothing happens: these change slowly — a badge is earned once, the
+     * glossary is a file on disk — and re-reading them every time a sheet opens would spend a
+     * request on an answer that has not moved.
+     */
+    fun loadExtra(extra: AcademyExtra) {
+        val current = _extras.value
+        val alreadyHeld = when (extra) {
+            AcademyExtra.ACHIEVEMENTS -> current.achievements != null
+            AcademyExtra.LEADERBOARD -> current.leaderboard != null
+            AcademyExtra.GLOSSARY -> current.glossary.isNotEmpty()
+        }
+        if (alreadyHeld || current.loading == extra) return
+        _extras.update { it.copy(loading = extra, failed = null) }
+        scope.launch {
+            // Branched on the request rather than on the answer's type. Dispatching on the result
+            // would mean `glossary()` and any future list-returning route being told apart by
+            // erased generics, which is exactly the kind of thing that compiles and then puts the
+            // wrong list in the wrong sheet.
+            val outcome = runCatching {
+                when (extra) {
+                    AcademyExtra.ACHIEVEMENTS -> {
+                        val value = gateway.achievements()
+                        _extras.update { it.copy(achievements = value, loading = null) }
+                    }
+                    AcademyExtra.LEADERBOARD -> {
+                        val value = gateway.leaderboard()
+                        _extras.update { it.copy(leaderboard = value, loading = null) }
+                    }
+                    AcademyExtra.GLOSSARY -> {
+                        val value = gateway.glossary()
+                        _extras.update { it.copy(glossary = value, loading = null) }
+                    }
+                }
+            }
+            outcome.onFailure { _extras.update { it.copy(loading = null, failed = extra) } }
         }
     }
 

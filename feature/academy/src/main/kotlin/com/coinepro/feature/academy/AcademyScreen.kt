@@ -25,6 +25,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.coinepro.core.academy.AcademyExtra
+import com.coinepro.core.academy.AcademyExtrasState
+import com.coinepro.core.designsystem.CoineProChip
+import com.coinepro.core.designsystem.CoineProChipRow
+import com.coinepro.core.designsystem.CoineProSheet
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,6 +67,7 @@ import com.coinepro.core.designsystem.persianDigits
  * Everything here is Persian prose *about* the curriculum, so the counts use Persian digits. The
  * one exception is nothing at all — there are no market figures on this screen.
  */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun AcademyScreen(
     controller: AcademyController,
@@ -68,6 +77,8 @@ fun AcademyScreen(
 ) {
     LaunchedEffect(controller) { controller.start() }
     val state by controller.state.collectAsStateWithLifecycle()
+    val extras by controller.extras.collectAsStateWithLifecycle()
+    var sheet by remember { mutableStateOf<AcademyExtra?>(null) }
 
     when {
         state.loading && state.catalog == null -> Centre { CoineProThinkingDots() }
@@ -86,6 +97,12 @@ fun AcademyScreen(
         ) {
             state.profile?.let { profile ->
                 item { ProfileHeader(profile) }
+                item {
+                    ExtraChips(profile) { extra ->
+                        sheet = extra
+                        controller.loadExtra(extra)
+                    }
+                }
                 if (profile.phoneRequired && onOpenProfile != null) {
                     // One action that unlocks a whole level, so it sits at the top rather than
                     // being repeated as "locked" thirty times down the page.
@@ -115,6 +132,68 @@ fun AcademyScreen(
             }
         }
     }
+
+    sheet?.let { open ->
+        CoineProSheet(
+            title = stringResource(
+                when (open) {
+                    AcademyExtra.ACHIEVEMENTS -> R.string.academy_achievements
+                    AcademyExtra.LEADERBOARD -> R.string.academy_leaderboard
+                    AcademyExtra.GLOSSARY -> R.string.academy_glossary
+                },
+            ),
+            onDismiss = { sheet = null },
+        ) {
+            AcademyExtraBody(open, extras)
+        }
+    }
+}
+
+/**
+ * One sheet's content, chosen by which chip opened it.
+ *
+ * Public rather than internal so a screenshot can render it directly. A `ModalBottomSheet` draws in
+ * its own window and the capture takes the activity's decor view, so a screenshot of the sheet
+ * itself comes out blank — the body has to be reachable on its own.
+ */
+@Composable
+fun AcademyExtraBody(extra: AcademyExtra, extras: AcademyExtrasState) {
+    when {
+        extras.failed == extra -> ExtraFailed()
+        extra == AcademyExtra.ACHIEVEMENTS ->
+            extras.achievements?.let { AchievementsBody(it) } ?: ExtraLoading()
+        extra == AcademyExtra.LEADERBOARD ->
+            extras.leaderboard?.let { LeaderboardBody(it) } ?: ExtraLoading()
+        else ->
+            extras.glossary.takeIf { it.isNotEmpty() }?.let { GlossaryBody(it) } ?: ExtraLoading()
+    }
+}
+
+/**
+ * The three lists that hang off the roadmap.
+ *
+ * A row rather than a menu, and above the levels rather than at the bottom of them: a badge count
+ * and a rank are the things a reader checks on the way past, and one of them is the reason they
+ * came back today. Buried under a hundred and forty lesson rows they would be checked never.
+ */
+@Composable
+private fun ExtraChips(profile: AcademyProfile, onOpen: (AcademyExtra) -> Unit) {
+    val options = listOf(
+        CoineProChip(
+            id = AcademyExtra.ACHIEVEMENTS.name,
+            label = stringResource(R.string.academy_achievements),
+            count = profile.achievementsCount,
+        ),
+        CoineProChip(AcademyExtra.LEADERBOARD.name, stringResource(R.string.academy_leaderboard)),
+        CoineProChip(AcademyExtra.GLOSSARY.name, stringResource(R.string.academy_glossary)),
+    )
+    CoineProChipRow(
+        options = options,
+        // Never marked selected: these open a sheet and come straight back, so a chip left filled
+        // in would claim a state the screen is not in.
+        selectedId = null,
+        onSelect = { id -> id?.let { onOpen(AcademyExtra.valueOf(it)) } },
+    )
 }
 
 @Composable

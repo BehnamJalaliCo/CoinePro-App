@@ -1183,6 +1183,69 @@ object ScreenshotFixtures {
         return com.coinepro.core.academy.AcademyController(gateway, scope)
     }
 
+    /**
+     * The academy's three side lists, all loaded.
+     *
+     * Badges deliberately mixed earned and unearned: a list showing only what has been achieved is
+     * a list with nothing to aim at, and the dimmed rows are the half of the design that matters.
+     * The leaderboard puts the reader mid-table rather than first, because first place is the one
+     * arrangement where "your rank" and "the top row" cannot be told apart.
+     */
+    fun academyExtras(): com.coinepro.core.academy.AcademyExtrasState {
+        fun badge(key: String, title: String, desc: String, icon: String, earned: Boolean) =
+            com.coinepro.core.academy.Achievement(key, title, desc, icon, earned, null)
+
+        return com.coinepro.core.academy.AcademyExtrasState(
+            achievements = com.coinepro.core.academy.Achievements(
+                items = listOf(
+                    badge("first_lesson", "اولین قدم", "اولین درست را کامل کردی.", "🎯", true),
+                    badge("lessons_10", "ده‌تایی", "۱۰ درس را کامل کردی.", "🔟", true),
+                    badge("streak_7", "هفتهٔ آتشین", "۷ روزِ پیاپی فعال بودی.", "🔥", true),
+                    badge("perfect_quiz", "نمرهٔ کامل", "در یک آزمون نمرهٔ ۱۰۰ گرفتی.", "⭐", false),
+                    badge("lessons_50", "نیمه‌راه", "۵۰ درس را کامل کردی.", "🏃", false),
+                    badge("streak_30", "ماراتن", "۳۰ روزِ پیاپی فعال بودی.", "🏅", false),
+                    badge("level_master_beginner", "استادِ مقدماتی", "سطحِ مقدماتی را کامل کردی.", "🥉", false),
+                ),
+                earnedCount = 3,
+                total = 11,
+            ),
+            leaderboard = com.coinepro.core.academy.Leaderboard(
+                items = listOf(
+                    com.coinepro.core.academy.LeaderboardRow(1, "sara_t", 1_420, 128, false),
+                    com.coinepro.core.academy.LeaderboardRow(2, "amir", 1_180, 104, false),
+                    com.coinepro.core.academy.LeaderboardRow(3, "n_moradi", 960, 88, false),
+                    com.coinepro.core.academy.LeaderboardRow(4, "reza", 730, 61, true),
+                    com.coinepro.core.academy.LeaderboardRow(5, "hesam", 640, 55, false),
+                    com.coinepro.core.academy.LeaderboardRow(6, "—", 480, 41, false),
+                ),
+                myRank = 4,
+                totalStudents = 312,
+            ),
+            glossary = listOf(
+                com.coinepro.core.academy.GlossaryTerm(
+                    "پیپ",
+                    "کوچک‌ترین واحد استاندارد تغییر قیمت در جفت‌ارز، معمولاً چهارمین رقم اعشار.",
+                    "Pip",
+                ),
+                com.coinepro.core.academy.GlossaryTerm(
+                    "اسپرد",
+                    "تفاوت بین بهترین قیمت خرید و بهترین قیمت فروش؛ هزینه‌ای که در لحظهٔ ورود می‌دهی.",
+                    "Spread",
+                ),
+                com.coinepro.core.academy.GlossaryTerm(
+                    "مارجین",
+                    "بخشی از موجودی که بروکر تا بسته‌شدن معامله نگه می‌دارد.",
+                    "Margin",
+                ),
+                com.coinepro.core.academy.GlossaryTerm(
+                    "دراودان",
+                    "بیشترین افت سرمایه از یک قله تا کف بعدی آن.",
+                    "Drawdown",
+                ),
+            ),
+        )
+    }
+
     /** A setup on the fixture above: long, stop under the shock, two targets above. */
     fun chartSignal(series: CandleSeries): SignalOverlay {
         val entry = series.close.last()

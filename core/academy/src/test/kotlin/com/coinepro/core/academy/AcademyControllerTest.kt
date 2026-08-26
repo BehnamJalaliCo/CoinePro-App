@@ -87,10 +87,38 @@ class AcademyControllerTest {
         override suspend fun submitQuiz(slug: String, answers: Map<Long, Int>): QuizResult =
             resultValue ?: error("no result")
 
+        var achievementCalls = 0
+        var leaderboardCalls = 0
+        var glossaryCalls = 0
+        var extrasFail: Throwable? = null
+
         override suspend fun streak() = Streak(0, 0)
-        override suspend fun achievements() = Achievements(emptyList(), 0, 0)
-        override suspend fun leaderboard() = Leaderboard(emptyList(), null, 0)
-        override suspend fun glossary() = emptyList<GlossaryTerm>()
+
+        override suspend fun achievements(): Achievements {
+            achievementCalls++
+            extrasFail?.let { throw it }
+            return Achievements(
+                items = listOf(Achievement("first_lesson", "اولین قدم", null, "🎯", true, null)),
+                earnedCount = 1,
+                total = 11,
+            )
+        }
+
+        override suspend fun leaderboard(): Leaderboard {
+            leaderboardCalls++
+            extrasFail?.let { throw it }
+            return Leaderboard(
+                items = listOf(LeaderboardRow(1, "reza", 420, 12, isMe = true)),
+                myRank = 1,
+                totalStudents = 312,
+            )
+        }
+
+        override suspend fun glossary(): List<GlossaryTerm> {
+            glossaryCalls++
+            extrasFail?.let { throw it }
+            return listOf(GlossaryTerm("پیپ", "کوچک‌ترین واحد تغییر قیمت.", "Pip"))
+        }
     }
 
     private fun controller(gateway: AcademyGateway, scheduler: kotlinx.coroutines.test.TestCoroutineScheduler) =
@@ -352,5 +380,61 @@ class AcademyControllerTest {
 
         assertNull(controller.lesson.value.lesson)
         assertTrue(controller.lesson.value.answers.isEmpty())
+    }
+
+    @Test
+    fun `each side list is fetched once and then held`() = runTest {
+        // A badge is earned once and the glossary is a file on disk. Re-reading them every time a
+        // sheet opens would spend a request on an answer that has not moved — and the leaderboard
+        // is a group-by over every student's progress, the most expensive read in the academy.
+        val gateway = FakeGateway()
+        val controller = controller(gateway, testScheduler)
+
+        repeat(3) { controller.loadExtra(AcademyExtra.ACHIEVEMENTS) }
+        repeat(3) { controller.loadExtra(AcademyExtra.LEADERBOARD) }
+        repeat(3) { controller.loadExtra(AcademyExtra.GLOSSARY) }
+
+        assertEquals(1, gateway.achievementCalls)
+        assertEquals(1, gateway.leaderboardCalls)
+        assertEquals(1, gateway.glossaryCalls)
+
+        val extras = controller.extras.value
+        assertEquals(1, extras.achievements?.earnedCount)
+        assertEquals(1, extras.leaderboard?.myRank)
+        assertEquals("Pip", extras.glossary.single().english)
+        assertNull(extras.loading)
+        assertNull(extras.failed)
+    }
+
+    @Test
+    fun `one side list failing does not mark the others failed`() = runTest {
+        // They are three independent reads. A leaderboard the server choked on says nothing about
+        // whether the glossary is readable, and one shared error flag would close all three sheets.
+        val gateway = FakeGateway().apply { extrasFail = IllegalStateException("502") }
+        val controller = controller(gateway, testScheduler)
+
+        controller.loadExtra(AcademyExtra.LEADERBOARD)
+        assertEquals(AcademyExtra.LEADERBOARD, controller.extras.value.failed)
+
+        gateway.extrasFail = null
+        controller.loadExtra(AcademyExtra.GLOSSARY)
+
+        assertNull(controller.extras.value.failed)
+        assertEquals(1, controller.extras.value.glossary.size)
+    }
+
+    @Test
+    fun `a failed side list is tried again on the next open`() = runTest {
+        val gateway = FakeGateway().apply { extrasFail = IllegalStateException("502") }
+        val controller = controller(gateway, testScheduler)
+
+        controller.loadExtra(AcademyExtra.ACHIEVEMENTS)
+        assertEquals(1, gateway.achievementCalls)
+
+        gateway.extrasFail = null
+        controller.loadExtra(AcademyExtra.ACHIEVEMENTS)
+
+        assertEquals(2, gateway.achievementCalls)
+        assertEquals(1, controller.extras.value.achievements?.earnedCount)
     }
 }

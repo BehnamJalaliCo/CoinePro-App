@@ -34,4 +34,13 @@
     <string name="academy_quiz_your_answer">پاسخ تو</string>
 
     <string name="academy_close">بستن</string>
+    <string name="academy_achievements">نشان‌ها</string>
+    <string name="academy_achievements_count">%1$s از %2$s</string>
+    <string name="academy_leaderboard">جدول امتیازات</string>
+    <string name="academy_leaderboard_rank">رتبهٔ تو: %1$s از %2$s</string>
+    <string name="academy_leaderboard_unranked">هنوز درسی کامل نکرده‌ای، پس رتبه‌ای نداری.</string>
+    <string name="academy_glossary">واژه‌نامه</string>
+    <string name="academy_glossary_search">جست‌وجوی واژه</string>
+    <string name="academy_extra_failed">خوانده نشد.</string>
+    <string name="academy_extra_empty">چیزی اینجا نیست.</string>
 </resources>
