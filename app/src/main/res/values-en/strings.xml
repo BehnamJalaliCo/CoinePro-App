@@ -39,7 +39,7 @@
     <string name="safety_provider_title">Provider truth</string>
     <string name="safety_provider_body">A connection configured on the device is not the same as a verified live one. CoinePro enables provider-dependent actions only from explicit server evidence; missing, stale or failed states stay visible.</string>
     <string name="safety_privacy_title">Privacy</string>
-    <string name="safety_privacy_body">Behavioural analytics are off. No event SDK or new tracking is introduced until its purpose, fields, consent and retention, and ownership have been explicitly reviewed.</string>
+    <string name="safety_privacy_body">This app ships no analytics, advertising or tracking SDK, and reads no location, contacts or advertising id. Your sign-in token is encrypted with a key that never leaves the device and stays on it; signing out clears both the session and the refresh token. Your name and national id are sent only if you complete the identity form, and a chart image only when you send one. A random install id travels with each request so the server’s rate limiter can tell two installs behind one shared IP apart — it is not tied to your account or your device, and clearing app data replaces it.</string>
     <string name="safety_support_title">Support and feedback</string>
     <string name="safety_support_body">Send feedback through the Android share sheet using an app of your choice. The prepared message carries only app version and environment, and never a session token, broker credentials, a chart image or execution secrets.</string>
     <string name="safety_send_feedback">Send feedback</string>

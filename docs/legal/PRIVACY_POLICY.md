@@ -1,0 +1,191 @@
+# سیاست حریم خصوصی — کوین‌پرو
+
+**آخرین بازنگری:** ۱۴۰۵/۰۶/۰۴ · **نسخهٔ اپ:** ۱.۰
+
+> این سند برای فرم **Data safety** در Google Play و برای نمایش داخل اپ نوشته شده است. هر ادعای زیر
+> از روی کد همین مخزن نوشته شده، نه از روی یک الگوی آماده؛ اگر رفتار اپ عوض شد، این فایل هم باید عوض
+> شود. جاهایی که تصمیم با مالک است با **[تکمیل شود]** علامت خورده‌اند.
+
+---
+
+## ۱) این اپ چه کاری می‌کند
+
+کوین‌پرو یک اپلیکیشن **تحلیل و سیگنالِ بازار** است که به دو سرویس مستقل وصل می‌شود:
+
+* **کوین‌پرو اف‌ایکس** — فارکس و فلزات؛ سیگنال، کپی‌تریدینگ، آکادمی و نمودار.
+* **تریدیار** — رمزارز؛ سیگنال، اجرای سفارش روی صرافی، نمودار.
+
+این دو **سیستم جدا** با پایگاه کاربران جدا هستند. حساب یکی، حساب دیگری نیست، و توکن یکی برای دیگری
+بی‌معناست. اپ هر داده‌ای را به‌ازای هر پلتفرم جدا نگه می‌دارد و خروج از یکی، شما را از دیگری خارج
+نمی‌کند.
+
+کوین‌پرو **کارگزار نیست**، پول شما را نگه نمی‌دارد و مشاورهٔ مالی نمی‌دهد.
+
+---
+
+## ۲) چه داده‌هایی جمع می‌شود
+
+### ۲-۱ آنچه روی دستگاه شما می‌ماند و هرگز ارسال نمی‌شود
+
+| داده | کجا | چرا |
+| --- | --- | --- |
+| توکن نشست و توکن تازه‌سازی | DataStore رمزنگاری‌شده با کلید AES-GCM در Android Keystore | شما را وارد نگه می‌دارد |
+| شناسهٔ نصب (`install_id`) | DataStore معمولی | پایین‌تر توضیح داده شده |
+| پلتفرم فعال، زبان، تم | DataStore معمولی | تنظیمات شما |
+| کش قیمت و سیگنال | Room | نمایش آخرین وضعیت وقتی شبکه نیست |
+
+کلید رمزنگاری در Android Keystore ساخته می‌شود و **از دستگاه بیرون نمی‌آید**. اگر قفل صفحهٔ دستگاه
+عوض شود و کلید باطل شود، اپ به‌جای خطا، شما را از حساب خارج می‌کند.
+
+### ۲-۲ آنچه به سرورهای ما فرستاده می‌شود
+
+| داده | چه وقت | به کدام سرور |
+| --- | --- | --- |
+| ایمیل و رمز عبور (یا توکن Google) | هنگام ورود یا ثبت‌نام | همان پلتفرمی که وارد می‌شوید |
+| توکن نشست در هدر `Authorization` | هر درخواست | همان پلتفرم |
+| شناسهٔ نصب در هدر `X-Install-Id` | هر درخواست | همان پلتفرم |
+| توکن اعلان Firebase | وقتی اعلان را روشن می‌کنید | همان پلتفرم |
+| نام، کد ملی، تاریخ تولد، شماره موبایل | فقط اگر خودتان فرم احراز هویت را پر کنید | کوین‌پرو اف‌ایکس |
+| کلید API صرافی | فقط اگر خودتان حساب صرافی وصل کنید | تریدیار |
+| تصویر نمودار | فقط وقتی خودتان عکس را برای تحلیل می‌فرستید | همان پلتفرم |
+| نمادهایی که روی صفحه‌اند | هنگام اتصال به فید قیمت | همان پلتفرم |
+
+**شناسهٔ نصب چیست و چرا هست.** یک رشتهٔ تصادفی است که هنگام اولین اجرا ساخته می‌شود، به هیچ حساب،
+دستگاه یا شمارهٔ سریالی وصل نیست و از هیچ شناسهٔ سخت‌افزاری ساخته نشده. تنها کاری که می‌کند این است
+که محدودکنندهٔ نرخ سرور بتواند دو نصب پشت یک IP مشترک را از هم تشخیص دهد — بدون آن، یک کاربر پرمصرف
+روی شبکهٔ اپراتور، بقیهٔ کاربران همان IP را هم محدود می‌کرد. پاک‌کردن دادهٔ اپ، یک شناسهٔ تازه
+می‌سازد.
+
+### ۲-۳ آنچه اصلاً جمع نمی‌شود
+
+* **هیچ SDK تحلیلی، تبلیغاتی یا ردیابی در اپ نیست.** نه Google Analytics، نه Facebook SDK، نه
+  AppsFlyer، نه هیچ چیز مشابه. تنها کتابخانهٔ Google در اپ، Firebase Messaging برای اعلان است.
+* موقعیت مکانی، دفترچه تلفن، تقویم، میکروفون، فایل‌های شما.
+* شناسهٔ تبلیغاتی (`AAID`)، IMEI، MAC، یا هر شناسهٔ سخت‌افزاری.
+* **گزارش خطای خودکار.** اپ هیچ SDK کرش ندارد؛ گزارش پایداری فقط از Android Vitals در Play Console
+  می‌آید که خود گوگل جمع می‌کند و ما به دادهٔ فردی در آن دسترسی نداریم.
+
+---
+
+## ۳) مجوزهایی که اپ می‌خواهد
+
+| مجوز | برای چه | اگر ندهید |
+| --- | --- | --- |
+| `INTERNET` | بدون آن اپ کاری ندارد | — |
+| `POST_NOTIFICATIONS` | اعلان سیگنال و هشدار | اپ کامل کار می‌کند، فقط اعلان نمی‌گیرید |
+| `CAMERA` | فقط برای عکس‌گرفتن از نمودار در «تحلیل تصویری» | بقیهٔ اپ دست‌نخورده کار می‌کند |
+
+دوربین **فقط** وقتی روشن می‌شود که خودتان در صفحهٔ تحلیل تصویری دکمه را بزنید. تصویر پس از ارسال روی
+دستگاه نگه داشته نمی‌شود.
+
+---
+
+## ۴) داده با چه کسی به اشتراک گذاشته می‌شود
+
+داده‌های شما **فروخته نمی‌شوند**. اشتراک‌گذاری فقط در این موارد است:
+
+* **Google (Firebase Cloud Messaging)** — توکن اعلان و متن اعلان‌ها از زیرساخت گوگل عبور می‌کند.
+  این ذاتی اعلان روی اندروید است.
+* **صرافی LBank** — اگر خودتان حساب صرافی وصل کنید، سفارش‌ها با کلید API خودتان از سمت سرور تریدیار
+  امضا می‌شوند.
+* **بروکر MT5** — اگر کپی‌تریدینگ را فعال کنید.
+* **الزام قانونی** — در حدی که قانون حاکم ایجاب کند.
+
+---
+
+## ۵) نگهداری و حذف
+
+* **روی دستگاه:** خروج از حساب، توکن نشست و توکن تازه‌سازی را هر دو پاک می‌کند. حذف اپ یا پاک‌کردن
+  دادهٔ اپ، همه‌چیز شامل کش و تنظیمات را می‌برد.
+* **روی سرور:** دادهٔ حساب تا زمانی می‌ماند که حساب فعال است. برای حذف حساب و داده‌های آن،
+  **[آدرس یا فرم حذف حساب — تکمیل شود]**.
+
+Google Play از هر اپی که ثبت‌نام دارد می‌خواهد راه حذف حساب از بیرون از اپ هم اعلام شود. تا وقتی آن
+آدرس وجود نداشته باشد، این بند کامل نیست.
+
+---
+
+## ۶) کودکان
+
+این اپ برای افراد **زیر ۱۸ سال نیست** و ما آگاهانه دادهٔ کودکان را جمع نمی‌کنیم.
+
+---
+
+## ۷) تغییرات
+
+تاریخ بالای همین صفحه، تاریخ نسخهٔ معتبر است. تغییر بااهمیت را از داخل اپ اطلاع می‌دهیم.
+
+---
+
+## ۸) تماس
+
+**[ایمیل پشتیبانی — تکمیل شود]** · **[نام و نشانی حقوقی توسعه‌دهنده — تکمیل شود]**
+
+---
+---
+
+# Privacy Policy — CoinePro
+
+**Last reviewed:** 2026-08-26 · **App version:** 1.0
+
+Every claim below was written from this repository's code rather than from a template. Items only
+the owner can supply are marked **[to be completed]**.
+
+## 1) What this app is
+
+CoinePro is a **market analysis and signals** app talking to two independent services — CoinePro-FX
+(forex and metals) and TradeYar (crypto). They are separate systems with separate user tables; an
+account on one is not an account on the other, and the app keeps everything per platform. CoinePro
+is **not a broker**, does not hold your money, and does not give financial advice.
+
+## 2) What is collected
+
+**Stays on your device, never sent:** session and refresh tokens (in a DataStore encrypted with an
+AES-GCM key held in the Android Keystore, which never leaves the device); an install id; your active
+platform, language and theme; a cache of the last prices and signals so the app has something to
+show when the network does not.
+
+**Sent to our servers:** your email and password or Google token at sign-in; the session token on
+every request; the install id in an `X-Install-Id` header; a Firebase notification token if you turn
+notifications on; your name, national id, date of birth and phone number *only* if you complete the
+identity form; an exchange API key *only* if you connect an exchange account; a chart image *only*
+when you send one for analysis; and the list of symbols currently on screen, so the price feed sends
+those and not all 441.
+
+**The install id** is a random string generated on first launch. It is not derived from any hardware
+identifier and is not linked to an account or a device. Its only job is letting the server's rate
+limiter tell two installs behind one shared IP apart — without it, one heavy user on a carrier
+network would rate-limit everyone else on the same address. Clearing app data generates a new one.
+
+**Not collected at all:** there is **no analytics, advertising or tracking SDK in this app** — no
+Google Analytics, no Facebook SDK, no attribution library. The only Google library present is
+Firebase Messaging, for notifications. No location, contacts, calendar, microphone or files. No
+advertising id, IMEI or MAC address. No automatic crash reporting: the app ships no crash SDK, and
+stability data comes only from Android Vitals in the Play Console.
+
+## 3) Permissions
+
+`INTERNET` (the app does nothing without it), `POST_NOTIFICATIONS` (signal alerts — decline and
+everything else still works), and `CAMERA`, used **only** when you press the capture button on the
+image-analysis screen. The image is not kept on the device after it is sent.
+
+## 4) Sharing
+
+Your data is **not sold**. It is shared only with Google (Firebase Cloud Messaging carries
+notification tokens and payloads — inherent to Android notifications), the LBank exchange and an MT5
+broker if *you* connect those accounts, and where the law requires it.
+
+## 5) Retention and deletion
+
+Signing out clears both tokens. Uninstalling or clearing app data removes everything local. For
+server-side account and data deletion: **[deletion URL or form — to be completed]**. Google Play
+requires an out-of-app deletion route for any app with sign-up; this section is incomplete until
+that exists.
+
+## 6) Children
+
+Not intended for anyone under 18. We do not knowingly collect children's data.
+
+## 7) Contact
+
+**[support email — to be completed]** · **[legal developer name and address — to be completed]**
