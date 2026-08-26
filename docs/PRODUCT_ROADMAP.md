@@ -285,6 +285,7 @@ core:designsystem
 core:auth
 core:security
 core:marketdata
+core:chart
 core:symbols
 core:signals
 core:notifications
