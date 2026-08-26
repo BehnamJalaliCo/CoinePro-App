@@ -169,6 +169,40 @@ class IndicatorParityTest {
     }
 
     @Test
+    fun `the pivot ladders match`() {
+        // PivotSession.BAR, because that is what the JavaScript computes. The app draws DAILY —
+        // see PivotSession for why the per-bar version is unusable on an intraday chart — so what
+        // this checks is the formula, which is the part that was ported.
+        val classic = Structure.pivots(CandleSeries(bars), Structure.PivotType.CLASSIC, Structure.PivotSession.BAR)
+        fixture.assertMatches("pivotClassicP", classic[3].values)
+        fixture.assertMatches("pivotClassicR1", classic[2].values)
+        fixture.assertMatches("pivotClassicS1", classic[4].values)
+        fixture.assertMatches(
+            "pivotFibR2",
+            Structure.pivots(CandleSeries(bars), Structure.PivotType.FIBONACCI, Structure.PivotSession.BAR)[1].values,
+        )
+        fixture.assertMatches(
+            "pivotCamarillaR3",
+            Structure.pivots(CandleSeries(bars), Structure.PivotType.CAMARILLA, Structure.PivotSession.BAR)[0].values,
+        )
+        fixture.assertMatches(
+            "pivotWoodieS2",
+            Structure.pivots(CandleSeries(bars), Structure.PivotType.WOODIE, Structure.PivotSession.BAR)[5].values,
+        )
+        fixture.assertMatches(
+            "pivotDemarkP",
+            Structure.pivots(CandleSeries(bars), Structure.PivotType.DEMARK, Structure.PivotSession.BAR)[3].values,
+        )
+    }
+
+    @Test
+    fun `the zigzag picks the same turns`() {
+        // The one study whose output is a shape rather than a number, checked as a series anyway:
+        // a turn one bar out is a different level, and the two products would disagree about it.
+        fixture.assertMatches("zigzag5", Structure.zigzag(CandleSeries(bars), 5.0).first.values)
+    }
+
+    @Test
     fun `a volume indicator on a feed with no volume is empty, not flat zero`() {
         // A flat line at zero is a claim — "no accumulation". Nothing is the truth: no data. The
         // crypto feed reports volume and the forex one does not, so both cases are live in this app.

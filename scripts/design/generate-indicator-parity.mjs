@@ -111,6 +111,22 @@ const RECORD = [
   ['pvt', 'pvt', {}, 'line'],
 ];
 
+// The structure studies return `lines`/`levels`/`markers` rather than a bare series, so they are
+// recorded separately: one entry names the registry key, the index into its `lines` array, and the
+// fixture name. Only the pivot ladder and the zigzag are numeric enough to check this way — the
+// clustering studies are checked by their own properties in Kotlin, because a fixture of cluster
+// prices would pin an arrangement rather than a calculation.
+const RECORD_LINES = [
+  ['pivotClassicP', 'pivotsMulti', { pivotType: 'Classic' }, 3],
+  ['pivotClassicR1', 'pivotsMulti', { pivotType: 'Classic' }, 2],
+  ['pivotClassicS1', 'pivotsMulti', { pivotType: 'Classic' }, 4],
+  ['pivotFibR2', 'pivotsMulti', { pivotType: 'Fibonacci' }, 1],
+  ['pivotCamarillaR3', 'pivotsMulti', { pivotType: 'Camarilla' }, 0],
+  ['pivotWoodieS2', 'pivotsMulti', { pivotType: 'Woodie' }, 5],
+  ['pivotDemarkP', 'pivotsMulti', { pivotType: 'DM' }, 3],
+  ['zigzag5', 'zigzag', { dev: 5 }, 0],
+];
+
 const number = (value) => {
   if (value == null || Number.isNaN(value)) return '';
   if (!Number.isFinite(value)) return '';
@@ -135,6 +151,20 @@ for (const [name, key, inputs, field] of RECORD) {
   recorded.push(`SERIES ${name}\n${series.map(number).join(',')}`);
 }
 
+for (const [name, key, inputs, position] of RECORD_LINES) {
+  const entry = REGISTRY[key];
+  if (!entry) {
+    missing.push(key);
+    continue;
+  }
+  const series = entry.calc(candles, { ...entry.inputs, ...inputs })?.lines?.[position]?.data;
+  if (!Array.isArray(series)) {
+    missing.push(`${key}.lines[${position}]`);
+    continue;
+  }
+  recorded.push(`SERIES ${name}\n${series.map(number).join(',')}`);
+}
+
 if (missing.length) {
   console.error(`not found in the registries: ${missing.join(', ')}`);
   process.exit(1);
@@ -143,7 +173,7 @@ if (missing.length) {
 // Keep everything already in the fixture — the twenty original indicators are still checked by it —
 // and replace only the series this script owns.
 const existing = text.slice(text.indexOf('SERIES ')).trimEnd().split(/\n(?=SERIES )/);
-const owned = new Set(RECORD.map(([name]) => name));
+const owned = new Set([...RECORD, ...RECORD_LINES].map(([name]) => name));
 const kept = existing.filter((block) => !owned.has(block.slice(7, block.indexOf('\n'))));
 const header = text.slice(0, text.indexOf('SERIES '));
 

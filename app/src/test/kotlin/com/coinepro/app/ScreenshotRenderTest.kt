@@ -58,6 +58,7 @@ import com.coinepro.core.chart.DrawingList
 import com.coinepro.core.chart.DrawingActions
 import com.coinepro.core.chart.DrawingState
 import com.coinepro.core.chart.DrawingTools
+import com.coinepro.core.chart.Structure
 import com.coinepro.core.chart.ToolRail
 import com.coinepro.core.chart.ChartDecoration
 import com.coinepro.core.chart.ChartTypePicker
@@ -982,6 +983,57 @@ class ScreenshotRenderTest {
                             ),
                         ),
                     ),
+                ),
+            )
+        }
+    }
+
+    /**
+     * The structure studies, on a chart.
+     *
+     * The seven that answer "where are the levels" rather than "what is the average here". They
+     * needed two drawing shapes the chart did not have, so this is the render that proves both: a
+     * horizontal level with its label clear of the bars, and a marker that points at a swing
+     * without covering the high it is pointing at.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun chartStructure() = capture("48-chart-structure-fa") {
+        val series = ScreenshotFixtures.chartSeries()
+        val zigzag = Structure.zigzag(series, deviationPercent = 1.2)
+        Column(
+            modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
+        ) {
+            // Support and resistance with the swing points that produced them, so the levels can be
+            // checked against the bars they were derived from rather than taken on trust.
+            CoineProChart(
+                series = series,
+                modifier = Modifier.fillMaxWidth().height(300.dp),
+                decoration = ChartDecoration(
+                    levels = Structure.supportResistance(series, lookback = 8, tolerancePercent = 0.15),
+                    markers = Structure.swings(series, left = 8, right = 8),
+                    showVolume = false,
+                ),
+            )
+            // The zigzag and the Fibonacci levels it places on its own last leg.
+            CoineProChart(
+                series = series,
+                modifier = Modifier.fillMaxWidth().height(300.dp),
+                decoration = ChartDecoration(
+                    overlays = listOf(zigzag.first),
+                    markers = zigzag.second,
+                    levels = Structure.autoFibonacci(series, deviationPercent = 1.2),
+                    showVolume = false,
+                ),
+            )
+            // The classic pivot ladder: one solid reference and six dashed levels around it.
+            CoineProChart(
+                series = series,
+                modifier = Modifier.fillMaxWidth().height(260.dp),
+                decoration = ChartDecoration(
+                    overlays = Structure.pivots(series, Structure.PivotType.CLASSIC),
+                    showVolume = false,
                 ),
             )
         }

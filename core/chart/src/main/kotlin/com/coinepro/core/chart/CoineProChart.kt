@@ -237,6 +237,10 @@ fun CoineProChart(
                     }
                 }
             }
+            // Levels and markers sit over the price and under the reader's own drawings: they are
+            // computed structure, and an annotation somebody placed by hand outranks it.
+            decoration.levels.forEach { drawLevel(view, it, plotWidth, measurer) }
+            decoration.markers.forEach { drawMarker(view, it, density.density) }
             if (volumeHeight > 0) drawVolume(view, plotHeight, volumeHeight, palette)
             if (decoration.showAxes) {
                 drawPriceAxis(view, plotWidth, palette, measurer)
@@ -336,7 +340,9 @@ private fun DrawScope.drawOverlay(view: ChartViewport, overlay: ChartLine, densi
         if (value == null) {
             // A gap in the middle of a line — a SuperTrend flip, a missing bar — lifts the pen
             // rather than drawing a straight line across it, which would read as a real move.
-            started = false
+            // Unless the study is one whose gaps are the point: a zigzag names only its turns and
+            // the join between them is the whole shape.
+            if (!overlay.connectNulls) started = false
             continue
         }
         val point = Offset(view.xOf(index), view.yOf(value))
@@ -347,7 +353,18 @@ private fun DrawScope.drawOverlay(view: ChartViewport, overlay: ChartLine, densi
             path.lineTo(point.x, point.y)
         }
     }
-    drawPath(path, color = Color(overlay.colour), style = Stroke(width = overlay.widthDp * density))
+    drawPath(
+        path = path,
+        color = Color(overlay.colour),
+        style = Stroke(
+            width = overlay.widthDp * density,
+            pathEffect = if (overlay.dashed) {
+                PathEffect.dashPathEffect(floatArrayOf(DASH_ON, DASH_OFF))
+            } else {
+                null
+            },
+        ),
+    )
 }
 
 // ---------------------------------------------------------------------------- panes
@@ -443,6 +460,64 @@ private fun DrawScope.drawTimeAxis(
 }
 
 // ---------------------------------------------------------------------------- overlays
+
+/**
+ * One horizontal level, with its label at the left end.
+ *
+ * The label goes left because the right of the plot is where price is, and a row of labels stacked
+ * against the live edge is a row of labels over the bars a reader is actually watching.
+ */
+private fun DrawScope.drawLevel(
+    view: ChartViewport,
+    level: PriceLevel,
+    plotWidth: Float,
+    measurer: TextMeasurer,
+) {
+    val y = view.yOf(level.price)
+    if (y < 0f || y > view.plotHeight) return
+    val colour = Color(level.colour.toInt())
+    val right = if (level.extendRight) plotWidth else view.xOf(view.lastVisible)
+    drawLine(
+        color = colour,
+        start = Offset(0f, y),
+        end = Offset(right, y),
+        strokeWidth = HAIRLINE,
+        pathEffect = PathEffect.dashPathEffect(floatArrayOf(DASH_ON, DASH_OFF)),
+    )
+    val text = level.label ?: return
+    val measured = measurer.measure(text, axisStyle(colour))
+    drawText(measured, topLeft = Offset(AXIS_PADDING, y - measured.size.height - 1f))
+}
+
+/**
+ * One marker, clear of the bar it belongs to.
+ *
+ * Offset above the high or below the low rather than drawn at the price, because a marker on the
+ * high hides the high — and on a swing study the high is the thing being pointed at.
+ */
+private fun DrawScope.drawMarker(view: ChartViewport, marker: ChartMarker, density: Float) {
+    val x = view.xOfTime(marker.time)
+    if (x < 0f || x > view.plotWidth) return
+    val clearance = MARKER_CLEARANCE * density
+    val size = MARKER_SIZE * density
+    val anchor = view.yOf(marker.price) + if (marker.above) -clearance else clearance
+    val colour = Color(marker.colour.toInt())
+    when (marker.glyph) {
+        MarkerGlyph.CIRCLE -> drawCircle(colour, size / 2, Offset(x, anchor))
+        MarkerGlyph.ARROW_UP, MarkerGlyph.ARROW_DOWN -> {
+            val pointsDown = marker.glyph == MarkerGlyph.ARROW_DOWN
+            val tip = if (pointsDown) anchor + size / 2 else anchor - size / 2
+            val base = if (pointsDown) anchor - size / 2 else anchor + size / 2
+            val triangle = Path().apply {
+                moveTo(x, tip)
+                lineTo(x - size / 2, base)
+                lineTo(x + size / 2, base)
+                close()
+            }
+            drawPath(triangle, colour)
+        }
+    }
+}
 
 private fun DrawScope.drawSignal(
     view: ChartViewport,
@@ -602,6 +677,10 @@ private const val ZONE_ALPHA = 0.12f
 
 private const val DASH_ON = 6f
 private const val DASH_OFF = 6f
+
+/** How far a marker sits from the bar's high or low, so it points rather than covers. */
+private const val MARKER_CLEARANCE = 8f
+private const val MARKER_SIZE = 7f
 
 /** Below this a pinch is a drag with slightly uneven fingers, not an intent to zoom. */
 private const val ZOOM_DEADZONE = 0.01f

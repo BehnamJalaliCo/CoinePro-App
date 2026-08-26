@@ -66,14 +66,62 @@ class ChartCatalogTest {
 
     @Test
     fun `exactly these indicators have no help, and the list may only shrink`() {
-        // The web terminal's help was written before these nine were added to it, so there is
-        // nothing to point at. Pinned rather than merely tolerated: a nullable helpId makes it very
-        // easy to add a tenth without noticing, and "no help" is a gap to close, not a default.
+        // The web terminal's help was written before these were added to it, so there is nothing to
+        // point at. Pinned rather than merely tolerated: a nullable helpId makes it very easy to add
+        // one more without noticing, and "no help" is a gap to close, not a default.
         val withoutHelp = ChartCatalog.INDICATORS.filter { it.helpId == null }.map { it.id }
         assertEquals(
-            listOf("envelopes", "stddev", "hv", "mom", "roc", "trix", "fisher", "smiErgodic", "smi"),
+            listOf(
+                "envelopes", "stddev", "hv", "mom", "roc", "trix", "fisher", "smiErgodic", "smi",
+                // The seven structure studies. Their help ids in the web terminal are attached to
+                // the drawing tools of the same name — `fib`, `hline` — which explain the tool a
+                // reader places by hand, not the study that places it for them. Pointing at those
+                // would be worse than pointing at nothing.
+                "pivots", "swings", "fractals", "zigzag", "autofib", "sr", "supplydemand",
+            ),
             withoutHelp,
         )
+    }
+
+    @Test
+    fun `every structure study actually draws something`() {
+        // The structure equivalent of the price-pane check: a study in the list that produces no
+        // lines, no levels and no markers is a switch that does nothing when tapped.
+        //
+        // The series oscillates rather than trending, and that is the whole reason it works. A clean
+        // ramp has no support in it at all — price never revisits a level — so support/resistance
+        // correctly finds nothing on one, and a fixture that trends tests the study by accident
+        // rather than on purpose. This one tops out near the same price four times.
+        val series = CandleSeries(
+            (0 until 200).map { index ->
+                val base = 110.0 + 10 * kotlin.math.sin(index * 2 * Math.PI / 40)
+                val violent = index == 100
+                Candle(
+                    t = 1_700_000_000L + index * 3600,
+                    o = base,
+                    h = base + if (violent) 12.0 else 0.8,
+                    l = base - 0.8,
+                    c = base + if (violent) 10.0 else 0.2,
+                    v = 500.0,
+                )
+            },
+        )
+        for (option in ChartCatalog.INDICATORS.filter { it.pane == IndicatorPane.STRUCTURE }) {
+            assertTrue("${option.id} draws nothing", !ChartCatalog.structureFor(option, series).isEmpty)
+        }
+    }
+
+    @Test
+    fun `a structure study draws nothing through the ordinary overlay path`() {
+        // And the reverse: overlayFor must not quietly return lines for one, or a study would draw
+        // twice — once as an overlay and once as structure.
+        val series = CandleSeries((0 until 60).map { Candle(it.toLong(), 100.0, 101.0, 99.0, 100.5) })
+        for (option in ChartCatalog.INDICATORS.filter { it.pane == IndicatorPane.STRUCTURE }) {
+            assertTrue(ChartCatalog.overlayFor(option, series).isEmpty())
+        }
+        for (option in ChartCatalog.INDICATORS.filterNot { it.pane == IndicatorPane.STRUCTURE }) {
+            assertTrue(ChartCatalog.structureFor(option, series).isEmpty)
+        }
     }
 
     @Test

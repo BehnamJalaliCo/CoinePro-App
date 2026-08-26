@@ -194,6 +194,7 @@ private val IndicatorPane.label: String
     get() = when (this) {
         IndicatorPane.PRICE -> "روی قیمت"
         IndicatorPane.SEPARATE -> "در پنل جدا"
+        IndicatorPane.STRUCTURE -> "ساختار بازار"
     }
 
 @Composable

@@ -72,6 +72,26 @@ enum class IndicatorPane {
 
     /** Drawn in its own pane below, on its own scale. */
     SEPARATE,
+
+    /**
+     * Drawn over the candles, but not as a value per bar.
+     *
+     * Its own pane rather than sharing [PRICE] because it is a different kind of answer. A moving
+     * average says "the average here is 2,614"; a support study says "2,614 is a level" and a swing
+     * study says "this bar mattered". They needed two drawing shapes the chart did not have —
+     * [PriceLevel] and [ChartMarker] — and they are reached through [ChartCatalog.structureFor]
+     * rather than [ChartCatalog.overlayFor], so keeping them apart is the type system agreeing.
+     */
+    STRUCTURE,
+}
+
+/** What a structure study draws: any mix of lines, horizontal levels and per-bar marks. */
+data class StructureOverlay(
+    val lines: List<ChartLine> = emptyList(),
+    val levels: List<PriceLevel> = emptyList(),
+    val markers: List<ChartMarker> = emptyList(),
+) {
+    val isEmpty: Boolean get() = lines.isEmpty() && levels.isEmpty() && markers.isEmpty()
 }
 
 object ChartCatalog {
@@ -166,7 +186,38 @@ object ChartCatalog {
         IndicatorOption("forceIndex", "شاخص نیرو", "forceIndex", IndicatorPane.SEPARATE, 0xFFFB7185, DesignR.drawable.tv_chart_columns),
         IndicatorOption("klinger", "اسیلاتور کلینگر", "klinger", IndicatorPane.SEPARATE, 0xFFA855F7, DesignR.drawable.tv_chart_volcandles),
         IndicatorOption("pvt", "روند قیمت-حجم", "pvt", IndicatorPane.SEPARATE, 0xFF10B981, DesignR.drawable.tv_chart_volcandles),
+
+        // ── Structure: levels and marks rather than a value per bar ─────────────────────────
+        IndicatorOption("pivots", "پیووت (۵ روش)", null, IndicatorPane.STRUCTURE, 0xFF94A3B8, DesignR.drawable.tv_tool_hline),
+        IndicatorOption("swings", "نقاط چرخش", null, IndicatorPane.STRUCTURE, 0xFFF59E0B, DesignR.drawable.tv_tool_arrowdir),
+        IndicatorOption("fractals", "فرکتال ویلیامز", null, IndicatorPane.STRUCTURE, 0xFFF0B90B, DesignR.drawable.tv_tool_arrowdir),
+        IndicatorOption("zigzag", "زیگزاگ", null, IndicatorPane.STRUCTURE, 0xFFF59E0B, DesignR.drawable.tv_tool_trend),
+        IndicatorOption("autofib", "فیبوناچی خودکار", null, IndicatorPane.STRUCTURE, 0xFF22D3EE, DesignR.drawable.tv_tool_fib),
+        IndicatorOption("sr", "حمایت و مقاومت", null, IndicatorPane.STRUCTURE, 0xFFF59E0B, DesignR.drawable.tv_tool_hline),
+        IndicatorOption("supplydemand", "نواحی عرضه و تقاضا", null, IndicatorPane.STRUCTURE, 0xFF00B15C, DesignR.drawable.tv_tool_rect),
     )
+
+    /**
+     * What a structure study draws for a series.
+     *
+     * Separate from [overlayFor] because the return type is genuinely different, and a single
+     * function returning an object where four of five fields are always empty would hide that.
+     */
+    fun structureFor(option: IndicatorOption, series: CandleSeries): StructureOverlay {
+        if (option.pane != IndicatorPane.STRUCTURE || series.isEmpty) return StructureOverlay()
+        return when (option.id) {
+            "pivots" -> StructureOverlay(lines = Structure.pivots(series))
+            "swings" -> StructureOverlay(markers = Structure.swings(series))
+            "fractals" -> StructureOverlay(markers = Structure.fractals(series))
+            "zigzag" -> Structure.zigzag(series).let { (line, markers) ->
+                StructureOverlay(lines = listOf(line), markers = markers)
+            }
+            "autofib" -> StructureOverlay(levels = Structure.autoFibonacci(series))
+            "sr" -> StructureOverlay(levels = Structure.supportResistance(series))
+            "supplydemand" -> StructureOverlay(levels = Structure.supplyDemand(series))
+            else -> StructureOverlay()
+        }
+    }
 
     /**
      * Defaults for the two regression curves.

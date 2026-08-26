@@ -13,6 +13,58 @@ data class ChartLine(
     val widthDp: Float = 1.2f,
     /** A label for the legend, e.g. "EMA 20". */
     val label: String? = null,
+    /**
+     * Drawn as a dashed line.
+     *
+     * For the pivot levels, where it carries meaning rather than decoration: the pivot itself is
+     * solid and the six levels around it are dashed, so a glance says which line is the reference
+     * and which are derived from it.
+     */
+    val dashed: Boolean = false,
+    /**
+     * Join across the gaps instead of breaking at them.
+     *
+     * Off by default and it must stay off by default: for an indicator a gap is a warm-up or a
+     * missing bar, and bridging it draws a straight line through data that does not exist. The
+     * zigzag is the opposite case — every bar between two turns is deliberately absent and the join
+     * across them *is* the study.
+     */
+    val connectNulls: Boolean = false,
+)
+
+/**
+ * A horizontal line at one price, with a label.
+ *
+ * Not a [ChartLine] with the same value in every slot. A level has no time dimension at all — it is
+ * true across the whole plot and past its right edge, into bars that have not printed — and one
+ * value per bar is both the wrong shape and, on a thousand-bar series, a thousand times the memory
+ * for one number.
+ */
+data class PriceLevel(
+    val price: Double,
+    val colour: Long,
+    /** Drawn at the level's left end. Null draws the line and nothing else. */
+    val label: String? = null,
+    /** Whether the line continues past the last bar, into the space a trade would play out in. */
+    val extendRight: Boolean = true,
+)
+
+/** What a marker looks like. */
+enum class MarkerGlyph { ARROW_UP, ARROW_DOWN, CIRCLE }
+
+/**
+ * A mark on one bar — a swing point, a fractal, a zigzag turn.
+ *
+ * [above] places it clear of the bar's high rather than at [price] exactly, because a marker drawn
+ * *on* the high is a marker that hides the high.
+ */
+data class ChartMarker(
+    val time: Long,
+    val price: Double,
+    val above: Boolean,
+    val colour: Long,
+    val glyph: MarkerGlyph,
+    val text: String? = null,
 )
 
 /**
@@ -79,6 +131,10 @@ data class ChartDecoration(
     val drawings: List<Drawing> = emptyList(),
     /** Which drawing shows its handles. Only one at a time — see [drawDrawing]. */
     val selectedDrawingId: Long? = null,
+    /** Horizontal levels: pivots, auto-Fibonacci, support and resistance, supply and demand. */
+    val levels: List<PriceLevel> = emptyList(),
+    /** Per-bar marks: swing points, fractals, zigzag turns. */
+    val markers: List<ChartMarker> = emptyList(),
     /** Whether the volume pane is drawn. Hidden when the feed reports none — see [CandleSeries]. */
     val showVolume: Boolean = true,
     /** Whether the price grid and its labels are drawn. Off for a thumbnail. */
