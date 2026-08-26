@@ -276,6 +276,15 @@ class ScreenshotRenderTest {
                     row.forEach { CoineProAssetLogo(symbol = it, size = 42.dp) }
                 }
             }
+            // Forex and the metals: two discs each, base in front, and the notch between them.
+            listOf(
+                listOf("XAUUSD", "XAGUSD", "EURUSD", "GBPUSD", "USDJPY", "USDCHF"),
+                listOf("AUDUSD", "NZDUSD", "USDCAD", "EURGBP", "USDTRY", "USDZAR"),
+            ).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf)) {
+                    row.forEach { CoineProAssetLogo(symbol = it, size = 42.dp) }
+                }
+            }
             Row(
                 modifier = Modifier.padding(top = CoineProSpacing.One),
                 horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
@@ -286,6 +295,7 @@ class ScreenshotRenderTest {
                     CoineProAssetLogo(symbol = "XRPUSDT", size = size)
                     CoineProAssetLogo(symbol = "XLMUSDT", size = size)
                     CoineProAssetLogo(symbol = "SOLUSDT", size = size)
+                    CoineProAssetLogo(symbol = "EURUSD", size = size)
                 }
             }
         }

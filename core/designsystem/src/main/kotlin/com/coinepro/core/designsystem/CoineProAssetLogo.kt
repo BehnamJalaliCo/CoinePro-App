@@ -47,6 +47,11 @@ fun CoineProAssetLogo(
     modifier: Modifier = Modifier,
     size: Dp = 42.dp,
 ) {
+    // A forex or metal market is a pair and is drawn as one; only a coin is a single disc.
+    if (isPairSymbol(symbol)) {
+        CoineProPairLogo(symbol = symbol, modifier = modifier, size = size)
+        return
+    }
     val logo = logoFor(symbol)
     if (logo != null) {
         Image(
