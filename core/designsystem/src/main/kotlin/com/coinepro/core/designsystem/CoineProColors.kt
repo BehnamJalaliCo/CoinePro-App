@@ -51,6 +51,47 @@ object CoineProColors {
     val Border: Color @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.border
 
     /**
+     * The ground a chart draws on — one step below the stage in the dark theme.
+     *
+     * A chart is a dense field of thin strokes and it reads better on a ground that recedes further
+     * than the page around it.
+     */
+    val Terminal: Color @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.terminal
+
+    /** One step above [SurfaceElevated] — for a sheet over a card, or a popover over a sheet. */
+    val SurfaceOverlay: Color
+        @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.surfaceOverlay
+
+    /** Under a pointer, where there is one. */
+    val SurfaceHover: Color
+        @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.surfaceHover
+
+    /** Under a finger. */
+    val SurfacePressed: Color
+        @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.surfacePressed
+
+    /** The faintest rule: closes a shape, never divides anything. */
+    val BorderSubtle: Color
+        @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.borderSubtle
+
+    /** For a selected edge, or a divider that has to be seen rather than felt. */
+    val BorderStrong: Color
+        @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.borderStrong
+
+    /** Text on a control that cannot be used. Distinct from [TextMuted], which is text that can. */
+    val TextDisabled: Color
+        @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.textDisabled
+
+    /** The analysis blue — chart, markets, AI. Never decorative; see [PageAccent]. */
+    val Analysis: Color @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.analysis
+
+    /** The social green — copy trading, community. */
+    val Social: Color @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.social
+
+    /** Classic gold, for subscription and premium only. Never a generic active state. */
+    val Premium: Color @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.premium
+
+    /**
      * The hairline around an instrument logo.
      *
      * A separate token from [Border] because it is solving a different problem: many coin marks are

@@ -592,6 +592,24 @@ class ScreenshotRenderTest {
         }
     }
 
+    /**
+     * The four page accents side by side, which is the only way to review the rule.
+     *
+     * The rule is that a domain colour is never decorative: gold executes, blue analyses, green is
+     * social, premium gold is subscription. Reviewing it one screen at a time cannot catch the
+     * failure it is guarding against — two domains that ended up the same colour — because on any
+     * single screen both look fine.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1400dp-xxhdpi")
+    fun designKit() = capture("55-design-kit-fa") { DesignKit() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1400dp-xxhdpi")
+    fun designKitLight() {
+        capture("56-design-kit-fa-light", darkTheme = false) { DesignKit() }
+    }
+
     @Test
     fun tools() = capture("05-tools") {
         ToolsScreen(onOpenConnections = {}, onOpenNews = {}, onOpenCalendar = {})

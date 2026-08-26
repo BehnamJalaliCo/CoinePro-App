@@ -40,6 +40,8 @@ import com.coinepro.core.auth.SessionState
 import com.coinepro.core.datastore.ActivePlatformStore
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.PageAccent
+import com.coinepro.core.designsystem.ProvidePageAccent
 import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.execution.ExecutionController
@@ -137,6 +139,34 @@ private fun executionRoute(signalId: Long) = "execution/$signalId"
  * encoding it costs nothing and a symbol that ever grows a slash would otherwise route nowhere.
  */
 private fun chartRoute(symbol: String) = "chart/" + Uri.encode(symbol)
+
+/**
+ * Which domain a route belongs to.
+ *
+ * Analysis is anything whose whole job is reading the market — the market list, a chart, a search,
+ * news, the calendar, the AI screens. Social is copy trading. Premium is nothing yet: the
+ * subscription screen is not built, and listing a route here that does not exist would be a rule
+ * with no case. Everything else is brand gold, which is the app acting on the reader's account.
+ *
+ * Home is deliberately **not** analysis, even though it carries a market list. Its hero is the
+ * balance and its primary action is "generate a signal" — the screen is about the account, and the
+ * one gold object on it should be the thing that acts. The market list is a passenger there; the
+ * dedicated markets surface is the search route, and that one is blue.
+ */
+private fun accentFor(route: String?): PageAccent = when (route) {
+    MARKET_SEARCH_ROUTE,
+    CHART_PATTERN,
+    NEWS_ROUTE,
+    CALENDAR_ROUTE,
+    AI_VISION_ROUTE,
+    AI_ASSISTANT_ROUTE,
+    AppDestination.AI.route,
+    -> PageAccent.ANALYSIS
+
+    CONNECTIONS_ROUTE -> PageAccent.SOCIAL
+
+    else -> PageAccent.BRAND
+}
 private fun lessonRoute(slug: String) = "academy/lesson/" + Uri.encode(slug)
 
 @Composable
@@ -637,6 +667,13 @@ private fun MainShell(
             }
         },
     ) { innerPadding ->
+        // The accent for whatever is on screen, set once here rather than by every screen.
+        //
+        // Wrapping the NavHost rather than each destination means a screen cannot forget: the
+        // accent is a property of the route, and the route is what changed. Anything not named
+        // below is brand gold, which is the right default for the parts of the app that act on an
+        // account rather than analyse a market.
+        ProvidePageAccent(accentFor(currentRoute)) {
         NavHost(
             navController = navController,
             startDestination = AppDestination.HOME.route,
@@ -879,6 +916,7 @@ private fun MainShell(
                     onOpenDiagnostics = { navController.navigate(ADMIN_ROUTE) },
                 )
             }
+        }
         }
     }
 }

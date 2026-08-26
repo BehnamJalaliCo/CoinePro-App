@@ -172,3 +172,73 @@ Do not introduce:
 - fake urgency counters
 - random motion/orbs
 - fake AI progress
+
+---
+
+## The token layer (adopted 2026-08)
+
+The palette is no longer chosen twice. `core:designsystem` now carries the neutral ladder from
+`foundation-v2.css` — the token layer the owner's own web terminal already ships — so a reader
+moving between the app and the terminal is not looking at two different machines.
+
+What was adopted is the **structure**:
+
+* A five-step surface ladder instead of three, plus separate hover and pressed steps. That is what
+  lets this app keep separating cards by gap rather than by rules: a sheet over a card over the page
+  is legible without a single border.
+* Three border weights, so the hairline that closes a shape and the rule that divides a list are not
+  the same colour.
+* A `terminal` ground one step below the stage, because a chart is a dense field of thin strokes and
+  reads better on a ground that recedes further than the page around it.
+* Three durations — 100 / 160 / 240ms — on `cubic-bezier(.2, 0, 0, 1)`.
+* The tint formula for every surface that means something: the base pulled **8%** toward the
+  meaning's colour, with a border pulled **34%**. Not alpha. Alpha over an unknown ground gives one
+  colour on a card and another on the page, and the same "selected" state then looks like two
+  different states depending where it sits.
+
+What was **not** adopted is the identity. `foundation-v2` uses Binance yellow `#F0B90B` for brand and
+execution; this app's gold is `#D8A848`, sampled from the CoinePro mark. Taking their yellow would be
+taking another company's brand.
+
+### One button, three identities
+
+`LocalPageAccent` is set once per navigation destination and read by every primary button, selected
+chip and selected border. A domain colour is never decorative: blue on a chart screen does not mean
+somebody liked blue there, it means *this screen reads the market*.
+
+| Accent | Where | Colour |
+| --- | --- | --- |
+| Analysis | markets search, chart, news, calendar, the AI screens | `#2962FF` |
+| Brand | trade, orders, account, subscription | `#D8A848` |
+| Social | copy trading | `#00B15C` |
+
+There are three, not the terminal's four. Its fourth is a premium gold, `#D4AF37`, distinct from its
+brand yellow — and that distinction does not survive here, because this brand's gold *is* the same
+metal. Shipping two golds a reader cannot tell apart, under a rule claiming they mean different
+things, would be a rule with no teeth. Premium is marked by treatment instead: the tinted card and
+its label, with the brand accent under it.
+
+Gold splits into a **fill** and an **ink** value instead, and the split is load-bearing. The fill is
+the brand mid-tone in both themes; the ink is darkened in the light theme, where the mid-tone
+measures 2.1:1 on white. Filling a button with the ink value gives near-black text on dark brown,
+which is precisely the failure the pair exists to prevent.
+
+### The discipline rules, now enforced
+
+`scripts/quality/check-motion-policy.sh` grew a second half. It fails the build on:
+
+* **any blur** — `Modifier.blur`, `BlurEffect`, `RenderEffect.createBlur`. Elevation is a hairline
+  plus at most one very soft shadow. On Android this is a performance rule as much as a visual one:
+  a blurred panel behind a scrolling list is a render-effect pass per frame.
+* **coloured shadows** — `ambientColor`/`spotColor`. A shadow is black at low alpha; colour belongs
+  in the fill or the border.
+* **gradients outside the allow-list.** Two kinds earn a place: the brand mark and the agent orb,
+  which *are* the metal and would be a different logo as a flat fill; and a moving band reporting
+  work in flight or a chart's own area fill, where the gradient is the shape carrying the meaning.
+  A gradient on a card, a header or a button is what makes an interface look like a skin rather than
+  a system, and that is the case being banned.
+
+`55-design-kit-fa.png` and its light twin render the accents, the ladder and the tinted cards on one
+page. That is deliberate: the failure these rules guard against — two domains that ended up the same
+colour, two ladder steps that are not distinguishable — cannot be seen one screen at a time, because
+on any single screen a wrong accent still looks like a decision.

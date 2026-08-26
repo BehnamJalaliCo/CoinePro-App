@@ -2,6 +2,7 @@ package com.coinepro.core.designsystem
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,11 +46,29 @@ fun CoineProCard(
         vertical = CoineProSpacing.CardVertical,
     ),
     elevated: Boolean = false,
+    /**
+     * A meaning, tinted into the card.
+     *
+     * Null is the ordinary card and stays a plain block. A colour turns it into the tinted variant
+     * — the surface pulled 8% toward it, with a hairline pulled 34% — which is how a warning, a
+     * selected row and a premium block are told apart from the cards around them without any of
+     * them being *coloured*. See [CoineProTint] for why those two numbers and not alpha.
+     */
+    accent: Color? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val base = if (elevated) CoineProColors.SurfaceElevated else CoineProColors.Surface
+    val fill = if (accent == null) base else CoineProTint.fill(accent, base)
     Column(
         modifier = modifier
-            .background(if (elevated) CoineProColors.SurfaceElevated else CoineProColors.Surface, shape)
+            .background(fill, shape)
+            .let { plain ->
+                if (accent == null) {
+                    plain
+                } else {
+                    plain.border(1.dp, CoineProTint.edge(accent), shape)
+                }
+            }
             .padding(contentPadding),
         content = content,
     )
@@ -70,18 +91,26 @@ fun CoineProPrimaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Surface(
         onClick = onClick,
-        modifier = modifier.alpha(if (enabled) 1f else DISABLED_ALPHA),
+        modifier = modifier
+            .alpha(if (enabled) 1f else DISABLED_ALPHA)
+            .pressScale(interaction, CoineProPress.CTA),
         enabled = enabled,
         shape = CoineProPillShape,
-        color = CoineProColors.Gold,
+        // The screen's own accent, not a fixed gold. One button component, four identities: gold
+        // where an action executes, blue where it analyses, green where it is social, premium gold
+        // where it costs money. The alternative is a variant parameter every call site has to get
+        // right, and the one that forgets ships a gold "execute" on an analysis screen.
+        color = CoineProColors.pageAccent,
+        interactionSource = interaction,
     ) {
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
             style = MaterialTheme.typography.labelLarge,
-            color = CoineProColors.OnAccent,
+            color = CoineProColors.onPageAccent,
             textAlign = TextAlign.Center,
         )
     }
@@ -94,11 +123,13 @@ fun CoineProSecondaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Surface(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.pressScale(interaction, CoineProPress.CONTROL),
         shape = CoineProPillShape,
         color = CoineProColors.SurfaceElevated,
+        interactionSource = interaction,
     ) {
         Text(
             text = text,
