@@ -44,7 +44,13 @@ import com.coinepro.core.auth.LoginConfigState
 import com.coinepro.core.auth.SessionState
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProAssetLogo
+import com.coinepro.core.chart.ActiveToolBar
 import com.coinepro.core.chart.ChartCatalog
+import com.coinepro.core.chart.ChartPoint
+import com.coinepro.core.chart.Drawing
+import com.coinepro.core.chart.DrawingList
+import com.coinepro.core.chart.DrawingTools
+import com.coinepro.core.chart.ToolRail
 import com.coinepro.core.chart.ChartDecoration
 import com.coinepro.core.chart.ChartTypePicker
 import com.coinepro.core.chart.IndicatorPicker
@@ -824,6 +830,45 @@ class ScreenshotRenderTest {
         )
         capture("39-help-rsi-fa") {
             HelpBody(entry = catalog["rsi"]!!, modifier = Modifier.fillMaxSize())
+        }
+    }
+
+    /**
+     * The fifty-two drawing tools, with the glyphs TradingView already draws them with.
+     *
+     * A grid of unlabelled icons would be unusable and a list of Persian names without pictures
+     * would be too — a reader looking for "کمان فیبوناچی" needs both. Whether four across is right
+     * is a pixel question, which is why this is a screenshot.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun toolRail() = capture("40-tool-rail-fa") {
+        ToolRail(selected = "fib", onSelect = {}, onHelp = {}, modifier = Modifier.fillMaxSize())
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun activeToolBar() = capture("41-active-tool-fa") {
+        Column(
+            modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
+        ) {
+            ActiveToolBar(
+                tool = DrawingTools["xabcd"],
+                placed = 2,
+                onCancel = {},
+                onUndo = {},
+                onHelp = {},
+            )
+            DrawingList(
+                drawings = listOf(
+                    Drawing(1, "trend", listOf(ChartPoint(1, 100.0), ChartPoint(2, 110.0))),
+                    Drawing(2, "fib", listOf(ChartPoint(1, 100.0), ChartPoint(2, 110.0)), colour = 0xFF6E8BE0),
+                    Drawing(3, "hline", listOf(ChartPoint(1, 105.0)), colour = 0xFF00B15C),
+                ),
+                onSelect = {},
+                onDelete = {},
+            )
         }
     }
 

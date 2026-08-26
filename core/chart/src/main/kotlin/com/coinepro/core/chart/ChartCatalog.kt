@@ -1,5 +1,8 @@
 package com.coinepro.core.chart
 
+import androidx.annotation.DrawableRes
+import com.coinepro.core.designsystem.R as DesignR
+
 /**
  * The chart types a reader can choose, and the indicators they can add.
  *
@@ -17,6 +20,15 @@ data class ChartTypeOption(
     val label: String,
     /** The «؟» entry id in the help catalogue. */
     val helpId: String,
+    /**
+     * TradingView's own glyph for this chart type.
+     *
+     * There is one for every type, drawn as a tiny picture of the thing — two candles, a Renko
+     * staircase, a Kagi zigzag. A list of eleven chart types with no pictures asks the reader to
+     * know what "لاین‌بریک" looks like before they can choose it, which defeats the point of
+     * offering it.
+     */
+    @DrawableRes val icon: Int,
 )
 
 /**
@@ -33,6 +45,15 @@ data class IndicatorOption(
     val pane: IndicatorPane,
     /** ARGB. Several indicators draw more than one line and pick shades around this. */
     val colour: Long,
+    /**
+     * A glyph for the *kind* of indicator, not for the indicator itself.
+     *
+     * Nobody publishes a distinct icon per indicator — TradingView included, which lists them as
+     * plain text. Twenty copies of one generic symbol would say nothing, so these say what shape
+     * the thing draws: a line, a channel, an oscillating wave, a histogram, a ruler, a direction.
+     * That is the distinction a reader scanning the list is actually making.
+     */
+    @DrawableRes val icon: Int,
 )
 
 enum class IndicatorPane {
@@ -53,44 +74,44 @@ object ChartCatalog {
      * go looking for.
      */
     val CHART_TYPES: List<ChartTypeOption> = listOf(
-        ChartTypeOption(ChartType.CANDLES, "کندل", "candles"),
-        ChartTypeOption(ChartType.HOLLOW, "کندل توخالی", "hollow"),
-        ChartTypeOption(ChartType.HEIKIN_ASHI, "هایکین‌آشی", "heikin"),
-        ChartTypeOption(ChartType.BARS, "میله‌ای (OHLC)", "bars"),
-        ChartTypeOption(ChartType.LINE, "خطی", "line"),
-        ChartTypeOption(ChartType.AREA, "ناحیه‌ای", "area"),
-        ChartTypeOption(ChartType.RENKO, "رنکو", "renko"),
-        ChartTypeOption(ChartType.RANGE, "رنج", "range"),
-        ChartTypeOption(ChartType.LINE_BREAK, "لاین‌بریک", "linebreak"),
-        ChartTypeOption(ChartType.KAGI, "کاگی", "kagi"),
-        ChartTypeOption(ChartType.POINT_AND_FIGURE, "نقطه و رقم", "pnf"),
+        ChartTypeOption(ChartType.CANDLES, "کندل", "candles", DesignR.drawable.tv_chart_candles),
+        ChartTypeOption(ChartType.HOLLOW, "کندل توخالی", "hollow", DesignR.drawable.tv_chart_hollow),
+        ChartTypeOption(ChartType.HEIKIN_ASHI, "هایکین‌آشی", "heikin", DesignR.drawable.tv_chart_heikin),
+        ChartTypeOption(ChartType.BARS, "میله‌ای (OHLC)", "bars", DesignR.drawable.tv_chart_bars),
+        ChartTypeOption(ChartType.LINE, "خطی", "line", DesignR.drawable.tv_chart_line),
+        ChartTypeOption(ChartType.AREA, "ناحیه‌ای", "area", DesignR.drawable.tv_chart_area),
+        ChartTypeOption(ChartType.RENKO, "رنکو", "renko", DesignR.drawable.tv_chart_renko),
+        ChartTypeOption(ChartType.RANGE, "رنج", "range", DesignR.drawable.tv_chart_range),
+        ChartTypeOption(ChartType.LINE_BREAK, "لاین‌بریک", "linebreak", DesignR.drawable.tv_chart_linebreak),
+        ChartTypeOption(ChartType.KAGI, "کاگی", "kagi", DesignR.drawable.tv_chart_kagi),
+        ChartTypeOption(ChartType.POINT_AND_FIGURE, "نقطه و رقم", "pnf", DesignR.drawable.tv_chart_pnf),
     )
 
     /** The twenty indicators the engine computes, grouped the way a trader thinks about them. */
     val INDICATORS: List<IndicatorOption> = listOf(
         // Trend — on the price.
-        IndicatorOption("sma", "میانگین متحرک ساده", "ma", IndicatorPane.PRICE, 0xFFD8A848),
-        IndicatorOption("ema", "میانگین متحرک نمایی", "ema", IndicatorPane.PRICE, 0xFF6E8BE0),
-        IndicatorOption("wma", "میانگین متحرک وزنی", "wma", IndicatorPane.PRICE, 0xFF9B7BE0),
-        IndicatorOption("hma", "میانگین متحرک هال", "hma", IndicatorPane.PRICE, 0xFF4FB3A5),
-        IndicatorOption("bollinger", "باند بولینگر", "bb", IndicatorPane.PRICE, 0xFF8E9BAE),
-        IndicatorOption("keltner", "کانال کلتنر", "keltner", IndicatorPane.PRICE, 0xFF7FA3C7),
-        IndicatorOption("donchian", "کانال دونچیان", "donchian", IndicatorPane.PRICE, 0xFFB08BC7),
-        IndicatorOption("ichimoku", "ایچیموکو", "ichimoku", IndicatorPane.PRICE, 0xFFC77F9B),
-        IndicatorOption("supertrend", "سوپرترند", "supertrend", IndicatorPane.PRICE, 0xFF00B15C),
-        IndicatorOption("vwap", "میانگین وزنی حجم", "vwap", IndicatorPane.PRICE, 0xFFE0A85C),
+        IndicatorOption("sma", "میانگین متحرک ساده", "ma", IndicatorPane.PRICE, 0xFFD8A848, DesignR.drawable.tv_chart_line),
+        IndicatorOption("ema", "میانگین متحرک نمایی", "ema", IndicatorPane.PRICE, 0xFF6E8BE0, DesignR.drawable.tv_chart_line),
+        IndicatorOption("wma", "میانگین متحرک وزنی", "wma", IndicatorPane.PRICE, 0xFF9B7BE0, DesignR.drawable.tv_chart_line),
+        IndicatorOption("hma", "میانگین متحرک هال", "hma", IndicatorPane.PRICE, 0xFF4FB3A5, DesignR.drawable.tv_chart_line),
+        IndicatorOption("bollinger", "باند بولینگر", "bb", IndicatorPane.PRICE, 0xFF8E9BAE, DesignR.drawable.tv_tool_flatchannel),
+        IndicatorOption("keltner", "کانال کلتنر", "keltner", IndicatorPane.PRICE, 0xFF7FA3C7, DesignR.drawable.tv_tool_flatchannel),
+        IndicatorOption("donchian", "کانال دونچیان", "donchian", IndicatorPane.PRICE, 0xFFB08BC7, DesignR.drawable.tv_tool_flatchannel),
+        IndicatorOption("ichimoku", "ایچیموکو", "ichimoku", IndicatorPane.PRICE, 0xFFC77F9B, DesignR.drawable.tv_chart_hlcarea),
+        IndicatorOption("supertrend", "سوپرترند", "supertrend", IndicatorPane.PRICE, 0xFF00B15C, DesignR.drawable.tv_tool_trend),
+        IndicatorOption("vwap", "میانگین وزنی حجم", "vwap", IndicatorPane.PRICE, 0xFFE0A85C, DesignR.drawable.tv_chart_volcandles),
 
         // Momentum and volatility — their own scale.
-        IndicatorOption("rsi", "شاخص قدرت نسبی", "rsi", IndicatorPane.SEPARATE, 0xFFD8A848),
-        IndicatorOption("macd", "مکدی", "macd", IndicatorPane.SEPARATE, 0xFF6E8BE0),
-        IndicatorOption("stochastic", "استوکاستیک", "stoch", IndicatorPane.SEPARATE, 0xFF4FB3A5),
-        IndicatorOption("cci", "شاخص کانال کالا", "cci", IndicatorPane.SEPARATE, 0xFF9B7BE0),
-        IndicatorOption("williams", "ویلیامز R%", "willr", IndicatorPane.SEPARATE, 0xFFC77F9B),
-        IndicatorOption("atr", "میانگین دامنهٔ واقعی", "atr", IndicatorPane.SEPARATE, 0xFF8E9BAE),
-        IndicatorOption("adx", "شاخص میانگین جهت‌دار", "adx", IndicatorPane.SEPARATE, 0xFFE0A85C),
-        IndicatorOption("choppiness", "شاخص چاپینس", "choppiness", IndicatorPane.SEPARATE, 0xFF7FA3C7),
-        IndicatorOption("vortex", "ورتکس", "vortex", IndicatorPane.SEPARATE, 0xFFB08BC7),
-        IndicatorOption("obv", "حجم متعادل", "obv", IndicatorPane.SEPARATE, 0xFF00B15C),
+        IndicatorOption("rsi", "شاخص قدرت نسبی", "rsi", IndicatorPane.SEPARATE, 0xFFD8A848, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("macd", "مکدی", "macd", IndicatorPane.SEPARATE, 0xFF6E8BE0, DesignR.drawable.tv_chart_columns),
+        IndicatorOption("stochastic", "استوکاستیک", "stoch", IndicatorPane.SEPARATE, 0xFF4FB3A5, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("cci", "شاخص کانال کالا", "cci", IndicatorPane.SEPARATE, 0xFF9B7BE0, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("williams", "ویلیامز R%", "willr", IndicatorPane.SEPARATE, 0xFFC77F9B, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("atr", "میانگین دامنهٔ واقعی", "atr", IndicatorPane.SEPARATE, 0xFF8E9BAE, DesignR.drawable.tv_ruler),
+        IndicatorOption("adx", "شاخص میانگین جهت‌دار", "adx", IndicatorPane.SEPARATE, 0xFFE0A85C, DesignR.drawable.tv_tool_arrowdir),
+        IndicatorOption("choppiness", "شاخص چاپینس", "choppiness", IndicatorPane.SEPARATE, 0xFF7FA3C7, DesignR.drawable.tv_ruler),
+        IndicatorOption("vortex", "ورتکس", "vortex", IndicatorPane.SEPARATE, 0xFFB08BC7, DesignR.drawable.tv_tool_arrowdir),
+        IndicatorOption("obv", "حجم متعادل", "obv", IndicatorPane.SEPARATE, 0xFF00B15C, DesignR.drawable.tv_chart_columns),
     )
 
     /**

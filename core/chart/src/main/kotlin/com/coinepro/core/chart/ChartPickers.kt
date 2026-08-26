@@ -1,5 +1,6 @@
 package com.coinepro.core.chart
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,10 +23,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.R as DesignR
 
 /**
  * The chart-type list.
@@ -52,6 +56,7 @@ fun ChartTypePicker(
             PickerRow(
                 label = option.label,
                 subtitle = if (option.type.isTimeBased) null else TIME_FREE_NOTE,
+                icon = option.icon,
                 selected = option.type == selected,
                 accent = null,
                 onClick = { onSelect(option.type) },
@@ -86,6 +91,7 @@ fun IndicatorPicker(
             PickerRow(
                 label = option.label,
                 subtitle = null,
+                icon = option.icon,
                 selected = option.id in active,
                 accent = Color(option.colour),
                 onClick = { onToggle(option) },
@@ -97,6 +103,7 @@ fun IndicatorPicker(
             PickerRow(
                 label = option.label,
                 subtitle = null,
+                icon = option.icon,
                 selected = option.id in active,
                 accent = Color(option.colour),
                 onClick = { onToggle(option) },
@@ -123,6 +130,7 @@ private fun GroupHeader(text: String) {
 private fun PickerRow(
     label: String,
     subtitle: String?,
+    @DrawableRes icon: Int,
     selected: Boolean,
     accent: Color?,
     onClick: () -> Unit,
@@ -136,17 +144,20 @@ private fun PickerRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
-        // A colour swatch, so the list says which line on the chart belongs to which row. Only for
-        // indicators; a chart type has no line of its own.
-        if (accent != null) {
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .clip(CircleShape)
-                    .background(if (selected) accent else Color.Transparent)
-                    .border(1.dp, accent, CircleShape),
-            )
-        }
+        // TradingView's own glyph. On an indicator it is tinted with that indicator's line colour,
+        // so the icon and the swatch are one thing rather than two: the row says "this draws a
+        // channel, in this colour" in a single mark.
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = when {
+                accent != null && selected -> accent
+                accent != null -> accent.copy(alpha = INACTIVE_ICON_ALPHA)
+                selected -> CoineProColors.Accent
+                else -> CoineProColors.TextMuted
+            },
+        )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = label,
@@ -176,26 +187,34 @@ private fun PickerRow(
 /**
  * The «؟».
  *
- * Deliberately a full circle rather than a bare glyph: at this size a lone question mark beside
- * Persian text reads as punctuation belonging to the label, and people do not tap punctuation.
+ * TradingView's circled question mark rather than a Persian «؟» set in text. The typed character
+ * was wrong twice over: at this size it reads as punctuation belonging to the label rather than as
+ * a control, and it inherits the text font, so it sat at a different weight and baseline from every
+ * other mark in the row.
  */
 @Composable
 private fun HelpDot(onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .size(24.dp)
+            .size(28.dp)
             .clip(CircleShape)
-            .border(1.dp, CoineProColors.Border, CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = "؟",
-            style = MaterialTheme.typography.labelMedium,
-            color = CoineProColors.TextMuted,
+        Icon(
+            painter = painterResource(DesignR.drawable.tv_help_circle),
+            contentDescription = HELP_LABEL,
+            modifier = Modifier.size(18.dp),
+            tint = CoineProColors.TextMuted,
         )
     }
 }
 
 /** Said once, on the types it is true of: their x axis is not a clock. */
 private const val TIME_FREE_NOTE = "مستقل از زمان — هر میله با حرکت قیمت ساخته می‌شود"
+
+/** Read aloud in place of the icon, which has no text of its own. */
+private const val HELP_LABEL = "راهنما"
+
+/** An unselected indicator keeps its colour, faintly, so the list still colour-codes itself. */
+private const val INACTIVE_ICON_ALPHA = 0.45f
