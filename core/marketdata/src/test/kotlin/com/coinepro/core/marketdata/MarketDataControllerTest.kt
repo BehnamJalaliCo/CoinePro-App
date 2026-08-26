@@ -95,12 +95,34 @@ class MarketDataControllerTest {
     }
 
     @Test
-    fun an_unrecognised_symbol_belongs_to_the_feed_it_arrived_on() {
-        val onCrypto = WireQuoteDto(symbol = "SOMETHINGNEW", price = 1.0, ts = 100L, source = "lbank")
+    fun a_symbol_the_app_cannot_draw_is_not_offered_as_a_market() {
+        // This reverses an earlier rule, and the reversal is the owner's: the app used to accept
+        // any symbol either feed sent and draw a lettered grey disc for the ones it had no mark
+        // for. Beside forty real logos that does not read as a symbol, it reads as a broken image.
+        //
+        // The cost is real and is worth writing down: a genuinely new listing is now invisible
+        // until `download-tv-logos.py` has been run and the app rebuilt. That is a slower path than
+        // "the server added it, so it appears" — and it is the trade the owner asked for, because
+        // what it removes is a long tail nobody opened the app to see.
+        for (platform in MarketPlatform.entries) {
+            assertNull(
+                platform.name,
+                WireQuoteDto(symbol = "SOMETHINGNEW", price = 1.0, ts = 100L, source = "lbank")
+                    .toDomain(nowMs = 100L, platform = platform),
+            )
+        }
+    }
+
+    @Test
+    fun a_symbol_the_app_can_draw_still_belongs_to_the_feed_it_arrived_on() {
+        // The half of the old rule that survives: which market type a symbol gets is decided by the
+        // feed it came in on, not by a hard-coded list. A server adding SOL to the crypto feed does
+        // not need this app to be told that SOL is crypto.
+        val onCrypto = WireQuoteDto(symbol = "SOLUSDT", price = 1.0, ts = 100L, source = "lbank")
             .toDomain(nowMs = 100L, platform = MarketPlatform.TRADEYAR)
         assertEquals(MarketType.CRYPTO, onCrypto?.instrument?.marketType)
 
-        val onForex = WireQuoteDto(symbol = "SOMETHINGNEW", price = 1.0, ts = 100L, source = "finnhub")
+        val onForex = WireQuoteDto(symbol = "EURUSD", price = 1.0, ts = 100L, source = "finnhub")
             .toDomain(nowMs = 100L, platform = MarketPlatform.COINEPRO_FX)
         assertEquals(MarketType.FOREX, onForex?.instrument?.marketType)
     }

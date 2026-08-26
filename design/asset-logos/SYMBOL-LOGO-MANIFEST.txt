@@ -15,6 +15,7 @@ aca          binance-icons/crypto
 ach          binance-icons/crypto
 acm          binance-icons/crypto
 act          tv-logos/crypto
+actn         tv-logos/crypto
 ada          binance-icons/crypto
 adadown      binance-icons/crypto
 adaup        binance-icons/crypto
@@ -23,6 +24,7 @@ adx          binance-icons/crypto
 ae           binance-icons/crypto
 aeon         tv-logos/crypto
 aergo        binance-icons/crypto
+aeur         tv-logos/crypto
 agi          binance-icons/crypto
 agix         binance-icons/crypto
 agld         binance-icons/crypto
@@ -32,6 +34,7 @@ akro         binance-icons/crypto
 alcx         binance-icons/crypto
 algo         binance-icons/crypto
 alice        binance-icons/crypto
+alpaca       tv-logos/crypto
 alpha        binance-icons/crypto
 alpine       binance-icons/crypto
 amb          binance-icons/crypto
@@ -44,6 +47,7 @@ antold       binance-icons/crypto
 any          binance-icons/crypto
 ape          tv-logos/crypto
 apex         tv-logos/crypto
+api3         tv-logos/crypto
 appc         binance-icons/crypto
 apt          binance-icons/crypto
 ar           binance-icons/crypto
@@ -53,10 +57,12 @@ arg          crypto-icons
 ark          binance-icons/crypto
 arn          binance-icons/crypto
 arnx         tv-logos/crypto
+arpa         tv-logos/crypto
 ary          crypto-icons
 ast          binance-icons/crypto
 astr         binance-icons/crypto
 ata          binance-icons/crypto
+atd          tv-logos/crypto
 atlas        tv-logos/crypto
 atm          binance-icons/crypto
 atom         binance-icons/crypto
@@ -70,6 +76,8 @@ axs          binance-icons/crypto
 axsold       binance-icons/crypto
 aywa         crypto-icons
 bab          tv-logos/crypto
+badger       tv-logos/crypto
+bake         tv-logos/crypto
 bal          binance-icons/crypto
 band         binance-icons/crypto
 bar          binance-icons/crypto
@@ -126,6 +134,7 @@ bos          tv-logos/crypto
 bot          binance-icons/crypto
 bpt          tv-logos/crypto
 bq           crypto-icons
+bqx          tv-logos/crypto
 brd          binance-icons/crypto
 bsd          tv-logos/crypto
 bsv          tv-logos/crypto
@@ -217,6 +226,7 @@ deez         tv-logos/crypto
 dego         binance-icons/crypto
 dent         binance-icons/crypto
 dew          tv-logos/crypto
+dexe         tv-logos/crypto
 df           binance-icons/crypto
 dgb          binance-icons/crypto
 dgd          tv-logos/crypto
@@ -233,7 +243,7 @@ dotup        binance-icons/crypto
 drep         binance-icons/crypto
 drepold      binance-icons/crypto
 drgn         crypto-icons
-drop         crypto-icons
+drop         tv-logos/crypto
 dta          tv-logos/crypto
 dth          tv-logos/crypto
 dtr          tv-logos/crypto
@@ -252,6 +262,7 @@ elec         tv-logos/crypto
 elf          binance-icons/crypto
 elix         tv-logos/crypto
 ella         crypto-icons
+elon         tv-logos/crypto
 emb          tv-logos/crypto
 emc          tv-logos/crypto
 emc2         tv-logos/crypto
@@ -283,6 +294,7 @@ ethdown      binance-icons/crypto
 ethfi        tv-logos/crypto
 ethos        tv-logos/crypto
 ethup        binance-icons/crypto
+ethw         tv-logos/crypto
 etn          tv-logos/crypto
 etp          tv-logos/crypto
 eur          crypto-icons
@@ -290,6 +302,7 @@ evx          binance-icons/crypto
 exmo         crypto-icons
 exp          tv-logos/crypto
 fair         tv-logos/crypto
+farm         tv-logos/crypto
 fct          tv-logos/crypto
 fet          binance-icons/crypto
 fida         binance-icons/crypto
@@ -368,7 +381,7 @@ hodl         tv-logos/crypto
 hot          binance-icons/crypto
 hpb          tv-logos/crypto
 hsr          tv-logos/crypto
-ht           crypto-icons
+ht           tv-logos/crypto
 html         tv-logos/crypto
 huc          tv-logos/crypto
 husd         tv-logos/crypto
@@ -391,6 +404,7 @@ iost         binance-icons/crypto
 iota         binance-icons/crypto
 iotx         binance-icons/crypto
 iq           binance-icons/crypto
+iris         tv-logos/crypto
 itc          tv-logos/crypto
 jasmy        binance-icons/crypto
 jex          binance-icons/crypto
@@ -412,6 +426,8 @@ kncl         binance-icons/crypto
 kp3r         binance-icons/crypto
 krb          crypto-icons
 ksm          binance-icons/crypto
+lazio        tv-logos/crypto
+lba          tv-logos/crypto
 lbc          tv-logos/crypto
 ldo          binance-icons/crypto
 lend         binance-icons/crypto
@@ -487,7 +503,7 @@ near         binance-icons/crypto
 nebl         binance-icons/crypto
 neo          binance-icons/crypto
 neos         tv-logos/crypto
-neu          crypto-icons
+neu          tv-logos/crypto
 nexo         binance-icons/crypto
 nft          binance-icons/crypto
 ngc          tv-logos/crypto
@@ -502,6 +518,7 @@ nsbt         binance-icons/crypto
 ntbc         crypto-icons
 nu           binance-icons/crypto
 nuls         binance-icons/crypto
+nvt          tv-logos/crypto
 nxs          binance-icons/crypto
 nxt          tv-logos/crypto
 oax          binance-icons/crypto
@@ -555,6 +572,7 @@ pol          tv-logos/crypto
 polis        crypto-icons
 pols         binance-icons/crypto
 poly         binance-icons/crypto
+polyx        tv-logos/crypto
 pond         binance-icons/crypto
 pot          tv-logos/crypto
 powr         binance-icons/crypto
@@ -602,7 +620,8 @@ rep          binance-icons/crypto
 repv1        binance-icons/crypto
 repv2        tv-logos/crypto
 req          binance-icons/crypto
-rhoc         crypto-icons
+rgt          tv-logos/crypto
+rhoc         tv-logos/crypto
 ric          crypto-icons
 rif          binance-icons/crypto
 rise         tv-logos/crypto
@@ -641,7 +660,7 @@ sky          binance-icons/crypto
 slp          binance-icons/crypto
 slpold       binance-icons/crypto
 slr          tv-logos/crypto
-sls          crypto-icons
+sls          tv-logos/crypto
 smart        tv-logos/crypto
 sngls        binance-icons/crypto
 snm          binance-icons/crypto
@@ -655,6 +674,7 @@ spacehbit    crypto-icons
 spank        tv-logos/crypto
 sparta       binance-icons/crypto
 spartaold    binance-icons/crypto
+spell        tv-logos/crypto
 sphtx        crypto-icons
 srm          binance-icons/crypto
 srn          tv-logos/crypto
@@ -690,7 +710,7 @@ sxpup        binance-icons/crypto
 sys          binance-icons/crypto
 t            binance-icons/crypto
 taas         tv-logos/crypto
-tau          crypto-icons
+tau          tv-logos/crypto
 tbx          tv-logos/crypto
 tct          binance-icons/crypto
 tel          tv-logos/crypto
@@ -705,7 +725,7 @@ tkn          tv-logos/crypto
 tko          binance-icons/crypto
 tks          tv-logos/crypto
 tlm          binance-icons/crypto
-tnb          crypto-icons
+tnb          tv-logos/crypto
 tnc          tv-logos/crypto
 tnt          tv-logos/crypto
 tomo         binance-icons/crypto
@@ -722,6 +742,7 @@ trx          binance-icons/crypto
 trxdown      binance-icons/crypto
 trxup        binance-icons/crypto
 tusd         binance-icons/crypto
+tvk          tv-logos/crypto
 twt          binance-icons/crypto
 tzc          crypto-icons
 ubq          tv-logos/crypto
@@ -738,10 +759,12 @@ usdc         binance-icons/crypto
 usdp         binance-icons/crypto
 usds         binance-icons/crypto
 usdt         binance-icons/crypto
+ust          tv-logos/crypto
 utk          binance-icons/crypto
 vai          binance-icons/crypto
 veri         tv-logos/crypto
 vet          binance-icons/crypto
+vgx          tv-logos/crypto
 via          binance-icons/crypto
 vib          binance-icons/crypto
 vibe         tv-logos/crypto
@@ -749,6 +772,7 @@ vidt         binance-icons/crypto
 vite         binance-icons/crypto
 vivo         crypto-icons
 voxel        binance-icons/crypto
+vrab         tv-logos/crypto
 vrc          tv-logos/crypto
 vrsc         crypto-icons
 vrt          binance-icons/crypto
@@ -759,12 +783,14 @@ wabi         binance-icons/crypto
 wan          binance-icons/crypto
 waves        binance-icons/crypto
 wax          tv-logos/crypto
+waxp         tv-logos/crypto
 wbnb         binance-icons/crypto
 wbtc         binance-icons/crypto
 weth         binance-icons/crypto
 wgr          tv-logos/crypto
 wicc         tv-logos/crypto
 wif          binance (raster)
+win          tv-logos/crypto
 wing         binance-icons/crypto
 wings        binance-icons/crypto
 wld          tv-logos/crypto
@@ -808,7 +834,7 @@ xtz          binance-icons/crypto
 xtzdown      binance-icons/crypto
 xtzup        binance-icons/crypto
 xuc          tv-logos/crypto
-xvc          crypto-icons
+xvc          tv-logos/crypto
 xvg          binance-icons/crypto
 xvs          binance-icons/crypto
 xym          binance-icons/crypto
@@ -817,6 +843,7 @@ yfi          binance-icons/crypto
 yfidown      binance-icons/crypto
 yfii         binance-icons/crypto
 yfiup        binance-icons/crypto
+ygg          tv-logos/crypto
 yoyo         binance-icons/crypto
 yoyow        tv-logos/crypto
 zcl          tv-logos/crypto
@@ -830,21 +857,12 @@ zk           tv-logos/crypto
 zrx          binance-icons/crypto
 
 # Dropped as too large to read at icon size; these fall back to the token:
-# alpaca     binance-icons/crypto
-# api3       binance-icons/crypto
 # asr        binance-icons/crypto
-# atd        binance-icons/crypto
 # audio      binance-icons/crypto
-# badger     binance-icons/crypto
 # city       binance-icons/crypto
 # d          crypto-icons
-# ez         binance-icons/crypto
-# farm       binance-icons/crypto
-# joe        binance-icons/crypto
+# ez         binance-icons/crypto, tv-logos/crypto
+# joe        binance-icons/crypto, tv-logos/crypto
 # klown      crypto-icons
-# lazio      binance-icons/crypto
-# lba        binance-icons/crypto
-# people     binance-icons/crypto
-# spell      binance-icons/crypto
-# ust        binance-icons/crypto
+# people     binance-icons/crypto, tv-logos/crypto
 # ustc       binance-icons/crypto

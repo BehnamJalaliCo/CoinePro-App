@@ -85,11 +85,32 @@ RETRIES = 3
 WORKERS = 8
 
 
-def bases_in_table() -> list[str]:
-    """Every base the shipped lookup already knows, so the fetch covers what the app can show."""
-    if not TABLE.exists():
-        return []
-    return re.findall(r'^\s*"([^"]+)" to R\.drawable\.', TABLE.read_text(), re.MULTILINE)
+# Every archive on disk, so the fetch is seeded by what the *sources* know rather than by what has
+# already converted. Seeding from the shipped table was circular: a symbol no archive could convert
+# was never in the table, so TradingView was never asked for it — and TradingView is exactly the
+# source most likely to have the one the others lack.
+ARCHIVE_ROOTS = (
+    "binance-icons/crypto",
+    "crypto-icons",
+    "binance",
+    "tv-logos/crypto",
+)
+
+
+def bases_to_fetch() -> list[str]:
+    """Every symbol name any archive knows, plus everything the shipped lookup already carries."""
+    names: set[str] = set()
+    root = REPO / "design" / "asset-logos"
+    for subset in ARCHIVE_ROOTS:
+        directory = root / subset
+        if not directory.is_dir():
+            continue
+        for path in directory.iterdir():
+            if path.suffix.lower() in (".svg", ".png", ".webp"):
+                names.add(path.stem.upper())
+    if TABLE.exists():
+        names.update(re.findall(r'^\s*"([^"]+)" to R\.drawable\.', TABLE.read_text(), re.MULTILINE))
+    return sorted(names)
 
 
 def fetch(url: str) -> bytes | None:
@@ -147,7 +168,7 @@ def main() -> int:
 
     jobs: list[tuple[str, str, str]] = []
 
-    crypto = [b.upper() for b in (arguments.only or bases_in_table())]
+    crypto = [b.upper() for b in (arguments.only or bases_to_fetch())]
     # A base with a character TradingView's path cannot carry is not a base it draws either.
     crypto = sorted({b for b in crypto if re.fullmatch(r"[A-Z0-9]{2,12}", b)})
     for base in crypto:

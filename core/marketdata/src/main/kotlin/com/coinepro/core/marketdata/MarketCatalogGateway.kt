@@ -2,6 +2,7 @@ package com.coinepro.core.marketdata
 
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketQuote
+import com.coinepro.core.symbols.SymbolArtwork
 import com.coinepro.core.symbols.SymbolClassifier
 import com.coinepro.core.symbols.SymbolMeta
 import retrofit2.Retrofit
@@ -64,7 +65,12 @@ class NetworkMarketCatalogGateway private constructor(
             // not what makes it one.
             markets = response.prices.keys
                 .filterNot(SymbolClassifier::isNoise)
-                .map(SymbolClassifier::classify),
+                .map(SymbolClassifier::classify)
+                // A market the app cannot draw is a market it does not list. The lettered token —
+                // a grey disc with a "D" in it — does not read as "this is DOGE" beside forty real
+                // logos; it reads as a broken image, and a screenful of them reads as a broken app.
+                // Leaving out the long tail nobody asked for costs less than presenting it badly.
+                .filter(SymbolArtwork::covers),
             quotes = quotes,
             serverTimeEpochMillis = response.serverTimeMs,
         )

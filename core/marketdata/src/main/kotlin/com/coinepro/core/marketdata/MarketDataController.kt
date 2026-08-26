@@ -6,6 +6,7 @@ import com.coinepro.core.model.MarketQuote
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.QuoteSource
 import com.coinepro.core.symbols.SymbolCategory
+import com.coinepro.core.symbols.SymbolArtwork
 import com.coinepro.core.symbols.SymbolClassifier
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
@@ -374,6 +375,14 @@ internal fun WireQuoteDto.toDomain(nowMs: Long, platform: MarketPlatform): Marke
     val normalizedSymbol = symbol?.trim()?.uppercase()?.takeIf { it.isNotEmpty() } ?: return null
     // Feed noise — bare digits, two-character fragments, leveraged-token shards. Not markets.
     if (SymbolClassifier.isNoise(normalizedSymbol)) return null
+    // And a market with no artwork is not offered. Both feeds converge here, so this is the one
+    // place the rule needs stating: a lettered grey disc beside forty real logos reads as a broken
+    // image rather than as a symbol, and the long tail it would be showing is not what anybody
+    // opened the app for. See SymbolArtwork.
+    //
+    // This is the *market list* path. A position a reader actually holds must still be shown
+    // whatever its logo, and the portfolio screen will not come through here.
+    if (!SymbolArtwork.covers(normalizedSymbol)) return null
     val normalizedPrice = price?.takeIf { it > 0 } ?: run {
         val normalizedBid = bid ?: return null
         val normalizedAsk = ask ?: return null
