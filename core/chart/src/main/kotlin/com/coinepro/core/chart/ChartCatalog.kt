@@ -1,6 +1,7 @@
 package com.coinepro.core.chart
 
 import androidx.annotation.DrawableRes
+import java.util.Locale
 import com.coinepro.core.designsystem.R as DesignR
 
 /**
@@ -113,6 +114,23 @@ object ChartCatalog {
         IndicatorOption("vortex", "ورتکس", "vortex", IndicatorPane.SEPARATE, 0xFFB08BC7, DesignR.drawable.tv_tool_arrowdir),
         IndicatorOption("obv", "حجم متعادل", "obv", IndicatorPane.SEPARATE, 0xFF00B15C, DesignR.drawable.tv_chart_columns),
     )
+
+    /**
+     * The indicators whose Persian name or ticker contains [query].
+     *
+     * Deliberately a plain substring rather than the ranked matcher `core:symbols` uses. That one
+     * scores subsequences, so «ما» would drag in half the list through letters it merely passes
+     * through; here the reader is filtering a list they can already see, and a filter that returns
+     * things they did not ask for reads as broken. Both the Persian label and the Latin id match, so
+     * «rsi» and «قدرت» find the same row.
+     */
+    fun matchingIndicators(query: String): List<IndicatorOption> {
+        val needle = query.trim().lowercase(Locale.ROOT)
+        if (needle.isEmpty()) return INDICATORS
+        return INDICATORS.filter {
+            needle in it.label.lowercase(Locale.ROOT) || needle in it.id.lowercase(Locale.ROOT)
+        }
+    }
 
     /**
      * Compute one indicator's price-scale lines for a series.

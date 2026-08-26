@@ -169,6 +169,26 @@ object DrawingTools {
 
     fun inGroup(group: ToolGroup): List<DrawingTool> = ALL.filter { it.group == group }
 
+    /**
+     * Tools whose Persian name or id contains what was typed.
+     *
+     * A plain substring match rather than the ranked matcher `core:symbols` uses for markets, and
+     * deliberately: that one exists to order a thousand candidates, while this filters fifty-two
+     * whose names a reader is choosing between by eye anyway. Ranking here would reorder the groups
+     * out from under them for no gain.
+     *
+     * The id is searched as well as the label, so somebody who knows the tool as "fib" from the web
+     * terminal finds it without switching keyboards.
+     */
+    fun matching(query: String): List<DrawingTool> {
+        val needle = query.trim().lowercase()
+        if (needle.isEmpty()) return ALL
+        return ALL.filter { tool ->
+            tool.label.contains(needle, ignoreCase = true) ||
+                tool.id.contains(needle, ignoreCase = true)
+        }
+    }
+
     /** The groups that actually have tools, in the rail's order. */
     val GROUPS: List<ToolGroup> = ToolGroup.entries.filter { group -> ALL.any { it.group == group } }
 

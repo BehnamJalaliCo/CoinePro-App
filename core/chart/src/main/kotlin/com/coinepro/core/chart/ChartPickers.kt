@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,6 +21,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,12 +32,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.coinepro.core.designsystem.CoineProChip
+import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProSheetEmpty
+import com.coinepro.core.designsystem.CoineProSheetSearch
+import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.R as DesignR
 
 /**
  * The chart-type list.
+ *
+ * Eleven rows in two groups, and the grouping is the whole point. Six of these eleven have no clock
+ * on the x axis at all — a Renko brick appears when price moves, not when time passes — and that is
+ * the single fact a reader needs before choosing one. It was previously printed as a subtitle under
+ * each of the six, which said the same sentence six times; said once, over a heading, it is a
+ * distinction rather than a repetition.
  *
  * Every row carries a «؟». That is not decoration and it is not optional: this list offers Kagi and
  * Point & Figure beside candles, and a professional audience still contains people who have never
@@ -48,14 +65,27 @@ fun ChartTypePicker(
     modifier: Modifier = Modifier,
     onHelp: ((String) -> Unit)? = null,
 ) {
+    val timed = ChartCatalog.CHART_TYPES.filter { it.type.isTimeBased }
+    val untimed = ChartCatalog.CHART_TYPES.filterNot { it.type.isTimeBased }
     LazyColumn(
         modifier = modifier.fillMaxWidth().background(CoineProColors.Surface),
-        contentPadding = PaddingValues(vertical = CoineProSpacing.One),
+        contentPadding = PaddingValues(bottom = CoineProSpacing.Two),
     ) {
-        items(ChartCatalog.CHART_TYPES, key = { it.type }) { option ->
+        item { GroupHeader("زمان‌محور") }
+        items(timed, key = { it.type }) { option ->
             PickerRow(
                 label = option.label,
-                subtitle = if (option.type.isTimeBased) null else TIME_FREE_NOTE,
+                icon = option.icon,
+                selected = option.type == selected,
+                accent = null,
+                onClick = { onSelect(option.type) },
+                onHelp = onHelp?.let { { it(option.helpId) } },
+            )
+        }
+        item { GroupHeader("قیمت‌محور — هر میله با حرکت قیمت ساخته می‌شود، نه با گذر زمان") }
+        items(untimed, key = { it.type }) { option ->
+            PickerRow(
+                label = option.label,
                 icon = option.icon,
                 selected = option.type == selected,
                 accent = null,
@@ -67,11 +97,16 @@ fun ChartTypePicker(
 }
 
 /**
- * The indicator list, grouped by where each one draws.
+ * The indicator list.
  *
- * The grouping is the useful distinction rather than an alphabet: a reader adding a third overlay
- * to the price is making a different decision from one opening a fourth pane below it, and the list
- * should say which they are about to do.
+ * Same chrome as the drawing tools — a search field over a filter row over the list — because these
+ * two sheets sit one tap apart on the same toolbar and a reader should not have to learn each of
+ * them separately. The tools get a grid because a drawing tool has a picture of itself; indicators
+ * get a list because they do not, and a grid of twenty identical wave glyphs would be a puzzle.
+ *
+ * The filter is by pane, which is the useful distinction rather than an alphabet: a reader adding a
+ * third overlay to the price is making a different decision from one opening a fourth pane below
+ * it, and the list should say which they are about to do.
  */
 @Composable
 fun IndicatorPicker(
@@ -80,38 +115,84 @@ fun IndicatorPicker(
     modifier: Modifier = Modifier,
     onHelp: ((String) -> Unit)? = null,
 ) {
-    val onPrice = ChartCatalog.INDICATORS.filter { it.pane == IndicatorPane.PRICE }
-    val separate = ChartCatalog.INDICATORS.filter { it.pane == IndicatorPane.SEPARATE }
-    LazyColumn(
-        modifier = modifier.fillMaxWidth().background(CoineProColors.Surface),
-        contentPadding = PaddingValues(vertical = CoineProSpacing.One),
-    ) {
-        item { GroupHeader("روی قیمت") }
-        items(onPrice, key = { it.id }) { option ->
-            PickerRow(
-                label = option.label,
-                subtitle = null,
-                icon = option.icon,
-                selected = option.id in active,
-                accent = Color(option.colour),
-                onClick = { onToggle(option) },
-                onHelp = onHelp?.let { { it(option.helpId) } },
+    var pane by remember { mutableStateOf<IndicatorPane?>(null) }
+    var query by remember { mutableStateOf("") }
+
+    // Typing overrides the chips rather than intersecting with them, exactly as in the tool rail.
+    // Somebody who types «مکدی» wants MACD, not "MACD if it happens to be in the pane I last
+    // tapped" — and an empty result the reader cannot explain is the worst outcome of two filters
+    // combining quietly.
+    val searching = query.isNotBlank()
+    val shown = when {
+        searching -> ChartCatalog.matchingIndicators(query)
+        pane != null -> ChartCatalog.INDICATORS.filter { it.pane == pane }
+        else -> ChartCatalog.INDICATORS
+    }
+
+    Column(modifier = modifier.fillMaxWidth().background(CoineProColors.Surface)) {
+        CoineProSheetSearch(
+            value = query,
+            onValueChange = { query = it },
+            placeholder = "جست‌وجوی اندیکاتور",
+            modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
+        )
+        Spacer(Modifier.height(CoineProSpacing.OneHalf))
+        if (!searching) {
+            CoineProChipRow(
+                options = IndicatorPane.entries.map { candidate ->
+                    CoineProChip(
+                        id = candidate.name,
+                        label = candidate.label,
+                        count = ChartCatalog.INDICATORS.count { it.pane == candidate },
+                    )
+                },
+                selectedId = pane?.name,
+                onSelect = { id -> pane = id?.let(IndicatorPane::valueOf) },
+                allLabel = "همه",
             )
+            Spacer(Modifier.height(CoineProSpacing.One))
         }
-        item { GroupHeader("در پنل جدا") }
-        items(separate, key = { it.id }) { option ->
-            PickerRow(
-                label = option.label,
-                subtitle = null,
-                icon = option.icon,
-                selected = option.id in active,
-                accent = Color(option.colour),
-                onClick = { onToggle(option) },
-                onHelp = onHelp?.let { { it(option.helpId) } },
-            )
+
+        if (shown.isEmpty()) {
+            CoineProSheetEmpty("اندیکاتوری با این نام پیدا نشد.")
+            return@Column
+        }
+
+        // A heading only when the list actually spans both panes. Printing «روی قیمت» over a list
+        // the reader just filtered *to* «روی قیمت» is a line of noise.
+        val grouped = !searching && pane == null
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(bottom = CoineProSpacing.Two),
+        ) {
+            var last: IndicatorPane? = null
+            for (option in shown) {
+                if (grouped && option.pane != last) {
+                    last = option.pane
+                    val heading = option.pane
+                    item(key = "h-${heading.name}") { GroupHeader(heading.label) }
+                }
+                item(key = option.id) {
+                    PickerRow(
+                        label = option.label,
+                        icon = option.icon,
+                        selected = option.id in active,
+                        accent = Color(option.colour),
+                        onClick = { onToggle(option) },
+                        onHelp = onHelp?.let { { it(option.helpId) } },
+                    )
+                }
+            }
         }
     }
 }
+
+/** What the chip and the heading call each pane. */
+private val IndicatorPane.label: String
+    get() = when (this) {
+        IndicatorPane.PRICE -> "روی قیمت"
+        IndicatorPane.SEPARATE -> "در پنل جدا"
+    }
 
 @Composable
 private fun GroupHeader(text: String) {
@@ -120,8 +201,10 @@ private fun GroupHeader(text: String) {
         style = MaterialTheme.typography.labelSmall,
         color = CoineProColors.TextMuted,
         modifier = Modifier.padding(
-            horizontal = CoineProSpacing.Gutter,
-            vertical = CoineProSpacing.One,
+            start = CoineProSpacing.Gutter,
+            end = CoineProSpacing.Gutter,
+            top = CoineProSpacing.OneHalf,
+            bottom = CoineProSpacing.Half,
         ),
     )
 }
@@ -129,18 +212,37 @@ private fun GroupHeader(text: String) {
 @Composable
 private fun PickerRow(
     label: String,
-    subtitle: String?,
     @DrawableRes icon: Int,
     selected: Boolean,
     accent: Color?,
     onClick: () -> Unit,
     onHelp: (() -> Unit)?,
 ) {
+    // A selected row is a filled, hairlined card rather than a tick alone at the far end. On a
+    // fifty-row list the reader scans down the left of the labels, and a mark parked on the other
+    // side of the screen is the last thing they see. The whole row changing state is the first.
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(
+                horizontal = CoineProSpacing.OneHalf,
+                vertical = ROW_GAP,
+            )
+            .clip(CoineProShapes.small)
+            .background(if (selected) CoineProColors.SurfaceElevated else Color.Transparent)
+            .then(
+                if (selected) {
+                    Modifier.border(
+                        width = 1.dp,
+                        color = accent?.copy(alpha = SELECTED_BORDER_ALPHA) ?: CoineProColors.Accent,
+                        shape = CoineProShapes.small,
+                    )
+                } else {
+                    Modifier
+                },
+            )
             .clickable(onClick = onClick)
-            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.OneHalf),
+            .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
@@ -158,26 +260,19 @@ private fun PickerRow(
                 else -> CoineProColors.TextMuted
             },
         )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (selected) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            )
-            if (subtitle != null) {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = CoineProColors.TextMuted,
-                )
-            }
-        }
-        if (selected && accent == null) {
-            Text(
-                text = "✓",
-                style = MaterialTheme.typography.bodyLarge,
-                color = CoineProColors.Accent,
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (selected) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            modifier = Modifier.weight(1f),
+        )
+        if (selected) {
+            Icon(
+                painter = painterResource(DesignR.drawable.icon_check_circle),
+                contentDescription = SELECTED_LABEL,
+                modifier = Modifier.size(18.dp),
+                tint = accent ?: CoineProColors.Accent,
             )
         }
         if (onHelp != null) HelpDot(onClick = onHelp)
@@ -205,16 +300,30 @@ private fun HelpDot(onClick: () -> Unit) {
             painter = painterResource(DesignR.drawable.tv_help_circle),
             contentDescription = HELP_LABEL,
             modifier = Modifier.size(18.dp),
-            tint = CoineProColors.TextMuted,
+            // Brighter than the muted text it sat in before, which made it look disabled — it is a
+            // control, and on a list of eleven chart types it is the one that answers the question
+            // the reader actually has.
+            tint = CoineProColors.TextSecondary,
         )
     }
 }
 
-/** Said once, on the types it is true of: their x axis is not a clock. */
-private const val TIME_FREE_NOTE = "مستقل از زمان — هر میله با حرکت قیمت ساخته می‌شود"
-
 /** Read aloud in place of the icon, which has no text of its own. */
 private const val HELP_LABEL = "راهنما"
 
+/** Read aloud on the tick, which otherwise announces nothing. */
+private const val SELECTED_LABEL = "انتخاب‌شده"
+
 /** An unselected indicator keeps its colour, faintly, so the list still colour-codes itself. */
 private const val INACTIVE_ICON_ALPHA = 0.45f
+
+/**
+ * A selected row's hairline, at a fraction of the indicator's own colour.
+ *
+ * Full strength would put a saturated rectangle around every active indicator and turn a list into
+ * a set of competing boxes; this is the same 0.34 the design tokens use for a tinted surface.
+ */
+private const val SELECTED_BORDER_ALPHA = 0.34f
+
+/** Between rows, so a selected card has air around it rather than touching its neighbours. */
+private val ROW_GAP = 3.dp

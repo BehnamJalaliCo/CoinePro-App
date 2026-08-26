@@ -61,6 +61,7 @@ import com.coinepro.core.chart.ChartType
 import com.coinepro.core.chart.CoineProChart
 import com.coinepro.core.chart.Indicators
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProSheetBody
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.feature.search.SearchScreen
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -803,23 +804,33 @@ class ScreenshotRenderTest {
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
     fun chartTypePicker() = capture("37-chart-type-picker-fa") {
-        ChartTypePicker(
-            selected = ChartType.HEIKIN_ASHI,
-            onSelect = {},
-            onHelp = {},
-            modifier = Modifier.fillMaxSize(),
-        )
+        CoineProSheetBody(
+            title = "نوع چارت",
+            subtitle = "۱۱ نوع — برای راهنما «؟» را بزن",
+        ) {
+            ChartTypePicker(
+                selected = ChartType.HEIKIN_ASHI,
+                onSelect = {},
+                onHelp = {},
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
     fun indicatorPicker() = capture("38-indicator-picker-fa") {
-        IndicatorPicker(
-            active = setOf("ema", "bollinger", "rsi"),
-            onToggle = {},
-            onHelp = {},
-            modifier = Modifier.fillMaxSize(),
-        )
+        CoineProSheetBody(
+            title = "اندیکاتورها",
+            subtitle = "۲۰ اندیکاتور — برای راهنما «؟» را بزن",
+        ) {
+            IndicatorPicker(
+                active = setOf("ema", "bollinger", "rsi"),
+                onToggle = {},
+                onHelp = {},
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 
     @Test
@@ -843,7 +854,12 @@ class ScreenshotRenderTest {
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
     fun toolRail() = capture("40-tool-rail-fa") {
-        ToolRail(selected = "fib", onSelect = {}, onHelp = {}, modifier = Modifier.fillMaxSize())
+        CoineProSheetBody(
+            title = "ابزارهای ترسیم",
+            subtitle = "۵۲ ابزار — برای راهنما روی هر کدام نگه دار",
+        ) {
+            ToolRail(selected = "fib", onSelect = {}, onHelp = {})
+        }
     }
 
     @Test
