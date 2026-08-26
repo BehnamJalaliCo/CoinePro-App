@@ -137,5 +137,44 @@ private val ALIASES = mapOf(
     "RENDER" to "RNDR",
 )
 
+/**
+ * Equity, index and ETF marks, keyed by the ticker the feeds actually send.
+ *
+ * These are not coins and no coin pack draws them, but they arrive on the same wire: LBank lists
+ * QQQUSDT, US30USDT, NAS100USDT, SAMSUNGUSDT and SKHYNIXUSDT as perpetuals, sorted near the top of
+ * its own turnover ranking. TradeYar's team excluded them from the crypto scope — correctly, a
+ * crypto app should not quietly hand somebody Tesla — but CoinePro-FX's universe carries index
+ * CFDs, and either way a symbol the app can show is a symbol it should have a mark for.
+ *
+ * Keyed on the base rather than the whole symbol, so `QQQUSDT` and a future `QQQUSD` resolve alike.
+ */
+private val EQUITY = mapOf(
+    "AAPL" to R.drawable.asset_equity_apple,
+    "TSLA" to R.drawable.asset_equity_tesla,
+    "AMZN" to R.drawable.asset_equity_amazon,
+    "META" to R.drawable.asset_equity_meta_platforms,
+    "NVDA" to R.drawable.asset_equity_nvidia,
+    "NFLX" to R.drawable.asset_equity_netflix,
+    "AMD" to R.drawable.asset_equity_advanced_micro_devices,
+    "INTC" to R.drawable.asset_equity_intel,
+    "COIN" to R.drawable.asset_equity_coinbase,
+    "MSTR" to R.drawable.asset_equity_microstrategy,
+    "SAMSUNG" to R.drawable.asset_equity_samsung,
+    // The index marks. NAS100, US100 and QQQ are three names for one thing on three feeds, which is
+    // exactly the sort of disagreement a shared mark makes visible rather than hiding.
+    "QQQ" to R.drawable.asset_equity_nasdaq,
+    "NAS100" to R.drawable.asset_equity_nasdaq,
+    "US100" to R.drawable.asset_equity_nasdaq,
+    "NDX" to R.drawable.asset_equity_nasdaq,
+    "US500" to R.drawable.asset_equity_s_and_p_global,
+    "SPX" to R.drawable.asset_equity_s_and_p_global,
+)
+
 @DrawableRes
-private fun logoFor(symbol: String): Int? = AssetLogoTable.forBase(baseOf(symbol))
+private fun logoFor(symbol: String): Int? {
+    val base = baseOf(symbol)
+    // Equity first. A ticker like `COIN` or `META` also exists as a coin on some venue, and the
+    // instrument somebody is looking at decides which mark is right — but on the feeds this app
+    // reads, those names are the companies.
+    return EQUITY[base] ?: AssetLogoTable.forBase(base)
+}

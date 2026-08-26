@@ -144,12 +144,25 @@ private val ARTWORK: Map<String, Int> = mapOf(
     "ZAR" to R.drawable.asset_flag_za,
     "MXN" to R.drawable.asset_flag_mx,
     "SGD" to R.drawable.asset_flag_sg,
-    "HKD" to R.drawable.asset_flag_hk,
     "PLN" to R.drawable.asset_flag_pl,
     "CZK" to R.drawable.asset_flag_cz,
     "HUF" to R.drawable.asset_flag_hu,
     "CNH" to R.drawable.asset_flag_cn,
     "CNY" to R.drawable.asset_flag_cn,
+    // The exotics an MT5 broker quotes beyond the majors. Added with their flags rather than ahead
+    // of them: a currency in this map with no drawable is a crash, and one with a drawable and no
+    // entry here is a lettered token where a flag was available.
+    "RUB" to R.drawable.asset_flag_ru,
+    "INR" to R.drawable.asset_flag_in,
+    "BRL" to R.drawable.asset_flag_br,
+    "KRW" to R.drawable.asset_flag_kr,
+    "THB" to R.drawable.asset_flag_th,
+    "ILS" to R.drawable.asset_flag_il,
+    "SAR" to R.drawable.asset_flag_sa,
+    "AED" to R.drawable.asset_flag_ae,
+    // HKD and TWD are absent on purpose. TradingView publishes a plain grey square for both rather
+    // than a flag, and a grey disc on a symbol row reads as a broken image — the lettered token is
+    // the honest answer. HKD had been showing that square since the first twenty flags shipped.
 
     "XAU" to R.drawable.asset_metal_gold,
     "XAG" to R.drawable.asset_metal_silver,

@@ -31,10 +31,13 @@ data class MarketCatalog(
  *
  * * **TradeYar** answers `GET ws/snapshot` with no `symbols` parameter by returning everything in
  *   scope. That is real discovery: the crypto universe is whatever LBank is quoting today.
- * * **CoinePro-FX** has no such mode. Its snapshot defaults to gold and silver, caps a request at
- *   twenty symbols, and rejects any symbol outside `settings.SYMBOLS` with `unsupported_symbol` —
- *   and it publishes no endpoint that returns that set. So the forex catalogue is still the list
- *   this app carries, and it stays that way until the server offers one. `docs/` records the ask.
+ * * **CoinePro-FX** now does the same. It used to default to gold and silver, cap a request at
+ *   twenty, and fail the whole request on one symbol outside `settings.SYMBOLS`; asked for a
+ *   discovery mode, its team made the bare call return the full set, moved the cap onto explicit
+ *   lists only, and added an `unsupported` field so one bad name no longer costs the response.
+ *
+ * So both platforms are asked the same way now, and neither catalogue is a constant this app
+ * carries. That is the whole point: a market either backend adds shows up without an app release.
  */
 interface MarketCatalogGateway {
     suspend fun load(): MarketCatalog
@@ -48,11 +51,9 @@ class NetworkMarketCatalogGateway private constructor(
 ) : MarketCatalogGateway {
 
     override suspend fun load(): MarketCatalog {
-        val requested = when (platform) {
-            // Omitted, which is what asks for the whole universe.
-            MarketPlatform.TRADEYAR -> null
-            MarketPlatform.COINEPRO_FX -> MarketDataSymbols.forex.joinToString(",")
-        }
+        // Omitted on both, which is what asks for the whole universe. Naming a list would cap
+        // the answer at whatever this app happened to know when it shipped.
+        val requested: String? = null
         val response = api.snapshot(path, requested)
         val quotes = response.prices.values
             .mapNotNull { it.toDomain(nowMillis(), platform) }

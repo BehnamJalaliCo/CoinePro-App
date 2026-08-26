@@ -48,6 +48,14 @@ class MarketDataController(
 
     val state: StateFlow<MarketDataState> = _state.asStateFlow()
 
+    /**
+     * What the socket is currently subscribed to.
+     *
+     * Starts as the constructor's list and moves with the screen. Held apart from [symbols] so the
+     * initial interest is still recoverable after a screen has narrowed it.
+     */
+    private var subscribed: List<String> = symbols
+
     private var socket: WebSocket? = null
     private var reconnectJob: Job? = null
     private var monitorJob: Job? = null
@@ -104,6 +112,26 @@ class MarketDataController(
         connectWebSocket()
     }
 
+    /**
+     * Narrow the live feed to the symbols a screen is showing.
+     *
+     * Reconnects, because the subscription is in the URL — which is the server's design, not a
+     * choice here. Idempotent on an unchanged set, so a list that recomposes on every scroll frame
+     * does not tear the socket down sixty times a second.
+     */
+    fun subscribe(symbols: Collection<String>) {
+        val next = symbols.map { it.trim().uppercase() }.filter { it.isNotEmpty() }.distinct().sorted()
+        if (next == subscribed) return
+        subscribed = next
+        if (!started.get()) return
+        reconnectAttempt = 0
+        reconnectJob?.cancel()
+        reconnectJob = null
+        socket?.close(1000, "subscription changed")
+        socket = null
+        connectWebSocket()
+    }
+
     fun syncOnResume() {
         if (!started.get()) {
             start()
@@ -139,7 +167,7 @@ class MarketDataController(
 
     private fun connectWebSocket() {
         if (!started.get()) return
-        val request = Request.Builder().url(webSocketUrl(baseUrl)).build()
+        val request = Request.Builder().url(webSocketUrl(baseUrl, subscribed)).build()
         val newSocket = client.newWebSocket(
             request,
             object : WebSocketListener() {
@@ -308,10 +336,29 @@ class MarketDataController(
     }
 }
 
-internal fun webSocketUrl(baseUrl: HttpUrl): String {
+/**
+ * The realtime socket's address, naming the symbols the app actually wants.
+ *
+ * Naming them is not an optimisation. TradeYar's crypto scope went from eight symbols to
+ * four hundred and forty-one, and a bare `ws/prices` subscribes to every one of them — several
+ * hundred updates a second into a phone that is showing twelve rows. Their team declined to cap it
+ * server-side, correctly: a silent truncation would leave the app believing it had the whole feed.
+ * So the cap belongs here, where the app knows what is on screen.
+ *
+ * An empty list still means the whole universe, because that is the honest way to say "everything"
+ * and there are callers — a background sync, a diagnostics probe — that genuinely want it.
+ */
+internal fun webSocketUrl(baseUrl: HttpUrl, symbols: Collection<String> = emptyList()): String {
     require(baseUrl.isHttps) { "Market stream requires HTTPS/WSS" }
     val resolved = requireNotNull(baseUrl.resolve("ws/prices")) { "Invalid market stream URL" }
-    return resolved.toString().replaceFirst("https://", "wss://")
+    val address = if (symbols.isEmpty()) {
+        resolved
+    } else {
+        resolved.newBuilder()
+            .addQueryParameter("symbols", symbols.joinToString(",") { it.trim().uppercase() })
+            .build()
+    }
+    return address.toString().replaceFirst("https://", "wss://")
 }
 
 /**

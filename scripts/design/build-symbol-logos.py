@@ -17,7 +17,8 @@ at only 352/563 at first, blocked by two things that turned out to be surmountab
 ``tv-logos`` then fills the gaps, which is mostly the 2023-24 listings both older packs predate:
 ARB, SUI, PEPE, SEI, TIA, WLD, ONDO. ``crypto-icons`` sits last as a long tail of small caps neither
 of the other two draws. Four symbols have no usable vector anywhere and ship as raster; see
-``RASTER_ONLY``.
+``RASTER_ONLY`` — and a symbol only stays there until some vector archive learns to draw it, at
+which point the vector displaces the raster automatically rather than colliding with it.
 
 Forex flags and the four metals do not come through here at all — they are the ``tv-logos``
 country and metal sets, converted by ``build-fx-logos.py``.
@@ -55,12 +56,22 @@ KOTLIN = (
 # source to prefer between, and they are keyed by country rather than by ticker. They live here
 # rather than in a separate command because --clean deletes every asset drawable, and a set this
 # script does not build is a set it would silently destroy.
+# The names are read from the archive rather than listed, so a flag `download-tv-logos.py` fetched
+# is a flag that ships. The hand-written tuple was twenty entries and the archive is now twenty-nine;
+# a list that has to be edited in a second place to take effect is a list that will be wrong.
+def _names(subset: str) -> tuple[str, ...]:
+    directory = ARCHIVE / subset
+    if not directory.is_dir():
+        return ()
+    return tuple(sorted(path.stem for path in directory.glob("*.svg")))
+
+
 PAIR_SETS = (
-    ("tv-logos/country", "asset_flag_", (
-        "au", "ca", "ch", "cn", "cz", "dk", "eu", "gb", "hk", "hu",
-        "jp", "mx", "no", "nz", "pl", "se", "sg", "tr", "us", "za",
-    )),
-    ("tv-logos/metal", "asset_metal_", ("gold", "silver", "platinum", "palladium")),
+    ("tv-logos/country", "asset_flag_", _names("tv-logos/country")),
+    ("tv-logos/metal", "asset_metal_", _names("tv-logos/metal")),
+    # Equity, index and ETF marks — the instruments the LBank listing carries that no crypto icon
+    # pack draws. Keyed by TradingView's own slug; `CoineProAssetLogo` maps a ticker onto it.
+    ("tv-logos/equity", "asset_equity_", _names("tv-logos/equity")),
 )
 
 # In preference order. See the module docstring for why.
@@ -123,7 +134,11 @@ def convert(subset: str, symbols: list[str], prefix: str = "asset_") -> set[str]
     landed = set()
     for line in result.stdout.splitlines():
         if line.startswith("ok "):
-            landed.add(line.split()[1])
+            symbol = line.split()[1]
+            landed.add(symbol)
+            # The other half of the rule in convert_raster: a vector that lands displaces the
+            # raster that used to stand in for it.
+            (DRAWABLE / f"{prefix}{resource_name(symbol)}.webp").unlink(missing_ok=True)
     return landed
 
 
@@ -142,6 +157,12 @@ def convert_raster(symbol: str) -> bool:
         print(f"MISSING  {symbol}: no raster in {RASTER_ARCHIVE}", file=sys.stderr)
         return False
     destination = DRAWABLE / f"asset_{resource_name(symbol)}.webp"
+    # A raster and a vector of the same name are two resources with one id, and aapt refuses to
+    # merge them — a build failure whose message names the file but not the cause. It happened the
+    # first time TradingView's set grew to cover TON and APE, which had been raster-only: the vector
+    # landed beside the raster and the whole module stopped packaging. Whichever source wins, the
+    # other one's file goes.
+    destination.with_suffix(".xml").unlink(missing_ok=True)
     # Lossless, because these are flat brand marks: lossy webp puts ringing around a hard edge on a
     # transparent ground, which is exactly what every one of these is.
     Image.open(source).convert("RGBA").save(destination, "WEBP", lossless=True, quality=100)

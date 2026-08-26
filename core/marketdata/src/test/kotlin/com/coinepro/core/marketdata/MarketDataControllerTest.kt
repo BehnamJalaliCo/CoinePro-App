@@ -37,6 +37,26 @@ class MarketDataControllerTest {
     }
 
     @Test
+    fun `naming symbols puts them on the socket URL`() {
+        // TradeYar's crypto scope is 441 markets and a bare subscription takes all of them. Their
+        // team declined to cap it server-side — a silent truncation would leave the app believing
+        // it had the whole feed — so the cap is this parameter, and it has to actually be sent.
+        val url = webSocketUrl(
+            "https://crypto.example.com/api/".toHttpUrl(),
+            listOf("btcusdt", " ethusdt "),
+        )
+        assertEquals("wss://crypto.example.com/api/ws/prices?symbols=BTCUSDT%2CETHUSDT", url)
+    }
+
+    @Test
+    fun `an empty list still means the whole universe`() {
+        // Not an oversight: a background sync and the diagnostics probe both genuinely want it, and
+        // omitting the parameter is how both servers spell "everything".
+        val url = webSocketUrl("https://crypto.example.com/api/".toHttpUrl(), emptyList())
+        assertEquals("wss://crypto.example.com/api/ws/prices", url)
+    }
+
+    @Test
     fun freshness_is_source_specific_and_never_fakes_live_state() {
         val now = 200_000L
         assertFalse(isQuoteStale(QuoteSource.LBANK, now - 10_000L, now))

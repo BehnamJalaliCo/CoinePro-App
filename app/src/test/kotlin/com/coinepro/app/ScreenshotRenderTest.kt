@@ -325,10 +325,19 @@ class ScreenshotRenderTest {
             listOf(
                 listOf("XAUUSD", "XAGUSD", "EURUSD", "GBPUSD", "USDJPY", "USDCHF"),
                 listOf("AUDUSD", "NZDUSD", "USDCAD", "EURGBP", "USDTRY", "USDZAR"),
+                // The exotics the broker also quotes, whose flags only arrived with the wider
+                // TradingView fetch. Before it these were six lettered tokens.
+                listOf("USDINR", "USDBRL", "USDKRW", "USDTHB", "USDILS", "USDRUB"),
             ).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf)) {
                     row.forEach { CoineProAssetLogo(symbol = it, size = 42.dp) }
                 }
+            }
+            // Equity, index and ETF marks. These arrive on the same wire as the coins — LBank
+            // lists all five as perpetuals — and no crypto icon pack draws any of them.
+            Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf)) {
+                listOf("QQQUSDT", "NAS100", "US500", "TSLAUSDT", "SAMSUNGUSDT", "COINUSDT")
+                    .forEach { CoineProAssetLogo(symbol = it, size = 42.dp) }
             }
             Row(
                 modifier = Modifier.padding(top = CoineProSpacing.One),
