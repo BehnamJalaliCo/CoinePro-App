@@ -474,18 +474,12 @@ fun CoineProApp(
                             }
                         }
                     },
-                    onTelegramPayload = { payload ->
-                        scope.launch { sessionController.completeTelegramLogin(payload) }
-                    },
                     initialResetToken = launchResetToken.orEmpty(),
                 )
             }
             else -> AuthScreen(
                 state = session,
                 loginConfigState = loginConfigState,
-                onTelegramPayload = { payload ->
-                    scope.launch { sessionController.completeTelegramLogin(payload) }
-                },
                 onRetryLoginConfig = { scope.launch { sessionController.prepareLogin() } },
                 onRetry = { scope.launch { sessionController.restore() } },
                 onLogout = { scope.launch { sessionController.logout() } },

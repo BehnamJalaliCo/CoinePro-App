@@ -22,7 +22,7 @@ sealed interface GoogleSignInOutcome {
 
     data object Cancelled : GoogleSignInOutcome
 
-    /** [message] is Google's own wording where it gave one, and is shown as written. */
+    /** [message] is what to tell the reader. See `explain` for why it is not always Google's. */
     data class Failed(val message: String?) : GoogleSignInOutcome
 }
 
@@ -73,7 +73,43 @@ class GoogleSignInClient(private val context: Context) {
         } catch (_: GetCredentialCancellationException) {
             GoogleSignInOutcome.Cancelled
         } catch (error: GetCredentialException) {
-            GoogleSignInOutcome.Failed(error.errorMessage?.toString())
+            GoogleSignInOutcome.Failed(explain(error))
         }
     }
 }
+
+/**
+ * What to show a reader when Credential Manager refuses.
+ *
+ * Google's own wording is passed through for anything that describes the reader's situation — no
+ * account on the device, no network. One case is deliberately replaced: `NoCredentialException`
+ * and the "developer console is not set up correctly" family are not about the reader at all. They
+ * mean this build's signing certificate is not registered against the Google Cloud project that
+ * issued the server client id, so Google will not mint a token for it no matter who is signed in.
+ *
+ * That distinction matters because the two look identical from the sheet — nothing happens — and
+ * a reader told "no account found" will go and add a Google account, which cannot help. It is the
+ * release key's SHA-1 that is missing from the console; `docs/PLAY_LISTING.md` §9 carries the
+ * fingerprint and what to do with it.
+ */
+private fun explain(error: GetCredentialException): String? {
+    val text = (error.errorMessage?.toString().orEmpty() + " " + error.type).lowercase()
+    val misconfigured = listOf(
+        "developer console",
+        "10:",
+        "no credentials available",
+        "type_no_credential",
+    ).any { it in text }
+    return if (misconfigured) GOOGLE_NOT_REGISTERED else error.errorMessage?.toString()
+}
+
+/**
+ * Deliberately not a string resource.
+ *
+ * It is a build-configuration fault, not a state a reader can be in, and the person who needs to
+ * read it is whoever is installing the app rather than whoever is using it. Translating it would
+ * imply it is a normal outcome.
+ */
+private const val GOOGLE_NOT_REGISTERED =
+    "Google sign-in is not registered for this build: the app's signing certificate (SHA-1) is " +
+        "missing from the Google Cloud project. Sign in with e-mail instead."

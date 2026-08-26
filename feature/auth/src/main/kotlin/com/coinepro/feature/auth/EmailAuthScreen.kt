@@ -66,7 +66,6 @@ fun EmailAuthScreen(
     onRetryMethods: () -> Unit,
     onGoogleSignIn: () -> Unit,
     /** Handed a verified Telegram payload; only ever called when the server reports that method. */
-    onTelegramPayload: (TelegramAuthPayload) -> Unit,
     /** Prefilled when the recovery App Link opened the app, empty when the reader will paste it. */
     initialResetToken: String = "",
 ) {
@@ -89,7 +88,7 @@ fun EmailAuthScreen(
         CoineProCard(modifier = Modifier.fillMaxWidth()) {
             when (state.step) {
                 EmailAuthStep.SIGN_IN ->
-                    SignInStep(state, onSignIn, onGoTo, onGoogleSignIn, onTelegramPayload, onRetryMethods)
+                    SignInStep(state, onSignIn, onGoTo, onGoogleSignIn, onRetryMethods)
                 EmailAuthStep.REGISTER -> RegisterStep(state, onRegister, onGoTo)
                 EmailAuthStep.VERIFY_CODE -> VerifyStep(state, onVerify, onStartOver, onGoTo)
                 EmailAuthStep.FORGOT_PASSWORD -> ForgotStep(state, onRequestReset, onGoTo)
@@ -117,12 +116,10 @@ private fun SignInStep(
     onSignIn: (String, String) -> Unit,
     onGoTo: (EmailAuthStep) -> Unit,
     onGoogleSignIn: () -> Unit,
-    onTelegramPayload: (TelegramAuthPayload) -> Unit,
     onRetryMethods: () -> Unit,
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var showTelegram by remember { mutableStateOf(false) }
 
     StepTitle(R.string.auth_sign_in_title)
     Feedback(state)
@@ -159,28 +156,19 @@ private fun SignInStep(
         )
     }
 
-    // Telegram is the older way in and is still live on CoinePro-FX. It is offered only when the
-    // server names both the method and the bot, because the sign-in widget is that bot's page:
-    // without a name there is nothing to load, and a button that opens an empty frame is worse
-    // than one that was never drawn.
-    val botUsername = state.methods.telegramBotUsername?.takeIf { it.isNotBlank() }
-    if (state.methods.telegram && botUsername != null) {
+    // Telegram is still a live sign-in method on CoinePro-FX and still has no shape that works in
+    // an app — see `TelegramSignInNote` in AuthScreen.kt for exactly why the widget could not.
+    // Said in one line rather than offered as a button, because the server advertising the method
+    // is not the same as this client being able to use it.
+    if (state.methods.telegram) {
         Spacer(Modifier.height(CoineProSpacing.One))
-        if (showTelegram) {
-            TelegramLoginWebView(botUsername, onTelegramPayload)
-            Spacer(Modifier.height(CoineProSpacing.One))
-            CoineProSecondaryButton(
-                text = stringResource(R.string.auth_cancel),
-                onClick = { showTelegram = false },
-                modifier = Modifier.fillMaxWidth(),
-            )
-        } else {
-            CoineProSecondaryButton(
-                text = stringResource(R.string.auth_continue_telegram),
-                onClick = { showTelegram = true },
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
+        Text(
+            text = stringResource(R.string.auth_telegram_unavailable),
+            style = MaterialTheme.typography.bodySmall,
+            color = CoineProColors.TextMuted,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 
     if (state.methods.emailPassword) {

@@ -45,12 +45,10 @@ import org.json.JSONObject
 fun AuthScreen(
     state: SessionState,
     loginConfigState: LoginConfigState,
-    onTelegramPayload: (TelegramAuthPayload) -> Unit,
     onRetryLoginConfig: () -> Unit,
     onRetry: () -> Unit,
     onLogout: () -> Unit,
 ) {
-    var showTelegram by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -116,23 +114,7 @@ fun AuthScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                is LoginConfigState.Ready -> {
-                    if (showTelegram) {
-                        TelegramLoginWebView(loginConfigState.botUsername, onTelegramPayload)
-                        Spacer(Modifier.height(CoineProSpacing.Two))
-                        CoineProSecondaryButton(
-                            text = stringResource(R.string.auth_cancel),
-                            onClick = { showTelegram = false },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    } else {
-                        CoineProPrimaryButton(
-                            text = stringResource(R.string.auth_continue_telegram),
-                            onClick = { showTelegram = true },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
+                is LoginConfigState.Ready -> TelegramSignInNote()
             }
             is SessionState.RevalidationRequired -> {
                 Text(
@@ -159,69 +141,30 @@ fun AuthScreen(
     }
 }
 
-@SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
+/**
+ * Why there is no Telegram button here any more.
+ *
+ * The app used to embed Telegram's Login Widget in a WebView, loaded with
+ * `loadDataWithBaseURL("https://telegram.org/", …)`. That could never authenticate anybody, and it
+ * is worth writing down why so nobody puts it back. The widget asks `oauth.telegram.org` to sign a
+ * payload for a given page origin, and Telegram checks that origin against the domain the bot's
+ * owner registered with BotFather. The origin here was `telegram.org` — a domain nobody can
+ * register as their own bot's — so Telegram refused every time and rendered its own error inside
+ * the frame. That error is what a reader saw: a sign-in method that looked available, opened, and
+ * then complained about the bot.
+ *
+ * Removed rather than fixed in place, because it cannot be fixed in place. The widget needs a real
+ * page on a registered domain and a mobile app has no page. The supported mobile shape is a bot
+ * deep link plus a server route that mints a session from it, which CoinePro-FX does not serve
+ * today — `docs/REQUEST3_COINEPROFX.md` asks for it. `SessionController.completeTelegramLogin` and
+ * the server's own `/user/auth/telegram` are both left standing for when it arrives.
+ */
 @Composable
-internal fun TelegramLoginWebView(
-    botUsername: String,
-    onPayload: (TelegramAuthPayload) -> Unit,
-) {
-    val safeBot = botUsername.takeIf { it.matches(Regex("^[A-Za-z0-9_]{5,32}$")) } ?: return
-    AndroidView(
-        modifier = Modifier.fillMaxWidth().height(180.dp),
-        factory = { context ->
-            WebView(context).apply {
-                settings.javaScriptEnabled = true
-                settings.allowFileAccess = false
-                settings.allowContentAccess = false
-                settings.domStorageEnabled = false
-                settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                webViewClient = WebViewClient()
-                addJavascriptInterface(TelegramBridge(onPayload), "CoineProAuth")
-                loadDataWithBaseURL(
-                    "https://telegram.org/",
-                    telegramHtml(safeBot),
-                    "text/html",
-                    "UTF-8",
-                    null,
-                )
-            }
-        },
+private fun TelegramSignInNote() {
+    Text(
+        text = stringResource(R.string.auth_telegram_unavailable),
+        style = MaterialTheme.typography.bodySmall,
+        color = CoineProColors.TextMuted,
+        textAlign = TextAlign.Center,
     )
 }
-
-private class TelegramBridge(
-    private val onPayload: (TelegramAuthPayload) -> Unit,
-) {
-    @JavascriptInterface
-    fun onAuth(json: String) {
-        runCatching {
-            val value = JSONObject(json)
-            TelegramAuthPayload(
-                id = value.getLong("id"),
-                firstName = value.optString("first_name").takeIf { it.isNotBlank() },
-                lastName = value.optString("last_name").takeIf { it.isNotBlank() },
-                username = value.optString("username").takeIf { it.isNotBlank() },
-                photoUrl = value.optString("photo_url").takeIf { it.isNotBlank() },
-                authDate = value.getLong("auth_date"),
-                hash = value.getString("hash"),
-            )
-        }.onSuccess { payload ->
-            Handler(Looper.getMainLooper()).post { onPayload(payload) }
-        }
-    }
-}
-
-private fun telegramHtml(botUsername: String) = """
-<!doctype html>
-<html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;background:transparent;text-align:center">
-<script>
-function onTelegramAuth(user) { CoineProAuth.onAuth(JSON.stringify(user)); }
-</script>
-<script async src="https://telegram.org/js/telegram-widget.js?22"
- data-telegram-login="$botUsername"
- data-size="large"
- data-userpic="false"
- data-onauth="onTelegramAuth(user)"></script>
-</body></html>
-""".trimIndent()

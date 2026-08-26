@@ -43,11 +43,9 @@
 -keepattributes Signature, InnerClasses, EnclosingMethod
 -keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations
 
-# --- Telegram sign-in bridge ---
-# The WebView calls this method by name from JavaScript; R8 cannot see that reference.
--keepclassmembers class com.coinepro.feature.auth.TelegramBridge {
-    @android.webkit.JavascriptInterface <methods>;
-}
+# The Telegram sign-in bridge used to be kept here. Both it and the WebView it belonged to are
+# gone: the widget could never authenticate anybody from inside an app — see `TelegramSignInNote`
+# in AuthScreen.kt — so there is no JavaScript calling into Kotlin anywhere in this app now.
 
 # --- Hilt workers ---
 # WorkManager instantiates a worker from a class name, and HiltWorkerFactory resolves it through a

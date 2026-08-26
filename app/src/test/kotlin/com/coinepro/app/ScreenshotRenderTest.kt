@@ -723,7 +723,6 @@ class ScreenshotRenderTest {
             onGoTo = {},
             onRetryMethods = {},
             onGoogleSignIn = {},
-            onTelegramPayload = {},
         )
     }
 
@@ -753,7 +752,6 @@ class ScreenshotRenderTest {
             onGoTo = {},
             onRetryMethods = {},
             onGoogleSignIn = {},
-            onTelegramPayload = {},
         )
     }
 
@@ -781,7 +779,6 @@ class ScreenshotRenderTest {
             onGoTo = {},
             onRetryMethods = {},
             onGoogleSignIn = {},
-            onTelegramPayload = {},
         )
     }
 
@@ -798,7 +795,6 @@ class ScreenshotRenderTest {
         AuthScreen(
             state = SessionState.RevalidationRequired("نشست شما دیگر معتبر نیست."),
             loginConfigState = LoginConfigState.Ready("CoineProBot"),
-            onTelegramPayload = {},
             onRetryLoginConfig = {},
             onRetry = {},
             onLogout = {},

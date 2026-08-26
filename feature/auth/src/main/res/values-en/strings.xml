@@ -56,4 +56,5 @@
     <string name="auth_methods_unknown">It is not yet known which ways in this server accepts.</string>
     <string name="auth_methods_retry">Try again</string>
     <string name="auth_methods_none">This server currently has no sign-in method enabled.</string>
+    <string name="auth_telegram_unavailable">Telegram sign-in works in the web app only for now. Use e-mail here.</string>
 </resources>

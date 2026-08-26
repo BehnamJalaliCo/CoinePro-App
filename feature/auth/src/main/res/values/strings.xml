@@ -56,4 +56,5 @@
     <string name="auth_methods_unknown">هنوز معلوم نیست این سرور کدام روش‌های ورود را می‌پذیرد.</string>
     <string name="auth_methods_retry">تلاش دوباره</string>
     <string name="auth_methods_none">این سرور در حال حاضر هیچ روش ورودی را فعال نکرده است.</string>
+    <string name="auth_telegram_unavailable">ورود با تلگرام فعلاً فقط در نسخهٔ وب کار می‌کند. اینجا با ایمیل وارد شوید.</string>
 </resources>
