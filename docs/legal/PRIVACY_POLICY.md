@@ -47,8 +47,15 @@
 | توکن اعلان Firebase | وقتی اعلان را روشن می‌کنید | همان پلتفرم |
 | نام، کد ملی، تاریخ تولد، شماره موبایل | فقط اگر خودتان فرم احراز هویت را پر کنید | کوین‌پرو اف‌ایکس |
 | کلید API صرافی | فقط اگر خودتان حساب صرافی وصل کنید | تریدیار |
+| شناسهٔ کاربری صرافی (UID) | فقط اگر برای عضویت آن را وارد کنید | تریدیار |
 | تصویر نمودار | فقط وقتی خودتان عکس را برای تحلیل می‌فرستید | همان پلتفرم |
 | نمادهایی که روی صفحه‌اند | هنگام اتصال به فید قیمت | همان پلتفرم |
+
+**UID صرافی چرا فرستاده می‌شود.** عضویت کوین‌پرو رایگان است و به‌جای پرداخت، بر زیرمجموعه بودنِ شما
+در صرافی تکیه دارد (شرایط استفاده، بند ۶). برای احراز این موضوع، UID شما به صرافی داده می‌شود تا
+صرافی تأیید کند این حساب زیرمجموعهٔ کوین‌پروست و موجودی لازم را دارد. آنچه برمی‌گردد یک پاسخ
+آری/نه و وضعیت موجودی است؛ کوین‌پرو با UID شما نه به حساب صرافی دسترسی دارد و نه می‌تواند معامله یا
+برداشتی انجام دهد.
 
 **شناسهٔ نصب چیست و چرا هست.** یک رشتهٔ تصادفی است که هنگام اولین اجرا ساخته می‌شود، به هیچ حساب،
 دستگاه یا شمارهٔ سریالی وصل نیست و از هیچ شناسهٔ سخت‌افزاری ساخته نشده. تنها کاری که می‌کند این است
@@ -97,11 +104,26 @@
 
 * **روی دستگاه:** خروج از حساب، توکن نشست و توکن تازه‌سازی را هر دو پاک می‌کند. حذف اپ یا پاک‌کردن
   دادهٔ اپ، همه‌چیز شامل کش و تنظیمات را می‌برد.
-* **روی سرور:** دادهٔ حساب تا زمانی می‌ماند که حساب فعال است. برای حذف حساب و داده‌های آن،
-  **[آدرس یا فرم حذف حساب — تکمیل شود]**.
+* **روی سرور:** دادهٔ حساب تا زمانی می‌ماند که حساب فعال است.
 
-Google Play از هر اپی که ثبت‌نام دارد می‌خواهد راه حذف حساب از بیرون از اپ هم اعلام شود. تا وقتی آن
-آدرس وجود نداشته باشد، این بند کامل نیست.
+**حذف حساب — دو راه، هر دو بدون تماس با پشتیبانی:**
+
+| راه | کجا |
+| --- | --- |
+| از داخل اپ | تنظیمات ← حذف حساب کاربری |
+| از بیرون اپ | <https://behnamjalalico.github.io/CoinePro-App/delete-account/> |
+
+**چه چیزی حذف می‌شود:** حساب، ایمیل، نام، اطلاعات احراز هویتی که خودتان وارد کرده‌اید، UID صرافی،
+کلیدهای API صرافی، تنظیمات اعلان، توکن اعلان، تاریخچهٔ سیگنال‌های ذخیره‌شده و هشدارهای قیمت.
+
+**چه چیزی نگه داشته می‌شود و چرا:** سوابق معاملاتی که به‌حکم قانون یا قرارداد صرافی باید نگهداری
+شوند، و لاگ‌های امنیتی و ضدتقلب، به‌صورت **بی‌نام** — یعنی بدون ایمیل، نام یا UID شما — برای حداکثر
+دوازده ماه. این‌ها دیگر به شما قابل انتساب نیستند.
+
+**چقدر طول می‌کشد:** حذف بلافاصله ثبت می‌شود و ظرف حداکثر ۳۰ روز از پشتیبان‌ها هم پاک می‌شود.
+
+**آنچه حذف نمی‌کند:** حساب شما نزد صرافی. آن حساب مال خودتان است و کوین‌پرو نه آن را ساخته و نه
+می‌تواند حذفش کند؛ برای بستنش به خودِ صرافی مراجعه کنید.
 
 ---
 
@@ -118,6 +140,8 @@ Google Play از هر اپی که ثبت‌نام دارد می‌خواهد ر�
 ---
 
 ## ۸) تماس
+
+پشتیبانی در تلگرام: <https://t.me/CoinePro_Admin>
 
 **[ایمیل پشتیبانی — تکمیل شود]** · **[نام و نشانی حقوقی توسعه‌دهنده — تکمیل شود]**
 
@@ -172,20 +196,41 @@ image-analysis screen. The image is not kept on the device after it is sent.
 ## 4) Sharing
 
 Your data is **not sold**. It is shared only with Google (Firebase Cloud Messaging carries
-notification tokens and payloads — inherent to Android notifications), the LBank exchange and an MT5
-broker if *you* connect those accounts, and where the law requires it.
+notification tokens and payloads — inherent to Android notifications); the LBank or Ourbit exchange
+and an MT5 broker if *you* connect those accounts or submit a UID for membership verification; and
+where the law requires it. A UID check asks the exchange one question — is this account ours, and is
+it funded — and gets back a yes/no and a balance state. It grants no access to your exchange
+account.
 
 ## 5) Retention and deletion
 
-Signing out clears both tokens. Uninstalling or clearing app data removes everything local. For
-server-side account and data deletion: **[deletion URL or form — to be completed]**. Google Play
-requires an out-of-app deletion route for any app with sign-up; this section is incomplete until
-that exists.
+Signing out clears both tokens. Uninstalling or clearing app data removes everything local.
+
+**Deleting your account — two routes, neither needing support:**
+
+| Route | Where |
+| --- | --- |
+| In the app | Settings → Delete account |
+| Outside the app | <https://behnamjalalico.github.io/CoinePro-App/delete-account/> |
+
+**Deleted:** the account, your e-mail and name, any identity details you entered, your exchange UID,
+exchange API keys, notification preferences and token, saved signal history and price alerts.
+
+**Kept, and why:** trading records that law or the exchange's own contract requires be retained, and
+security/anti-fraud logs — both **anonymised**, carrying no e-mail, name or UID, for at most twelve
+months. They are no longer attributable to you.
+
+**How long:** the deletion is recorded immediately and is gone from backups within 30 days.
+
+**What it does not delete:** your account at the exchange. That account is yours; CoinePro neither
+created it nor can close it. Ask the exchange.
 
 ## 6) Children
 
 Not intended for anyone under 18. We do not knowingly collect children's data.
 
 ## 7) Contact
+
+Support on Telegram: <https://t.me/CoinePro_Admin>
 
 **[support email — to be completed]** · **[legal developer name and address — to be completed]**

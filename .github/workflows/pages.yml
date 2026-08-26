@@ -1,0 +1,65 @@
+name: Publish the site
+
+# Google Play will not accept a link to a file in a repository as a privacy policy — it wants a
+# page. This publishes one, built from `docs/legal/*.md` so there is never a second copy of the
+# text to disagree with the first.
+#
+# The published addresses:
+#   https://behnamjalalico.github.io/CoinePro-App/privacy/
+#   https://behnamjalalico.github.io/CoinePro-App/terms/
+#   https://behnamjalalico.github.io/CoinePro-App/delete-account/
+#
+# One switch has to be thrown by hand, once: Settings → Pages → Source → GitHub Actions. Until then
+# this workflow runs and its deploy step fails, which is the honest failure — nothing is published
+# because nothing has been allowed to be.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/legal/**'
+      - 'site/**'
+      - 'docs/site/**'
+      - 'scripts/site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time, and a queued one waits rather than being cancelled: a half-replaced
+# privacy policy is worse than a slightly old one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # The site in the repository must match what the sources render to. Committing the built
+      # pages means they are reviewable in a diff — a change to a privacy policy should be visible
+      # as a change, not appear only after a deploy.
+      - name: The committed site matches its sources
+        run: python3 scripts/site/build-site.py --check
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
