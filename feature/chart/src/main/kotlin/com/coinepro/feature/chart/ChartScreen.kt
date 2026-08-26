@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -72,6 +73,14 @@ fun ChartScreen(
     controller: ChartController,
     onHelp: ((String) -> Unit)? = null,
     signal: SignalOverlay? = null,
+    /**
+     * Opens the full web terminal on this symbol.
+     *
+     * Null on a build with no terminal address, which is the default — so the button is absent
+     * rather than opening a blank page. It is the only route out of the native chart into a
+     * WebView, and an ordinary reader who never presses it never meets one.
+     */
+    onOpenTerminal: (() -> Unit)? = null,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var sheet by remember { mutableStateOf<ChartSheet?>(null) }
@@ -79,7 +88,7 @@ fun ChartScreen(
     LaunchedStart(controller)
 
     Column(modifier = Modifier.fillMaxSize().background(CoineProColors.Stage)) {
-        Header(state)
+        Header(state, onOpenTerminal)
         TimeframeRow(state.timeframe, controller::setTimeframe)
 
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -191,7 +200,7 @@ private fun LaunchedStart(controller: ChartController) {
 }
 
 @Composable
-private fun Header(state: ChartUiState) {
+private fun Header(state: ChartUiState, onOpenTerminal: (() -> Unit)?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -223,6 +232,18 @@ private fun Header(state: ChartUiState) {
                     style = MaterialTheme.typography.titleMedium,
                     color = CoineProColors.TextPrimary,
                     fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+        onOpenTerminal?.let {
+            // The expand glyph rather than a word: the header already carries the symbol and the
+            // price, and a labelled button there would be the widest thing on the row.
+            IconButton(onClick = it) {
+                Icon(
+                    painter = painterResource(DesignR.drawable.tv_maximize2),
+                    contentDescription = "ترمینال حرفه‌ای",
+                    tint = CoineProColors.TextSecondary,
+                    modifier = Modifier.size(20.dp),
                 )
             }
         }

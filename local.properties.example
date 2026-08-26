@@ -4,3 +4,13 @@ COINEPRO_RELEASE_STORE_FILE=coinepro-release.jks
 COINEPRO_RELEASE_STORE_PASSWORD=
 COINEPRO_RELEASE_KEY_ALIAS=coinepro
 COINEPRO_RELEASE_KEY_PASSWORD=
+
+# The full web terminal — the React app the native chart's engine was ported from.
+# Empty (the default) hides the terminal button entirely rather than opening a blank page.
+#
+# Whatever goes here must be HTTPS and must be served by the same CoinePro-FX deployment the app
+# signs into: the terminal authenticates by reading an academy token out of browser storage, and a
+# token minted by one deployment means nothing to another's signing key.
+COINEPRO_DEBUG_TERMINAL_URL=
+COINEPRO_STAGING_TERMINAL_URL=
+COINEPRO_PRODUCTION_TERMINAL_URL=

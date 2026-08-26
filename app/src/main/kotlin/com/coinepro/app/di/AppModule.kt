@@ -63,6 +63,7 @@ import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.marketintel.MarketIntelGateway
 import com.coinepro.core.marketintel.NetworkMarketIntelGateway
 import com.coinepro.core.academy.AcademyController
+import com.coinepro.feature.terminal.TerminalController
 import com.coinepro.core.academy.AcademyGateway
 import com.coinepro.core.academy.NetworkAcademyGateway
 import com.coinepro.core.network.NetworkFactory
@@ -670,6 +671,20 @@ object AppModule {
         @ForexPlatform retrofit: Retrofit,
         tokens: AcademyTokenStore,
     ): AcademyGateway = NetworkAcademyGateway(retrofit, tokens)
+
+    /**
+     * The web terminal, if this build was pointed at one.
+     *
+     * `BuildConfig.TERMINAL_URL` is empty unless a `COINEPRO_*_TERMINAL_URL` property was supplied,
+     * and an empty address makes the controller report itself unconfigured — which hides the entry
+     * rather than offering a button that opens a blank page.
+     */
+    @Provides
+    @Singleton
+    fun terminalController(
+        tokens: AcademyTokenStore,
+        scope: CoroutineScope,
+    ): TerminalController = TerminalController(BuildConfig.TERMINAL_URL, tokens, scope)
 
     @Provides
     @Singleton

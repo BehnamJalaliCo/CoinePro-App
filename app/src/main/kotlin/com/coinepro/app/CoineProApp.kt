@@ -104,6 +104,8 @@ import com.coinepro.core.portfolio.PortfolioController
 import com.coinepro.feature.chart.ChartController
 import com.coinepro.feature.chart.ChartScreen
 import com.coinepro.feature.academy.AcademyScreen
+import com.coinepro.feature.terminal.TerminalController
+import com.coinepro.feature.terminal.TerminalScreen
 import com.coinepro.feature.academy.LessonScreen
 import com.coinepro.feature.portfolio.PortfolioScreen
 import com.coinepro.feature.search.SearchScreen
@@ -120,6 +122,7 @@ private const val MARKET_SEARCH_ROUTE = "market/search"
 private const val CHART_PATTERN = "chart/{symbol}"
 private const val PORTFOLIO_ROUTE = "portfolio"
 private const val ACADEMY_ROUTE = "academy"
+private const val TERMINAL_ROUTE = "terminal"
 private const val LESSON_PATTERN = "academy/lesson/{slug}"
 private const val NEWS_ROUTE = "market/news"
 private const val CALENDAR_ROUTE = "market/calendar"
@@ -145,6 +148,7 @@ fun CoineProApp(
     candleGateways: Map<MarketPlatform, CandleGateway>,
     portfolioControllers: Map<MarketPlatform, PortfolioController>,
     academyController: AcademyController,
+    terminalController: TerminalController,
     accountControllers: Map<MarketPlatform, AccountController>,
     adminController: AdminController,
     platformSessions: PlatformSessions,
@@ -351,6 +355,7 @@ fun CoineProApp(
                 candleGateway = candleGateways.getValue(activePlatform),
                 portfolioController = portfolioControllers.getValue(activePlatform),
                 academyController = academyController,
+                terminalController = terminalController,
                 hasAcademy = activePlatform == MarketPlatform.COINEPRO_FX,
                 adminController = adminController,
                 hub = hub,
@@ -468,6 +473,7 @@ private fun MainShell(
     candleGateway: CandleGateway,
     portfolioController: PortfolioController,
     academyController: AcademyController,
+    terminalController: TerminalController,
     /**
      * Whether this platform has an academy at all.
      *
@@ -524,6 +530,7 @@ private fun MainShell(
         PORTFOLIO_ROUTE,
         ACADEMY_ROUTE,
         LESSON_PATTERN,
+        TERMINAL_ROUTE,
         AI_VISION_ROUTE,
         AI_ASSISTANT_ROUTE,
         KYC_ROUTE,
@@ -553,6 +560,7 @@ private fun MainShell(
         PORTFOLIO_ROUTE -> R.string.screen_portfolio
         // The lesson names itself in its own heading, so the bar carries the section instead.
         ACADEMY_ROUTE, LESSON_PATTERN -> R.string.screen_academy
+        TERMINAL_ROUTE -> R.string.screen_terminal
         NEWS_ROUTE -> R.string.screen_news
         CALENDAR_ROUTE -> R.string.screen_calendar
         LAUNCH_READINESS_ROUTE -> R.string.screen_launch_readiness
@@ -786,7 +794,14 @@ private fun MainShell(
                 val chartController = remember(symbol, candleGateway) {
                     ChartController(symbol = symbol, gateway = candleGateway, scope = scope)
                 }
-                ChartScreen(controller = chartController)
+                ChartScreen(
+                    controller = chartController,
+                    onOpenTerminal = if (terminalController.isConfigured) {
+                        { navController.navigate(TERMINAL_ROUTE) }
+                    } else {
+                        null
+                    },
+                )
             }
             composable(NEWS_ROUTE) {
                 NewsScreen(
@@ -813,6 +828,12 @@ private fun MainShell(
                     } else {
                         null
                     },
+                )
+            }
+            composable(TERMINAL_ROUTE) {
+                TerminalScreen(
+                    controller = terminalController,
+                    onClose = { navController.popBackStack() },
                 )
             }
             composable(ACADEMY_ROUTE) {

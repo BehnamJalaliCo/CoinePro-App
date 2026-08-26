@@ -78,6 +78,18 @@ val productionFirebaseApplicationId = providers.gradleProperty("COINEPRO_PRODUCT
 val productionFirebaseApiKey = providers.gradleProperty("COINEPRO_PRODUCTION_FIREBASE_API_KEY").orElse("").get()
 val productionFirebaseSenderId = providers.gradleProperty("COINEPRO_PRODUCTION_FIREBASE_SENDER_ID").orElse("").get()
 
+// Where the full web terminal lives — the React app whose engine `core:chart` was ported from.
+//
+// Empty by default and empty everywhere until somebody sets it, which hides the terminal entry
+// rather than pointing it at a guess. Two things have to be true of whatever address goes here and
+// neither can be checked from this repository: it must serve the terminal, and its API must be the
+// same CoinePro-FX deployment the app signs into — the terminal authenticates by reading an
+// academy token out of browser storage, and a token minted by one deployment means nothing to
+// another's `JWT_SECRET_KEY`.
+val debugTerminalUrl = providers.gradleProperty("COINEPRO_DEBUG_TERMINAL_URL").orElse("").get()
+val stagingTerminalUrl = providers.gradleProperty("COINEPRO_STAGING_TERMINAL_URL").orElse("").get()
+val productionTerminalUrl = providers.gradleProperty("COINEPRO_PRODUCTION_TERMINAL_URL").orElse("").get()
+
 require(stagingApiBaseUrl != productionApiBaseUrl) {
     "Staging and production API base URLs must be different."
 }
@@ -173,6 +185,7 @@ android {
             buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(debugFirebaseApplicationId))
             buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(debugFirebaseApiKey))
             buildConfigField("String", "FIREBASE_SENDER_ID", escapedBuildConfig(debugFirebaseSenderId))
+            buildConfigField("String", "TERMINAL_URL", escapedBuildConfig(debugTerminalUrl))
         }
         release {
             isDebuggable = false
@@ -188,6 +201,7 @@ android {
             buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(productionFirebaseApplicationId))
             buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(productionFirebaseApiKey))
             buildConfigField("String", "FIREBASE_SENDER_ID", escapedBuildConfig(productionFirebaseSenderId))
+            buildConfigField("String", "TERMINAL_URL", escapedBuildConfig(productionTerminalUrl))
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -210,6 +224,7 @@ android {
             buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(stagingFirebaseApplicationId))
             buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(stagingFirebaseApiKey))
             buildConfigField("String", "FIREBASE_SENDER_ID", escapedBuildConfig(stagingFirebaseSenderId))
+            buildConfigField("String", "TERMINAL_URL", escapedBuildConfig(stagingTerminalUrl))
         }
         create("benchmark") {
             initWith(getByName("release"))
@@ -278,6 +293,7 @@ dependencies {
     implementation(project(":feature:chart"))
     implementation(project(":feature:academy"))
     implementation(project(":feature:portfolio"))
+    implementation(project(":feature:terminal"))
     implementation(project(":feature:signals"))
     implementation(project(":feature:signal-detail"))
     implementation(project(":feature:connections"))

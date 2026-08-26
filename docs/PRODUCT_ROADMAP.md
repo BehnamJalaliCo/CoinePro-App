@@ -308,6 +308,7 @@ feature:search
 feature:chart
 feature:portfolio
 feature:academy
+feature:terminal
 feature:signals
 feature:signal-detail
 feature:connections
