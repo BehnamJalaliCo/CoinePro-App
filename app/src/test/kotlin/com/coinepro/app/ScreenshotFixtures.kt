@@ -48,11 +48,15 @@ import com.coinepro.core.marketintel.MarketIntelSnapshot
 import com.coinepro.core.marketintel.MarketNewsItem
 import com.coinepro.core.marketintel.MarketRelevance
 import com.coinepro.core.marketintel.NewsSentiment
+import com.coinepro.core.marketdata.MarketCatalog
+import com.coinepro.core.marketdata.MarketCatalogGateway
 import com.coinepro.core.model.Instrument
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketQuote
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.QuoteSource
+import com.coinepro.core.symbols.SymbolCategory
+import com.coinepro.core.symbols.SymbolClassifier
 import com.coinepro.core.model.SignalDirection
 import com.coinepro.feature.home.HomeBriefing
 import com.coinepro.feature.home.HomeHolding
@@ -837,6 +841,67 @@ object ScreenshotFixtures {
         events = emptyList(),
         slotState = null,
     )
+
+    /**
+     * A catalogue the shape of a real one: majors, small caps, both asset classes, and the noise.
+     *
+     * Deliberately not a tidy list. Half the point of the ranking is that it copes with a feed that
+     * arrives alphabetically and full of listings nobody has heard of, so a fixture sorted the way
+     * the screen should end up would prove nothing.
+     */
+    fun searchCatalog(): MarketCatalogGateway {
+        val symbols = listOf(
+            "AAVEUSDT", "ADAUSDT", "ALGOUSDT", "APTUSDT", "ARBUSDT", "ATOMUSDT", "AVAXUSDT",
+            "BCHUSDT", "BONKUSDT", "BTCUSDT", "DOGEUSDT", "DOTUSDT", "ETHUSDT", "FILUSDT",
+            "GRTUSDT", "INJUSDT", "LINKUSDT", "LTCUSDT", "NEARUSDT", "ONDOUSDT", "OPUSDT",
+            "PEPEUSDT", "QUACKUSDT", "RENDERUSDT", "SEIUSDT", "SHIBUSDT", "SOLUSDT", "SUIUSDT",
+            "TIAUSDT", "TONUSDT", "TRXUSDT", "UNIUSDT", "WBTCUSDT", "WIFUSDT", "XLMUSDT",
+            "XRPUSDT",
+            "AUDUSD", "CADJPY", "CHFJPY", "EURAUD", "EURGBP", "EURJPY", "EURNZD", "EURUSD",
+            "GBPJPY", "GBPUSD", "NZDUSD", "USDCAD", "USDCHF", "USDJPY", "USDTRY", "USDZAR",
+            "XAGUSD", "XAUUSD", "XAUEUR", "XPTUSD",
+            "US30", "US100", "US500", "GER40", "UK100", "JPN225",
+            "USOIL", "UKOIL", "NATGAS",
+        )
+        val prices = mapOf(
+            "BTCUSDT" to 91_248.30, "ETHUSDT" to 3_147.62, "SOLUSDT" to 172.45,
+            "XAUUSD" to 2_643.18, "XAGUSD" to 30.94, "EURUSD" to 1.0842,
+            "GBPUSD" to 1.2731, "USDJPY" to 156.28, "US500" to 5_918.40,
+            "PEPEUSDT" to 0.000018, "DOGEUSDT" to 0.3914, "USOIL" to 71.62,
+        )
+        val changes = mapOf(
+            "BTCUSDT" to 1.84, "ETHUSDT" to -0.64, "SOLUSDT" to 4.10,
+            "XAUUSD" to 0.42, "EURUSD" to -0.18, "PEPEUSDT" to 7.31,
+        )
+        return object : MarketCatalogGateway {
+            override suspend fun load(): MarketCatalog {
+                val metas = symbols.map(SymbolClassifier::classify)
+                return MarketCatalog(
+                    markets = metas,
+                    quotes = metas.mapNotNull { meta ->
+                        val price = prices[meta.symbol] ?: return@mapNotNull null
+                        meta.symbol to MarketQuote(
+                            instrument = Instrument(
+                                symbol = meta.symbol,
+                                displayName = meta.short,
+                                marketType = if (meta.category == SymbolCategory.CRYPTO) {
+                                    MarketType.CRYPTO
+                                } else {
+                                    MarketType.FOREX
+                                },
+                            ),
+                            price = price,
+                            changePercent = changes[meta.symbol],
+                            timestampEpochMillis = 1_787_670_872_000L,
+                            source = QuoteSource.LBANK,
+                            isStale = false,
+                        )
+                    }.toMap(),
+                    serverTimeEpochMillis = 1_787_670_872_913L,
+                )
+            }
+        }
+    }
 
     /**
      * Every `tv_*` drawable, found by name rather than listed.

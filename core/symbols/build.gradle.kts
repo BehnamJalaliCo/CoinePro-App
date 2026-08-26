@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "com.coinepro.core.marketdata"
+    namespace = "com.coinepro.core.symbols"
     compileSdk = 36
     defaultConfig { minSdk = 26 }
     compileOptions {
@@ -14,11 +14,5 @@ android {
 
 dependencies {
     implementation(project(":core:model"))
-    api(project(":core:symbols"))
-    implementation(libs.okhttp.core)
-    implementation(libs.retrofit.core)
-    implementation(libs.retrofit.gson)
-    implementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.junit)
-    testImplementation(libs.kotlinx.coroutines.test)
 }

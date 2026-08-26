@@ -285,6 +285,7 @@ core:designsystem
 core:auth
 core:security
 core:marketdata
+core:symbols
 core:signals
 core:notifications
 core:execution
@@ -299,6 +300,7 @@ core:database
 feature:admin
 feature:auth
 feature:home
+feature:search
 feature:signals
 feature:signal-detail
 feature:connections

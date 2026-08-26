@@ -6,8 +6,14 @@ import retrofit2.http.Query
 import retrofit2.http.Url
 
 internal interface MarketDataApi {
+    /**
+     * @param symbols null omits the parameter entirely, which on TradeYar means "everything in
+     *   scope" — the only way this app can discover the crypto universe rather than shipping a
+     *   hand-written list of it. CoinePro-FX has no such mode and rejects a symbol outside its
+     *   configured set, so the forex side always names what it wants. See [MarketCatalogGateway].
+     */
     @GET
-    suspend fun snapshot(@Url path: String, @Query("symbols") symbols: String): MarketSnapshotDto
+    suspend fun snapshot(@Url path: String, @Query("symbols") symbols: String?): MarketSnapshotDto
 }
 
 /**

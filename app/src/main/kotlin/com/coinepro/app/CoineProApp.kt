@@ -43,6 +43,7 @@ import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.marketdata.MarketDataController
+import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.model.MarketPlatform
@@ -95,6 +96,7 @@ import com.coinepro.feature.home.toHomePortfolio
 import com.coinepro.feature.home.toHomeSubscription
 import com.coinepro.feature.news.NewsScreen
 import com.coinepro.feature.signaldetail.SignalDetailScreen
+import com.coinepro.feature.search.SearchScreen
 import com.coinepro.feature.signals.SignalsScreen
 import com.coinepro.feature.tools.ToolsScreen
 import kotlinx.coroutines.launch
@@ -104,6 +106,7 @@ private const val EXECUTION_PATTERN = "execution/{signalId}"
 private const val CONNECTIONS_ROUTE = "connections"
 private const val AI_VISION_ROUTE = "ai/vision"
 private const val AI_ASSISTANT_ROUTE = "ai/assistant"
+private const val MARKET_SEARCH_ROUTE = "market/search"
 private const val NEWS_ROUTE = "market/news"
 private const val CALENDAR_ROUTE = "market/calendar"
 private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
@@ -117,6 +120,7 @@ fun CoineProApp(
     sessionController: SessionController,
     emailAuthController: EmailAuthController,
     marketDataControllers: Map<MarketPlatform, MarketDataController>,
+    marketSearchControllers: Map<MarketPlatform, MarketSearchController>,
     accountControllers: Map<MarketPlatform, AccountController>,
     adminController: AdminController,
     platformSessions: PlatformSessions,
@@ -154,6 +158,7 @@ fun CoineProApp(
     val activePlatform by activePlatformStore.active
         .collectAsStateWithLifecycle(initialValue = activePlatformStore.available.first())
     val marketDataController = marketDataControllers.getValue(activePlatform)
+    val marketSearchController = marketSearchControllers.getValue(activePlatform)
     val marketState by marketDataController.state.collectAsStateWithLifecycle()
     // The account reads follow the same rule as the feed: one platform at a time, and the balance
     // on screen always belongs to the backend named above it.
@@ -318,6 +323,7 @@ fun CoineProApp(
         when (val current = session) {
             is SessionState.SignedIn -> MainShell(
                 marketState = marketState,
+                marketSearchController = marketSearchController,
                 adminController = adminController,
                 hub = hub,
                 hubActions = hubActions,
@@ -428,6 +434,7 @@ fun CoineProApp(
 @Composable
 private fun MainShell(
     marketState: MarketDataState,
+    marketSearchController: MarketSearchController,
     signalController: SignalController,
     notificationController: NotificationController,
     executionController: ExecutionController,
@@ -470,6 +477,7 @@ private fun MainShell(
         SIGNAL_DETAIL_PATTERN,
         EXECUTION_PATTERN,
         CONNECTIONS_ROUTE,
+        MARKET_SEARCH_ROUTE,
         AI_VISION_ROUTE,
         AI_ASSISTANT_ROUTE,
         KYC_ROUTE,
@@ -492,6 +500,7 @@ private fun MainShell(
         KYC_ROUTE -> R.string.screen_kyc
         AI_VISION_ROUTE -> R.string.screen_ai_vision
         AI_ASSISTANT_ROUTE -> R.string.screen_ai_assistant
+        MARKET_SEARCH_ROUTE -> R.string.screen_market_search
         NEWS_ROUTE -> R.string.screen_news
         CALENDAR_ROUTE -> R.string.screen_calendar
         LAUNCH_READINESS_ROUTE -> R.string.screen_launch_readiness
@@ -593,7 +602,10 @@ private fun MainShell(
                             if (chartVisionAvailable) AI_VISION_ROUTE else AppDestination.AI.route,
                         )
                     },
-                    onOpenMarket = { navController.navigate(AppDestination.SIGNALS.route) },
+                    // The market card's own destination is the market list, not the signals
+                    // feed. They were the same route while the app knew eight markets and there
+                    // was no list worth opening.
+                    onOpenMarket = { navController.navigate(MARKET_SEARCH_ROUTE) },
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
                     // Home carries no top bar, so the account actions hang off the avatar.
                     onOpenVerification = { navController.navigate(KYC_ROUTE) },
@@ -696,6 +708,9 @@ private fun MainShell(
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
                     available = assistantAvailable,
                 )
+            }
+            composable(MARKET_SEARCH_ROUTE) {
+                SearchScreen(controller = marketSearchController)
             }
             composable(NEWS_ROUTE) {
                 NewsScreen(

@@ -43,6 +43,8 @@ import com.coinepro.core.auth.SessionState
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.marketdata.MarketSearchController
+import com.coinepro.feature.search.SearchScreen
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.execution.ExecutionController
@@ -655,6 +657,29 @@ class ScreenshotRenderTest {
         ) { innerPadding ->
             Box(Modifier.padding(innerPadding)) { PopulatedHome() }
         }
+    }
+
+    /**
+     * Market search over a catalogue the size the real one now is.
+     *
+     * Rendered twice — browsing, and mid-query — because the two are different screens to a reader
+     * and only the second shows what the ranking and the match highlighting actually do.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun marketSearchBrowse() {
+        val controller = MarketSearchController(ScreenshotFixtures.searchCatalog(), scope)
+        controller.start()
+        capture("32-search-browse-fa") { SearchScreen(controller = controller) }
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun marketSearchQuery() {
+        val controller = MarketSearchController(ScreenshotFixtures.searchCatalog(), scope)
+        controller.start()
+        controller.setQuery("eur")
+        capture("33-search-query-fa") { SearchScreen(controller = controller) }
     }
 
     private fun capture(

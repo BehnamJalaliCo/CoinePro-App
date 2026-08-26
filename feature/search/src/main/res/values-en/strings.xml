@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="search_title">Search markets</string>
+    <string name="search_field_label">Symbol or market name</string>
+    <string name="search_clear">Clear</string>
+    <string name="search_category_all">All</string>
+    <string name="search_category_forex">Forex</string>
+    <string name="search_category_crypto">Crypto</string>
+    <string name="search_category_metal">Metals</string>
+    <string name="search_category_index">Indices</string>
+    <string name="search_category_energy">Energy</string>
+    <string name="search_category_other">Other</string>
+    <string name="search_empty">No market matches that.</string>
+    <string name="search_empty_hint">Try the ticker (BTC) or the Persian name (بیت‌کوین).</string>
+    <string name="search_loading">Loading the market list…</string>
+    <string name="search_retry">Try again</string>
+    <string name="search_count">%1$d markets</string>
+    <string name="search_closed">Closed</string>
+    <string name="search_weekend">Weekend</string>
+    <string name="search_no_price">—</string>
+</resources>

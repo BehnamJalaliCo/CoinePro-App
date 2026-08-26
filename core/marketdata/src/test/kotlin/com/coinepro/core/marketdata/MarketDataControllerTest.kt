@@ -1,5 +1,7 @@
 package com.coinepro.core.marketdata
 
+import com.coinepro.core.model.MarketPlatform
+import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.QuoteSource
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.junit.Assert.assertEquals
@@ -45,14 +47,61 @@ class MarketDataControllerTest {
     }
 
     @Test
-    fun out_of_scope_market_symbol_is_rejected_instead_of_guessed_as_crypto() {
-        assertNull(
-            WireQuoteDto(symbol = "EURUSD", price = 1.1, ts = 100L, source = "finnhub")
-                .toDomain(nowMs = 100L),
-        )
-        assertTrue(
-            WireQuoteDto(symbol = "BTCUSDT", price = 60_000.0, ts = 100L, source = "lbank")
-                .toDomain(nowMs = 100L) != null,
-        )
+    fun a_forex_symbol_on_the_crypto_feed_is_typed_as_forex_not_guessed_as_crypto() {
+        // It is not dropped here — the controller's platform filter is what keeps it off the crypto
+        // screen — but it must never arrive labelled CRYPTO, which is how gold once reached a
+        // crypto watchlist.
+        val quote = WireQuoteDto(symbol = "EURUSD", price = 1.1, ts = 100L, source = "finnhub")
+            .toDomain(nowMs = 100L, platform = MarketPlatform.TRADEYAR)
+        assertEquals(MarketType.FOREX, quote?.instrument?.marketType)
+
+        val coin = WireQuoteDto(symbol = "BTCUSDT", price = 60_000.0, ts = 100L, source = "lbank")
+            .toDomain(nowMs = 100L, platform = MarketPlatform.TRADEYAR)
+        assertEquals(MarketType.CRYPTO, coin?.instrument?.marketType)
+    }
+
+    @Test
+    fun a_market_nobody_hand_listed_still_arrives() {
+        // The rule used to be "XAUUSD, XAGUSD, or something ending in USDT" — so a market the
+        // server started quoting was invisible until somebody edited a constant in the app.
+        val listing = WireQuoteDto(symbol = "SUIUSDC", price = 3.2, ts = 100L, source = "lbank")
+            .toDomain(nowMs = 100L, platform = MarketPlatform.TRADEYAR)
+        assertEquals("SUI", listing?.instrument?.displayName)
+        assertEquals(MarketType.CRYPTO, listing?.instrument?.marketType)
+
+        val index = WireQuoteDto(symbol = "US500", price = 5_400.0, ts = 100L, source = "finnhub")
+            .toDomain(nowMs = 100L, platform = MarketPlatform.COINEPRO_FX)
+        assertEquals(MarketType.FOREX, index?.instrument?.marketType)
+    }
+
+    @Test
+    fun an_unrecognised_symbol_belongs_to_the_feed_it_arrived_on() {
+        val onCrypto = WireQuoteDto(symbol = "SOMETHINGNEW", price = 1.0, ts = 100L, source = "lbank")
+            .toDomain(nowMs = 100L, platform = MarketPlatform.TRADEYAR)
+        assertEquals(MarketType.CRYPTO, onCrypto?.instrument?.marketType)
+
+        val onForex = WireQuoteDto(symbol = "SOMETHINGNEW", price = 1.0, ts = 100L, source = "finnhub")
+            .toDomain(nowMs = 100L, platform = MarketPlatform.COINEPRO_FX)
+        assertEquals(MarketType.FOREX, onForex?.instrument?.marketType)
+    }
+
+    @Test
+    fun feed_noise_is_not_a_market() {
+        for (junk in listOf("1", "2Z", "0G", "1COIN")) {
+            assertNull(
+                junk,
+                WireQuoteDto(symbol = junk, price = 1.0, ts = 100L, source = "lbank")
+                    .toDomain(nowMs = 100L, platform = MarketPlatform.TRADEYAR),
+            )
+        }
+    }
+
+    @Test
+    fun gold_is_shown_as_a_ticker_rather_than_an_English_word() {
+        // It used to read "Gold" — an English word in an app that is Persian by default, and the
+        // only row in the list that was not a ticker.
+        val gold = WireQuoteDto(symbol = "XAUUSD", price = 2_400.0, ts = 100L, source = "finnhub")
+            .toDomain(nowMs = 100L, platform = MarketPlatform.COINEPRO_FX)
+        assertEquals("XAU/USD", gold?.instrument?.displayName)
     }
 }

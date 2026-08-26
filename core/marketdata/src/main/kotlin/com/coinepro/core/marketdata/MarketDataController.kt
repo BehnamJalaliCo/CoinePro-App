@@ -5,6 +5,8 @@ import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketQuote
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.QuoteSource
+import com.coinepro.core.symbols.SymbolCategory
+import com.coinepro.core.symbols.SymbolClassifier
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -245,7 +247,7 @@ class MarketDataController(
         // A feed that returns a symbol from the other market — a misconfigured subscription, a
         // shared upstream, a symbol that means different things on two venues — must not be able to
         // reach a screen that is showing the other platform.
-        val mapped = wireQuotes.mapNotNull { it.toDomain(now) }.filter { it.belongsToPlatform() }
+        val mapped = wireQuotes.mapNotNull { it.toDomain(now, platform) }.filter { it.belongsToPlatform() }
         if (mapped.isEmpty()) return
         _state.update { old ->
             val merged = old.quotes.toMutableMap()
@@ -312,8 +314,19 @@ internal fun webSocketUrl(baseUrl: HttpUrl): String {
     return resolved.toString().replaceFirst("https://", "wss://")
 }
 
-internal fun WireQuoteDto.toDomain(nowMs: Long): MarketQuote? {
+/**
+ * One wire quote as a domain quote, or null when it is not one.
+ *
+ * [platform] is what the quote arrived on, and it decides the market type for anything this app
+ * does not recognise. That matters: a symbol neither backend has told us about is still a real
+ * market on whichever feed sent it, and the previous rule — accept `XAUUSD`, `XAGUSD` and anything
+ * ending in `USDT`, drop the rest — meant the app could only ever show the handful of symbols
+ * somebody had hand-listed. A server adding a market was invisible.
+ */
+internal fun WireQuoteDto.toDomain(nowMs: Long, platform: MarketPlatform): MarketQuote? {
     val normalizedSymbol = symbol?.trim()?.uppercase()?.takeIf { it.isNotEmpty() } ?: return null
+    // Feed noise — bare digits, two-character fragments, leveraged-token shards. Not markets.
+    if (SymbolClassifier.isNoise(normalizedSymbol)) return null
     val normalizedPrice = price?.takeIf { it > 0 } ?: run {
         val normalizedBid = bid ?: return null
         val normalizedAsk = ask ?: return null
@@ -326,16 +339,18 @@ internal fun WireQuoteDto.toDomain(nowMs: Long): MarketQuote? {
         source.orEmpty().contains("lbank", ignoreCase = true) -> QuoteSource.LBANK
         else -> QuoteSource.UNKNOWN
     }
-    val marketType = when {
-        normalizedSymbol == "XAUUSD" || normalizedSymbol == "XAGUSD" -> MarketType.FOREX
-        normalizedSymbol.endsWith("USDT") && normalizedSymbol.length > 4 -> MarketType.CRYPTO
-        else -> return null
+    val meta = SymbolClassifier.classify(normalizedSymbol)
+    val marketType = when (meta.category) {
+        SymbolCategory.CRYPTO -> MarketType.CRYPTO
+        SymbolCategory.FOREX, SymbolCategory.METAL,
+        SymbolCategory.INDEX, SymbolCategory.ENERGY,
+        -> MarketType.FOREX
+        // Unrecognised, so believe the feed it came from rather than guessing.
+        SymbolCategory.OTHER -> platform.marketType
     }
-    val displayName = when (normalizedSymbol) {
-        "XAUUSD" -> "Gold"
-        "XAGUSD" -> "Silver"
-        else -> normalizedSymbol.removeSuffix("USDT")
-    }
+    // The ticker, not a name. `BTC` and `XAU/USD` are what every terminal prints, they are
+    // comparable down a column, and they do not need translating for a Persian reader.
+    val displayName = meta.short
     return MarketQuote(
         instrument = Instrument(normalizedSymbol, displayName, marketType),
         price = normalizedPrice,

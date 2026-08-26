@@ -48,7 +48,10 @@ import com.coinepro.core.execution.ExecutionGateway
 import com.coinepro.core.execution.NetworkExecutionGateway
 import com.coinepro.core.marketdata.MarketDataCache
 import com.coinepro.core.model.MarketPlatform
+import com.coinepro.core.marketdata.MarketCatalogGateway
 import com.coinepro.core.marketdata.MarketDataController
+import com.coinepro.core.marketdata.MarketSearchController
+import com.coinepro.core.marketdata.NetworkMarketCatalogGateway
 import com.coinepro.core.marketdata.MarketSnapshotGateway
 import com.coinepro.core.marketdata.NetworkMarketSnapshotGateway
 import com.coinepro.core.marketintel.MarketIntelController
@@ -603,6 +606,51 @@ object AppModule {
         platform = MarketPlatform.TRADEYAR,
         cache = cache,
     )
+
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexMarketCatalogGateway(@ForexPlatform retrofit: Retrofit): MarketCatalogGateway =
+        NetworkMarketCatalogGateway.create(retrofit, MarketPlatform.COINEPRO_FX)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoMarketCatalogGateway(@CryptoPlatform retrofit: Retrofit): MarketCatalogGateway =
+        NetworkMarketCatalogGateway.create(retrofit, MarketPlatform.TRADEYAR)
+
+    /**
+     * Search is per platform because the catalogue is.
+     *
+     * The two backends quote different universes and spell their symbols differently, so one search
+     * over both would offer a market the active session cannot open. The live quotes are handed in
+     * from the same platform's feed, so a row a reader is already watching keeps ticking while the
+     * rest show the catalogue's price.
+     */
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexMarketSearchController(
+        @ForexPlatform gateway: MarketCatalogGateway,
+        @ForexPlatform feed: MarketDataController,
+        scope: CoroutineScope,
+    ): MarketSearchController = MarketSearchController(gateway, scope) { feed.state.value.quotes }
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoMarketSearchController(
+        @CryptoPlatform gateway: MarketCatalogGateway,
+        @CryptoPlatform feed: MarketDataController,
+        scope: CoroutineScope,
+    ): MarketSearchController = MarketSearchController(gateway, scope) { feed.state.value.quotes }
+
+    @Provides
+    @Singleton
+    fun marketSearchControllers(
+        @ForexPlatform forex: MarketSearchController,
+        @CryptoPlatform crypto: MarketSearchController,
+    ): Map<MarketPlatform, MarketSearchController> = platformMap(forex, crypto)
 
     /**
      * The feeds keyed by platform, so the shell can start and stop whichever one is on screen

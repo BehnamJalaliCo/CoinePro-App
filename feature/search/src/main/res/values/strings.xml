@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default language: Persian. -->
+<resources>
+    <string name="search_title">جست‌وجوی بازار</string>
+    <string name="search_field_label">نماد یا نام بازار</string>
+    <string name="search_clear">پاک کردن</string>
+    <string name="search_category_all">همه</string>
+    <string name="search_category_forex">فارکس</string>
+    <string name="search_category_crypto">کریپتو</string>
+    <string name="search_category_metal">فلزات</string>
+    <string name="search_category_index">شاخص‌ها</string>
+    <string name="search_category_energy">انرژی</string>
+    <string name="search_category_other">سایر</string>
+    <string name="search_empty">بازاری با این نام پیدا نشد.</string>
+    <string name="search_empty_hint">نماد لاتین (BTC) یا نام فارسی (بیت‌کوین) را امتحان کن.</string>
+    <string name="search_loading">در حال دریافت فهرست بازارها…</string>
+    <string name="search_retry">تلاش دوباره</string>
+    <string name="search_count">%1$d بازار</string>
+    <string name="search_closed">بسته</string>
+    <string name="search_weekend">تعطیل آخر هفته</string>
+    <string name="search_no_price">—</string>
+</resources>

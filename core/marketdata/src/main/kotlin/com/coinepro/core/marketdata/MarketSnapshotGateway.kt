@@ -19,13 +19,14 @@ interface MarketSnapshotGateway {
 
 class NetworkMarketSnapshotGateway private constructor(
     private val api: MarketDataApi,
+    private val platform: MarketPlatform,
     private val path: String,
     private val nowMillis: () -> Long,
 ) : MarketSnapshotGateway {
     override suspend fun load(symbols: List<String>): MarketSnapshot {
         val response = api.snapshot(path, symbols.joinToString(","))
         return MarketSnapshot(
-            quotes = response.prices.values.mapNotNull { it.toDomain(nowMillis()) },
+            quotes = response.prices.values.mapNotNull { it.toDomain(nowMillis(), platform) },
             serverTimeEpochMillis = response.serverTimeMs,
         )
     }
@@ -37,6 +38,7 @@ class NetworkMarketSnapshotGateway private constructor(
             nowMillis: () -> Long = System::currentTimeMillis,
         ): NetworkMarketSnapshotGateway = NetworkMarketSnapshotGateway(
             api = retrofit.create(MarketDataApi::class.java),
+            platform = platform,
             path = platform.snapshotPath(),
             nowMillis = nowMillis,
         )
