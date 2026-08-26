@@ -195,7 +195,7 @@ coverold     binance-icons/crypto
 cream        binance-icons/crypto
 cred         crypto-icons
 crpt         crypto-icons
-crv          tv-logos/crypto
+crv          crypto-icons
 crw          crypto-icons
 cs           crypto-icons
 ctk          binance-icons/crypto
@@ -223,7 +223,7 @@ dgd          crypto-icons
 dia          binance-icons/crypto
 dlt          binance-icons/crypto
 dnt          binance-icons/crypto
-dock         crypto-icons
+dock         binance-icons/crypto
 dodo         binance-icons/crypto
 doge         crypto-icons
 don          binance-icons/crypto

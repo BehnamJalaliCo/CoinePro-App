@@ -3,25 +3,12 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24"
+    android:viewportWidth="512"
+    android:viewportHeight="512"
     >
-    <path
-        android:strokeColor="#FF000000"
-        android:strokeWidth="1.6"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M 12 3.2c .5 3.4 1.6 5.2 3.4 6.2 -1.8 1 -2.9 2.8 -3.4 6.2 -.5 -3.4 -1.6 -5.2 -3.4 -6.2 1.8 -1 2.9 -2.8 3.4 -6.2Z" />
-    <path
-        android:strokeColor="#FF000000"
-        android:strokeWidth="1.6"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M 18.4 13.8c .3 1.9 .9 2.9 1.9 3.4 -1 .6 -1.6 1.6 -1.9 3.4 -.3 -1.9 -.9 -2.9 -1.9 -3.4 1 -.6 1.6 -1.6 1.9 -3.4Z" />
-    <path
-        android:strokeColor="#FF000000"
-        android:strokeWidth="1.6"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M 5.6 15.4c .2 1.3 .6 2 1.3 2.3 -.7 .4 -1.1 1.1 -1.3 2.3 -.2 -1.3 -.6 -2 -1.3 -2.3 .7 -.4 1.1 -1.1 1.3 -2.3Z" />
+    <group android:translateX="0" android:translateY="448">
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M 379 -381Q 377 -384 373 -384Q 369 -384 368 -381Q 346 -337 302 -315Q 299 -313 299 -309Q 299 -305 302 -304Q 346 -282 368 -238Q 369 -235 373 -235Q 377 -235 379 -238Q 401 -282 445 -304Q 448 -305 448 -309Q 448 -313 445 -315Q 401 -337 379 -381M 71 -155L 85 -148Q 90 -145 95 -142Q 165 -101 206 -31L 212 -21L 219 -7Q 222 0 230 0Q 238 0 241 -7L 248 -21L 254 -31Q 295 -101 364 -142L 375 -148L 389 -155Q 396 -158 396 -166Q 396 -174 389 -177L 375 -184L 364 -190Q 295 -231 254 -300L 248 -311L 241 -325Q 238 -332 230 -332Q 222 -332 219 -325L 212 -311L 206 -300Q 165 -231 95 -190L 85 -184L 71 -177Q 64 -174 64 -166Q 64 -158 71 -155M 230 -73Q 192 -128 137 -166Q 192 -204 230 -259Q 268 -204 323 -166Q 268 -128 230 -73" />
+    </group>
 </vector>

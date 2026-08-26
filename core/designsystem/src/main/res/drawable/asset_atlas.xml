@@ -9,12 +9,16 @@
     <path
         android:fillColor="#31FAFB"
         android:pathData="M 0.0 16.0a 16.0 16.0 0 1 0 32.0 0a 16.0 16.0 0 1 0 -32.0 0Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:fillType="evenOdd"
-        android:pathData="M 2.5 4.938L 0 0h 5z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:fillType="evenOdd"
-        android:pathData="M 8.5 6.498L 4.03 15.99c -.148 .304 -.225 .55 -.55 .55l -2.953 .002c -.423 0 -.657 -.109 -.451 -.55L 7.296 .447C 7.445 .19 7.537 0 7.862 0H 9.14c .325 0 .417 .19 .565 .448l 7.22 15.544c .206 .442 -.028 .551 -.451 .551l -2.953 -.001c -.325 0 -.402 -.247 -.55 -.551L 8.5 6.498z" />
+    <group android:translateX="13.5" android:translateY="21.312">
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M 2.5 4.938L 0 0h 5z" />
+    </group>
+    <group android:translateX="7.5" android:translateY="6.25">
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M 8.5 6.498L 4.03 15.99c -.148 .304 -.225 .55 -.55 .55l -2.953 .002c -.423 0 -.657 -.109 -.451 -.55L 7.296 .447C 7.445 .19 7.537 0 7.862 0H 9.14c .325 0 .417 .19 .565 .448l 7.22 15.544c .206 .442 -.028 .551 -.451 .551l -2.953 -.001c -.325 0 -.402 -.247 -.55 -.551L 8.5 6.498z" />
+    </group>
 </vector>

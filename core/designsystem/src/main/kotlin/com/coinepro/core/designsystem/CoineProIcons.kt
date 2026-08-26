@@ -28,11 +28,22 @@ object CoineProIcons {
 
     /* ---------------------------------------------------------------- navigation */
 
-    @DrawableRes val Home = R.drawable.icon_house
-    @DrawableRes val Signals = R.drawable.icon_chart_line_up
-    @DrawableRes val Ai = R.drawable.icon_sparkle
-    @DrawableRes val Tools = R.drawable.icon_sliders_horizontal
-    @DrawableRes val Activity = R.drawable.icon_bell
+    /**
+     * The bottom bar is the one place that does *not* use Phosphor.
+     *
+     * It is the first thing anyone sees and the only chrome on every screen, so it is drawn from the
+     * exchanges' own sets — Bybit's house, OKX's candlesticks, sparkle, controls and bell — rather
+     * than from a general-purpose family. They share a grid and a stroke weight with each other,
+     * which is what makes five icons read as one bar; Phosphor still covers everything else, where
+     * breadth matters more than this kind of specificity.
+     *
+     * Built by `scripts/design/build-nav-icons.py`; provenance is in `design/README.md`.
+     */
+    @DrawableRes val Home = R.drawable.nav_home
+    @DrawableRes val Signals = R.drawable.nav_signals
+    @DrawableRes val Ai = R.drawable.nav_ai
+    @DrawableRes val Tools = R.drawable.nav_tools
+    @DrawableRes val Activity = R.drawable.nav_activity
 
     /* ---------------------------------------------------------------- direction */
 
@@ -79,12 +90,18 @@ object CoineProIcons {
     @DrawableRes val Balance = R.drawable.icon_currency_circle_dollar
     @DrawableRes val Assistant = R.drawable.icon_robot
 
-    /** The navigation glyphs in the fill weight, for the selected tab. */
+    /**
+     * The navigation glyphs in the fill weight, for the selected tab.
+     *
+     * OKX publishes both weights of the sparkle. The other four are derived from their own outlines
+     * by dropping the counters — see `build-nav-icons.py`, which explains why that is the same shape
+     * the vendor would have drawn rather than an approximation of it.
+     */
     object Filled {
-        @DrawableRes val Home = R.drawable.icon_filled_house
-        @DrawableRes val Signals = R.drawable.icon_filled_chart_line_up
-        @DrawableRes val Ai = R.drawable.icon_filled_sparkle
-        @DrawableRes val Tools = R.drawable.icon_filled_sliders_horizontal
-        @DrawableRes val Activity = R.drawable.icon_filled_bell
+        @DrawableRes val Home = R.drawable.nav_home_fill
+        @DrawableRes val Signals = R.drawable.nav_signals_fill
+        @DrawableRes val Ai = R.drawable.nav_ai_fill
+        @DrawableRes val Tools = R.drawable.nav_tools_fill
+        @DrawableRes val Activity = R.drawable.nav_activity_fill
     }
 }

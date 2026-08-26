@@ -228,6 +228,30 @@ def covers_viewport(reference: str, ids: dict, viewbox: tuple[float, float]) -> 
     return False
 
 
+_TRANSLATE = re.compile(r"^\s*translate\(\s*([-+0-9.eE]+)(?:[ ,]+([-+0-9.eE]+))?\s*\)\s*$")
+
+
+def translation_of(element: ET.Element) -> tuple[float, float]:
+    """The element's `transform`, when it is a pure translation.
+
+    Translation is the only transform Android's vector format can carry without rewriting path data,
+    and it is the one these sets actually use: every icon converted from an icon font arrives wrapped
+    in `<g transform="translate(0,448)">` to flip the font's baseline-up coordinates into SVG's
+    y-down space. Ignoring it would draw the whole glyph off-canvas — silently, because the paths
+    themselves are perfectly valid.
+
+    A rotation or a scale is refused rather than approximated, by the same rule as everything else
+    here: an icon that renders *almost* right is worse than one that fails by name.
+    """
+    transform = element.get("transform")
+    if not transform:
+        return 0.0, 0.0
+    match = _TRANSLATE.match(transform)
+    if not match:
+        raise Unsupported(f"transform={transform!r} is not a translation and cannot be flattened")
+    return float(match.group(1)), float(match.group(2) or 0.0)
+
+
 def collect(
     element: ET.Element,
     fill: str | None,
@@ -238,6 +262,7 @@ def collect(
     width: str | None = None,
     ids: dict[str, ET.Element] | None = None,
     viewbox: tuple[float, float] = (0.0, 0.0),
+    shift: tuple[float, float] = (0.0, 0.0),
 ) -> None:
     """Walk the tree, resolving inherited fill and fill-rule down to individual paths."""
     ids = ids if ids is not None else {}
@@ -259,6 +284,9 @@ def collect(
         # solid black duplicate sitting under the real one, so the whole element goes.
         return
 
+    dx, dy = translation_of(element)
+    shift = (shift[0] + dx, shift[1] + dy)
+
     if tag == "use":
         target = ids.get((element.get("href") or element.get(XLINK_HREF) or "").lstrip("#"))
         if target is None:
@@ -274,6 +302,7 @@ def collect(
             element.get("stroke-width") or width,
             ids,
             viewbox,
+            shift,
         )
         return
 
@@ -319,7 +348,7 @@ def collect(
         if colour is None and not stroked:
             data = None
         if data:
-            shape = {"d": " ".join(data.split()), "rule": rule}
+            shape = {"d": " ".join(data.split()), "rule": rule, "shift": shift}
             gradient = gradient_of(colour, ids, viewbox) if colour and colour.startswith("url(") else None
             shape["gradient"] = gradient
             shape["fill"] = None if gradient else (normalise(colour) if colour else None)
@@ -329,7 +358,7 @@ def collect(
             out.append(shape)
 
     for child in element:
-        collect(child, fill, rule, out, drop_shadows, stroke, width, ids, viewbox)
+        collect(child, fill, rule, out, drop_shadows, stroke, width, ids, viewbox, shift)
 
 
 # UI icons declare currentColor and are tinted by the caller. Android has no such keyword, so they
@@ -387,34 +416,48 @@ def convert(
             f'    <group android:translateX="{offset_x:g}" android:translateY="{offset_y:g}">'
         )
     for path in paths:
-        lines.append(f"{pad}    <path")
+        # A group transform on the path's ancestors, carried the same way as the viewBox origin. It
+        # is per path rather than hoisted onto one wrapping group because nothing guarantees a file
+        # puts every shape under the same <g> — in practice they do, and then these nest harmlessly.
+        moved = path.get("shift") or (0.0, 0.0)
+        inner = pad
+        if moved != (0.0, 0.0):
+            lines.append(
+                f'{pad}    <group android:translateX="{moved[0]:g}"'
+                f' android:translateY="{moved[1]:g}">'
+            )
+            inner = pad + "    "
+        lines.append(f"{inner}    <path")
         if path.get("fill"):
-            lines.append(f'{pad}        android:fillColor="{path["fill"]}"')
+            lines.append(f'{inner}        android:fillColor="{path["fill"]}"')
         if path.get("stroke"):
-            lines.append(f'{pad}        android:strokeColor="{path["stroke"]}"')
-            lines.append(f'{pad}        android:strokeWidth="{path["width"]}"')
-            lines.append(f'{pad}        android:strokeLineCap="round"')
-            lines.append(f'{pad}        android:strokeLineJoin="round"')
+            lines.append(f'{inner}        android:strokeColor="{path["stroke"]}"')
+            lines.append(f'{inner}        android:strokeWidth="{path["width"]}"')
+            lines.append(f'{inner}        android:strokeLineCap="round"')
+            lines.append(f'{inner}        android:strokeLineJoin="round"')
         if path["rule"] == "evenodd":
-            lines.append(f'{pad}        android:fillType="evenOdd"')
+            lines.append(f'{inner}        android:fillType="evenOdd"')
         data = expand_arc_flags(path["d"])
         gradient = path.get("gradient")
         if not gradient:
-            lines.append(f'{pad}        android:pathData="{data}" />')
-            continue
-        lines.append(f'{pad}        android:pathData="{data}">')
-        lines.append(f'{pad}        <aapt:attr name="android:fillColor">')
-        lines.append(f'{pad}            <gradient android:type="{gradient["type"]}"')
-        for name, value in gradient["coords"].items():
-            lines.append(f'{pad}                android:{name}="{value:g}"')
-        lines.append(f"{pad}                >")
-        for offset, colour in gradient["stops"]:
-            lines.append(
-                f'{pad}                <item android:offset="{offset}" android:color="{colour}" />'
-            )
-        lines.append(f"{pad}            </gradient>")
-        lines.append(f"{pad}        </aapt:attr>")
-        lines.append(f"{pad}    </path>")
+            lines.append(f'{inner}        android:pathData="{data}" />')
+        else:
+            lines.append(f'{inner}        android:pathData="{data}">')
+            lines.append(f'{inner}        <aapt:attr name="android:fillColor">')
+            lines.append(f'{inner}            <gradient android:type="{gradient["type"]}"')
+            for name, value in gradient["coords"].items():
+                lines.append(f'{inner}                android:{name}="{value:g}"')
+            lines.append(f"{inner}                >")
+            for offset, colour in gradient["stops"]:
+                lines.append(
+                    f'{inner}                <item android:offset="{offset}"'
+                    f' android:color="{colour}" />'
+                )
+            lines.append(f"{inner}            </gradient>")
+            lines.append(f"{inner}        </aapt:attr>")
+            lines.append(f"{inner}    </path>")
+        if inner != pad:
+            lines.append(f"{pad}    </group>")
     if shifted:
         lines.append("    </group>")
     lines.append("</vector>")

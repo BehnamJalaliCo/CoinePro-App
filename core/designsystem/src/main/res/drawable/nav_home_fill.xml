@@ -3,10 +3,12 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024"
     >
-    <path
-        android:fillColor="#FF000000"
-        android:pathData="M 12 3.2 2.9 10.3a 1 1 0 0 0 .6 1.8h .6v 6.4A 2.6 2.6 0 0 0 6.7 21H 9v -5.7a 1 1 0 0 1 1 -1h 4a 1 1 0 0 1 1 1V 21h 2.3a 2.6 2.6 0 0 0 2.6 -2.5v -6.4h .6a 1 1 0 0 0 .6 -1.8Z" />
+    <group android:translateX="0" android:translateY="896">
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M 468 -775L 156 -552Q 133 -535 120 -510Q 107 -485 107 -457L 107 -96Q 107 -64 122.500 -37Q 138 -10 165 5.500Q 192 21 224 21L 800 21Q 832 21 859 5.500Q 886 -10 901.500 -37Q 917 -64 917 -96L 917 -457Q 917 -485 904 -510Q 891 -535 868 -552L 556 -775Q 536 -789 512 -789Q 488 -789 468 -775" />
+    </group>
 </vector>

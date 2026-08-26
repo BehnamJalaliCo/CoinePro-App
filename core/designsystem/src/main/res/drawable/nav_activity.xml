@@ -3,19 +3,12 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24"
+    android:viewportWidth="512"
+    android:viewportHeight="512"
     >
-    <path
-        android:strokeColor="#FF000000"
-        android:strokeWidth="1.6"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M 6.2 10.4a 5.8 5.8 0 0 1 11.6 0v 3.3l 1.5 3a .8 .8 0 0 1 -.7 1.2H 5.4a .8 .8 0 0 1 -.7 -1.2l 1.5 -3Z" />
-    <path
-        android:strokeColor="#FF000000"
-        android:strokeWidth="1.6"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M 9.8 20.2a 2.4 2.4 0 0 0 4.4 0" />
+    <group android:translateX="0" android:translateY="448">
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M 245 -331Q 239 -331 230 -329L 221 -326Q 186 -318 163.500 -289.500Q 141 -261 141 -224L 141 -108Q 141 -92 130 -81L 125 -77L 366 -77L 361 -81Q 350 -92 350 -108L 350 -224Q 350 -261 327 -289.500Q 304 -318 269 -326L 261 -329Q 251 -331 245 -331M 385 -105L 424 -67Q 427 -64 427 -60L 427 -51Q 427 -47 424.500 -45Q 422 -43 418 -43L 73 -43Q 69 -43 66.500 -45Q 64 -47 64 -51L 64 -60Q 64 -64 67 -67L 105 -105Q 107 -107 107 -108L 107 -224Q 107 -272 137 -310Q 167 -348 213 -359L 213 -373Q 213 -386 222.500 -395.500Q 232 -405 245.500 -405Q 259 -405 268 -396Q 277 -387 277 -373L 277 -359Q 323 -348 353.500 -310Q 384 -272 384 -224L 384 -108Q 384 -106 385 -105M 203 -21L 288 -21Q 288 -17 286 -8.500Q 284 0 276 9L 271 13Q 260 21 245.500 21Q 231 21 220 13L 215 9Q 208 2 205 -9Q 203 -13 203 -21" />
+    </group>
 </vector>

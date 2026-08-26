@@ -3,25 +3,12 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024"
     >
-    <path
-        android:strokeColor="#FF000000"
-        android:strokeWidth="1.6"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M 3.6 10.4 12 3.8l 8.4 6.6" />
-    <path
-        android:strokeColor="#FF000000"
-        android:strokeWidth="1.6"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M 5.6 9.4v 9.1a 1.6 1.6 0 0 0 1.6 1.6h 9.6a 1.6 1.6 0 0 0 1.6 -1.6V 9.4" />
-    <path
-        android:strokeColor="#FF000000"
-        android:strokeWidth="1.6"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M 9.7 20.1v -5.3h 4.6v 5.3" />
+    <group android:translateX="0" android:translateY="896">
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M 468 -775L 156 -552Q 133 -535 120 -510Q 107 -485 107 -457L 107 -96Q 107 -64 122.500 -37Q 138 -10 165 5.500Q 192 21 224 21L 800 21Q 832 21 859 5.500Q 886 -10 901.500 -37Q 917 -64 917 -96L 917 -457Q 917 -485 904 -510Q 891 -535 868 -552L 556 -775Q 536 -789 512 -789Q 488 -789 468 -775M 171 -96L 171 -457Q 171 -469 176.500 -480.500Q 182 -492 193 -500L 506 -724Q 512 -728 518 -724L 831 -500Q 842 -492 847.500 -480.500Q 853 -469 853 -457L 853 -96Q 853 -74 837.500 -58Q 822 -42 800 -42L 224 -42Q 202 -42 186.500 -58Q 171 -74 171 -96" />
+    </group>
 </vector>
