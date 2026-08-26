@@ -24,6 +24,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.LaunchedEffect
+import com.coinepro.core.help.CoineProHelpSheet
+import com.coinepro.core.help.HelpCatalog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
@@ -71,7 +77,6 @@ import com.coinepro.core.designsystem.R as DesignR
 @Composable
 fun ChartScreen(
     controller: ChartController,
-    onHelp: ((String) -> Unit)? = null,
     signal: SignalOverlay? = null,
     /**
      * Opens the full web terminal on this symbol.
@@ -84,6 +89,16 @@ fun ChartScreen(
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var sheet by remember { mutableStateOf<ChartSheet?>(null) }
+
+    // The «؟» dots on every picker raise an id; this is what answers them. Hosted here rather than
+    // handed in by the app, because this screen is the only place in the product that *has* help
+    // ids — the catalogue is 186 entries and 179 of them are chart tools and indicators. Passing
+    // the host down from the app meant every caller had to remember to supply one, and none did:
+    // the entire help feature was dead code, which R8 noticed before anybody else.
+    var helpId by remember { mutableStateOf<String?>(null) }
+    val help = rememberHelpCatalog(helpId != null)
+    val helpEntry = helpId?.let { help?.get(it) }
+    val onHelp: (String) -> Unit = { helpId = it }
 
     LaunchedStart(controller)
 
@@ -190,6 +205,34 @@ fun ChartScreen(
 
         null -> Unit
     }
+
+    helpEntry?.let { entry ->
+        CoineProHelpSheet(entry = entry, onDismiss = { helpId = null })
+    }
+}
+
+/**
+ * The help catalogue, parsed the first time somebody asks for it and never again.
+ *
+ * [wanted] is what makes it lazy: the file is 186 entries of Persian and English prose and parsing
+ * it costs a frame, which is a frame nobody should pay for opening a chart. It is read off the
+ * main thread for the same reason.
+ *
+ * A failure returns null and the «؟» simply does nothing, which is what it did before this existed.
+ * A missing help file is not a reason to fail opening a chart.
+ */
+@Composable
+private fun rememberHelpCatalog(wanted: Boolean): HelpCatalog? {
+    val context = LocalContext.current
+    var catalog by remember { mutableStateOf<HelpCatalog?>(null) }
+    LaunchedEffect(wanted) {
+        if (wanted && catalog == null) {
+            catalog = withContext(Dispatchers.IO) {
+                runCatching { HelpCatalog.load(context.assets) }.getOrNull()
+            }
+        }
+    }
+    return catalog
 }
 
 private enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS }

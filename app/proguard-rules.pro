@@ -48,3 +48,27 @@
 -keepclassmembers class com.coinepro.feature.auth.TelegramBridge {
     @android.webkit.JavascriptInterface <methods>;
 }
+
+# --- Hilt workers ---
+# WorkManager instantiates a worker from a class name, and HiltWorkerFactory resolves it through a
+# map that Hilt builds from a generated module. R8 sees no direct reference to either the module or
+# the assisted factory and removes both — the mapping file showed
+# `BackgroundReadSyncWorker_AssistedFactory`, its `_Impl` and `_HiltModule` all gone while the
+# worker itself survived. The result is a factory with an empty map, WorkManager falling back to
+# reflection, and a constructor it cannot satisfy: background sync silently never runs, in release
+# builds only.
+-keep class * extends androidx.work.ListenableWorker { <init>(...); }
+-keep,allowobfuscation @dagger.assisted.AssistedFactory class * { *; }
+-keep class **_HiltModule { *; }
+-keep class **_AssistedFactory { *; }
+-keep class **_AssistedFactory_Impl { *; }
+
+# --- The «؟» catalogue ---
+# Parsed from `assets/help/content.json` with Gson into these, none of which is named *Dto. They are
+# reachable now that the chart screen hosts the sheet; before that they were genuinely dead and R8
+# was right to drop them. Keeping them explicitly so that a future screen wiring up help does not
+# have to rediscover why its entries all come back empty.
+-keep class com.coinepro.core.help.HelpEntry { *; }
+-keep class com.coinepro.core.help.HelpImage { *; }
+-keep class com.coinepro.core.help.Bilingual { *; }
+-keep class com.coinepro.core.help.BilingualList { *; }
