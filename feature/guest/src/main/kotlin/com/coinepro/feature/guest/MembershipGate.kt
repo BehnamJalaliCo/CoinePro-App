@@ -23,9 +23,13 @@ import com.coinepro.core.designsystem.CoineProSpacing
  * What a reader without an account is told when they reach signals, copy trading or the AI.
  *
  * This is not a paywall and it is important that it does not read like one, because there is no
- * wall and nothing to pay: CoinePro sells nothing. The service is funded by commission the exchange
- * pays on the reader's own trading, which is why membership is a sub-account check rather than a
- * purchase, and why the four steps below are the whole of it.
+ * wall and nothing to pay: CoinePro sells nothing and charges nothing. Membership is an account
+ * check rather than a purchase — the reader's exchange account has to be linked to CoinePro for the
+ * service to identify them at all — which is why the four steps below are the whole of it.
+ *
+ * The card states the conditions and stops there. How the arrangement with the exchanges works is
+ * the terms' business, not a marketing surface's: a card that explains a commercial relationship to
+ * somebody who asked to see a signal has changed the subject.
  *
  * The steps are the server's, read from `app/vip/service.py` — the 50 USDT is `VIP_MIN_DEPOSIT`,
  * not a number chosen here — and they are stated in full rather than summarised, because the first
@@ -33,10 +37,10 @@ import com.coinepro.core.designsystem.CoineProSpacing
  * sub-account in the exchange's own system and cannot be verified afterwards; a reader who learns
  * that after registering has lost the thing the screen was for.
  *
- * One thing is deliberately absent: the referral link itself. It has to come from the server —
+ * One thing is deliberately absent: the registration link itself. It has to come from the server —
  * `docs/REQUEST4_ACCOUNT_DELETION.md` §3 asks for the route — because a link compiled into an app
- * is a link that is wrong the day it changes, and a wrong referral link means the exchange never
- * records the reader as ours. Losing the attribution silently is worse than one more tap.
+ * is a link that is wrong the day it changes, and a wrong one means the exchange never records the
+ * account as linked. Losing that silently is worse than one more tap.
  */
 @Composable
 fun MembershipGate(

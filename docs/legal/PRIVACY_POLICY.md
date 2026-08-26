@@ -51,9 +51,9 @@
 | تصویر نمودار | فقط وقتی خودتان عکس را برای تحلیل می‌فرستید | همان پلتفرم |
 | نمادهایی که روی صفحه‌اند | هنگام اتصال به فید قیمت | همان پلتفرم |
 
-**UID صرافی چرا فرستاده می‌شود.** عضویت کوین‌پرو رایگان است و به‌جای پرداخت، بر زیرمجموعه بودنِ شما
-در صرافی تکیه دارد (شرایط استفاده، بند ۶). برای احراز این موضوع، UID شما به صرافی داده می‌شود تا
-صرافی تأیید کند این حساب زیرمجموعهٔ کوین‌پروست و موجودی لازم را دارد. آنچه برمی‌گردد یک پاسخ
+**UID صرافی چرا فرستاده می‌شود.** عضویت کوین‌پرو رایگان است و شرطش داشتن حساب فعال در یکی از
+صرافی‌های همکار است (شرایط استفاده، بند ۶). برای احراز این موضوع، UID شما به صرافی داده می‌شود تا
+صرافی تأیید کند این حساب به کوین‌پرو متصل است و موجودی لازم را دارد. آنچه برمی‌گردد یک پاسخ
 آری/نه و وضعیت موجودی است؛ کوین‌پرو با UID شما نه به حساب صرافی دسترسی دارد و نه می‌تواند معامله یا
 برداشتی انجام دهد.
 
@@ -198,9 +198,9 @@ image-analysis screen. The image is not kept on the device after it is sent.
 Your data is **not sold**. It is shared only with Google (Firebase Cloud Messaging carries
 notification tokens and payloads — inherent to Android notifications); the LBank or Ourbit exchange
 and an MT5 broker if *you* connect those accounts or submit a UID for membership verification; and
-where the law requires it. A UID check asks the exchange one question — is this account ours, and is
-it funded — and gets back a yes/no and a balance state. It grants no access to your exchange
-account.
+where the law requires it. A UID check asks the exchange one question — is this account linked to
+CoinePro, and is it funded — and gets back a yes/no and a balance state. It grants no access to your
+exchange account.
 
 ## 5) Retention and deletion
 

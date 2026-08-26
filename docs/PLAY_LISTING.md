@@ -228,7 +228,7 @@ SHA-256  96:12:AB:6C:BF:BB:4F:4F:FB:F1:51:D8:60:2C:12:9D:CC:E8:A9:77:1E:85:46:69
 | --- | --- |
 | Privacy and terms URLs | Published as pages, built from `docs/legal/*.md`: `/privacy/`, `/terms/`. One switch left — Settings → Pages → Source → GitHub Actions. |
 | Account deletion | In-app screen behind the `accountDeletion` capability flag, plus the published `/delete-account/` page which satisfies Play's out-of-app requirement today. `docs/REQUEST4_ACCOUNT_DELETION.md` asks both servers for the route. |
-| Subscription terms | There is no subscription. §6 of the terms now describes the real model: nothing is charged, the revenue is affiliate commission from the exchange, and membership is a sub-account check. No in-app purchase is declared. |
+| Subscription terms | There is no subscription. §6 of the terms now describes the real model: nothing is charged, and membership's condition is a funded account at a partner exchange rather than a payment. No in-app purchase is declared. |
 | Demo accounts for review | Replaced by opening the app to guests. A reviewer sees the live crypto market, the news and the membership explanation without an account, which is a better answer than a shared login that expires. |
 
 **What a Play reviewer will see without signing in**

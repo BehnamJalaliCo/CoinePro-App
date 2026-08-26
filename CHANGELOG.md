@@ -15,6 +15,23 @@ it is for.
 
 ---
 
+## [1.1.1] — 2026-08-26
+
+### Changed
+- The membership card and the landing page no longer explain where the money comes from. They say
+  what a reader needs to decide — membership is free, the condition is a funded account at a
+  partner exchange — and stop there. Explaining a commercial arrangement to somebody who asked to
+  see a signal changes the subject, and reads as a disclosure rather than an offer.
+- The terms keep a short, neutral clause about the partnership, because §6-2 makes registering
+  through CoinePro's link mandatory and a condition with no stated reason is a worse document. It
+  says the two things a reader actually needs: it costs them nothing extra, and CoinePro never
+  holds their funds.
+- "Sub-account" and "referral link" are gone from every reader-facing string, in both languages.
+  The account is *linked to* CoinePro through a *dedicated link* — the same fact, without the
+  vocabulary of somebody else's affiliate programme.
+
+---
+
 ## [1.1.0] — 2026-08-26 — The app opens without an account
 
 ### Added
@@ -40,10 +57,10 @@ it is for.
   `docs/legal/*.md` so there is no second copy of the text to drift.
 
 ### Changed
-- Terms §6 says what the service actually charges: nothing. The revenue is affiliate commission the
-  exchange pays on the reader's own trading; membership is a sub-account check with a 50 USDT floor
-  — `VIP_MIN_DEPOSIT` in the server's own configuration — not a purchase. Copy trading is LBank
-  only, because Ourbit does not offer it.
+- Terms §6 says what the service actually charges: nothing. Membership is free, and its condition
+  is a funded account at a partner exchange with a 50 USDT floor — `VIP_MIN_DEPOSIT` in the
+  server's own configuration — rather than a purchase. Copy trading is LBank only, because Ourbit
+  does not offer it.
 
 ### Fixed
 - `AccountApi`'s four paths carried CoinePro-FX's `user/mobile` prefix for both platforms. TradeYar
