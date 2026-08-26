@@ -55,4 +55,12 @@ class PairLogoTest {
         assertEquals(false, isPairSymbol("BTCUSDT"))
         assertEquals(false, isPairSymbol("SOLUSDT"))
     }
+
+    @Test
+    fun `a currency with no artwork still lets the pair render`() {
+        // Only one half has to be recognised. RUB has no flag here, and USDRUB must still draw as a
+        // pair with a lettered stub rather than falling through to the coin table and finding
+        // nothing at all.
+        assertEquals("USD" to "RUB", pairOf("USDRUB"))
+    }
 }

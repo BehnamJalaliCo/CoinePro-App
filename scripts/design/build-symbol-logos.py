@@ -1,26 +1,28 @@
 #!/usr/bin/env python3
 """Build every instrument logo the app ships, from the archives, in one reproducible pass.
 
-Three archives overlap and none of them wins outright, which is why this exists as a script with a
-recorded preference rather than as a hand-maintained list. Run it and the drawables and the Kotlin
-lookup are both regenerated; nothing here is hand-edited.
+The order is the owner's: crypto comes from Binance, and TradingView fills whatever Binance does not
+carry. Run this and the drawables, the Kotlin lookup and the manifest are all regenerated together;
+none of the three is hand-edited.
 
-The preference order is not a guess. It was measured:
+Getting Binance to lead took work on the converter rather than a change of mind. The set converted
+at only 352/563 at first, blocked by two things that turned out to be surmountable:
 
-* ``crypto-icons`` converts at 478/483 and ``binance-icons`` at 352/563 — the Binance set leans on
-  ``clip-path``, which Android's vector format cannot express and which this repo's converter
-  refuses rather than approximates.
-* At the sizes the app actually draws these (24–42dp), the flatter ``crypto-icons`` marks read
-  better. Side by side, its SOL, DOGE and DOT are legible where the Binance set's detailed coin
-  illustrations turn to mush.
+* 83 files carry a ``clip-path`` that covers the entire canvas and therefore crops nothing. The
+  converter now recognises a no-op clip and drops it, while still refusing one that really crops.
+* 152 files use gradients. Android's vector format supports gradients, so they are carried across
+  rather than flattened — flattening a brushed-metal coin to a flat disc passes a file listing and
+  is obviously wrong beside the original.
 
-So ``crypto-icons`` leads and ``binance-icons`` fills the symbols it does not carry. Both vector
-packs predate the 2023-24 listings, so ``tv-logos`` goes last purely as a gap-filler — it is the one
-archive here that carries ARB, SUI, PEPE, SEI, WIF, TIA, WLD and ONDO. Only TON is in none of the
-three and falls back to the raster archive; see ``RASTER_ONLY``.
+``tv-logos`` then fills the gaps, which is mostly the 2023-24 listings both older packs predate:
+ARB, SUI, PEPE, SEI, TIA, WLD, ONDO. ``crypto-icons`` sits last as a long tail of small caps neither
+of the other two draws. Four symbols have no usable vector anywhere and ship as raster; see
+``RASTER_ONLY``.
 
-``scripts/design/compare-symbol-logos.py`` renders the candidates side by side on both grounds; use
-it before changing the order below.
+Forex flags and the four metals do not come through here at all — they are the ``tv-logos``
+country and metal sets, converted by ``build-fx-logos.py``.
+
+``scripts/design/compare-symbol-logos.py`` renders the candidates side by side on both grounds.
 """
 
 from __future__ import annotations
@@ -49,23 +51,45 @@ KOTLIN = (
     / "AssetLogoTable.kt"
 )
 
+# Forex and metals. Not part of the crypto merge — these are one archive each, with no competing
+# source to prefer between, and they are keyed by country rather than by ticker. They live here
+# rather than in a separate command because --clean deletes every asset drawable, and a set this
+# script does not build is a set it would silently destroy.
+PAIR_SETS = (
+    ("tv-logos/country", "asset_flag_", (
+        "au", "ca", "ch", "cn", "cz", "dk", "eu", "gb", "hk", "hu",
+        "jp", "mx", "no", "nz", "pl", "se", "sg", "tr", "us", "za",
+    )),
+    ("tv-logos/metal", "asset_metal_", ("gold", "silver", "platinum", "palladium")),
+)
+
 # In preference order. See the module docstring for why.
-VECTOR_SOURCES = ("crypto-icons", "binance-icons/crypto", "tv-logos/crypto")
+VECTOR_SOURCES = ("binance-icons/crypto", "tv-logos/crypto", "crypto-icons")
 
 # Symbols the vector archives cannot serve, taken from the Binance raster archive instead. Kept to a
 # named list rather than an automatic sweep: a raster among vectors is a deliberate exception and
 # should have to be argued for, one symbol at a time. Each of these has a reason —
 #
 #   ton   no vector archive carries it at all
-#   arb   its only vector uses a gradient, which Android's vector format cannot express
+#   arb   drawn with a gradientTransform, which re-frames the gradient and cannot be flattened
 #   sei   the same
 #   wif   its vector is a 33 KB photo-like illustration, well past MAX_VECTOR_BYTES
 #
 # 192px covers 42dp — the largest the app draws one of these — at every density through xxxhdpi, so
 # nothing here is upscaled. ARB is the exception at 64px and is soft above 24dp; it ships anyway,
 # because a soft Arbitrum mark still reads as Arbitrum and a lettered "A" does not.
-RASTER_ONLY = ("ton", "arb", "sei", "wif")
 RASTER_ARCHIVE = "binance"
+
+RASTER_ONLY = ("ton", "arb", "wif")
+
+# Symbols pinned to one archive because the automatic order picks the wrong artwork for them.
+#
+# This is for errors, not preferences — a preference belongs in VECTOR_SOURCES where it applies to
+# everything. TradingView's `arb.svg` is Arweave's "AR" mark rather than Arbitrum's hexagon, and no
+# ordering can fix a file that draws the wrong coin.
+OVERRIDES: dict[str, str] = {
+    "arb": RASTER_ARCHIVE,
+}
 
 # Anything larger than this is an illustration rather than an icon. A 72 KB path renders as a grey
 # smudge at 24dp, so it costs the APK real space to look worse than the lettered token it would
@@ -83,12 +107,15 @@ def resource_name(symbol: str) -> str:
     return re.sub(r"[^a-z0-9_]", "_", symbol.lower())
 
 
-def convert(subset: str, symbols: list[str]) -> set[str]:
+def convert(subset: str, symbols: list[str], prefix: str = "asset_") -> set[str]:
     """Convert one archive's symbols, returning the ones that landed."""
     if not symbols:
         return set()
     result = subprocess.run(
-        [sys.executable, str(REPO / "scripts/design/svg-to-vector.py"), "--set", subset, *symbols],
+        [
+            sys.executable, str(REPO / "scripts/design/svg-to-vector.py"),
+            "--set", subset, "--prefix", prefix, *symbols,
+        ],
         capture_output=True,
         text=True,
         cwd=REPO,
@@ -136,18 +163,34 @@ def main() -> int:
                 existing.unlink()
 
     chosen: dict[str, str] = {}
+    oversized: dict[str, list[str]] = {}
     for subset in VECTOR_SOURCES:
-        remaining = sorted(archive_symbols(subset) - chosen.keys())
+        remaining = sorted(
+            symbol for symbol in archive_symbols(subset) - chosen.keys()
+            # A symbol pinned elsewhere is skipped here even if this archive has artwork for it.
+            if OVERRIDES.get(symbol, subset) == subset
+        )
         for symbol in convert(subset, remaining):
+            path = DRAWABLE / f"asset_{resource_name(symbol)}.xml"
+            # Oversized artwork does not claim the symbol. Falling through to the next archive is
+            # the whole point: Binance draws DOGE as a detailed coin well past the size limit, and
+            # dropping it there would have shown a lettered "D" while a clean flat one sat unused in
+            # the next archive along.
+            if path.exists() and path.stat().st_size > MAX_VECTOR_BYTES:
+                path.unlink()
+                oversized.setdefault(symbol, []).append(subset)
+                continue
             chosen[symbol] = subset
 
-    # Oversized artwork is dropped rather than shipped: see MAX_VECTOR_BYTES.
-    dropped = []
-    for symbol in sorted(chosen):
-        path = DRAWABLE / f"asset_{resource_name(symbol)}.xml"
-        if path.exists() and path.stat().st_size > MAX_VECTOR_BYTES:
-            path.unlink()
-            dropped.append((symbol, chosen.pop(symbol)))
+    dropped = [
+        (symbol, ", ".join(sources))
+        for symbol, sources in sorted(oversized.items())
+        if symbol not in chosen
+    ]
+
+    pairs = 0
+    for subset, prefix, names in PAIR_SETS:
+        pairs += len(convert(subset, list(names), prefix=prefix))
 
     for symbol in RASTER_ONLY:
         if symbol in chosen:
@@ -173,7 +216,8 @@ def main() -> int:
         by_source[source] = by_source.get(source, 0) + 1
     for source, count in sorted(by_source.items()):
         print(f"{source:<22} {count}")
-    print(f"{'total':<22} {len(chosen)}   ({len(dropped)} dropped as oversized)")
+    print(f"{'flags and metals':<22} {pairs}")
+    print(f"{'total':<22} {len(chosen) + pairs}   ({len(dropped)} dropped as oversized)")
     return 0
 
 

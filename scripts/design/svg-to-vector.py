@@ -32,9 +32,9 @@ DRAWABLE = REPO / "core" / "designsystem" / "src" / "main" / "res" / "drawable"
 SVG_NS = "{http://www.w3.org/2000/svg}"
 XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
 
-# Elements Android's vector format has no faithful equivalent for. Refused rather than dropped: a
-# silently missing gradient reads as a solid black coin.
-UNSUPPORTED = ("linearGradient", "radialGradient", "image")
+# Elements Android's vector format has no faithful equivalent for. Refused rather than dropped,
+# because a silently missing shape reads as artwork that simply looks wrong.
+UNSUPPORTED = ("image",)
 
 # Subtrees that define rather than draw. Skipped wholesale — what matters is whether a drawn shape
 # *references* them, which is checked separately.
@@ -42,7 +42,7 @@ DEFINITIONS = ("defs", "filter", "mask", "clipPath", "symbol", "title", "desc", 
 
 # Referencing attributes. A gradient or clip reference changes the shape itself, so it is always
 # refused; a filter reference is a drop shadow in this artwork and can be dropped on request.
-HARD_REFERENCES = ("mask", "clip-path")
+HARD_REFERENCES = ("mask",)
 
 
 class Unsupported(Exception):
@@ -80,9 +80,124 @@ def rect_path(x: float, y: float, w: float, h: float) -> str:
     return f"M{x},{y} h{w} v{h} h{-w} Z"
 
 
-def number(element: ET.Element, name: str, default: float = 0.0) -> float:
+def number(element: ET.Element, name: str, default: float = 0.0, span: float = 0.0) -> float:
+    """A numeric attribute, resolving a percentage against [span] when one is given."""
     raw = element.get(name)
-    return float(raw) if raw not in (None, "") else default
+    if raw in (None, ""):
+        return default
+    raw = raw.strip()
+    if raw.endswith("%"):
+        if not span:
+            raise Unsupported(f"{name}={raw!r} is a percentage with nothing to measure against")
+        return float(raw[:-1]) / 100.0 * span
+    return float(raw)
+
+
+def gradient_of(reference: str, ids: dict, viewbox: tuple[float, float]) -> dict | None:
+    """Resolve a `url(#id)` paint to a gradient Android can draw, or None if it is not one.
+
+    Android's vector format does support gradients, so these are carried across rather than
+    flattened to a representative stop. That matters more than it sounds: a sixth of the Binance
+    archive is drawn this way, and flattening turns a brushed-metal coin into a flat disc — close
+    enough to pass a file listing and obviously wrong beside the original.
+
+    Every gradient in these sets is `userSpaceOnUse`, so its coordinates are already in viewBox
+    space and map straight over. A `gradientTransform` is refused: it re-frames the gradient, and
+    ignoring it would put the highlight somewhere the artist did not.
+    """
+    match = re.fullmatch(r"url\(#(.+)\)", reference.strip())
+    if not match:
+        return None
+    node = ids.get(match.group(1))
+    if node is None:
+        raise Unsupported(f"paint {reference!r} points at nothing in this file")
+    kind = local(node.tag)
+    if kind not in ("linearGradient", "radialGradient"):
+        return None
+    if node.get("gradientTransform"):
+        raise Unsupported("gradientTransform= re-frames the gradient and cannot be flattened")
+    # SVG defaults this to objectBoundingBox, whose coordinates are fractions of the shape's own
+    # bounding box. Mapping that needs the box, which means measuring the path — so it is refused
+    # rather than guessed at. Every gradient in the archives that matters says userSpaceOnUse.
+    if node.get("gradientUnits", "objectBoundingBox") != "userSpaceOnUse":
+        raise Unsupported("gradientUnits=objectBoundingBox is not mapped")
+
+    stops = []
+    for stop in node:
+        if local(stop.tag) != "stop":
+            continue
+        colour = normalise(stop.get("stop-color") or "#000000")
+        opacity = stop.get("stop-opacity")
+        if opacity is not None and float(opacity) < 1:
+            alpha = round(float(opacity) * 255)
+            colour = f"#{alpha:02X}{colour.lstrip('#')}"
+        stops.append((stop.get("offset") or "0", colour))
+    if len(stops) < 2:
+        raise Unsupported("gradient has fewer than two stops")
+
+    w, h = viewbox
+    if kind == "linearGradient":
+        return {
+            "type": "linear",
+            "coords": {
+                "startX": number(node, "x1", span=w),
+                "startY": number(node, "y1", span=h),
+                # SVG's default for x2 is 100%, which is a horizontal sweep; leaving it at zero
+                # would collapse the gradient to a point and paint the shape one flat colour.
+                "endX": number(node, "x2", default=w, span=w),
+                "endY": number(node, "y2", span=h),
+            },
+            "stops": stops,
+        }
+    return {
+        "type": "radial",
+        "coords": {
+            "centerX": number(node, "cx", default=w / 2, span=w),
+            "centerY": number(node, "cy", default=h / 2, span=h),
+            "gradientRadius": number(node, "r", default=min(w, h) / 2, span=min(w, h)),
+        },
+        "stops": stops,
+    }
+
+
+def covers_viewport(reference: str, ids: dict, viewbox: tuple[float, float]) -> bool:
+    """Whether a `clip-path` reference clips away nothing at all.
+
+    Most of these sets wrap their artwork in a clip that is simply the whole canvas — a rectangle
+    the size of the viewBox, or a circle inscribed in it. Neither removes a pixel, and both are
+    there because the drawing tool emitted them. Refusing those would cost a sixth of the archive
+    for no gain, so they are recognised and dropped; anything that genuinely crops is still refused,
+    because a silently un-cropped shape is a blob where a glyph should be.
+
+    The inscribed circle counts as no-op only because every logo is clipped to a disc at draw time
+    anyway — see CoineProAssetLogo.
+    """
+    match = re.fullmatch(r"url\(#(.+)\)", reference.strip())
+    if not match:
+        return False
+    node = ids.get(match.group(1))
+    if node is None or local(node.tag) != "clipPath":
+        return False
+    shapes = list(node)
+    if len(shapes) != 1:
+        return False
+    shape = shapes[0]
+    tag = local(shape.tag)
+    w, h = viewbox
+    if tag == "rect":
+        full = number(shape, "width") >= w and number(shape, "height") >= h
+        rounded = number(shape, "rx") or number(shape, "ry")
+        # A fully rounded rect is the inscribed circle; a partly rounded one really does crop.
+        return full and (not rounded or rounded >= min(w, h) / 2)
+    if tag == "circle":
+        return number(shape, "r") * 2 >= min(w, h)
+    if tag == "path":
+        data = " ".join((shape.get("d") or "").split())
+        return data.replace(" ", "").upper() in {
+            f"M0 0H{w:g}V{h:g}H0Z".replace(" ", "").upper(),
+            f"M0 0H{w:g}V{h:g}H0V0Z".replace(" ", "").upper(),
+        }
+    return False
 
 
 def collect(
@@ -94,6 +209,7 @@ def collect(
     stroke: str | None = None,
     width: str | None = None,
     ids: dict[str, ET.Element] | None = None,
+    viewbox: tuple[float, float] = (0.0, 0.0),
 ) -> None:
     """Walk the tree, resolving inherited fill and fill-rule down to individual paths."""
     ids = ids if ids is not None else {}
@@ -105,6 +221,9 @@ def collect(
     for attribute in HARD_REFERENCES:
         if element.get(attribute):
             raise Unsupported(f"{attribute}= changes the shape and cannot be flattened")
+    clip = element.get("clip-path")
+    if clip and not covers_viewport(clip, ids, viewbox):
+        raise Unsupported("clip-path= crops the artwork and cannot be flattened")
     if element.get("filter"):
         if not drop_shadows:
             raise Unsupported("filter= is a drop shadow; pass --drop-shadows to convert without it")
@@ -126,6 +245,7 @@ def collect(
             element.get("stroke") or stroke,
             element.get("stroke-width") or width,
             ids,
+            viewbox,
         )
         return
 
@@ -173,14 +293,16 @@ def collect(
             data = None
         if data:
             shape = {"d": " ".join(data.split()), "rule": rule}
-            shape["fill"] = normalise(colour) if colour else None
+            gradient = gradient_of(colour, ids, viewbox) if colour and colour.startswith("url(") else None
+            shape["gradient"] = gradient
+            shape["fill"] = None if gradient else (normalise(colour) if colour else None)
             if stroked:
                 shape["stroke"] = normalise(stroke)
                 shape["width"] = width or "1"
             out.append(shape)
 
     for child in element:
-        collect(child, fill, rule, out, drop_shadows, stroke, width, ids)
+        collect(child, fill, rule, out, drop_shadows, stroke, width, ids, viewbox)
 
 
 # UI icons declare currentColor and are tinted by the caller. Android has no such keyword, so they
@@ -212,7 +334,7 @@ def convert(
     paths: list[dict] = []
     # <use> can point forward or into <defs>, so every id is indexed before the walk begins.
     ids = {node.get("id"): node for node in svg.iter() if node.get("id")}
-    collect(svg, None, None, paths, drop_shadows, ids=ids)
+    collect(svg, None, None, paths, drop_shadows, ids=ids, viewbox=(width, height))
     if not paths:
         raise Unsupported("no drawable shapes")
 
@@ -220,7 +342,8 @@ def convert(
         '<?xml version="1.0" encoding="utf-8"?>',
         "<!-- Generated by scripts/design/svg-to-vector.py from design/"
         f"{(root or ARCHIVE).name}/{source.relative_to(root or ARCHIVE)}. Do not hand-edit. -->",
-        '<vector xmlns:android="http://schemas.android.com/apk/res/android"',
+        '<vector xmlns:android="http://schemas.android.com/apk/res/android"'
+        + (' xmlns:aapt="http://schemas.android.com/aapt"' if any(p.get("gradient") for p in paths) else ""),
         f'    android:width="{size_dp}dp"',
         f'    android:height="{size_dp}dp"',
         f'    android:viewportWidth="{width:g}"',
@@ -238,7 +361,21 @@ def convert(
             lines.append('        android:strokeLineJoin="round"')
         if path["rule"] == "evenodd":
             lines.append('        android:fillType="evenOdd"')
-        lines.append(f'        android:pathData="{expand_arc_flags(path["d"])}" />')
+        gradient = path.get("gradient")
+        if not gradient:
+            lines.append(f'        android:pathData="{expand_arc_flags(path["d"])}" />')
+            continue
+        lines.append(f'        android:pathData="{expand_arc_flags(path["d"])}">')
+        lines.append('        <aapt:attr name="android:fillColor">')
+        lines.append(f'            <gradient android:type="{gradient["type"]}"')
+        for name, value in gradient["coords"].items():
+            lines.append(f'                android:{name}="{value:g}"')
+        lines.append("                >")
+        for offset, colour in gradient["stops"]:
+            lines.append(f'                <item android:offset="{offset}" android:color="{colour}" />')
+        lines.append("            </gradient>")
+        lines.append("        </aapt:attr>")
+        lines.append("    </path>")
     lines.append("</vector>")
 
     destination.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -357,6 +494,14 @@ def main() -> int:
             )
         except Unsupported as error:
             print(f"REFUSED  {symbol}: {error}", file=sys.stderr)
+            failures += 1
+            continue
+        except Exception as error:  # noqa: BLE001
+            # One odd file must not take the batch down with it. This started as a crash on a
+            # percentage gradient coordinate, and the cost was not that one icon — the traceback
+            # killed the run and two hundred and eighty perfectly good icons never got written,
+            # which showed up as a suspiciously small archive rather than as an error.
+            print(f"FAILED   {symbol}: {type(error).__name__}: {error}", file=sys.stderr)
             failures += 1
             continue
         print(f"ok       {symbol} -> {destination.relative_to(REPO)} ({count} paths)")

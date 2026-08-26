@@ -76,7 +76,7 @@ class AssetLogoTest {
     fun `the table is the whole archive, not a hand-picked handful`() {
         assertTrue(
             "Only ${AssetLogoTable.size} logos shipped — build-symbol-logos.py did not run",
-            AssetLogoTable.size > 600,
+            AssetLogoTable.size > 750,
         )
     }
 

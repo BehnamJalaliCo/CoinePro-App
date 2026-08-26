@@ -40,3 +40,4 @@ app/build/screenshots/
 
 # Local Claude Code overrides (never committed)
 .claude/settings.local.json
+__pycache__/
