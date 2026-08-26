@@ -352,7 +352,7 @@ class ScreenshotRenderTest {
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
     fun brandIcons() = capture("31-brand-icons-fa") {
-        val pairs = ScreenshotFixtures.brandIconComparison()
+        val pairs = ScreenshotFixtures.navIconComparison() + ScreenshotFixtures.brandIconComparison()
         Column(
             modifier = Modifier
                 .fillMaxSize()

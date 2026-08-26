@@ -858,6 +858,19 @@ object ScreenshotFixtures {
      * Zero means the family has no counterpart for that meaning — the brand set covers sections
      * Phosphor answers with a generic shape, and Phosphor covers plenty the brand set never drew.
      */
+    fun navIconComparison(): List<Pair<Pair<Int, Int>, Pair<Int, Int>>> = listOf(
+        (DesignR.drawable.nav_home to DesignR.drawable.nav_home_fill) to
+            (DesignR.drawable.icon_house to DesignR.drawable.icon_filled_house),
+        (DesignR.drawable.nav_signals to DesignR.drawable.nav_signals_fill) to
+            (DesignR.drawable.icon_chart_line_up to DesignR.drawable.icon_filled_chart_line_up),
+        (DesignR.drawable.nav_ai to DesignR.drawable.nav_ai_fill) to
+            (DesignR.drawable.icon_sparkle to DesignR.drawable.icon_filled_sparkle),
+        (DesignR.drawable.nav_tools to DesignR.drawable.nav_tools_fill) to
+            (DesignR.drawable.icon_sliders_horizontal to DesignR.drawable.icon_filled_sliders_horizontal),
+        (DesignR.drawable.nav_activity to DesignR.drawable.nav_activity_fill) to
+            (DesignR.drawable.icon_bell to DesignR.drawable.icon_filled_bell),
+    )
+
     fun brandIconComparison(): List<Pair<Pair<Int, Int>, Pair<Int, Int>>> {
         return listOf(
             (DesignR.drawable.brand_home to DesignR.drawable.brand_home_fill) to (DesignR.drawable.icon_house to DesignR.drawable.icon_filled_house),
