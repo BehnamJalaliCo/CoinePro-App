@@ -24,15 +24,65 @@ if (firebaseConfigured) {
     apply(plugin = "com.google.gms.google-services")
 }
 
+/**
+ * The version, from `version.properties` — with `versionCode` derived rather than declared.
+ *
+ * Android asks `versionCode` one question: is it higher than the code already installed? If it is
+ * not, the install is refused with "app not installed" and nothing says why. Keeping that integer
+ * by hand next to a separate `versionName` fails in exactly one direction — the name gets bumped,
+ * the code does not, and every device in the field quietly stops updating. So only the name is
+ * written down, in `version.properties`, and the code is computed from it:
+ *
+ *     versionCode = MAJOR*10_000_000 + MINOR*100_000 + PATCH*1_000 + BUILD
+ *
+ * Each field has room for the ones below it, so a bump anywhere is strictly larger than anything
+ * reachable underneath. `docs/VERSIONING.md` sets out the widths and why they are those widths;
+ * `scripts/release/version.py` is the same arithmetic for CI and for the command line.
+ *
+ * BUILD is deliberately 0 here. It counts commits since the last version bump, which means asking
+ * git, and a build that shells out to git is a build that behaves differently in a source tarball
+ * than in a checkout. CI computes it and passes the whole code in with `-P`; a local build gets the
+ * base code, which is correct, because a local build is not something anybody installs over.
+ *
+ * `-PCOINEPRO_VERSION_CODE` / `-PCOINEPRO_VERSION_NAME` still win when set. That is how CI supplies
+ * the build-numbered code, and how `internal-release.yml` pins an exact version for a Play upload.
+ */
+val versionProperties = Properties().apply {
+    val file = rootProject.file("version.properties")
+    require(file.exists()) { "version.properties is missing; it is the source of truth for the app version." }
+    file.inputStream().use { load(it) }
+}
+
+fun versionField(key: String, maximum: Int): Int {
+    val raw = (versionProperties.getProperty(key) ?: error("version.properties is missing $key.")).trim()
+    val number = raw.toIntOrNull() ?: error("version.properties $key must be an integer, not '$raw'.")
+    require(number in 0..maximum) { "version.properties $key is $number; the scheme reserves $maximum for it." }
+    return number
+}
+
+val versionMajor = versionField("MAJOR", 200)
+val versionMinor = versionField("MINOR", 99)
+val versionPatch = versionField("PATCH", 99)
+val versionPreRelease = versionProperties.getProperty("PRE_RELEASE").orEmpty().trim()
+
+val declaredVersionName = buildString {
+    append("$versionMajor.$versionMinor.$versionPatch")
+    if (versionPreRelease.isNotEmpty()) append("-$versionPreRelease")
+}
+val declaredVersionCode = versionMajor * 10_000_000 + versionMinor * 100_000 + versionPatch * 1_000
+
 val configuredVersionCode = providers.gradleProperty("COINEPRO_VERSION_CODE")
-    .orElse("1")
+    .orElse(declaredVersionCode.toString())
     .get()
     .toIntOrNull()
     ?: error("COINEPRO_VERSION_CODE must be an integer.")
 require(configuredVersionCode > 0) { "COINEPRO_VERSION_CODE must be positive." }
+require(configuredVersionCode <= 2_100_000_000) {
+    "COINEPRO_VERSION_CODE exceeds the Android/Play upper bound of 2100000000."
+}
 
 val configuredVersionName = providers.gradleProperty("COINEPRO_VERSION_NAME")
-    .orElse("0.1.0")
+    .orElse(declaredVersionName)
     .get()
 require(Regex("^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$").matches(configuredVersionName)) {
     "COINEPRO_VERSION_NAME must use semantic version form, for example 1.2.3 or 1.2.3-rc.1."

@@ -9,8 +9,9 @@ name: Build Android APK
 #      repository's secrets. A workflow that generated a throwaway key each run would produce an
 #      APK Android refuses to install over the last one, and the reader would have to uninstall —
 #      losing their session and their settings — before every update.
-#   2. The version code always goes up. `github.run_number` only increases, so the offset below is
-#      added once and never touched again.
+#   2. The version code always goes up. It is derived from `version.properties` plus the number of
+#      commits since that file last changed, so every push is strictly higher than the last without
+#      anybody having to remember to bump anything. See docs/VERSIONING.md.
 #
 # There is no debug APK here on purpose. Two tracks means two signatures, and a reader who installs
 # from the wrong one is back to uninstalling. One signed track, always.
@@ -42,21 +43,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          # The whole history, because the version's build number is "commits since
+          # version.properties last changed" and the default shallow fetch cannot count that.
+          fetch-depth: 0
 
-      # GitHub Actions expressions have no arithmetic, so the offset is computed in the shell and
-      # handed on as an output.
+      # The version is not invented here. It is read from `version.properties` and turned into the
+      # pair Android needs by `scripts/release/version.py`, which is the same arithmetic the Gradle
+      # build uses — see docs/VERSIONING.md.
       #
-      # The offset exists because the APKs handed over by hand carried versionCode 1. Starting the
-      # first CI build at 1001 puts every automated build above every manual one, permanently, with
-      # room left over. Lower it and installs start failing with "app not installed" for no visible
-      # reason; there is never a reason to change it.
+      # This replaced `run_number + 1000`. That was monotonic, which was the only thing it had to
+      # be, but it meant the number on the reader's profile screen said nothing about what was in
+      # the build: 0.1.1004 was not a patch of 0.1.1003, it was whatever landed that day. The
+      # version now names the release, and CHANGELOG.md says what is in it.
       - name: Compute version
         id: ver
         run: |
-          CODE=$(( ${{ github.run_number }} + 1000 ))
-          echo "code=$CODE" >> "$GITHUB_OUTPUT"
-          echo "name=0.1.$CODE" >> "$GITHUB_OUTPUT"
-          echo "APK version 0.1.$CODE (versionCode $CODE)"
+          set -euo pipefail
+          python3 scripts/release/version.py --github-output
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -125,6 +129,8 @@ jobs:
           python3 scripts/quality/check-cross-phase-consistency.py
           bash scripts/quality/check-motion-policy.sh
           bash scripts/security/scan-secrets.sh
+          # The version arithmetic exists in two languages; this asserts the two agree.
+          python3 scripts/release/version.py --check
 
       - name: Unit tests
         run: gradle --no-daemon testDebugUnitTest
@@ -143,7 +149,7 @@ jobs:
           # here. Override them with repository variables only if a deployment moves.
           gradle --no-daemon :app:assembleRelease \
             -PCOINEPRO_VERSION_CODE=${{ steps.ver.outputs.code }} \
-            -PCOINEPRO_VERSION_NAME=${{ steps.ver.outputs.name }} \
+            -PCOINEPRO_VERSION_NAME=${{ steps.ver.outputs.full }} \
             -PCOINEPRO_RELEASE_STORE_FILE=ci-release.jks \
             -PCOINEPRO_RELEASE_STORE_PASSWORD="$KS_PASS" \
             -PCOINEPRO_RELEASE_KEY_ALIAS="$KEY_ALIAS" \
@@ -151,13 +157,13 @@ jobs:
             ${{ vars.COINEPRO_PRODUCTION_API_BASE_URL && format('-PCOINEPRO_PRODUCTION_API_BASE_URL="{0}"', vars.COINEPRO_PRODUCTION_API_BASE_URL) || '' }} \
             ${{ vars.COINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL && format('-PCOINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL="{0}"', vars.COINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL) || '' }} \
             ${{ vars.COINEPRO_PRODUCTION_TERMINAL_URL && format('-PCOINEPRO_PRODUCTION_TERMINAL_URL="{0}"', vars.COINEPRO_PRODUCTION_TERMINAL_URL) || '' }}
-          cp app/build/outputs/apk/release/app-release.apk "CoinePro-${{ steps.ver.outputs.name }}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "CoinePro-${{ steps.ver.outputs.full }}.apk"
 
       - name: Verify the APK is signed and its wire fields survived R8
         run: |
           set -euo pipefail
           BT="$ANDROID_SDK_ROOT/build-tools/36.0.0"
-          "$BT/apksigner" verify --verbose "CoinePro-${{ steps.ver.outputs.name }}.apk"
+          "$BT/apksigner" verify --verbose "CoinePro-${{ steps.ver.outputs.full }}.apk"
           # R8 renames anything it cannot see being read, and Gson reads request bodies by
           # reflection. This once shipped a build where every sign-in posted single-letter keys, so
           # the dex is checked rather than the keep rules.
@@ -170,19 +176,20 @@ jobs:
       - name: Publish the APK
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: apk-${{ steps.ver.outputs.code }}
-          name: CoinePro ${{ steps.ver.outputs.name }}
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: CoinePro ${{ steps.ver.outputs.full }}
           body: |
             نصب روی نسخهٔ قبلی، بدون حذف کردن آن.
 
-            • نسخه: `${{ steps.ver.outputs.name }}` (versionCode `${{ steps.ver.outputs.code }}`)
+            • نسخه: `${{ steps.ver.outputs.full }}` (versionCode `${{ steps.ver.outputs.code }}`)
+            • تغییراتِ این نسخه: `CHANGELOG.md`
             • کامیت: ${{ github.sha }}
             • امضا: همان کلید همیشگی — پس روی هر نصبِ قبلیِ همین سری، آپدیت می‌شود.
 
             اگر «app not installed» دیدید، نسخه‌ای که روی گوشی است با کلید دیگری امضا شده
             (نسخهٔ debug یا یک build دستی). یک بار حذفش کنید؛ از آن به بعد هر build اینجا
             روی قبلی می‌نشیند.
-          files: CoinePro-${{ steps.ver.outputs.name }}.apk
+          files: CoinePro-${{ steps.ver.outputs.full }}.apk
           fail_on_unmatched_files: true
           draft: false
           prerelease: true

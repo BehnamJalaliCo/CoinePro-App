@@ -85,8 +85,11 @@ jobs:
           export ORG_GRADLE_PROJECT_COINEPRO_RELEASE_KEY_ALIAS="phase16-ci"
           export ORG_GRADLE_PROJECT_COINEPRO_RELEASE_KEY_PASSWORD="$password"
           export ORG_GRADLE_PROJECT_COINEPRO_PRODUCTION_API_BASE_URL="https://release-ci.example.invalid/"
-          export ORG_GRADLE_PROJECT_COINEPRO_VERSION_CODE="160001"
-          export ORG_GRADLE_PROJECT_COINEPRO_VERSION_NAME="16.0.1-ci"
+          # Derived from version.properties like every other build, with a `-ci` tag so nothing
+          # produced here can be mistaken for a release. It used to be a hardcoded "16.0.1-ci",
+          # which read as a version 16 that has never existed — the 16 was a phase number.
+          export ORG_GRADLE_PROJECT_COINEPRO_VERSION_CODE="$(python3 scripts/release/version.py --code)"
+          export ORG_GRADLE_PROJECT_COINEPRO_VERSION_NAME="$(python3 scripts/release/version.py --name)-ci"
 
           gradle --no-daemon :app:bundleRelease
           aab="app/build/outputs/bundle/release/app-release.aab"

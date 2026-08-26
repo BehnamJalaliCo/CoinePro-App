@@ -1,41 +1,422 @@
 # Changelog
 
-All notable user-visible CoinePro Android changes are recorded here.
+Every version of the CoinePro Android app, what is in it, and which commits made it.
 
-The format follows Keep a Changelog conventions. Release names use semantic `MAJOR.MINOR.PATCH`; Android `versionCode` must satisfy the repository positive/range validator and Play enforces cross-release monotonicity against existing release history.
+The format follows [Keep a Changelog](https://keepachangelog.com); the numbers follow
+[semantic versioning](https://semver.org). `docs/VERSIONING.md` sets out how a version name becomes
+the `versionCode` Android actually enforces.
 
-## [Unreleased]
+**On the `0.x` entries.** They are named retroactively. The work happened as one continuous run and
+only `1.0.0` has ever been built and handed to anybody — so nothing below `1.0.0` is a release that
+somebody once installed. They are here because a version is only useful if it names something you
+can point at, and each of these names a capability that was not there the commit before. Where a
+version fixed something rather than adding it, it is a `PATCH` bump, which is the scheme doing what
+it is for.
+
+---
+
+## [1.0.0] — 2026-08-26
+
+**The first release that installs, updates, and can be named.**
+
+Everything below this line was work. This is the first build that leaves the machine it was made
+on: signed with the permanent key, published by CI, and carrying a version that means something to
+whoever is holding the phone.
 
 ### Added
-- Phase 16 protected release-engineering pipeline.
-- Dedicated staging build identity and staging service configuration boundary.
-- Reproducible signed Android App Bundle path with signing material supplied outside the repository.
-- Manual Play Console internal-track publishing workflow for the staging package.
-- Phase 17 Launch & Safety education surface.
-- Notification permission education and denial-recovery path before platform prompting.
-- Connection setup education that distinguishes configured credentials from provider-confirmed state.
-- Safe system feedback/share path with app version and environment metadata only.
-- Phase 17 incident and rollback runbook.
-- Protected GET-only production read-only smoke workflow with sanitized evidence artifact.
-- Permanent Phase 1–17 repository consistency gate.
-- Full Phase 1–17 cross-phase reconciliation audit.
+- `version.properties` as the one place the app's version is written, with `versionCode` **derived**
+  from it — `MAJOR×10,000,000 + MINOR×100,000 + PATCH×1,000 + BUILD` — so the integer Android
+  enforces can never drift from the name a person reads. `docs/VERSIONING.md` has the widths and
+  why they are those widths.
+- `scripts/release/version.py` — the same arithmetic for CI and for the command line, with
+  `--bump major|minor|patch`, `--json`, `--check`, and range checks that fail the build rather than
+  wrapping. A wrap would produce a *lower* code, which is the one outcome that breaks updates on
+  every device at once.
+- `BUILD` counted as commits since the last version bump, so every push produces a strictly higher
+  code with nobody having to remember anything, and the counter resets the moment a version is named.
+- Semver build metadata on the device — `1.0.0+4` — so a bug report names the exact build rather
+  than the nearest version. Git tags spell the same thing as `v1.0.0-b4`, in characters a refname
+  and a URL both take unescaped.
+- This changelog, covering the whole history rather than the last entry.
 
 ### Changed
-- Persisted Signal navigation/actionability now consistently requires a positive server Signal ID across Signals, notifications, deep links, AI and execution.
-- Deep-link parsing is restricted to the CoinePro scheme and supported route shapes.
-- Execution request/domain validation rejects invalid Signal identity and invalid request primitives without hidden write retries.
-- Room market cache now independently rejects out-of-product-scope rows on write and restore.
-- Production market smoke applies the same source freshness thresholds as the Android client.
-- Baseline Profile now targets the current `CoineProThemeKt` class.
-- Release/version documentation now distinguishes repository syntax/range checks from Play-enforced cross-release `versionCode` monotonicity.
-- Staging CI uses supported `lintStaging` and `assembleStaging` gates; cumulative unit tests remain on the supported debug test variants instead of claiming a nonexistent `testStagingUnitTest` task.
+- CI stopped inventing versions. It computed `run_number + 1000` and called the result
+  `0.1.<code>` — monotonic, which was all it had to be, but `0.1.1004` was not a patch of
+  `0.1.1003`; it was whatever landed that day. `1.0.0` lands at `10,000,000` and clears the whole
+  of that old series with room to spare, so no build already in the field is stranded.
+- `android-ci.yml` no longer pins `16.0.1-ci`, which read as a version 16 that has never existed —
+  the 16 was a phase number.
+
+---
+
+## [0.27.0] — 2026-08-26 — A signed APK on every push
+
+### Added
+- `.github/workflows/android-apk.yml`: every push to `main` produces one installable, signed APK on
+  a GitHub Release. One track, one signature, so an update **installs over the last one** instead of
+  asking the reader to uninstall and lose their session.
+- The workflow refuses to run without the four signing secrets rather than generating a throwaway
+  key — a generated key installs fine exactly once, and then every later build is rejected by every
+  device that took the first.
+- `keytool -list` validates the alias and passwords before Gradle spends ten minutes finding out.
+- `docs/CI_APK_SETUP.md`, mapping each secret to where its value comes from.
+
+`99a87e3`
+
+## [0.26.0] — 2026-08-26 — Sign-in that tells the truth
+
+### Removed
+- The Telegram Login Widget. It could never have authenticated anybody: the widget asks Telegram to
+  sign a payload for the embedding page's **origin**, and Telegram checks that origin against the
+  domain the bot's owner registered with BotFather. The origin was `telegram.org`, which nobody can
+  register, so Telegram refused every time and drew its own error inside the frame — which is the
+  "bot admin" error the owner was seeing. A mobile app has no page, so it cannot be fixed in place;
+  the supported shape is a bot deep link plus a server route, asked for in
+  `docs/REQUEST3_COINEPROFX.md`.
+
+### Changed
+- Google sign-in now says what is actually wrong. `NoCredentialException` and the "developer console
+  is not set up correctly" family are not about the reader at all — they mean this build's signing
+  certificate is not registered in the Google Cloud project that issued the server client id. A
+  reader told "no account found" goes and adds a Google account, which cannot help.
+- The auth screen renders the state it actually serves, rather than one that no longer exists.
+
+`bfbeee5`, `2ef3406`
+
+## [0.25.0] — 2026-08-26 — The release build stopped lying
+
+### Fixed
+- **R8 was renaming every field Gson serialises.** Nine request bodies are not named `*Dto` and none
+  carried `@SerializedName`, so full mode renamed them to single letters and the shipped app posted
+  `{"a":…,"b":…}` to every auth route. It is why sign-in failed in release and worked in debug.
+- The check is now on the **dex**, not the keep rules. `mapping.txt` only lists *renamed* members,
+  so a field's absence there is not evidence it survived — `scripts/quality/check-release-wire-fields.py`
+  reads the built APK with `dexdump` and asserts ten wire field names are in it. The shipped build
+  had one field named `email`; the fixed build has five.
+- The `«؟»` help catalogue was entirely dead code, and R8 was right to remove it. It is now wired to
+  the sheet that shows it, and what was genuinely unreachable stayed removed.
+- `@HiltWorker` modules and assisted factories were being stripped, taking background refresh with
+  them.
+
+`88c716b`, `00da1d5`
+
+## [0.24.0] — 2026-08-26 — Everything the store asks for
+
+### Added
+- `docs/PLAY_LISTING.md` — the listing pack: title, short and full description, category, content
+  rating answers, data-safety declarations, and the release blockers that are the owner's to clear.
+- `docs/legal/PRIVACY_POLICY.md` and `docs/legal/TERMS.md`, in Persian.
+
+`dd36a51`
+
+## [0.23.0] — 2026-08-26 — The untested modules, tested
+
+### Added
+- `core:security` covered, including `SessionCipher` extracted as a seam so the cipher can be tested
+  without a device keystore.
+- `core:model` covered.
+- A real baseline profile, recorded against the current theme class, replacing the stub.
+
+`baedc59`
+
+## [0.22.0] — 2026-08-26 — One design language, enforced
+
+### Added
+- The `foundation-v2` token layer adopted whole: the five-step surface ladder, three border weights,
+  the 8% fill / 34% border tint formula as `Color.lerp` rather than alpha, and 100/160/240 ms on
+  `cubic-bezier(.2,0,0,1)`.
+- `LocalPageAccent` — one primary-button component with a per-domain identity, so Markets, Trade,
+  Copy and Subscribe each read one variable instead of each screen inventing a colour.
+- Press feedback with the right proportions: a bigger surface compresses less.
+
+### Changed
+- Two golds are no longer interchangeable. The brand gold is an *ink*, not a *fill* — using it as a
+  fill produced a near-black button on dark brown in the light theme, which the light design-kit
+  render caught.
+- The four accents became two. Two of the golds were indistinguishable on a phone; premium is now
+  marked by treatment rather than by a colour nobody could tell apart.
 
 ### Security
-- Release keystores and service-account credentials remain external secrets and are never committed.
-- Benchmark builds use non-routable benchmark configuration instead of inheriting production endpoints.
-- Production smoke remains read-only and never creates, closes, retries or mutates a trade/provider connection.
-- External legal/provider/production evidence is never synthesized from Android CI, mocks or cached data.
+- `scripts/quality/check-motion-policy.sh` now enforces the discipline rules — no blur, no coloured
+  glows, gradients only in the five allow-listed places.
 
-## [0.1.0]
+`f066647`
 
-Initial native Android product milestone covering the Phase 0–15 application surface and quality gates.
+## [0.21.0] — 2026-08-26 — The professional terminal
+
+### Added
+- `feature:terminal`: the full Bazaarnama terminal — 52 drawing tools, `namascript` with its editor,
+  bar replay, the strategy tester — behind one button and one build property. An ordinary reader
+  never sees a WebView; a power user gets everything.
+
+`13ca899`
+
+## [0.20.0] — 2026-08-26 — The academy
+
+### Added
+- `feature:academy`: the curriculum roadmap, a lesson, and its quiz, over the `/academy/*` routes
+  CoinePro-FX already serves.
+- Badges, the leaderboard and the glossary, which had nowhere to be seen.
+- Lesson HTML rendered to `AnnotatedString` with the bullets **written into the text** — `BulletSpan`
+  paints at a fixed left offset, which is the wrong side in RTL.
+
+`b4dadad`, `dc7fda9`
+
+## [0.19.0] — 2026-08-26 — The portfolio
+
+### Added
+- `feature:portfolio`: closed trades, an equity curve, per-symbol attribution, a monthly breakdown,
+  drawdown, win rate, profit factor and expectancy — computed in `core:portfolio` and tested.
+- No borrowed statistics. Every figure is derived from the trades the server returned; nothing is
+  carried over from the web app's own numbers.
+
+### Fixed
+- Drawdown rendered as `9.6%)( -$4,475.13`. Two adjacent LTR isolates reorder as runs inside an RTL
+  paragraph; one isolate around the whole phrase fixes it.
+- The monthly bars had no labels, because `DrawScope` has no access to resources. They are passed in
+  from the screen.
+
+`b77efd8`
+
+## [0.18.0] — 2026-08-26 — The chart, reachable
+
+### Added
+- The chart mounted in a screen and reachable from the app.
+- The setup drawn — entry, stop, targets — on both screens that show one.
+- The nine new indicators documented in the `«؟»` catalogue.
+
+### Fixed
+- The chart preview bled to the screen edges in signal detail. It is in a card, without volume.
+
+`4075b37`, `b551b67`, `d1297a2`
+
+## [0.17.0] — 2026-08-26 — Real candles
+
+### Added
+- Candles from both backends against the contracts they published — forex from the `candles` table
+  the EA pushes (broker-true prices), crypto live from LBank — on the compact `{t,o,h,l,c,v}` shape
+  both already speak.
+
+`756ba88`
+
+## [0.16.1] — 2026-08-26
+
+### Fixed
+- No symbol without artwork reaches a list. `SymbolArtwork.covers` is the filter, at the catalogue
+  and at the live feed — no blank squares, no lettered discs.
+
+### Added
+- TradingView's whole logo set, rather than the twenty-three that had been taken by hand.
+
+`0f534bd`, `61b43a9`
+
+## [0.16.0] — 2026-08-26 — Ninety-five indicators
+
+### Added
+- Twenty-nine more indicators, each checked against the app it came from.
+- The seven structure studies — and one place where the original is wrong, documented rather than
+  reproduced.
+
+`9cffea0`, `2b74136`
+
+## [0.15.0] — 2026-08-26 — The chart's own controls
+
+### Added
+- Every control drawn with its real icon, and the fifty-two drawing tools brought across.
+- A finger can place a tool: points are stored in chart space `{t, p}`, so pan and zoom are free.
+
+### Changed
+- The three chart sheets share one chrome instead of repeating it three times.
+
+`454f65a`, `b255c8b`, `5496267`
+
+## [0.14.0] — 2026-08-26 — The «؟»
+
+### Added
+- The help catalogue brought across — 177 entries — and the pickers it hangs off, so every indicator
+  and every tool can say what it is where it is used.
+
+`f6a411e`
+
+## [0.13.1] — 2026-08-26
+
+### Added
+- The Gradle wrapper, so the build does not depend on whatever Gradle happens to be installed.
+
+`3ab4159`
+
+## [0.13.0] — 2026-08-26 — The chart, drawn
+
+### Added
+- The Compose Canvas renderer: candles, Heikin-Ashi, line and area, with pan, zoom and a crosshair.
+
+`cc6edc3`
+
+## [0.12.0] — 2026-08-26 — The chart engine
+
+### Added
+- `core:chart`, ported from `proChart.js` — itself already a port from Flutter, so explicit pixel
+  maths rather than DOM.
+- Proved against the original: both run over the same candle fixture and the outputs are asserted
+  equal to 1e-9.
+
+`ee9c2b0`, `51148bd`
+
+## [0.11.0] — 2026-08-26 — Knowing what a symbol is
+
+### Added
+- `core:symbols`: the classifier (metal / energy / index / forex / crypto), Persian display names,
+  the `FOREX_ALIAS` table, liquidity ranking, and client-owned market status — the server's flag was
+  unreliable per category, and weekends are the client's to know.
+- The ranked fuzzy matcher: exact 1000, prefix 800, substring 600, subsequence 300, +25 for
+  popularity, searching **the Persian description as well as the ticker**, tie-broken by liquidity
+  rather than alphabetically.
+- `feature:search` on top of it — 80 ms debounce, category chips, recent searches, live prices for
+  the visible rows, match highlighting. It replaced a substring filter.
+
+`63dabab`
+
+## [0.10.0] — 2026-08-26 — An interface icon set
+
+### Added
+- The whole TradingView icon set rather than the twenty-three chart-toolbar glyphs.
+- The app's own eleven — the icons that name its sections.
+- A drawn navigation set, after the three exchanges' own sets could not be obtained.
+- The bottom bar taken from the exchanges' own sets.
+- `design/ui-icons/README.md` states plainly what each set is and where it came from.
+
+`53dd8a9`, `d62664c`, `ac59b25`, `4118e73`, `33e9a66`
+
+## [0.9.2] — 2026-08-26
+
+### Fixed
+- An oversized symbol falls through to its raster instead of to a letter. A lettered disc is what
+  "failed to load" looks like.
+
+`3e6d140`
+
+## [0.9.1] — 2026-08-26
+
+### Fixed
+- The SVG converter learned no-op clips and real gradients, which is what Binance's set needs, so it
+  could lead rather than be the fallback.
+
+`748665f`
+
+## [0.9.0] — 2026-08-26 — Every instrument has a logo
+
+### Added
+- Every symbol either backend can quote, not eight. The hand-written map is gone; the lookup is
+  generated.
+- The forex pairs drawn as a two-disc composition — base flag in front, quote flag behind with a
+  notch ring — positioned physically, so a pair reads identically in RTL and LTR.
+- The four metal discs.
+
+### Fixed
+- A third of the instrument logos rendered wrong. Gold in particular looked like the one that failed
+  to load.
+
+`84e99b2`, `b6a14ab`
+
+---
+
+## [0.8.0] — 2026-08-25
+
+### Changed
+- Every brand raster regenerated from the supplied transparent master.
+
+`9c181ae`
+
+## [0.7.0] — 2026-08-25 — Copy trading
+
+### Added
+- `core:copytrade` against CoinePro-FX's copy-status and copy-config.
+- The copy-trading screen replaces the execution screen on the forex platform, which is what that
+  backend actually offers.
+- The plan name shown in Persian from `plan_fa`; the AI capability flags consumed rather than assumed.
+
+`02d7c7d`
+
+## [0.6.0] — 2026-08-25 — Diagnostics
+
+### Added
+- `core:diagnostics`: a request log and a catalogue of every route, with a prober that says which
+  are live.
+- An admin control hub with per-platform sections, behind five taps on the version number.
+
+`49d4ef9`, `b7b438b`, `473dd00`, `2627307`
+
+## [0.5.0] — 2026-08-25 — Two backends, two identities
+
+### Added
+- Email-first sign-in, registration and password reset, matched to each backend's real auth shape
+  read from its own source.
+- Google sign-in through Credential Manager, with the audience taken from `auth/methods` rather than
+  compiled in — the two deployments have separate Google configuration and a token minted for one
+  has an `aud` the other refuses.
+- Refresh tokens stored alongside access tokens, renewed on schedule and on a 401 before signing out.
+- Per-platform gateways, with every path pinned in tests.
+- The HTTPS App Link, pointed at the host that already serves `assetlinks.json`.
+
+### Fixed
+- English protocol strings were being shown to Persian readers as if they had been written for them.
+- The `coinepro://` intent filter was accepting more shapes than it should.
+- A per-platform install id, so readers behind the same CGNAT address do not share a rate-limit
+  bucket.
+
+`7b0c802`, `f2bbff4`, `edbcc51`, `871956e`, `1d0c4a9`, `4057ccc`, `9a35136`, `f293892`, `481cb37`
+
+## [0.4.0] — 2026-08-25 — The «آرام» direction
+
+### Changed
+- Home rebuilt in the settled visual direction, then the whole app behind it: chrome, type and
+  spacing scale, signals, the AI section, connections, execution, chart analysis, the assistant,
+  signal detail, market news, the calendar, sign-in, safety, activity and the trader toolkit.
+- A light theme.
+- Motion that carries information rather than decorating.
+- A mixed market became impossible to produce — the platform is a property of the screen, not of a
+  row.
+
+`3112de7` … `6dab604`
+
+## [0.3.0] — 2026-08-24 — The app's own identity
+
+### Added
+- Persian as the default language, and the RTL foundation under it.
+- IRANYekanX typography.
+- The CoinePro identity and a launcher icon, from the black-ground masters.
+- The asset logo artwork and a real UI icon family.
+- Screens rendered to PNG without an emulator, which is how every visual change since has been
+  reviewed.
+
+`042874e`, `e499cb4`, `3080919`, `a95cf59`, `bebcbbe`, `1c75da0`, `823e017`
+
+## [0.2.0] — 2026-08-24 — Release engineering and launch safety
+
+### Added
+- A protected release-engineering pipeline, a staging build identity, and a reproducible signed App
+  Bundle path with signing material supplied from outside the repository.
+- Manual Play Console internal-track publishing for the staging package.
+- Notification-permission education and a denial-recovery path, shown *before* the platform prompt.
+- Connection setup that distinguishes credentials being configured from a provider having confirmed
+  them.
+- A feedback and share path carrying app version and environment only.
+- `docs/PHASE17_INCIDENT_RUNBOOK.md`, and a read-only production smoke that never mutates anything.
+- A permanent Phase 1–17 repository consistency gate.
+
+### Changed
+- Signal navigation requires a positive server signal id, consistently, everywhere it is used.
+- Deep-link parsing restricted to the CoinePro scheme and the supported route shapes.
+- The Room market cache rejects out-of-scope rows on write *and* on restore.
+- Release documentation distinguishes this repository's syntax and range checks from the
+  cross-release monotonicity Play enforces.
+
+### Security
+- Release keystores and service-account credentials are external secrets and are never committed.
+- Benchmark builds use non-routable configuration instead of inheriting production endpoints.
+- External legal, provider and production evidence is never synthesised from CI, mocks or cache.
+
+## [0.1.0] — 2026-08-23
+
+Initial native Android product milestone covering the Phase 0–15 application surface and quality
+gates.

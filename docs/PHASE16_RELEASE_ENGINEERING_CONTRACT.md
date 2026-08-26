@@ -63,6 +63,12 @@ Tracked-secret CI continues to reject keystores/private-key files, and `.gitigno
 
 `versionCode` must be a positive integer without leading zeroes and must not exceed the Android/Play upper bound `2100000000`.
 
+`versionCode` is not tracked by hand. It is derived from `version.properties` — the single source of
+truth for the version name — as `MAJOR×10,000,000 + MINOR×100,000 + PATCH×1,000 + BUILD`, by both
+`scripts/release/version.py` and `app/build.gradle.kts`; `version.py --check` asserts the two agree.
+`docs/VERSIONING.md` is the full statement of the scheme. This workflow is the exception: it takes an
+explicit name and code as inputs, because a Play upload is pinned deliberately rather than computed.
+
 The repository validator checks semantic syntax and the local positive/range rules before signing or publishing. Play enforces cross-release monotonicity when an artifact is uploaded against the application's existing release history; the repository does not pretend to know the latest Play `versionCode` without Play evidence.
 
 The manual internal-release workflow requires both values explicitly and validates them before signing or publishing.
