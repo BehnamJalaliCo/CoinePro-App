@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.NavigationBar
@@ -42,6 +44,11 @@ import com.coinepro.core.auth.LoginConfigState
 import com.coinepro.core.auth.SessionState
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProAssetLogo
+import com.coinepro.core.chart.ChartDecoration
+import com.coinepro.core.chart.ChartLine
+import com.coinepro.core.chart.ChartType
+import com.coinepro.core.chart.CoineProChart
+import com.coinepro.core.chart.Indicators
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.feature.search.SearchScreen
@@ -680,6 +687,99 @@ class ScreenshotRenderTest {
         controller.start()
         controller.setQuery("eur")
         capture("33-search-query-fa") { SearchScreen(controller = controller) }
+    }
+
+    /**
+     * The chart, in the three states that actually have to be looked at.
+     *
+     * A renderer is the one part of this app that unit tests cannot judge. The arithmetic is
+     * covered thirty ways over in core:chart; what is left is whether a wick is visible, whether a
+     * doji survives, whether the axis labels collide, and whether the risk band reads as risk. All
+     * four of those are questions about pixels.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun chartCandles() = capture("34-chart-candles-fa") {
+        val series = ScreenshotFixtures.chartSeries()
+        Column(
+            modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
+        ) {
+            CoineProChart(
+                series = series,
+                modifier = Modifier.fillMaxWidth().height(320.dp),
+                decoration = ChartDecoration(
+                    overlays = listOf(
+                        ChartLine(Indicators.ema(series.close, 20), 0xFFD8A848, label = "EMA 20"),
+                        ChartLine(Indicators.ema(series.close, 50), 0xFF6E8BE0, label = "EMA 50"),
+                    ),
+                ),
+            )
+            CoineProChart(
+                series = series,
+                modifier = Modifier.fillMaxWidth().height(200.dp),
+                type = ChartType.HEIKIN_ASHI,
+                decoration = ChartDecoration(showVolume = false),
+            )
+            CoineProChart(
+                series = series,
+                modifier = Modifier.fillMaxWidth().height(120.dp),
+                type = ChartType.AREA,
+                decoration = ChartDecoration(showVolume = false, showAxes = false),
+                interactive = false,
+            )
+        }
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun chartSignalOverlay() = capture("35-chart-signal-fa") {
+        val series = ScreenshotFixtures.chartSeries()
+        Column(
+            modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
+        ) {
+            CoineProChart(
+                series = series,
+                modifier = Modifier.fillMaxWidth().height(360.dp),
+                decoration = ChartDecoration(
+                    signal = ScreenshotFixtures.chartSignal(series),
+                    overlays = listOf(
+                        ChartLine(
+                            Indicators.supertrend(series.high, series.low, series.close).line,
+                            0xFF00B15C,
+                            label = "SuperTrend",
+                        ),
+                    ),
+                ),
+            )
+        }
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun chartTypes() = capture("36-chart-types-fa") {
+        val series = ScreenshotFixtures.chartSeries()
+        Column(
+            modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        ) {
+            listOf(
+                ChartType.HOLLOW,
+                ChartType.BARS,
+                ChartType.RENKO,
+                ChartType.LINE_BREAK,
+                ChartType.KAGI,
+            ).forEach { type ->
+                CoineProChart(
+                    series = series,
+                    modifier = Modifier.fillMaxWidth().height(160.dp),
+                    type = type,
+                    decoration = ChartDecoration(showVolume = false),
+                    interactive = false,
+                )
+            }
+        }
     }
 
     private fun capture(

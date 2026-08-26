@@ -140,11 +140,25 @@ class ChartViewportTest {
     }
 
     @Test
-    fun `a series shorter than the window keeps its bar width`() {
-        // Otherwise nine bars stretch across the whole canvas and then shrink when history loads.
-        val short = CandleSeries(series.bars.take(9))
+    fun `a short series fills the plot instead of hiding in the corner of it`() {
+        // The Renko case: a hundred candles become nineteen bricks, and dividing by the 120-bar
+        // window put all nineteen in the leftmost sixth of the canvas.
+        val short = CandleSeries(series.bars.take(19))
         val view = ChartViewport(short).sized(360f, 240f)
+        assertEquals(360f / 19, view.barWidth, 1e-4f)
+        assertEquals(19, view.visibleCount)
+    }
+
+    @Test
+    fun `a very short series stops widening rather than drawing three slabs`() {
+        val tiny = CandleSeries(series.bars.take(3))
+        val view = ChartViewport(tiny).sized(360f, 240f)
+        assertEquals(360f / ChartViewport.MIN_BARS_PER_VIEW, view.barWidth, 1e-4f)
+    }
+
+    @Test
+    fun `a full window still divides by the window`() {
+        val view = viewport()
         assertEquals(360f / ChartViewport.DEFAULT_BARS_PER_VIEW, view.barWidth, 1e-4f)
-        assertEquals(9, view.visibleCount)
     }
 }

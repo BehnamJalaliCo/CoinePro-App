@@ -48,6 +48,9 @@ import com.coinepro.core.marketintel.MarketIntelSnapshot
 import com.coinepro.core.marketintel.MarketNewsItem
 import com.coinepro.core.marketintel.MarketRelevance
 import com.coinepro.core.marketintel.NewsSentiment
+import com.coinepro.core.chart.Candle
+import com.coinepro.core.chart.CandleSeries
+import com.coinepro.core.chart.SignalOverlay
 import com.coinepro.core.marketdata.MarketCatalog
 import com.coinepro.core.marketdata.MarketCatalogGateway
 import com.coinepro.core.model.Instrument
@@ -841,6 +844,56 @@ object ScreenshotFixtures {
         events = emptyList(),
         slotState = null,
     )
+
+    /**
+     * Two hundred bars of a plausible market, deterministic so the screenshot never flickers.
+     *
+     * Not a smooth sine wave: a chart fixture has to have gaps, a run of doji, one violent bar and
+     * a stretch of chop, because those are the shapes that expose a renderer. A clean wave would
+     * make a broken wick or a collapsed body look fine.
+     */
+    fun chartSeries(bars: Int = 200): CandleSeries {
+        var seed = 20_260_826L
+        fun random(): Double {
+            seed = (seed * 1103515245 + 12345) and 0x7FFFFFFF
+            return seed.toDouble() / 0x7FFFFFFF
+        }
+        val out = ArrayList<Candle>(bars)
+        var price = 2_600.0
+        for (index in 0 until bars) {
+            // A trending stretch, then chop, then a shock — the three regimes a chart has to draw.
+            val drift = when {
+                index < bars / 3 -> 0.55
+                index < bars * 2 / 3 -> 0.5
+                else -> 0.44
+            }
+            val shock = if (index == bars * 3 / 4) -18.0 else 0.0
+            val open = price
+            val close = open + (random() - drift) * 9.0 + shock
+            val wick = random() * 4.0
+            out += Candle(
+                t = 1_760_000_000L + index * 3600L,
+                o = open,
+                h = maxOf(open, close) + wick,
+                l = minOf(open, close) - random() * 4.0,
+                c = close,
+                v = 800.0 + random() * 5_000.0,
+            )
+            price = close
+        }
+        return CandleSeries(out)
+    }
+
+    /** A setup on the fixture above: long, stop under the shock, two targets above. */
+    fun chartSignal(series: CandleSeries): SignalOverlay {
+        val entry = series.close.last()
+        return SignalOverlay(
+            entry = entry,
+            stopLoss = entry - 26.0,
+            takeProfits = listOf(entry + 42.0, entry + 68.0),
+            isLong = true,
+        )
+    }
 
     /**
      * A catalogue the shape of a real one: majors, small caps, both asset classes, and the noise.

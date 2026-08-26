@@ -32,6 +32,15 @@ data class ChartViewport(
     /** The plot rectangle in pixels: the canvas minus the price axis and the time axis. */
     val plotWidth: Float = 0f,
     val plotHeight: Float = 0f,
+    /**
+     * Prices that must stay on screen even though no bar reaches them.
+     *
+     * A trade setup is the case: its target sits above everything that has happened yet — that is
+     * what makes it a target — so a range taken from the bars alone puts it off the top of the
+     * canvas. The reader then sees a green band running off the edge and no line, which is the
+     * least useful possible drawing of "here is where you take profit".
+     */
+    val includedPrices: List<Double> = emptyList(),
 ) {
     /** Index of the first visible bar, inclusive. */
     val firstVisible: Int
@@ -54,12 +63,20 @@ data class ChartViewport(
     /**
      * Pixels per bar.
      *
-     * Divided by [barsPerView] rather than by [visibleCount], so a series shorter than the window
-     * draws at the same bar width it will have once more history arrives, instead of stretching a
-     * handful of bars across the whole canvas.
+     * A series shorter than the window fills the plot rather than sitting in the left of it. That
+     * matters most for the price-driven types, which are *inherently* short — a hundred candles
+     * become nineteen Renko bricks, and dividing by the window put those nineteen in the leftmost
+     * sixth of the canvas with five colliding axis labels underneath.
+     *
+     * The floor stops the opposite problem: three bars filling a phone screen are three coloured
+     * slabs, not a chart. Below [MIN_BARS_PER_VIEW] the width stops growing and the bars simply do
+     * not reach the right edge.
      */
     val barWidth: Float
-        get() = if (effectiveBarsPerView == 0) 0f else plotWidth / effectiveBarsPerView
+        get() {
+            val slots = min(effectiveBarsPerView, max(visibleCount, MIN_BARS_PER_VIEW))
+            return if (slots == 0) 0f else plotWidth / slots
+        }
 
     /** The candle body width — the rest of the slot is the gap between bars. */
     val bodyWidth: Float get() = max(1f, barWidth * BODY_RATIO)
@@ -79,6 +96,10 @@ data class ChartViewport(
         for (index in firstVisible..lastVisible) {
             if (series.low[index] < low) low = series.low[index]
             if (series.high[index] > high) high = series.high[index]
+        }
+        for (price in includedPrices) {
+            if (price < low) low = price
+            if (price > high) high = price
         }
         val padding = when {
             high > low -> (high - low) * PRICE_PADDING
