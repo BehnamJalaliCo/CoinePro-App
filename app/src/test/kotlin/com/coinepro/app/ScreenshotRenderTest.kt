@@ -70,6 +70,7 @@ import com.coinepro.core.chart.CoineProChart
 import com.coinepro.core.chart.Indicators
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProSheetBody
+import com.coinepro.core.designsystem.persianDigits
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.feature.search.SearchScreen
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -824,7 +825,7 @@ class ScreenshotRenderTest {
     fun chartTypePicker() = capture("37-chart-type-picker-fa") {
         CoineProSheetBody(
             title = "نوع چارت",
-            subtitle = "۱۱ نوع — برای راهنما «؟» را بزن",
+            subtitle = "${persianDigits(ChartCatalog.CHART_TYPES.size)} نوع — برای راهنما «؟» را بزن",
         ) {
             ChartTypePicker(
                 selected = ChartType.HEIKIN_ASHI,
@@ -840,7 +841,8 @@ class ScreenshotRenderTest {
     fun indicatorPicker() = capture("38-indicator-picker-fa") {
         CoineProSheetBody(
             title = "اندیکاتورها",
-            subtitle = "۲۰ اندیکاتور — برای راهنما «؟» را بزن",
+            // Counted, not typed. A hand-written total is wrong the first time the list grows.
+            subtitle = "${persianDigits(ChartCatalog.INDICATORS.size)} اندیکاتور — برای راهنما «؟» را بزن",
         ) {
             IndicatorPicker(
                 active = setOf("ema", "bollinger", "rsi"),
@@ -874,7 +876,7 @@ class ScreenshotRenderTest {
     fun toolRail() = capture("40-tool-rail-fa") {
         CoineProSheetBody(
             title = "ابزارهای ترسیم",
-            subtitle = "۵۲ ابزار — برای راهنما روی هر کدام نگه دار",
+            subtitle = "${persianDigits(DrawingTools.ALL.size)} ابزار — برای راهنما روی هر کدام نگه دار",
         ) {
             ToolRail(selected = "fib", onSelect = {}, onHelp = {})
         }

@@ -54,13 +54,26 @@ class ChartCatalogTest {
     }
 
     @Test
-    fun `every indicator points at a real help entry`() {
+    fun `every indicator that claims a help entry has one`() {
         for (option in ChartCatalog.INDICATORS) {
+            val helpId = option.helpId ?: continue
             assertTrue(
-                "indicator ${option.id} points at '${option.helpId}', which has no help entry",
-                option.helpId in helpIds,
+                "indicator ${option.id} points at '$helpId', which has no help entry",
+                helpId in helpIds,
             )
         }
+    }
+
+    @Test
+    fun `exactly these indicators have no help, and the list may only shrink`() {
+        // The web terminal's help was written before these nine were added to it, so there is
+        // nothing to point at. Pinned rather than merely tolerated: a nullable helpId makes it very
+        // easy to add a tenth without noticing, and "no help" is a gap to close, not a default.
+        val withoutHelp = ChartCatalog.INDICATORS.filter { it.helpId == null }.map { it.id }
+        assertEquals(
+            listOf("envelopes", "stddev", "hv", "mom", "roc", "trix", "fisher", "smiErgodic", "smi"),
+            withoutHelp,
+        )
     }
 
     @Test

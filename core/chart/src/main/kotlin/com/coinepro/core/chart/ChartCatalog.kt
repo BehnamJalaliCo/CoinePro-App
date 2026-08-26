@@ -7,13 +7,14 @@ import com.coinepro.core.designsystem.R as DesignR
 /**
  * The chart types a reader can choose, and the indicators they can add.
  *
- * Every entry carries a [helpId], and that is the point of this file existing at all rather than
- * the pickers hard-coding their own lists. The «؟» content is the web terminal's, keyed by its own
- * ids, so the mapping from "the thing this app offers" to "the thing the help explains" has to be
- * written down once and be checkable — a picker that silently offers a tool with no help, or points
- * at the wrong entry, is exactly the kind of gap nobody notices until a user does.
+ * Almost every entry carries a [helpId], and that is the point of this file existing at all rather
+ * than the pickers hard-coding their own lists. The «؟» content is the web terminal's, keyed by its
+ * own ids, so the mapping from "the thing this app offers" to "the thing the help explains" has to
+ * be written down once and be checkable — a picker that silently offers a tool with no help, or
+ * points at the wrong entry, is exactly the kind of gap nobody notices until a user does.
  *
- * `ChartCatalogTest` asserts that every id here exists in the shipped catalogue.
+ * `ChartCatalogTest` asserts that every id here exists in the shipped catalogue, and pins the nine
+ * indicators that have no entry so a tenth cannot join them unnoticed.
  */
 data class ChartTypeOption(
     val type: ChartType,
@@ -42,7 +43,15 @@ data class ChartTypeOption(
 data class IndicatorOption(
     val id: String,
     val label: String,
-    val helpId: String,
+    /**
+     * The «؟» entry id, or null where the shipped catalogue has no entry.
+     *
+     * Null rather than a guess. Nine of the fifty point at nothing — the web terminal's help was
+     * written before those indicators were added to it — and a «؟» that opens an empty sheet is a
+     * worse answer than no «؟». `ChartCatalogTest` pins exactly which nine, so the gap can only
+     * close, never quietly widen.
+     */
+    val helpId: String?,
     val pane: IndicatorPane,
     /** ARGB. Several indicators draw more than one line and pick shades around this. */
     val colour: Long,
@@ -88,7 +97,13 @@ object ChartCatalog {
         ChartTypeOption(ChartType.POINT_AND_FIGURE, "نقطه و رقم", "pnf", DesignR.drawable.tv_chart_pnf),
     )
 
-    /** The twenty indicators the engine computes, grouped the way a trader thinks about them. */
+    /**
+     * The fifty indicators the engine computes, grouped the way a trader thinks about them.
+     *
+     * Fifty is past the point where a list can be scanned, which is why the picker grew a search
+     * field and a pane filter before this list grew past twenty. The order is the useful one and
+     * not an alphabet: within each pane, the ones most readers reach for first.
+     */
     val INDICATORS: List<IndicatorOption> = listOf(
         // Trend — on the price.
         IndicatorOption("sma", "میانگین متحرک ساده", "ma", IndicatorPane.PRICE, 0xFFD8A848, DesignR.drawable.tv_chart_line),
@@ -113,7 +128,55 @@ object ChartCatalog {
         IndicatorOption("choppiness", "شاخص چاپینس", "choppiness", IndicatorPane.SEPARATE, 0xFF7FA3C7, DesignR.drawable.tv_ruler),
         IndicatorOption("vortex", "ورتکس", "vortex", IndicatorPane.SEPARATE, 0xFFB08BC7, DesignR.drawable.tv_tool_arrowdir),
         IndicatorOption("obv", "حجم متعادل", "obv", IndicatorPane.SEPARATE, 0xFF00B15C, DesignR.drawable.tv_chart_columns),
+
+        // ── The second thirty, from indicators_ext_a.js and indicators_ext_b.js ─────────────
+        // Trend, on the price.
+        IndicatorOption("smma", "میانگین وایلدر (SMMA)", "smma", IndicatorPane.PRICE, 0xFF84CC16, DesignR.drawable.tv_chart_line),
+        IndicatorOption("zlema", "میانگین با تأخیر صفر", "zlema", IndicatorPane.PRICE, 0xFF2DD4BF, DesignR.drawable.tv_chart_line),
+        IndicatorOption("kama", "میانگین تطبیقی کافمن", "kama", IndicatorPane.PRICE, 0xFFFB923C, DesignR.drawable.tv_chart_line),
+        IndicatorOption("t3", "میانگین T3 تیلسون", "t3", IndicatorPane.PRICE, 0xFFE879F9, DesignR.drawable.tv_chart_line),
+        IndicatorOption("mcginley", "مک‌گینلی داینامیک", "mcginley", IndicatorPane.PRICE, 0xFFFACC15, DesignR.drawable.tv_chart_line),
+        IndicatorOption("linreg", "منحنی رگرسیون خطی", "linreg", IndicatorPane.PRICE, 0xFF38BDF8, DesignR.drawable.tv_tool_trend),
+        IndicatorOption("lsma", "میانگین کمترین‌مربعات", "lsma", IndicatorPane.PRICE, 0xFFD8A848, DesignR.drawable.tv_tool_trend),
+        IndicatorOption("envelopes", "پاکت درصدی", null, IndicatorPane.PRICE, 0xFFB08BC7, DesignR.drawable.tv_tool_flatchannel),
+
+        // Volatility, on its own scale.
+        IndicatorOption("stddev", "انحراف معیار", null, IndicatorPane.SEPARATE, 0xFFFB7185, DesignR.drawable.tv_ruler),
+        IndicatorOption("hv", "نوسان تاریخی", null, IndicatorPane.SEPARATE, 0xFFF59E0B, DesignR.drawable.tv_ruler),
+        IndicatorOption("chaikinVol", "نوسان چایکین", "chaikinVol", IndicatorPane.SEPARATE, 0xFF0EA5E9, DesignR.drawable.tv_ruler),
+        IndicatorOption("bbpercent", "باند بولینگر ٪B", "bbpercent", IndicatorPane.SEPARATE, 0xFF22D3EE, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("bbw", "پهنای باند بولینگر", "bbw", IndicatorPane.SEPARATE, 0xFF8E9BAE, DesignR.drawable.tv_ruler),
+
+        // Momentum, on its own scale.
+        IndicatorOption("mom", "مومنتوم", null, IndicatorPane.SEPARATE, 0xFFD8A848, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("roc", "نرخ تغییر", null, IndicatorPane.SEPARATE, 0xFFF472B6, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("trix", "تریکس (TRIX)", null, IndicatorPane.SEPARATE, 0xFF34D399, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("ac", "شتاب‌دهنده", "ac", IndicatorPane.SEPARATE, 0xFF22D3EE, DesignR.drawable.tv_chart_columns),
+        IndicatorOption("uo", "اسیلاتور غایی", "uo", IndicatorPane.SEPARATE, 0xFFD8A848, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("fisher", "تبدیل فیشر", null, IndicatorPane.SEPARATE, 0xFFFB923C, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("crsi", "کانرز RSI", "crsi", IndicatorPane.SEPARATE, 0xFFE879F9, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("smiErgodic", "SMI ارگودیک", null, IndicatorPane.SEPARATE, 0xFF38BDF8, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("smi", "مومنتوم استوکاستیک", null, IndicatorPane.SEPARATE, 0xFFFACC15, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("bop", "توازن قدرت", "bop", IndicatorPane.SEPARATE, 0xFFD8A848, DesignR.drawable.tv_chart_columns),
+
+        // Volume, on its own scale.
+        IndicatorOption("adline", "تجمع و توزیع", "adline", IndicatorPane.SEPARATE, 0xFF0EA5E9, DesignR.drawable.tv_chart_volcandles),
+        IndicatorOption("chaikinOsc", "اسیلاتور چایکین", "chaikinOsc", IndicatorPane.SEPARATE, 0xFFF97316, DesignR.drawable.tv_chart_columns),
+        IndicatorOption("eom", "سهولت حرکت", "eom", IndicatorPane.SEPARATE, 0xFF84CC16, DesignR.drawable.tv_tool_arrowdir),
+        IndicatorOption("forceIndex", "شاخص نیرو", "forceIndex", IndicatorPane.SEPARATE, 0xFFFB7185, DesignR.drawable.tv_chart_columns),
+        IndicatorOption("klinger", "اسیلاتور کلینگر", "klinger", IndicatorPane.SEPARATE, 0xFFA855F7, DesignR.drawable.tv_chart_volcandles),
+        IndicatorOption("pvt", "روند قیمت-حجم", "pvt", IndicatorPane.SEPARATE, 0xFF10B981, DesignR.drawable.tv_chart_volcandles),
     )
+
+    /**
+     * Defaults for the two regression curves.
+     *
+     * A hundred bars for the curve and twenty-five for the projected average, which are the web
+     * terminal's — the same series under two periods is two different indicators to a reader, and
+     * two products that disagree about which is which are worse than one that offers only one.
+     */
+    private const val LINREG_PERIOD = 100
+    private const val LSMA_PERIOD = 25
 
     /**
      * The indicators whose Persian name or ticker contains [query].
@@ -194,6 +257,26 @@ object ChartCatalog {
                     label = "VWAP",
                 ),
             )
+
+            // ── The second thirty's price-scale entries ────────────────────────────────────
+            "smma" -> listOf(ChartLine(IndicatorsExt.smma(close, 14), option.colour, label = "SMMA 14"))
+            "zlema" -> listOf(ChartLine(IndicatorsExt.zlema(close, 21), option.colour, label = "ZLEMA 21"))
+            "kama" -> listOf(ChartLine(IndicatorsExt.kama(close), option.colour, label = "KAMA 10"))
+            "t3" -> listOf(ChartLine(IndicatorsExt.t3(close), option.colour, label = "T3 10"))
+            "mcginley" -> listOf(ChartLine(IndicatorsExt.mcginley(close), option.colour, label = "McGinley 14"))
+            "linreg" -> listOf(
+                ChartLine(IndicatorsExt.linearRegression(close, LINREG_PERIOD), option.colour, label = "LinReg 100"),
+            )
+            "lsma" -> listOf(
+                ChartLine(IndicatorsExt.linearRegression(close, LSMA_PERIOD), option.colour, label = "LSMA 25"),
+            )
+            "envelopes" -> IndicatorsExt.envelopes(close).let { band ->
+                listOf(
+                    ChartLine(band.upper, option.colour, label = "Env 1%"),
+                    ChartLine(band.basis, option.colour, widthDp = 0.9f),
+                    ChartLine(band.lower, option.colour),
+                )
+            }
             else -> emptyList()
         }
     }

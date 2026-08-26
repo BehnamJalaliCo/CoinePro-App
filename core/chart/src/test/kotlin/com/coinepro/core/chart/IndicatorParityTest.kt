@@ -29,13 +29,14 @@ class IndicatorParityTest {
     private val bars = fixture.bars
     private val high = DoubleArray(bars.size) { bars[it].h }
     private val low = DoubleArray(bars.size) { bars[it].l }
+    private val open = DoubleArray(bars.size) { bars[it].o }
     private val close = DoubleArray(bars.size) { bars[it].c }
     private val volume = DoubleArray(bars.size) { bars[it].v ?: 0.0 }
 
     @Test
     fun `the fixture itself is what it claims to be`() {
         assertEquals(120, bars.size)
-        assertTrue("expected series were not loaded", fixture.series.size >= 25)
+        assertTrue("expected series were not loaded", fixture.series.size >= 60)
     }
 
     @Test
@@ -101,6 +102,79 @@ class IndicatorParityTest {
     fun `volume matches`() {
         fixture.assertMatches("obv", Indicators.obv(close, volume))
         fixture.assertMatches("vwap", Indicators.vwap(high, low, close, volume))
+    }
+
+    // ── the second thirty, from indicators_ext_a.js and indicators_ext_b.js ────────────────────
+
+    @Test
+    fun `the extended moving averages match`() {
+        fixture.assertMatches("smma14", IndicatorsExt.smma(close, 14))
+        fixture.assertMatches("zlema21", IndicatorsExt.zlema(close, 21))
+        fixture.assertMatches("kama10", IndicatorsExt.kama(close, 10, 2, 30))
+        fixture.assertMatches("t3_10", IndicatorsExt.t3(close, 10, 0.7))
+        fixture.assertMatches("mcginley14", IndicatorsExt.mcginley(close, 14))
+        fixture.assertMatches("linreg100", IndicatorsExt.linearRegression(close, 100, 0))
+        fixture.assertMatches("lsma25", IndicatorsExt.linearRegression(close, 25, 0))
+    }
+
+    @Test
+    fun `the extended volatility measures match`() {
+        fixture.assertMatches("stddev20", IndicatorsExt.stdDev(close, 20))
+        fixture.assertMatches("hv10", IndicatorsExt.historicalVolatility(close, 10, 365))
+        fixture.assertMatches("chaikinVol10", IndicatorsExt.chaikinVolatility(high, low, 10, 10))
+
+        val envelopes = IndicatorsExt.envelopes(close, 20, 1.0)
+        fixture.assertMatches("envelopesUpper", envelopes.upper)
+        fixture.assertMatches("envelopesBasis", envelopes.basis)
+        fixture.assertMatches("envelopesLower", envelopes.lower)
+
+        fixture.assertMatches("bbPercent20", IndicatorsExt.bollingerPercent(close, 20, 2.0))
+        fixture.assertMatches("bbWidth20", IndicatorsExt.bollingerWidth(close, 20, 2.0))
+    }
+
+    @Test
+    fun `the extended oscillators match`() {
+        fixture.assertMatches("mom10", IndicatorsExt.momentum(close, 10))
+        fixture.assertMatches("roc9", IndicatorsExt.rateOfChange(close, 9))
+        fixture.assertMatches("ac", IndicatorsExt.accelerator(high, low))
+        fixture.assertMatches("uo", IndicatorsExt.ultimateOscillator(high, low, close, 7, 14, 28))
+        fixture.assertMatches("crsi", IndicatorsExt.connorsRsi(close, 3, 2, 100))
+        fixture.assertMatches("smi10", IndicatorsExt.stochasticMomentum(high, low, close, 10, 3, 3))
+        fixture.assertMatches("bop", IndicatorsExt.balanceOfPower(open, high, low, close, 1))
+
+        val trix = IndicatorsExt.trix(close, 18, 9)
+        fixture.assertMatches("trix18", trix.line)
+        fixture.assertMatches("trix18Signal", trix.signal)
+
+        val fisher = IndicatorsExt.fisherTransform(high, low, 9)
+        fixture.assertMatches("fisher9", fisher.line)
+        fixture.assertMatches("fisher9Signal", fisher.signal)
+
+        val ergodic = IndicatorsExt.smiErgodic(close, 20, 5, 5)
+        fixture.assertMatches("smiErgodic", ergodic.line)
+        fixture.assertMatches("smiErgodicSignal", ergodic.signal)
+    }
+
+    @Test
+    fun `the extended volume measures match`() {
+        fixture.assertMatches("adLine", IndicatorsExt.accumulationDistribution(high, low, close, volume))
+        fixture.assertMatches("chaikinOsc", IndicatorsExt.chaikinOscillator(high, low, close, volume, 3, 10))
+        fixture.assertMatches("eom14", IndicatorsExt.easeOfMovement(high, low, volume, 14, 1e8))
+        fixture.assertMatches("forceIndex13", IndicatorsExt.forceIndex(close, volume, 13))
+        fixture.assertMatches("pvt", IndicatorsExt.priceVolumeTrend(close, volume))
+
+        val klinger = IndicatorsExt.klinger(high, low, close, volume, 34, 55, 13)
+        fixture.assertMatches("klinger", klinger.line)
+        fixture.assertMatches("klingerSignal", klinger.signal)
+    }
+
+    @Test
+    fun `a volume indicator on a feed with no volume is empty, not flat zero`() {
+        // A flat line at zero is a claim — "no accumulation". Nothing is the truth: no data. The
+        // crypto feed reports volume and the forex one does not, so both cases are live in this app.
+        val none = DoubleArray(close.size)
+        val line = IndicatorsExt.accumulationDistribution(high, low, close, none)
+        for (index in close.indices) assertEquals("bar $index", null, line[index])
     }
 
     @Test

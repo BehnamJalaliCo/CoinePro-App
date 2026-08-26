@@ -179,7 +179,9 @@ fun IndicatorPicker(
                         selected = option.id in active,
                         accent = Color(option.colour),
                         onClick = { onToggle(option) },
-                        onHelp = onHelp?.let { { it(option.helpId) } },
+                        // Nine of the fifty have no entry in the shipped catalogue. They get no
+                        // «؟» rather than one that opens nothing.
+                        onHelp = option.helpId?.let { id -> onHelp?.let { { it(id) } } },
                     )
                 }
             }
