@@ -5,7 +5,11 @@ import android.graphics.Canvas
 import android.os.Looper
 import android.view.View
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -17,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -30,6 +35,10 @@ import com.coinepro.core.auth.EmailAuthStep
 import com.coinepro.core.auth.EmailAuthUiState
 import com.coinepro.core.auth.LoginConfigState
 import com.coinepro.core.auth.SessionState
+import androidx.compose.ui.unit.dp
+import com.coinepro.core.designsystem.CoineProAssetLogo
+import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.marketintel.MarketIntelController
@@ -232,6 +241,54 @@ class ScreenshotRenderTest {
         )
         controller.refresh()
         capture("28-copy-trading-unlinked-fa") { CopyTradeScreen(controller = controller) }
+    }
+
+    /**
+     * A wall of instrument logos on the real stage colour, at the real sizes.
+     *
+     * Worth a render of its own because the archive grew from eight symbols to seven hundred in one
+     * change, and the two things that can go wrong with that are both invisible in a file listing:
+     * a mark that is near-black on a near-black ground, and a mark whose artwork is an illustration
+     * rather than an icon and turns to mush at 24dp. Both are obvious here in one glance.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun assetLogoWall() = capture("29-asset-logos-fa") {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(CoineProColors.Stage)
+                .padding(CoineProSpacing.Gutter),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+        ) {
+            // Deliberately mixed: the majors, the four that ship as raster, and the marks that are
+            // dark discs — XRP, XLM, ATOM — which are the whole reason the ring exists.
+            val rows = listOf(
+                listOf("BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT"),
+                listOf("DOGEUSDT", "TRXUSDT", "LTCUSDT", "DOTUSDT", "XLMUSDT", "ATOMUSDT"),
+                listOf("TONUSDT", "SUIUSDT", "ARBUSDT", "PEPEUSDT", "SEIUSDT", "WIFUSDT"),
+                listOf("TIAUSDT", "AVAXUSDT", "LINKUSDT", "UNIUSDT", "MATICUSDT", "NEARUSDT"),
+                // The last two have no artwork anywhere and must fall back to the lettered token.
+                listOf("XAUUSD", "XAGUSD", "APEUSDT", "OPUSDT", "INJUSDT", "AAVEUSDT"),
+            )
+            rows.forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf)) {
+                    row.forEach { CoineProAssetLogo(symbol = it, size = 42.dp) }
+                }
+            }
+            Row(
+                modifier = Modifier.padding(top = CoineProSpacing.One),
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // The three sizes the app draws, so a mark that only works large is caught.
+                listOf(24.dp, 32.dp, 42.dp).forEach { size ->
+                    CoineProAssetLogo(symbol = "XRPUSDT", size = size)
+                    CoineProAssetLogo(symbol = "XLMUSDT", size = size)
+                    CoineProAssetLogo(symbol = "SOLUSDT", size = size)
+                }
+            }
+        }
     }
 
     @Test

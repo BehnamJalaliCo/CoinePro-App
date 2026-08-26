@@ -50,6 +50,23 @@ object CoineProColors {
         @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.surfaceElevated
     val Border: Color @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.border
 
+    /**
+     * The hairline around an instrument logo.
+     *
+     * A separate token from [Border] because it is solving a different problem: many coin marks are
+     * a near-black disc, and against this app's near-black stage they have no edge at all. This ring
+     * gives them one. It is deliberately faint — enough to close the shape, not enough to read as a
+     * border the designer chose — and it flips with the theme so it never becomes the brightest
+     * thing in a row of logos.
+     */
+    val assetRing: Color
+        @Composable @ReadOnlyComposable get() =
+            if (LocalCoineProPalette.current.isDark) {
+                Color(0x29FFFFFF)
+            } else {
+                Color(0x1F101828)
+            }
+
     val TextPrimary: Color
         @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.textPrimary
     val TextSecondary: Color

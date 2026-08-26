@@ -2,9 +2,12 @@ package com.coinepro.core.designsystem
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
@@ -22,9 +25,21 @@ import java.util.Locale
  * Logos are matched on the **base** symbol, so `BTCUSDT` and a future `BTCUSD` resolve to the same
  * artwork rather than needing an entry each.
  *
- * To add one: drop a square vector or WebP at `core/designsystem/src/main/res/drawable/asset_<base>`
- * and add the single line to [logos]. Prefer a vector — it is one file for every density — and
- * prefer artwork that reads on both a near-black and a white ground, since both themes ship.
+ * The table is generated: `scripts/design/build-symbol-logos.py` merges the archives under
+ * `design/asset-logos` and writes both the drawables and [AssetLogoTable]. To add a market, drop
+ * artwork in the archive and re-run the script — never hand-edit either output.
+ *
+ * Every mark is clipped to a disc and given a hairline ring, and neither is decoration.
+ *
+ * The clip is what makes a row of them look like one set. The archives disagree about shape — most
+ * marks are drawn as a filled circle, but the newer listings arrive on a square canvas, and a
+ * square among circles reads as a mistake rather than as a different coin.
+ *
+ * The ring solves the opposite problem. A good number of these coins use a
+ * near-black disc — XRP, XLM, ATOM, Solana's wordmark — and against this app's near-black stage
+ * they lose their edge entirely and read as a floating glyph rather than a coin. The ring costs
+ * nothing on the bright marks and rescues the dark ones, which is why it is unconditional rather
+ * than applied by a luminance test that would have to be recomputed per theme.
  */
 @Composable
 fun CoineProAssetLogo(
@@ -39,8 +54,13 @@ fun CoineProAssetLogo(
             // Decorative: the row already names the instrument in text, so announcing the logo
             // separately would read the same thing twice.
             contentDescription = null,
-            modifier = modifier.size(size),
-            contentScale = ContentScale.Fit,
+            modifier = modifier
+                .size(size)
+                .clip(CircleShape)
+                .border(1.dp, CoineProColors.assetRing, CircleShape),
+            // Crop rather than fit, so a mark drawn on a square canvas fills the disc instead of
+            // sitting inside it at four fifths the size of its circular neighbours.
+            contentScale = ContentScale.Crop,
         )
     } else {
         CoineProAssetToken(
@@ -66,34 +86,51 @@ fun initialFor(symbol: String): String = when (val base = baseOf(symbol)) {
     else -> base.take(1).uppercase(Locale.US)
 }
 
-@DrawableRes
-private fun logoFor(symbol: String): Int? = logos[baseOf(symbol)]
+/**
+ * The instrument behind a market symbol — `BTCUSDT` and `BTCUSD` both give `BTC`.
+ *
+ * Two rules earn their place here, and both were bugs before the table grew past eight entries.
+ *
+ * A suffix is only stripped when at least two characters survive it. Without that, `WBTC` loses its
+ * quote-looking tail and becomes `W`, and `XBTUSD` becomes `XB` — a symbol nobody has artwork for,
+ * silently falling back to the letter W.
+ *
+ * `BUSD` and `TUSD` are deliberately absent from the suffix list for the same reason: they are
+ * quote currencies, but stripping them would eat the base of any symbol ending in those letters.
+ * The cost of leaving them out is that `ETHBUSD` finds no logo; the cost of putting them in is that
+ * several symbols find the wrong one.
+ */
+internal fun baseOf(symbol: String): String {
+    val clean = symbol.uppercase(Locale.US).filter { it.isLetterOrDigit() }
+    val base = QUOTES.firstOrNull { clean.length >= it.length + 2 && clean.endsWith(it) }
+        ?.let { clean.dropLast(it.length) }
+        ?: clean
+    return ALIASES[base] ?: base
+}
 
-private fun baseOf(symbol: String): String = symbol
-    .uppercase(Locale.US)
-    .removeSuffix("USDT")
-    .removeSuffix("USDC")
-    .removeSuffix("USD")
+/** Longest first, so `USDT` is tried before the `USD` inside it. */
+private val QUOTES = listOf("USDT", "USDC", "USD", "BTC", "ETH")
 
 /**
- * Symbol base to artwork.
+ * Symbols whose artwork lives under a different name.
  *
- * Only the markets the app quotes are here. The full archive lives in `design/asset-logos`, and
- * `scripts/design/svg-to-vector.py` converts one on demand — so adding a market is a command
- * rather than a design task, and six hundred unused vectors stay out of the APK.
- *
- * Where the vector set has no artwork for a market — TON and most of the 2024 listings — the
- * archive also carries Binance's raster logos at 96px under `design/asset-logos/binance`. Those are
- * the fallback of last resort before the lettered token: raster at one size, so they are only worth
- * reaching for when no vector exists.
+ * Wrapped and staked tokens are the bulk of it — they are the same asset with a different contract,
+ * and no archive draws a separate mark for them. The rest are renames the archives predate.
  */
-private val logos: Map<String, Int> = mapOf(
-    "ADA" to R.drawable.asset_ada,
-    "BTC" to R.drawable.asset_btc,
-    "ETH" to R.drawable.asset_eth,
-    "SOL" to R.drawable.asset_sol,
-    "BNB" to R.drawable.asset_bnb,
-    "XRP" to R.drawable.asset_xrp,
-    "DOGE" to R.drawable.asset_doge,
-    "TRX" to R.drawable.asset_trx,
+private val ALIASES = mapOf(
+    "WBTC" to "BTC",
+    "XBT" to "BTC",
+    "WETH" to "ETH",
+    "BETH" to "ETH",
+    "STETH" to "ETH",
+    "WSOL" to "SOL",
+    "WBNB" to "BNB",
+    "BCC" to "BCH",
+    "IOTA" to "MIOTA",
+    "XNO" to "NANO",
+    "POL" to "MATIC",
+    "RENDER" to "RNDR",
 )
+
+@DrawableRes
+private fun logoFor(symbol: String): Int? = AssetLogoTable.forBase(baseOf(symbol))

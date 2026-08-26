@@ -238,11 +238,76 @@ def convert(
             lines.append('        android:strokeLineJoin="round"')
         if path["rule"] == "evenodd":
             lines.append('        android:fillType="evenOdd"')
-        lines.append(f'        android:pathData="{path["d"]}" />')
+        lines.append(f'        android:pathData="{expand_arc_flags(path["d"])}" />')
     lines.append("</vector>")
 
     destination.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return len(paths)
+
+
+# SVG lets the two flag arguments of an arc run together with each other and with the number after
+# them — `a4.4 4.4 0 00.796-1.815` is three arguments, not one. Android's path parser does not
+# accept that packing, and its failure is silent: it reads some other number as the flag and draws
+# an arc sweeping the wrong way, which shows up as a white blade across the artwork rather than as
+# an error. A third of this archive is written that way, so every arc is re-emitted with its
+# arguments separated.
+_NUMBER = re.compile(r"[-+]?(?:\d*\.\d+(?:[eE][-+]?\d+)?|\d+\.?(?:[eE][-+]?\d+)?)")
+_COMMAND = re.compile(r"[MmZzLlHhVvCcSsQqTtAa]")
+
+
+def expand_arc_flags(data: str) -> str:
+    """Re-emit `d` with every arc's seven arguments explicitly separated."""
+    out: list[str] = []
+    i = 0
+    command = ""
+    length = len(data)
+
+    def take_number() -> str | None:
+        nonlocal i
+        while i < length and data[i] in ", \t\r\n":
+            i += 1
+        match = _NUMBER.match(data, i)
+        if not match:
+            return None
+        i = match.end()
+        return match.group(0)
+
+    def take_flag() -> str | None:
+        """A flag is exactly one character, whatever is glued to it."""
+        nonlocal i
+        while i < length and data[i] in ", \t\r\n":
+            i += 1
+        if i < length and data[i] in "01":
+            i += 1
+            return data[i - 1]
+        return None
+
+    while i < length:
+        char = data[i]
+        if _COMMAND.match(char):
+            command = char
+            out.append(char)
+            i += 1
+            continue
+        if char in ", \t\r\n":
+            i += 1
+            continue
+        if command in "Aa":
+            args = [take_number(), take_number(), take_number(), take_flag(), take_flag(),
+                    take_number(), take_number()]
+            if any(a is None for a in args):
+                # Malformed rather than merely packed. Refused, because a half-read arc is exactly
+                # the silent corruption this function exists to prevent.
+                raise Unsupported("arc segment is malformed and cannot be re-emitted safely")
+            out.append(" " + " ".join(args))
+            continue
+        number = take_number()
+        if number is None:
+            i += 1
+            continue
+        out.append(" " + number)
+
+    return "".join(out).strip()
 
 
 def main() -> int:
