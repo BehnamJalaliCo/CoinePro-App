@@ -750,10 +750,18 @@ class ScreenshotRenderTest {
         )
     }
 
+    /**
+     * The screen a reader gets when a session exists but could not be revalidated.
+     *
+     * Rendered in `RevalidationRequired` rather than `SignedOut`, because signing out no longer
+     * reaches this screen at all — `EmailAuthScreen` does. A capture in `SignedOut` was showing a
+     * Telegram sign-in button nobody can get to, which is a screenshot claiming the app looks like
+     * something it does not.
+     */
     @Test
     fun auth() = capture("11-auth") {
         AuthScreen(
-            state = SessionState.SignedOut,
+            state = SessionState.RevalidationRequired("نشست شما دیگر معتبر نیست."),
             loginConfigState = LoginConfigState.Ready("CoineProBot"),
             onTelegramPayload = {},
             onRetryLoginConfig = {},
