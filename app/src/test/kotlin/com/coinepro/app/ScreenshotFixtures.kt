@@ -82,6 +82,7 @@ import com.coinepro.core.copytrade.CopyPosition
 import com.coinepro.core.copytrade.CopyPreferences
 import com.coinepro.core.copytrade.CopyTradeGateway
 import com.coinepro.core.copytrade.CopyTradeStatus
+import com.coinepro.core.designsystem.R as DesignR
 import java.time.Instant
 import com.coinepro.core.account.AccountBriefing
 import com.coinepro.core.account.AccountGateway
@@ -844,11 +845,35 @@ object ScreenshotFixtures {
      * catch the artwork nobody thought to look at.
      */
     fun tradingViewIconIds(context: android.content.Context): List<Int> {
-        val fields = com.coinepro.core.designsystem.R.drawable::class.java.fields
+        val fields = DesignR.drawable::class.java.fields
         return fields
             .filter { it.name.startsWith("tv_") }
             .sortedBy { it.name }
             .map { it.getInt(null) }
+    }
+
+    /**
+     * The brand set paired with the Phosphor glyph it would replace, outline and fill each.
+     *
+     * Zero means the family has no counterpart for that meaning — the brand set covers sections
+     * Phosphor answers with a generic shape, and Phosphor covers plenty the brand set never drew.
+     */
+    fun brandIconComparison(): List<Pair<Pair<Int, Int>, Pair<Int, Int>>> {
+        return listOf(
+            (DesignR.drawable.brand_home to DesignR.drawable.brand_home_fill) to (DesignR.drawable.icon_house to DesignR.drawable.icon_filled_house),
+            (DesignR.drawable.brand_markets to DesignR.drawable.brand_markets_fill) to
+                (DesignR.drawable.icon_chart_line_up to DesignR.drawable.icon_filled_chart_line_up),
+            (DesignR.drawable.brand_signal to DesignR.drawable.brand_signal_fill) to (DesignR.drawable.icon_sparkle to DesignR.drawable.icon_filled_sparkle),
+            (DesignR.drawable.brand_alert to DesignR.drawable.brand_alert_fill) to (DesignR.drawable.icon_bell to DesignR.drawable.icon_filled_bell),
+            (DesignR.drawable.brand_grid to DesignR.drawable.brand_grid_fill) to
+                (DesignR.drawable.icon_sliders_horizontal to DesignR.drawable.icon_filled_sliders_horizontal),
+            (DesignR.drawable.brand_copy_trade to DesignR.drawable.brand_copy_trade_fill) to (DesignR.drawable.icon_link_simple to 0),
+            (DesignR.drawable.brand_watchlist to DesignR.drawable.brand_watchlist_fill) to (DesignR.drawable.icon_eye to 0),
+            (DesignR.drawable.brand_news to 0) to (DesignR.drawable.icon_newspaper to 0),
+            (DesignR.drawable.brand_academy to DesignR.drawable.brand_academy_fill) to (DesignR.drawable.icon_info to 0),
+            (DesignR.drawable.brand_wallet to 0) to (DesignR.drawable.icon_wallet to 0),
+            (DesignR.drawable.brand_user to DesignR.drawable.brand_user_fill) to (DesignR.drawable.icon_gear_six to 0),
+        )
     }
 }
 

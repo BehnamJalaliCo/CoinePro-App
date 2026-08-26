@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -334,6 +335,49 @@ class ScreenshotRenderTest {
                             tint = CoineProColors.TextPrimary,
                         )
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * The app's own icons — the ones that name its sections — beside the Phosphor glyphs they would
+     * replace, at nav size, outline over fill.
+     *
+     * Rendered side by side because that is the only way to judge the swap. The Phosphor set is a
+     * general icon family and reads as one; the brand set was drawn for these eleven meanings
+     * specifically, and whether that is an improvement is a question about how they sit together,
+     * not about either one alone.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun brandIcons() = capture("31-brand-icons-fa") {
+        val pairs = ScreenshotFixtures.brandIconComparison()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(CoineProColors.Stage)
+                .padding(CoineProSpacing.Gutter),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
+        ) {
+            pairs.forEach { (brand, phosphor) ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    listOf(brand.first, brand.second, phosphor.first, phosphor.second)
+                        .forEach { id ->
+                            if (id == 0) {
+                                Spacer(Modifier.size(26.dp))
+                            } else {
+                                Icon(
+                                    painter = painterResource(id),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(26.dp),
+                                    tint = CoineProColors.TextPrimary,
+                                )
+                            }
+                        }
                 }
             }
         }
