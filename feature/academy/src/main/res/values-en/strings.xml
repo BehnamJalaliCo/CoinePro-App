@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="academy_title">Academy</string>
+    <string name="academy_continue">Continue</string>
+    <string name="academy_xp">XP</string>
+    <string name="academy_streak">day streak</string>
+    <string name="academy_streak_today">Done today</string>
+    <string name="academy_progress">%1$s of %2$s lessons</string>
+    <string name="academy_badges">%1$s badges</string>
+
+    <string name="academy_locked_tier">Subscription required</string>
+    <string name="academy_locked_phone">Phone number required</string>
+    <string name="academy_add_phone">Add phone number</string>
+    <string name="academy_locked_phone_body">Professional levels open once your phone number is on your profile.</string>
+    <string name="academy_locked_tier_body">This lesson is part of the subscription.</string>
+
+    <string name="academy_error_network">The academy could not be loaded.</string>
+    <string name="academy_error_disabled">The academy is closed on this server for now.</string>
+    <string name="academy_retry">Retry</string>
+
+    <string name="academy_reading_time">%1$s min read</string>
+    <string name="academy_has_video">Has video</string>
+    <string name="academy_video_note">The video for this lesson plays in the web app.</string>
+    <string name="academy_mark_read">Mark as read</string>
+    <string name="academy_done">Done</string>
+
+    <string name="academy_quiz">Quiz</string>
+    <string name="academy_quiz_submit">Check answers</string>
+    <string name="academy_quiz_score">Score: %1$s of 100</string>
+    <string name="academy_quiz_passed">Passed</string>
+    <string name="academy_quiz_failed">Not yet — read it again and retry.</string>
+    <string name="academy_quiz_last_score">Best so far: %1$s</string>
+    <string name="academy_quiz_correct">Correct answer</string>
+    <string name="academy_quiz_your_answer">Your answer</string>
+
+    <string name="academy_close">Close</string>
+</resources>

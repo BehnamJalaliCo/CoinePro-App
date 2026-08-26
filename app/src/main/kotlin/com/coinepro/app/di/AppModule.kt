@@ -62,6 +62,9 @@ import com.coinepro.core.marketdata.NetworkMarketSnapshotGateway
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.marketintel.MarketIntelGateway
 import com.coinepro.core.marketintel.NetworkMarketIntelGateway
+import com.coinepro.core.academy.AcademyController
+import com.coinepro.core.academy.AcademyGateway
+import com.coinepro.core.academy.NetworkAcademyGateway
 import com.coinepro.core.network.NetworkFactory
 import com.coinepro.core.portfolio.PortfolioController
 import com.coinepro.core.portfolio.PortfolioGateway
@@ -655,6 +658,24 @@ object AppModule {
      * TradeYar walks LBank's order log in 48-hour slices — so the controller below is created once
      * and refreshes only when asked.
      */
+    /**
+     * The academy, which exists on one platform only.
+     *
+     * Nullable rather than a stub: TradeYar has no `/academy` surface at all, and a gateway wired
+     * to routes that answer 404 would turn a feature that is absent into one that looks broken.
+     */
+    @Provides
+    @Singleton
+    fun academyGateway(
+        @ForexPlatform retrofit: Retrofit,
+        tokens: AcademyTokenStore,
+    ): AcademyGateway = NetworkAcademyGateway(retrofit, tokens)
+
+    @Provides
+    @Singleton
+    fun academyController(gateway: AcademyGateway, scope: CoroutineScope): AcademyController =
+        AcademyController(gateway, scope)
+
     @Provides
     @Singleton
     @ForexPlatform

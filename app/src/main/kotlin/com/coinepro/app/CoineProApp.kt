@@ -99,9 +99,12 @@ import com.coinepro.feature.home.toHomeSubscription
 import com.coinepro.feature.news.NewsScreen
 import com.coinepro.feature.signaldetail.SignalChartController
 import com.coinepro.feature.signaldetail.SignalDetailScreen
+import com.coinepro.core.academy.AcademyController
 import com.coinepro.core.portfolio.PortfolioController
 import com.coinepro.feature.chart.ChartController
 import com.coinepro.feature.chart.ChartScreen
+import com.coinepro.feature.academy.AcademyScreen
+import com.coinepro.feature.academy.LessonScreen
 import com.coinepro.feature.portfolio.PortfolioScreen
 import com.coinepro.feature.search.SearchScreen
 import com.coinepro.feature.signals.SignalsScreen
@@ -116,6 +119,8 @@ private const val AI_ASSISTANT_ROUTE = "ai/assistant"
 private const val MARKET_SEARCH_ROUTE = "market/search"
 private const val CHART_PATTERN = "chart/{symbol}"
 private const val PORTFOLIO_ROUTE = "portfolio"
+private const val ACADEMY_ROUTE = "academy"
+private const val LESSON_PATTERN = "academy/lesson/{slug}"
 private const val NEWS_ROUTE = "market/news"
 private const val CALENDAR_ROUTE = "market/calendar"
 private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
@@ -129,6 +134,7 @@ private fun executionRoute(signalId: Long) = "execution/$signalId"
  * encoding it costs nothing and a symbol that ever grows a slash would otherwise route nowhere.
  */
 private fun chartRoute(symbol: String) = "chart/" + Uri.encode(symbol)
+private fun lessonRoute(slug: String) = "academy/lesson/" + Uri.encode(slug)
 
 @Composable
 fun CoineProApp(
@@ -138,6 +144,7 @@ fun CoineProApp(
     marketSearchControllers: Map<MarketPlatform, MarketSearchController>,
     candleGateways: Map<MarketPlatform, CandleGateway>,
     portfolioControllers: Map<MarketPlatform, PortfolioController>,
+    academyController: AcademyController,
     accountControllers: Map<MarketPlatform, AccountController>,
     adminController: AdminController,
     platformSessions: PlatformSessions,
@@ -343,6 +350,8 @@ fun CoineProApp(
                 marketSearchController = marketSearchController,
                 candleGateway = candleGateways.getValue(activePlatform),
                 portfolioController = portfolioControllers.getValue(activePlatform),
+                academyController = academyController,
+                hasAcademy = activePlatform == MarketPlatform.COINEPRO_FX,
                 adminController = adminController,
                 hub = hub,
                 hubActions = hubActions,
@@ -458,6 +467,14 @@ private fun MainShell(
     /** The candle source for the platform on screen. See the chart route below. */
     candleGateway: CandleGateway,
     portfolioController: PortfolioController,
+    academyController: AcademyController,
+    /**
+     * Whether this platform has an academy at all.
+     *
+     * CoinePro-FX does; TradeYar has no `/academy` surface. Offering the entry on both and letting
+     * the second fail would report an absent feature as an outage.
+     */
+    hasAcademy: Boolean,
     signalController: SignalController,
     notificationController: NotificationController,
     executionController: ExecutionController,
@@ -505,6 +522,8 @@ private fun MainShell(
         MARKET_SEARCH_ROUTE,
         CHART_PATTERN,
         PORTFOLIO_ROUTE,
+        ACADEMY_ROUTE,
+        LESSON_PATTERN,
         AI_VISION_ROUTE,
         AI_ASSISTANT_ROUTE,
         KYC_ROUTE,
@@ -532,6 +551,8 @@ private fun MainShell(
         // "chart" over a screen that is obviously one.
         CHART_PATTERN -> R.string.screen_chart
         PORTFOLIO_ROUTE -> R.string.screen_portfolio
+        // The lesson names itself in its own heading, so the bar carries the section instead.
+        ACADEMY_ROUTE, LESSON_PATTERN -> R.string.screen_academy
         NEWS_ROUTE -> R.string.screen_news
         CALENDAR_ROUTE -> R.string.screen_calendar
         LAUNCH_READINESS_ROUTE -> R.string.screen_launch_readiness
@@ -787,6 +808,29 @@ private fun MainShell(
                     onOpenNews = { navController.navigate(NEWS_ROUTE) },
                     onOpenCalendar = { navController.navigate(CALENDAR_ROUTE) },
                     onOpenPortfolio = { navController.navigate(PORTFOLIO_ROUTE) },
+                    onOpenAcademy = if (hasAcademy) {
+                        { navController.navigate(ACADEMY_ROUTE) }
+                    } else {
+                        null
+                    },
+                )
+            }
+            composable(ACADEMY_ROUTE) {
+                AcademyScreen(
+                    controller = academyController,
+                    onOpenLesson = { navController.navigate(lessonRoute(it)) },
+                    onOpenProfile = { navController.navigate(KYC_ROUTE) },
+                )
+            }
+            composable(
+                route = LESSON_PATTERN,
+                arguments = listOf(navArgument("slug") { type = NavType.StringType }),
+            ) { entry ->
+                LessonScreen(
+                    controller = academyController,
+                    slug = entry.arguments?.getString("slug").orEmpty(),
+                    onClose = { navController.popBackStack() },
+                    onOpenProfile = { navController.navigate(KYC_ROUTE) },
                 )
             }
             composable(PORTFOLIO_ROUTE) {

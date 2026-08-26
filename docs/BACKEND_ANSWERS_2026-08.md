@@ -14,7 +14,8 @@ app will forget.
 | --- | --- | --- |
 | Discovery mode on the snapshot | `GET /ws/snapshot` with no parameter now returns all 19 symbols. The cap of 20 applies only to an explicit list, and one unknown name no longer fails the whole request — it comes back in a new `unsupported` array. | **Done.** `NetworkMarketCatalogGateway` asks both platforms the same way now; `MarketSnapshotDto.unsupported` is parsed. |
 | A symbol catalogue | `GET /user/markets` added. | **Not wired.** The snapshot already carries the catalogue, so this is a second route to the same fact; worth wiring only if it carries metadata the snapshot does not. |
-| Reach the chart routes with a mobile token | `POST /user/academy-token` mints a 12-hour `scope=academy` token, switchable off with `MOBILE_ACADEMY_TOKEN_ENABLED`. | **Done.** `NetworkAcademyTokenStore` mints, caches in memory and renews five minutes early; `CoineProFxCandleGateway` sends it explicitly. |
+| Reach the chart routes with a mobile token | `POST /user/academy-token` mints a 12-hour `scope=academy` token, switchable off with `MOBILE_ACADEMY_TOKEN_ENABLED`. | **Done.** `NetworkAcademyTokenStore` mints, caches in memory and renews five minutes early; `CoineProFxCandleGateway` and `NetworkAcademyGateway` both send it explicitly. |
+| One token for the whole academy | Confirmed: the same token opens all ~40 `/academy/*` routes. Paid lessons stay locked for `tier: "free"` (`reason: "tier"`), and a VIP with no phone number on file gets `reason: "phone"` — both existing behaviour. | **Done.** `core:academy` reads the learning routes; both locks are told apart and each offers the action that clears it. |
 | Trade history | All four routes were already open to the mobile token. Real JSON documented. | **Done.** `CoineProFxPortfolioGateway` reads `/user/trade-history`. The other three compute statistics this app computes itself — see below. |
 
 ### Do not display `max_drawdown_rel_pct`

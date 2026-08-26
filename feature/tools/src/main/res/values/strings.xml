@@ -100,4 +100,7 @@
     <string name="tools_portfolio_title">عملکرد حساب</string>
     <string name="tools_portfolio_body">سود خالص، نرخ برد، بیشترین افت و هر معاملهٔ بسته‌شده — از دفترِ خودِ بروکر یا صرافی، نه از محاسبهٔ ما.</string>
     <string name="tools_portfolio_open">دیدن تاریخچه</string>
+    <string name="tools_academy_title">آکادمی</string>
+    <string name="tools_academy_body">مسیر درس‌به‌درس از مقدماتی تا حرفه‌ای، با آزمون و نشان و روزشمار.</string>
+    <string name="tools_academy_open">شروع یادگیری</string>
 </resources>

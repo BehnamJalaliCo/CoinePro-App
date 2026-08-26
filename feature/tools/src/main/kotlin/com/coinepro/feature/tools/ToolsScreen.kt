@@ -110,6 +110,8 @@ fun ToolsScreen(
     onOpenCalendar: () -> Unit,
     /** Opens the closed-trade history. Null on a build with no portfolio screen. */
     onOpenPortfolio: (() -> Unit)? = null,
+    /** Opens the academy. Null on a platform that has none — TradeYar. */
+    onOpenAcademy: (() -> Unit)? = null,
 ) {
     var expanded by remember { mutableStateOf<ToolId?>(ToolId.RISK) }
 
@@ -145,6 +147,7 @@ fun ToolsScreen(
                 onOpenCalendar = onOpenCalendar,
                 onOpenConnections = onOpenConnections,
                 onOpenPortfolio = onOpenPortfolio,
+                onOpenAcademy = onOpenAcademy,
             )
         }
         item { Spacer(Modifier.height(20.dp)) }
@@ -593,6 +596,7 @@ private fun OperationalTools(
     onOpenCalendar: () -> Unit,
     onOpenConnections: () -> Unit,
     onOpenPortfolio: (() -> Unit)?,
+    onOpenAcademy: (() -> Unit)?,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -611,6 +615,14 @@ private fun OperationalTools(
                 title = stringResource(R.string.tools_portfolio_title),
                 description = stringResource(R.string.tools_portfolio_body),
                 button = stringResource(R.string.tools_portfolio_open),
+                onClick = it,
+            )
+        }
+        onOpenAcademy?.let {
+            OperationalCard(
+                title = stringResource(R.string.tools_academy_title),
+                description = stringResource(R.string.tools_academy_body),
+                button = stringResource(R.string.tools_academy_open),
                 onClick = it,
             )
         }

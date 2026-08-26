@@ -99,4 +99,7 @@
     <string name="tools_portfolio_title">Account performance</string>
     <string name="tools_portfolio_body">Net profit, win rate, max drawdown and every closed trade — from the broker or exchange ledger, not from our arithmetic.</string>
     <string name="tools_portfolio_open">View history</string>
+    <string name="tools_academy_title">Academy</string>
+    <string name="tools_academy_body">A lesson-by-lesson path from beginner to professional, with quizzes, badges and a streak.</string>
+    <string name="tools_academy_open">Start learning</string>
 </resources>

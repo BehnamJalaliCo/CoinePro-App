@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.coinepro.app.notifications.PushCoordinator
 import com.coinepro.app.sync.BackgroundSyncScheduler
+import com.coinepro.core.academy.AcademyController
 import com.coinepro.core.account.AccountController
 import com.coinepro.core.auth.PlatformCapabilities
 import com.coinepro.core.auth.PlatformSessions
@@ -54,6 +55,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var marketSearchControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketSearchController>
     @Inject lateinit var candleGateways: Map<MarketPlatform, @JvmSuppressWildcards CandleGateway>
     @Inject lateinit var portfolioControllers: Map<MarketPlatform, @JvmSuppressWildcards PortfolioController>
+    @Inject lateinit var academyController: AcademyController
     @Inject lateinit var accountControllers: Map<MarketPlatform, @JvmSuppressWildcards AccountController>
     @Inject lateinit var adminController: AdminController
     @Inject lateinit var platformSessions: PlatformSessions
@@ -100,6 +102,7 @@ class MainActivity : ComponentActivity() {
                 marketSearchControllers = marketSearchControllers,
                 candleGateways = candleGateways,
                 portfolioControllers = portfolioControllers,
+                academyController = academyController,
                 accountControllers = accountControllers,
                 adminController = adminController,
                 platformSessions = platformSessions,

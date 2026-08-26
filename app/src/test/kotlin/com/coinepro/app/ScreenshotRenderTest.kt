@@ -94,6 +94,8 @@ import com.coinepro.feature.connections.ConnectionsScreen
 import com.coinepro.feature.copytrade.CopyTradeScreen
 import com.coinepro.feature.home.HomeScreen
 import com.coinepro.feature.news.NewsScreen
+import com.coinepro.feature.academy.AcademyScreen
+import com.coinepro.feature.academy.LessonScreen
 import com.coinepro.feature.portfolio.PortfolioScreen
 import com.coinepro.feature.signaldetail.SignalDetailScreen
 import com.coinepro.feature.signals.SignalsScreen
@@ -561,6 +563,31 @@ class ScreenshotRenderTest {
                 controller = ScreenshotFixtures.portfolioController(scope),
                 onOpenConnections = {},
                 zone = java.time.ZoneOffset.UTC,
+            )
+        }
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1800dp-xxhdpi")
+    fun academy() {
+        capture("53-academy-fa") {
+            AcademyScreen(
+                controller = ScreenshotFixtures.academyController(scope),
+                onOpenLesson = {},
+                onOpenProfile = {},
+            )
+        }
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1800dp-xxhdpi")
+    fun academyLesson() {
+        capture("54-academy-lesson-fa") {
+            LessonScreen(
+                controller = ScreenshotFixtures.academyController(scope),
+                slug = "leverage",
+                onClose = {},
+                onOpenProfile = {},
             )
         }
     }

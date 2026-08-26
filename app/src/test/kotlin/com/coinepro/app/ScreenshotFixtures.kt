@@ -1013,6 +1013,176 @@ object ScreenshotFixtures {
         ).also { it.start() }
     }
 
+    /**
+     * An academy controller mid-course, with a locked level below the reader's tier.
+     *
+     * The fixture is deliberately not tidy: one level finished, one part-way, one locked behind a
+     * subscription and one behind a missing phone number. All four states appear on the roadmap and
+     * three of them look identical if the node styling is wrong.
+     */
+    fun academyController(
+        scope: kotlinx.coroutines.CoroutineScope,
+    ): com.coinepro.core.academy.AcademyController {
+        fun lesson(
+            slug: String,
+            title: String,
+            order: Int,
+            completed: Boolean = false,
+            locked: Boolean = false,
+            reason: com.coinepro.core.academy.LockReason? = null,
+            video: Boolean = false,
+        ) = com.coinepro.core.academy.LessonSummary(
+            slug = slug,
+            title = title,
+            order = order,
+            tier = if (locked) "vip" else "free",
+            locked = locked,
+            lockReason = reason,
+            completed = completed,
+            hasVideo = video,
+        )
+
+        val catalog = com.coinepro.core.academy.AcademyCatalog(
+            tier = "vip",
+            levels = listOf(
+                com.coinepro.core.academy.AcademyLevel(
+                    key = "beginner",
+                    name = "مقدماتی",
+                    lessons = listOf(
+                        lesson("what-is-forex", "بازار فارکس چیست", 1, completed = true),
+                        lesson("pips", "پیپ و پیپت", 2, completed = true, video = true),
+                        lesson("lots", "لات و اندازهٔ معامله", 3, completed = true),
+                        lesson("leverage", "اهرم و مارجین", 4),
+                        lesson("spread", "اسپرد و کارمزد", 5, video = true),
+                    ),
+                ),
+                com.coinepro.core.academy.AcademyLevel(
+                    key = "intermediate",
+                    name = "متوسط",
+                    lessons = listOf(
+                        lesson("candles", "الگوهای شمعی", 1),
+                        lesson("rsi", "شاخص قدرت نسبی", 2),
+                        lesson(
+                            "fibonacci", "فیبوناچی اصلاحی", 3,
+                            locked = true,
+                            reason = com.coinepro.core.academy.LockReason.PHONE,
+                        ),
+                    ),
+                ),
+                com.coinepro.core.academy.AcademyLevel(
+                    key = "advanced",
+                    name = "پیشرفته",
+                    lessons = listOf(
+                        lesson(
+                            "orderflow", "جریان سفارش", 1,
+                            locked = true,
+                            reason = com.coinepro.core.academy.LockReason.TIER,
+                        ),
+                        lesson(
+                            "smc", "ساختار بازار", 2,
+                            locked = true,
+                            reason = com.coinepro.core.academy.LockReason.TIER,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val profile = com.coinepro.core.academy.AcademyProfile(
+            username = "reza",
+            fullName = "رضا کریمی",
+            tier = "vip",
+            phoneRequired = true,
+            completed = 3,
+            totalLessons = 10,
+            progressPercent = 30.0,
+            xp = 210,
+            badges = listOf("first_lesson"),
+            byLevel = listOf(
+                com.coinepro.core.academy.LevelProgress("beginner", "مقدماتی", 3, 5, false),
+                com.coinepro.core.academy.LevelProgress("intermediate", "متوسط", 0, 3, false),
+                com.coinepro.core.academy.LevelProgress("advanced", "پیشرفته", 0, 2, false),
+            ),
+            quizzesTaken = 3,
+            averageQuiz = 80,
+            streak = com.coinepro.core.academy.Streak(6, 11, todayDone = true),
+            achievementsCount = 1,
+        )
+        val body = com.coinepro.core.academy.Lesson(
+            slug = "leverage",
+            level = "beginner",
+            title = "اهرم و مارجین",
+            summary = "اهرم اندازهٔ معامله را بزرگ می‌کند، نه احتمال درست‌بودن آن را.",
+            content = "<p>اهرم به شما اجازه می‌دهد با سرمایهٔ کم، معامله‌ای <b>بزرگ‌تر</b> باز کنید. " +
+                "با اهرم ۱:۱۰۰، با ۱۰۰ دلار می‌توانید ۱۰٬۰۰۰ دلار معامله کنید.</p>" +
+                "<p>مارجین آن بخشی از موجودی است که بروکر تا بسته‌شدن معامله نگه می‌دارد. " +
+                "وقتی ضرر به مارجین برسد، <i>کال مارجین</i> می‌گیرید.</p>" +
+                "<ul><li>اهرم سود را بزرگ می‌کند.</li><li>اهرم ضرر را هم به همان نسبت بزرگ می‌کند.</li>" +
+                "<li>اندازهٔ معامله را از ریسک بگیرید، نه از اهرم.</li></ul>",
+            diagramImage = null,
+            tier = "free",
+            videoPath = null,
+            videoDurationSeconds = null,
+            readingTimeMinutes = 4,
+            watermark = "reza",
+        )
+        val quiz = com.coinepro.core.academy.Quiz(
+            slug = "leverage",
+            questions = listOf(
+                com.coinepro.core.academy.QuizQuestion(
+                    id = 1,
+                    question = "با اهرم ۱:۱۰۰ و ۲۰۰ دلار موجودی، بیشترین حجم قابل معامله چقدر است؟",
+                    options = listOf("۲٬۰۰۰ دلار", "۲۰٬۰۰۰ دلار", "۲۰۰٬۰۰۰ دلار"),
+                ),
+                com.coinepro.core.academy.QuizQuestion(
+                    id = 2,
+                    question = "اهرم کدام‌یک را بزرگ می‌کند؟",
+                    options = listOf("فقط سود", "سود و ضرر، هر دو", "احتمال درست‌بودن تحلیل"),
+                ),
+            ),
+            lastScore = null,
+        )
+        val gateway = object : com.coinepro.core.academy.AcademyGateway {
+            override suspend fun profile() = profile
+            override suspend fun catalog() = catalog
+            override suspend fun roadmap(level: String) =
+                com.coinepro.core.academy.LevelRoadmap(level, null, emptyList())
+            override suspend fun lesson(slug: String) = body
+            override suspend fun complete(slug: String, quizScore: Int?) =
+                com.coinepro.core.academy.ProgressResult(emptyList(), profile.streak)
+            override suspend fun quiz(slug: String) = quiz
+            override suspend fun submitQuiz(slug: String, answers: Map<Long, Int>) =
+                com.coinepro.core.academy.QuizResult(
+                    score = 50,
+                    correct = 1,
+                    total = 2,
+                    passed = false,
+                    answers = listOf(
+                        com.coinepro.core.academy.QuizAnswer(
+                            id = 1,
+                            correctIndex = 1,
+                            yourIndex = 1,
+                            isCorrect = true,
+                            explanation = "۲۰۰ × ۱۰۰ = ۲۰٬۰۰۰ دلار.",
+                        ),
+                        com.coinepro.core.academy.QuizAnswer(
+                            id = 2,
+                            correctIndex = 1,
+                            yourIndex = 0,
+                            isCorrect = false,
+                            explanation = "اهرم به هر دو سمت اثر می‌گذارد؛ ضرر هم به همان نسبت بزرگ می‌شود.",
+                        ),
+                    ),
+                )
+            override suspend fun streak() = profile.streak
+            override suspend fun achievements() =
+                com.coinepro.core.academy.Achievements(emptyList(), 1, 11)
+            override suspend fun leaderboard() =
+                com.coinepro.core.academy.Leaderboard(emptyList(), 14, 312)
+            override suspend fun glossary() = emptyList<com.coinepro.core.academy.GlossaryTerm>()
+        }
+        return com.coinepro.core.academy.AcademyController(gateway, scope)
+    }
+
     /** A setup on the fixture above: long, stop under the shock, two targets above. */
     fun chartSignal(series: CandleSeries): SignalOverlay {
         val entry = series.close.last()
