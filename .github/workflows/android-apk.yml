@@ -1,0 +1,188 @@
+name: Build Android APK
+
+# Every push to `main` produces one installable, signed APK and attaches it to a GitHub Release.
+#
+# The point of this workflow is that a new build **installs over the old one**. Android allows that
+# only when two things hold, and both are arranged here:
+#
+#   1. The signature is identical. Every build is signed with the same keystore, taken from the
+#      repository's secrets. A workflow that generated a throwaway key each run would produce an
+#      APK Android refuses to install over the last one, and the reader would have to uninstall —
+#      losing their session and their settings — before every update.
+#   2. The version code always goes up. `github.run_number` only increases, so the offset below is
+#      added once and never touched again.
+#
+# There is no debug APK here on purpose. Two tracks means two signatures, and a reader who installs
+# from the wrong one is back to uninstalling. One signed track, always.
+
+on:
+  push:
+    branches: [main]
+    # Documentation-only changes do not change the APK, so they do not spend build minutes.
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'design/**'
+      - '.gitignore'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Signed APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # GitHub Actions expressions have no arithmetic, so the offset is computed in the shell and
+      # handed on as an output.
+      #
+      # The offset exists because the APKs handed over by hand carried versionCode 1. Starting the
+      # first CI build at 1001 puts every automated build above every manual one, permanently, with
+      # room left over. Lower it and installs start failing with "app not installed" for no visible
+      # reason; there is never a reason to change it.
+      - name: Compute version
+        id: ver
+        run: |
+          CODE=$(( ${{ github.run_number }} + 1000 ))
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "name=0.1.$CODE" >> "$GITHUB_OUTPUT"
+          echo "APK version 0.1.$CODE (versionCode $CODE)"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.4.0"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      # compileSdk is 36, and the last two steps need this exact build-tools version on the path:
+      # `apksigner` to prove the APK is signed, and `dexdump` to prove R8 kept the wire fields.
+      - name: Install SDK packages
+        run: yes | sdkmanager --install "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      # Absent, the build still works — `app/build.gradle.kts` applies the Google Services plugin
+      # only when the file exists — but push notifications will not, and nothing at runtime says so.
+      # Supply GOOGLE_SERVICES_JSON_BASE64 to get notifications in CI builds.
+      - name: Restore google-services.json
+        env:
+          GS_B64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          # Emptiness is checked in the shell rather than in an `if:` expression, because a step
+          # condition that reads a secret is a step whose skipped/ran state leaks whether the
+          # secret is set. Here the log says it plainly instead, which is the honest version.
+          if [ -z "${GS_B64:-}" ]; then
+            echo "::warning::GOOGLE_SERVICES_JSON_BASE64 is not set — this APK will have no push notifications."
+            exit 0
+          fi
+          printf '%s' "$GS_B64" | base64 -d > app/google-services.json
+          python3 -c "import json;json.load(open('app/google-services.json'))"
+          echo "google-services.json restored."
+
+      - name: Restore signing keystore
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          # Refused rather than worked around. A generated key would build and install fine *once*,
+          # and then every later build would be rejected by every device that has this one.
+          if [ -z "${KS_B64:-}" ] || [ -z "${KS_PASS:-}" ] || [ -z "${KEY_ALIAS:-}" ] || [ -z "${KEY_PASS:-}" ]; then
+            echo "::error::All four signing secrets are required: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD."
+            exit 1
+          fi
+          printf '%s' "$KS_B64" | base64 -d > ci-release.jks
+          # Proves the alias and passwords match the keystore before Gradle spends ten minutes
+          # finding out. `-list` prints the certificate; it is discarded so no fingerprint or
+          # subject lands in a public build log.
+          keytool -list -keystore ci-release.jks -storepass "$KS_PASS" -alias "$KEY_ALIAS" > /dev/null
+          echo "Keystore and alias verified."
+
+      - name: Quality gates
+        run: |
+          set -euo pipefail
+          python3 scripts/quality/check-cross-phase-consistency.py
+          bash scripts/quality/check-motion-policy.sh
+          bash scripts/security/scan-secrets.sh
+
+      - name: Unit tests
+        run: gradle --no-daemon testDebugUnitTest
+
+      - name: Assemble signed release APK
+        env:
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          # Passed as Gradle properties rather than written into local.properties, so nothing
+          # secret is ever on disk in a file another step could accidentally archive.
+          #
+          # The production base URLs are the defaults in app/build.gradle.kts and are not repeated
+          # here. Override them with repository variables only if a deployment moves.
+          gradle --no-daemon :app:assembleRelease \
+            -PCOINEPRO_VERSION_CODE=${{ steps.ver.outputs.code }} \
+            -PCOINEPRO_VERSION_NAME=${{ steps.ver.outputs.name }} \
+            -PCOINEPRO_RELEASE_STORE_FILE=ci-release.jks \
+            -PCOINEPRO_RELEASE_STORE_PASSWORD="$KS_PASS" \
+            -PCOINEPRO_RELEASE_KEY_ALIAS="$KEY_ALIAS" \
+            -PCOINEPRO_RELEASE_KEY_PASSWORD="$KEY_PASS" \
+            ${{ vars.COINEPRO_PRODUCTION_API_BASE_URL && format('-PCOINEPRO_PRODUCTION_API_BASE_URL="{0}"', vars.COINEPRO_PRODUCTION_API_BASE_URL) || '' }} \
+            ${{ vars.COINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL && format('-PCOINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL="{0}"', vars.COINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL) || '' }} \
+            ${{ vars.COINEPRO_PRODUCTION_TERMINAL_URL && format('-PCOINEPRO_PRODUCTION_TERMINAL_URL="{0}"', vars.COINEPRO_PRODUCTION_TERMINAL_URL) || '' }}
+          cp app/build/outputs/apk/release/app-release.apk "CoinePro-${{ steps.ver.outputs.name }}.apk"
+
+      - name: Verify the APK is signed and its wire fields survived R8
+        run: |
+          set -euo pipefail
+          BT="$ANDROID_SDK_ROOT/build-tools/36.0.0"
+          "$BT/apksigner" verify --verbose "CoinePro-${{ steps.ver.outputs.name }}.apk"
+          # R8 renames anything it cannot see being read, and Gson reads request bodies by
+          # reflection. This once shipped a build where every sign-in posted single-letter keys, so
+          # the dex is checked rather than the keep rules.
+          ANDROID_HOME="$ANDROID_SDK_ROOT" python3 scripts/quality/check-release-wire-fields.py
+
+      - name: Remove the keystore
+        if: always()
+        run: rm -f ci-release.jks
+
+      - name: Publish the APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-${{ steps.ver.outputs.code }}
+          name: CoinePro ${{ steps.ver.outputs.name }}
+          body: |
+            نصب روی نسخهٔ قبلی، بدون حذف کردن آن.
+
+            • نسخه: `${{ steps.ver.outputs.name }}` (versionCode `${{ steps.ver.outputs.code }}`)
+            • کامیت: ${{ github.sha }}
+            • امضا: همان کلید همیشگی — پس روی هر نصبِ قبلیِ همین سری، آپدیت می‌شود.
+
+            اگر «app not installed» دیدید، نسخه‌ای که روی گوشی است با کلید دیگری امضا شده
+            (نسخهٔ debug یا یک build دستی). یک بار حذفش کنید؛ از آن به بعد هر build اینجا
+            روی قبلی می‌نشیند.
+          files: CoinePro-${{ steps.ver.outputs.name }}.apk
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: true
