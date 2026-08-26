@@ -13,6 +13,7 @@
     <string name="screen_ai_assistant">AI assistant</string>
     <string name="screen_market_search">Markets</string>
     <string name="screen_chart">Chart</string>
+    <string name="screen_portfolio">Performance</string>
     <string name="screen_news">Market intelligence</string>
     <string name="screen_calendar">Economic calendar</string>
     <string name="screen_diagnostics">Diagnostics</string>

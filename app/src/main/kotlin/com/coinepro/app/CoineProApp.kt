@@ -99,8 +99,10 @@ import com.coinepro.feature.home.toHomeSubscription
 import com.coinepro.feature.news.NewsScreen
 import com.coinepro.feature.signaldetail.SignalChartController
 import com.coinepro.feature.signaldetail.SignalDetailScreen
+import com.coinepro.core.portfolio.PortfolioController
 import com.coinepro.feature.chart.ChartController
 import com.coinepro.feature.chart.ChartScreen
+import com.coinepro.feature.portfolio.PortfolioScreen
 import com.coinepro.feature.search.SearchScreen
 import com.coinepro.feature.signals.SignalsScreen
 import com.coinepro.feature.tools.ToolsScreen
@@ -113,6 +115,7 @@ private const val AI_VISION_ROUTE = "ai/vision"
 private const val AI_ASSISTANT_ROUTE = "ai/assistant"
 private const val MARKET_SEARCH_ROUTE = "market/search"
 private const val CHART_PATTERN = "chart/{symbol}"
+private const val PORTFOLIO_ROUTE = "portfolio"
 private const val NEWS_ROUTE = "market/news"
 private const val CALENDAR_ROUTE = "market/calendar"
 private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
@@ -134,6 +137,7 @@ fun CoineProApp(
     marketDataControllers: Map<MarketPlatform, MarketDataController>,
     marketSearchControllers: Map<MarketPlatform, MarketSearchController>,
     candleGateways: Map<MarketPlatform, CandleGateway>,
+    portfolioControllers: Map<MarketPlatform, PortfolioController>,
     accountControllers: Map<MarketPlatform, AccountController>,
     adminController: AdminController,
     platformSessions: PlatformSessions,
@@ -338,6 +342,7 @@ fun CoineProApp(
                 marketState = marketState,
                 marketSearchController = marketSearchController,
                 candleGateway = candleGateways.getValue(activePlatform),
+                portfolioController = portfolioControllers.getValue(activePlatform),
                 adminController = adminController,
                 hub = hub,
                 hubActions = hubActions,
@@ -452,6 +457,7 @@ private fun MainShell(
     marketSearchController: MarketSearchController,
     /** The candle source for the platform on screen. See the chart route below. */
     candleGateway: CandleGateway,
+    portfolioController: PortfolioController,
     signalController: SignalController,
     notificationController: NotificationController,
     executionController: ExecutionController,
@@ -498,6 +504,7 @@ private fun MainShell(
         CONNECTIONS_ROUTE,
         MARKET_SEARCH_ROUTE,
         CHART_PATTERN,
+        PORTFOLIO_ROUTE,
         AI_VISION_ROUTE,
         AI_ASSISTANT_ROUTE,
         KYC_ROUTE,
@@ -524,6 +531,7 @@ private fun MainShell(
         // The chart names itself: its header is the symbol, which is more use than the word
         // "chart" over a screen that is obviously one.
         CHART_PATTERN -> R.string.screen_chart
+        PORTFOLIO_ROUTE -> R.string.screen_portfolio
         NEWS_ROUTE -> R.string.screen_news
         CALENDAR_ROUTE -> R.string.screen_calendar
         LAUNCH_READINESS_ROUTE -> R.string.screen_launch_readiness
@@ -778,6 +786,13 @@ private fun MainShell(
                     onOpenConnections = { navController.navigate(CONNECTIONS_ROUTE) },
                     onOpenNews = { navController.navigate(NEWS_ROUTE) },
                     onOpenCalendar = { navController.navigate(CALENDAR_ROUTE) },
+                    onOpenPortfolio = { navController.navigate(PORTFOLIO_ROUTE) },
+                )
+            }
+            composable(PORTFOLIO_ROUTE) {
+                PortfolioScreen(
+                    controller = portfolioController,
+                    onOpenConnections = { navController.navigate(CONNECTIONS_ROUTE) },
                 )
             }
             composable(AppDestination.ACTIVITY.route) {

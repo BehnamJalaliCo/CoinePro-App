@@ -942,6 +942,77 @@ object ScreenshotFixtures {
         return com.coinepro.feature.signaldetail.SignalChartController(gateway, scope)
     }
 
+    /**
+     * A portfolio controller holding a month of closed trades.
+     *
+     * Two things are deliberate in the fixture. Every trade carries a balance, so the curve is the
+     * real-account one and the drawdown percentage is offered — the branch that only exists on the
+     * forex side. And the run is not monotone: it climbs, gives back a chunk, and recovers, because
+     * a fixture that only goes up renders a straight line and tests nothing about the drawdown.
+     */
+    fun portfolioController(
+        scope: kotlinx.coroutines.CoroutineScope,
+    ): com.coinepro.core.portfolio.PortfolioController {
+        var seed = 20_260_826L
+        fun random(): Double {
+            seed = (seed * 1103515245 + 12345) and 0x7FFFFFFF
+            return seed.toDouble() / 0x7FFFFFFF
+        }
+        val symbols = listOf("XAUUSD", "XAGUSD", "EURUSD", "GBPJPY")
+        var balance = 42_000.0
+        val closedAt = 1_787_751_459L
+        val trades = (0 until 34).map { index ->
+            // A losing stretch in the middle, so the curve has a real peak to fall from.
+            val bias = if (index in 12..19) -0.62 else 0.34
+            val profit = ((random() - 0.5 + bias) * 900.0)
+            balance += profit
+            com.coinepro.core.portfolio.ClosedTrade(
+                id = "t$index",
+                symbol = symbols[index % symbols.size],
+                direction = if (index % 3 == 0) {
+                    com.coinepro.core.portfolio.TradeDirection.SELL
+                } else {
+                    com.coinepro.core.portfolio.TradeDirection.BUY
+                },
+                volume = 0.08,
+                entry = 2_380.0 + index * 1.4,
+                exit = 2_380.0 + index * 1.4 + profit / 80.0,
+                // Spread across about three months rather than a week: the monthly card only
+                // appears with more than one month in the window, and a fixture confined to one
+                // would leave that branch unrendered in every screenshot.
+                openedAt = closedAt - (34 - index) * 216_000L - 7_200L,
+                closedAt = closedAt - (34 - index) * 216_000L,
+                grossProfit = profit + 0.9,
+                commission = -0.62,
+                swap = -0.28,
+                netProfit = profit,
+                pips = profit / 8.0,
+                closeReason = if (profit < 0) "sl" else "manual",
+                balanceAfter = balance,
+                currency = "USD",
+            )
+        }
+        val gateway = object : com.coinepro.core.portfolio.PortfolioGateway {
+            override suspend fun history(
+                page: Int,
+                perPage: Int,
+                from: Long?,
+                to: Long?,
+            ) = com.coinepro.core.portfolio.TradeHistoryPage(
+                trades = trades,
+                page = 1,
+                total = trades.size,
+                hasMore = false,
+            )
+        }
+        return com.coinepro.core.portfolio.PortfolioController(
+            gateway = gateway,
+            scope = scope,
+            zone = java.time.ZoneOffset.UTC,
+            nowSeconds = { closedAt },
+        ).also { it.start() }
+    }
+
     /** A setup on the fixture above: long, stop under the shock, two targets above. */
     fun chartSignal(series: CandleSeries): SignalOverlay {
         val entry = series.close.last()

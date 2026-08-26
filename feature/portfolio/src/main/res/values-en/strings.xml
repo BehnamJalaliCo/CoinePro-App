@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="portfolio_title">Performance</string>
+    <string name="portfolio_window_week">7 days</string>
+    <string name="portfolio_window_month">30 days</string>
+    <string name="portfolio_window_all">All</string>
+
+    <string name="portfolio_net">Net profit</string>
+    <string name="portfolio_trades">Trades</string>
+    <string name="portfolio_win_rate">Win rate</string>
+    <string name="portfolio_profit_factor">Profit factor</string>
+    <string name="portfolio_expectancy">Average per trade</string>
+    <string name="portfolio_max_drawdown">Max drawdown</string>
+    <string name="portfolio_best">Best</string>
+    <string name="portfolio_worst">Worst</string>
+    <string name="portfolio_costs">Fees and swap</string>
+
+    <string name="portfolio_curve_balance">Account balance</string>
+    <string name="portfolio_curve_profit">Cumulative profit</string>
+    <string name="portfolio_curve_profit_note">This is realised profit, not account balance — open positions are not in it.</string>
+
+    <string name="portfolio_by_symbol">By symbol</string>
+    <string name="portfolio_by_month">By month</string>
+    <string name="portfolio_recent">Closed trades</string>
+    <string name="portfolio_load_more">Older</string>
+
+    <string name="portfolio_empty">No closed trades yet.</string>
+    <string name="portfolio_error_network">The history could not be read.</string>
+    <string name="portfolio_error_not_connected">Connect your exchange or broker account to see your history.</string>
+    <string name="portfolio_retry">Retry</string>
+    <string name="portfolio_open_connections">Connect an account</string>
+
+    <string name="portfolio_truncated">This range was larger than the server could read in one pass, so the figures below cover part of it. Try a shorter range.</string>
+    <string name="portfolio_window_narrowed">The range was shortened to %1$s – %2$s.</string>
+
+    <string name="portfolio_liquidated">Liquidated</string>
+    <string name="portfolio_value_missing">—</string>
+    <string name="portfolio_direction_buy">Buy</string>
+    <string name="portfolio_direction_sell">Sell</string>
+</resources>

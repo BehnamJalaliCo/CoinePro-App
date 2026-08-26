@@ -292,6 +292,7 @@ core:signals
 core:notifications
 core:execution
 core:copytrade
+core:portfolio
 core:aisignal
 core:aivision
 core:aiassistant
@@ -304,6 +305,7 @@ feature:auth
 feature:home
 feature:search
 feature:chart
+feature:portfolio
 feature:signals
 feature:signal-detail
 feature:connections

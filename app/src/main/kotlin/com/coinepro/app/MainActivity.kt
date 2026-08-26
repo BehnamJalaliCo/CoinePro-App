@@ -39,6 +39,7 @@ import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.notifications.NotificationController
+import com.coinepro.core.portfolio.PortfolioController
 import com.coinepro.core.signals.SignalController
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -52,6 +53,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var marketDataControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketDataController>
     @Inject lateinit var marketSearchControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketSearchController>
     @Inject lateinit var candleGateways: Map<MarketPlatform, @JvmSuppressWildcards CandleGateway>
+    @Inject lateinit var portfolioControllers: Map<MarketPlatform, @JvmSuppressWildcards PortfolioController>
     @Inject lateinit var accountControllers: Map<MarketPlatform, @JvmSuppressWildcards AccountController>
     @Inject lateinit var adminController: AdminController
     @Inject lateinit var platformSessions: PlatformSessions
@@ -97,6 +99,7 @@ class MainActivity : ComponentActivity() {
                 marketDataControllers = marketDataControllers,
                 marketSearchControllers = marketSearchControllers,
                 candleGateways = candleGateways,
+                portfolioControllers = portfolioControllers,
                 accountControllers = accountControllers,
                 adminController = adminController,
                 platformSessions = platformSessions,

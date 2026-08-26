@@ -94,6 +94,7 @@ import com.coinepro.feature.connections.ConnectionsScreen
 import com.coinepro.feature.copytrade.CopyTradeScreen
 import com.coinepro.feature.home.HomeScreen
 import com.coinepro.feature.news.NewsScreen
+import com.coinepro.feature.portfolio.PortfolioScreen
 import com.coinepro.feature.signaldetail.SignalDetailScreen
 import com.coinepro.feature.signals.SignalsScreen
 import com.coinepro.feature.tools.ToolsScreen
@@ -548,6 +549,18 @@ class ScreenshotRenderTest {
                 controller = controller,
                 onOpenSignal = {},
                 onOpenChartAnalysis = {},
+            )
+        }
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h2200dp-xxhdpi")
+    fun portfolio() {
+        capture("52-portfolio-fa") {
+            PortfolioScreen(
+                controller = ScreenshotFixtures.portfolioController(scope),
+                onOpenConnections = {},
+                zone = java.time.ZoneOffset.UTC,
             )
         }
     }

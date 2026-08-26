@@ -108,6 +108,8 @@ fun ToolsScreen(
     onOpenConnections: () -> Unit,
     onOpenNews: () -> Unit,
     onOpenCalendar: () -> Unit,
+    /** Opens the closed-trade history. Null on a build with no portfolio screen. */
+    onOpenPortfolio: (() -> Unit)? = null,
 ) {
     var expanded by remember { mutableStateOf<ToolId?>(ToolId.RISK) }
 
@@ -142,6 +144,7 @@ fun ToolsScreen(
                 onOpenNews = onOpenNews,
                 onOpenCalendar = onOpenCalendar,
                 onOpenConnections = onOpenConnections,
+                onOpenPortfolio = onOpenPortfolio,
             )
         }
         item { Spacer(Modifier.height(20.dp)) }
@@ -585,7 +588,12 @@ private fun ResetRow(onReset: () -> Unit) {
 }
 
 @Composable
-private fun OperationalTools(onOpenNews: () -> Unit, onOpenCalendar: () -> Unit, onOpenConnections: () -> Unit) {
+private fun OperationalTools(
+    onOpenNews: () -> Unit,
+    onOpenCalendar: () -> Unit,
+    onOpenConnections: () -> Unit,
+    onOpenPortfolio: (() -> Unit)?,
+) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -595,6 +603,17 @@ private fun OperationalTools(onOpenNews: () -> Unit, onOpenCalendar: () -> Unit,
         OperationalCard(stringResource(R.string.tools_news_title), stringResource(R.string.tools_news_body), stringResource(R.string.tools_news_open), onOpenNews)
         OperationalCard(stringResource(R.string.tools_calendar_title), stringResource(R.string.tools_calendar_body), stringResource(R.string.tools_calendar_open), onOpenCalendar)
         OperationalCard(stringResource(R.string.tools_connections_title), stringResource(R.string.tools_connections_body), "MT5 & LBank", onOpenConnections)
+        // Last, because it is the only one of the four that needs an account already linked. A
+        // card offering a history above the card that connects the account it comes from reads as
+        // broken the first time somebody opens this screen.
+        onOpenPortfolio?.let {
+            OperationalCard(
+                title = stringResource(R.string.tools_portfolio_title),
+                description = stringResource(R.string.tools_portfolio_body),
+                button = stringResource(R.string.tools_portfolio_open),
+                onClick = it,
+            )
+        }
     }
 }
 

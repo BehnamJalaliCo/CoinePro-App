@@ -97,4 +97,7 @@
     <string name="tools_rule_out_of_range">ورودی‌ها نتیجه‌ای بیرون از بازهٔ عددی پشتیبانی‌شده می‌دهند.</string>
     <string name="tools_rule_geometry_long">برای خرید، حد ضرر باید زیر ورود و حد سود بالای آن باشد.</string>
     <string name="tools_rule_geometry_short">برای فروش، حد ضرر باید بالای ورود و حد سود زیر آن باشد.</string>
+    <string name="tools_portfolio_title">عملکرد حساب</string>
+    <string name="tools_portfolio_body">سود خالص، نرخ برد، بیشترین افت و هر معاملهٔ بسته‌شده — از دفترِ خودِ بروکر یا صرافی، نه از محاسبهٔ ما.</string>
+    <string name="tools_portfolio_open">دیدن تاریخچه</string>
 </resources>

@@ -15,7 +15,7 @@ app will forget.
 | Discovery mode on the snapshot | `GET /ws/snapshot` with no parameter now returns all 19 symbols. The cap of 20 applies only to an explicit list, and one unknown name no longer fails the whole request — it comes back in a new `unsupported` array. | **Done.** `NetworkMarketCatalogGateway` asks both platforms the same way now; `MarketSnapshotDto.unsupported` is parsed. |
 | A symbol catalogue | `GET /user/markets` added. | **Not wired.** The snapshot already carries the catalogue, so this is a second route to the same fact; worth wiring only if it carries metadata the snapshot does not. |
 | Reach the chart routes with a mobile token | `POST /user/academy-token` mints a 12-hour `scope=academy` token, switchable off with `MOBILE_ACADEMY_TOKEN_ENABLED`. | **Done.** `NetworkAcademyTokenStore` mints, caches in memory and renews five minutes early; `CoineProFxCandleGateway` sends it explicitly. |
-| Trade history | All four routes were already open to the mobile token. Real JSON documented. | **Not wired** — that is `feature:portfolio`. |
+| Trade history | All four routes were already open to the mobile token. Real JSON documented. | **Done.** `CoineProFxPortfolioGateway` reads `/user/trade-history`. The other three compute statistics this app computes itself — see below. |
 
 ### Do not display `max_drawdown_rel_pct`
 
@@ -26,6 +26,23 @@ just had a bad month, which is exactly why a wrong number here is worse than a m
 
 Show `max_drawdown_abs` and compute the ratio here from the equity curve, or show nothing.
 
+**Done, and generalised.** No statistics endpoint on either platform is read. `PortfolioMath` computes
+every figure from the trades themselves, for a reason beyond this one bug: the two servers do not
+agree with each other. Reading each one's own `/stats` would mean "win rate" meaning two different
+things depending on which account is signed in.
+
+The drawdown percentage follows the rule above exactly. It is offered only when the equity curve is
+a real account balance — which is CoinePro-FX, where every trade carries `balance_after` — and is
+null on TradeYar, whose curve is cumulative profit from zero and whose denominator would therefore
+be the same wrong one.
+
+### Neither backend has an equity curve, for the same reason
+
+Both teams checked and both said so plainly: CoinePro-FX's `equity_curve` is cumulative profit, not
+balance; TradeYar's `user_balance_snapshot` is an upsert with one row per user and no history at
+all. So the app draws the curve it can honestly draw, and labels it — «موجودی حساب» where the
+figures are real balances, «سود انباشته» with a note where they are not.
+
 ---
 
 ## TradeYar
@@ -34,7 +51,7 @@ Show `max_drawdown_abs` and compute the ratio here from the equity curve, or sho
 | --- | --- | --- |
 | More than eight crypto symbols | **441.** Scoped as `LBank live ∩ Binance USDT-M perps − forex/metal`. | **Done** — the app already asks for the whole universe, so this arrives without a change here. |
 | Candles | `GET /market/candles`, eight timeframes, `t` in seconds, ascending, `before` paging back to March 2024, `limit_max: 1000`. The forming candle is assembled from finer bars. | **Done.** `TradeYarCandleGateway`. |
-| Portfolio history | `GET /portfolio/history`, tested live: 106 orders → 52 trades over 7 days. | **Not wired** — `feature:portfolio`. |
+| Portfolio history | `GET /portfolio/history`, tested live: 106 orders → 52 trades over 7 days. | **Done.** `TradeYarPortfolioGateway`, with the 31-day cap and the `truncated` flag both read back and shown. |
 | Delete `spread`? | **No.** The premise was wrong: LBank publishes 25 levels of book, unauthenticated. The nulls are the relay's ticker topic, not the exchange. | **Keep `spread`.** It is not a dead field, it is an unwired one. |
 
 ### The app must send `?symbols=`

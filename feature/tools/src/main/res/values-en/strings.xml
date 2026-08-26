@@ -96,4 +96,7 @@
     <string name="tools_rule_out_of_range">These inputs produce a result outside the supported numeric range.</string>
     <string name="tools_rule_geometry_long">For a long, the stop must sit below entry and the target above it.</string>
     <string name="tools_rule_geometry_short">For a short, the stop must sit above entry and the target below it.</string>
+    <string name="tools_portfolio_title">Account performance</string>
+    <string name="tools_portfolio_body">Net profit, win rate, max drawdown and every closed trade — from the broker or exchange ledger, not from our arithmetic.</string>
+    <string name="tools_portfolio_open">View history</string>
 </resources>

@@ -63,6 +63,9 @@ import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.marketintel.MarketIntelGateway
 import com.coinepro.core.marketintel.NetworkMarketIntelGateway
 import com.coinepro.core.network.NetworkFactory
+import com.coinepro.core.portfolio.PortfolioController
+import com.coinepro.core.portfolio.PortfolioGateway
+import com.coinepro.core.portfolio.PortfolioGatewayFactory
 import com.coinepro.core.notifications.NetworkNotificationGateway
 import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.notifications.NotificationGateway
@@ -644,6 +647,48 @@ object AppModule {
     @CryptoPlatform
     fun cryptoCandleGateway(@CryptoPlatform retrofit: Retrofit): CandleGateway =
         TradeYarCandleGateway(retrofit)
+
+    /**
+     * Closed-trade history, per platform.
+     *
+     * Both are read-only and both are slow on their own terms — CoinePro-FX pages a broker ledger,
+     * TradeYar walks LBank's order log in 48-hour slices — so the controller below is created once
+     * and refreshes only when asked.
+     */
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexPortfolioGateway(@ForexPlatform retrofit: Retrofit): PortfolioGateway =
+        PortfolioGatewayFactory.create(MarketPlatform.COINEPRO_FX, retrofit)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoPortfolioGateway(@CryptoPlatform retrofit: Retrofit): PortfolioGateway =
+        PortfolioGatewayFactory.create(MarketPlatform.TRADEYAR, retrofit)
+
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexPortfolioController(
+        @ForexPlatform gateway: PortfolioGateway,
+        scope: CoroutineScope,
+    ): PortfolioController = PortfolioController(gateway, scope)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoPortfolioController(
+        @CryptoPlatform gateway: PortfolioGateway,
+        scope: CoroutineScope,
+    ): PortfolioController = PortfolioController(gateway, scope)
+
+    @Provides
+    @Singleton
+    fun portfolioControllers(
+        @ForexPlatform forex: PortfolioController,
+        @CryptoPlatform crypto: PortfolioController,
+    ): Map<MarketPlatform, PortfolioController> = platformMap(forex, crypto)
 
     @Provides
     @Singleton

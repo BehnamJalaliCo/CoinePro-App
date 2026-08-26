@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="portfolio_title">عملکرد</string>
+    <string name="portfolio_window_week">۷ روز</string>
+    <string name="portfolio_window_month">۳۰ روز</string>
+    <string name="portfolio_window_all">همه</string>
+
+    <string name="portfolio_net">سود خالص</string>
+    <string name="portfolio_trades">معامله</string>
+    <string name="portfolio_win_rate">نرخ برد</string>
+    <string name="portfolio_profit_factor">ضریب سود</string>
+    <string name="portfolio_expectancy">میانگین هر معامله</string>
+    <string name="portfolio_max_drawdown">بیشترین افت</string>
+    <string name="portfolio_best">بهترین</string>
+    <string name="portfolio_worst">بدترین</string>
+    <string name="portfolio_costs">کارمزد و سواپ</string>
+
+    <string name="portfolio_curve_balance">موجودی حساب</string>
+    <string name="portfolio_curve_profit">سود انباشته</string>
+    <string name="portfolio_curve_profit_note">این منحنی سود محقق‌شده است، نه موجودی حساب؛ سود شناور در آن نیست.</string>
+
+    <string name="portfolio_by_symbol">به تفکیک نماد</string>
+    <string name="portfolio_by_month">ماه‌به‌ماه</string>
+    <string name="portfolio_recent">معاملات بسته‌شده</string>
+    <string name="portfolio_load_more">قدیمی‌تر</string>
+
+    <string name="portfolio_empty">هنوز معاملهٔ بسته‌شده‌ای ندارید.</string>
+    <string name="portfolio_error_network">تاریخچه خوانده نشد.</string>
+    <string name="portfolio_error_not_connected">برای دیدن تاریخچه، حساب صرافی یا بروکرتان را وصل کنید.</string>
+    <string name="portfolio_retry">دوباره</string>
+    <string name="portfolio_open_connections">وصل کردن حساب</string>
+
+    <string name="portfolio_truncated">این بازه بزرگ‌تر از چیزی بود که سرور یک‌جا می‌خواند؛ اعداد زیر بخشی از بازه‌اند. بازه را کوتاه‌تر کنید.</string>
+    <!-- %1$s و %2$s تاریخ‌های واقعیِ سرو‌شده‌اند -->
+    <string name="portfolio_window_narrowed">بازه به %1$s تا %2$s کوتاه شد.</string>
+
+    <string name="portfolio_liquidated">لیکویید</string>
+    <string name="portfolio_value_missing">—</string>
+    <string name="portfolio_direction_buy">خرید</string>
+    <string name="portfolio_direction_sell">فروش</string>
+</resources>
