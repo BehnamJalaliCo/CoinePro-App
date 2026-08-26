@@ -836,6 +836,20 @@ object ScreenshotFixtures {
         events = emptyList(),
         slotState = null,
     )
+
+    /**
+     * Every `tv_*` drawable, found by name rather than listed.
+     *
+     * Listed by hand it would drift the moment anyone added one, and the point of the render is to
+     * catch the artwork nobody thought to look at.
+     */
+    fun tradingViewIconIds(context: android.content.Context): List<Int> {
+        val fields = com.coinepro.core.designsystem.R.drawable::class.java.fields
+        return fields
+            .filter { it.name.startsWith("tv_") }
+            .sortedBy { it.name }
+            .map { it.getInt(null) }
+    }
 }
 
 class FakeSignalGateway : SignalGateway {

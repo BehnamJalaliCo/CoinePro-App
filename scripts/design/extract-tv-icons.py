@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-"""Extract the TradingView-styled UI icons out of Pro-Chart-App's ``tvIcons.jsx`` into SVG files.
+"""Pull the TradingView icon set out of the Pro-Chart bundle into standalone SVGs.
 
-Pro-Chart already carries these as inline JSX fragments in a single module. Kept as a script rather
-than done by hand once, because that file is the upstream: when it gains an icon, this re-runs
-instead of someone re-copying twenty-three string literals.
+The icons were extracted once already, into three JSX files that hold each one as a `{vb, inner}`
+pair and inject it with `dangerouslySetInnerHTML`. That form is fine for a web app and useless to
+this one, so this turns them back into files the vector converter can read.
 
 Usage:
-    python3 scripts/design/extract-tv-icons.py <path-to>/src/bazaarnama/tvIcons.jsx
+    python3 scripts/design/extract-tv-icons.py <path-to-prochart>/src/bazaarnama
 """
 
 from __future__ import annotations
 
-import argparse
 import re
 import sys
 from pathlib import Path
@@ -19,44 +18,56 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 OUT = REPO / "design" / "ui-icons" / "tradingview"
 
-# Each entry is `Name: { vb: '...', inner: '...' }` on one line. Matched rather than parsed because
-# the file is generated-shaped and a JS parser here would be more machinery than the job needs.
+# Each file holds a different family. Kept apart so the chart-only ones stay identifiable — a
+# drawing-tool glyph is not interchangeable with an interface icon even when both are 28×28.
+SOURCES = {
+    "tvIcons.jsx": "",             # interface: camera, bell, search, lock …
+    "tvGlyphs.jsx": "tool_",       # the 79 drawing-tool glyphs
+    "tvChartIcons.jsx": "chart_",  # the 18 chart types
+}
+
 ENTRY = re.compile(
-    r"^\s*(?P<name>[A-Za-z0-9_]+):\s*\{\s*vb:\s*'(?P<vb>[^']*)'\s*,\s*inner:\s*'(?P<inner>.*)'\s*\}\s*,?\s*$"
+    r"(?:^|[\s,{])([A-Za-z_][\w]*)\s*:\s*\{\s*vb\s*:\s*'([^']*)'\s*,\s*inner\s*:\s*'(.*?)'\s*\}",
+    re.S,
 )
 
 
-def kebab(name: str) -> str:
-    return re.sub(r"(?<!^)(?=[A-Z0-9])", "-", name).lower().replace("--", "-")
+def snake(name: str) -> str:
+    """CamelCase to the snake_case Android resource names need."""
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower().replace("__", "_")
+
+
+def extract(source: Path, prefix: str) -> int:
+    text = source.read_text(encoding="utf-8")
+    written = 0
+    for name, viewbox, inner in ENTRY.findall(text):
+        # The JSX carries these as single-quoted JS strings, so the only escape that can appear is
+        # for a quote; unescaping it keeps the path data byte-identical to TradingView's.
+        body = inner.replace("\\'", "'").replace("\\\\", "\\")
+        svg = (
+            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{viewbox}">{body}</svg>'
+        )
+        (OUT / f"{prefix}{snake(name)}.svg").write_text(svg, encoding="utf-8")
+        written += 1
+    return written
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("source", type=Path, help="path to tvIcons.jsx")
-    args = parser.parse_args()
-
-    text = args.source.read_text(encoding="utf-8")
+    if len(sys.argv) != 2:
+        print(__doc__, file=sys.stderr)
+        return 2
+    root = Path(sys.argv[1])
     OUT.mkdir(parents=True, exist_ok=True)
-
-    written = 0
-    for line in text.splitlines():
-        match = ENTRY.match(line)
-        if not match:
+    total = 0
+    for filename, prefix in SOURCES.items():
+        path = root / filename
+        if not path.exists():
+            print(f"MISSING  {path}", file=sys.stderr)
             continue
-        name, viewbox, inner = match.group("name"), match.group("vb"), match.group("inner")
-        # JSX attribute casing back to SVG's hyphenated form.
-        inner = inner.replace("clipPath=", "clip-path=").replace("fillRule=", "fill-rule=")
-        svg = (
-            '<svg xmlns="http://www.w3.org/2000/svg" '
-            f'viewBox="{viewbox}" fill="currentColor">{inner}</svg>\n'
-        )
-        (OUT / f"{kebab(name)}.svg").write_text(svg, encoding="utf-8")
-        written += 1
-
-    if written == 0:
-        print("No icons matched — has tvIcons.jsx changed shape?", file=sys.stderr)
-        return 1
-    print(f"Wrote {written} icons to {OUT.relative_to(REPO)}")
+        count = extract(path, prefix)
+        print(f"{filename:<18} {count}")
+        total += count
+    print(f"{'total':<18} {total}")
     return 0
 
 

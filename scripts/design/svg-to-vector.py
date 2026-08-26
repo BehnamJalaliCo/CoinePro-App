@@ -53,17 +53,26 @@ def local(tag: str) -> str:
     return tag[len(SVG_NS):] if tag.startswith(SVG_NS) else tag
 
 
-def viewport(svg: ET.Element) -> tuple[float, float]:
+def viewport(svg: ET.Element) -> tuple[float, float, float, float]:
+    """The drawable size, and the offset needed when the viewBox does not start at 0 0.
+
+    Android's vector format has no viewBox origin — its coordinate space always starts at zero — so
+    an offset origin is carried as a translation on a wrapping group rather than refused. TradingView
+    ships at least one icon with a `-1 -1` origin, which is a one-pixel bleed and not a mistake.
+    """
     box = svg.get("viewBox")
     if box:
         parts = [float(v) for v in re.split(r"[ ,]+", box.strip())]
         if len(parts) == 4:
-            if parts[0] or parts[1]:
-                raise Unsupported(f"viewBox origin must be 0 0, found {parts[0]} {parts[1]}")
-            return parts[2], parts[3]
+            return parts[2], parts[3], -parts[0], -parts[1]
     width, height = svg.get("width"), svg.get("height")
     if width and height:
-        return float(re.sub(r"[^0-9.]", "", width)), float(re.sub(r"[^0-9.]", "", height))
+        return (
+            float(re.sub(r"[^0-9.]", "", width)),
+            float(re.sub(r"[^0-9.]", "", height)),
+            0.0,
+            0.0,
+        )
     raise Unsupported("no viewBox and no width/height")
 
 
@@ -76,8 +85,27 @@ def ellipse_path(cx: float, cy: float, rx: float, ry: float) -> str:
     return f"M{cx - rx},{cy} a{rx},{ry} 0 1,0 {2 * rx},0 a{rx},{ry} 0 1,0 {-2 * rx},0 Z"
 
 
-def rect_path(x: float, y: float, w: float, h: float) -> str:
-    return f"M{x},{y} h{w} v{h} h{-w} Z"
+def rect_path(x: float, y: float, w: float, h: float, rx: float = 0.0, ry: float = 0.0) -> str:
+    """A rectangle, with corner arcs when it is rounded.
+
+    Android's vector format has no rounded-rect primitive, but it has arcs, and a rounded rect is
+    four straight edges and four quarter-circles. Refusing these cost four icons and a chart type
+    for a shape that is entirely expressible.
+    """
+    if not rx and not ry:
+        return f"M{x},{y} h{w} v{h} h{-w} Z"
+    rx = rx or ry
+    ry = ry or rx
+    # SVG clamps a radius larger than half the side; so must this, or the arcs cross over.
+    rx = min(rx, w / 2)
+    ry = min(ry, h / 2)
+    return (
+        f"M{x + rx},{y} "
+        f"h{w - 2 * rx} a{rx},{ry} 0 0 1 {rx},{ry} "
+        f"v{h - 2 * ry} a{rx},{ry} 0 0 1 {-rx},{ry} "
+        f"h{-(w - 2 * rx)} a{rx},{ry} 0 0 1 {-rx},{-ry} "
+        f"v{-(h - 2 * ry)} a{rx},{ry} 0 0 1 {rx},{-ry} Z"
+    )
 
 
 def number(element: ET.Element, name: str, default: float = 0.0, span: float = 0.0) -> float:
@@ -274,11 +302,10 @@ def collect(
             number(element, "rx"), number(element, "ry"),
         )
     elif tag == "rect":
-        if element.get("rx") or element.get("ry"):
-            raise Unsupported("<rect> with rounded corners")
         data = rect_path(
             number(element, "x"), number(element, "y"),
             number(element, "width"), number(element, "height"),
+            number(element, "rx"), number(element, "ry"),
         )
 
     if data:
@@ -330,7 +357,7 @@ def convert(
     size_dp: int = 24,
 ) -> int:
     svg = ET.parse(source).getroot()
-    width, height = viewport(svg)
+    width, height, offset_x, offset_y = viewport(svg)
     paths: list[dict] = []
     # <use> can point forward or into <defs>, so every id is indexed before the walk begins.
     ids = {node.get("id"): node for node in svg.iter() if node.get("id")}
@@ -350,32 +377,46 @@ def convert(
         f'    android:viewportHeight="{height:g}"',
         ('    android:autoMirrored="true">' if mirror else "    >"),
     ]
+    # Android's vector format has no viewBox origin, so an offset one becomes a translation on a
+    # wrapping group. TradingView ships at least one icon with a -1 -1 origin — a one-pixel bleed,
+    # not a mistake — and without this it would be drawn a pixel off in both axes.
+    shifted = bool(offset_x or offset_y)
+    pad = "    " if shifted else ""
+    if shifted:
+        lines.append(
+            f'    <group android:translateX="{offset_x:g}" android:translateY="{offset_y:g}">'
+        )
     for path in paths:
-        lines.append("    <path")
+        lines.append(f"{pad}    <path")
         if path.get("fill"):
-            lines.append(f'        android:fillColor="{path["fill"]}"')
+            lines.append(f'{pad}        android:fillColor="{path["fill"]}"')
         if path.get("stroke"):
-            lines.append(f'        android:strokeColor="{path["stroke"]}"')
-            lines.append(f'        android:strokeWidth="{path["width"]}"')
-            lines.append('        android:strokeLineCap="round"')
-            lines.append('        android:strokeLineJoin="round"')
+            lines.append(f'{pad}        android:strokeColor="{path["stroke"]}"')
+            lines.append(f'{pad}        android:strokeWidth="{path["width"]}"')
+            lines.append(f'{pad}        android:strokeLineCap="round"')
+            lines.append(f'{pad}        android:strokeLineJoin="round"')
         if path["rule"] == "evenodd":
-            lines.append('        android:fillType="evenOdd"')
+            lines.append(f'{pad}        android:fillType="evenOdd"')
+        data = expand_arc_flags(path["d"])
         gradient = path.get("gradient")
         if not gradient:
-            lines.append(f'        android:pathData="{expand_arc_flags(path["d"])}" />')
+            lines.append(f'{pad}        android:pathData="{data}" />')
             continue
-        lines.append(f'        android:pathData="{expand_arc_flags(path["d"])}">')
-        lines.append('        <aapt:attr name="android:fillColor">')
-        lines.append(f'            <gradient android:type="{gradient["type"]}"')
+        lines.append(f'{pad}        android:pathData="{data}">')
+        lines.append(f'{pad}        <aapt:attr name="android:fillColor">')
+        lines.append(f'{pad}            <gradient android:type="{gradient["type"]}"')
         for name, value in gradient["coords"].items():
-            lines.append(f'                android:{name}="{value:g}"')
-        lines.append("                >")
+            lines.append(f'{pad}                android:{name}="{value:g}"')
+        lines.append(f"{pad}                >")
         for offset, colour in gradient["stops"]:
-            lines.append(f'                <item android:offset="{offset}" android:color="{colour}" />')
-        lines.append("            </gradient>")
-        lines.append("        </aapt:attr>")
-        lines.append("    </path>")
+            lines.append(
+                f'{pad}                <item android:offset="{offset}" android:color="{colour}" />'
+            )
+        lines.append(f"{pad}            </gradient>")
+        lines.append(f"{pad}        </aapt:attr>")
+        lines.append(f"{pad}    </path>")
+    if shifted:
+        lines.append("    </group>")
     lines.append("</vector>")
 
     destination.write_text("\n".join(lines) + "\n", encoding="utf-8")

@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -17,12 +18,15 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.coinepro.core.aiassistant.AiAssistantController
@@ -296,6 +300,40 @@ class ScreenshotRenderTest {
                     CoineProAssetLogo(symbol = "XLMUSDT", size = size)
                     CoineProAssetLogo(symbol = "SOLUSDT", size = size)
                     CoineProAssetLogo(symbol = "EURUSD", size = size)
+                }
+            }
+        }
+    }
+
+    /**
+     * Every TradingView icon the app now carries, tinted as the interface would tint them.
+     *
+     * A hundred and twenty vectors arrived in one change, converted from a form that was never
+     * meant to leave a web bundle. Three separate converter bugs so far have produced artwork that
+     * was wrong rather than missing — a backwards arc, a dropped clip, a gradient in the wrong
+     * coordinate space — and every one of them was invisible until something drew it.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun tradingViewIcons() = capture("30-tv-icons-fa") {
+        val ids = ScreenshotFixtures.tradingViewIconIds(LocalContext.current)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(CoineProColors.Stage)
+                .padding(CoineProSpacing.One),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        ) {
+            ids.chunked(12).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+                    row.forEach { id ->
+                        Icon(
+                            painter = painterResource(id),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = CoineProColors.TextPrimary,
+                        )
+                    }
                 }
             }
         }
