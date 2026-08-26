@@ -115,8 +115,25 @@ def check_cache_scope() -> None:
 
 def check_baseline_profile() -> None:
     profile = read("app/src/main/baseline-prof.txt")
-    require("Lcom/coinepro/core/designsystem/CoineProThemeKt;" in profile, "Baseline Profile does not target current theme class")
+    # The theme is on the critical path of the first frame — every composable on the first screen
+    # reads it — so the profile has to cover it. Either the explicit class or the package wildcard
+    # counts: AGP expands wildcards at build time, and a wildcard is the better of the two because
+    # it survives the design system growing a file.
+    covers_theme = (
+        "Lcom/coinepro/core/designsystem/CoineProThemeKt;" in profile
+        or "Lcom/coinepro/core/designsystem/**;" in profile
+    )
+    require(covers_theme, "Baseline Profile does not cover the theme on the first-frame path")
     require("Lcom/coinepro/core/designsystem/ThemeKt;" not in profile, "Baseline Profile still references removed ThemeKt class")
+    # The launch path is more than the activity. If this shrinks back to a handful of hand-listed
+    # classes, the profile has stopped being worth shipping.
+    for required in (
+        "Lcom/coinepro/app/MainActivity;",
+        "Lcom/coinepro/core/auth/**;",
+        "Lcom/coinepro/core/marketdata/**;",
+        "Lcom/coinepro/feature/home/**;",
+    ):
+        require(required in profile, f"Baseline Profile no longer covers {required}")
 
 
 def check_release_version_claim() -> None:

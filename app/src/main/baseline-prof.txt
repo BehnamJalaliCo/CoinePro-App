@@ -1,8 +1,49 @@
+# Baseline profile — the classes ART should load and compile ahead of the first frame.
+#
+# THIS FILE IS HAND-WRITTEN. It is not the output of `BaselineProfileGenerator`, and it cannot be
+# until somebody runs that on a real device or emulator:
+#
+#     ./gradlew :benchmark:pixel6Api34BaselineProfileAndroidTest
+#
+# and copies the generated `baseline-prof.txt` over this one. Doing that is worth real startup time
+# — a generated profile carries *method* entries (`HSPL…->method()V`) collected from an actual run,
+# which is what lets ART AOT-compile the hot path. Everything below is class-level only, so it buys
+# class loading and verification and nothing more.
+#
+# It is still worth having. The eight lines this replaced covered the launch activity and little
+# else; the wildcards below cover the modules that are actually on the critical path of the first
+# screen, which on this app is: Application → Hilt graph → theme → session restore → market feed →
+# home. Wildcards are expanded by AGP at build time, so a class added inside one of these packages
+# is covered without anybody remembering to add it here.
+#
+# What is deliberately *not* here: the chart engine, the academy, the portfolio and the terminal.
+# None of them is reachable before the first frame, and profiling code that runs later costs
+# install-time compilation and dex-layout space for no startup benefit.
+
+# ── the launch path itself ───────────────────────────────────────────────────────────────────
 Lcom/coinepro/app/CoineProApplication;
 Lcom/coinepro/app/MainActivity;
 Lcom/coinepro/app/CoineProAppKt;
-Lcom/coinepro/core/auth/SessionController;
-Lcom/coinepro/core/marketdata/MarketDataController;
-Lcom/coinepro/core/designsystem/CoineProThemeKt;
-Lcom/coinepro/feature/auth/AuthScreenKt;
-Lcom/coinepro/feature/home/HomeScreenKt;
+Lcom/coinepro/app/AppChromeKt;
+Lcom/coinepro/app/AppDestination;
+Lcom/coinepro/app/AppLanguageStore;
+Lcom/coinepro/app/di/**;
+
+# ── the design system, which every composable on the first screen reads ──────────────────────
+Lcom/coinepro/core/designsystem/**;
+
+# ── session restore, which decides whether the first screen is auth or home ──────────────────
+Lcom/coinepro/core/auth/**;
+Lcom/coinepro/core/security/**;
+Lcom/coinepro/core/datastore/**;
+Lcom/coinepro/core/model/**;
+Lcom/coinepro/core/common/**;
+
+# ── the network stack and the market feed, both started during the first frame ───────────────
+Lcom/coinepro/core/network/**;
+Lcom/coinepro/core/marketdata/**;
+Lcom/coinepro/core/symbols/**;
+
+# ── the two screens that can be first ────────────────────────────────────────────────────────
+Lcom/coinepro/feature/auth/**;
+Lcom/coinepro/feature/home/**;

@@ -4,6 +4,7 @@ plugins {
 
 android {
     namespace = "com.coinepro.core.security"
+    testOptions { unitTests { isIncludeAndroidResources = true } }
     compileSdk = 36
     defaultConfig { minSdk = 26 }
     compileOptions {
@@ -17,4 +18,8 @@ dependencies {
     implementation(project(":core:model"))
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.core)
+    testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
