@@ -186,16 +186,37 @@ the review will be rejected as "unable to access the app".
 
 ## 9) Release blockers
 
-Everything below is outside this repository and none of it can be closed from here.
+Two of these were previously listed here as missing and are not: the signing key and
+`google-services.json` are both configured in this working tree. Checked rather than assumed —
+the release APK verifies as signed, and the Firebase file names a real project.
 
-1. **Signing key** — `local.properties` needs the four `COINEPRO_RELEASE_*` values. Without them the
-   release build is unsigned.
-2. **`google-services.json`** — absent, so push notifications do not work in a real build.
-3. **SHA-1 in the Firebase console** — the release key's fingerprint must be registered or Google
-   sign-in fails on a signed build with an error that reads like a network problem.
-4. **Privacy and terms URLs** — §8.
-5. **Demo accounts** — §7.
-6. **Account deletion route** — §4.
-7. **A real device run against live servers.** Nothing in this repository substitutes for it: 57
-   off-device screenshots and a green test suite say the app renders and computes correctly, and say
-   nothing about whether the two servers answer as documented under a real network.
+**Done and verified**
+
+| Item | State |
+| --- | --- |
+| Release signing | Configured. `app-release.apk` verifies with `CN=CoinePro, OU=Mobile, O=CoinePro, L=Tehran, C=IR`. Both the keystore and `local.properties` are gitignored and stay out of the repository. |
+| `google-services.json` | Present, project `coinepro-app`, package `com.coinepro.app`. Push notifications will work. |
+
+**The release key's fingerprint** — needed for the next item:
+
+```
+SHA-1    5D:E8:7F:4B:B3:E8:35:6B:4E:98:1E:D4:DA:63:0B:A7:77:5F:9A:A8
+SHA-256  96:12:AB:6C:BF:BB:4F:4F:FB:F1:51:D8:60:2C:12:9D:CC:E8:A9:77:1E:85:46:69:E6:63:87:0F:04:04:FB:D0
+```
+
+**Still open**
+
+1. **Google sign-in will fail on a signed build.** `google-services.json` holds exactly one OAuth
+   client and it is type 3 — the web client. There is no type-1 Android client, which means no SHA-1
+   is registered. Add an Android OAuth client in the Firebase console with the SHA-1 above, download
+   the file again and replace `app/google-services.json`. Until then, Google sign-in fails with an
+   error that reads like a network problem; email sign-in is unaffected.
+2. **Privacy and terms URLs** — §8. Play rejects a link to a repository file.
+3. **Demo accounts for review** — §7. Without them the review is rejected as "unable to access the
+   app".
+4. **Account deletion route** — §4. Required for any app with sign-up.
+5. **Subscription terms** — `docs/legal/TERMS.md` §6 is empty. Do not publish with in-app purchases
+   until it is filled in.
+6. **A real device run against live servers.** Nothing here substitutes for it: sixty off-device
+   screenshots and a green test suite say the app renders and computes correctly, and say nothing
+   about whether the two servers answer as documented under a real network.
