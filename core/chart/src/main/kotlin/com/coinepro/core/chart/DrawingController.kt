@@ -1,0 +1,229 @@
+package com.coinepro.core.chart
+
+/**
+ * What the drawing layer looks like right now.
+ *
+ * A value, not a mutable object, so a screen can hoist it, persist it and hand it back — which is
+ * what a saved chart layout is. Nothing here knows about Compose.
+ */
+data class DrawingState(
+    /** Placed drawings, oldest first. The order is z-order. */
+    val drawings: List<Drawing> = emptyList(),
+    /** The armed tool, or null for the cursor. */
+    val tool: DrawingTool? = null,
+    /** Points tapped so far on the drawing being placed. */
+    val pending: List<ChartPoint> = emptyList(),
+    val selectedId: Long? = null,
+    /** The reader's chosen colour for the next drawing. */
+    val colour: Long = Drawing.DEFAULT_DRAWING_COLOUR,
+    /** Snap each tap to the nearest of the bar's open/high/low/close. */
+    val magnet: Boolean = false,
+) {
+    /**
+     * What the chart should render: the placed drawings plus the one being built.
+     *
+     * The in-progress one is included so the reader sees a five-point pattern take shape as they
+     * tap it out. Without this an XABCD is four taps into nothing followed by a shape appearing.
+     */
+    val visible: List<Drawing>
+        get() = if (pending.isEmpty() || tool == null) {
+            drawings
+        } else {
+            drawings + Drawing(
+                id = PREVIEW_ID,
+                toolId = tool.id,
+                points = pending,
+                colour = colour,
+                complete = false,
+            )
+        }
+
+    /** How many more taps the armed tool needs. Zero when nothing is armed or it is freehand. */
+    val remaining: Int
+        get() = tool?.let { max0(it.points - pending.size) } ?: 0
+
+    val canUndo: Boolean get() = drawings.isNotEmpty() || pending.isNotEmpty()
+
+    private fun max0(value: Int) = if (value < 0) 0 else value
+
+    companion object {
+        /**
+         * The id the half-placed drawing carries.
+         *
+         * Negative, so it can never collide with a real one — ids count up from 1 — and so a
+         * `selectedId` of a real drawing never accidentally lights up the preview.
+         */
+        const val PREVIEW_ID = -1L
+    }
+}
+
+/**
+ * The placement state machine.
+ *
+ * Pure functions from state to state, which is the reason it is not a `ViewModel` with fields: the
+ * tap sequence for a six-point Elliott impulse is exactly the sort of thing that goes wrong once and
+ * then goes wrong forever, and this way every step of it is a unit test rather than a device.
+ *
+ * The rules it enforces, all of which the web terminal learned the hard way:
+ *
+ * * A tool that needs N taps commits on the Nth, not the (N+1)th.
+ * * A two-point tool committed by a drag commits on lift, so a trend line is one gesture.
+ * * Arming a tool clears the selection. Being in a drawing mode and having something selected are
+ *   different states, and a reader who is in both does not know what the next tap will do.
+ * * Undo takes back the in-progress taps before it takes back a finished drawing. Otherwise the
+ *   first undo after three taps of an XABCD deletes somebody's trend line from ten minutes ago.
+ */
+object DrawingActions {
+
+    /** Arm a tool, or pass null for the cursor. Clears anything half-placed. */
+    fun arm(state: DrawingState, tool: DrawingTool?): DrawingState = state.copy(
+        tool = tool?.takeUnless { it.group == ToolGroup.MODES },
+        pending = emptyList(),
+        selectedId = null,
+    )
+
+    /**
+     * A tap in chart space.
+     *
+     * With no tool armed this selects — [nearest] is whatever the caller's hit test found, which
+     * this cannot compute because it has no viewport and therefore no pixels.
+     */
+    fun tap(state: DrawingState, point: ChartPoint, nearest: Long? = null): DrawingState {
+        val tool = state.tool ?: return state.copy(selectedId = nearest)
+        if (tool.points <= 0) return state
+        val points = state.pending + point
+        if (points.size < tool.points) return state.copy(pending = points)
+        return commit(state, tool, points)
+    }
+
+    /**
+     * A drag that placed a two-point tool in one gesture.
+     *
+     * Only for two-point tools: a three-point channel cannot be dragged out because its third point
+     * is not a corner of anything the first two describe.
+     */
+    fun drag(state: DrawingState, from: ChartPoint, to: ChartPoint): DrawingState {
+        val tool = state.tool ?: return state
+        if (tool.points != 2) return state
+        return commit(state, tool, listOf(from, to))
+    }
+
+    /** A freehand stroke, already sampled. */
+    fun stroke(state: DrawingState, points: List<ChartPoint>): DrawingState {
+        val tool = state.tool ?: return state
+        if (tool.points != 0 || points.size < 2) return state
+        return commit(state, tool, points)
+    }
+
+    /**
+     * Take back one step.
+     *
+     * The half-placed taps first, then the last finished drawing. A reader four taps into a pattern
+     * who hits undo means "that tap", not "that trend line".
+     */
+    fun undo(state: DrawingState): DrawingState = when {
+        state.pending.isNotEmpty() -> state.copy(pending = state.pending.dropLast(1))
+        state.drawings.isNotEmpty() -> state.copy(
+            drawings = state.drawings.dropLast(1),
+            selectedId = state.selectedId?.takeIf { it != state.drawings.last().id },
+        )
+        else -> state
+    }
+
+    /** Disarm without placing anything. The way out of a mode. */
+    fun cancel(state: DrawingState): DrawingState =
+        state.copy(tool = null, pending = emptyList())
+
+    fun delete(state: DrawingState, id: Long): DrawingState = state.copy(
+        drawings = state.drawings.filterNot { it.id == id },
+        selectedId = state.selectedId?.takeIf { it != id },
+    )
+
+    fun clear(state: DrawingState): DrawingState =
+        state.copy(drawings = emptyList(), pending = emptyList(), selectedId = null)
+
+    /** Bring one drawing to the front, which is what makes it the one a tap on an overlap finds. */
+    fun bringToFront(state: DrawingState, id: Long): DrawingState {
+        val subject = state.drawings.firstOrNull { it.id == id } ?: return state
+        return state.copy(drawings = state.drawings.filterNot { it.id == id } + subject)
+    }
+
+    fun recolour(state: DrawingState, id: Long, colour: Long): DrawingState = state.copy(
+        drawings = state.drawings.map { if (it.id == id) it.copy(colour = colour) else it },
+    )
+
+    /**
+     * Move one point of a placed drawing — the drag of a handle.
+     *
+     * Chart space in, chart space out. A handle dragged at one zoom and released at another lands
+     * where the finger was, because nothing in between was ever a pixel.
+     */
+    fun movePoint(state: DrawingState, id: Long, index: Int, to: ChartPoint): DrawingState =
+        state.copy(
+            drawings = state.drawings.map { drawing ->
+                if (drawing.id != id || index !in drawing.points.indices) {
+                    drawing
+                } else {
+                    drawing.copy(points = drawing.points.toMutableList().also { it[index] = to })
+                }
+            },
+        )
+
+    /** Move a whole drawing by a delta in chart space. */
+    fun moveBy(state: DrawingState, id: Long, deltaTime: Long, deltaPrice: Double): DrawingState =
+        state.copy(
+            drawings = state.drawings.map { drawing ->
+                if (drawing.id != id) {
+                    drawing
+                } else {
+                    drawing.copy(
+                        points = drawing.points.map {
+                            ChartPoint(it.time + deltaTime, it.price + deltaPrice)
+                        },
+                    )
+                }
+            },
+        )
+
+    /**
+     * Snap a point to the nearest of a bar's four prices.
+     *
+     * The magnet, and it is a professional's feature rather than a convenience: a trend line meant
+     * to touch two lows is wrong if it touches them to within a pixel, and a pixel at this zoom is
+     * several dollars of gold.
+     */
+    fun snap(point: ChartPoint, series: CandleSeries): ChartPoint {
+        if (series.isEmpty) return point
+        var bestBar = 0
+        var bestDistance = Long.MAX_VALUE
+        for (index in 0 until series.size) {
+            val distance = kotlin.math.abs(series.time[index] - point.time)
+            if (distance < bestDistance) {
+                bestDistance = distance
+                bestBar = index
+            }
+        }
+        val candidates = doubleArrayOf(
+            series.open[bestBar],
+            series.high[bestBar],
+            series.low[bestBar],
+            series.close[bestBar],
+        )
+        val price = candidates.minByOrNull { kotlin.math.abs(it - point.price) } ?: point.price
+        return ChartPoint(series.time[bestBar], price)
+    }
+
+    private fun commit(state: DrawingState, tool: DrawingTool, points: List<ChartPoint>): DrawingState {
+        val id = (state.drawings.maxOfOrNull { it.id } ?: 0L) + 1
+        val drawing = Drawing(id = id, toolId = tool.id, points = points, colour = state.colour)
+        return state.copy(
+            drawings = state.drawings + drawing,
+            pending = emptyList(),
+            // Disarm after placing. A rail that stays armed draws a second trend line the moment
+            // the reader taps the chart to look at something, which is the single most reported
+            // complaint about every terminal that does it the other way.
+            tool = null,
+            selectedId = id,
+        )
+    }
+}

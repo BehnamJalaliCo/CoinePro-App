@@ -69,6 +69,16 @@ data class SignalOverlay(
 data class ChartDecoration(
     val overlays: List<ChartLine> = emptyList(),
     val signal: SignalOverlay? = null,
+    /**
+     * What the reader has drawn, in the order they drew it.
+     *
+     * Order is z-order: the last one is on top, and is the one a tap on an overlap selects. That is
+     * the same rule the web terminal's object tree uses, so "bring to front" means the same thing
+     * in both.
+     */
+    val drawings: List<Drawing> = emptyList(),
+    /** Which drawing shows its handles. Only one at a time — see [drawDrawing]. */
+    val selectedDrawingId: Long? = null,
     /** Whether the volume pane is drawn. Hidden when the feed reports none — see [CandleSeries]. */
     val showVolume: Boolean = true,
     /** Whether the price grid and its labels are drawn. Off for a thumbnail. */

@@ -1,5 +1,6 @@
 package com.coinepro.core.chart
 
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -18,6 +19,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -60,6 +62,15 @@ fun CoineProChart(
     decoration: ChartDecoration = ChartDecoration(),
     /** Interaction off makes this a static picture — for a list row or a card. */
     interactive: Boolean = true,
+    /**
+     * The drawing layer's state, or null on a chart that is not a drawing surface.
+     *
+     * Hoisted rather than owned here, because a screen has to save it, restore it and show it in a
+     * list beside the chart. What is passed in decides what a tap does: with a tool armed a tap
+     * places a point, and without one it selects whatever the tap landed on.
+     */
+    drawing: DrawingState? = null,
+    onDrawing: ((DrawingState) -> Unit)? = null,
 ) {
     val display = remember(series, type, typeConfig) { ChartTransforms.apply(series, type, typeConfig) }
     var viewport by remember(display) { mutableStateOf(ChartViewport(display)) }
@@ -73,6 +84,18 @@ fun CoineProChart(
     val density = LocalDensity.current
     val axisWidth = with(density) { AXIS_WIDTH.toPx() }
     val timeHeight = with(density) { TIME_HEIGHT.toPx() }
+    val tolerancePx = with(density) { DrawingHitTest.TOLERANCE_DP.dp.toPx() }
+
+    /**
+     * The last viewport the draw pass computed, for the gestures to read.
+     *
+     * A plain array rather than state: the gesture handlers need the plot size, which is only known
+     * inside the draw lambda, and writing state from a draw pass invites a recomposition loop. The
+     * gestures do not need to recompose when it changes — they need to read the current value at
+     * the moment a finger lands.
+     */
+    val lastView = remember { arrayOfNulls<ChartViewport>(1) }
+    val armed = drawing?.tool
 
     val palette = ChartPalette(
         up = CoineProColors.Buy,
@@ -92,11 +115,36 @@ fun CoineProChart(
                         Modifier
                     } else {
                         Modifier
-                            .pointerInput(display) {
+                            .pointerInput(display, armed) {
+                                // Panning is off while a tool is armed. A one-finger drag on a
+                                // chart in drawing mode is a placement, and a chart that scrolls
+                                // under the finger at the same time places the point somewhere the
+                                // reader was not pointing.
+                                if (armed != null) return@pointerInput
                                 detectTransformGestures { _, pan, zoom, _ ->
                                     if (abs(zoom - 1f) > ZOOM_DEADZONE) viewport = viewport.zoomedBy(zoom)
                                     if (abs(pan.x) > 0f) viewport = viewport.pannedBy(pan.x)
                                 }
+                            }
+                            .pointerInput(display, armed, drawing, onDrawing) {
+                                if (onDrawing == null || drawing == null) return@pointerInput
+                                // Freehand is the one tool family that needs a drag: the stroke is
+                                // the gesture. Everything else is N taps, which is the only thing
+                                // that works for a five-point pattern on a phone — a five-point
+                                // drag would have to be one continuous gesture with four pauses.
+                                if (armed?.points != 0) return@pointerInput
+                                val samples = mutableListOf<ChartPoint>()
+                                detectDragGestures(
+                                    onDragStart = { position ->
+                                        samples.clear()
+                                        lastView[0]?.let { samples += it.chartPointAt(position, display, drawing.magnet) }
+                                    },
+                                    onDrag = { change, _ ->
+                                        lastView[0]?.let { samples += it.chartPointAt(change.position, display, drawing.magnet) }
+                                    },
+                                    onDragEnd = { onDrawing(DrawingActions.stroke(drawing, samples.toList())) },
+                                    onDragCancel = { samples.clear() },
+                                )
                             }
                             .pointerInput(display) {
                                 // Long-press to summon the crosshair, drag to move it, lift to
@@ -109,8 +157,32 @@ fun CoineProChart(
                                     onDragCancel = { crosshair = null },
                                 )
                             }
-                            .pointerInput(display) {
-                                detectTapGestures(onDoubleTap = { viewport = viewport.atOffset(0) })
+                            .pointerInput(display, armed, drawing, onDrawing, tolerancePx) {
+                                detectTapGestures(
+                                    onDoubleTap = { viewport = viewport.atOffset(0) },
+                                    onTap = { position ->
+                                        val state = drawing ?: return@detectTapGestures
+                                        val emit = onDrawing ?: return@detectTapGestures
+                                        val view = lastView[0] ?: return@detectTapGestures
+                                        val point = view.chartPointAt(position, display, state.magnet)
+                                        // With nothing armed the tap is a selection, so the hit
+                                        // test runs; with a tool armed it is a placement, and
+                                        // running the hit test would let a tap that happens to
+                                        // land on an old drawing silently select instead of place.
+                                        val hit = if (state.tool == null) {
+                                            DrawingHitTest.at(
+                                                drawings = state.drawings,
+                                                x = position.x,
+                                                y = position.y,
+                                                view = view,
+                                                tolerancePx = tolerancePx,
+                                            )?.id
+                                        } else {
+                                            null
+                                        }
+                                        emit(DrawingActions.tap(state, point, hit))
+                                    },
+                                )
                             }
                     },
                 ),
@@ -127,6 +199,7 @@ fun CoineProChart(
             val view = viewport
                 .sized(plotWidth, plotHeight)
                 .copy(includedPrices = decoration.signal?.levels().orEmpty())
+            lastView[0] = view
             if (view.visibleCount == 0) return@Canvas
 
             if (decoration.showAxes) drawGrid(view, plotWidth, palette, measurer)
@@ -139,6 +212,31 @@ fun CoineProChart(
                 else -> drawCandles(view, palette, hollow = type == ChartType.HOLLOW)
             }
             decoration.overlays.forEach { drawOverlay(view, it, density.density) }
+            // The reader's own drawings go *over* the price — the opposite of the signal band. They
+            // are annotations on the bars, and an annotation the bars cover is not one.
+            //
+            // Clipped to the plot, because a Compose Canvas does not clip itself and half these
+            // tools are unbounded by definition: a ray runs four screen-diagonals past its second
+            // point, and an unclipped one paints straight over the price axis, the volume pane and
+            // whatever composable sits below the chart.
+            //
+            // A live drawing layer wins over the decoration's static list, and carries the
+            // half-placed drawing with it — that is what lets a five-point pattern take shape as it
+            // is tapped out rather than appearing whole on the fifth tap.
+            val marks = drawing?.visible ?: decoration.drawings
+            val highlighted = drawing?.selectedId ?: decoration.selectedDrawingId
+            if (marks.isNotEmpty()) {
+                clipRect(0f, 0f, plotWidth, plotHeight) {
+                    marks.forEach { mark ->
+                        drawDrawing(
+                            drawing = mark,
+                            view = view,
+                            measurer = measurer,
+                            selected = mark.id == highlighted,
+                        )
+                    }
+                }
+            }
             if (volumeHeight > 0) drawVolume(view, plotHeight, volumeHeight, palette)
             if (decoration.showAxes) {
                 drawPriceAxis(view, plotWidth, palette, measurer)
@@ -420,6 +518,23 @@ private fun DrawScope.drawCrosshair(
 /** Where a touch lands in chart space. */
 private fun ChartViewport.crosshairAt(position: Offset): Crosshair =
     Crosshair(index = indexAt(position.x), price = priceAt(position.y))
+
+/**
+ * Where a touch lands as a drawing point, snapped to a bar's OHLC when the magnet is on.
+ *
+ * The snap is against the series being displayed, not the raw one. On a price-driven chart type
+ * that means it snaps to a Renko brick or a Kagi turn, which is the right answer there and is what
+ * every terminal does — but it is worth knowing that such a point is anchored to a synthetic
+ * timestamp, and will not survive a switch back to candles unchanged.
+ */
+private fun ChartViewport.chartPointAt(
+    position: Offset,
+    series: CandleSeries,
+    magnet: Boolean,
+): ChartPoint {
+    val point = ChartPoint(timeAt(position.x), priceAt(position.y))
+    return if (magnet) DrawingActions.snap(point, series) else point
+}
 
 private fun axisStyle(colour: Color) = TextStyle(color = colour, fontSize = AXIS_TEXT_SIZE)
 

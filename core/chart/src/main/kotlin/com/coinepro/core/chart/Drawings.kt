@@ -61,6 +61,10 @@ data class Drawing(
     val widthDp: Float = 1.6f,
     /** Set while the reader is still tapping out the points. */
     val complete: Boolean = true,
+    /** What a text, callout, note or price label says. Null before the reader has typed anything. */
+    val text: String? = null,
+    /** Which way a standalone arrow marker points. Ignored by every other tool. */
+    val direction: ArrowDirection = ArrowDirection.UP,
 ) {
     companion object {
         const val DEFAULT_DRAWING_COLOUR = 0xFFD8A848
@@ -96,10 +100,10 @@ object DrawingTools {
         tool("trend", "خط روند", 2, ToolGroup.LINES, DesignR.drawable.tv_tool_trend),
         tool("ray", "نیم‌خط", 2, ToolGroup.LINES, DesignR.drawable.tv_tool_ray),
         tool("extline", "خط امتدادیافته", 2, ToolGroup.LINES, DesignR.drawable.tv_tool_extline),
-        tool("hray", "نیم‌خط افقی", 2, ToolGroup.LINES, DesignR.drawable.tv_tool_hray),
+        tool("hray", "نیم‌خط افقی", 1, ToolGroup.LINES, DesignR.drawable.tv_tool_hray),
         tool("hline", "خط افقی", 1, ToolGroup.LINES, DesignR.drawable.tv_tool_hline),
         tool("vline", "خط عمودی", 1, ToolGroup.LINES, DesignR.drawable.tv_tool_vline),
-        tool("crossline", "خط متقاطع", 2, ToolGroup.LINES, DesignR.drawable.tv_tool_crossline),
+        tool("crossline", "خط متقاطع", 1, ToolGroup.LINES, DesignR.drawable.tv_tool_crossline),
         tool("angle", "زاویه", 2, ToolGroup.LINES, DesignR.drawable.tv_tool_angle),
         tool("infoline", "خط اطلاعات", 2, ToolGroup.LINES, DesignR.drawable.tv_tool_infoline),
 
@@ -156,11 +160,11 @@ object DrawingTools {
 
         // ── Annotation ──────────────────────────────────────────────────────────────
         tool("arrow", "پیکان", 2, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_arrow),
-        tool("arrowdir", "پیکان جهت‌دار", 2, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_arrowdir),
+        tool("arrowdir", "پیکان جهت‌دار", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_arrowdir),
         tool("text", "متن", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_text),
         tool("callout", "بالن متن", 2, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_callout),
-        tool("pricelabel", "برچسب قیمت", 2, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_pricelabel),
-        tool("note", "یادداشت", 2, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_note),
+        tool("pricelabel", "برچسب قیمت", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_pricelabel),
+        tool("note", "یادداشت", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_note),
     )
 
     private val BY_ID: Map<String, DrawingTool> = ALL.associateBy { it.id }

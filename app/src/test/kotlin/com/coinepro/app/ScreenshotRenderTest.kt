@@ -47,8 +47,16 @@ import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.chart.ActiveToolBar
 import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.chart.ChartPoint
+import com.coinepro.core.chart.ChartViewport
+import com.coinepro.core.chart.Candle
+import com.coinepro.core.chart.CandleSeries
+import com.coinepro.core.chart.DrawingTool
+import com.coinepro.core.chart.ToolGroup
+import com.coinepro.core.chart.drawDrawing
 import com.coinepro.core.chart.Drawing
 import com.coinepro.core.chart.DrawingList
+import com.coinepro.core.chart.DrawingActions
+import com.coinepro.core.chart.DrawingState
 import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.chart.ToolRail
 import com.coinepro.core.chart.ChartDecoration
@@ -89,6 +97,16 @@ import com.coinepro.feature.tools.ToolsScreen
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import androidx.compose.runtime.remember
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.rememberTextMeasurer
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -888,6 +906,168 @@ class ScreenshotRenderTest {
         }
     }
 
+    /**
+     * A chart with the reader's own work on it.
+     *
+     * The tools render — the four contact sheets prove that — but this is the one that proves the
+     * *integration*: drawings anchored in (time, price) landing on the right bars of a real chart,
+     * over a real viewport, under the price axis rather than over it, with the selected one showing
+     * its handles.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun chartWithDrawings() = capture("46-chart-drawn-fa") {
+        val series = ScreenshotFixtures.chartSeries()
+        val at = { fraction: Double -> series.time[(series.size * fraction).toInt().coerceIn(0, series.size - 1)] }
+        val price = { fraction: Double -> series.close[(series.size * fraction).toInt().coerceIn(0, series.size - 1)] }
+        Column(
+            modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
+        ) {
+            CoineProChart(
+                series = series,
+                modifier = Modifier.fillMaxWidth().height(360.dp),
+                decoration = ChartDecoration(
+                    drawings = listOf(
+                        Drawing(
+                            id = 1,
+                            toolId = "trend",
+                            points = listOf(
+                                ChartPoint(at(0.55), price(0.55) * 0.995),
+                                ChartPoint(at(0.95), price(0.95) * 1.005),
+                            ),
+                        ),
+                        Drawing(
+                            id = 2,
+                            toolId = "fib",
+                            points = listOf(
+                                ChartPoint(at(0.62), series.low.drop(series.size * 62 / 100).min()),
+                                ChartPoint(at(0.88), series.high.drop(series.size * 62 / 100).max()),
+                            ),
+                            colour = 0xFF6E8BE0,
+                        ),
+                        Drawing(
+                            id = 3,
+                            toolId = "hline",
+                            points = listOf(ChartPoint(at(0.70), price(0.70))),
+                            colour = 0xFF4FB3A5,
+                        ),
+                    ),
+                    selectedDrawingId = 1,
+                ),
+            )
+            CoineProChart(
+                series = series,
+                modifier = Modifier.fillMaxWidth().height(260.dp),
+                decoration = ChartDecoration(
+                    showVolume = false,
+                    drawings = listOf(
+                        Drawing(
+                            id = 1,
+                            toolId = "longshort",
+                            points = listOf(
+                                ChartPoint(at(0.72), price(0.72)),
+                                ChartPoint(at(0.92), price(0.72) * 0.99),
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        }
+    }
+
+    /**
+     * The chart mid-placement: three taps into a five-point pattern.
+     *
+     * This is the state nothing else covers — the tool armed, the points so far drawn as a live
+     * preview, and the bar underneath saying how many taps are left. A reader who cannot see the
+     * shape forming has no way to know they mis-tapped until the fifth tap commits it.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun chartMidPlacement() = capture("47-chart-placing-fa") {
+        val series = ScreenshotFixtures.chartSeries()
+        val bar = { fraction: Double -> (series.size * fraction).toInt().coerceIn(0, series.size - 1) }
+        var state = DrawingActions.arm(DrawingState(), DrawingTools["xabcd"]!!)
+        for (fraction in listOf(0.55, 0.68, 0.80)) {
+            val index = bar(fraction)
+            state = DrawingActions.tap(state, ChartPoint(series.time[index], series.close[index]))
+        }
+        Column(
+            modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),
+        ) {
+            CoineProChart(
+                series = series,
+                modifier = Modifier.fillMaxWidth().height(400.dp),
+                drawing = state,
+                onDrawing = {},
+            )
+            ActiveToolBar(
+                tool = state.tool,
+                placed = state.pending.size,
+                onCancel = {},
+                onUndo = {},
+                onHelp = {},
+            )
+        }
+    }
+
+    /**
+     * Every drawing tool, drawn.
+     *
+     * Four contact sheets rather than one, because fifty tools on one screen is fifty postage
+     * stamps — and one test each, because a Compose rule sets its content once per test. Each cell
+     * is a real [ChartViewport] over the same bars, so what these show is what a reader gets: a Gann
+     * fan's nine rays at their nine angles, a pitchfork's tines running past the last bar, the
+     * Fibonacci prices printed on the levels.
+     *
+     * These are also the coverage test. `drawDrawing` returns whether it recognised the tool, and
+     * [sheet] fails when any of them returns false — which is what stops a tool reaching the rail
+     * with no way to render it. That is exactly how the icon-derived first attempt at the tool list
+     * went wrong, and it went unnoticed until somebody looked.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun drawingToolsLines() =
+        sheet("42-tools-lines-fa", ToolGroup.LINES, ToolGroup.CHANNELS)
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun drawingToolsFibonacci() =
+        sheet("43-tools-fib-gann-fa", ToolGroup.FIBONACCI, ToolGroup.GANN)
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun drawingToolsPatterns() =
+        sheet("44-tools-patterns-shapes-fa", ToolGroup.PATTERNS, ToolGroup.ELLIOTT, ToolGroup.SHAPES)
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun drawingToolsMeasure() =
+        sheet("45-tools-measure-annotate-fa", ToolGroup.MEASURE, ToolGroup.POSITION, ToolGroup.ANNOTATION)
+
+    /**
+     * The four sheets between them cover every tool that is not a mode.
+     *
+     * Without this, adding an eleventh group would quietly go unrendered and unreviewed: the four
+     * sheets above would still pass, having drawn everything they were asked to draw.
+     */
+    @Test
+    fun theSheetsCoverEveryTool() {
+        val covered = SHEET_GROUPS.flatMap { DrawingTools.inGroup(it) }.map { it.id }.toSet()
+        val expected = DrawingTools.ALL.filterNot { it.group == ToolGroup.MODES }.map { it.id }.toSet()
+        assertEquals(expected, covered)
+        assertEquals(50, expected.size)
+    }
+
+    private fun sheet(name: String, vararg groups: ToolGroup) {
+        val tools = groups.flatMap { DrawingTools.inGroup(it) }
+        val drawn = mutableMapOf<String, Boolean>()
+        capture(name) { ToolGallery(tools = tools, onDrawn = { id, ok -> drawn[id] = ok }) }
+        val missing = tools.map { it.id }.filterNot { drawn[it] == true }
+        assertTrue("these tools drew nothing: $missing", missing.isEmpty())
+    }
+
     private fun capture(
         name: String,
         darkTheme: Boolean = true,
@@ -936,3 +1116,113 @@ class ScreenshotRenderTest {
         val OUTPUT_DIR = File("build/screenshots")
     }
 }
+
+/**
+ * One cell per tool: its name, and the tool drawn over a real viewport of the same bars.
+ *
+ * The points are generated from the tool's own tap count, spread across the visible range, so a
+ * five-point pattern gets five points at sensible places rather than five copies of one. A freehand
+ * tool gets a sampled squiggle, which is what a finger would have produced.
+ */
+@Composable
+private fun ToolGallery(tools: List<DrawingTool>, onDrawn: (String, Boolean) -> Unit) {
+    val measurer = rememberTextMeasurer()
+    val series = remember { gallerySeries() }
+    // Read out of the theme before the draw lambda: these are @Composable getters, and a draw
+    // lambda is not a composition.
+    val stage = CoineProColors.Stage
+    val ink = CoineProColors.TextSecondary
+    androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize().background(stage)) {
+        val columns = GALLERY_COLUMNS
+        val rows = ((tools.size + columns - 1) / columns).coerceAtLeast(1)
+        val cellWidth = size.width / columns
+        val cellHeight = size.height / rows
+        tools.forEachIndexed { index, tool ->
+            val column = index % columns
+            val row = index / columns
+            translate(left = column * cellWidth, top = row * cellHeight) {
+                val label = measurer.measure(tool.label, TextStyle(color = ink, fontSize = 9.sp))
+                drawText(label, topLeft = Offset(4f, 4f))
+                val top = label.size.height + 8f
+                val view = ChartViewport(series)
+                    .sized(cellWidth - GALLERY_PAD * 2, cellHeight - top - GALLERY_PAD)
+                // Clipped to its own cell, the same way the chart clips to its plot. Half these
+                // tools are unbounded by definition, and without this a single ray crosses the
+                // whole contact sheet and makes every other cell unreadable.
+                translate(left = GALLERY_PAD, top = top) {
+                    clipRect(0f, 0f, view.plotWidth, view.plotHeight) {
+                    val ok = drawDrawing(
+                        drawing = Drawing(
+                            id = index.toLong() + 1,
+                            toolId = tool.id,
+                            points = galleryPoints(tool, series, view),
+                            text = "یادداشت",
+                        ),
+                        view = view,
+                        measurer = measurer,
+                    )
+                    onDrawn(tool.id, ok)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** A hundred bars of a gentle up-then-down walk, deterministic so the sheets are comparable. */
+private fun gallerySeries(): CandleSeries = CandleSeries(
+    (0 until 100).map { index ->
+        val phase = index / 99.0
+        val base = 100.0 + 18 * kotlin.math.sin(phase * Math.PI) + index * 0.06
+        Candle(
+            t = 1_772_000_000L + index * 3600L,
+            o = base,
+            h = base + 1.2,
+            l = base - 1.2,
+            c = base + 0.4,
+        )
+    },
+)
+
+/**
+ * Points for one tool, spread across the middle of the view.
+ *
+ * Alternating above and below the walk, because a pattern drawn as a straight line of five collinear
+ * points shows nothing about whether the pattern renders.
+ */
+private fun galleryPoints(
+    tool: DrawingTool,
+    series: CandleSeries,
+    view: ChartViewport,
+): List<ChartPoint> {
+    val count = if (tool.points <= 0) GALLERY_FREEHAND else tool.points
+    val low = view.priceRange.start
+    val high = view.priceRange.endInclusive
+    val first = view.firstVisible + (view.visibleCount * 0.18).toInt()
+    val step = ((view.visibleCount * 0.6) / count.coerceAtLeast(1)).toInt().coerceAtLeast(1)
+    return (0 until count).map { index ->
+        val bar = (first + index * step).coerceIn(0, series.size - 1)
+        val swing = if (index % 2 == 0) 0.30 else 0.70
+        ChartPoint(series.time[bar], low + (high - low) * swing)
+    }
+}
+
+private const val GALLERY_COLUMNS = 3
+private const val GALLERY_PAD = 6f
+
+/** How many samples stand in for a finger's stroke on a freehand tool. */
+private const val GALLERY_FREEHAND = 9
+
+/** The groups the four contact sheets cover, in the order they cover them. */
+private val SHEET_GROUPS = listOf(
+    ToolGroup.LINES,
+    ToolGroup.CHANNELS,
+    ToolGroup.FIBONACCI,
+    ToolGroup.GANN,
+    ToolGroup.PATTERNS,
+    ToolGroup.ELLIOTT,
+    ToolGroup.SHAPES,
+    ToolGroup.MEASURE,
+    ToolGroup.POSITION,
+    ToolGroup.ANNOTATION,
+)
