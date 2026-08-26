@@ -61,7 +61,16 @@ import com.coinepro.core.symbols.SymbolCategory
  * which matters most for the rows a fuzzy match found.
  */
 @Composable
-fun SearchScreen(controller: MarketSearchController) {
+fun SearchScreen(
+    controller: MarketSearchController,
+    /**
+     * Opens the chart for a row. Null leaves the list inert.
+     *
+     * Nullable rather than a no-op default: a row that responds to a tap by doing nothing reads as
+     * a broken screen, and the caller is the only thing that knows whether there is a chart to open.
+     */
+    onOpenSymbol: ((String) -> Unit)? = null,
+) {
     LaunchedEffect(controller) { controller.start() }
     val state by controller.state.collectAsStateWithLifecycle()
 
@@ -138,7 +147,9 @@ fun SearchScreen(controller: MarketSearchController) {
                         )
                     }
                 }
-                items(state.results, key = { it.meta.symbol }) { row -> MarketRow(row) }
+                items(state.results, key = { it.meta.symbol }) { row ->
+                    MarketRow(row, onOpenSymbol)
+                }
             }
         }
     }
@@ -197,13 +208,15 @@ private fun SectionHeader(title: String) {
 }
 
 @Composable
-private fun MarketRow(row: MarketSearchRow) {
-    // Not clickable, and deliberately so. There is nowhere to open a market yet — that is
-    // `feature:chart` — and a row that responds to a tap by doing nothing reads as a broken screen,
-    // which is worse than one that plainly presents itself as a list.
+private fun MarketRow(row: MarketSearchRow, onOpenSymbol: ((String) -> Unit)?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            // Clickable only when there is somewhere to go. The chart screen is the somewhere, and
+            // it did not exist when this list was written.
+            .let { base ->
+                if (onOpenSymbol == null) base else base.clickable { onOpenSymbol(row.meta.symbol) }
+            }
             .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.OneHalf),
         horizontalArrangement = Arrangement.spacedBy(13.dp),
         verticalAlignment = Alignment.CenterVertically,

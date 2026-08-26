@@ -98,6 +98,8 @@ fun HomeScreen(
      * drawing and nothing else does.
      */
     onVisibleSymbols: (Set<String>) -> Unit = {},
+    /** Opens the chart for a market row. Null leaves the card inert — see `MarketRow` in search. */
+    onOpenSymbol: ((String) -> Unit)? = null,
 ) {
     val quotes = state.quotes.values.sortedWith(
         compareBy<MarketQuote>({ marketRank(it) }, { it.instrument.symbol }),
@@ -165,7 +167,7 @@ fun HomeScreen(
         if (quotes.isEmpty()) {
             item { EmptyMarket(state = state, onRetry = onRetry) }
         } else {
-            item { MarketCard(quotes) }
+            item { MarketCard(quotes, onOpenSymbol) }
         }
 
         if (openSignals.isNotEmpty()) {
@@ -399,23 +401,34 @@ private fun SubscriptionCard(subscription: HomeSubscription) {
 /* ------------------------------------------------------------------ market */
 
 @Composable
-private fun MarketCard(quotes: List<MarketQuote>) {
+private fun MarketCard(quotes: List<MarketQuote>, onOpenSymbol: ((String) -> Unit)?) {
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         CardLabel(stringResource(R.string.home_market_title))
         quotes.forEachIndexed { index, quote ->
             if (index > 0) RowDivider()
-            QuoteRow(quote)
+            QuoteRow(quote, onOpenSymbol)
         }
     }
 }
 
 @Composable
-private fun QuoteRow(quote: MarketQuote) {
+private fun QuoteRow(quote: MarketQuote, onOpenSymbol: ((String) -> Unit)?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = CoineProSpacing.Row)
-            .clearAndSetSemantics { contentDescription = quote.instrument.symbol },
+            // The clear comes first and the click after it, in that order. `clearAndSetSemantics`
+            // wipes everything declared before it on this node, so a clickable above this line
+            // would have its action erased and the row would be unreachable with TalkBack while
+            // still working under a finger — the worst version of this bug, because it looks fine.
+            .clearAndSetSemantics { contentDescription = quote.instrument.symbol }
+            .let { base ->
+                if (onOpenSymbol == null) {
+                    base
+                } else {
+                    base.clickable { onOpenSymbol(quote.instrument.symbol) }
+                }
+            },
         horizontalArrangement = Arrangement.spacedBy(13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

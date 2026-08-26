@@ -193,7 +193,7 @@ fun CoineProChart(
             } else {
                 0f
             }
-            val timeAxis = if (decoration.showAxes) timeHeight else 0f
+            val timeAxis = if (decoration.showAxes && decoration.showTimeAxis) timeHeight else 0f
             val plotHeight = max(0f, size.height - volumeHeight - timeAxis)
 
             val view = viewport
@@ -205,7 +205,7 @@ fun CoineProChart(
             if (decoration.showAxes) drawGrid(view, plotWidth, palette, measurer)
             // The setup goes *under* the price. It is context for the bars, and drawn over them it
             // tints every candle it covers — which on a full-height risk band is most of them.
-            decoration.signal?.let { drawSignal(view, it, plotWidth, palette) }
+            decoration.signal?.let { drawSignal(view, it, plotWidth, palette, measurer) }
             when {
                 type.isLine -> drawLineSeries(view, palette, filled = type == ChartType.AREA)
                 type == ChartType.BARS -> drawOhlcBars(view, palette)
@@ -249,7 +249,9 @@ fun CoineProChart(
             if (volumeHeight > 0) drawVolume(view, plotHeight, volumeHeight, palette)
             if (decoration.showAxes) {
                 drawPriceAxis(view, plotWidth, palette, measurer)
-                drawTimeAxis(view, plotHeight + volumeHeight, plotWidth, type, palette, measurer)
+                if (decoration.showTimeAxis) {
+                    drawTimeAxis(view, plotHeight + volumeHeight, plotWidth, type, palette, measurer)
+                }
             }
             crosshair?.let { drawCrosshair(view, it, plotWidth, palette, measurer) }
         }
@@ -529,6 +531,7 @@ private fun DrawScope.drawSignal(
     signal: SignalOverlay,
     plotWidth: Float,
     palette: ChartPalette,
+    measurer: TextMeasurer,
 ) {
     val entryY = view.yOf(signal.entry)
     // The band from entry to stop is the money at risk, and the band from entry to target is the
@@ -541,6 +544,7 @@ private fun DrawScope.drawSignal(
             size = Size(plotWidth, abs(stopY - entryY)),
         )
         drawDashedLevel(stopY, plotWidth, palette.down)
+        drawLevelLabel(signal.stopLabel, stopY, palette.down, measurer)
     }
     signal.takeProfits.firstOrNull()?.let { target ->
         val targetY = view.yOf(target)
@@ -550,13 +554,38 @@ private fun DrawScope.drawSignal(
             size = Size(plotWidth, abs(targetY - entryY)),
         )
     }
-    signal.takeProfits.forEach { drawDashedLevel(view.yOf(it), plotWidth, palette.up) }
+    signal.takeProfits.forEachIndexed { index, price ->
+        val y = view.yOf(price)
+        drawDashedLevel(y, plotWidth, palette.up)
+        drawLevelLabel(signal.targetLabels.getOrNull(index), y, palette.up, measurer)
+    }
     drawLine(
         color = palette.crosshair,
         start = Offset(0f, entryY),
         end = Offset(plotWidth, entryY),
         strokeWidth = LINE_WIDTH,
     )
+    drawLevelLabel(signal.entryLabel, entryY, palette.crosshair, measurer)
+}
+
+/**
+ * A word above its line, at the left edge.
+ *
+ * Above rather than on: a label drawn across a price line is a label with a rule through it, which
+ * is the mistake the drawing tools had to be fixed for. Skipped entirely when the line is off the
+ * plot, so a target far above the visible range does not leave its name floating at the top.
+ */
+private fun DrawScope.drawLevelLabel(
+    text: String?,
+    y: Float,
+    colour: Color,
+    measurer: TextMeasurer,
+) {
+    if (text.isNullOrBlank()) return
+    val measured = measurer.measure(text, axisStyle(colour))
+    val top = y - measured.size.height - 1f
+    if (top < 0f || y > size.height) return
+    drawText(measured, topLeft = Offset(AXIS_PADDING, top))
 }
 
 private fun DrawScope.drawDashedLevel(y: Float, width: Float, colour: Color) {

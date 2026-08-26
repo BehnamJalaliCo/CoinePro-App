@@ -15,14 +15,19 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:chart"))
     implementation(project(":core:common"))
+    implementation(project(":core:marketdata"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:signals"))
     implementation(project(":core:marketintel"))
+    implementation(libs.kotlinx.coroutines.core)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

@@ -34,6 +34,7 @@ import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.datastore.ActivePlatformStore
 import com.coinepro.core.marketdata.MarketDataController
+import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.marketintel.MarketIntelController
@@ -50,6 +51,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var emailAuthController: EmailAuthController
     @Inject lateinit var marketDataControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketDataController>
     @Inject lateinit var marketSearchControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketSearchController>
+    @Inject lateinit var candleGateways: Map<MarketPlatform, @JvmSuppressWildcards CandleGateway>
     @Inject lateinit var accountControllers: Map<MarketPlatform, @JvmSuppressWildcards AccountController>
     @Inject lateinit var adminController: AdminController
     @Inject lateinit var platformSessions: PlatformSessions
@@ -94,6 +96,7 @@ class MainActivity : ComponentActivity() {
                 emailAuthController = emailAuthController,
                 marketDataControllers = marketDataControllers,
                 marketSearchControllers = marketSearchControllers,
+                candleGateways = candleGateways,
                 accountControllers = accountControllers,
                 adminController = adminController,
                 platformSessions = platformSessions,

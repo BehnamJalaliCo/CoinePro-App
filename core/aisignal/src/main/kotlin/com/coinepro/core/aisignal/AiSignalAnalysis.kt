@@ -45,6 +45,15 @@ data class AiCandle(
     val high: Double,
     val low: Double,
     val close: Double,
+    /**
+     * Bar open time in unix seconds, or null when the server did not say.
+     *
+     * Nullable because only one of the two does. TradeYar sends `t` in milliseconds; CoinePro-FX's
+     * evidence block is twelve bars of open/high/low/close with no time on them at all. Rather than
+     * invent a spacing for the second case, the chart drops its time axis — see
+     * `ChartDecoration.showTimeAxis`. A candle is still a candle without a date on it.
+     */
+    val time: Long? = null,
 )
 
 /**

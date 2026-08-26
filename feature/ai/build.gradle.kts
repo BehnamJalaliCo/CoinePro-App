@@ -16,6 +16,7 @@ android {
 
 dependencies {
     implementation(project(":core:aisignal"))
+    implementation(project(":core:chart"))
     implementation(project(":core:common"))
     implementation(project(":core:model"))
     implementation(project(":core:designsystem"))

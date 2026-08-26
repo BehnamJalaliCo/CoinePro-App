@@ -303,6 +303,7 @@ private fun AiResultPanel(signal: AiGeneratedSignal, onOpenSignal: (Long) -> Uni
                 entry = signal.entry,
                 stopLoss = signal.stopLoss,
                 targets = signal.targets.map { it.price },
+                isLong = signal.direction != SignalDirection.SELL,
             )
 
             AiLevelRow(stringResource(R.string.ai_entry), signal.entry, CoineProColors.GoldBright)

@@ -881,14 +881,14 @@ object ScreenshotFixtures {
         return com.coinepro.feature.chart.ChartController(symbol, gateway, scope).also { it.start() }
     }
 
-    fun chartSeries(bars: Int = 200): CandleSeries {
+    fun chartSeries(bars: Int = 200, start: Double = 2_600.0): CandleSeries {
         var seed = 20_260_826L
         fun random(): Double {
             seed = (seed * 1103515245 + 12345) and 0x7FFFFFFF
             return seed.toDouble() / 0x7FFFFFFF
         }
         val out = ArrayList<Candle>(bars)
-        var price = 2_600.0
+        var price = start
         for (index in 0 until bars) {
             // A trending stretch, then chop, then a shock — the three regimes a chart has to draw.
             val drift = when {
@@ -911,6 +911,35 @@ object ScreenshotFixtures {
             price = close
         }
         return CandleSeries(out)
+    }
+
+    /**
+     * The preview loader behind the signal screen, already holding bars.
+     *
+     * The walk starts where signal 4821's entry sits rather than at the chart screen's price, so
+     * the setup band lands inside the bars instead of squashing two hundred candles into a strip
+     * at the top of the card — which is what a fixture reused across two different markets does.
+     */
+    fun signalChartController(
+        scope: kotlinx.coroutines.CoroutineScope,
+    ): com.coinepro.feature.signaldetail.SignalChartController {
+        val series = chartSeries(bars = 120, start = 2_386.0)
+        val gateway = object : com.coinepro.core.marketdata.CandleGateway {
+            override suspend fun load(
+                symbol: String,
+                timeframe: com.coinepro.core.marketdata.Timeframe,
+                limit: Int,
+                before: Long?,
+            ) = com.coinepro.core.marketdata.CandlePage(
+                symbol = symbol,
+                timeframe = timeframe,
+                candles = series.bars.map {
+                    com.coinepro.core.marketdata.OhlcBar(it.t, it.o, it.h, it.l, it.c, it.v ?: 0.0)
+                },
+                hasMore = false,
+            )
+        }
+        return com.coinepro.feature.signaldetail.SignalChartController(gateway, scope)
     }
 
     /** A setup on the fixture above: long, stop under the shock, two targets above. */

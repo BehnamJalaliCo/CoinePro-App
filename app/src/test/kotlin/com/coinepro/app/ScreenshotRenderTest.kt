@@ -478,6 +478,30 @@ class ScreenshotRenderTest {
         }
     }
 
+    /**
+     * The same signal with its bars behind it, on a viewport tall enough to reach them.
+     *
+     * The chart sits above the setup card, which on a phone-height capture is below the fold — so
+     * this one is deliberately tall, for design review rather than for a device.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1600dp-xxhdpi")
+    fun signalDetailWithChart() {
+        val signals = SignalController(FakeSignalGateway(), scope)
+        val intel = MarketIntelController(FakeMarketIntelGateway(), scope)
+        intel.refresh()
+        signals.loadDetail(4821L)
+        capture("51-signal-detail-chart-fa") {
+            SignalDetailScreen(
+                controller = signals,
+                marketIntelController = intel,
+                signalId = 4821L,
+                onExecute = {},
+                chartController = ScreenshotFixtures.signalChartController(scope),
+            )
+        }
+    }
+
     /** The AI section with a completed result, so the chart and evidence panels both render. */
     @Test
     fun aiStudio() {

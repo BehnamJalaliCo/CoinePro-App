@@ -87,6 +87,18 @@ data class SignalOverlay(
     val isLong: Boolean,
     /** When the setup was issued, so the drawing can start at that bar rather than at the edge. */
     val issuedAt: Long? = null,
+    /**
+     * What to write beside each line — entry, stop, then one per take-profit in order.
+     *
+     * Supplied by the caller rather than built here, because `core:chart` has no string resources
+     * and the words are Persian on every screen that draws this. Empty draws the lines bare, which
+     * is what a thumbnail wants. Three green dashes at three different prices are three targets
+     * only to a reader who already knows that; the labels are what make the picture readable
+     * without the card underneath it.
+     */
+    val entryLabel: String? = null,
+    val stopLabel: String? = null,
+    val targetLabels: List<String> = emptyList(),
 ) {
     /**
      * Reward over risk, or null when there is no stop or no target to measure between.
@@ -139,6 +151,15 @@ data class ChartDecoration(
     val showVolume: Boolean = true,
     /** Whether the price grid and its labels are drawn. Off for a thumbnail. */
     val showAxes: Boolean = true,
+    /**
+     * Whether the dates along the bottom are drawn.
+     *
+     * Separate from [showAxes] for one honest reason: some feeds send bars with no timestamps at
+     * all. CoinePro-FX's AI evidence is twelve candles of open/high/low/close and nothing else, and
+     * a time axis under those would be printing dates the server never sent. The prices are real,
+     * so the price axis stays; the dates go.
+     */
+    val showTimeAxis: Boolean = true,
 )
 
 /** Where the crosshair is, in chart space. Null when nobody is touching the chart. */

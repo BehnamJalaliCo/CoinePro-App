@@ -1,5 +1,6 @@
 package com.coinepro.app
 
+import android.net.Uri
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.NavigationBar
@@ -43,6 +44,7 @@ import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.marketdata.MarketDataController
+import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.marketintel.MarketIntelController
@@ -95,7 +97,10 @@ import com.coinepro.feature.home.toHomeBriefing
 import com.coinepro.feature.home.toHomePortfolio
 import com.coinepro.feature.home.toHomeSubscription
 import com.coinepro.feature.news.NewsScreen
+import com.coinepro.feature.signaldetail.SignalChartController
 import com.coinepro.feature.signaldetail.SignalDetailScreen
+import com.coinepro.feature.chart.ChartController
+import com.coinepro.feature.chart.ChartScreen
 import com.coinepro.feature.search.SearchScreen
 import com.coinepro.feature.signals.SignalsScreen
 import com.coinepro.feature.tools.ToolsScreen
@@ -107,6 +112,7 @@ private const val CONNECTIONS_ROUTE = "connections"
 private const val AI_VISION_ROUTE = "ai/vision"
 private const val AI_ASSISTANT_ROUTE = "ai/assistant"
 private const val MARKET_SEARCH_ROUTE = "market/search"
+private const val CHART_PATTERN = "chart/{symbol}"
 private const val NEWS_ROUTE = "market/news"
 private const val CALENDAR_ROUTE = "market/calendar"
 private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
@@ -115,12 +121,19 @@ private const val KYC_ROUTE = "account/verify"
 private fun signalDetailRoute(signalId: Long) = "signal/$signalId"
 private fun executionRoute(signalId: Long) = "execution/$signalId"
 
+/**
+ * A ticker is safe in a path segment — both feeds spell them in ASCII letters and digits — but
+ * encoding it costs nothing and a symbol that ever grows a slash would otherwise route nowhere.
+ */
+private fun chartRoute(symbol: String) = "chart/" + Uri.encode(symbol)
+
 @Composable
 fun CoineProApp(
     sessionController: SessionController,
     emailAuthController: EmailAuthController,
     marketDataControllers: Map<MarketPlatform, MarketDataController>,
     marketSearchControllers: Map<MarketPlatform, MarketSearchController>,
+    candleGateways: Map<MarketPlatform, CandleGateway>,
     accountControllers: Map<MarketPlatform, AccountController>,
     adminController: AdminController,
     platformSessions: PlatformSessions,
@@ -324,6 +337,7 @@ fun CoineProApp(
             is SessionState.SignedIn -> MainShell(
                 marketState = marketState,
                 marketSearchController = marketSearchController,
+                candleGateway = candleGateways.getValue(activePlatform),
                 adminController = adminController,
                 hub = hub,
                 hubActions = hubActions,
@@ -436,6 +450,8 @@ fun CoineProApp(
 private fun MainShell(
     marketState: MarketDataState,
     marketSearchController: MarketSearchController,
+    /** The candle source for the platform on screen. See the chart route below. */
+    candleGateway: CandleGateway,
     signalController: SignalController,
     notificationController: NotificationController,
     executionController: ExecutionController,
@@ -481,6 +497,7 @@ private fun MainShell(
         EXECUTION_PATTERN,
         CONNECTIONS_ROUTE,
         MARKET_SEARCH_ROUTE,
+        CHART_PATTERN,
         AI_VISION_ROUTE,
         AI_ASSISTANT_ROUTE,
         KYC_ROUTE,
@@ -504,6 +521,9 @@ private fun MainShell(
         AI_VISION_ROUTE -> R.string.screen_ai_vision
         AI_ASSISTANT_ROUTE -> R.string.screen_ai_assistant
         MARKET_SEARCH_ROUTE -> R.string.screen_market_search
+        // The chart names itself: its header is the symbol, which is more use than the word
+        // "chart" over a screen that is obviously one.
+        CHART_PATTERN -> R.string.screen_chart
         NEWS_ROUTE -> R.string.screen_news
         CALENDAR_ROUTE -> R.string.screen_calendar
         LAUNCH_READINESS_ROUTE -> R.string.screen_launch_readiness
@@ -589,6 +609,7 @@ private fun MainShell(
                 HomeScreen(
                     state = marketState,
                     onVisibleSymbols = onSubscribeSymbols,
+                    onOpenSymbol = { navController.navigate(chartRoute(it)) },
                     briefing = briefing,
                     portfolio = portfolio,
                     subscription = subscription,
@@ -640,10 +661,15 @@ private fun MainShell(
                 arguments = listOf(navArgument("signalId") { type = NavType.LongType }),
             ) { entry ->
                 val signalId = entry.arguments?.getLong("signalId") ?: return@composable
+                val chartScope = rememberCoroutineScope()
+                val signalChartController = remember(candleGateway) {
+                    SignalChartController(gateway = candleGateway, scope = chartScope)
+                }
                 SignalDetailScreen(
                     controller = signalController,
                     marketIntelController = marketIntelController,
                     signalId = signalId,
+                    chartController = signalChartController,
                     // Null where the platform places no orders. CoinePro-FX is the case: its
                     // signals reach a reader's account through copy trading, so the button that
                     // used to sit here led to a screen that could only say the feature was absent.
@@ -714,7 +740,24 @@ private fun MainShell(
                 )
             }
             composable(MARKET_SEARCH_ROUTE) {
-                SearchScreen(controller = marketSearchController)
+                SearchScreen(
+                    controller = marketSearchController,
+                    onOpenSymbol = { navController.navigate(chartRoute(it)) },
+                )
+            }
+            composable(
+                route = CHART_PATTERN,
+                arguments = listOf(navArgument("symbol") { type = NavType.StringType }),
+            ) { entry ->
+                val symbol = entry.arguments?.getString("symbol").orEmpty()
+                val scope = rememberCoroutineScope()
+                // Keyed on both, so switching platform with a chart open rebuilds it against the
+                // right backend rather than paging a forex symbol out of the crypto route. The
+                // scope is the composition's: leaving the screen cancels the load in flight.
+                val chartController = remember(symbol, candleGateway) {
+                    ChartController(symbol = symbol, gateway = candleGateway, scope = scope)
+                }
+                ChartScreen(controller = chartController)
             }
             composable(NEWS_ROUTE) {
                 NewsScreen(

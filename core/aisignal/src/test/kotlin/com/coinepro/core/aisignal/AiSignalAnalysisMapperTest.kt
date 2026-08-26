@@ -94,6 +94,27 @@ class AiSignalAnalysisMapperTest {
     }
 
     @Test
+    fun `the two servers time their evidence differently and both land in seconds`() {
+        // TradeYar sends `ts_ms` straight through, so milliseconds; CoinePro-FX's evidence block
+        // carries no time at all. Reading the first as seconds would place every bar in the year
+        // 55000, where the chart draws the whole series one pixel wide.
+        val result = validResult(
+            recentCandles = listOf(
+                AiCandleDto(t = 1_735_689_600_000L, o = 100.0, h = 110.0, l = 95.0, c = 105.0),
+                AiCandleDto(t = 1_735_693_200L, o = 105.0, h = 112.0, l = 104.0, c = 111.0),
+                AiCandleDto(o = 111.0, h = 115.0, l = 110.0, c = 113.0),
+                // Zero is not a timestamp, it is a field the server left at its default.
+                AiCandleDto(t = 0L, o = 113.0, h = 116.0, l = 112.0, c = 114.0),
+            ),
+        )
+
+        assertEquals(
+            listOf(1_735_689_600L, 1_735_693_200L, null, null),
+            result?.recentCandles?.map { it.time },
+        )
+    }
+
+    @Test
     fun `blank server warnings are discarded and real ones kept verbatim`() {
         val result = validResult { copy(warnings = listOf("  ", "Spread is wide", "")) }
 

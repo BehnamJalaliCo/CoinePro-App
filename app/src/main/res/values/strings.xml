@@ -15,6 +15,7 @@
     <string name="screen_ai_vision">تحلیل چارت</string>
     <string name="screen_ai_assistant">دستیار هوشمند</string>
     <string name="screen_market_search">بازارها</string>
+    <string name="screen_chart">نمودار</string>
     <string name="screen_news">اخبار بازار</string>
     <string name="screen_calendar">تقویم اقتصادی</string>
     <string name="screen_diagnostics">پنل تشخیص</string>

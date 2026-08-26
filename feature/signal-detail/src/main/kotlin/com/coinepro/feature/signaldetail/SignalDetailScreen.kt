@@ -42,6 +42,9 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.coinepro.core.chart.ChartDecoration
+import com.coinepro.core.chart.CoineProChart
+import com.coinepro.core.chart.SignalOverlay
 import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.BidiText
@@ -62,6 +65,8 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+private val CHART_HEIGHT = 220.dp
+
 private val warningTimeFormatter = DateTimeFormatter.ofPattern("MMM d · HH:mm")
 
 @Composable
@@ -79,10 +84,20 @@ fun SignalDetailScreen(
     onExecute: ((Long) -> Unit)?,
     /** Opens copy trading, on the platform whose signals arrive that way. */
     onOpenCopyTrading: (() -> Unit)? = null,
+    /**
+     * The bars behind the setup. Null draws the screen exactly as it was before the chart existed,
+     * which is what a platform with no candle route should get.
+     */
+    chartController: SignalChartController? = null,
 ) {
     LaunchedEffect(signalId) { controller.loadDetail(signalId) }
     LaunchedEffect(marketIntelController) { marketIntelController.refresh() }
-    DisposableEffect(signalId) { onDispose(controller::clearDetail) }
+    DisposableEffect(signalId) {
+        onDispose {
+            controller.clearDetail()
+            chartController?.clear()
+        }
+    }
     val state by controller.detailState.collectAsStateWithLifecycle()
     val marketIntelState by marketIntelController.state.collectAsStateWithLifecycle()
 
@@ -109,7 +124,17 @@ fun SignalDetailScreen(
             } else {
                 emptyList()
             }
-            SignalContent(signal, warnings, onExecute, onOpenCopyTrading)
+            LaunchedEffect(chartController, signal.symbol, signal.timeframe) {
+                chartController?.load(signal.symbol, signal.timeframe)
+            }
+            val chartState = chartController?.state?.collectAsStateWithLifecycle()
+            SignalContent(
+                signal = signal,
+                highImpactWarnings = warnings,
+                chart = chartState?.value,
+                onExecute = onExecute,
+                onOpenCopyTrading = onOpenCopyTrading,
+            )
         }
         else -> Center { Text(stringResource(R.string.detail_not_found), color = CoineProColors.TextSecondary) }
     }
@@ -128,6 +153,7 @@ private fun Center(content: @Composable () -> Unit) {
 private fun SignalContent(
     signal: TradingSignal,
     highImpactWarnings: List<EconomicEvent>,
+    chart: SignalChartState?,
     onExecute: ((Long) -> Unit)?,
     onOpenCopyTrading: (() -> Unit)?,
 ) {
@@ -200,6 +226,50 @@ private fun SignalContent(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
+            }
+        }
+
+        // Above the numbers rather than below them. The levels are the answer; the chart is what
+        // makes the answer checkable, and a reader who scrolls past the prices has already decided.
+        if (chart != null && !chart.series.isEmpty) {
+            // In a card like everything else on this screen. Without one the chart runs to the
+            // screen edges while every panel around it is inset, and the price axis ends up
+            // hanging outside the column the rest of the page is aligned to.
+            CoineProCard(modifier = Modifier.fillMaxWidth()) {
+                CoineProChart(
+                    series = chart.series,
+                    modifier = Modifier.fillMaxWidth().height(CHART_HEIGHT),
+                    decoration = ChartDecoration(
+                        // Null entry means no band. A signal without one is rare and is usually a
+                        // neutral read; drawing a zone around a price nobody named would invent the
+                        // most important number on the screen.
+                        signal = signal.entry?.takeIf(Double::isFinite)?.let { entry ->
+                            val drawn = signal.targets
+                                .sortedBy { it.level }
+                                .filter { it.price?.isFinite() == true }
+                            SignalOverlay(
+                                entry = entry,
+                                stopLoss = signal.stopLoss?.takeIf(Double::isFinite),
+                                takeProfits = drawn.map { it.price!! },
+                                isLong = signal.direction != SignalDirection.SELL,
+                                entryLabel = stringResource(R.string.detail_entry),
+                                stopLabel = stringResource(R.string.detail_stop),
+                                // Named by the server's own level number, not by position in the
+                                // list: a signal whose second target has no price would otherwise
+                                // draw its third one labelled "۲".
+                                targetLabels = drawn.map { target ->
+                                    stringResource(R.string.detail_target, target.level)
+                                },
+                            )
+                        },
+                        // The volume pane takes a third of a short card and answers a question this
+                        // screen is not asking. The chart screen keeps it; the preview does not.
+                        showVolume = false,
+                    ),
+                    // A picture, not an instrument. Panning it would be panning a card inside a
+                    // scrolling column, and the gesture would fight the scroll on every drag.
+                    interactive = false,
+                )
             }
         }
 

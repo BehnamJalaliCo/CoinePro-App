@@ -109,6 +109,8 @@ internal data class AiSignalTargetDto(
 )
 
 internal data class AiCandleDto(
+    /** Bar open time. TradeYar sends milliseconds; CoinePro-FX omits it entirely. */
+    val t: Long? = null,
     val o: Double? = null,
     val h: Double? = null,
     val l: Double? = null,
@@ -390,7 +392,20 @@ internal fun AiCandleDto.toDomain(): AiCandle? {
     val low = l.finiteOrNull()?.takeIf { it > 0.0 } ?: return null
     val close = c.finiteOrNull()?.takeIf { it > 0.0 } ?: return null
     if (high < low || high < open || high < close || low > open || low > close) return null
-    return AiCandle(open = open, high = high, low = low, close = close)
+    return AiCandle(open = open, high = high, low = low, close = close, time = t.toEpochSeconds())
+}
+
+/**
+ * Milliseconds or seconds, both to seconds. Absent stays absent.
+ *
+ * The two servers disagree and neither says which it is sending, so the magnitude decides: anything
+ * past the year 33658 in seconds is milliseconds, and no other reading of a market timestamp is
+ * plausible. A wrong guess here does not draw a slightly wrong axis — it puts every bar in the year
+ * 55000 and the chart draws one pixel wide.
+ */
+private fun Long?.toEpochSeconds(): Long? {
+    val value = this?.takeIf { it > 0L } ?: return null
+    return if (value > 1_000_000_000_000L) value / 1_000L else value
 }
 
 /**

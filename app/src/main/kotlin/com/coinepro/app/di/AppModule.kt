@@ -46,7 +46,12 @@ import com.coinepro.core.copytrade.NetworkCopyTradeGateway
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.ExecutionGateway
 import com.coinepro.core.execution.NetworkExecutionGateway
+import com.coinepro.core.marketdata.AcademyTokenStore
+import com.coinepro.core.marketdata.CandleGateway
+import com.coinepro.core.marketdata.CoineProFxCandleGateway
 import com.coinepro.core.marketdata.MarketDataCache
+import com.coinepro.core.marketdata.NetworkAcademyTokenStore
+import com.coinepro.core.marketdata.TradeYarCandleGateway
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.marketdata.MarketCatalogGateway
 import com.coinepro.core.marketdata.MarketDataController
@@ -606,6 +611,46 @@ object AppModule {
         platform = MarketPlatform.TRADEYAR,
         cache = cache,
     )
+
+    /**
+     * The academy token, minted from the mobile one and held for the process's life.
+     *
+     * Singleton because the point of it is the cache. CoinePro-FX's chart routes sit behind a
+     * separate scope, and a store per call site would mint a fresh twelve-hour token every time a
+     * chart opened — which works, and is a request per chart that need not exist.
+     */
+    @Provides
+    @Singleton
+    fun academyTokenStore(@ForexPlatform retrofit: Retrofit): AcademyTokenStore =
+        NetworkAcademyTokenStore(retrofit)
+
+    /**
+     * Candles, per platform, because the two routes are not the same route.
+     *
+     * TradeYar serves them on a plain mobile path. CoinePro-FX serves them behind the academy
+     * scope, so its gateway takes the token store above. The asymmetry is in the constructors
+     * rather than hidden behind a flag, which is why there are two providers here and not one.
+     */
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexCandleGateway(
+        @ForexPlatform retrofit: Retrofit,
+        tokens: AcademyTokenStore,
+    ): CandleGateway = CoineProFxCandleGateway(retrofit, tokens)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoCandleGateway(@CryptoPlatform retrofit: Retrofit): CandleGateway =
+        TradeYarCandleGateway(retrofit)
+
+    @Provides
+    @Singleton
+    fun candleGateways(
+        @ForexPlatform forex: CandleGateway,
+        @CryptoPlatform crypto: CandleGateway,
+    ): Map<MarketPlatform, CandleGateway> = platformMap(forex, crypto)
 
     @Provides
     @Singleton
