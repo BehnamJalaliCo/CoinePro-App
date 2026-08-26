@@ -64,6 +64,7 @@ internal object AssetLogoTable {
     "ANT" to R.drawable.asset_ant,
     "ANTOLD" to R.drawable.asset_antold,
     "ANY" to R.drawable.asset_any,
+    "APE" to R.drawable.asset_ape,
     "APEX" to R.drawable.asset_apex,
     "APPC" to R.drawable.asset_appc,
     "APT" to R.drawable.asset_apt,

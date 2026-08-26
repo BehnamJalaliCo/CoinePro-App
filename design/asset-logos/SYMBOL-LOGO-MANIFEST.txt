@@ -42,6 +42,7 @@ ankr         binance-icons/crypto
 ant          binance-icons/crypto
 antold       binance-icons/crypto
 any          binance-icons/crypto
+ape          binance (raster)
 apex         crypto-icons
 appc         binance-icons/crypto
 apt          binance-icons/crypto
@@ -830,7 +831,6 @@ zrx          binance-icons/crypto
 
 # Dropped as too large to read at icon size; these fall back to the token:
 # alpaca     binance-icons/crypto
-# ape        crypto-icons
 # api3       binance-icons/crypto
 # asr        binance-icons/crypto
 # atd        binance-icons/crypto
@@ -848,4 +848,3 @@ zrx          binance-icons/crypto
 # spell      binance-icons/crypto
 # ust        binance-icons/crypto
 # ustc       binance-icons/crypto
-# wif        tv-logos/crypto
