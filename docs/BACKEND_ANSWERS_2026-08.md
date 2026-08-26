@@ -14,7 +14,7 @@ app will forget.
 | --- | --- | --- |
 | Discovery mode on the snapshot | `GET /ws/snapshot` with no parameter now returns all 19 symbols. The cap of 20 applies only to an explicit list, and one unknown name no longer fails the whole request — it comes back in a new `unsupported` array. | **Done.** `NetworkMarketCatalogGateway` asks both platforms the same way now; `MarketSnapshotDto.unsupported` is parsed. |
 | A symbol catalogue | `GET /user/markets` added. | **Not wired.** The snapshot already carries the catalogue, so this is a second route to the same fact; worth wiring only if it carries metadata the snapshot does not. |
-| Reach the chart routes with a mobile token | `POST /user/academy-token` mints a 12-hour `scope=academy` token, tested against `/academy/chart/*`, switchable off with `MOBILE_ACADEMY_TOKEN_ENABLED`. | **Not wired.** This is what unblocks forex candles and the whole-universe symbol list. |
+| Reach the chart routes with a mobile token | `POST /user/academy-token` mints a 12-hour `scope=academy` token, switchable off with `MOBILE_ACADEMY_TOKEN_ENABLED`. | **Done.** `NetworkAcademyTokenStore` mints, caches in memory and renews five minutes early; `CoineProFxCandleGateway` sends it explicitly. |
 | Trade history | All four routes were already open to the mobile token. Real JSON documented. | **Not wired** — that is `feature:portfolio`. |
 
 ### Do not display `max_drawdown_rel_pct`
@@ -33,7 +33,7 @@ Show `max_drawdown_abs` and compute the ratio here from the equity curve, or sho
 | Ask | Answer | App side |
 | --- | --- | --- |
 | More than eight crypto symbols | **441.** Scoped as `LBank live ∩ Binance USDT-M perps − forex/metal`. | **Done** — the app already asks for the whole universe, so this arrives without a change here. |
-| Candles | `GET /market/candles`, eight timeframes, `t` in seconds, ascending, `before` paging back to March 2024, `limit_max: 1000`. The forming candle is assembled from finer bars, so an H1 chart's right edge is no longer up to an hour behind its own ticker. | **Not wired.** This is what unblocks crypto candles in `core:chart`. |
+| Candles | `GET /market/candles`, eight timeframes, `t` in seconds, ascending, `before` paging back to March 2024, `limit_max: 1000`. The forming candle is assembled from finer bars. | **Done.** `TradeYarCandleGateway`. |
 | Portfolio history | `GET /portfolio/history`, tested live: 106 orders → 52 trades over 7 days. | **Not wired** — `feature:portfolio`. |
 | Delete `spread`? | **No.** The premise was wrong: LBank publishes 25 levels of book, unauthenticated. The nulls are the relay's ticker topic, not the exchange. | **Keep `spread`.** It is not a dead field, it is an unwired one. |
 

@@ -30,7 +30,12 @@ object NetworkFactory {
         enableHttpLogging: Boolean = false,
     ): OkHttpClient {
         val auth = Interceptor { chain ->
-            val token = bearerToken()?.takeIf { it.isNotBlank() }
+            // A call that set its own Authorization keeps it. CoinePro-FX's chart routes take an
+            // academy-scoped token minted from the mobile one, and `header()` replaces rather than
+            // appends — so without this the interceptor would quietly overwrite the very token the
+            // call exists to send, and the route would answer 403 for no visible reason.
+            val explicit = chain.request().header("Authorization") != null
+            val token = bearerToken()?.takeIf { it.isNotBlank() && !explicit }
             val builder = chain.request().newBuilder()
             if (token != null) builder.header("Authorization", "Bearer $token")
             // Hyphens, not underscores: nginx drops headers containing underscores by default, and
