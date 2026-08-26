@@ -207,16 +207,35 @@ SHA-256  96:12:AB:6C:BF:BB:4F:4F:FB:F1:51:D8:60:2C:12:9D:CC:E8:A9:77:1E:85:46:69
 **Still open**
 
 1. **Google sign-in will fail on a signed build.** `google-services.json` holds exactly one OAuth
-   client and it is type 3 — the web client. There is no type-1 Android client, which means no SHA-1
-   is registered. Add an Android OAuth client in the Firebase console with the SHA-1 above, download
-   the file again and replace `app/google-services.json`. Until then, Google sign-in fails with an
-   error that reads like a network problem; email sign-in is unaffected.
-2. **Privacy and terms URLs** — §8. Play rejects a link to a repository file.
-3. **Demo accounts for review** — §7. Without them the review is rejected as "unable to access the
-   app".
-4. **Account deletion route** — §4. Required for any app with sign-up.
-5. **Subscription terms** — `docs/legal/TERMS.md` §6 is empty. Do not publish with in-app purchases
-   until it is filled in.
-6. **A real device run against live servers.** Nothing here substitutes for it: sixty off-device
-   screenshots and a green test suite say the app renders and computes correctly, and say nothing
-   about whether the two servers answer as documented under a real network.
+   client and it is type 3 — the web client. There is no type-1 Android client, which means no
+   SHA-1 is registered. The file supplied on 2026-08-26 is byte-identical to the one already in the
+   tree and does not change this. Add an Android OAuth client in the Firebase console with the
+   SHA-1 above, download the file again and replace `app/google-services.json`. Until then, Google
+   sign-in fails with an error the app words as a build-configuration fault rather than a network
+   one; e-mail sign-in is unaffected.
+
+2. **Support e-mail and the developer's legal name and address.** Both legal documents carry a
+   marked slot. The Telegram support channel is published; an e-mail address is the owner's to
+   supply, and Play requires one on the store listing in any case.
+
+3. **A real device run against live servers.** Nothing here substitutes for it: sixty-six
+   off-device screenshots and a green test suite say the app renders and computes correctly, and
+   say nothing about whether the two servers answer as documented under a real network.
+
+**Closed since the last revision**
+
+| Was | Now |
+| --- | --- |
+| Privacy and terms URLs | Published as pages, built from `docs/legal/*.md`: `/privacy/`, `/terms/`. One switch left — Settings → Pages → Source → GitHub Actions. |
+| Account deletion | In-app screen behind the `accountDeletion` capability flag, plus the published `/delete-account/` page which satisfies Play's out-of-app requirement today. `docs/REQUEST4_ACCOUNT_DELETION.md` asks both servers for the route. |
+| Subscription terms | There is no subscription. §6 of the terms now describes the real model: nothing is charged, the revenue is affiliate commission from the exchange, and membership is a sub-account check. No in-app purchase is declared. |
+| Demo accounts for review | Replaced by opening the app to guests. A reviewer sees the live crypto market, the news and the membership explanation without an account, which is a better answer than a shared login that expires. |
+
+**What a Play reviewer will see without signing in**
+
+The market list (TradeYar's public price feed), the published headlines, and a card setting out the
+membership route. Not the chart, the signals or the AI: those need a token, and neither backend
+serves a public candle route or a guest token yet — both are asked for in
+`docs/REQUEST4_ACCOUNT_DELETION.md` §2. If a reviewer asks for credentials, the honest answer is
+that none are needed to evaluate the app, and that the gated surfaces require an exchange
+sub-account rather than a password we could hand out.

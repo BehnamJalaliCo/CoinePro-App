@@ -124,7 +124,9 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import com.coinepro.feature.home.HomeSubscription
+import com.coinepro.core.guest.GuestController
 import com.coinepro.feature.account.DeleteAccountScreen
+import com.coinepro.feature.guest.GuestScreen
 import com.coinepro.feature.kyc.KycScreen
 import com.coinepro.core.account.AccountController
 import com.coinepro.core.common.AppResult
@@ -266,6 +268,24 @@ class ScreenshotRenderTest {
         )
         controller.submitKycLevel1("بهنام جلالی", "0012345678", "1370/05/12", "09121234567")
         KycScreen(controller = controller)
+    }
+
+    /**
+     * The first screen, before anybody has signed in.
+     *
+     * This is the render that matters most of the sixty-odd here, because it is the only one a
+     * person who has never heard of the product will ever see. It has to answer "what is this" and
+     * "what does it cost" without a password field, and the membership card has to read as an
+     * explanation rather than a paywall — there is no wall and nothing to pay, and a card that
+     * looks like a price tag would be lying about the business.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun guestMarket() = capture("66-guest-fa") {
+        GuestScreen(
+            controller = GuestController(FakeGuestGateway(), scope, pollMillis = 60_000),
+            onSignIn = {},
+        )
     }
 
     /**

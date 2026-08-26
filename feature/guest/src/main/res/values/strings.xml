@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="guest_wordmark_description">کوین‌پرو</string>
+    <string name="guest_tagline">بازار، نمودار و اخبار — بدون ثبت‌نام. سیگنال و کپی‌ترید با یک حساب رایگان.</string>
+    <string name="guest_market_title">بازار رمزارز</string>
+    <string name="guest_prices_stale">قیمت‌ها به‌روز نیست</string>
+    <string name="guest_prices_unavailable">فید قیمت در دسترس نیست.</string>
+    <string name="guest_news_title">اخبار</string>
+    <string name="guest_news_unavailable">اخبار در دسترس نیست.</string>
+
+    <string name="membership_headline">سیگنال و کپی‌ترید، با حساب رایگان</string>
+    <string name="membership_free">کوین‌پرو اشتراک نمی‌فروشد و خرید درون‌برنامه‌ای ندارد. درآمد ما کارمزدی است که صرافی بابت معاملات شما می‌پردازد — نه چیزی که از شما گرفته شود.</string>
+    <string name="membership_step_register">در LBank یا Ourbit، از طریق لینک معرفِ کوین‌پرو ثبت‌نام کنید.</string>
+    <string name="membership_step_fund">موجودی حساب را حداقل به ۵۰ تتر برسانید.</string>
+    <string name="membership_step_uid">شناسهٔ کاربری (UID) حساب صرافی را در اپ وارد کنید.</string>
+    <string name="membership_step_verified">احراز خودکار از API صرافی انجام می‌شود و دسترسی فعال می‌گردد.</string>
+    <string name="membership_copytrade_note">کپی‌تریدینگ خودکار روی LBank ارائه می‌شود؛ Ourbit این امکان را ندارد و کاربر Ourbit سیگنال‌ها را دریافت و خودش اجرا می‌کند.</string>
+    <string name="membership_referral_note">گام یک را جدی بگیرید: حسابی که بدون لینک معرف ساخته شود، در سامانهٔ صرافی زیرمجموعهٔ کوین‌پرو نیست و بعداً قابل احراز نخواهد بود.</string>
+    <string name="membership_sign_in">ورود یا ثبت‌نام</string>
+    <string name="membership_read_terms">شرایط کامل عضویت</string>
+</resources>

@@ -30,6 +30,7 @@ import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.EmailAuthController
+import com.coinepro.core.guest.GuestController
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionState
 import com.coinepro.core.copytrade.CopyTradeController
@@ -52,6 +53,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     @Inject lateinit var sessionController: SessionController
     @Inject lateinit var emailAuthController: EmailAuthController
+    @Inject lateinit var guestController: GuestController
     @Inject lateinit var marketDataControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketDataController>
     @Inject lateinit var marketSearchControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketSearchController>
     @Inject lateinit var candleGateways: Map<MarketPlatform, @JvmSuppressWildcards CandleGateway>
@@ -100,6 +102,7 @@ class MainActivity : ComponentActivity() {
             CoineProApp(
                 sessionController = sessionController,
                 emailAuthController = emailAuthController,
+                guestController = guestController,
                 marketDataControllers = marketDataControllers,
                 marketSearchControllers = marketSearchControllers,
                 candleGateways = candleGateways,

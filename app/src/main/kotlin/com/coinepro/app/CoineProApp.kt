@@ -15,8 +15,11 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -94,7 +97,9 @@ import com.coinepro.feature.home.HomeBriefing
 import com.coinepro.feature.home.HomePortfolio
 import com.coinepro.feature.home.HomeSubscription
 import com.coinepro.feature.home.HomeScreen
+import com.coinepro.core.guest.GuestController
 import com.coinepro.feature.account.DeleteAccountScreen
+import com.coinepro.feature.guest.GuestScreen
 import com.coinepro.feature.kyc.KycScreen
 import com.coinepro.feature.home.toHomeBriefing
 import com.coinepro.feature.home.toHomePortfolio
@@ -175,6 +180,7 @@ private fun lessonRoute(slug: String) = "academy/lesson/" + Uri.encode(slug)
 fun CoineProApp(
     sessionController: SessionController,
     emailAuthController: EmailAuthController,
+    guestController: GuestController,
     marketDataControllers: Map<MarketPlatform, MarketDataController>,
     marketSearchControllers: Map<MarketPlatform, MarketSearchController>,
     candleGateways: Map<MarketPlatform, CandleGateway>,
@@ -448,6 +454,27 @@ fun CoineProApp(
                         emailAuthController.goTo(EmailAuthStep.RESET_PASSWORD)
                     }
                 }
+
+                // Signed out is not the same as unwelcome.
+                //
+                // This used to be a sign-in form and nothing else, which asked for a password
+                // before giving any reason to have one. Now the app opens on the market — real
+                // prices from TradeYar's public feed — and the form appears when the reader asks
+                // for it, or when a recovery link says they are already mid-flow.
+                //
+                // Saveable, so a rotation mid-password does not throw the reader back to the
+                // market screen with a half-typed form gone.
+                var signingIn by rememberSaveable { mutableStateOf(false) }
+                val showForm = signingIn || launchResetToken != null
+
+                if (!showForm) {
+                    GuestScreen(
+                        controller = guestController,
+                        onSignIn = { signingIn = true },
+                    )
+                    return@CoineProTheme
+                }
+
                 EmailAuthScreen(
                     state = emailAuthState,
                     onSignIn = emailAuthController::signIn,

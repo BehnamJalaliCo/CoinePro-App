@@ -15,6 +15,43 @@ it is for.
 
 ---
 
+## [1.1.0] — 2026-08-26 — The app opens without an account
+
+### Added
+- **Guest mode.** The app used to open on a sign-in form, which asks for a password before giving
+  any reason to have one. It now opens on the market: real prices from TradeYar's public feed, the
+  published headlines, and the membership route explained underneath. The form appears when the
+  reader asks for it — or straight away when a recovery link says they are already mid-flow.
+- `core:guest` over the public routes the server has published all along for its own web site and
+  the app never called. No token, so nothing here can log anybody out.
+- A membership card that is not a paywall, because there is no wall: the four steps are stated in
+  full, including the one that cannot be undone — an account opened without the referral link is
+  not a sub-account in the exchange's own system and cannot be verified afterwards.
+- **Deleting an account**, in the app and on the web. What goes, what stays anonymised and for how
+  long, and that it does not close the exchange account. It asks for a typed word rather than a
+  second tap, and where the server has no route it hands over the published page instead of a
+  button that would fail.
+- `PageAccent.DESTRUCTIVE` — a fourth accent that means "this cannot be undone", deliberately
+  unavailable to a cancel or a sign-out.
+- `MarketNumberFormatter.priceAuto`, which takes its decimals from the price's own magnitude. At a
+  fixed two, XRP read 0.52 and a sub-cent coin read 0.00 — not a rounding but a claim that the
+  asset is worthless.
+- The privacy policy, terms and deletion page published as real pages, rendered from
+  `docs/legal/*.md` so there is no second copy of the text to drift.
+
+### Changed
+- Terms §6 says what the service actually charges: nothing. The revenue is affiliate commission the
+  exchange pays on the reader's own trading; membership is a sub-account check with a 50 USDT floor
+  — `VIP_MIN_DEPOSIT` in the server's own configuration — not a purchase. Copy trading is LBank
+  only, because Ourbit does not offer it.
+
+### Fixed
+- `AccountApi`'s four paths carried CoinePro-FX's `user/mobile` prefix for both platforms. TradeYar
+  serves them under `api/mobile/v1`, so briefing, portfolio and both KYC calls had been answering
+  404 on the crypto platform.
+
+---
+
 ## [1.0.0] — 2026-08-26
 
 **The first release that installs, updates, and can be named.**

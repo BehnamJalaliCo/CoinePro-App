@@ -8,6 +8,9 @@ import com.coinepro.app.BuildConfig
 import com.coinepro.core.account.AccountController
 import com.coinepro.core.account.AccountGateway
 import com.coinepro.core.account.NetworkAccountGateway
+import com.coinepro.core.guest.GuestController
+import com.coinepro.core.guest.GuestGateway
+import com.coinepro.core.guest.NetworkGuestGateway
 import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aiassistant.AiAssistantGateway
 import com.coinepro.core.aiassistant.NetworkAiAssistantGateway
@@ -291,6 +294,30 @@ object AppModule {
     @CryptoPlatform
     fun cryptoAccountGateway(@CryptoPlatform retrofit: Retrofit): AccountGateway =
         NetworkAccountGateway.create(retrofit, MarketPlatform.TRADEYAR)
+
+    /**
+     * The public surface, on the crypto retrofit.
+     *
+     * Not keyed by platform, because there is only one: TradeYar publishes its `api/v1/public` routes for
+     * its own web site and CoinePro-FX publishes nothing without a token. Making this a map of two
+     * with one entry that always fails would put an empty market in front of every guest on the
+     * forex platform and call it a feature. `docs/REQUEST4_ACCOUNT_DELETION.md` §2 asks CoinePro-FX
+     * for either a public read or a guest token; until one arrives, a guest sees the crypto market,
+     * and that is stated rather than disguised.
+     *
+     * The crypto client is reused rather than a bare one built: with nobody signed in there is no
+     * token for the auth interceptor to attach, and the install-id header these calls do carry is
+     * exactly what the server's rate limiter wants from an anonymous caller.
+     */
+    @Provides
+    @Singleton
+    fun guestGateway(@CryptoPlatform retrofit: Retrofit): GuestGateway =
+        NetworkGuestGateway.create(retrofit)
+
+    @Provides
+    @Singleton
+    fun guestController(gateway: GuestGateway, scope: CoroutineScope): GuestController =
+        GuestController(gateway, scope)
 
     @Provides
     @Singleton

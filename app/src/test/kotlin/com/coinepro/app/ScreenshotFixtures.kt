@@ -95,6 +95,10 @@ import com.coinepro.core.account.AccountBriefing
 import com.coinepro.core.account.AccountGateway
 import com.coinepro.core.account.AccountPortfolio
 import com.coinepro.core.account.DeletionOutcome
+import com.coinepro.core.guest.GuestGateway
+import com.coinepro.core.guest.GuestHeadline
+import com.coinepro.core.guest.GuestPrices
+import com.coinepro.core.guest.GuestQuote
 import com.coinepro.core.account.KycState
 import com.coinepro.core.account.KycStatus
 import com.coinepro.core.common.AppResult
@@ -1472,6 +1476,45 @@ internal class FakeCopyTradeGateway(
         status.preferences.copy(enabled = enabled)
     override suspend fun linkAccount(broker: String, server: String, login: String, password: String) = Unit
     override suspend fun unlinkAccount() = Unit
+}
+
+/**
+ * A public feed with the shape the route really returns — including the row where the server
+ * omitted the 24-hour change, which is the case that must draw nothing rather than a flat zero.
+ */
+internal class FakeGuestGateway : GuestGateway {
+    override suspend fun prices(symbols: List<String>) = AppResult.Success(
+        GuestPrices(
+            quotes = listOf(
+                GuestQuote("BTCUSDT", 64_182.40, 2.14, 64_900.0, 62_800.0, 1.2e9),
+                GuestQuote("ETHUSDT", 3_142.77, -1.08, 3_220.0, 3_090.0, 6.1e8),
+                GuestQuote("SOLUSDT", 148.92, 5.63, 151.0, 139.4, 2.2e8),
+                GuestQuote("XRPUSDT", 0.5241, -0.42, 0.5390, 0.5180, 9.4e7),
+                GuestQuote("TONUSDT", 5.118, null, null, null, null),
+            ),
+            stale = false,
+            ageMillis = 340,
+        ),
+    )
+
+    override suspend fun news(limit: Int) = AppResult.Success(
+        listOf(
+            GuestHeadline(
+                slug = "btc-etf-inflow",
+                title = "ورودی صندوق‌های بیت‌کوین به بالاترین رقم دو ماه اخیر رسید",
+                summary = "جریان خالص ورودی روز گذشته ۴۳۸ میلیون دلار ثبت شد.",
+                source = "TradeYar",
+                publishedAt = null,
+            ),
+            GuestHeadline(
+                slug = "fed-minutes",
+                title = "صورت‌جلسهٔ فدرال رزرو: نگرانی از چسبندگی تورم خدمات",
+                summary = null,
+                source = "TradeYar",
+                publishedAt = null,
+            ),
+        ),
+    )
 }
 
 internal class FakeAccountGateway(

@@ -299,6 +299,7 @@ core:aivision
 core:aiassistant
 core:marketintel
 core:account
+core:guest
 core:diagnostics
 core:database
 feature:admin
@@ -315,6 +316,7 @@ feature:connections
 feature:execution
 feature:kyc
 feature:account
+feature:guest
 feature:copytrade
 feature:ai
 feature:ai-vision
