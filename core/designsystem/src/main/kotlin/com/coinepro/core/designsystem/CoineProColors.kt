@@ -38,8 +38,13 @@ object CoineProColors {
     /**
      * The mark's silver is neutral, not the cool blue-grey this palette used to carry. Sampling it
      * as blue-tinted put a hue in the product that the brand does not contain.
+     *
+     * The level is the median of the artwork's own silver — the mark's C and, since the wordmark
+     * was matched to it, "Coine" as well. It moved down eight levels when that match was made, and
+     * the direction is the point: at #E4E4E4 this token was brighter than the metal it names, which
+     * is the same thing that made the wordmark read as white text next to a metallic "Pro".
      */
-    val Silver = Color(0xFFE4E4E4)
+    val Silver = Color(0xFFDBDBDB)
     val SilverMuted = Color(0xFFCCCCCC)
 
     /* --------------------------------------------------- theme-dependent */

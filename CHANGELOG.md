@@ -15,6 +15,25 @@ it is for.
 
 ---
 
+## [1.19.0] — 2026-08-27 — "Coine" in the mark's own silver
+
+### Changed
+- "Coine" is the mark's silver instead of near-white. In the supplied artwork it sits at luminance
+  232 in a flat top face beside a genuinely metallic "Pro", so under the mark it read as white text
+  next to gold rather than as two halves of one name in the same material. It is histogram-matched
+  onto the C's own silver — "make it the silver of the C" performed by measurement rather than
+  picked by eye. The gold and every edge in the file are untouched.
+- `CoineProColors.Silver` moved from #E4E4E4 to #DBDBDB, the median of the artwork's own silver. It
+  was brighter than the metal it names, which is the same fault the wordmark had.
+
+### Added
+- `scripts/design/build-brand-lockup.py`, which produces every brand raster from the one master, and
+  `--check`, which proves the committed files are what it produces. The brand README had promised
+  this pipeline for a while; now it exists, and the mark it regenerates is byte-identical to the one
+  that was already committed — which is what makes the crop boxes and the resampling trustworthy.
+
+---
+
 ## [1.18.0] — 2026-08-27 — The reader's own calendar
 
 ### Added

@@ -33,11 +33,17 @@ import androidx.compose.ui.unit.dp
  * black-ground JPEG. That cut worked, but every edge it produced was an approximation of an alpha
  * channel that now simply exists.
  *
- * On a light background it keeps its own colours and is given a dark plate to sit on. The silver
- * half of the name is very nearly white, so on a pale surface "Coine" disappears and only "Pro"
- * survives — the brand reading as half of itself. Recolouring it was the alternative and would mean
- * abandoning the bevel the artwork exists for; a plate keeps the mark exactly as drawn and changes
- * only what is behind it.
+ * The silver half of the name is **not** the master's own. In the supplied artwork "Coine" sits at
+ * luminance 232 against a "Pro" that is genuinely metallic, which reads as white text beside gold
+ * rather than as two halves of one name in the same material. `scripts/design/build-brand-lockup.py`
+ * remaps it onto the mark's own silver distribution — a histogram match against the C, so "make it
+ * the silver of the C" is performed by measurement rather than picked by eye. The gold and every
+ * edge in the file are untouched.
+ *
+ * It is still given a dark plate on a light background. The match deepened the shadows but left the
+ * top faces near white, because that is what the mark's own chrome does; on a pale surface those
+ * faces still disappear and the name still reads as half of itself. The plate keeps the artwork
+ * exactly as drawn and changes only what is behind it.
  */
 @Composable
 fun CoineProWordmark(
