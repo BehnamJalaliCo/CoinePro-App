@@ -88,6 +88,9 @@ fun ChartScreen(
      * WebView, and an ordinary reader who never presses it never meets one.
      */
     onOpenTerminal: (() -> Unit)? = null,
+    /** The reader's watchlist, for the switcher strip. Fewer than two symbols hides it. */
+    watchlist: List<String> = emptyList(),
+    onSelectSymbol: ((String) -> Unit)? = null,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var sheet by remember { mutableStateOf<ChartSheet?>(null) }
@@ -106,6 +109,9 @@ fun ChartScreen(
 
     Column(modifier = Modifier.fillMaxSize().background(CoineProColors.Stage)) {
         Header(state, onOpenTerminal)
+        onSelectSymbol?.let { select ->
+            SymbolWheel(symbols = watchlist, current = state.symbol, onSelect = select)
+        }
         TimeframeRow(state.timeframe, controller::setTimeframe)
 
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {

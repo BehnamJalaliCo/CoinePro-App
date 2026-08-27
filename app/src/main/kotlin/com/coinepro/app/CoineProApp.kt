@@ -918,6 +918,16 @@ private fun MainShell(
                     ChartController(symbol = symbol, gateway = candleGateway, scope = scope)
                 }
                 ChartScreen(
+                    watchlist = watchlist,
+                    onSelectSymbol = { symbol ->
+                        // Replaces the chart rather than stacking one on top of another: flipping
+                        // through six symbols must not build a six-deep back stack that takes six
+                        // presses to leave.
+                        navController.navigate(chartRoute(symbol)) {
+                            popUpTo(CHART_PATTERN) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
                     controller = chartController,
                     onOpenTerminal = if (terminalController.isConfigured) {
                         { navController.navigate(TERMINAL_ROUTE) }

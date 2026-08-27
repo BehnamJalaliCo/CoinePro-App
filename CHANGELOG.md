@@ -15,6 +15,21 @@ it is for.
 
 ---
 
+## [1.12.0] — 2026-08-27 — Switching symbol without leaving the chart
+
+### Added
+- A watchlist strip on the chart. It replaces four taps — back, search, type, open — repeated every
+  time somebody compares two instruments, which is most of what looking at charts is.
+- The reader's own list and nothing else. A strip of "popular" symbols would be a second market list
+  on a screen that is not one; if the watchlist is empty the strip is absent rather than filled with
+  suggestions.
+- The current symbol scrolls itself into view, so opening the chart on the ninth of a list does not
+  show a strip apparently starting somewhere else.
+- Switching replaces the chart rather than stacking one on another: flipping through six symbols
+  must not build a six-deep back stack that takes six presses to leave.
+
+---
+
 ## [1.11.0] — 2026-08-27 — A backtest on the chart
 
 ### Added
