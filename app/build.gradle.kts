@@ -352,6 +352,7 @@ dependencies {
     implementation(project(":feature:kyc"))
     implementation(project(":feature:account"))
     implementation(project(":feature:guest"))
+    implementation(project(":feature:alerts"))
     implementation(project(":feature:copytrade"))
     implementation(project(":feature:ai"))
     implementation(project(":feature:ai-vision"))

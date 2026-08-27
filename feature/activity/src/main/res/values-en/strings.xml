@@ -99,4 +99,5 @@
     <string name="activity_alert_cross">Crosses %1$s</string>
     <string name="activity_metric_executions">executions</string>
     <string name="activity_sample_size">n=%1$s</string>
+    <string name="activity_alerts_body">Create, mute and delete an alert on any symbol.</string>
 </resources>

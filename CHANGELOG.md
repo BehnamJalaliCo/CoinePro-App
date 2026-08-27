@@ -15,6 +15,21 @@ it is for.
 
 ---
 
+## [1.8.0] — 2026-08-27 — Somewhere to create a price alert
+
+### Added
+- `feature:alerts`: create, mute and delete. The gateway had existed since the notification work
+  and had no screen, so the app could *receive* a price alert while offering nowhere to make one —
+  every alert in the list had come from somewhere else.
+- All five conditions, not just above and below. "Above" fires immediately on an instrument that has
+  been above the level all week, which is usually the opposite of what was wanted; the crossing
+  conditions fire on the transition. Telling them apart is the difference between an alert that
+  arrives when something happens and one that arrives the moment it is set.
+- Once by default, recurring behind a switch with the reason written next to it: on a price
+  oscillating around the level, recurring is a phone that will not stop while its owner is asleep.
+
+---
+
 ## [1.7.0] — 2026-08-27 — The guest market is the real one
 
 ### Changed

@@ -100,6 +100,7 @@ import com.coinepro.feature.home.HomeScreen
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
 import com.coinepro.feature.account.DeleteAccountScreen
+import com.coinepro.feature.alerts.AlertsScreen
 import com.coinepro.feature.guest.GuestScreen
 import com.coinepro.feature.kyc.KycScreen
 import com.coinepro.feature.home.toHomeBriefing
@@ -139,6 +140,7 @@ private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
 private const val ADMIN_ROUTE = "diagnostics"
 private const val KYC_ROUTE = "account/verify"
 private const val DELETE_ACCOUNT_ROUTE = "account/delete"
+private const val ALERTS_ROUTE = "alerts"
 private fun signalDetailRoute(signalId: Long) = "signal/$signalId"
 private fun executionRoute(signalId: Long) = "execution/$signalId"
 
@@ -600,6 +602,7 @@ private fun MainShell(
         AI_ASSISTANT_ROUTE,
         KYC_ROUTE,
         DELETE_ACCOUNT_ROUTE,
+        ALERTS_ROUTE,
         NEWS_ROUTE,
         CALENDAR_ROUTE,
         LAUNCH_READINESS_ROUTE,
@@ -618,6 +621,7 @@ private fun MainShell(
         }
         KYC_ROUTE -> R.string.screen_kyc
         DELETE_ACCOUNT_ROUTE -> R.string.screen_delete_account
+        ALERTS_ROUTE -> R.string.screen_alerts
         AI_VISION_ROUTE -> R.string.screen_ai_vision
         AI_ASSISTANT_ROUTE -> R.string.screen_ai_assistant
         MARKET_SEARCH_ROUTE -> R.string.screen_market_search
@@ -814,6 +818,9 @@ private fun MainShell(
             composable(KYC_ROUTE) {
                 KycScreen(controller = accountController)
             }
+            composable(ALERTS_ROUTE) {
+                AlertsScreen(controller = notificationController)
+            }
             composable(DELETE_ACCOUNT_ROUTE) {
                 DeleteAccountScreen(
                     controller = accountController,
@@ -951,6 +958,7 @@ private fun MainShell(
             }
             composable(AppDestination.ACTIVITY.route) {
                 ActivityScreen(
+                    onOpenAlerts = { navController.navigate(ALERTS_ROUTE) },
                     controller = notificationController,
                     executionController = executionController,
                     signalController = signalController,

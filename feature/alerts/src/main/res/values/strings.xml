@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="alerts_new_title">هشدار تازه</string>
+    <string name="alerts_symbol">نماد</string>
+    <string name="alerts_price">قیمت</string>
+    <string name="alerts_create">ساختن هشدار</string>
+    <string name="alerts_existing_title">هشدارهای شما</string>
+    <string name="alerts_empty">هنوز هشداری نساخته‌اید.</string>
+    <string name="alerts_delete">حذف</string>
+    <string name="alerts_recurring">تکرارشونده</string>
+    <string name="alerts_recurring_note">اگر خاموش باشد، هشدار فقط یک بار می‌آید. روی قیمتی که دور سطح نوسان می‌کند، تکرار یعنی گوشی‌ای که ساکت نمی‌شود.</string>
+    <string name="alerts_condition_above">بالاتر از</string>
+    <string name="alerts_condition_below">پایین‌تر از</string>
+    <string name="alerts_condition_cross_up">عبور رو به بالا از</string>
+    <string name="alerts_condition_cross_down">عبور رو به پایین از</string>
+    <string name="alerts_condition_cross">عبور از</string>
+</resources>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="alerts_new_title">New alert</string>
+    <string name="alerts_symbol">Symbol</string>
+    <string name="alerts_price">Price</string>
+    <string name="alerts_create">Create alert</string>
+    <string name="alerts_existing_title">Your alerts</string>
+    <string name="alerts_empty">You have not created an alert yet.</string>
+    <string name="alerts_delete">Delete</string>
+    <string name="alerts_recurring">Recurring</string>
+    <string name="alerts_recurring_note">Off means it arrives once. On a price oscillating around the level, recurring is a phone that will not stop.</string>
+    <string name="alerts_condition_above">Above</string>
+    <string name="alerts_condition_below">Below</string>
+    <string name="alerts_condition_cross_up">Crossing up through</string>
+    <string name="alerts_condition_cross_down">Crossing down through</string>
+    <string name="alerts_condition_cross">Crossing</string>
+</resources>

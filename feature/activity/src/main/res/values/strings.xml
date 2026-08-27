@@ -100,4 +100,5 @@
     <string name="activity_alert_cross">عبور از %1$s</string>
     <string name="activity_metric_executions">اجرا</string>
     <string name="activity_sample_size">%1$s نمونه</string>
+    <string name="activity_alerts_body">ساختن، خاموش کردن و حذف هشدار روی هر نمادی.</string>
 </resources>

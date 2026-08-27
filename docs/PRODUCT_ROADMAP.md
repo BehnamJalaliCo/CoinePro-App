@@ -317,6 +317,7 @@ feature:execution
 feature:kyc
 feature:account
 feature:guest
+feature:alerts
 feature:copytrade
 feature:ai
 feature:ai-vision

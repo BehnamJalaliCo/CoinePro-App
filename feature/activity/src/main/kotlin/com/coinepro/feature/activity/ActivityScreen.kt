@@ -84,6 +84,13 @@ fun ActivityScreen(
     executionController: ExecutionController,
     signalController: SignalController,
     onOpenSignal: (Long) -> Unit,
+    /**
+     * Opens the alert screen. Null leaves the entry off.
+     *
+     * Alerts live here because this is where a reader already comes to see what fired; the app used
+     * to be able to *receive* a price alert while offering nowhere to create one.
+     */
+    onOpenAlerts: (() -> Unit)? = null,
     platform: MarketPlatform = MarketPlatform.COINEPRO_FX,
 ) {
     val notificationState by controller.state.collectAsStateWithLifecycle()
@@ -133,6 +140,38 @@ fun ActivityScreen(
                     controller.refresh()
                 },
             )
+        }
+
+        onOpenAlerts?.let { open ->
+            item {
+                CoineProCard(
+                    modifier = Modifier.fillMaxWidth().clickable(onClick = open),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.activity_alerts_title),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = CoineProColors.TextPrimary,
+                            )
+                            Text(
+                                text = stringResource(R.string.activity_alerts_body),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = CoineProColors.TextMuted,
+                            )
+                        }
+                        Text(
+                            text = notificationState.alerts.size.toPersianDigits(),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = CoineProColors.Accent,
+                        )
+                    }
+                }
+            }
         }
 
         if (historyState.loading && historyState.items.isEmpty()) {
