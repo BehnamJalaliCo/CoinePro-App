@@ -15,6 +15,34 @@ it is for.
 
 ---
 
+## [1.20.1] — 2026-08-27 — Hardening for a public repository
+
+The repository went from private to public. Nothing in its history was secret — no keystore, no
+`.env`, no `local.properties`, no Firebase file, and no credential in any commit message — but a
+public source tree makes every weakness in it findable by reading rather than by guessing. These are
+the ones worth fixing before somebody else finds them.
+
+### Security
+- **The terminal WebView compared origins by string prefix.** With the address normalised to
+  `https://terminal.example`, `https://terminal.example.evil.tld`, `https://terminal.example@evil.tld`
+  and `https://terminal.example-not-really.tld` all passed the check. That mattered more than a stray
+  navigation, because `onPageStarted` plants the reader's academy token into whatever document is
+  loading — a page reached that way would have been handed the token. The comparison is now on the
+  parsed host, exactly, and the injection is gated on the same test so a server-side redirect cannot
+  slip past a check that only runs on navigations. Six tests, one per bypass.
+- **A server-supplied URL went straight to `ACTION_VIEW`.** The community channels added in 1.17.0
+  carry their links from the server, and `ACTION_VIEW` on an arbitrary URI hands the string to
+  whatever app claims that scheme — `intent://` starts a component in another app, `file://` hands
+  over a local path. `Context.open` now requires https and a host.
+- **Four workflow-dispatch inputs were interpolated into shell scripts.** Only someone with write
+  access can dispatch those workflows, which bounds it, but the runners hold the release keystore and
+  the Play service account. The inputs now reach bash through the environment.
+- **`mapping.txt` is no longer uploaded as a build artifact.** It undoes R8's obfuscation of the
+  bundle beside it, and on a public repository an artifact is downloadable by anybody. Play Console
+  is where a crash report needs it, behind the same account as the release.
+
+---
+
 ## [1.20.0] — 2026-08-27 — An icon with a ground under it
 
 ### Changed

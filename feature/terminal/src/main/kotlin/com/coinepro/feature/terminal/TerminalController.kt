@@ -111,7 +111,57 @@ class TerminalController(
 internal fun normalisedUrl(raw: String?): String? {
     val text = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
     if (!text.startsWith("https://", ignoreCase = true)) return null
+    // A configured address carrying credentials is refused rather than stripped: it means the build
+    // was pointed somewhere odd, and [terminalHost] would then disagree with what a reader sees.
+    if (text.substringAfter("://").substringBefore('/').contains('@')) return null
     return text.trimEnd('/')
+}
+
+/**
+ * The one host the terminal WebView may ever be on.
+ *
+ * This exists because the check it replaces was `target.startsWith(url)`, and a prefix test on a URL
+ * string is not an origin test. With the address normalised to `https://terminal.example` — no
+ * trailing slash — all three of these passed it:
+ *
+ * ```
+ * https://terminal.example.evil.tld/steal          the host is evil.tld
+ * https://terminal.example@evil.tld/steal          the host is evil.tld; the rest is userinfo
+ * https://terminal.example-not-really.tld/steal    a different registrable domain entirely
+ * ```
+ *
+ * That mattered more than a navigation going astray, because `onPageStarted` plants the academy
+ * token into whatever document is loading. A page reached through one of those would have been
+ * handed the reader's token.
+ *
+ * So the comparison is on the parsed host, exactly, the way `DeepLinkValidation` already compares
+ * the reset host. Any URL that fails to parse, or carries userinfo, or is not https, is not the
+ * terminal.
+ */
+internal fun terminalHost(url: String?): String? {
+    val text = url?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    if (!text.startsWith("https://", ignoreCase = true)) return null
+    val authority = text.removePrefix("https://").removePrefix("HTTPS://")
+        .substringBefore('/')
+        .substringBefore('?')
+        .substringBefore('#')
+    // Userinfo is the whole trick in the second example above, so its presence disqualifies the URL
+    // rather than being parsed past.
+    if (authority.contains('@')) return null
+    val host = authority.substringBefore(':').lowercase()
+    return host.takeIf { it.isNotEmpty() && !it.contains('\\') }
+}
+
+/**
+ * Whether a URL the WebView is about to open is the terminal itself.
+ *
+ * Scheme and host, both exact. Not the path: the terminal routes within itself and pinning a path
+ * prefix here would break its own navigation the next time it grew a page.
+ */
+internal fun isTerminalUrl(target: String?, terminal: String?): Boolean {
+    val expected = terminalHost(terminal) ?: return false
+    val actual = terminalHost(target) ?: return false
+    return actual == expected
 }
 
 /**

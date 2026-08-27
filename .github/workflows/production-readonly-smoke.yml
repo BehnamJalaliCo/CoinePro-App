@@ -52,11 +52,16 @@ jobs:
         env:
           COINEPRO_PRODUCTION_API_BASE_URL: ${{ secrets.COINEPRO_PRODUCTION_API_BASE_URL }}
           COINEPRO_PRODUCTION_SMOKE_BEARER_TOKEN: ${{ secrets.COINEPRO_PRODUCTION_SMOKE_BEARER_TOKEN }}
+          # Through the environment, not interpolated into the script. `${{ }}` is substituted
+          # before bash parses the line, so an input carrying a quote and a semicolon would run as
+          # a command on a runner that is holding a production bearer token.
+          SMOKE_SYMBOLS: ${{ inputs.symbols }}
+          SMOKE_JOB_ID: ${{ inputs.ai_vision_job_id }}
         run: |
           set -euo pipefail
           python3 scripts/release/production-readonly-smoke.py \
-            --symbols "${{ inputs.symbols }}" \
-            --ai-vision-job-id "${{ inputs.ai_vision_job_id }}" \
+            --symbols "$SMOKE_SYMBOLS" \
+            --ai-vision-job-id "$SMOKE_JOB_ID" \
             --output "$RUNNER_TEMP/phase17-production-readonly-smoke.json"
 
       - name: Upload sanitized smoke evidence

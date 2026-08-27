@@ -89,11 +89,19 @@ fun TerminalScreen(
                         setBackgroundColor(android.graphics.Color.TRANSPARENT)
 
                         webViewClient = object : WebViewClient() {
-                            override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
+                            override fun onPageStarted(view: WebView, pageUrl: String, favicon: Bitmap?) {
                                 // Planted on every page start, not only the first. The terminal is
                                 // a single-page app but a hard reload — its own, or a crash
                                 // recovery — would otherwise come back signed out.
-                                view.evaluateJavascript(tokenInjectionScript(token), null)
+                                //
+                                // Guarded by the same host test as the navigation, and the guard is
+                                // the point: this call hands the reader's academy token to whatever
+                                // document is loading. `shouldOverrideUrlLoading` is not consulted
+                                // for a server-side redirect, so without this check a 302 off the
+                                // terminal's host would be enough to give the token away.
+                                if (isTerminalUrl(pageUrl, url)) {
+                                    view.evaluateJavascript(tokenInjectionScript(token), null)
+                                }
                             }
 
                             override fun onPageFinished(view: WebView, url: String) {
@@ -119,8 +127,13 @@ fun TerminalScreen(
                                 // opened. This WebView holds a token in its storage; letting it
                                 // navigate to an arbitrary link would put that token one
                                 // same-origin bug away from a page nobody vetted.
-                                val target = request.url.toString()
-                                return !target.startsWith(url, ignoreCase = true)
+                                //
+                                // Compared by parsed host, not by string prefix. A prefix test on
+                                // `https://terminal.example` also accepts
+                                // `https://terminal.example.evil.tld` and
+                                // `https://terminal.example@evil.tld`, both of which resolve
+                                // somewhere else entirely — see `isTerminalUrl`.
+                                return !isTerminalUrl(request.url.toString(), url)
                             }
                         }
                         // Planted before the first load too: onPageStarted fires after the

@@ -106,10 +106,26 @@ fun MembershipGate(
     }
 }
 
-/** Opens a link, and does nothing where the device has no browser. The address is not a secret. */
+/**
+ * Opens a link, and does nothing where the device has no browser.
+ *
+ * **https only, and the check is not decorative.** One caller passes a constant; the other passes
+ * `CommunityChannel.url`, which arrives from the server. `ACTION_VIEW` on an arbitrary URI is a
+ * request to hand the string to whatever app claims that scheme, so a server that was compromised —
+ * or a response tampered with in transit by anything that could get past TLS — could aim this at an
+ * `intent://` URI and start a component in another app on the reader's phone, or at a `file://` one
+ * and hand a local path to a viewer.
+ *
+ * The scheme is compared after lowercasing because `Uri.parse` preserves the case it was given, and
+ * `HTTPS://` is the same scheme to Android and a different string here.
+ */
 internal fun Context.open(url: String) {
+    val uri = runCatching { Uri.parse(url) }.getOrNull() ?: return
+    if (!uri.scheme.equals("https", ignoreCase = true)) return
+    // A host is required as well: `https:///path` parses, has the right scheme, and points nowhere.
+    if (uri.host.isNullOrBlank()) return
     try {
-        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     } catch (_: ActivityNotFoundException) {
         Unit
     }

@@ -41,8 +41,16 @@ jobs:
         with:
           gradle-version: "9.4.0"
 
+      # The inputs reach the shell as environment variables, never interpolated into the script
+      # text. `${{ }}` is substituted before bash sees the line, so a dispatch input containing a
+      # quote and a semicolon would execute on a runner that is holding the release keystore and the
+      # Play service account. Only someone with write access can dispatch this, which bounds the
+      # blast radius but does not make it acceptable.
       - name: Validate release version
-        run: bash scripts/release/validate-version.sh "${{ inputs.version_name }}" "${{ inputs.version_code }}"
+        env:
+          VERSION_NAME: ${{ inputs.version_name }}
+          VERSION_CODE: ${{ inputs.version_code }}
+        run: bash scripts/release/validate-version.sh "$VERSION_NAME" "$VERSION_CODE"
 
       - name: Validate protected release inputs
         shell: bash
@@ -110,16 +118,20 @@ jobs:
       - name: Publish staging package to Play internal track
         env:
           PLAY_ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
-        run: bash scripts/release/publish-play-internal.sh com.coinepro.app.staging app/build/outputs/bundle/staging/app-staging.aab "${{ inputs.version_code }}" "${{ inputs.version_name }}"
+          VERSION_NAME: ${{ inputs.version_name }}
+          VERSION_CODE: ${{ inputs.version_code }}
+        run: bash scripts/release/publish-play-internal.sh com.coinepro.app.staging app/build/outputs/bundle/staging/app-staging.aab "$VERSION_CODE" "$VERSION_NAME"
 
       - name: Upload release evidence
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: coinepro-staging-${{ inputs.version_name }}-${{ inputs.version_code }}
-          path: |
-            app/build/outputs/bundle/staging/app-staging.aab
-            app/build/outputs/mapping/staging/mapping.txt
+          # `mapping.txt` is deliberately not here. It undoes R8's obfuscation of the bundle that
+          # sits beside it, and on a public repository an artifact is downloadable by anybody. It
+          # belongs in Play Console, which is where a crash report needs it, and where it is behind
+          # the same account as the release itself.
+          path: app/build/outputs/bundle/staging/app-staging.aab
           if-no-files-found: error
           retention-days: 14
 

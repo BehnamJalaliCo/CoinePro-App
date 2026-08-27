@@ -150,3 +150,61 @@ class TerminalControllerTest {
         assertTrue(script.contains("cp_academy_token"))
     }
 }
+
+/**
+ * The WebView's origin check.
+ *
+ * Every case here is a URL that the check this replaced — `target.startsWith(url)` — let through.
+ * They are kept as tests rather than as a comment because the failure they describe is silent: the
+ * page loads, looks like the terminal, and is handed the reader's academy token by `onPageStarted`.
+ */
+class TerminalOriginTest {
+
+    private val terminal = "https://terminal.coinepro.com"
+
+    @Test
+    fun `the terminal's own pages are allowed`() {
+        assertTrue(isTerminalUrl("https://terminal.coinepro.com", terminal))
+        assertTrue(isTerminalUrl("https://terminal.coinepro.com/", terminal))
+        assertTrue(isTerminalUrl("https://terminal.coinepro.com/bn/chart?symbol=XAUUSD", terminal))
+        // The host is compared case-insensitively, because DNS is.
+        assertTrue(isTerminalUrl("https://Terminal.CoinePro.com/bn", terminal))
+    }
+
+    @Test
+    fun `a longer domain that merely starts with the terminal's is refused`() {
+        // `startsWith` accepted this. The registrable domain is evil.tld and nothing about it is
+        // the terminal.
+        assertFalse(isTerminalUrl("https://terminal.coinepro.com.evil.tld/steal", terminal))
+        assertFalse(isTerminalUrl("https://terminal.coinepro.community-news.example/x", terminal))
+    }
+
+    @Test
+    fun `userinfo that impersonates the host is refused`() {
+        // Everything before the @ is a username. The request goes to evil.tld — and `startsWith`
+        // saw the terminal's address at the front of the string and allowed it.
+        assertFalse(isTerminalUrl("https://terminal.coinepro.com@evil.tld/steal", terminal))
+        assertFalse(isTerminalUrl("https://terminal.coinepro.com:pass@evil.tld/", terminal))
+    }
+
+    @Test
+    fun `plain http is refused even on the right host`() {
+        // The token is a bearer credential; over http anything on the path can read it.
+        assertFalse(isTerminalUrl("http://terminal.coinepro.com/bn", terminal))
+    }
+
+    @Test
+    fun `nothing is the terminal when no terminal is configured`() {
+        assertFalse(isTerminalUrl("https://terminal.coinepro.com", null))
+        assertFalse(isTerminalUrl("https://terminal.coinepro.com", ""))
+        assertFalse(isTerminalUrl(null, terminal))
+    }
+
+    @Test
+    fun `a configured address carrying userinfo is not usable at all`() {
+        // Refused at the source rather than at each navigation, so there is no state in which the
+        // app is pointed at one host and checking against another.
+        assertNull(normalisedUrl("https://terminal.coinepro.com@evil.tld"))
+        assertNull(terminalHost("https://terminal.coinepro.com@evil.tld"))
+    }
+}
