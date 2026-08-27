@@ -236,63 +236,46 @@ SHA-256  96:12:AB:6C:BF:BB:4F:4F:FB:F1:51:D8:60:2C:12:9D:CC:E8:A9:77:1E:85:46:69
 
 **Still open**
 
-1. **Google sign-in fails on a signed build. The fix is one OAuth client in Google Cloud, and it is
-   not the `google-services.json` file.**
+1. **Google sign-in: the Android half is done, the web half was deleted.**
 
-   Six copies of `google-services.json` have been supplied. Five are **byte-identical** to each
-   other (md5 `77590ff1`) and the sixth, from 25 August, had no `oauth_client` array at all. None of
-   them contains a `client_type: 1` entry, which is the Android OAuth client. So nothing has changed
-   in the console between the first download and the last.
+   Settled on 27 August by asking Google directly rather than by reading files. Google's authorize
+   endpoint answers differently for a client that exists, one that never existed, and one that was
+   removed, so the state of any client id can be established from a terminal in one line:
 
-   That is worth stating plainly because re-downloading the file cannot fix this, and here is why:
+   ```
+   curl -sL "https://accounts.google.com/o/oauth2/v2/auth?client_id=<ID>\
+   &redirect_uri=https%3A%2F%2Fexample.com&response_type=code&scope=openid" \
+     | grep -oE "deleted_client|invalid_client|redirect_uri_mismatch"
+   ```
 
-   * **`google-services.json` is for Firebase.** Push notifications read it. Credential Manager —
-     which is what shows the Google sheet — does not read it at all.
-   * What Credential Manager checks is whether an **Android OAuth client** exists, in the Google
-     Cloud project that owns the web client id the app sends as its audience, whose package name and
-     SHA-1 match the APK asking. If there is no such client, Google refuses before any account is
-     chosen. That is exactly the failure on screen.
-   * **Verified 2026-08-27:** the audience the app sends is TradeYar's `google_client_id` from
-     `api/mobile/v1/auth/methods`, and its project number is `1033486124390` — the same project as
-     this app's Firebase. One project to fix, not two.
+   | Client | Answer | Means |
+   | --- | --- | --- |
+   | `…-aji26kov4…` (Android) | `redirect_uri_mismatch` | **Exists and is valid.** The error is only about the redirect URI the probe supplied, which an Android client has no use for. |
+   | `…-nnr0l8q2…` (Web — the audience the app sends) | **`deleted_client`** | **This client has been deleted.** |
+   | a made-up id (control) | `invalid_client`, "OAuth client was not found" | A different answer, which is what makes the two above trustworthy. |
 
-   **Do this, in Google Cloud Console rather than Firebase:**
+   So the Android side is now correct — `google-services.json` of 27 August carries a
+   `client_type: 1` entry for `com.coinepro.app` with certificate hash
+   `5de87f4bb3e8356b4e981ed4da630ba7775f9aa8`, which is this repository's release key exactly — and
+   Google still refuses, because **the audience no longer exists**. The web client and the type-3
+   entry that used to name it both disappeared from the file on the same day the Android client
+   appeared, which is consistent with it having been deleted while the other was created.
 
-   1. https://console.cloud.google.com/apis/credentials — pick the project numbered `1033486124390`
-      (it is named `coinepro-app`).
-   2. If **OAuth consent screen** has never been configured, configure it first. Google will not
-      create an OAuth client without one, and this is the step most often missed.
-   3. **+ Create credentials → OAuth client ID → Application type: Android.**
-      * Package name: `com.coinepro.app`
-      * SHA-1: `5D:E8:7F:4B:B3:E8:35:6B:4E:98:1E:D4:DA:63:0B:A7:77:5F:9A:A8`
-   4. Create. There is **nothing to download** and no app change to make: the app reads its audience
-      from the server at runtime. Sign-in starts working within a few minutes.
+   **What is left to do, and it is not in the app:**
 
-   Adding the fingerprint through Firebase → Project settings → Your apps → Add fingerprint normally
-   creates that same client automatically, and evidently has not here — which is why the direct
-   route above is the one to take.
+   1. Google Cloud Console → Credentials → **Create credentials → OAuth client ID → Web
+      application**. Name it for what it is — the token verifier, not a website.
+   2. Give that new id to the **TradeYar** backend. It has to appear in `auth/methods` as
+      `google_client_id`, *and* be the `aud` their `auth/google` route verifies an ID token
+      against. Both, or sign-in fails at one end or the other.
+   3. Re-run the probe above against the new id. `redirect_uri_mismatch` means it is live.
 
-   **How to tell whether the client you created is the right kind.** On 27 August a second client
-   id in this project was reported: `1033486124390-aji26kov4…`. The one the app uses is
-   `1033486124390-nnr0l8q2…`, which is the **web** client and is served by TradeYar at
-   `auth/methods`. Those two being different is not a problem — it is what a correct setup looks
-   like. An Android client is never sent by the app; it exists so Google can check the caller's
-   package and SHA-1, and the audience stays the web client.
+   Nothing changes in the app: the audience has always been read from the server at runtime, which
+   is what makes this fixable without a release.
 
-   So:
-
-   * In the Credentials list, the **Type** column of the new entry must read **Android**. If it
-     reads "Web application", it is not the client this needs and an Android one still has to be
-     created.
-   * The definitive proof is the file that was useless until now: download `google-services.json`
-     again. It should now contain a `client_type: 1` entry carrying `package_name` and
-     `certificate_hash`. Every copy supplied before 27 August contained only `client_type: 3`,
-     which is exactly what "no Android client exists" looks like. Send the new file and it can be
-     checked in a second — though nothing in the app has to change either way.
-
-   **If the SHA-1 above is not the key on the phone being tested**, the app now says so itself:
-   «ایمنی و نسخه» shows the running install's own SHA-1 and SHA-256 with a copy button. Use that
-   number rather than this document if the two ever disagree.
+   **If the SHA-1 ever needs checking against a specific install**, the app shows its own:
+   «ایمنی و نسخه» carries the running build's SHA-1 and SHA-256 with a copy button. Use that number
+   rather than this document if the two ever disagree.
 
 2. **Support e-mail and the developer's legal name and address.** Both legal documents carry a
    marked slot. The Telegram support channel is published; an e-mail address is the owner's to

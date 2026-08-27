@@ -15,6 +15,34 @@ it is for.
 
 ---
 
+## [1.29.2] — 2026-08-27 — The audience had been deleted
+
+### Notes
+- **Google sign-in is one console step from working, and the step is not the one anybody was
+  taking.** Established by asking Google's authorize endpoint about each client id rather than by
+  reading files, because it answers differently for a client that exists, one that never existed and
+  one that was removed:
+  - the new Android client `…-aji26kov4…` answers `redirect_uri_mismatch` — **it exists and is
+    valid**, and the `google-services.json` of 27 August confirms it carries this repository's
+    release fingerprint exactly;
+  - the web client `…-nnr0l8q2…`, which is the audience the app sends and TradeYar serves, answers
+    **`deleted_client`**;
+  - a made-up id answers `invalid_client`, which is what makes the other two trustworthy.
+
+  So the Android half is now correct and Google still refuses, because the audience no longer
+  exists. What is left is to create a **Web** OAuth client in the same project and give its id to
+  the TradeYar backend — both as `google_client_id` in `auth/methods` and as the `aud` its
+  `auth/google` route verifies against. `docs/PLAY_LISTING.md` carries the steps and the one-line
+  probe, which is worth keeping: it settles in a second a question that files cannot answer.
+
+### Changed
+- `app/google-services.json` replaced with the 27 August file. It is the same project, app and API
+  key, and it now carries the Android OAuth client — so push is unaffected and the Firebase side is
+  finally complete. The web client's type-3 entry is absent from it, which is the same deletion seen
+  above; nothing in the app reads that entry, because the audience comes from the server.
+
+---
+
 ## [1.29.1] — 2026-08-27 — Two causes, one message
 
 ### Fixed
