@@ -2,6 +2,16 @@ package com.coinepro.feature.auth
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import com.coinepro.core.designsystem.CoineProPillShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -149,11 +159,7 @@ private fun SignInStep(
 
     if (state.methods.google) {
         Spacer(Modifier.height(CoineProSpacing.One))
-        CoineProSecondaryButton(
-            text = stringResource(R.string.auth_continue_google),
-            onClick = onGoogleSignIn,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        GoogleButton(onClick = onGoogleSignIn)
     }
 
     // Telegram is still a live sign-in method on CoinePro-FX and still has no shape that works in
@@ -174,6 +180,49 @@ private fun SignInStep(
     if (state.methods.emailPassword) {
         Link(R.string.auth_no_account) { onGoTo(EmailAuthStep.REGISTER) }
         Link(R.string.auth_forgot) { onGoTo(EmailAuthStep.FORGOT_PASSWORD) }
+    }
+}
+
+/**
+ * «ادامه با گوگل», with Google's own mark on it.
+ *
+ * The mark is not decoration and it is not optional. A button that only says "continue with Google"
+ * is a claim in text; the G is what a reader recognises before they have read anything, and it is
+ * also what Google's sign-in guidelines ask for. It sits on the reading edge — the leading side, so
+ * it is on the right in Persian and on the left in English — because a logo at the far end of a
+ * full-width button reads as an ornament rather than as the thing being offered.
+ *
+ * Drawn here rather than through [CoineProSecondaryButton] for one reason: that component takes a
+ * label and nothing else, and widening it to take an icon would put an icon slot on forty buttons
+ * that must not have one.
+ *
+ * The mark is never tinted. See the note in `logo_google.xml`.
+ */
+@Composable
+private fun GoogleButton(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clip(CoineProPillShape)
+            .background(CoineProColors.SurfaceElevated)
+            .border(1.dp, CoineProColors.Border, CoineProPillShape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = CoineProSpacing.Two),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.logo_google),
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(Modifier.width(CoineProSpacing.OneHalf))
+        Text(
+            text = stringResource(R.string.auth_continue_google),
+            style = MaterialTheme.typography.labelLarge,
+            color = CoineProColors.TextPrimary,
+        )
     }
 }
 

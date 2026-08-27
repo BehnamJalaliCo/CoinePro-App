@@ -74,4 +74,12 @@
     <string name="profile_action_safety_note">اعلان‌ها، گزارش خطا و شماره‌ی نسخه</string>
     <string name="profile_action_delete">حذف حساب</string>
     <string name="auth_google_not_registered">ورود با گوگل روی این نسخه هنوز فعال نیست؛ گواهی امضای برنامه در کنسول گوگل ثبت نشده است. فعلاً با ایمیل وارد شوید.</string>
+    <string name="tampered_title">این نسخه‌ی اصلی کوین‌پرو نیست</string>
+    <string name="tampered_body">این فایل دستکاری و با کلید دیگری امضا شده است. ما آن را نساخته‌ایم و نمی‌دانیم داخلش چه تغییری داده شده. لطفاً همین حالا پاکش کنید و نسخه را فقط از کانال رسمی کوین‌پرو بگیرید.</string>
+    <string name="tampered_fingerprint">اثر انگشت امضای این فایل</string>
+    <string name="tampered_source">در این نسخه وارد حساب نشوید و هیچ رمز، کد یا کلید صرافی وارد نکنید.</string>
+    <string name="safety_signature_title">اثر انگشت امضای این نسخه</string>
+    <string name="safety_signature_note">برای ثبت در کنسول گوگل. SHA-1 برای ورود با گوگل و SHA-256 برای گوگل پلی.</string>
+    <string name="safety_signature_copy">کپی اثر انگشت</string>
+    <string name="safety_signature_unsigned">این نسخه با کلید توسعه امضا شده است.</string>
 </resources>

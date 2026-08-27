@@ -1,3 +1,5 @@
+import java.security.KeyStore
+import java.security.MessageDigest
 import java.util.Properties
 
 plugins {
@@ -215,6 +217,54 @@ android {
         buildConfig = true
     }
 
+
+/**
+ * The SHA-256 of every certificate in the release keystore, as the platform reports it at runtime.
+ *
+ * Read from the keystore at configure time so a release build always carries the fingerprint of the
+ * key that is about to sign it. That is what makes the runtime check below safe: a genuine build
+ * cannot fail its own test, and a repackaged one — re-signed with somebody else's key, which is the
+ * only way to modify an APK and have Android install it — cannot pass.
+ *
+ * Empty is a legitimate answer and means the check is off. It is what a build with no signing
+ * configuration gets, and refusing to run in that case would brick every debug build in the repo.
+ */
+fun releaseSignerFingerprints(): List<String> {
+    val file = releaseStoreFile?.let(rootProject::file)?.takeIf(File::isFile) ?: return emptyList()
+    val password = releaseStorePassword?.toCharArray() ?: return emptyList()
+    val alias = releaseKeyAlias ?: return emptyList()
+    for (type in listOf("PKCS12", "JKS")) {
+        try {
+            val store = KeyStore.getInstance(type)
+            file.inputStream().use { stream -> store.load(stream, password) }
+            val certificate = store.getCertificate(alias) ?: continue
+            val digest = MessageDigest.getInstance("SHA-256").digest(certificate.encoded)
+            return listOf(digest.joinToString("") { byte -> "%02X".format(byte) })
+        } catch (_: Exception) {
+            // The other keystore format, or a keystore this build cannot open. Either way there is
+            // no fingerprint to bake in, and an empty list turns the check off rather than failing
+            // the build over something that only matters for a signed release.
+        }
+    }
+    return emptyList()
+}
+
+/**
+ * Extra fingerprints the app should also accept, comma-separated, hex, colons optional.
+ *
+ * **This is the escape hatch for Play App Signing and it is not optional once the app is on Play.**
+ * Play re-signs every upload with a key Google holds, so the installed APK is signed by a
+ * certificate this repository has never seen and the check would refuse a perfectly genuine
+ * install. Take the SHA-256 from Play Console → Setup → App integrity → App signing key
+ * certificate, put it in `COINEPRO_EXPECTED_SIGNERS`, and both keys are then accepted.
+ */
+val extraExpectedSigners = providers.gradleProperty("COINEPRO_EXPECTED_SIGNERS").orElse("").get()
+
+val expectedSigners = (releaseSignerFingerprints() + extraExpectedSigners.split(","))
+    .map { it.trim().replace(":", "").uppercase() }
+    .filter { it.length == 64 }
+    .distinct()
+
     signingConfigs {
         if (releaseSigningConfigured) {
             create("release") {
@@ -236,6 +286,8 @@ android {
             buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(debugFirebaseApiKey))
             buildConfigField("String", "FIREBASE_SENDER_ID", escapedBuildConfig(debugFirebaseSenderId))
             buildConfigField("String", "TERMINAL_URL", escapedBuildConfig(debugTerminalUrl))
+            // Empty: a debug build is signed with the debug key and must never refuse to run.
+            buildConfigField("String", "EXPECTED_SIGNERS", escapedBuildConfig(""))
         }
         release {
             isDebuggable = false
@@ -252,6 +304,11 @@ android {
             buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(productionFirebaseApiKey))
             buildConfigField("String", "FIREBASE_SENDER_ID", escapedBuildConfig(productionFirebaseSenderId))
             buildConfigField("String", "TERMINAL_URL", escapedBuildConfig(productionTerminalUrl))
+            buildConfigField(
+                "String",
+                "EXPECTED_SIGNERS",
+                escapedBuildConfig(expectedSigners.joinToString(",")),
+            )
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -275,6 +332,11 @@ android {
             buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(stagingFirebaseApiKey))
             buildConfigField("String", "FIREBASE_SENDER_ID", escapedBuildConfig(stagingFirebaseSenderId))
             buildConfigField("String", "TERMINAL_URL", escapedBuildConfig(stagingTerminalUrl))
+            buildConfigField(
+                "String",
+                "EXPECTED_SIGNERS",
+                escapedBuildConfig(if (releaseSigningConfigured) expectedSigners.joinToString(",") else ""),
+            )
         }
         create("benchmark") {
             initWith(getByName("release"))
@@ -288,6 +350,8 @@ android {
             buildConfigField("String", "FIREBASE_APPLICATION_ID", escapedBuildConfig(""))
             buildConfigField("String", "FIREBASE_API_KEY", escapedBuildConfig(""))
             buildConfigField("String", "FIREBASE_SENDER_ID", escapedBuildConfig(""))
+            // Signed with the debug key so the macrobenchmark can install it. Off, necessarily.
+            buildConfigField("String", "EXPECTED_SIGNERS", escapedBuildConfig(""))
         }
     }
 
@@ -299,6 +363,17 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            // Debug metadata for kotlinx-coroutines' probes. It exists to make a coroutine dump
+            // readable and there is no coroutine dump in a release build — it is a map of the
+            // app's internals shipped to every phone for nothing.
+            excludes += "/DebugProbesKt.bin"
+            // Version stamps and analytics schemas from the Google libraries. Nothing reads them
+            // at runtime; they are build residue that names every dependency by version, which is
+            // the first thing anybody looking for a known vulnerability reads.
+            excludes += "/*.properties"
+            excludes += "/*.proto"
+            excludes += "/META-INF/*.version"
+            excludes += "/META-INF/com/android/build/gradle/*"
         }
     }
 

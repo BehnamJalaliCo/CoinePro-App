@@ -15,6 +15,64 @@ it is for.
 
 ---
 
+## [1.29.0] — 2026-08-27 — A copy that refuses to be it
+
+Three things: why Google sign-in has not been fixed by six downloads of the same file, what is
+actually in the APK, and Google's own mark on the button that carries their name.
+
+### Added
+- **The app refuses to run if somebody re-signed it.** The release build bakes in the SHA-256 of the
+  certificate that signs it — read from the keystore at configure time, so a genuine build carries
+  its own fingerprint and cannot fail its own test — and checks it before a single screen is drawn.
+  A repackaged copy gets a refusal that names what it found and says the thing that matters to
+  somebody holding a trading app: do not sign in here. There is no "continue anyway".
+  `AppIntegrity` is candid about the limits: Android will not install a modified APK under the
+  original signature, so a changed CoinePro must be re-signed and this stops the copy that spreads —
+  it does not stop somebody who patches the check out, and nothing running on the attacker's own
+  hardware could.
+- **`COINEPRO_EXPECTED_SIGNERS`**, the escape hatch that has to be set before the first Play
+  release. Play App Signing re-signs uploads with Google's key; without the fingerprint from Play
+  Console → App integrity, every store install would refuse to run. Both keys are accepted at once.
+- **The install's own signing fingerprint, in the app**, under «ایمنی و نسخه», SHA-1 and SHA-256,
+  with a copy button. Not a secret — it is derived from the APK — and it settles in one look the
+  question that has cost days: which key is this phone's copy actually signed with.
+- **`docs/SECURITY_HARDENING.md`** — what is in the APK, verified by unpacking it and reading every
+  string; what protects it; and the part these documents usually leave out, which is what cannot be
+  done at all and what to do instead.
+- **Google's own G on the Google button.** The four published paths, uncoloured by us, on the
+  reading edge of the button. A button that only says "continue with Google" is a claim in text; the
+  mark is what a reader recognises before they have read anything, and it is what Google's sign-in
+  guidelines ask for.
+
+### Changed
+- **The build residue is no longer packaged**: `DebugProbesKt.bin`, a map of the coroutine internals
+  that only a debugger reads, and the Google libraries' `.properties` version stamps and `.proto`
+  analytics schemas. The version stamps are the first thing anybody hunting a known vulnerability
+  reads, and nothing in the app reads any of it.
+- **The Google sign-in instructions are rewritten around what actually fixes it.** Six copies of
+  `google-services.json` have now been supplied; five are byte-identical to each other and the sixth
+  had no OAuth client at all, so nothing has changed in the console between the first and the last.
+  It cannot: that file is read by Firebase for push, and **not by Credential Manager at all**. What
+  Credential Manager needs is an **Android OAuth client** in Google Cloud → Credentials, with the
+  package name and the SHA-1, in the project that owns the audience the app sends. Verified today
+  that TradeYar's `google_client_id` is in the same project as this app's Firebase, so it is one
+  client in one console — and nothing to download, because the audience is read from the server at
+  runtime. `docs/PLAY_LISTING.md` carries the four steps.
+
+### Fixed
+- **The style gate's `println` rule matched `out.println` on a `PrintWriter`** and so failed the
+  crash recorder — the one file in the app whose job is to make a crash reportable. It now matches
+  only the bare stdlib call. It had passed in 1.27.0 only because the file was still untracked when
+  the gate ran, which is its own lesson: `git add` before the gates, not after.
+
+### Notes
+- There is **no secret in this APK** and never was one to remove. Verified by unpacking
+  `app-release.apk`: two backend addresses, the Firebase Android API key and the Google web client
+  id — all three public by design, the key restricted by package and certificate — the published
+  legal-page links, and obfuscated class names. No private key, no token, no `mapping.txt`.
+
+---
+
 ## [1.28.0] — 2026-08-27 — Sign in wherever your account already is
 
 1.27.0 moved sign-in to TradeYar, which was right, and stranded every account made before it, which

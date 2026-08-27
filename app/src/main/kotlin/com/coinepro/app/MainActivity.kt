@@ -31,6 +31,10 @@ import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.EmailAuthController
 import com.coinepro.core.datastore.ChartLayoutStore
+import com.coinepro.app.security.AppIntegrity
+import com.coinepro.app.security.IntegrityState
+import com.coinepro.app.security.TamperedScreen
+import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.datastore.ProfileStore
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
@@ -115,6 +119,16 @@ class MainActivity : ComponentActivity() {
         consumeDeepLink(intent)
         updateNotificationPermissionState()
         enableEdgeToEdge()
+        // Before anything else is drawn, and before any controller is handed a screen.
+        //
+        // A repackaged copy gets this and nothing else. There is no point checking later: the whole
+        // value of the check is that the reader never reaches a field they could type a password
+        // into. See [AppIntegrity] for what this does and does not stop.
+        val integrity = AppIntegrity.check(this)
+        if (integrity is IntegrityState.Repackaged) {
+            setContent { CoineProTheme { TamperedScreen(actualFingerprint = integrity.actual) } }
+            return
+        }
         setContent {
             CoineProApp(
                 sessionController = sessionController,

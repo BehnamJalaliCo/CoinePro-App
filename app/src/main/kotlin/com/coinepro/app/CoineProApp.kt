@@ -103,6 +103,7 @@ import com.coinepro.core.marketdata.MarketDataCache
 import com.coinepro.core.marketdata.AcademyTokenStore
 import android.content.ClipData
 import android.content.ClipboardManager
+import com.coinepro.app.security.AppIntegrity
 import com.coinepro.core.diagnostics.CrashReport
 import com.coinepro.core.diagnostics.AdminController
 import com.coinepro.feature.admin.AdminScreen
@@ -1534,6 +1535,13 @@ private fun MainShell(
             composable(LAUNCH_READINESS_ROUTE) {
                 val context = LocalContext.current
                 val crashes = remember(context) { CrashReport(context) }
+                // Read once: an install's certificate cannot change while it is running.
+                val fingerprints = remember(context) {
+                    listOf(
+                        "SHA-1" to AppIntegrity.fingerprints(context, "SHA-1").firstOrNull(),
+                        "SHA-256" to AppIntegrity.fingerprints(context, "SHA-256").firstOrNull(),
+                    ).mapNotNull { (algorithm, value) -> value?.let { algorithm to it } }
+                }
                 // Read once per visit rather than watched: a crash file cannot change while the
                 // app that would write it is the one on screen.
                 var lastCrash by remember { mutableStateOf(crashes.last()) }
@@ -1557,6 +1565,11 @@ private fun MainShell(
                     onClearCrash = {
                         crashes.clear()
                         lastCrash = null
+                    },
+                    signingFingerprints = fingerprints,
+                    onCopyFingerprint = { text ->
+                        val clipboard = context.getSystemService(ClipboardManager::class.java)
+                        clipboard?.setPrimaryClip(ClipData.newPlainText("CoinePro signature", text))
                     },
                 )
             }

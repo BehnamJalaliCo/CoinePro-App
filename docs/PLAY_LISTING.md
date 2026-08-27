@@ -236,24 +236,45 @@ SHA-256  96:12:AB:6C:BF:BB:4F:4F:FB:F1:51:D8:60:2C:12:9D:CC:E8:A9:77:1E:85:46:69
 
 **Still open**
 
-1. **Google sign-in fails on a signed build, and this is the one thing that fixes it.**
-   `google-services.json` holds exactly one OAuth client and it is type 3 — the web client. There
-   is no type-1 Android client, which means no SHA-1 is registered, so Google will not mint a token
-   for this build no matter who is signed in on the phone. The file supplied on 2026-08-26 is
-   byte-identical to the one already in the tree and does not change this.
+1. **Google sign-in fails on a signed build. The fix is one OAuth client in Google Cloud, and it is
+   not the `google-services.json` file.**
 
-   **Verified 2026-08-27:** the audience the app sends is TradeYar's `google_client_id` from
-   `api/mobile/v1/auth/methods`, and its Google Cloud project number is the *same* as this app's
-   Firebase project. So there is one project to fix, not two:
+   Six copies of `google-services.json` have been supplied. Five are **byte-identical** to each
+   other (md5 `77590ff1`) and the sixth, from 25 August, had no `oauth_client` array at all. None of
+   them contains a `client_type: 1` entry, which is the Android OAuth client. So nothing has changed
+   in the console between the first download and the last.
 
-   1. Firebase console → Project settings → Your apps → the Android app `com.coinepro.app`.
-   2. Add fingerprint → paste the SHA-1 above (`5D:E8:…:9A:A8`). Add the SHA-256 too while there;
-      Play App Signing needs it later.
-   3. Download `google-services.json` again and replace `app/google-services.json`.
+   That is worth stating plainly because re-downloading the file cannot fix this, and here is why:
 
-   No app change is needed once that is done — the audience is read from the server at runtime.
-   Until then Google sign-in fails and the app says so in Persian, and points the reader at e-mail;
-   e-mail sign-in is unaffected.
+   * **`google-services.json` is for Firebase.** Push notifications read it. Credential Manager —
+     which is what shows the Google sheet — does not read it at all.
+   * What Credential Manager checks is whether an **Android OAuth client** exists, in the Google
+     Cloud project that owns the web client id the app sends as its audience, whose package name and
+     SHA-1 match the APK asking. If there is no such client, Google refuses before any account is
+     chosen. That is exactly the failure on screen.
+   * **Verified 2026-08-27:** the audience the app sends is TradeYar's `google_client_id` from
+     `api/mobile/v1/auth/methods`, and its project number is `1033486124390` — the same project as
+     this app's Firebase. One project to fix, not two.
+
+   **Do this, in Google Cloud Console rather than Firebase:**
+
+   1. https://console.cloud.google.com/apis/credentials — pick the project numbered `1033486124390`
+      (it is named `coinepro-app`).
+   2. If **OAuth consent screen** has never been configured, configure it first. Google will not
+      create an OAuth client without one, and this is the step most often missed.
+   3. **+ Create credentials → OAuth client ID → Application type: Android.**
+      * Package name: `com.coinepro.app`
+      * SHA-1: `5D:E8:7F:4B:B3:E8:35:6B:4E:98:1E:D4:DA:63:0B:A7:77:5F:9A:A8`
+   4. Create. There is **nothing to download** and no app change to make: the app reads its audience
+      from the server at runtime. Sign-in starts working within a few minutes.
+
+   Adding the fingerprint through Firebase → Project settings → Your apps → Add fingerprint normally
+   creates that same client automatically, and evidently has not here — which is why the direct
+   route above is the one to take.
+
+   **If the SHA-1 above is not the key on the phone being tested**, the app now says so itself:
+   «ایمنی و نسخه» shows the running install's own SHA-1 and SHA-256 with a copy button. Use that
+   number rather than this document if the two ever disagree.
 
 2. **Support e-mail and the developer's legal name and address.** Both legal documents carry a
    marked slot. The Telegram support channel is published; an e-mail address is the owner's to

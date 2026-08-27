@@ -134,6 +134,7 @@ import org.robolectric.annotation.GraphicsMode
 import com.coinepro.feature.home.HomeSubscription
 import com.coinepro.core.guest.GuestController
 import com.coinepro.feature.account.DeleteAccountScreen
+import com.coinepro.app.security.TamperedScreen
 import com.coinepro.core.datastore.StoredProfile
 import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProReading
@@ -1015,6 +1016,22 @@ class ScreenshotRenderTest {
             onGoTo = {},
             onRetryMethods = {},
             onGoogleSignIn = {},
+        )
+    }
+
+    /**
+     * The copy that somebody re-signed, refusing to be it.
+     *
+     * Rendered because it is the one screen in the app whose whole job is to be believed by
+     * somebody who was told to trust the file they installed. It has no way out on purpose: a
+     * "continue anyway" button is the first thing a repackager would tell them to press.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun tampered() = capture("88-tampered-fa") {
+        TamperedScreen(
+            actualFingerprint = "3F:A1:0C:88:D2:47:B9:5E:11:6A:C4:70:29:8B:DD:04:E6:52:97:1F:" +
+                "AB:30:C9:75:44:E8:12:66:BF:0D:53:AA",
         )
     }
 
