@@ -49,12 +49,14 @@ import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.marketdata.MarketDataSymbols
+import com.coinepro.core.marketdata.SparklineStore
 import com.coinepro.core.marketdata.MarketDataController
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.model.MarketPlatform
+import com.coinepro.core.model.SignalDirection
 import com.coinepro.core.navigation.AppDestination
 import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.signals.SignalController
@@ -121,6 +123,9 @@ import com.coinepro.feature.signaldetail.SignalChartController
 import com.coinepro.feature.signaldetail.SignalDetailScreen
 import com.coinepro.core.academy.AcademyController
 import com.coinepro.core.portfolio.PortfolioController
+import com.coinepro.feature.search.MarketsScreen
+import com.coinepro.feature.search.MarketsSignalStrip
+import com.coinepro.feature.chart.ChartStudioScreen
 import com.coinepro.feature.chart.ChartController
 import com.coinepro.feature.chart.ChartScreen
 import com.coinepro.feature.academy.AcademyScreen
@@ -153,7 +158,17 @@ private const val DELETE_ACCOUNT_ROUTE = "account/delete"
 private const val ALERTS_ROUTE = "alerts"
 private const val JOURNAL_ROUTE = "journal"
 private const val PAPER_TRADE_ROUTE = "paper-trade"
+
+/**
+ * Two destinations that used to be tabs.
+ *
+ * The routes keep their old spelling so a saved back stack and every deep link that named them
+ * still land — what changed is that they are reached from Home rather than from the bar.
+ */
+private const val TOOLS_ROUTE = "tools"
+private const val ACTIVITY_ROUTE = "activity"
 private const val SCRIPT_PATTERN = "script/{symbol}"
+private const val STUDIO_PATTERN = "chart/{symbol}/studio"
 private fun signalDetailRoute(signalId: Long) = "signal/$signalId"
 private fun executionRoute(signalId: Long) = "execution/$signalId"
 
@@ -171,6 +186,9 @@ private fun chartRoute(symbol: String) = "chart/" + Uri.encode(symbol)
  * card, which passes the first symbol on the watchlist.
  */
 private fun scriptRoute(symbol: String) = "script/" + Uri.encode(symbol)
+
+/** The chart's working surface, on a symbol. */
+private fun studioRoute(symbol: String) = "chart/" + Uri.encode(symbol) + "/studio"
 
 /**
  * Which symbol the studio opens on when it was not reached from a chart.
@@ -203,6 +221,9 @@ private fun accentFor(route: String?): PageAccent = when (route) {
     AI_VISION_ROUTE,
     AI_ASSISTANT_ROUTE,
     SCRIPT_PATTERN,
+    STUDIO_PATTERN,
+    AppDestination.MARKETS.route,
+    AppDestination.CHART.route,
     AppDestination.AI.route,
     -> PageAccent.ANALYSIS
 
@@ -643,6 +664,11 @@ private fun MainShell(
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
+    val sparklineScope = rememberCoroutineScope()
+    // Keyed on the gateway, so switching platform builds a new store rather than drawing a
+    // forex line beside a crypto price. The scope is the composition's: leaving the app cancels
+    // whatever is in flight.
+    val sparklineStore = remember(candleGateway) { SparklineStore(candleGateway, sparklineScope) }
     val currentRoute = backStackEntry?.destination?.route
     val isSubScreen = currentRoute in setOf(
         SIGNAL_DETAIL_PATTERN,
@@ -662,6 +688,9 @@ private fun MainShell(
         JOURNAL_ROUTE,
         PAPER_TRADE_ROUTE,
         SCRIPT_PATTERN,
+        STUDIO_PATTERN,
+        TOOLS_ROUTE,
+        ACTIVITY_ROUTE,
         NEWS_ROUTE,
         CALENDAR_ROUTE,
         LAUNCH_READINESS_ROUTE,
@@ -684,6 +713,9 @@ private fun MainShell(
         JOURNAL_ROUTE -> R.string.screen_journal
         PAPER_TRADE_ROUTE -> R.string.screen_paper_trade
         SCRIPT_PATTERN -> R.string.screen_script
+        STUDIO_PATTERN -> R.string.screen_chart_studio
+        TOOLS_ROUTE -> R.string.screen_tools
+        ACTIVITY_ROUTE -> R.string.screen_activity
         AI_VISION_ROUTE -> R.string.screen_ai_vision
         AI_ASSISTANT_ROUTE -> R.string.screen_ai_assistant
         MARKET_SEARCH_ROUTE -> R.string.screen_market_search
@@ -711,7 +743,7 @@ private fun MainShell(
     }
     LaunchedEffect(launchActivity) {
         if (launchActivity) {
-            navController.navigate(AppDestination.ACTIVITY.route) {
+            navController.navigate(ACTIVITY_ROUTE) {
                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                 launchSingleTop = true
                 restoreState = true
@@ -797,6 +829,8 @@ private fun MainShell(
                         onRefreshAccount()
                     },
                     // Both pills lead to the AI section, which is where the work actually happens.
+                    onOpenTools = { navController.navigate(TOOLS_ROUTE) },
+                    onOpenActivity = { navController.navigate(ACTIVITY_ROUTE) },
                     onGenerateSignal = { navController.navigate(AppDestination.AI.route) },
                     // Chart analysis is optional per deployment. Sending the reader to a screen the
                     // server has switched off is a wait that ends in an error every time, so the
@@ -943,6 +977,39 @@ private fun MainShell(
                     available = assistantAvailable,
                 )
             }
+            composable(AppDestination.MARKETS.route) {
+                val signals by signalController.state.collectAsStateWithLifecycle()
+                MarketsScreen(
+                    controller = marketSearchController,
+                    sparklines = sparklineStore,
+                    watchlist = watchlist,
+                    onOpenSymbol = { symbol -> navController.navigate(chartRoute(symbol)) },
+                    onOpenSearch = { navController.navigate(MARKET_SEARCH_ROUTE) },
+                    // Only when there is something to say. A strip reading «۰ سیگنال باز» is a row
+                    // of chrome reporting the absence of news.
+                    openSignals = signals.items.takeIf { it.isNotEmpty() }?.let { open ->
+                        MarketsSignalStrip(
+                            count = open.size,
+                            summary = open.take(2).joinToString(" · ") { signal ->
+                                signal.symbol + " " + if (signal.direction == SignalDirection.BUY) "خرید" else "فروش"
+                            },
+                            onClick = { navController.navigate(AppDestination.SIGNALS.route) },
+                        )
+                    },
+                )
+            }
+            composable(AppDestination.CHART.route) {
+                // The tab opens the reader's own first market, or the platform's first quoted one.
+                // A tab that asked which symbol before showing anything would be a picker with a
+                // chart behind it, which is not what a chart tab is for.
+                val symbol = defaultScriptSymbol(activePlatform, watchlist)
+                LaunchedEffect(symbol) {
+                    navController.navigate(chartRoute(symbol)) {
+                        popUpTo(AppDestination.CHART.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            }
             composable(MARKET_SEARCH_ROUTE) {
                 SearchScreen(
                     watchlist = watchlist,
@@ -981,7 +1048,7 @@ private fun MainShell(
                         }
                     },
                     controller = chartController,
-                    onOpenScript = { navController.navigate(scriptRoute(symbol)) },
+                    onOpenStudio = { navController.navigate(studioRoute(symbol)) },
                     onOpenTerminal = if (terminalController.isConfigured) {
                         { navController.navigate(TERMINAL_ROUTE) }
                     } else {
@@ -1011,6 +1078,25 @@ private fun MainShell(
                     loading = previewState.loading,
                 )
             }
+            composable(
+                route = STUDIO_PATTERN,
+                arguments = listOf(navArgument("symbol") { type = NavType.StringType }),
+            ) { entry ->
+                val symbol = entry.arguments?.getString("symbol").orEmpty()
+                val scope = rememberCoroutineScope()
+                val studioController = remember(symbol, candleGateway) {
+                    ChartController(symbol = symbol, gateway = candleGateway, scope = scope)
+                }
+                LaunchedEffect(studioController) { studioController.start() }
+                ChartStudioScreen(
+                    controller = studioController,
+                    layouts = chartLayouts,
+                    onSaveLayout = onSaveLayout,
+                    onDeleteLayout = onDeleteLayout,
+                    onOpenScript = { navController.navigate(scriptRoute(symbol)) },
+                    onBackToChart = { navController.popBackStack() },
+                )
+            }
             composable(NEWS_ROUTE) {
                 NewsScreen(
                     platform = activePlatform,
@@ -1024,7 +1110,7 @@ private fun MainShell(
                     onOpenNews = { navController.navigate(NEWS_ROUTE) },
                 )
             }
-            composable(AppDestination.TOOLS.route) {
+            composable(TOOLS_ROUTE) {
                 ToolsScreen(
                     onOpenJournal = { navController.navigate(JOURNAL_ROUTE) },
                     onOpenPaperTrade = { navController.navigate(PAPER_TRADE_ROUTE) },
@@ -1076,7 +1162,7 @@ private fun MainShell(
                     onOpenConnections = { navController.navigate(CONNECTIONS_ROUTE) },
                 )
             }
-            composable(AppDestination.ACTIVITY.route) {
+            composable(ACTIVITY_ROUTE) {
                 ActivityScreen(
                     onOpenAlerts = { navController.navigate(ALERTS_ROUTE) },
                     controller = notificationController,

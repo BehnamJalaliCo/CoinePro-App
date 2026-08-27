@@ -58,10 +58,13 @@ def check_bottom_navigation() -> None:
     entries = re.findall(r'^\s*([A-Z]+)\("([^"]+)",', text, flags=re.MULTILINE)
     expected = [
         ("HOME", "home"),
+        ("MARKETS", "markets"),
+        # Not "chart": that route belongs to the chart *of a symbol* and has for every release so
+        # far. The tab is a different destination that redirects into it, and giving the two the
+        # same name would break every saved back stack that holds one.
+        ("CHART", "chart-tab"),
         ("SIGNALS", "signals"),
         ("AI", "ai"),
-        ("TOOLS", "tools"),
-        ("ACTIVITY", "activity"),
     ]
     require(entries == expected, f"Bottom navigation contract drifted: {entries}")
 

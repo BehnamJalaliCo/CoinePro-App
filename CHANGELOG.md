@@ -15,6 +15,52 @@ it is for.
 
 ---
 
+## [1.25.0] — 2026-08-27 — The picked direction, built
+
+The owner chose two of the three directions off the design canvas — «ب · طلایی» for the chart and
+«الف · ترمینال» for the markets list — and settled the rule for the rest of the app: content screens
+speak the gold language, lists speak the terminal one. This release is that choice, built.
+
+### Added
+- **A markets tab.** The dense terminal row: logo, ticker and Persian name, a twenty-four-hour
+  trend line, price and a filled change pill, with «همه · کریپتو · فارکس · فلزات · دیده‌بان» over it
+  and the open signals at the foot. Search is a separate destination rather than a field on it —
+  a field would take the first row of every visit for something people do on a minority of them.
+- **A sparkline in every row**, and `SparklineStore` behind it. Three rules keep it honest: only
+  rows on screen ask, a symbol is asked for once per run whether or not the answer came, and four
+  requests are in flight at a time. A market list without a shape per row is a spreadsheet.
+- **A chart tab.** It opens the reader's own first market, or the platform's first quoted one.
+- **The chart studio** — indicators, drawing tools, replay, backtest, NamaScript and layouts on
+  their own page, at the owner's call. Six sections, each closed but stating what it would say if
+  opened: «۴ روشن» beside "اندیکاتورها" answers what somebody opened the studio to ask without
+  opening anything. It replaces the sheet stack the tool strip used to raise.
+- **Three readings above the setup** — trend strength, volatility and bias — computed in
+  `ChartReading` from the app's own ADX, ATR and moving averages. Coarse on purpose: ADX is noisy
+  and «۶۲ از ۱۰۰» is a false precision, so three named bands is as much as the number honestly
+  carries. Below sixty bars there is no reading rather than a neutral one.
+- `CoineProGoldRule` and `CoineProSparkline` in the design system.
+
+### Changed
+- **The chart page is the gold direction**: a thirty-four-point logo and the market's Persian name,
+  a forty-point price with its move beside it, a fading gold rule under the heading, eight outlined
+  timeframe pills, and the chart itself in a rounded card with a gold-tinted edge. The card is what
+  makes the readings and the setup below it read as belonging to the chart rather than as unrelated
+  rows that happen to follow.
+- **The bottom bar is خانه · بازارها · چارت · سیگنال · هوش.** Markets and Chart earn tabs because
+  they are the two surfaces somebody opens this app to look at; both were several taps deep behind
+  a search field. The toolkit and the activity log move into Home as two labelled rows — their
+  routes keep their old spelling, so every deep link that named them still lands.
+- The chart's tool strip is gone. What replaced it is a card naming the studio and what is on the
+  chart: «۴ اندیکاتور · ۲ ترسیم» tells a returning reader the state of their chart, which a row of
+  icons never did.
+
+### Notes
+- The design canvas that settled this is `design/canvas/`; the two substitutions in its mockups —
+  Vazirmatn for IRANYekanX, lettered discs for the vendored logos — do not appear in the app, which
+  uses the shipping font and the real artwork.
+
+---
+
 ## [1.24.0] — 2026-08-27 — The chart, rebuilt
 
 The chart was the worst-looking screen in the app and the owner was right about every part of it.

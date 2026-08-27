@@ -63,4 +63,6 @@
         <item quantity="one">%1$d day left</item>
         <item quantity="other">%1$d days left</item>
     </plurals>
+    <string name="home_shortcut_tools">Toolkit</string>
+    <string name="home_shortcut_activity">Activity</string>
 </resources>

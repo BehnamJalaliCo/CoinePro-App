@@ -18,4 +18,11 @@
     <string name="search_closed">Closed</string>
     <string name="search_weekend">Weekend</string>
     <string name="search_no_price">—</string>
+    <string name="markets_title">Markets</string>
+    <string name="markets_watchlist">Watchlist</string>
+    <string name="markets_watchlist_empty">Nothing on the watchlist yet.</string>
+    <string name="markets_column_symbol">Symbol</string>
+    <string name="markets_column_trend">24h trend</string>
+    <string name="markets_column_price">Price / change</string>
+    <string name="markets_open_signals">%1$d open signals</string>
 </resources>

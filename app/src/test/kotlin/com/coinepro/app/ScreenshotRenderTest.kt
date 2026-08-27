@@ -45,6 +45,9 @@ import com.coinepro.core.auth.LoginConfigState
 import com.coinepro.core.auth.SessionState
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProAssetLogo
+import com.coinepro.feature.chart.ChartStudioScreen
+import com.coinepro.feature.search.MarketsScreen
+import com.coinepro.feature.search.MarketsSignalStrip
 import com.coinepro.feature.script.ScriptScreen
 import com.coinepro.core.chart.ActiveToolBar
 import com.coinepro.core.chart.ChartCatalog
@@ -1258,6 +1261,88 @@ class ScreenshotRenderTest {
         val controller = ScreenshotFixtures.chartController(scope)
         listOf("ema", "bollinger", "supertrend", "pivots").forEach(controller::toggleIndicator)
         ChartScreen(controller = controller)
+    }
+
+    /**
+     * The chart page in the «طلایی» direction the owner picked.
+     *
+     * The render is the check on the two things that are easy to get wrong here and invisible in a
+     * unit test: the gold rule under the heading has to fade towards the *far* edge in a
+     * right-to-left page, and the forty-point price has to sit beside its percentage without either
+     * clipping the other.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun chartPremium() = capture("76-chart-premium-fa") {
+        val controller = ScreenshotFixtures.chartController(scope)
+        listOf("ema", "bollinger").forEach(controller::toggleIndicator)
+        ChartScreen(controller = controller, onOpenStudio = {})
+    }
+
+    /** The same page with a setup drawn on it, so the R:R card is in the picture. */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun chartPremiumSetup() = capture("77-chart-premium-setup-fa") {
+        val controller = ScreenshotFixtures.chartController(scope)
+        controller.toggleIndicator("ema")
+        val series = ScreenshotFixtures.chartSeries()
+        val at = { fraction: Double -> series.time[(series.size * fraction).toInt().coerceIn(0, series.size - 1)] }
+        val price = { fraction: Double -> series.close[(series.size * fraction).toInt().coerceIn(0, series.size - 1)] }
+        controller.onDrawing(
+            DrawingState(
+                drawings = listOf(
+                    Drawing(
+                        id = 1,
+                        toolId = "longshort",
+                        points = listOf(
+                            ChartPoint(at(0.72), price(0.72)),
+                            ChartPoint(at(0.92), price(0.72) * 0.995),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        ChartScreen(controller = controller, onOpenStudio = {})
+    }
+
+    /**
+     * The chart studio — the page the tool strip became.
+     *
+     * Every section closed but the one that matters on arrival, each carrying what it would say if
+     * opened. That closed state is the whole argument for the page: a reader learns what is on
+     * their chart without opening anything.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun chartStudio() = capture("78-chart-studio-fa") {
+        val controller = ScreenshotFixtures.chartController(scope)
+        listOf("ema", "bollinger", "rsi", "macd").forEach(controller::toggleIndicator)
+        ChartStudioScreen(controller = controller, onOpenScript = {}, onBackToChart = {})
+    }
+
+    /**
+     * The markets tab in the dense «ترمینال» direction.
+     *
+     * The row's three columns have to hold their places down the whole list — a ticker that pushed
+     * the trend line sideways would make the column unreadable — and the sparkline has to be the
+     * change's own colour rather than a fixed one.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun marketsTerminal() = capture("79-markets-fa") {
+        MarketsScreen(
+            controller = MarketSearchController(ScreenshotFixtures.searchCatalog(), scope)
+                .also { it.start() },
+            sparklines = ScreenshotFixtures.sparklineStore(scope),
+            watchlist = listOf("BTCUSDT", "XAUUSD"),
+            onOpenSymbol = {},
+            onOpenSearch = {},
+            openSignals = MarketsSignalStrip(
+                count = 2,
+                summary = "BTCUSDT خرید · XAUUSD خرید",
+                onClick = {},
+            ),
+        )
     }
 
     /**

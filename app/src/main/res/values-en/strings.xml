@@ -54,4 +54,7 @@
     <string name="hub_feed_degraded">HTTP snapshot</string>
     <string name="hub_feed_offline">Offline</string>
     <string name="hub_feed_idle">Idle</string>
+    <string name="screen_chart_studio">Chart studio</string>
+    <string name="screen_tools">Toolkit</string>
+    <string name="screen_activity">Activity</string>
 </resources>

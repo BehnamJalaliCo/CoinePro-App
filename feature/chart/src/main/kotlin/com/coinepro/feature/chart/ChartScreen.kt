@@ -34,6 +34,7 @@ import com.coinepro.core.help.HelpCatalog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.draw.drawWithContent
@@ -53,6 +54,22 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.sp
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProShapes
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.style.TextOverflow
+import com.coinepro.core.designsystem.CoineProCard
+import com.coinepro.core.designsystem.CoineProGoldRule
+import com.coinepro.core.designsystem.CoineProPillShape
+import com.coinepro.core.designsystem.CoineProTextStyles
+import com.coinepro.core.designsystem.CoineProTint
+import com.coinepro.core.symbols.SymbolClassifier
+import com.coinepro.core.chart.TradeFromChart
+import com.coinepro.core.chart.TradeSide
+import com.coinepro.core.chart.ChartReading
+import com.coinepro.core.chart.ChartOrder
 import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.backtest.Backtest
 import kotlinx.coroutines.launch
@@ -107,13 +124,13 @@ fun ChartScreen(
      */
     onOpenTerminal: (() -> Unit)? = null,
     /**
-     * Opens the NamaScript studio on this symbol.
+     * Opens the chart studio on this symbol — indicators, drawing tools, replay, backtest, script.
      *
-     * On the chart's own toolbar because that is where a reader is when they think "I want a line
-     * this app does not have". A script written anywhere else would be written against a symbol
-     * chosen twice.
+     * A whole destination rather than a toolbar, and that is the owner's call. The chart page is
+     * for *reading* a market; the studio is for working on it. Cramming both into one screen is
+     * what produced a toolbar wider than the phone.
      */
-    onOpenScript: (() -> Unit)? = null,
+    onOpenStudio: (() -> Unit)? = null,
     /** The reader's watchlist, for the switcher strip. Fewer than two symbols hides it. */
     watchlist: List<String> = emptyList(),
     onSelectSymbol: ((String) -> Unit)? = null,
@@ -152,6 +169,7 @@ fun ChartScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(CoineProColors.Stage)
+            .verticalScroll(rememberScrollState())
             .focusRequester(focusRequester)
             .focusable()
             .chartShortcuts(
@@ -169,40 +187,53 @@ fun ChartScreen(
         }
         TimeframeRow(state.timeframe, controller::setTimeframe)
 
-        Box(
+        // The chart in a card with a gold hairline, rather than bled to the screen's edges. The
+        // owner chose this and the reason it works is that it makes the chart an *object* on the
+        // page — the stats and the setup below read as belonging to it instead of as unrelated
+        // rows that happen to follow.
+        Column(
             modifier = Modifier
-                .weight(1f)
+                .padding(horizontal = CoineProSpacing.Gutter)
                 .fillMaxWidth()
-                // The chart alone, recorded into a layer. Sharing the whole screen would hand over
-                // the status bar and the toolbar; sharing this hands over the chart.
-                .drawWithContent {
-                    chartLayer.record { this@drawWithContent.drawContent() }
-                    drawLayer(chartLayer)
-                },
+                .clip(CoineProShapes.medium)
+                .background(CoineProColors.Terminal)
+                .border(1.dp, CoineProTint.edge(CoineProColors.Gold), CoineProShapes.medium)
+                .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.OneHalf),
         ) {
-            when {
-                state.loading && state.series.isEmpty -> Loading()
-                state.error != null && state.series.isEmpty -> ChartFailure(state.error!!, controller::retry)
-                else -> CoineProChart(
-                    series = state.visibleSeries,
-                    modifier = Modifier.fillMaxSize(),
-                    type = state.chartType,
-                    decoration = ChartDecoration(
-                        overlays = state.overlays,
-                        signal = signal,
-                        levels = state.levels,
-                        markers = state.markers,
-                        panes = state.panes,
-                    ),
-                    drawing = state.drawing,
-                    onDrawing = controller::onDrawing,
-                )
-            }
-            if (state.loadingMore) {
-                // Over the chart rather than pushing it: paging back must not move the bars the
-                // reader is looking at.
-                Box(modifier = Modifier.align(Alignment.TopStart).padding(CoineProSpacing.One)) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            ChartCardHeading(state)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(CHART_HEIGHT)
+                    // The chart alone, recorded into a layer. Sharing the whole screen would hand
+                    // over the header and the toolbar; sharing this hands over the chart.
+                    .drawWithContent {
+                        chartLayer.record { this@drawWithContent.drawContent() }
+                        drawLayer(chartLayer)
+                    },
+            ) {
+                when {
+                    state.loading && state.series.isEmpty -> Loading()
+                    state.error != null && state.series.isEmpty -> ChartFailure(state.error!!, controller::retry)
+                    else -> CoineProChart(
+                        series = state.visibleSeries,
+                        modifier = Modifier.fillMaxSize(),
+                        type = state.chartType,
+                        decoration = ChartDecoration(
+                            overlays = state.overlays,
+                            signal = signal,
+                            levels = state.levels,
+                            markers = state.markers,
+                            panes = state.panes,
+                        ),
+                        drawing = state.drawing,
+                        onDrawing = controller::onDrawing,
+                    )
+                }
+                if (state.loadingMore) {
+                    Box(modifier = Modifier.align(Alignment.TopStart).padding(CoineProSpacing.One)) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    }
                 }
             }
         }
@@ -226,24 +257,20 @@ fun ChartScreen(
             onUndo = controller::undoDrawing,
             onHelp = onHelp,
         )
-        Toolbar(
-            activeIndicators = state.activeIndicators.size,
+
+        ReadingRow(state)
+        state.setup?.let { order -> SetupCard(order, onOpen = { sheet = ChartSheet.SETUP }) }
+        StudioCard(
+            indicators = state.activeIndicators.size,
             drawings = state.drawing.drawings.size,
-            hasSetup = state.setup != null,
-            canBacktest = state.series.bars.size >= Backtest.MINIMUM_BARS,
-            hasLayouts = layouts != null,
+            onOpen = onOpenStudio,
             onShare = {
                 shareScope.launch {
                     ChartShare.share(context, chartLayer.toImageBitmap(), state.symbol)
                 }
             },
-            // Offered only when there is something to replay. A button that answers "not enough
-            // bars" is a button that should not have been there.
-            onReplay = controller::enterReplay
-                .takeIf { !state.replay.isOn && state.series.bars.size >= Replay.MINIMUM_BARS },
-            onOpenScript = onOpenScript,
-            onOpen = { sheet = it },
         )
+        Spacer(Modifier.height(CoineProSpacing.Three))
     }
 
     when (sheet) {
@@ -379,7 +406,7 @@ fun ChartScreen(
  * A missing help file is not a reason to fail opening a chart.
  */
 @Composable
-private fun rememberHelpCatalog(wanted: Boolean): HelpCatalog? {
+internal fun rememberHelpCatalog(wanted: Boolean): HelpCatalog? {
     val context = LocalContext.current
     var catalog by remember { mutableStateOf<HelpCatalog?>(null) }
     LaunchedEffect(wanted) {
@@ -400,221 +427,377 @@ private fun LaunchedStart(controller: ChartController) {
 }
 
 /**
- * Symbol, timeframe, price and the session's move — the four things a reader checks before they
- * look at a single candle.
+ * The page's heading: what this market is, and what it is doing.
  *
- * The change is computed against the *first visible bar*, not against yesterday's close: this line
- * describes the picture on screen, and a percentage that disagreed with the bars under it would be
- * the more confusing of the two numbers.
+ * The price is set at forty points because it is the answer to the only question every visit
+ * begins with, and the gold rule under it is what ties the whole page to that heading. The change
+ * is measured across the loaded window rather than from a session open — neither feed sends one,
+ * and naming it after the window is the honest version: it describes the picture on screen.
  */
 @Composable
 private fun Header(state: ChartUiState, onOpenTerminal: (() -> Unit)?) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.OneHalf),
     ) {
-        CoineProAssetLogo(symbol = state.symbol, size = 28.dp)
-        Column(modifier = Modifier.weight(1f)) {
-            LtrDirection {
-                Text(
-                    text = state.symbol,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = CoineProColors.TextPrimary,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            Text(
-                text = state.timeframe.label,
-                style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextMuted,
-            )
-        }
-        state.lastPrice?.let { price ->
-            Column(horizontalAlignment = Alignment.End) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+        ) {
+            CoineProAssetLogo(symbol = state.symbol, size = 34.dp)
+            Column(modifier = Modifier.weight(1f)) {
                 LtrDirection {
                     Text(
-                        // Latin digits, as every market figure in this app is: a price is read
-                        // against a broker statement and a chart axis, both of which use them.
-                        text = formatPrice(price, decimalsFor(price)),
-                        style = MaterialTheme.typography.titleMedium,
+                        text = state.symbol,
+                        style = MaterialTheme.typography.titleSmall,
                         color = CoineProColors.TextPrimary,
-                        fontWeight = FontWeight.Bold,
                     )
                 }
-                state.changePercent?.let { move ->
-                    LtrDirection {
-                        Text(
-                            text = MarketNumberFormatter.signedPercent(move),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (move >= 0) CoineProColors.Buy else CoineProColors.Sell,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
+                Text(
+                    text = SymbolClassifier.classify(state.symbol).description,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextMuted,
+                    fontWeight = FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            onOpenTerminal?.let {
+                IconButton(onClick = it, modifier = Modifier.size(30.dp)) {
+                    Icon(
+                        painter = painterResource(DesignR.drawable.tv_maximize2),
+                        contentDescription = "ترمینال حرفه‌ای",
+                        tint = CoineProColors.TextMuted,
+                        modifier = Modifier.size(17.dp),
+                    )
                 }
             }
         }
-        onOpenTerminal?.let {
-            // The expand glyph rather than a word: the header already carries the symbol and the
-            // price, and a labelled button there would be the widest thing on the row.
-            IconButton(onClick = it, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    painter = painterResource(DesignR.drawable.tv_maximize2),
-                    contentDescription = "ترمینال حرفه‌ای",
-                    tint = CoineProColors.TextSecondary,
-                    modifier = Modifier.size(18.dp),
+        Row(
+            modifier = Modifier.padding(top = CoineProSpacing.OneHalf),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        ) {
+            LtrDirection {
+                Text(
+                    // Latin digits, as every market figure in this app is: a price is read against
+                    // a broker statement and a chart axis, both of which use them.
+                    text = state.lastPrice?.let { formatPrice(it, decimalsFor(it)) } ?: "—",
+                    style = CoineProTextStyles.Balance,
+                    color = CoineProColors.TextPrimary,
                 )
             }
+            state.changePercent?.let { move ->
+                LtrDirection {
+                    Text(
+                        text = MarketNumberFormatter.signedPercent(move),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (move >= 0) CoineProColors.Buy else CoineProColors.Sell,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                }
+            }
         }
+        CoineProGoldRule(modifier = Modifier.padding(top = CoineProSpacing.One))
     }
 }
 
 /**
- * The timeframe strip.
+ * The timeframe strip: outlined pills, gold on the one in force.
  *
- * Given its own vertical room and closed with a hairline. Before that the chips sat flush against
- * the chart's top gridline, and the selected one read as a label stuck to the plot rather than as
- * a control above it.
+ * All eight, at the owner's call, in the mockup's shape rather than the mockup's five. Eight fit
+ * because the pill is sized to its label and the row scrolls if a wider locale ever needs it —
+ * dropping M1, M5 and M30 would have taken the three shortest frames away from scalpers, who are
+ * exactly the readers who open a chart most often.
  */
 @Composable
 private fun TimeframeRow(selected: Timeframe, onSelect: (Timeframe) -> Unit) {
-    Column {
-        CoineProChipRow(
-            // Reversed, so the row reads W1 · D1 · H4 · H1 · … from the side the eye starts on. The
-            // enum is ordered shortest-first because that is how a period is naturally listed, but
-            // the timeframes people actually reach for are the long ones, and in enum order they
-            // were the ones scrolled off the edge.
-            options = Timeframe.entries.reversed().map { CoineProChip(id = it.wire, label = it.wire) },
-            selectedId = selected.wire,
-            // Null cannot happen — no "all" chip is offered — but the row's contract allows it, and
-            // a timeframe that silently becomes hourly because something returned null is worse
-            // than one that does not change at all.
-            onSelect = { id -> Timeframe.of(id)?.let(onSelect) },
-            modifier = Modifier.padding(bottom = CoineProSpacing.One),
-            compact = true,
-        )
-        HorizontalDivider(thickness = 1.dp, color = CoineProColors.BorderSubtle)
-    }
-}
-
-/**
- * The chart's tool strip: icons only, and scrollable.
- *
- * Labelled buttons were the single worst piece of layout in this app. Eight of them in a fixed Row
- * overflowed the width, so Compose measured the last few against zero and their Persian labels
- * wrapped one character per line — a hundred and thirty density-independent pixels of empty black
- * between the chart and the toolbar, on every phone, in every screenshot.
- *
- * Icons carry the meaning here the way they do in every terminal, the label survives as the
- * accessibility name, and the row scrolls rather than being squeezed. A count rides as a small
- * filled badge on its icon instead of as a word beside it.
- */
-@Composable
-private fun Toolbar(
-    activeIndicators: Int,
-    drawings: Int,
-    hasSetup: Boolean,
-    canBacktest: Boolean,
-    hasLayouts: Boolean,
-    onShare: () -> Unit,
-    onReplay: (() -> Unit)?,
-    onOpenScript: (() -> Unit)?,
-    onOpen: (ChartSheet) -> Unit,
-) {
-    Column {
-        HorizontalDivider(thickness = 1.dp, color = CoineProColors.BorderSubtle)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(CoineProColors.Surface)
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half),
-            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ToolbarButton(DesignR.drawable.tv_chart_candles, "نوع چارت") { onOpen(ChartSheet.TYPE) }
-            ToolbarButton(DesignR.drawable.tv_tool_sine, "اندیکاتور", activeIndicators) {
-                onOpen(ChartSheet.INDICATORS)
-            }
-            ToolbarButton(DesignR.drawable.tv_tool_trend, "ابزار") { onOpen(ChartSheet.TOOLS) }
-            if (drawings > 0) {
-                ToolbarButton(DesignR.drawable.tv_tool_select, "ترسیم‌ها", drawings) {
-                    onOpen(ChartSheet.DRAWINGS)
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = CoineProSpacing.OneHalf),
+        // Tighter than the page's gutter, which is what lets all eight sit on a phone without the
+        // row having to be scrolled to reach the shortest frames.
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        contentPadding = PaddingValues(horizontal = CoineProSpacing.Two),
+    ) {
+        // Reversed, so the row reads W1 · D1 · H4 · H1 · … from the side the eye starts on. The
+        // enum is ordered shortest-first because that is how a period is naturally listed, but the
+        // timeframes people reach for are the long ones, and in enum order they were the ones
+        // scrolled off the edge.
+        items(Timeframe.entries.reversed(), key = { it.wire }) { frame ->
+            val active = frame == selected
+            Box(
+                modifier = Modifier
+                    .clip(CoineProPillShape)
+                    .background(if (active) CoineProTint.fill(CoineProColors.Gold, CoineProColors.Stage) else Color.Transparent)
+                    .border(
+                        width = 1.dp,
+                        color = if (active) CoineProTint.edge(CoineProColors.Gold) else CoineProColors.Border,
+                        shape = CoineProPillShape,
+                    )
+                    .clickable { onSelect(frame) }
+                    .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
+            ) {
+                LtrDirection {
+                    Text(
+                        text = frame.wire,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (active) CoineProColors.Gold else CoineProColors.TextMuted,
+                    )
                 }
             }
-            onReplay?.let { ToolbarButton(DesignR.drawable.tv_play, "بازپخش", onClick = it) }
-            // Only once a setup exists to talk about. The button is the drawing's consequence, not
-            // a second way to start one.
-            if (hasSetup) {
-                ToolbarButton(DesignR.drawable.tv_tool_longshort, "معامله") { onOpen(ChartSheet.SETUP) }
-            }
-            onOpenScript?.let {
-                ToolbarButton(DesignR.drawable.tv_code2, "نما اسکریپت", onClick = it)
-            }
-            // On the chart because the bars are already here. A backtest screen elsewhere would
-            // need a symbol picker, a timeframe picker and a second fetch to answer the same
-            // question.
-            if (canBacktest) {
-                ToolbarButton(DesignR.drawable.icon_chart_line_up, "بک‌تست") { onOpen(ChartSheet.BACKTEST) }
-            }
-            if (hasLayouts) {
-                ToolbarButton(DesignR.drawable.icon_sliders_horizontal, "چیدمان") { onOpen(ChartSheet.LAYOUTS) }
-            }
-            ToolbarButton(DesignR.drawable.icon_camera, "اشتراک تصویر", onClick = onShare)
         }
     }
 }
 
-/**
- * One tool: a 44dp target with a 20dp glyph, and a badge when something is on.
- *
- * Forty-four because that is the smallest target a finger hits reliably, and the row is now the
- * only chrome between the chart and the bottom of the screen — a miss here costs the reader the
- * gesture *and* whatever the mis-tap opened.
- */
+/** What the card above the chart says: the window, and its high and low. */
 @Composable
-private fun ToolbarButton(icon: Int, label: String, count: Int = 0, onClick: () -> Unit) {
-    val active = count > 0
-    Box(
+private fun ChartCardHeading(state: ChartUiState) {
+    val extent = state.visibleSeries.let { series ->
+        if (series.isEmpty) null else series.low.min() to series.high.max()
+    }
+    Row(
         modifier = Modifier
-            .size(TOOL_TARGET)
-            .clip(CoineProShapes.small)
-            .clickable(onClick = onClick)
-            .semantics { contentDescription = label },
-        contentAlignment = Alignment.Center,
+            .fillMaxWidth()
+            .padding(start = CoineProSpacing.Half, end = CoineProSpacing.Half, bottom = CoineProSpacing.One),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = null,
-            modifier = Modifier.size(20.dp),
-            tint = if (active) CoineProColors.Accent else CoineProColors.TextSecondary,
+        Text(
+            text = state.timeframe.label,
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+            fontWeight = FontWeight.Normal,
         )
-        if (active) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 4.dp, end = 4.dp)
-                    .size(BADGE_SIZE)
-                    .background(CoineProColors.Accent, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
+        extent?.let { (low, high) ->
+            LtrDirection {
                 Text(
-                    // A prose count, so Persian digits — unlike a price, which stays Latin.
-                    text = count.toPersianDigits(),
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = BADGE_TEXT),
-                    color = CoineProColors.OnAccent,
-                    fontWeight = FontWeight.Bold,
+                    text = "H " + formatPrice(high, decimalsFor(high)) + "  ·  L " + formatPrice(low, decimalsFor(low)),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextDisabled,
+                    fontWeight = FontWeight.Normal,
                 )
             }
         }
     }
 }
 
-private val TOOL_TARGET = 44.dp
-private val BADGE_SIZE = 14.dp
-private val BADGE_TEXT = 8.sp
+/**
+ * Three readings of the market, computed from the bars on screen.
+ *
+ * Not a decoration and not a prediction. Trend strength is Wilder's ADX, which is the standard
+ * answer to "is there a trend here at all"; volatility is today's ATR against its own recent
+ * range, so "متوسط" means average *for this instrument* rather than against some absolute; the
+ * bias is the two moving averages the chart already draws. Every one of them is arithmetic the app
+ * already ships, said in a word — which is the whole point of putting them here rather than making
+ * a reader switch three indicators on to learn the same thing.
+ */
+@Composable
+private fun ReadingRow(state: ChartUiState) {
+    val reading = remember(state.visibleSeries) { ChartReading.of(state.visibleSeries) } ?: return
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.OneHalf),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+    ) {
+        ReadingCard("قدرت روند", reading.strengthLabel, reading.strengthColour(), Modifier.weight(1f))
+        ReadingCard("نوسان", reading.volatilityLabel, CoineProColors.TextPrimary, Modifier.weight(1f))
+        ReadingCard("سوگیری", reading.biasLabel, reading.biasColour(), Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun ReadingCard(label: String, value: String, tone: Color, modifier: Modifier = Modifier) {
+    CoineProCard(
+        modifier = modifier,
+        shape = CoineProShapes.small,
+        contentPadding = PaddingValues(CoineProSpacing.OneHalf),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+            fontWeight = FontWeight.Normal,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleSmall,
+            color = tone,
+            modifier = Modifier.padding(top = 2.dp),
+        )
+    }
+}
+
+/**
+ * The setup the reader has drawn, as three numbers and a ratio.
+ *
+ * Present only once a `longshort` drawing exists: this card is the drawing's consequence, and one
+ * that appeared before there was a setup would be three em dashes taking up a card's worth of page.
+ */
+@Composable
+private fun SetupCard(order: ChartOrder, onOpen: () -> Unit) {
+    val buy = order.side == TradeSide.BUY
+    val tone = if (buy) CoineProColors.Buy else CoineProColors.Sell
+    CoineProCard(
+        modifier = Modifier
+            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.Half)
+            .fillMaxWidth()
+            .clickable(onClick = onOpen),
+        shape = CoineProShapes.small,
+        accent = CoineProColors.Gold,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("ستاپ ترسیم‌شده", style = MaterialTheme.typography.labelMedium, color = CoineProColors.TextPrimary)
+            LtrDirection {
+                Text(
+                    text = "R : R = 1 : " + MarketNumberFormatter.price(TradeFromChart.riskReward(order) ?: 0.0, 1),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.Gold,
+                )
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = CoineProSpacing.OneHalf),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
+        ) {
+            SetupFigure("ورود", order.entry, CoineProColors.TextPrimary, Modifier.weight(1f))
+            SetupFigure("حد ضرر", order.stopLoss, CoineProColors.Sell, Modifier.weight(1f))
+            SetupFigure("هدف", order.takeProfit, tone, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun SetupFigure(label: String, price: Double, tone: Color, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+            fontWeight = FontWeight.Normal,
+        )
+        LtrDirection {
+            Text(
+                text = formatPrice(price, decimalsFor(price)),
+                style = MaterialTheme.typography.labelMedium,
+                color = tone,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+    }
+}
+
+/**
+ * The one way from the reading page into the working one.
+ *
+ * A card rather than a toolbar, and the counts on it are the reason it can be: "۴ اندیکاتور · ۲
+ * ترسیم" tells a returning reader what state their chart is in, which a row of icons never did.
+ */
+@Composable
+private fun StudioCard(
+    indicators: Int,
+    drawings: Int,
+    onOpen: (() -> Unit)?,
+    onShare: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.Half)
+            .fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        onOpen?.let { open ->
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(CoineProShapes.small)
+                    .background(CoineProColors.SurfaceElevated)
+                    .clickable(onClick = open)
+                    .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.OneHalf),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+            ) {
+                Icon(
+                    painter = painterResource(DesignR.drawable.icon_sliders_horizontal),
+                    contentDescription = null,
+                    tint = CoineProColors.Gold,
+                    modifier = Modifier.size(18.dp),
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "استودیوی چارت",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = CoineProColors.TextPrimary,
+                    )
+                    Text(
+                        text = studioSummary(indicators, drawings),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CoineProColors.TextMuted,
+                        fontWeight = FontWeight.Normal,
+                    )
+                }
+                Icon(
+                    painter = painterResource(DesignR.drawable.icon_caret_left),
+                    contentDescription = null,
+                    tint = CoineProColors.TextMuted,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+        }
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CoineProShapes.small)
+                .background(CoineProColors.SurfaceElevated)
+                .clickable(onClick = onShare)
+                .semantics { contentDescription = "اشتراک تصویر" },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(DesignR.drawable.icon_camera),
+                contentDescription = null,
+                tint = CoineProColors.TextSecondary,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+    }
+}
+
+/** Trend strength reads in the direction's own colour once there is a direction to read. */
+@Composable
+private fun ChartReading.strengthColour(): Color = when {
+    strengthLabel == "بدون روند" -> CoineProColors.TextMuted
+    isUp -> CoineProColors.Buy
+    isDown -> CoineProColors.Sell
+    else -> CoineProColors.TextPrimary
+}
+
+@Composable
+private fun ChartReading.biasColour(): Color = when {
+    isUp -> CoineProColors.Buy
+    isDown -> CoineProColors.Sell
+    else -> CoineProColors.TextMuted
+}
+
+/** «هیچ اندیکاتوری روشن نیست» / «۴ اندیکاتور · ۲ ترسیم» — Persian digits, because these are counts. */
+private fun studioSummary(indicators: Int, drawings: Int): String {
+    val parts = buildList {
+        if (indicators > 0) add(indicators.toPersianDigits() + " اندیکاتور")
+        if (drawings > 0) add(drawings.toPersianDigits() + " ترسیم")
+    }
+    return if (parts.isEmpty()) "اندیکاتور، ابزار، بازپخش، بک‌تست و نما اسکریپت" else parts.joinToString(" · ")
+}
 
 @Composable
 private fun Loading() {
@@ -658,3 +841,12 @@ private fun ChartFailure(error: ChartError, onRetry: () -> Unit) {
         }
     }
 }
+
+/**
+ * How tall the chart card is.
+ *
+ * A little under half a phone. Tall enough that a hundred candles have shape, short enough that the
+ * readings and the setup are on screen with it — which is the whole argument for a card rather than
+ * a full-bleed chart.
+ */
+private val CHART_HEIGHT = 300.dp

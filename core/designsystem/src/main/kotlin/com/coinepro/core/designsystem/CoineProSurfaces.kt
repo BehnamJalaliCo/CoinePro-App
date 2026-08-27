@@ -23,6 +23,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 
 /**
@@ -198,3 +207,77 @@ fun CoineProAgentOrb(
 
 /** Dim enough to read as unavailable, light enough that the label stays legible. */
 private const val DISABLED_ALPHA = 0.45f
+
+/**
+ * A hairline that starts gold and fades out.
+ *
+ * The one rule in the «طلایی» direction that carries meaning rather than decoration: it closes the
+ * header and says the page below it is the same subject. Solid on the reading edge and gone by the
+ * far edge, so it reads as an underline for the heading rather than as a divider across the page —
+ * a full-width gold line at this weight would be the loudest thing on screen.
+ *
+ * The gradient is deliberate and allow-listed: it is a rule, not a card, a header or a button, and
+ * the fade *is* the shape. See `scripts/quality/check-motion-policy.sh`.
+ */
+@Composable
+fun CoineProGoldRule(
+    modifier: Modifier = Modifier,
+    colour: Color = CoineProColors.Gold,
+) {
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val stops = listOf(colour.copy(alpha = 0.55f), colour.copy(alpha = 0.04f))
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(
+                Brush.horizontalGradient(if (rtl) stops.asReversed() else stops),
+            ),
+    )
+}
+
+/**
+ * A price series as a single stroke, small enough to sit in a list row.
+ *
+ * No axis, no labels, no grid: at this size a scale would be unreadable and the shape is the whole
+ * message — is this going up, and how steadily. Scaled to its own extremes rather than to a shared
+ * one, because the row beside it is a different instrument at a different price and a common scale
+ * would flatten every line but the most volatile.
+ *
+ * An empty or single-point series draws nothing rather than a flat line. A flat line is a claim
+ * that the price did not move; nothing is the honest picture of "not loaded yet".
+ */
+@Composable
+fun CoineProSparkline(
+    values: List<Double>,
+    modifier: Modifier = Modifier,
+    colour: Color = CoineProColors.TextMuted,
+    widthDp: Float = 1.4f,
+) {
+    if (values.size < 2) {
+        Box(modifier = modifier)
+        return
+    }
+    val density = LocalDensity.current.density
+    Canvas(modifier = modifier) {
+        val low = values.min()
+        val high = values.max()
+        val span = (high - low).takeIf { it > 0.0 } ?: 1.0
+        val step = size.width / (values.size - 1)
+        val path = Path()
+        values.forEachIndexed { index, value ->
+            val x = index * step
+            val y = ((high - value) / span).toFloat() * size.height
+            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        drawPath(
+            path = path,
+            color = colour,
+            style = Stroke(
+                width = widthDp * density,
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round,
+            ),
+        )
+    }
+}

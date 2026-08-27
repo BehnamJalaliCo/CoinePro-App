@@ -24,6 +24,7 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:common"))
+    implementation(project(":core:symbols"))
     implementation(project(":core:help"))
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.core)

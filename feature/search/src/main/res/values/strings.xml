@@ -19,4 +19,11 @@
     <string name="search_closed">بسته</string>
     <string name="search_weekend">تعطیل آخر هفته</string>
     <string name="search_no_price">—</string>
+    <string name="markets_title">بازارها</string>
+    <string name="markets_watchlist">دیده‌بان</string>
+    <string name="markets_watchlist_empty">هنوز بازاری به دیده‌بان اضافه نکرده‌اید.</string>
+    <string name="markets_column_symbol">نماد</string>
+    <string name="markets_column_trend">روند ۲۴ ساعت</string>
+    <string name="markets_column_price">قیمت / تغییر</string>
+    <string name="markets_open_signals">%1$d سیگنال باز</string>
 </resources>

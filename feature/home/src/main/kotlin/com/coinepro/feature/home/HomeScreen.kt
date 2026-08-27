@@ -44,6 +44,11 @@ import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProMarketRow
 import com.coinepro.core.designsystem.CoineProAssetToken
 import com.coinepro.core.designsystem.CoineProCard
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.Icon
+import androidx.compose.ui.res.painterResource
+import com.coinepro.core.designsystem.CoineProShapes
+import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
@@ -86,6 +91,15 @@ fun HomeScreen(
     onOpenMarket: () -> Unit = {},
     onOpenSignal: (Long) -> Unit = {},
     onOpenVerification: (() -> Unit)? = null,
+    /**
+     * The toolkit and the activity log, which used to be bottom-navigation tabs.
+     *
+     * They moved here when Markets and Chart took their places in the bar. Both are places a
+     * reader goes deliberately rather than surfaces they live in, and Home is where somebody looks
+     * when they are deciding what to do next.
+     */
+    onOpenTools: (() -> Unit)? = null,
+    onOpenActivity: (() -> Unit)? = null,
     onOpenSafety: (() -> Unit)? = null,
     onLogout: (() -> Unit)? = null,
     onDeleteAccount: (() -> Unit)? = null,
@@ -141,6 +155,10 @@ fun HomeScreen(
         }
 
         item { BalanceBlock(portfolio = portfolio, state = state) }
+
+        if (onOpenTools != null || onOpenActivity != null) {
+            item { ShortcutRow(onOpenTools = onOpenTools, onOpenActivity = onOpenActivity) }
+        }
 
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -734,4 +752,58 @@ private fun marketRank(quote: MarketQuote): Int = when (quote.instrument.symbol)
     "XAUUSD" -> 3
     "XAGUSD" -> 4
     else -> 10
+}
+
+/**
+ * The two destinations that lost their tab.
+ *
+ * A pair of wide, plainly-labelled rows rather than icons: they are visited rarely enough that a
+ * glyph alone would not be recognised, and often enough that burying them in the overflow menu
+ * would be hiding them.
+ */
+@Composable
+private fun ShortcutRow(onOpenTools: (() -> Unit)?, onOpenActivity: (() -> Unit)?) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        onOpenTools?.let {
+            Shortcut(
+                label = stringResource(R.string.home_shortcut_tools),
+                icon = DesignR.drawable.nav_tools,
+                onClick = it,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        onOpenActivity?.let {
+            Shortcut(
+                label = stringResource(R.string.home_shortcut_activity),
+                icon = DesignR.drawable.nav_activity,
+                onClick = it,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun Shortcut(label: String, icon: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(CoineProShapes.small)
+            .background(CoineProColors.Surface)
+            .clickable(onClick = onClick)
+            .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.OneHalf),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = CoineProColors.TextSecondary,
+            modifier = Modifier.size(18.dp),
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = CoineProColors.TextPrimary,
+        )
+    }
 }

@@ -64,4 +64,6 @@
         <item quantity="one">%1$d روز باقی مانده</item>
         <item quantity="other">%1$d روز باقی مانده</item>
     </plurals>
+    <string name="home_shortcut_tools">ابزارها</string>
+    <string name="home_shortcut_activity">فعالیت</string>
 </resources>

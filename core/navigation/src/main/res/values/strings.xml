@@ -6,4 +6,6 @@
     <string name="nav_ai">هوش</string>
     <string name="nav_tools">ابزارها</string>
     <string name="nav_activity">فعالیت</string>
+    <string name="nav_markets">بازارها</string>
+    <string name="nav_chart">چارت</string>
 </resources>

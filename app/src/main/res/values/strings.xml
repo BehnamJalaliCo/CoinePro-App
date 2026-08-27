@@ -57,4 +57,7 @@
     <string name="hub_feed_degraded">تصویر HTTP</string>
     <string name="hub_feed_offline">آفلاین</string>
     <string name="hub_feed_idle">بی‌کار</string>
+    <string name="screen_chart_studio">استودیوی چارت</string>
+    <string name="screen_tools">ابزارها</string>
+    <string name="screen_activity">فعالیت</string>
 </resources>

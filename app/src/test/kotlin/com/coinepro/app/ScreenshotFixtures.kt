@@ -901,6 +901,48 @@ object ScreenshotFixtures {
         return com.coinepro.core.script.ScriptController(dao, scope)
     }
 
+    /**
+     * A sparkline store served by a gateway that answers instantly from generated bars.
+     *
+     * The real store fetches, and a render test that waited on a network would capture the state
+     * before the lines arrived — which is the one thing this screenshot exists to check.
+     */
+    fun sparklineStore(
+        scope: kotlinx.coroutines.CoroutineScope,
+    ): com.coinepro.core.marketdata.SparklineStore {
+        val gateway = object : com.coinepro.core.marketdata.CandleGateway {
+            override suspend fun load(
+                symbol: String,
+                timeframe: com.coinepro.core.marketdata.Timeframe,
+                limit: Int,
+                before: Long?,
+            ): com.coinepro.core.marketdata.CandlePage {
+                // Seeded off the ticker, so two rows never draw the same line.
+                val seed = symbol.sumOf { it.code }
+                val bars = (0 until limit).map { index ->
+                    val wave = kotlin.math.sin((index + seed) / 5.0) * 3 +
+                        kotlin.math.sin((index + seed) / 17.0) * 6 + index * 0.05
+                    val close = 100.0 + wave
+                    com.coinepro.core.marketdata.OhlcBar(
+                        t = 1_700_000_000L + index * 3_600L,
+                        o = close - 0.2,
+                        h = close + 0.5,
+                        l = close - 0.6,
+                        c = close,
+                        v = 1_000.0,
+                    )
+                }
+                return com.coinepro.core.marketdata.CandlePage(
+                    symbol = symbol,
+                    timeframe = timeframe,
+                    candles = bars,
+                    hasMore = false,
+                )
+            }
+        }
+        return com.coinepro.core.marketdata.SparklineStore(gateway, scope)
+    }
+
     fun chartController(
         scope: kotlinx.coroutines.CoroutineScope,
         symbol: String = "XAUUSD",
