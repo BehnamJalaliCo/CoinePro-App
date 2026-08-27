@@ -16,6 +16,7 @@ android {
 
 dependencies {
     implementation(project(":core:chart"))
+    implementation(project(":core:backtest"))
     implementation(project(":core:marketdata"))
     implementation(project(":core:model"))
     implementation(project(":core:designsystem"))

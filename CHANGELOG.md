@@ -15,6 +15,25 @@ it is for.
 
 ---
 
+## [1.11.0] — 2026-08-27 — A backtest on the chart
+
+### Added
+- `core:backtest`: three named rules — moving-average cross, RSI reversion, channel breakout — run
+  over the bars already loaded, on the device, with no request. The web terminal backtests an
+  arbitrary language on a server; this answers the question a reader actually has, which is whether
+  an idea survives the last thousand bars.
+- Every choice is the pessimistic one, because a backtest that flatters is worse than none. A signal
+  on bar *n* fills at the **open of bar n+1** — filling at the close that produced it is the most
+  common way a backtest invents money. Anything still open closes at the final bar. Costs default to
+  five basis points, not zero: a rule that flips every few bars is a fortune at zero and ruinous at
+  five, and that difference is usually the whole finding.
+- Maximum drawdown is measured peak to trough rather than start to end — the number that decides
+  position size, and the one a flattering backtest leaves out.
+- Long only, and the sheet says so: a short needs a borrow and a funding rate that a bar series does
+  not know, and silently shorting answers a question about a position the reader could not hold.
+
+---
+
 ## [1.10.0] — 2026-08-27 — Paper trading
 
 ### Added

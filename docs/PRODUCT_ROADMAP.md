@@ -302,6 +302,7 @@ core:account
 core:guest
 core:journal
 core:papertrade
+core:backtest
 core:diagnostics
 core:database
 feature:admin

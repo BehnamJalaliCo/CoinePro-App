@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.chart.ChartCatalog
+import com.coinepro.core.backtest.Backtest
 import com.coinepro.core.chart.Replay
 import com.coinepro.core.chart.ChartDecoration
 import com.coinepro.core.chart.ChartTypePicker
@@ -157,6 +158,7 @@ fun ChartScreen(
             activeIndicators = state.activeIndicators.size,
             drawings = state.drawing.drawings.size,
             hasSetup = state.setup != null,
+            canBacktest = state.series.bars.size >= Backtest.MINIMUM_BARS,
             // Offered only when there is something to replay. A button that answers "not enough
             // bars" is a button that should not have been there.
             onReplay = controller::enterReplay
@@ -208,6 +210,14 @@ fun ChartScreen(
                 },
                 onHelp = onHelp,
             )
+        }
+
+        ChartSheet.BACKTEST -> CoineProSheet(
+            title = "بک‌تست",
+            subtitle = state.symbol,
+            onDismiss = { sheet = null },
+        ) {
+            BacktestSheetBody(bars = state.series.bars, symbol = state.symbol)
         }
 
         ChartSheet.SETUP -> state.setup?.let { order ->
@@ -263,7 +273,7 @@ private fun rememberHelpCatalog(wanted: Boolean): HelpCatalog? {
     return catalog
 }
 
-private enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP }
+private enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST }
 
 @Composable
 private fun LaunchedStart(controller: ChartController) {
@@ -342,6 +352,7 @@ private fun Toolbar(
     activeIndicators: Int,
     drawings: Int,
     hasSetup: Boolean,
+    canBacktest: Boolean,
     onReplay: (() -> Unit)?,
     onOpen: (ChartSheet) -> Unit,
 ) {
@@ -369,6 +380,9 @@ private fun Toolbar(
         if (hasSetup) {
             ToolbarButton(DesignR.drawable.tv_tool_longshort, "معامله") { onOpen(ChartSheet.SETUP) }
         }
+        // On the chart because the bars are already here. A backtest screen elsewhere would need a
+        // symbol picker, a timeframe picker and a second fetch to answer the same question.
+        if (canBacktest) ToolbarButton(DesignR.drawable.icon_chart_line_up, "بک‌تست") { onOpen(ChartSheet.BACKTEST) }
     }
 }
 
