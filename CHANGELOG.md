@@ -15,6 +15,22 @@ it is for.
 
 ---
 
+## [1.14.0] — 2026-08-27 — Keyboard shortcuts on the chart
+
+### Added
+- Digits pick a timeframe, space plays and pauses replay, the arrows step a bar, Escape cancels a
+  drawing and Z undoes one. For tablets, DeX, Chromebooks and anything with a Bluetooth keyboard —
+  on all of which a chart that ignores the arrow keys feels like a phone app being tolerated.
+- Nothing is keyboard-only. Every shortcut has a control on screen; a shortcut that is the sole
+  route to a function is a function most readers do not have.
+- Key-down only. Android delivers both edges, and acting on both fires every shortcut twice — which
+  on a timeframe key is invisible and on a step key is two bars.
+- Left and right mean back and forward in *time* even in the right-to-left interface, because the
+  chart's time axis runs left to right in every terminal and a trader comparing two screens must not
+  have to reverse one of them in their head.
+
+---
+
 ## [1.13.0] — 2026-08-27 — The order ticket that can honestly exist
 
 ### Added

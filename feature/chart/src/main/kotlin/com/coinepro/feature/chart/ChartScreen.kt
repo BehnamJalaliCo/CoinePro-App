@@ -2,6 +2,7 @@ package com.coinepro.feature.chart
 
 import com.coinepro.core.common.toPersianDigits
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +33,8 @@ import com.coinepro.core.help.HelpCatalog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -109,7 +112,26 @@ fun ChartScreen(
 
     LaunchedStart(controller)
 
-    Column(modifier = Modifier.fillMaxSize().background(CoineProColors.Stage)) {
+    val focusRequester = remember { FocusRequester() }
+    // Requested once, so a keyboard works without the reader first tapping the chart. It is
+    // harmless where there is no keyboard: focus on a container changes nothing a finger sees.
+    LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(CoineProColors.Stage)
+            .focusRequester(focusRequester)
+            .focusable()
+            .chartShortcuts(
+                onTimeframe = controller::setTimeframe,
+                onReplayToggle = controller::replayToggle,
+                onStep = controller::replayStep,
+                onStepBack = controller::replayStepBack,
+                onCancelDrawing = controller::cancelDrawing,
+                onUndoDrawing = controller::undoDrawing,
+            ),
+    ) {
         Header(state, onOpenTerminal)
         onSelectSymbol?.let { select ->
             SymbolWheel(symbols = watchlist, current = state.symbol, onSelect = select)
