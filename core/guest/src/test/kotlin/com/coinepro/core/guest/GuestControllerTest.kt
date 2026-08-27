@@ -133,6 +133,20 @@ private class FakeGuestGateway(
     override suspend fun trackRecord(limit: Int) =
         AppResult.Success(GuestTrackRecord(emptyList(), available = false))
 
+    override suspend fun membership() = AppResult.Success(
+        MembershipTerms(
+            lbankReferralUrl = null,
+            ourbitReferralUrl = null,
+            minDepositUsdt = null,
+            copyTradeExchanges = emptyList(),
+            uidExchanges = emptyList(),
+            noticeFa = null,
+        ),
+    )
+
+    override suspend fun candles(symbol: String, timeframe: String, limit: Int) =
+        AppResult.Success(GuestCandles(symbol, timeframe, emptyList()))
+
     override suspend fun community() = AppResult.Success(
         GuestCommunity(
             channels = emptyList(),

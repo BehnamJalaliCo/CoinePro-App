@@ -15,6 +15,53 @@ it is for.
 
 ---
 
+## [1.21.0] — 2026-08-27 — Both backends answered
+
+Every blocker either team owned is now built and on production. This is the app catching up to it.
+
+### Added
+- The membership card carries the **real referral links**, from `GET /api/v1/public/membership`.
+  This is the one thing that could never be compiled in: a link one release out of date does not
+  fail visibly — the exchange simply never records the account as CoinePro's, so the reader funds
+  it, submits their UID and is refused for a reason nothing on screen can explain. The minimum
+  deposit and the notice above the links come from the same place, read from the same values the
+  verifier reads.
+- Public candles (`GET /api/v1/public/candles/{symbol}`) and CoinePro-FX's guest token
+  (`POST user/auth/guest`) in the gateways, so a guest can be shown a chart on either platform.
+  The guest token creates no account, cannot be refreshed, and opens three chart routes.
+- Contact details in the privacy policy and the terms — support address and the developer's legal
+  name and address, in both languages. The last two rows of the Play checklist nobody else could
+  fill in.
+- `docs/assetlinks/`, one file per host, with the real release fingerprint and the three conditions
+  that make verification silently fail if any is missed.
+- `scripts/quality/redact-backend-internals.py`, and a `--check` mode, so no future document
+  reintroduces a server module name or a cache key.
+
+### Changed
+- The terminal's address comes from the server's capability answer, not from the build. The address
+  that was compiled in pointed at a host that had been decommissioned — the domain no longer
+  resolved — so the button would have opened a browser error, and no release could have known.
+- **The academy token is injected into the WebView no more.** The credential rides in the URL
+  fragment, which browsers never send to a server: not in the request line, not in `Referer`. That
+  also removes the last thing `onPageStarted` could hand to a page the app did not choose.
+- Every capability flag parses in either spelling. CoinePro-FX's config answers `bot_username` and
+  `accountDeletion` in the same object; under a snake_case policy the camelCase one silently
+  defaulted to `false`, which is a working feature the app quietly stops offering.
+- The academy token's lifetime is read from `expiresIn` rather than the absolute stamp — the
+  opposite of the advice that came with the route, and for the reason that advice was worried
+  about: a phone whose clock is wrong compares an absolute time against a wrong now and gets a wrong
+  answer, where a relative one cancels out of the subtraction.
+- Password-recovery App Links are claimed for CoinePro-FX's host as well, at its own path.
+
+### Fixed
+- A `403 deletion_disabled` reads as "this server does not offer deletion", not as a session
+  expiring. Everywhere else in this app a 403 means signed out — left to the general path it would
+  have logged somebody out of an account that still exists, right after they asked to delete it.
+- The site renderer handles a mailto autolink. The support address rendered as the literal text
+  `<name@example.com>` — on the one page whose whole job is to say how to reach a human.
+
+---
+
 ## [1.20.1] — 2026-08-27 — Hardening for a public repository
 
 The repository went from private to public. Nothing in its history was secret — no keystore, no

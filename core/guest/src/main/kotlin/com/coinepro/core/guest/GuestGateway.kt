@@ -29,6 +29,18 @@ interface GuestGateway {
 
     /** The public channels and their member counts, each carrying its own availability. */
     suspend fun community(): AppResult<GuestCommunity>
+
+    /** How to become a member — the referral links included, which are the server's to state. */
+    suspend fun membership(): AppResult<MembershipTerms>
+
+    /**
+     * Bars for one symbol, without an account.
+     *
+     * [limit] is capped at 500 on this route, half what the signed-in one allows, because every
+     * uncached request is a call to the exchange. Asking for more is refused rather than truncated,
+     * so the caller is clamped here instead of finding out at the server.
+     */
+    suspend fun candles(symbol: String, timeframe: String = "1h", limit: Int = 300): AppResult<GuestCandles>
 }
 
 class NetworkGuestGateway internal constructor(
@@ -121,6 +133,42 @@ class NetworkGuestGateway internal constructor(
         )
     }
 
+    override suspend fun membership(): AppResult<MembershipTerms> = call {
+        val dto = api.membership()
+        MembershipTerms(
+            lbankReferralUrl = dto.lbankReferralUrl?.takeIf(String::isNotBlank),
+            ourbitReferralUrl = dto.ourbitReferralUrl?.takeIf(String::isNotBlank),
+            minDepositUsdt = dto.minDepositUsdt,
+            copyTradeExchanges = dto.copyTradeExchanges.orEmpty().filter(String::isNotBlank),
+            uidExchanges = dto.uidExchanges.orEmpty().filter(String::isNotBlank),
+            noticeFa = dto.noticeFa?.takeIf(String::isNotBlank),
+        )
+    }
+
+    override suspend fun candles(symbol: String, timeframe: String, limit: Int): AppResult<GuestCandles> = call {
+        val dto = api.candles(symbol, timeframe, limit.coerceIn(1, PUBLIC_CANDLE_LIMIT))
+        GuestCandles(
+            symbol = dto.symbol?.takeIf(String::isNotBlank) ?: symbol,
+            // The server's normalised label, not the one that was asked for.
+            timeframe = dto.tf?.takeIf(String::isNotBlank) ?: timeframe,
+            candles = dto.candles.orEmpty().mapNotNull { row ->
+                // A bar missing any of its four prices is not a bar. Dropped rather than filled in
+                // from a neighbour, which would draw a candle the market never printed.
+                GuestCandle(
+                    timeSeconds = row.t ?: return@mapNotNull null,
+                    open = row.o ?: return@mapNotNull null,
+                    high = row.h ?: return@mapNotNull null,
+                    low = row.l ?: return@mapNotNull null,
+                    close = row.c ?: return@mapNotNull null,
+                    volume = row.v,
+                    // Absent reads as still forming, which is the cautious way round: treating an
+                    // unfinished bar as closed is what makes an indicator signal and then unsignal.
+                    closed = row.closed ?: false,
+                )
+            },
+        )
+    }
+
     private suspend fun <T> call(block: suspend () -> T): AppResult<T> = try {
         AppResult.Success(block())
     } catch (error: HttpException) {
@@ -139,6 +187,9 @@ class NetworkGuestGateway internal constructor(
     }
 
     companion object {
+        /** The public route's own ceiling. The signed-in one allows a thousand. */
+        const val PUBLIC_CANDLE_LIMIT = 500
+
         fun create(retrofit: Retrofit): NetworkGuestGateway =
             NetworkGuestGateway(retrofit.create(GuestApi::class.java))
     }

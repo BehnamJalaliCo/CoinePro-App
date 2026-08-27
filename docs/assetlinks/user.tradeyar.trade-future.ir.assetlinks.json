@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.coinepro.app",
+      "sha256_cert_fingerprints": [
+        "96:12:AB:6C:BF:BB:4F:4F:FB:F1:51:D8:60:2C:12:9D:CC:E8:A9:77:1E:85:46:69:E6:63:87:0F:04:04:FB:D0"
+      ]
+    }
+  }
+]

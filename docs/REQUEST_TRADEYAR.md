@@ -62,8 +62,8 @@ LBank را بخواند. آن‌وقت دامنه با هر لیستینگِ ت�
 
 **اولویت: بالا. چارت بدونِ این کار نمی‌کند.**
 
-`app/data/candle_cache.py:639` همین حالا این را دارد و
-`app/api/mobile/ai.py:74` از آن استفاده می‌کند:
+`app/data/«سرویس مربوطه در سمت شما» همین حالا این را دارد و
+`app/api/mobile/«سرویس مربوطه در سمت شما» از آن استفاده می‌کند:
 
 ```python
 async def get_candles(symbol: str, timeframe: str, limit: int) -> pd.DataFrame:

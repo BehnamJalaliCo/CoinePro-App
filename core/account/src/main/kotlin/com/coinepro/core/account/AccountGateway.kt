@@ -132,6 +132,15 @@ class NetworkAccountGateway internal constructor(
             // 404 is the route not existing; 405 is the path existing for another verb. Both mean
             // this deployment has not built deletion yet, which is a different thing from refusing.
             response.code() == 404 || response.code() == 405 -> DeletionOutcome.UNSUPPORTED
+            // A 403 that names the switch is the feature being off, not the reader being signed
+            // out — and everywhere else in this app a 403 means signed out. Left to the general
+            // path it would put "your session expired" in front of somebody who has just asked to
+            // be forgotten, and then log them out of an account that still exists.
+            //
+            // The code is what decides, never the text: a message can be reworded on a Tuesday.
+            response.code() == 403 &&
+                ApiErrors.parse(response.errorBody()?.string()).code == DELETION_DISABLED ->
+                DeletionOutcome.UNSUPPORTED
             else -> throw HttpException(response)
         }
     }
@@ -175,6 +184,9 @@ class NetworkAccountGateway internal constructor(
 
     companion object {
         private const val UNKNOWN_CURRENCY = "USD"
+
+        /** CoinePro-FX's code for "deletion is switched off here", answered with a 403. */
+        private const val DELETION_DISABLED = "deletion_disabled"
 
         fun create(retrofit: Retrofit, platform: MarketPlatform): NetworkAccountGateway =
             NetworkAccountGateway(retrofit.create(AccountApi::class.java), AccountPaths.of(platform))

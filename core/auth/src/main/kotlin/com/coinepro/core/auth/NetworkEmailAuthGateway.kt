@@ -40,6 +40,8 @@ class NetworkEmailAuthGateway internal constructor(
                 assistant = it.assistant,
                 aiSignals = it.aiSignals,
                 accountDeletion = it.accountDeletion,
+                guestAuth = it.guestAuth,
+                terminalUrl = it.terminalUrl?.trim()?.takeIf(String::isNotEmpty),
             )
         }
     }

@@ -15,7 +15,21 @@ internal sealed interface CoineProDeepLink {
  * verifies against `assetlinks.json`. Accepting a token from any other host would mean acting on a
  * link nobody proved ownership of.
  */
-private const val RESET_HOST = "user.tradeyar.trade-future.ir"
+/**
+ * The hosts whose recovery links this app claims — one per backend.
+ *
+ * Named rather than pattern-matched because that is what the manifest declares and what Android
+ * verifies against each host's `assetlinks.json`. Accepting a token from any other host would mean
+ * acting on a link nobody proved ownership of.
+ *
+ * The two spell the path differently and that is theirs to decide, not ours to normalise: TradeYar
+ * serves `/reset`, CoinePro-FX serves `/reset-password`. A single pattern covering both would also
+ * cover a third nobody has vetted.
+ */
+private val RESET_HOSTS = mapOf(
+    "user.tradeyar.trade-future.ir" to "reset",
+    "coineprofx.com" to "reset-password",
+)
 
 /**
  * A reset token is opaque to the app — only the server can say whether it is valid, unspent and
@@ -37,7 +51,8 @@ internal fun parseCoineProDeepLink(
     // is a credential, and a custom scheme any installed app may register is not somewhere to put
     // one.
     if (scheme == "https") {
-        if (host != RESET_HOST || pathSegments.firstOrNull() != "reset") return null
+        val expected = RESET_HOSTS[host?.lowercase()] ?: return null
+        if (pathSegments.firstOrNull() != expected) return null
         val token = resetToken?.takeIf { RESET_TOKEN.matches(it) } ?: return null
         return CoineProDeepLink.PasswordReset(token)
     }

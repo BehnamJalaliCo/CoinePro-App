@@ -18,6 +18,9 @@
     <string name="membership_referral_note">Step one matters: an account opened without the dedicated link is not linked to CoinePro in the exchange\'s own system, and cannot be verified afterwards.</string>
     <string name="membership_sign_in">Sign in or register</string>
     <string name="membership_read_terms">Full membership terms</string>
+    <string name="membership_step_fund_amount">Fund the account to at least %1$s USDT.</string>
+    <string name="membership_open_lbank">Register at LBank</string>
+    <string name="membership_open_ourbit">Register at Ourbit</string>
     <string name="guest_record_title">Signal track record</string>
     <string name="guest_record_summary">%1$s of the last %2$s closed signals finished in profit — a %3$s%% win rate.</string>
     <string name="guest_record_note">These are real published signals that have closed, not samples. Past performance is not a guarantee of future results.</string>

@@ -24,15 +24,15 @@ app will never ask about.
 
 1. **Create a branch**: `git checkout -b feature/android-mobile-api`
 2. **Create a folder** for this work rather than threading it through the existing routers:
-   `app/api/routers/mobile/` with its own `__init__.py` exporting one `APIRouter`, mounted once
+   `app/api/routers/mobile/` with its own `«ماژول مربوطه در سمت شما»` exporting one `APIRouter`, mounted once
    under the prefix `/api/mobile/v1`. Shared helpers go in `app/api/mobile/`. The reason is not
    tidiness: a Next.js front-end, a Telegram bot and an admin surface depend on the existing
    routers, and a reviewer needs to see at a glance that nothing outside this folder changed.
 3. **Read first**, then plan. The pieces that matter:
-   - `app/api/routers/user/` — mounted at `/api/user/v1`, holds `auth.py`, `register.py`,
-     `account.py`, `signals.py`, `notifications.py`, `positions.py`, `settings.py`
+   - `app/api/routers/user/` — mounted at `/api/user/v1`, holds `«ماژول مربوطه در سمت شما»`, `«ماژول مربوطه در سمت شما»`,
+     `«ماژول مربوطه در سمت شما»`, `«ماژول مربوطه در سمت شما»`, `«ماژول مربوطه در سمت شما»`, `«ماژول مربوطه در سمت شما»`, `«ماژول مربوطه در سمت شما»`
    - `app/api/auth/router.py` — mounted at `/auth`, holds `/login`, `/logout`, `/me`, `/refresh`
-   - `app/api/routers/public/` — `tickers.py`, `stream.py`, `news.py`, `watchlist.py`, `alerts.py`
+   - `app/api/routers/public/` — `«ماژول مربوطه در سمت شما»`, `«ماژول مربوطه در سمت شما»`, `«ماژول مربوطه در سمت شما»`, `«ماژول مربوطه در سمت شما»`, `«ماژول مربوطه در سمت شما»`
    - `app/api/routers/signals.py` — `/signals`
    - `app/data/` — the LBank kline collector, candle cache and market fallback
    Follow the patterns already there: the same auth dependencies from `app/api/routers/user/deps.py`,
@@ -100,7 +100,7 @@ Requirements:
 - Refresh tokens: opaque, stored hashed, single-use, rotated on every refresh, revocable. If one is
   presented twice, revoke the whole family — that is the standard signal of theft. Coordinate with
   `app/api/auth/token_blacklist.py` rather than adding a second mechanism.
-- A user who registers by email and later links Telegram must end up as **one** row. `register.py`
+- A user who registers by email and later links Telegram must end up as **one** row. `«ماژول مربوطه در سمت شما»`
   already has a UID/link concept; decide the merge rule explicitly against it and write it down.
 - `user` in these responses is the same shape `/api/user/v1/auth/me` returns, so the client keeps one
   profile model. If that shape is not stable, tell me before changing it.
@@ -108,7 +108,7 @@ Requirements:
 ## Part 2 — Level-1 KYC
 
 The app asks for level 1 only — enough to know a real person is behind the account, not a document
-pipeline. If TradeYar already has a consent or verification concept in `register.py`, build on it.
+pipeline. If TradeYar already has a consent or verification concept in `«ماژول مربوطه در سمت شما»`, build on it.
 
 ```
 GET  /api/mobile/v1/kyc          -> { level, status, required_fields: [...], submitted_at, reviewed_at }
@@ -122,7 +122,7 @@ features on this.
 ## Part 3 — Market data for the app
 
 The client needs a realtime socket and an HTTP fallback for cold start. `app/api/routers/public/`
-already has `tickers.py` and `stream.py`; expose them in the shape the app parses.
+already has `«ماژول مربوطه در سمت شما»` and `«ماژول مربوطه در سمت شما»`; expose them in the shape the app parses.
 
 ```
 WS  /api/mobile/v1/ws/prices?symbols=BTCUSDT,ETHUSDT
@@ -195,7 +195,7 @@ GET /api/mobile/v1/briefing -> { body, generated_at, streaming: false }
 ## Part 6 — Portfolio and holdings
 
 The home screen shows a total balance and the positions behind it. `app/api/routers/user/account.py`
-has `/balance` and `positions.py` has `/active` — compose them into one call so the screen is not
+has `/balance` and `«ماژول مربوطه در سمت شما»` has `/active` — compose them into one call so the screen is not
 three round trips.
 
 ```

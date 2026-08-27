@@ -59,8 +59,8 @@ fun TerminalScreen(
 
     Box(modifier = Modifier.fillMaxSize().background(CoineProColors.Stage)) {
         val url = state.url
-        val token = state.token
-        if (url != null && token != null) {
+        val launchUrl = state.launchUrl
+        if (url != null && launchUrl != null) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { context ->
@@ -89,21 +89,6 @@ fun TerminalScreen(
                         setBackgroundColor(android.graphics.Color.TRANSPARENT)
 
                         webViewClient = object : WebViewClient() {
-                            override fun onPageStarted(view: WebView, pageUrl: String, favicon: Bitmap?) {
-                                // Planted on every page start, not only the first. The terminal is
-                                // a single-page app but a hard reload — its own, or a crash
-                                // recovery — would otherwise come back signed out.
-                                //
-                                // Guarded by the same host test as the navigation, and the guard is
-                                // the point: this call hands the reader's academy token to whatever
-                                // document is loading. `shouldOverrideUrlLoading` is not consulted
-                                // for a server-side redirect, so without this check a 302 off the
-                                // terminal's host would be enough to give the token away.
-                                if (isTerminalUrl(pageUrl, url)) {
-                                    view.evaluateJavascript(tokenInjectionScript(token), null)
-                                }
-                            }
-
                             override fun onPageFinished(view: WebView, url: String) {
                                 controller.onLoaded()
                             }
@@ -136,10 +121,10 @@ fun TerminalScreen(
                                 return !isTerminalUrl(request.url.toString(), url)
                             }
                         }
-                        // Planted before the first load too: onPageStarted fires after the
-                        // document begins, and the terminal's client reads storage as it boots.
-                        evaluateJavascript(tokenInjectionScript(token), null)
-                        loadUrl(url)
+                        // The token rides in the fragment of this one address and nothing is
+                        // injected into the page at all — see `launchUrl`. Every later navigation
+                        // is checked against `url`, which carries no credential.
+                        loadUrl(launchUrl)
                     }
                 },
                 onRelease = { view ->

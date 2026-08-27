@@ -735,18 +735,31 @@ object AppModule {
     ): AcademyGateway = NetworkAcademyGateway(retrofit, tokens)
 
     /**
-     * The web terminal, if this build was pointed at one.
+     * The web terminal.
      *
-     * `BuildConfig.TERMINAL_URL` is empty unless a `COINEPRO_*_TERMINAL_URL` property was supplied,
-     * and an empty address makes the controller report itself unconfigured — which hides the entry
-     * rather than offering a button that opens a blank page.
+     * The address comes from the server's own capability answer, and falls back to
+     * `BuildConfig.TERMINAL_URL` only where a deployment does not report one. That order is not a
+     * preference — the address this app used to compile in pointed at a host that had since been
+     * decommissioned, so the button would have opened a browser error and no release could have
+     * known. A server always knows where it is serving from.
+     *
+     * With neither, the controller reports itself unconfigured and the entry is not drawn, which is
+     * better than a button that opens a blank page.
      */
     @Provides
     @Singleton
     fun terminalController(
         tokens: AcademyTokenStore,
+        capabilities: PlatformCapabilities,
         scope: CoroutineScope,
-    ): TerminalController = TerminalController(BuildConfig.TERMINAL_URL, tokens, scope)
+    ): TerminalController = TerminalController(
+        baseUrl = {
+            capabilities.state.value[MarketPlatform.COINEPRO_FX]?.terminalUrl
+                ?: BuildConfig.TERMINAL_URL
+        },
+        tokens = tokens,
+        scope = scope,
+    )
 
     @Provides
     @Singleton

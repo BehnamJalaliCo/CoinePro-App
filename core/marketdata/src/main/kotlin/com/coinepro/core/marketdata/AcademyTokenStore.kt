@@ -1,5 +1,6 @@
 package com.coinepro.core.marketdata
 
+import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import retrofit2.Retrofit
@@ -39,6 +40,15 @@ internal interface AcademyTokenApi {
 
 internal data class AcademyTokenDto(
     val token: String? = null,
+    /**
+     * Lifetime in seconds, and the one the app trusts. See [NetworkAcademyTokenStore.mint].
+     *
+     * Named twice because the route answers `expiresIn` while the app's Gson expects snake_case,
+     * and a lifetime that silently parses as null is a token the app renews far more often than it
+     * needs to — or, with the wrong fallback, one it holds past its death.
+     */
+    @SerializedName(value = "expires_in", alternate = ["expiresIn"])
+    val expiresIn: Long? = null,
     val expiresAt: String? = null,
     val studentId: Long? = null,
     val tier: String? = null,
@@ -98,16 +108,30 @@ class NetworkAcademyTokenStore(
             ?: error("academy-token returned no token")
         held = token
         tier = response.tier
-        expiresAtMillis = parseExpiry(response.expiresAt) ?: (nowMillis() + FALLBACK_LIFETIME_MS)
+        expiresAtMillis = lifetime(response)
         return token
     }
 
     /**
-     * ISO-8601 with an offset, which is what the route sends.
+     * When the held token stops being usable, in this device's own clock.
      *
-     * A failure to parse falls back to a conservative lifetime rather than to forever: an unparsed
-     * expiry that defaults to "never" produces a token that is silently dead for eleven hours.
+     * **The relative lifetime wins over the absolute timestamp**, which is the opposite of the
+     * advice that came with the route — and the reason is the very thing that advice was worried
+     * about. A phone whose clock is wrong compares an absolute `expires_at` against a wrong now and
+     * gets a wrong answer: an hour fast and every freshly minted token looks expired; a day slow
+     * and a dead one looks good for another day. `expiresIn` is measured from the moment the
+     * response arrived, so a clock that is wrong by any amount cancels out of the subtraction.
+     *
+     * The absolute stamp stays as the fallback, and a conservative constant behind that: an expiry
+     * that fails to parse must not default to forever, or the token is silently dead for eleven
+     * hours while every chart request answers 401.
      */
+    private fun lifetime(response: AcademyTokenDto): Long {
+        response.expiresIn?.takeIf { it > 0 }?.let { return nowMillis() + it * 1_000 }
+        return parseExpiry(response.expiresAt) ?: (nowMillis() + FALLBACK_LIFETIME_MS)
+    }
+
+    /** ISO-8601 with an offset, which is what the route sends. */
     private fun parseExpiry(text: String?): Long? = text?.let {
         runCatching { java.time.OffsetDateTime.parse(it).toInstant().toEpochMilli() }.getOrNull()
     }

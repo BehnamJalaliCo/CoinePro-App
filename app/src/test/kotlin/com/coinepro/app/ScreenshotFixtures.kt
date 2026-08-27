@@ -97,7 +97,9 @@ import com.coinepro.core.account.AccountPortfolio
 import com.coinepro.core.account.DeletionOutcome
 import com.coinepro.core.guest.CommunityChannel
 import com.coinepro.core.guest.GuestCommunity
+import com.coinepro.core.guest.GuestCandles
 import com.coinepro.core.guest.GuestGateway
+import com.coinepro.core.guest.MembershipTerms
 import com.coinepro.core.guest.MemberCount
 import com.coinepro.core.guest.GuestHeadline
 import com.coinepro.core.guest.GuestPrices
@@ -1531,6 +1533,20 @@ internal class FakeGuestGateway : GuestGateway {
             ),
         ),
     )
+
+    override suspend fun membership() = AppResult.Success(
+        MembershipTerms(
+            lbankReferralUrl = "https://lbank.example/ref/CoinePro",
+            ourbitReferralUrl = "https://ourbit.example/register?inviteCode=CoinePro",
+            minDepositUsdt = 50.0,
+            copyTradeExchanges = listOf("lbank"),
+            uidExchanges = listOf("lbank", "ourbit"),
+            noticeFa = "برای فعال‌سازی عضویت، حساب صرافی باید از طریق همین لینک ساخته شود.",
+        ),
+    )
+
+    override suspend fun candles(symbol: String, timeframe: String, limit: Int) =
+        AppResult.Success(GuestCandles(symbol, "H1", emptyList()))
 
     /**
      * One channel whose count the server could read and one it could not — the mixed case is the

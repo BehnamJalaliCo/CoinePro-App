@@ -100,13 +100,29 @@ internal data class RefreshRequest(val refreshToken: String)
 
 /* --------------------------------------------------------------- responses */
 
+/**
+ * The capability flags, read from `auth/methods`.
+ *
+ * **Every field is named twice on purpose.** The app's Gson is configured for snake_case, and these
+ * two servers are not consistent with each other or with themselves: CoinePro-FX's config answer
+ * carries `bot_username` and `accountDeletion` in the same object. A camelCase key with no
+ * `@SerializedName` does not fail under a snake_case policy — it parses as the field's default, and
+ * a capability flag defaulting to `false` is a working feature the app quietly stops offering.
+ *
+ * `alternate` costs nothing and removes the whole class of failure: whichever spelling arrives, the
+ * field is filled. That is worth more than agreeing on a convention we do not control.
+ */
 internal data class AuthMethodsDto(
+    @SerializedName(value = "email_password", alternate = ["emailPassword"])
     val emailPassword: Boolean = false,
     val google: Boolean = false,
+    @SerializedName(value = "google_client_id", alternate = ["googleClientId"])
     val googleClientId: String? = null,
     val telegram: Boolean = false,
+    @SerializedName(value = "telegram_bot_username", alternate = ["telegramBotUsername", "bot_username", "botUsername"])
     val telegramBotUsername: String? = null,
     val push: Boolean = false,
+    @SerializedName(value = "chart_vision", alternate = ["chartVision"])
     val chartVision: Boolean = false,
     /**
      * Nullable, unlike every other flag here, because only one of the two servers reports them.
@@ -115,8 +131,27 @@ internal data class AuthMethodsDto(
      * did not say, and the app then treats the feature as present until a request says otherwise.
      */
     val assistant: Boolean? = null,
+    @SerializedName(value = "ai_signals", alternate = ["aiSignals"])
     val aiSignals: Boolean? = null,
+    @SerializedName(value = "account_deletion", alternate = ["accountDeletion"])
     val accountDeletion: Boolean = false,
+    /**
+     * Whether this deployment mints guest tokens — CoinePro-FX's `POST user/auth/guest`.
+     *
+     * Read rather than inferred from a 404, because the app has to decide whether to *offer* a
+     * market to somebody who is not signed in before it has asked for anything.
+     */
+    @SerializedName(value = "guest_auth", alternate = ["guestAuth"])
+    val guestAuth: Boolean = false,
+    /**
+     * Where the full web terminal lives, or null where this deployment has none.
+     *
+     * From the server rather than compiled in. The address the app used to carry was a host that
+     * had been decommissioned — the domain no longer resolved — so the button would have opened an
+     * error page. A build cannot know that; the server always does.
+     */
+    @SerializedName(value = "terminal_url", alternate = ["terminalUrl"])
+    val terminalUrl: String? = null,
 )
 
 /**

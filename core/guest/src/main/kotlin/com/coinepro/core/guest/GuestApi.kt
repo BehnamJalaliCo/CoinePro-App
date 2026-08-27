@@ -2,6 +2,7 @@ package com.coinepro.core.guest
 
 import com.google.gson.annotations.SerializedName
 import retrofit2.http.GET
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 /**
@@ -60,6 +61,35 @@ internal interface GuestApi {
      */
     @GET("api/v1/public/community")
     suspend fun community(): CommunityDto
+
+    /**
+     * How to become a member, from the server rather than from the build.
+     *
+     * The referral links in particular must never be compiled in. An account opened without the
+     * right link is not recorded against CoinePro in the exchange's own system and cannot be
+     * verified afterwards — so a link that is one release out of date does not degrade, it silently
+     * costs the reader their membership and takes a support conversation to discover.
+     *
+     * This one route is **camelCase** while the rest of the mobile surface is snake_case, because
+     * that is the shape it was asked for and the shape it now serves. `@SerializedName` carries
+     * both spellings so neither side has to remember which is which.
+     */
+    @GET("api/v1/public/membership")
+    suspend fun membership(): MembershipDto
+
+    /**
+     * Candles a reader can see before they have an account.
+     *
+     * Same code path as the signed-in route rather than a copy — the server's own note says so, and
+     * it is the reason the numbers agree. Two implementations of one market eventually disagree,
+     * and a reader who spots it has learned that the app lied to them before they signed up.
+     */
+    @GET("api/v1/public/candles/{symbol}")
+    suspend fun candles(
+        @Path("symbol") symbol: String,
+        @Query("tf") timeframe: String,
+        @Query("limit") limit: Int,
+    ): PublicCandlesDto
 }
 
 internal data class PriceSnapshotDto(
@@ -147,4 +177,49 @@ internal data class CommunityCountDto(
     val value: Long? = null,
     val label: String? = null,
     val source: String? = null,
+)
+
+internal data class MembershipDto(
+    @SerializedName(value = "lbank_referral_url", alternate = ["lbankReferralUrl"])
+    val lbankReferralUrl: String? = null,
+    @SerializedName(value = "ourbit_referral_url", alternate = ["ourbitReferralUrl"])
+    val ourbitReferralUrl: String? = null,
+    @SerializedName(value = "min_deposit_usdt", alternate = ["minDepositUsdt"])
+    val minDepositUsdt: Double? = null,
+    /** Which exchanges this platform can actually place orders on. */
+    @SerializedName(value = "copy_trade_exchanges", alternate = ["copyTradeExchanges"])
+    val copyTradeExchanges: List<String>? = null,
+    /**
+     * Which exchanges accept a UID for membership — a superset of [copyTradeExchanges].
+     *
+     * The distinction is real and the app must not flatten it: an Ourbit UID earns membership but
+     * is never traded on, so a screen that offered copy trading to an Ourbit member would be
+     * promising something the platform cannot do.
+     */
+    @SerializedName(value = "uid_exchanges", alternate = ["uidExchanges"])
+    val uidExchanges: List<String>? = null,
+    /** The sentence to print above the links, in the reader's language, from the server. */
+    @SerializedName(value = "notice_fa", alternate = ["noticeFa"])
+    val noticeFa: String? = null,
+)
+
+internal data class PublicCandlesDto(
+    val symbol: String? = null,
+    /** Normalised by the server: `1h` goes out, `H1` comes back. Never key a cache on the request. */
+    val tf: String? = null,
+    val candles: List<PublicCandleDto>? = null,
+    @SerializedName("has_more") val hasMore: Boolean? = null,
+    val source: String? = null,
+)
+
+internal data class PublicCandleDto(
+    /** Unix **seconds**, and the bar's *open* time. */
+    val t: Long? = null,
+    val o: Double? = null,
+    val h: Double? = null,
+    val l: Double? = null,
+    val c: Double? = null,
+    val v: Double? = null,
+    /** False on the bar still forming. Drawn, but never counted as a closed bar by an indicator. */
+    val closed: Boolean? = null,
 )

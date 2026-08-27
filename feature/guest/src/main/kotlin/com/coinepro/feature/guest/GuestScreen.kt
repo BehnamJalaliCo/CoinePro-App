@@ -40,6 +40,7 @@ import com.coinepro.core.guest.GuestCommunity
 import com.coinepro.core.guest.GuestCommunityState
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.guest.GuestHeadline
+import com.coinepro.core.guest.GuestMembershipState
 import com.coinepro.core.guest.GuestNewsState
 import com.coinepro.core.guest.GuestPricesState
 import com.coinepro.core.guest.GuestTrackRecord
@@ -71,6 +72,7 @@ fun GuestScreen(
     val news by controller.news.collectAsStateWithLifecycle()
     val trackRecord by controller.trackRecord.collectAsStateWithLifecycle()
     val community by controller.community.collectAsStateWithLifecycle()
+    val membership by controller.membership.collectAsStateWithLifecycle()
 
     // Started and stopped with the screen rather than the process. A poll that outlives the screen
     // is a request nobody is looking at, on a connection somebody is paying for.
@@ -158,7 +160,12 @@ fun GuestScreen(
             GuestTrackRecordState.Loading, GuestTrackRecordState.Unavailable -> Unit
         }
 
-        item { MembershipGate(onSignIn = onSignIn) }
+        item {
+            MembershipGate(
+                onSignIn = onSignIn,
+                terms = (membership as? GuestMembershipState.Ready)?.terms,
+            )
+        }
 
         // The community sits under the membership card rather than over it. It is the answer to
         // "is anyone else here", which is a question a reader asks *after* they know what the

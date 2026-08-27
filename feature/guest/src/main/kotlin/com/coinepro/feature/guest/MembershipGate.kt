@@ -13,7 +13,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.guest.MembershipTerms
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
@@ -38,10 +40,11 @@ import com.coinepro.core.designsystem.CoineProSpacing
  * sub-account in the exchange's own system and cannot be verified afterwards; a reader who learns
  * that after registering has lost the thing the screen was for.
  *
- * One thing is deliberately absent: the registration link itself. It has to come from the server —
- * `docs/REQUEST4_ACCOUNT_DELETION.md` §3 asks for the route — because a link compiled into an app
- * is a link that is wrong the day it changes, and a wrong one means the exchange never records the
- * account as linked. Losing that silently is worse than one more tap.
+ * The registration links come from the server and are never compiled in. A link that is one release
+ * out of date does not fail visibly: the exchange simply never records the account as CoinePro's,
+ * so the reader funds it, submits their UID, and is refused for a reason nothing on screen can
+ * explain. Where the server has not sent one, the card states the four steps and shows no button —
+ * which is still useful, and is not a promise the app cannot keep.
  */
 @Composable
 fun MembershipGate(
@@ -49,6 +52,8 @@ fun MembershipGate(
     modifier: Modifier = Modifier,
     /** Names the surface the reader was reaching for, so the card answers their actual question. */
     headline: String = stringResource(R.string.membership_headline),
+    /** The server's terms, or null before they have arrived or where the server sent none. */
+    terms: MembershipTerms? = null,
 ) {
     val context = LocalContext.current
     CoineProCard(modifier = modifier.fillMaxWidth(), accent = CoineProColors.Accent) {
@@ -64,18 +69,25 @@ fun MembershipGate(
                 color = CoineProColors.TextSecondary,
             )
 
+            // The deposit threshold is the server's, read from the same value the verifier reads.
+            // A number that disagrees with the check is worse than no number: the reader funds
+            // exactly what the app asked for and is refused anyway.
+            val fund = terms?.minDepositUsdt
+                ?.let { stringResource(R.string.membership_step_fund_amount, MarketNumberFormatter.priceAuto(it)) }
+                ?: stringResource(R.string.membership_step_fund)
+
             listOf(
-                R.string.membership_step_register,
-                R.string.membership_step_fund,
-                R.string.membership_step_uid,
-                R.string.membership_step_verified,
+                stringResource(R.string.membership_step_register),
+                fund,
+                stringResource(R.string.membership_step_uid),
+                stringResource(R.string.membership_step_verified),
             ).forEachIndexed { index, line ->
                 Text(
                     // Numbered in the string rather than by a list marker: a Compose bullet or
                     // counter paints at a fixed left offset, which is the wrong side in RTL. The
                     // numeral is Persian because this is a prose count, not a market figure — the
                     // rule the whole app follows, and the one a hand-written "1." quietly breaks.
-                    text = (index + 1).toPersianDigits() + ". " + stringResource(line),
+                    text = (index + 1).toPersianDigits() + ". " + line,
                     style = MaterialTheme.typography.bodyMedium,
                     color = CoineProColors.TextSecondary,
                 )
@@ -87,10 +99,30 @@ fun MembershipGate(
                 color = CoineProColors.TextMuted,
             )
             Text(
-                text = stringResource(R.string.membership_referral_note),
+                // The server's own wording where it sent one. It can be changed without a release,
+                // which matters for a sentence whose exact terms are a commercial arrangement.
+                text = terms?.noticeFa ?: stringResource(R.string.membership_referral_note),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.Warning,
             )
+
+            // The links, in the order the platform can actually serve: LBank first, because it is
+            // the only exchange copy trading runs on, and a reader who picks the other one gets
+            // membership and signals but never automatic execution.
+            terms?.lbankReferralUrl?.let { url ->
+                CoineProPrimaryButton(
+                    text = stringResource(R.string.membership_open_lbank),
+                    onClick = { context.open(url) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            terms?.ourbitReferralUrl?.let { url ->
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.membership_open_ourbit),
+                    onClick = { context.open(url) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
 
             CoineProPrimaryButton(
                 text = stringResource(R.string.membership_sign_in),

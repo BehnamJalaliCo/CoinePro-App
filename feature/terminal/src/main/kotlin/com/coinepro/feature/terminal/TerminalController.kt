@@ -28,7 +28,15 @@ enum class TerminalError {
 }
 
 data class TerminalUiState(
+    /** The terminal's own address, with no credential in it. The origin every navigation is tested against. */
     val url: String? = null,
+    /**
+     * What is actually loaded: [url] with the token in the fragment.
+     *
+     * Separate from [url] so the origin check has something to compare against that never carries a
+     * secret, and so nothing that logs a URL logs the token with it.
+     */
+    val launchUrl: String? = null,
     /**
      * The academy token, to be planted in browser storage before the page boots.
      *
@@ -51,8 +59,15 @@ data class TerminalUiState(
  * with per-call-site rolling state. The strategy tester and the object tree lean on it. So those
  * stay where they already work, behind one button, and an ordinary reader never sees a WebView.
  */
+/**
+ * @param baseUrl where the terminal lives. A **function**, not a string, because the address is the
+ * server's to state and it is read after sign-in: the value compiled into a build cannot know that
+ * a host was decommissioned, and one was — the address this app used to carry stopped resolving,
+ * so the button would have opened a browser error. The build value survives only as the fallback
+ * for a deployment that does not report one.
+ */
 class TerminalController(
-    private val baseUrl: String,
+    private val baseUrl: () -> String?,
     private val tokens: AcademyTokenStore,
     private val scope: CoroutineScope,
 ) {
@@ -60,11 +75,11 @@ class TerminalController(
     private val _state = MutableStateFlow(TerminalUiState())
     val state: StateFlow<TerminalUiState> = _state.asStateFlow()
 
-    /** Whether this build has anywhere to send the reader. Decides if the entry is drawn at all. */
-    val isConfigured: Boolean get() = normalisedUrl(baseUrl) != null
+    /** Whether there is anywhere to send the reader. Decides if the entry is drawn at all. */
+    val isConfigured: Boolean get() = normalisedUrl(baseUrl()) != null
 
     fun start() {
-        val url = normalisedUrl(baseUrl)
+        val url = normalisedUrl(baseUrl())
         if (url == null) {
             _state.value = TerminalUiState(loading = false, error = TerminalError.NOT_CONFIGURED)
             return
@@ -73,7 +88,14 @@ class TerminalController(
         _state.value = TerminalUiState(loading = true)
         scope.launch {
             runCatching { tokens.token() }
-                .onSuccess { token -> _state.value = TerminalUiState(url = url, token = token, loading = true) }
+                .onSuccess { token ->
+                    _state.value = TerminalUiState(
+                        url = url,
+                        launchUrl = launchUrl(url, token),
+                        token = token,
+                        loading = true,
+                    )
+                }
                 .onFailure { failure ->
                     _state.value = TerminalUiState(
                         loading = false,
@@ -165,29 +187,23 @@ internal fun isTerminalUrl(target: String?, terminal: String?): Boolean {
 }
 
 /**
- * The one line of JavaScript the app injects.
+ * The address to open, with the academy token in the fragment.
  *
- * It writes the academy token into the key the terminal's own API client reads — `cp_academy_token`
- * — which is exactly what a browser sign-in does. Nothing else is injected: no bridge object, no
- * hooks into the page's internals, nothing that would make the app's build and the terminal's
- * build have to move together.
+ * This replaces injecting a line of JavaScript that wrote the token into the page's `localStorage`.
+ * The fragment is better for a reason worth stating: **it is never sent to a server.** Browsers do
+ * not put the part after `#` in the request line or in `Referer`, so the token does not appear in
+ * an access log, a proxy log or a CDN record — where a query parameter would appear in all three.
  *
- * The token is embedded as a JSON string so a value containing a quote cannot end the literal and
- * run as code. Academy tokens are JWTs and contain none, which is exactly the assumption that stops
- * being true quietly.
+ * The terminal reads it, keeps it in memory and clears the fragment from its own address bar.
+ *
+ * It also removes the sharpest edge the WebView had. Injection ran on `onPageStarted`, which fires
+ * for whatever document is loading — so the guard that decides *which* document was the only thing
+ * standing between the reader's token and any page that got itself loaded there. Now nothing is
+ * injected at all: the credential travels in the URL the app chose, and a page the app did not
+ * choose is never given one.
+ *
+ * Encoded, because a JWT's `+` and `/` are legal in a fragment but a token is not the app's to
+ * assume anything about.
  */
-internal fun tokenInjectionScript(token: String): String {
-    val escaped = token
-        .replace("\\", "\\\\")
-        .replace("\"", "\\\"")
-        .replace("\n", "")
-        .replace("\r", "")
-        .replace("<", "\\u003c")
-    return """
-        (function () {
-          try {
-            localStorage.setItem("cp_academy_token", "$escaped");
-          } catch (e) {}
-        })();
-    """.trimIndent()
-}
+internal fun launchUrl(url: String, token: String): String =
+    url + "#t=" + java.net.URLEncoder.encode(token, "UTF-8")

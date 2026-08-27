@@ -4,6 +4,7 @@ import com.coinepro.core.marketdata.AcademyTokenStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -34,7 +35,7 @@ class TerminalControllerTest {
         url: String,
         tokens: AcademyTokenStore = FakeTokens(),
         scheduler: kotlinx.coroutines.test.TestCoroutineScheduler,
-    ) = TerminalController(url, tokens, TestScope(UnconfinedTestDispatcher(scheduler)))
+    ) = TerminalController({ url }, tokens, TestScope(UnconfinedTestDispatcher(scheduler)))
 
     @Test
     fun `a build with no terminal address says so instead of loading nothing`() = runTest {
@@ -137,17 +138,42 @@ class TerminalControllerTest {
     }
 
     @Test
-    fun `the injected script cannot be ended by a token that contains a quote`() = runTest {
-        // Academy tokens are JWTs and contain no quotes, which is exactly the assumption that
-        // stops being true quietly. A token that could close the string literal would run whatever
-        // followed it as script, inside a page holding the reader's session.
-        val script = tokenInjectionScript("""a"b\c""" + "\n" + "</script>")
+    fun `the token rides in the fragment, encoded, and never in the query`() {
+        val launch = launchUrl("https://terminal.coinepro.com", "abc.def-ghi_jkl")
 
-        assertFalse("the literal must not be closed early", script.contains("\"a\"b"))
-        assertTrue(script.contains("""a\"b\\c"""))
-        assertFalse("no raw newline inside the literal", script.contains("\\c\n<"))
-        assertFalse("no closing tag survives", script.contains("</script>"))
-        assertTrue(script.contains("cp_academy_token"))
+        // A fragment is never sent to a server — not in the request line, not in `Referer`. A
+        // query parameter would land in an access log, a proxy log and a CDN record.
+        assertTrue(launch.startsWith("https://terminal.coinepro.com#t="))
+        assertFalse("never a query parameter", launch.contains("?"))
+        assertTrue(launch.endsWith("abc.def-ghi_jkl"))
+    }
+
+    @Test
+    fun `a token carrying characters with meaning in a URL is encoded`() {
+        // Nothing about a credential is the app's to assume. `+` in a fragment is a real plus, but
+        // a terminal that decodes with `decodeURIComponent` would read one as a space.
+        val launch = launchUrl("https://terminal.coinepro.com", "a+b/c=d&e#f")
+
+        assertFalse(launch.substringAfter("#t=").contains("&"))
+        assertFalse(launch.substringAfter("#t=").contains("#"))
+        assertEquals(
+            "a+b/c=d&e#f",
+            java.net.URLDecoder.decode(launch.substringAfter("#t="), "UTF-8"),
+        )
+    }
+
+    @Test
+    fun `the address the origin check uses carries no credential`() = runTest {
+        val controller = controller("https://terminal.coinepro.com", scheduler = testScheduler)
+        controller.start()
+        runCurrent()
+
+        val state = controller.state.value
+        // `url` is what every navigation is compared against, and what anything that logs a URL
+        // would log. The token lives only on `launchUrl`.
+        assertEquals("https://terminal.coinepro.com", state.url)
+        assertFalse(state.url!!.contains("#"))
+        assertTrue(state.launchUrl!!.contains("#t="))
     }
 }
 

@@ -126,3 +126,63 @@ data class GuestCommunity(
     val isEmpty: Boolean
         get() = channels.isEmpty() && total is MemberCount.Unavailable && botUsers is MemberCount.Unavailable
 }
+
+/**
+ * How somebody becomes a member, as the server states it.
+ *
+ * Every field here is the server's, and the referral links most of all. A link compiled into the
+ * app is wrong the day it changes, and a wrong one does not fail visibly — the exchange simply
+ * never records the account as CoinePro's, so the reader funds it, submits their UID, and is
+ * refused for a reason nothing on screen can explain.
+ */
+data class MembershipTerms(
+    val lbankReferralUrl: String?,
+    val ourbitReferralUrl: String?,
+    val minDepositUsdt: Double?,
+    /** Where copy trading can actually run. A subset of [uidExchanges]. */
+    val copyTradeExchanges: List<String>,
+    /**
+     * Where a UID earns membership.
+     *
+     * Kept apart from [copyTradeExchanges] rather than merged. An Ourbit UID is a real membership
+     * and never a tradeable one; offering copy trading against it would promise something the
+     * platform cannot do.
+     */
+    val uidExchanges: List<String>,
+    /** The server's own sentence to print above the links. */
+    val noticeFa: String?,
+) {
+    /** Nothing worth drawing — no link to send anybody to. */
+    val isEmpty: Boolean
+        get() = lbankReferralUrl == null && ourbitReferralUrl == null
+}
+
+/**
+ * One bar, as the public feed sends it.
+ *
+ * Deliberately not the signed-in chart's candle type. [closed] is the difference that matters: the
+ * newest bar is still forming, and an indicator that treats a partial bar as final produces a
+ * crossover that un-happens a minute later.
+ */
+data class GuestCandle(
+    /** Unix seconds, at the bar's **open**. */
+    val timeSeconds: Long,
+    val open: Double,
+    val high: Double,
+    val low: Double,
+    val close: Double,
+    val volume: Double?,
+    val closed: Boolean,
+)
+
+/**
+ * A public candle series.
+ *
+ * [timeframe] is the server's normalised label — `1h` is asked for and `H1` comes back — so it is
+ * carried rather than assumed. Anything keying a cache on the requested value would miss every time.
+ */
+data class GuestCandles(
+    val symbol: String,
+    val timeframe: String,
+    val candles: List<GuestCandle>,
+)

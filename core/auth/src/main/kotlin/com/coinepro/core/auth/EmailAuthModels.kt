@@ -105,6 +105,22 @@ data class AuthMethods(
      * requires be published anyway.
      */
     val accountDeletion: Boolean = false,
+    /**
+     * Whether this deployment mints a guest token — a short-lived credential that opens the market
+     * to somebody who has not signed in, and nothing else.
+     *
+     * Off by default. A guest sign-in offered against a server that has none is a spinner ending in
+     * an error on the first screen a stranger ever sees.
+     */
+    val guestAuth: Boolean = false,
+    /**
+     * Where this deployment's full web terminal lives, or null where it has none.
+     *
+     * The address is the server's to state, not the build's. The one that used to be compiled in
+     * pointed at a host that had been decommissioned — the domain stopped resolving — and no
+     * release could have known. A server always knows where it is serving from.
+     */
+    val terminalUrl: String? = null,
 ) {
     val any: Boolean get() = emailPassword || google || telegram
 }

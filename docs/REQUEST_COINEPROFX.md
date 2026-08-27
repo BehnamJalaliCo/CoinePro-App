@@ -72,7 +72,7 @@ GET /user/markets
 
 | مسیر | چه می‌دهد |
 | --- | --- |
-| `GET /academy/chart/symbols` | نمادهای MT5 از `bn:fxsyms` + جفت‌های LBank |
+| `GET /academy/chart/symbols` | نمادهای MT5 از «کلید کش شما» + جفت‌های LBank |
 | `GET /academy/chart/{symbol}` | کندل `{t,o,h,l,c,v}` + اندیکاتورِ سمتِ سرور |
 | `GET /academy/chart/{symbol}/range` | بازهٔ دادهٔ موجود |
 | `POST /academy/chart/analyze` | تحلیل AI با سطوحِ حمایت/مقاومت |
@@ -80,8 +80,8 @@ GET /user/markets
 
 همه پشتِ `current_student` با `scope=academy`اند و اپ توکنِ `User` دارد.
 
-ولی مکانیزمش را خودتان دارید: `academy.py:103`، حالتِ `BN_STANDALONE_AUTH` که
-هویت را فقط از claimهای JWT با **همان** `JWT_SECRET_KEY` می‌سازد.
+ولی مکانیزمش را خودتان دارید: «سرویس مربوطه در سمت شما»، حالتِ «حالت احراز مستقل شما» که
+هویت را فقط از claimهای JWT با **همان** «کلید امضای شما» می‌سازد.
 
 **درخواست، هرکدام ساده‌تر است:**
 

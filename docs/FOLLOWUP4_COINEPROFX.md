@@ -134,9 +134,9 @@ current_quote{price, ts, is_stale}, rationale, score_breakdown, result, …
 
 قبلاً نوشتم «بسازید». حالا که سورس را دیده‌ام: **دادهٔ آن را دارید.**
 
-`run_news_worker.py` این دو کلید Redis را می‌نویسد:
-- `bn:news` — عنوان و خلاصه **به فارسی**، کلیدهای `src`/`title`/`summary`/`url`/`sc`
-- `bn:calendar` — تقویم ForexFactory، فقط `high` و `medium`، عنوان‌ها فارسی
+`«ماژول مربوطه در سمت شما»` این دو کلید Redis را می‌نویسد:
+- «کلید کش شما» — عنوان و خلاصه **به فارسی**، کلیدهای `src`/`title`/`summary`/`url`/`sc`
+- «کلید کش شما» — تقویم ForexFactory، فقط `high` و `medium`، عنوان‌ها فارسی
 
 و `academy/bn/news` و `academy/bn/calendar` همین‌ها را سرو می‌کنند.
 
@@ -165,9 +165,9 @@ GET user/market-intelligence
 ```
 
 نگاشت: `src→source`، `sc>=3→impact:"high"`، بقیه `medium`. تقویم را از
-`bn:calendar` مستقیم بردارید (`date→scheduled_at`).
+«کلید کش شما» مستقیم بردارید (`date→scheduled_at`).
 
-**تنها چیزی که واقعاً کم است:** `bn:news` تاریخ انتشار نگه نمی‌دارد. اپ ردیفِ
+**تنها چیزی که واقعاً کم است:** «کلید کش شما» تاریخ انتشار نگه نمی‌دارد. اپ ردیفِ
 بی‌تاریخ را می‌اندازد. `e.published` در feedparser هست — فقط ذخیره‌اش کنید.
 
 قالب تاریخ: اپ `Z` و `+00:00` و بدونِ منطقه (UTC خوانده می‌شود) هر سه را می‌خواند.

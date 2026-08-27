@@ -33,6 +33,14 @@ sealed interface GuestCommunityState {
     data object Unavailable : GuestCommunityState
 }
 
+sealed interface GuestMembershipState {
+    data object Loading : GuestMembershipState
+    data class Ready(val terms: MembershipTerms) : GuestMembershipState
+
+    /** The request failed, or the server named no link. The card then states the steps without one. */
+    data object Unavailable : GuestMembershipState
+}
+
 sealed interface GuestNewsState {
     data object Loading : GuestNewsState
     data class Ready(val headlines: List<GuestHeadline>) : GuestNewsState
@@ -68,11 +76,13 @@ class GuestController(
     private val newsMutable = MutableStateFlow<GuestNewsState>(GuestNewsState.Loading)
     private val recordMutable = MutableStateFlow<GuestTrackRecordState>(GuestTrackRecordState.Loading)
     private val communityMutable = MutableStateFlow<GuestCommunityState>(GuestCommunityState.Loading)
+    private val membershipMutable = MutableStateFlow<GuestMembershipState>(GuestMembershipState.Loading)
 
     val prices: StateFlow<GuestPricesState> = pricesMutable.asStateFlow()
     val news: StateFlow<GuestNewsState> = newsMutable.asStateFlow()
     val trackRecord: StateFlow<GuestTrackRecordState> = recordMutable.asStateFlow()
     val community: StateFlow<GuestCommunityState> = communityMutable.asStateFlow()
+    val membership: StateFlow<GuestMembershipState> = membershipMutable.asStateFlow()
 
     private var poll: Job? = null
 
@@ -100,6 +110,7 @@ class GuestController(
         refreshNews()
         refreshTrackRecord()
         refreshCommunity()
+        refreshMembership()
     }
 
     fun stop() {
@@ -169,6 +180,29 @@ class GuestController(
                         GuestTrackRecordState.Unavailable
                     }
                 is AppResult.Failure -> GuestTrackRecordState.Unavailable
+            }
+        }
+    }
+
+    /**
+     * The membership terms, fetched once.
+     *
+     * Not polled and not cached to disk. A referral link changing mid-session is not a thing that
+     * happens; a stale one written to disk and read on next launch is exactly the failure the whole
+     * route exists to prevent.
+     */
+    fun refreshMembership() {
+        scope.launch {
+            membershipMutable.value = when (val result = gateway.membership()) {
+                is AppResult.Success ->
+                    if (result.value.isEmpty) {
+                        // No link is not an error to report, it is a card with no button. The four
+                        // steps still stand and the reader can still act on them.
+                        GuestMembershipState.Unavailable
+                    } else {
+                        GuestMembershipState.Ready(result.value)
+                    }
+                is AppResult.Failure -> GuestMembershipState.Unavailable
             }
         }
     }

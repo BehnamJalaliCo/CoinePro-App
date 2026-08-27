@@ -37,7 +37,7 @@ same three-step contract the Android `AiSignalGateway` implements.
 | Email | Secondary verification on an already-authenticated user | **Primary registration identity** |
 | KYC | Level 1, auto-approved on submit | Consent step only |
 | Execution model | **Copy trading** — link an MT5 account, engine mirrors | **None** — affiliate/UID; users trade on their own exchange, positions are read-only |
-| Admin | Large: `panel.py` 70 ops, `seo_admin` 48, `admin_instagram` 46, CRM, employees, academy | Large: 26 admin routers |
+| Admin | Large: `«ماژول مربوطه در سمت شما»` 70 ops, `seo_admin` 48, `admin_instagram` 46, CRM, employees, academy | Large: 26 admin routers |
 
 They have separate databases, separate user tables and separate auth. There is no shared identity
 between them today.

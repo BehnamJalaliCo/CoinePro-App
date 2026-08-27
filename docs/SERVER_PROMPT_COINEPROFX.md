@@ -20,7 +20,7 @@ display.
 
 1. **Create a branch**: `git checkout -b feature/android-mobile-api`
 2. **Create a folder** for this work rather than scattering it through the existing tree:
-   `src/api/routes/mobile/` — every new route module below goes in it, with its own `__init__.py`
+   `src/api/routes/mobile/` — every new route module below goes in it, with its own `«ماژول مربوطه در سمت شما»`
    exporting one `APIRouter` that `main` mounts once. Shared helpers go in `src/api/mobile/`.
    The reason is not tidiness: five React front-ends and a Telegram bot depend on the existing
    modules, and a reviewer needs to see at a glance that nothing outside this folder changed.
@@ -226,7 +226,7 @@ POST /user/ai-vision/jobs        multipart: image (JPEG/PNG, ≤ 6 MB), symbol?,
 GET  /user/ai-vision/jobs/{id}   -> { status, result?, error_code?, error_message? }
 ```
 
-Mirror `ai_signal.py` exactly: background task, Redis job with a TTL, daily quota, the same status
+Mirror `«ماژول مربوطه در سمت شما»` exactly: background task, Redis job with a TTL, daily quota, the same status
 vocabulary (`queued`, `running`, `done`, `failed`, `expired`). `result` uses the **same shape** as
 the AI-signal result — `direction`, `entry`, `sl`, `tp1`, `tp2`, `tp3`, `confidence`, `rr`,
 `rationale`, `warnings` — so the client renders one model for both.

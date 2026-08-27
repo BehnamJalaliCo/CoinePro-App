@@ -100,6 +100,19 @@
                     android:scheme="https"
                     android:host="user.tradeyar.trade-future.ir"
                     android:pathPrefix="/reset" />
+                <!--
+                    CoinePro-FX's own recovery link, on its API host. The path differs from
+                    TradeYar's because the two web apps spell it differently; both are named
+                    exactly, because verification is per host and a pattern host is not verified.
+
+                    Note that the app's *own* recovery flow is not a link at all — it mails a code
+                    that the reader types back. This filter is for somebody who opens the web
+                    e-mail on a phone that happens to have the app.
+                -->
+                <data
+                    android:scheme="https"
+                    android:host="coineprofx.com"
+                    android:pathPrefix="/reset-password" />
             </intent-filter>
         </activity>
 

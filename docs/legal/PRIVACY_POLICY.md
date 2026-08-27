@@ -4,7 +4,7 @@
 
 > این سند برای فرم **Data safety** در Google Play و برای نمایش داخل اپ نوشته شده است. هر ادعای زیر
 > از روی کد همین مخزن نوشته شده، نه از روی یک الگوی آماده؛ اگر رفتار اپ عوض شد، این فایل هم باید عوض
-> شود. جاهایی که تصمیم با مالک است با **[تکمیل شود]** علامت خورده‌اند.
+> شود.
 
 ---
 
@@ -143,7 +143,11 @@
 
 پشتیبانی در تلگرام: <https://t.me/CoinePro_Admin>
 
-**[ایمیل پشتیبانی — تکمیل شود]** · **[نام و نشانی حقوقی توسعه‌دهنده — تکمیل شود]**
+ایمیل پشتیبانی: <behnamjalali88@gmail.com>
+
+**توسعه‌دهنده و مسئول حقوقی داده‌ها:** بهنام جلالی
+
+**نشانی:** ایران، تهران، خیابان آیت‌الله کاشانی، خیابان الهی، کوچهٔ ۱۲، پلاک ۱۹، واحد ۶
 
 ---
 ---
@@ -152,8 +156,8 @@
 
 **Last reviewed:** 2026-08-26 · **App version:** 1.0
 
-Every claim below was written from this repository's code rather than from a template. Items only
-the owner can supply are marked **[to be completed]**.
+Every claim below was written from this repository's code rather than from a template. If the app's
+behaviour changes, this file changes with it.
 
 ## 1) What this app is
 
@@ -233,4 +237,8 @@ Not intended for anyone under 18. We do not knowingly collect children's data.
 
 Support on Telegram: <https://t.me/CoinePro_Admin>
 
-**[support email — to be completed]** · **[legal developer name and address — to be completed]**
+Support e-mail: <behnamjalali88@gmail.com>
+
+**Developer and data controller:** Behnam Jalali
+
+**Address:** Unit 6, No. 19, 12th Alley, Elahi Street, Ayatollah Kashani Street, Tehran, Iran

@@ -154,6 +154,8 @@ class GuestWireTest {
 private class FakeApi(
     private val body: String = """{"data":[]}""",
     private val community: CommunityDto = CommunityDto(),
+    private val membership: MembershipDto = MembershipDto(),
+    private val candles: PublicCandlesDto = PublicCandlesDto(),
 ) : GuestApi {
     override suspend fun prices(symbols: String): PriceSnapshotDto =
         GsonBuilder().create().fromJson(body, PriceSnapshotDto::class.java)
@@ -163,4 +165,9 @@ private class FakeApi(
     override suspend fun trackRecord(limit: Int): TrackRecordDto = TrackRecordDto(emptyList())
 
     override suspend fun community(): CommunityDto = community
+
+    override suspend fun membership(): MembershipDto = membership
+
+    override suspend fun candles(symbol: String, timeframe: String, limit: Int): PublicCandlesDto =
+        candles
 }

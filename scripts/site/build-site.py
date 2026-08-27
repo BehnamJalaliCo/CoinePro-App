@@ -43,6 +43,14 @@ def inline(text: str) -> str:
     out = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r'<a href="\2">\1</a>', out)
     # &lt;https://…&gt; — the escape above already turned the angle brackets.
     out = re.sub(r"&lt;(https?://[^&\s]+)&gt;", r'<a href="\1">\1</a>', out)
+    # An e-mail in angle brackets is the one autolink Markdown has that is not a URL. Without this
+    # the support address rendered as the literal text `<name@example.com>`, which is both ugly and
+    # not clickable — on the one page whose whole job is to tell somebody how to reach a human.
+    out = re.sub(
+        r"&lt;([^\s@&]+@[^\s@&]+\.[a-zA-Z]{2,})&gt;",
+        r'<a href="mailto:\1">\1</a>',
+        out,
+    )
     return out
 
 

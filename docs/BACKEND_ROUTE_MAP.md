@@ -68,7 +68,7 @@ async def public_active_signals(..., vip: dict = Depends(require_vip)):
 | --- | --- |
 | `user/auth/{methods,register/start,register/verify,login,google,password/forgot,password/reset,refresh,logout}` | همه تأیید شد |
 | `user/auth/config`, `user/auth/telegram`, `user/auth/link/telegram` | مسیر تلگرام |
-| `user/me` | پروفایل **خالی** (بدون پوشش) — `_profile_dict` در `user_panel.py` |
+| `user/me` | پروفایل **خالی** (بدون پوشش) — `_profile_dict` در `«ماژول مربوطه در سمت شما»` |
 | `user/mobile/{briefing,portfolio,kyc,kyc/level1}` | |
 | `user/mobile/{notifications,notifications/read,alerts,alerts/{id},push/devices,push/preferences}` | |
 | `ws/snapshot` | |
@@ -89,8 +89,8 @@ async def public_active_signals(..., vip: dict = Depends(require_vip)):
   `/signals` و `/signals/{id}` وجود دارند ولی `Depends(get_current_admin)` دارند.
 - `user/signals/execution/*` (هر هشت‌تا) → هیچ معادلی ندارد.
 - `user/market-intelligence` → ساخته شد، زیر `user/mobile/market-intelligence`.
-  ⚠️ فرض قبلی این سند دربارهٔ `bn:news` **غلط بود**: آن کلید روی سرور خالی است چون
-  `run_news_worker.py` اصلاً در docker-compose نیست. سرور از جدول `articles` می‌خواند.
+  ⚠️ فرض قبلی این سند دربارهٔ «کلید کش شما» **غلط بود**: آن کلید روی سرور خالی است چون
+  `«ماژول مربوطه در سمت شما»` اصلاً در docker-compose نیست. سرور از جدول `articles` می‌خواند.
 
 ### شکل شیء سیگنال FX (`_pub_signal`)
 
