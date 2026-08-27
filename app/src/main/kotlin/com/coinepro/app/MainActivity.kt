@@ -30,6 +30,7 @@ import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.EmailAuthController
+import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.journal.JournalController
@@ -58,6 +59,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var emailAuthController: EmailAuthController
     @Inject lateinit var guestController: GuestController
     @Inject lateinit var watchlistStore: WatchlistStore
+    @Inject lateinit var chartLayoutStore: ChartLayoutStore
     @Inject lateinit var journalController: JournalController
     @Inject lateinit var paperTradeController: PaperTradeController
     @Inject lateinit var marketDataControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketDataController>
@@ -110,6 +112,7 @@ class MainActivity : ComponentActivity() {
                 emailAuthController = emailAuthController,
                 guestController = guestController,
                 watchlistStore = watchlistStore,
+                chartLayoutStore = chartLayoutStore,
                 journalController = journalController,
                 paperTradeController = paperTradeController,
                 marketDataControllers = marketDataControllers,

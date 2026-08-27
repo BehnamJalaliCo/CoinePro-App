@@ -8,6 +8,7 @@ import com.coinepro.app.BuildConfig
 import com.coinepro.core.account.AccountController
 import com.coinepro.core.account.AccountGateway
 import com.coinepro.core.account.NetworkAccountGateway
+import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.journal.JournalController
@@ -338,6 +339,10 @@ object AppModule {
     @Provides
     @Singleton
     fun watchlistStore(dataStore: DataStore<Preferences>): WatchlistStore = WatchlistStore(dataStore)
+
+    @Provides
+    @Singleton
+    fun chartLayoutStore(dataStore: DataStore<Preferences>): ChartLayoutStore = ChartLayoutStore(dataStore)
 
     @Provides
     @Singleton

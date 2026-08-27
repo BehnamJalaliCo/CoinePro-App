@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.backtest.Backtest
+import com.coinepro.core.datastore.ChartLayout
 import com.coinepro.core.chart.Replay
 import com.coinepro.core.chart.ChartDecoration
 import com.coinepro.core.chart.ChartTypePicker
@@ -96,6 +97,10 @@ fun ChartScreen(
     onSelectSymbol: ((String) -> Unit)? = null,
     /** Takes the drawn setup as a paper trade. See [SetupSheetBody]. */
     onPaperTrade: ((symbol: String, buy: Boolean, entry: Double, size: Double) -> Unit)? = null,
+    /** Saved layouts. Null leaves the button off — a build with no store has nothing to offer. */
+    layouts: List<ChartLayout>? = null,
+    onSaveLayout: ((ChartLayout) -> Unit)? = null,
+    onDeleteLayout: ((String) -> Unit)? = null,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var sheet by remember { mutableStateOf<ChartSheet?>(null) }
@@ -189,6 +194,7 @@ fun ChartScreen(
             drawings = state.drawing.drawings.size,
             hasSetup = state.setup != null,
             canBacktest = state.series.bars.size >= Backtest.MINIMUM_BARS,
+            hasLayouts = layouts != null,
             // Offered only when there is something to replay. A button that answers "not enough
             // bars" is a button that should not have been there.
             onReplay = controller::enterReplay
@@ -239,6 +245,36 @@ fun ChartScreen(
                     sheet = null
                 },
                 onHelp = onHelp,
+            )
+        }
+
+        ChartSheet.LAYOUTS -> CoineProSheet(
+            title = "چیدمان‌ها",
+            onDismiss = { sheet = null },
+        ) {
+            LayoutSheetBody(
+                layouts = layouts.orEmpty(),
+                current = ChartLayout(
+                    name = "",
+                    chartTypeId = state.chartType.name,
+                    timeframeId = state.timeframe.name,
+                    indicatorIds = state.activeIndicators.toList(),
+                ),
+                onApply = { layout ->
+                    controller.applyLayout(layout.chartTypeId, layout.timeframeId, layout.indicatorIds)
+                    sheet = null
+                },
+                onSave = { name ->
+                    onSaveLayout?.invoke(
+                        ChartLayout(
+                            name = name,
+                            chartTypeId = state.chartType.name,
+                            timeframeId = state.timeframe.name,
+                            indicatorIds = state.activeIndicators.toList(),
+                        ),
+                    )
+                },
+                onDelete = { name -> onDeleteLayout?.invoke(name) },
             )
         }
 
@@ -313,7 +349,7 @@ private fun rememberHelpCatalog(wanted: Boolean): HelpCatalog? {
     return catalog
 }
 
-private enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST }
+private enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST, LAYOUTS }
 
 @Composable
 private fun LaunchedStart(controller: ChartController) {
@@ -393,6 +429,7 @@ private fun Toolbar(
     drawings: Int,
     hasSetup: Boolean,
     canBacktest: Boolean,
+    hasLayouts: Boolean,
     onReplay: (() -> Unit)?,
     onOpen: (ChartSheet) -> Unit,
 ) {
@@ -423,6 +460,9 @@ private fun Toolbar(
         // On the chart because the bars are already here. A backtest screen elsewhere would need a
         // symbol picker, a timeframe picker and a second fetch to answer the same question.
         if (canBacktest) ToolbarButton(DesignR.drawable.icon_chart_line_up, "بک‌تست") { onOpen(ChartSheet.BACKTEST) }
+        if (hasLayouts) {
+            ToolbarButton(DesignR.drawable.icon_sliders_horizontal, "چیدمان") { onOpen(ChartSheet.LAYOUTS) }
+        }
     }
 }
 

@@ -97,6 +97,8 @@ import com.coinepro.feature.home.HomeBriefing
 import com.coinepro.feature.home.HomePortfolio
 import com.coinepro.feature.home.HomeSubscription
 import com.coinepro.feature.home.HomeScreen
+import com.coinepro.core.datastore.ChartLayout
+import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.journal.JournalController
@@ -191,6 +193,7 @@ fun CoineProApp(
     emailAuthController: EmailAuthController,
     guestController: GuestController,
     watchlistStore: WatchlistStore,
+    chartLayoutStore: ChartLayoutStore,
     journalController: JournalController,
     paperTradeController: PaperTradeController,
     marketDataControllers: Map<MarketPlatform, MarketDataController>,
@@ -262,6 +265,7 @@ fun CoineProApp(
     val scope = rememberCoroutineScope()
     val signedIn = session is SessionState.SignedIn
     val watchlist by watchlistStore.symbols.collectAsStateWithLifecycle(initialValue = emptyList())
+    val chartLayouts by chartLayoutStore.layouts.collectAsStateWithLifecycle(initialValue = emptyList())
 
     val capabilities by platformCapabilities.state.collectAsStateWithLifecycle()
     // What each deployment offers. Read once on sign-in: it is server configuration, not live
@@ -439,6 +443,9 @@ fun CoineProApp(
                 accountDeletionAvailable = accountDeletionAvailable,
                 journalController = journalController,
                 paperTradeController = paperTradeController,
+                chartLayouts = chartLayouts,
+                onSaveLayout = { layout -> scope.launch { chartLayoutStore.save(layout) } },
+                onDeleteLayout = { name -> scope.launch { chartLayoutStore.delete(name) } },
                 onSignalLaunchConsumed = onSignalLaunchConsumed,
                 onActivityLaunchConsumed = onActivityLaunchConsumed,
                 onRequestNotificationPermission = onRequestNotificationPermission,
@@ -582,6 +589,9 @@ private fun MainShell(
     accountDeletionAvailable: Boolean,
     journalController: JournalController,
     paperTradeController: PaperTradeController,
+    chartLayouts: List<ChartLayout>,
+    onSaveLayout: (ChartLayout) -> Unit,
+    onDeleteLayout: (String) -> Unit,
     watchlist: List<String>,
     onToggleWatch: (String) -> Unit,
     onSignalLaunchConsumed: () -> Unit,
@@ -918,6 +928,9 @@ private fun MainShell(
                     ChartController(symbol = symbol, gateway = candleGateway, scope = scope)
                 }
                 ChartScreen(
+                    layouts = chartLayouts,
+                    onSaveLayout = onSaveLayout,
+                    onDeleteLayout = onDeleteLayout,
                     watchlist = watchlist,
                     onPaperTrade = { symbol, buy, entry, size ->
                         paperTradeController.open(symbol, buy, entry, size)

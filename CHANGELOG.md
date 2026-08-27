@@ -15,6 +15,25 @@ it is for.
 
 ---
 
+## [1.15.0] — 2026-08-27 — Saved chart layouts
+
+### Added
+- A layout keeps the chart type, the timeframe and the indicators that were on. Setting a chart up
+  the way somebody likes it is eight or ten taps, and it is the same eight or ten every time they
+  open a different symbol.
+- Applying replaces the indicator set rather than merging it. A layout that added to whatever was
+  already on would drift towards every indicator being on at once — the state a layout exists to
+  escape.
+- Drawings are deliberately not saved. A trend line is anchored to one instrument's prices and
+  dates; a layout carrying drawings would paste last week's lines onto whatever chart it was applied
+  to, at prices that mean nothing there.
+- An unknown indicator id is skipped rather than failing the apply, so a layout saved by an older
+  build loses one line instead of the whole layout.
+- A name containing a record separator is refused rather than sanitised: silently renaming
+  somebody's layout is worse than not saving it.
+
+---
+
 ## [1.14.0] — 2026-08-27 — Keyboard shortcuts on the chart
 
 ### Added

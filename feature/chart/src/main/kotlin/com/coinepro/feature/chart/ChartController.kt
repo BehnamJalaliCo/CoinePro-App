@@ -266,6 +266,28 @@ class ChartController(
         _state.update { it.copy(replay = transform(current).copy(playing = false)) }
     }
 
+    /**
+     * Applies a layout: type, timeframe and the whole indicator set.
+     *
+     * The set is *replaced*, not merged. A layout that added its indicators to whatever was already
+     * on would drift towards every indicator being on at once, which is the state a layout exists
+     * to escape.
+     */
+    fun applyLayout(chartTypeId: String, timeframeId: String, indicatorIds: List<String>) {
+        val type = ChartType.entries.firstOrNull { it.name == chartTypeId }
+        val timeframe = Timeframe.entries.firstOrNull { it.name == timeframeId }
+        // Unknown ids are skipped rather than failing the whole apply: a layout saved by an older
+        // build may name an indicator this one has renamed, and losing one line is better than
+        // losing the layout.
+        _state.update { current ->
+            current.copy(
+                chartType = type ?: current.chartType,
+                activeIndicators = indicatorIds.filter { id -> ChartCatalog.INDICATORS.any { it.id == id } }.toSet(),
+            )
+        }
+        if (timeframe != null) setTimeframe(timeframe)
+    }
+
     fun retry() = reload()
 
     /**
