@@ -129,6 +129,7 @@ jobs:
           set -euo pipefail
           python3 scripts/quality/check-cross-phase-consistency.py
           bash scripts/quality/check-motion-policy.sh
+          bash scripts/quality/check-kotlin-style.sh
           bash scripts/security/scan-secrets.sh
           # The version arithmetic exists in two languages; this asserts the two agree.
           python3 scripts/release/version.py --check

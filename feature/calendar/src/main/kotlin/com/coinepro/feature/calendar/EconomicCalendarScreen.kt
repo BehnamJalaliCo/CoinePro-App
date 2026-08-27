@@ -48,6 +48,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.designsystem.CoineProCard
+import com.coinepro.core.designsystem.CoineProListHeader
+import com.coinepro.core.designsystem.CoineProHeaderAction
+import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
@@ -82,28 +85,18 @@ fun EconomicCalendarScreen(
             .padding(horizontal = CoineProSpacing.Gutter),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column {
-                Text(
-                    text = stringResource(R.string.calendar_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = CoineProColors.TextPrimary,
+        CoineProListHeader(
+            title = stringResource(R.string.calendar_title),
+            subtitle = stringResource(R.string.calendar_subtitle),
+            modifier = Modifier.padding(horizontal = 0.dp),
+            actions = {
+                CoineProHeaderAction(
+                    icon = DesignR.drawable.icon_newspaper,
+                    label = stringResource(R.string.calendar_news),
+                    onClick = onOpenNews,
                 )
-                Text(
-                    text = stringResource(R.string.calendar_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = CoineProColors.TextSecondary,
-                )
-            }
-            CoineProSecondaryButton(
-                text = stringResource(R.string.calendar_news),
-                onClick = onOpenNews,
-            )
-        }
+            },
+        )
 
         // Impact is the only filter that survives. The market filter went with it: the calendar is
         // macro data that moves both platforms, so filtering it by instrument hid the releases a

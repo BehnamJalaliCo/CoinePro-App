@@ -23,6 +23,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProCard
+import androidx.compose.ui.unit.dp
+import com.coinepro.core.designsystem.CoineProPageHeading
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
@@ -67,10 +69,10 @@ fun MembershipScreen(
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
     ) {
         item {
-            Text(
-                text = stringResource(R.string.membership_status_title),
-                style = MaterialTheme.typography.headlineSmall,
-                color = CoineProColors.TextPrimary,
+            CoineProPageHeading(
+                title = stringResource(R.string.membership_status_title),
+                eyebrow = stringResource(R.string.membership_eyebrow),
+                modifier = Modifier.padding(horizontal = 0.dp),
             )
         }
 

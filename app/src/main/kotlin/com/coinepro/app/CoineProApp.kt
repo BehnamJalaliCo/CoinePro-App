@@ -213,6 +213,25 @@ private fun defaultScriptSymbol(platform: MarketPlatform, watchlist: List<String
  * one gold object on it should be the thing that acts. The market list is a passenger there; the
  * dedicated markets surface is the search route, and that one is blue.
  */
+/**
+ * Routes whose screen carries its own heading.
+ *
+ * Both visual voices define themselves by a heading — the gold one by a title over a fading rule
+ * and a large figure, the terminal one by a title over its column names — so on these the app bar
+ * is reduced to the back arrow.
+ */
+private val SELF_TITLED: Set<String> = setOf(
+    CHART_PATTERN,
+    STUDIO_PATTERN,
+    SCRIPT_PATTERN,
+    SIGNAL_DETAIL_PATTERN,
+    PORTFOLIO_ROUTE,
+    NEWS_ROUTE,
+    CALENDAR_ROUTE,
+    ACTIVITY_ROUTE,
+    MARKET_SEARCH_ROUTE,
+)
+
 private fun accentFor(route: String?): PageAccent = when (route) {
     MARKET_SEARCH_ROUTE,
     CHART_PATTERN,
@@ -757,7 +776,13 @@ private fun MainShell(
         topBar = {
             if (showTopBar) {
                 TopAppBar(
-                    title = { Text(stringResource(subTitleRes)) },
+                    // A screen that draws its own heading gets a bar with nothing in it but the way
+                    // back. Otherwise the reader is told what they are looking at twice — once by
+                    // the bar and once by the page — and the duplicate costs the fifty-six points
+                    // that the page's own heading needs.
+                    title = {
+                        if (currentRoute !in SELF_TITLED) Text(stringResource(subTitleRes))
+                    },
                     navigationIcon = {
                         if (isSubScreen) {
                             IconButton(onClick = { navController.popBackStack() }) {

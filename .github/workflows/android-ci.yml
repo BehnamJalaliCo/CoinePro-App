@@ -40,6 +40,9 @@ jobs:
       - name: Enforce reduced-motion policy
         run: bash scripts/quality/check-motion-policy.sh
 
+      - name: Enforce Kotlin style
+        run: bash scripts/quality/check-kotlin-style.sh
+
       - name: Validate release scripts and version contract
         shell: bash
         run: |

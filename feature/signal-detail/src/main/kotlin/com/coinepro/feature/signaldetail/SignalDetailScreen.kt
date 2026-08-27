@@ -50,6 +50,10 @@ import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.designsystem.CoineProCard
+import com.coinepro.core.designsystem.CoineProPageHeading
+import com.coinepro.core.designsystem.CoineProHeroFigure
+import com.coinepro.core.designsystem.CoineProReading
+import com.coinepro.core.designsystem.CoineProReadingRow
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
@@ -170,39 +174,53 @@ private fun SignalContent(
             .padding(CoineProSpacing.Gutter),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column {
-                Text(
-                    text = BidiText.isolateLtr(signal.symbol),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = CoineProColors.TextPrimary,
-                )
-                Text(
-                    listOfNotNull(signal.timeframe, signal.strategy).joinToString(" · "),
-                    color = CoineProColors.TextSecondary,
-                )
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = stringResource(signal.direction.labelRes()),
-                    color = directionColor,
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                signal.confidence?.let {
-                    // The percent sign belongs inside the isolate; outside it, bidi reordering
-                    // renders "78%" as "%78".
-                    Text(
-                        text = stringResource(R.string.detail_confidence, BidiText.isolateLtr("$it%")),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = CoineProColors.TextMuted,
-                    )
-                }
-            }
+        // The gold voice: this screen shows one thing, so it gets a heading, the live price at the
+        // size that says it is the subject, and the call beside it. The three readings under it are
+        // what a reader checks before acting — direction, the server's own confidence, and the
+        // ratio the levels imply.
+        CoineProPageHeading(
+            title = BidiText.isolateLtr(signal.symbol),
+            eyebrow = stringResource(R.string.detail_eyebrow),
+            subtitle = listOfNotNull(signal.timeframe, signal.strategy)
+                .joinToString(" · ")
+                .takeIf { it.isNotBlank() },
+            modifier = Modifier.padding(horizontal = 0.dp),
+        )
+        signal.currentQuote?.let { quote ->
+            CoineProHeroFigure(
+                figure = formatPrice(signal.symbol, quote.price),
+                caption = stringResource(
+                    if (quote.isStale) R.string.detail_last_price else R.string.detail_current_price,
+                ),
+                captionColour = if (quote.isStale) CoineProColors.Warning else CoineProColors.TextMuted,
+                modifier = Modifier.padding(horizontal = 0.dp),
+            )
         }
+        CoineProReadingRow(
+            readings = listOfNotNull(
+                CoineProReading(
+                    label = stringResource(R.string.detail_reading_direction),
+                    value = stringResource(signal.direction.labelRes()),
+                    tone = directionColor,
+                ),
+                signal.confidence?.let {
+                    CoineProReading(
+                        label = stringResource(R.string.detail_reading_confidence),
+                        // The percent sign belongs inside the isolate; outside it, bidi reordering
+                        // renders "78%" as "%78".
+                        value = BidiText.isolateLtr("$it%"),
+                    )
+                },
+                riskRewardOf(signal)?.let {
+                    CoineProReading(
+                        label = stringResource(R.string.detail_reading_risk_reward),
+                        value = BidiText.isolateLtr("1 : " + MarketNumberFormatter.price(it, 1)),
+                        tone = CoineProColors.Gold,
+                    )
+                },
+            ),
+            modifier = Modifier.padding(horizontal = 0.dp),
+        )
 
         AnimatedVisibility(
             visible = highImpactWarnings.isNotEmpty(),
@@ -210,23 +228,6 @@ private fun SignalContent(
             exit = fadeOut() + slideOutVertically { -it / 5 },
         ) {
             HighImpactWarningCard(highImpactWarnings)
-        }
-
-        signal.currentQuote?.let { quote ->
-            InfoCard(
-                title = stringResource(
-                    if (quote.isStale) R.string.detail_last_price else R.string.detail_current_price,
-                ),
-            ) {
-                FinancialText(formatPrice(signal.symbol, quote.price), MaterialTheme.typography.headlineSmall)
-                if (quote.isStale) {
-                    Text(
-                        text = stringResource(R.string.detail_stale_note),
-                        color = CoineProColors.Warning,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            }
         }
 
         // Above the numbers rather than below them. The levels are the answer; the chart is what
@@ -471,4 +472,20 @@ private fun formatPrice(symbol: String, value: Double): String {
         else -> 6
     }
     return MarketNumberFormatter.price(value, decimals)
+}
+
+/**
+ * Reward over risk for a signal, or null when the numbers do not make one.
+ *
+ * The first target rather than the furthest: it is the one a reader is deciding against, and
+ * quoting the third makes every setup look better than the trade actually on offer.
+ */
+private fun riskRewardOf(signal: TradingSignal): Double? {
+    val entry = signal.entry?.takeIf(Double::isFinite) ?: return null
+    val stop = signal.stopLoss?.takeIf(Double::isFinite) ?: return null
+    val target = signal.targets.sortedBy { it.level }
+        .firstNotNullOfOrNull { it.price?.takeIf(Double::isFinite) } ?: return null
+    val risk = kotlin.math.abs(entry - stop)
+    if (risk == 0.0) return null
+    return kotlin.math.abs(target - entry) / risk
 }

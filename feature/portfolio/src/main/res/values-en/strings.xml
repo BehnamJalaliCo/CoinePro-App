@@ -37,4 +37,6 @@
     <string name="portfolio_value_missing">—</string>
     <string name="portfolio_direction_buy">Buy</string>
     <string name="portfolio_direction_sell">Sell</string>
+    <string name="portfolio_eyebrow">Portfolio</string>
+    <string name="portfolio_reading_factor">Profit factor</string>
 </resources>

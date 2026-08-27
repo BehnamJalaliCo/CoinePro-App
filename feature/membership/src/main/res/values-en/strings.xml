@@ -26,4 +26,5 @@
     <string name="membership_uid_refused">The UID was not accepted.</string>
     <string name="membership_uid_retry_after">Too many attempts. Try again in %1$s seconds.</string>
     <string name="membership_uid_on_file">UID on file: %1$s</string>
+    <string name="membership_eyebrow">Membership</string>
 </resources>

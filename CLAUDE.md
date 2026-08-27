@@ -19,9 +19,10 @@ In practice that means:
 ## Standing constraints
 
 - **Work only on `main`.** Never create a branch.
-- Run all three gates before every commit:
+- Run all four gates before every commit:
   `python3 scripts/quality/check-cross-phase-consistency.py`,
   `bash scripts/quality/check-motion-policy.sh`,
+  `bash scripts/quality/check-kotlin-style.sh`,
   `bash scripts/security/scan-secrets.sh`
   then `./gradlew testDebugUnitTest :app:assembleRelease`.
 - Secrets in the two backend repositories are **not this app's business** — the owner will

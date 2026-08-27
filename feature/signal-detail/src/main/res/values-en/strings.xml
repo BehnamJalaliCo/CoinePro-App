@@ -33,4 +33,8 @@
     <string name="detail_open_copy">Open copy trading</string>
     <string name="detail_high_impact_title">High-impact event window</string>
     <string name="detail_high_impact_body">Calendar events near this active signal. This is a risk warning, not a prediction.</string>
+    <string name="detail_eyebrow">Signal</string>
+    <string name="detail_reading_direction">Direction</string>
+    <string name="detail_reading_confidence">Confidence</string>
+    <string name="detail_reading_risk_reward">Risk / reward</string>
 </resources>

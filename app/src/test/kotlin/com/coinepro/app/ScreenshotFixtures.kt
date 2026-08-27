@@ -943,6 +943,81 @@ object ScreenshotFixtures {
         return com.coinepro.core.marketdata.SparklineStore(gateway, scope)
     }
 
+    /** A journal DAO holding three finished entries, so the screen renders with real rows. */
+    fun journalController(
+        scope: kotlinx.coroutines.CoroutineScope,
+    ): com.coinepro.core.journal.JournalController {
+        val rows = kotlinx.coroutines.flow.MutableStateFlow(
+            listOf(
+                com.coinepro.core.database.JournalEntryEntity(
+                    id = 1, symbol = "XAUUSD", buy = true, entry = 2_640.0, exit = 2_662.5,
+                    size = 0.2, pnl = 450.0, emotion = "صبور", note = "شکست سقف روزانه با حجم.",
+                    lesson = "زودتر از تأیید وارد نشدم.", tags = "شکست",
+                    createdAtEpochMillis = 1_756_000_000_000L,
+                ),
+                com.coinepro.core.database.JournalEntryEntity(
+                    id = 2, symbol = "BTCUSDT", buy = false, entry = 92_400.0, exit = 93_180.0,
+                    size = 0.05, pnl = -39.0, emotion = "عجول", note = "خلاف روند وارد شدم.",
+                    lesson = "فیلتر روند را نادیده گرفتم.", tags = "خلاف‌روند",
+                    createdAtEpochMillis = 1_755_900_000_000L,
+                ),
+                com.coinepro.core.database.JournalEntryEntity(
+                    id = 3, symbol = "ETHUSDT", buy = true, entry = 3_080.0, exit = 3_142.0,
+                    size = 1.0, pnl = 62.0, emotion = "آرام", note = "برگشت از حمایت هفتگی.",
+                    lesson = "حد ضرر را جابه‌جا نکردم.", tags = "برگشت",
+                    createdAtEpochMillis = 1_755_800_000_000L,
+                ),
+            ),
+        )
+        val dao = object : com.coinepro.core.database.JournalDao {
+            override fun entries() = rows
+            override suspend fun insert(entry: com.coinepro.core.database.JournalEntryEntity): Long {
+                rows.value = rows.value + entry
+                return entry.id
+            }
+            override suspend fun delete(entry: com.coinepro.core.database.JournalEntryEntity) {
+                rows.value = rows.value.filterNot { it.id == entry.id }
+            }
+            override suspend fun clear() {
+                rows.value = emptyList()
+            }
+        }
+        return com.coinepro.core.journal.JournalController(dao, scope)
+    }
+
+    /** A paper-trade DAO with one open position and one closed, which is what the screen is for. */
+    fun paperTradeController(
+        scope: kotlinx.coroutines.CoroutineScope,
+    ): com.coinepro.core.papertrade.PaperTradeController {
+        val rows = kotlinx.coroutines.flow.MutableStateFlow(
+            listOf(
+                com.coinepro.core.database.PaperTradeEntity(
+                    id = 1, symbol = "XAUUSD", buy = true, entry = 2_648.0, size = 0.2,
+                    openedAtEpochMillis = 1_756_000_000_000L,
+                ),
+                com.coinepro.core.database.PaperTradeEntity(
+                    id = 2, symbol = "BTCUSDT", buy = false, entry = 92_800.0, size = 0.05,
+                    openedAtEpochMillis = 1_755_900_000_000L,
+                    exit = 91_960.0, closedAtEpochMillis = 1_755_950_000_000L,
+                ),
+            ),
+        )
+        val dao = object : com.coinepro.core.database.PaperTradeDao {
+            override fun trades() = rows
+            override suspend fun insert(trade: com.coinepro.core.database.PaperTradeEntity): Long {
+                rows.value = rows.value + trade
+                return trade.id
+            }
+            override suspend fun update(trade: com.coinepro.core.database.PaperTradeEntity) {
+                rows.value = rows.value.map { if (it.id == trade.id) trade else it }
+            }
+            override suspend fun clear() {
+                rows.value = emptyList()
+            }
+        }
+        return com.coinepro.core.papertrade.PaperTradeController(dao, scope)
+    }
+
     fun chartController(
         scope: kotlinx.coroutines.CoroutineScope,
         symbol: String = "XAUUSD",

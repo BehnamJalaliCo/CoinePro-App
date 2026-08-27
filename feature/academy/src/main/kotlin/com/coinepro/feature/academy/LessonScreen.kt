@@ -37,6 +37,7 @@ import com.coinepro.core.academy.Quiz
 import com.coinepro.core.academy.QuizQuestion
 import com.coinepro.core.academy.QuizResult
 import com.coinepro.core.designsystem.CoineProCard
+import com.coinepro.core.designsystem.CoineProPageHeading
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
@@ -79,22 +80,17 @@ fun LessonScreen(
                     .padding(CoineProSpacing.Gutter),
                 verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
             ) {
-                Column {
-                    Text(
-                        text = lesson.title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = CoineProColors.TextPrimary,
-                    )
-                    Text(
-                        text = stringResource(
-                            R.string.academy_reading_time,
-                            (lesson.readingTimeMinutes).toPersianDigits(),
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = CoineProColors.TextMuted,
-                        fontWeight = FontWeight.Normal,
-                    )
-                }
+                // The gold voice: a lesson is one thing, so it gets a heading with the gold rule
+                // under it rather than a title floating over the body text.
+                CoineProPageHeading(
+                    title = lesson.title,
+                    eyebrow = stringResource(R.string.academy_eyebrow),
+                    subtitle = stringResource(
+                        R.string.academy_reading_time,
+                        (lesson.readingTimeMinutes).toPersianDigits(),
+                    ),
+                    modifier = Modifier.padding(horizontal = 0.dp),
+                )
 
                 lesson.summary?.let {
                     CoineProCard(modifier = Modifier.fillMaxWidth()) {

@@ -53,6 +53,9 @@ import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.CoineProListHeader
+import com.coinepro.core.designsystem.CoineProHeaderAction
+import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.execution.ExecutionController
@@ -381,17 +384,20 @@ private fun ActivityHeader(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(stringResource(R.string.activity_eyebrow), color = CoineProColors.Gold, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                Text(stringResource(R.string.activity_headline), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            }
-            TextButton(onClick = onRefresh, enabled = !refreshing) { Text(stringResource(if (refreshing) R.string.activity_refreshing else R.string.activity_refresh)) }
-        }
-        Text(
-            stringResource(R.string.activity_note),
-            color = CoineProColors.TextSecondary,
-            style = MaterialTheme.typography.bodyMedium,
+        // The list voice. The eyebrow and the headline collapse into one title with the note as its
+        // subtitle, and the refresh becomes an icon: this screen is a log, and three lines of
+        // chrome before the first entry is three lines nobody reads twice.
+        CoineProListHeader(
+            title = stringResource(R.string.activity_headline),
+            subtitle = stringResource(R.string.activity_note),
+            modifier = Modifier.padding(horizontal = 0.dp),
+            actions = {
+                CoineProHeaderAction(
+                    icon = DesignR.drawable.icon_arrows_clockwise,
+                    label = stringResource(if (refreshing) R.string.activity_refreshing else R.string.activity_refresh),
+                    onClick = onRefresh,
+                )
+            },
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             HeaderMetric(

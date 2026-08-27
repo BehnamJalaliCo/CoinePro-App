@@ -88,6 +88,9 @@ import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.signals.SignalController
 import com.coinepro.feature.activity.ActivityScreen
+import com.coinepro.feature.journal.JournalScreen
+import com.coinepro.feature.papertrade.PaperTradeScreen
+import com.coinepro.feature.alerts.AlertsScreen
 import com.coinepro.feature.admin.AdminScreen
 import com.coinepro.feature.ai.AiStudioScreen
 import com.coinepro.feature.auth.AuthScreen
@@ -1261,6 +1264,36 @@ class ScreenshotRenderTest {
         val controller = ScreenshotFixtures.chartController(scope)
         listOf("ema", "bollinger", "supertrend", "pivots").forEach(controller::toggleIndicator)
         ChartScreen(controller = controller)
+    }
+
+    /**
+     * The four screens that had no render case.
+     *
+     * Every feature module is a screen, and a screen nobody has looked at is a screen nobody knows
+     * is broken — which is what the eight modules missing from this file were. The gate in
+     * `check-cross-phase-consistency.py` now refuses a new one without a case here.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun journal() = capture("80-journal-fa") {
+        JournalScreen(controller = ScreenshotFixtures.journalController(scope))
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun paperTrade() = capture("81-paper-trade-fa") {
+        PaperTradeScreen(
+            controller = ScreenshotFixtures.paperTradeController(scope),
+            // The live price the position is marked against. Passed in, exactly as the real screen
+            // takes it, so the open row shows a profit rather than an em dash.
+            priceFor = { symbol -> if (symbol == "XAUUSD") 2_671.4 else null },
+        )
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun alerts() = capture("82-alerts-fa") {
+        AlertsScreen(controller = NotificationController(FakeNotificationGateway(), scope))
     }
 
     /**

@@ -26,4 +26,5 @@
     <string name="membership_uid_refused">شناسه ثبت نشد.</string>
     <string name="membership_uid_retry_after">تعداد تلاش‌ها زیاد بود. %1$s ثانیه دیگر دوباره تلاش کنید.</string>
     <string name="membership_uid_on_file">شناسهٔ ثبت‌شده: %1$s</string>
+    <string name="membership_eyebrow">عضویت</string>
 </resources>

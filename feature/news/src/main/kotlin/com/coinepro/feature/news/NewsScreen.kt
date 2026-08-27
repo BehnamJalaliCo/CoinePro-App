@@ -46,6 +46,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.designsystem.CoineProCard
+import com.coinepro.core.designsystem.CoineProListHeader
+import com.coinepro.core.designsystem.CoineProHeaderAction
+import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
@@ -94,28 +97,20 @@ fun NewsScreen(
             .padding(horizontal = CoineProSpacing.Gutter),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column {
-                Text(
-                    text = stringResource(R.string.news_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = CoineProColors.TextPrimary,
+        // The list voice: a compact header with its one action as an icon, so the first headline
+        // is above the fold rather than under a two-line heading and a button.
+        CoineProListHeader(
+            title = stringResource(R.string.news_title),
+            subtitle = stringResource(R.string.news_subtitle),
+            modifier = Modifier.padding(horizontal = 0.dp),
+            actions = {
+                CoineProHeaderAction(
+                    icon = DesignR.drawable.icon_calendar_dots,
+                    label = stringResource(R.string.news_calendar),
+                    onClick = onOpenCalendar,
                 )
-                Text(
-                    text = stringResource(R.string.news_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = CoineProColors.TextSecondary,
-                )
-            }
-            CoineProSecondaryButton(
-                text = stringResource(R.string.news_calendar),
-                onClick = onOpenCalendar,
-            )
-        }
+            },
+        )
 
         // A one-market platform gets no filter at all: a control with a single alternative to "all"
         // is a switch that says nothing.

@@ -15,6 +15,56 @@ it is for.
 
 ---
 
+## [1.26.0] — 2026-08-27 — The rest of the app, and the debt
+
+The design rule the owner set — content screens speak the gold voice, lists speak the terminal one
+— now reaches the screens the last release did not, and the engineering debt that had been carried
+since the handoff is paid down or honestly named.
+
+### Added
+- **Both voices as design-system components.** `CoineProPageHeading`, `CoineProHeroFigure` and
+  `CoineProReadingRow` for the gold voice; `CoineProListHeader`, `CoineProSegmentTabs`,
+  `CoineProColumnHeadings`, `CoineProDenseRow` and `CoineProRowDivider` for the terminal one. A
+  screen now declares which voice it speaks by which components it reaches for, instead of every
+  screen finding its own slightly different answer to the same layout.
+- **`scripts/quality/check-kotlin-style.sh`** — a fourth gate, in CI and in the working agreement.
+  It catches wildcard imports, `println` in shipping code, `Thread.sleep`, stray `TODO`/`FIXME`,
+  tabs, trailing whitespace and files with no closing newline.
+- **A gate that keeps every screen looked at.** The consistency check now refuses a feature module
+  with no case in `ScreenshotRenderTest`. Five modules are listed as unrenderable with the reason —
+  a WebView has no off-device renderer, a streaming screen's capture is one arbitrary frame, and a
+  screen whose whole content is one account's server answer would have to fabricate the account.
+- Render cases for the journal, paper trading and alerts, which had none.
+- Tests for `core:security` and `core:navigation`, the two untested core modules. The keystore
+  itself is not tested and cannot be — Robolectric ships no `AndroidKeyStore` provider — but the
+  envelope either side of it is, which is the part that has actually failed in products like this.
+
+### Changed
+- **Signals** is the terminal voice: a compact header, status tabs, named columns, and two lines per
+  row — identity and call on the first, the three levels labelled on the second. Dropping the levels
+  would have made the list scannable and useless.
+- **Signal detail** and **portfolio** are the gold voice: a heading over a fading rule, the one
+  figure the screen exists to show at forty points, and three readings beside it. Signal detail
+  gains the risk-to-reward ratio it never showed, computed from the first target rather than the
+  furthest — the first is the one a reader is deciding against.
+- **News, the economic calendar and activity** get the list header, their one action as an icon.
+  Activity's eyebrow, headline and note collapse into a title and a subtitle: three lines of chrome
+  before the first entry is three lines nobody reads twice.
+- **Lessons and membership** get the gold heading.
+- **A screen that draws its own heading no longer has one in the app bar too.** The bar keeps the
+  way back and nothing else, which returns the fifty-six points the page's own heading needs.
+- **Every module compiles against Java 17.** The library modules were on 11 while `:app` was on 17.
+
+### Notes
+- ktlint and detekt were deliberately not added. Both are Gradle plugins resolved from the plugin
+  portal, and a build that cannot reach it would fail on formatting rather than on anything real.
+  The shell gate covers the damage that is invisible in review; the rest is what a formatter is for,
+  and is worth wiring the day one is.
+- `baseline-prof.txt` is still hand-written. It cannot be generated here — `BaselineProfileGenerator`
+  needs a device — and the file says so at the top rather than pretending otherwise.
+
+---
+
 ## [1.25.0] — 2026-08-27 — The picked direction, built
 
 The owner chose two of the three directions off the design canvas — «ب · طلایی» for the chart and

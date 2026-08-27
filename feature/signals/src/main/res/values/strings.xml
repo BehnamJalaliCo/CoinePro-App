@@ -29,4 +29,8 @@
     <string name="signals_quote_current">قیمت لحظه‌ای</string>
     <string name="signals_quote_last">آخرین قیمت</string>
     <string name="signals_value_missing">—</string>
+    <string name="signals_column_symbol">نماد</string>
+    <string name="signals_column_direction">جهت</string>
+    <string name="signals_column_levels">قیمت لحظه‌ای</string>
+    <string name="signals_count">%1$s سیگنال</string>
 </resources>

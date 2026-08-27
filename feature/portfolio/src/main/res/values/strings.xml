@@ -38,4 +38,6 @@
     <string name="portfolio_value_missing">—</string>
     <string name="portfolio_direction_buy">خرید</string>
     <string name="portfolio_direction_sell">فروش</string>
+    <string name="portfolio_eyebrow">پرتفوی</string>
+    <string name="portfolio_reading_factor">ضریب سود</string>
 </resources>

@@ -34,4 +34,8 @@
     <string name="detail_open_copy">رفتن به کپی‌ترید</string>
     <string name="detail_high_impact_title">بازهٔ خبر پرتأثیر</string>
     <string name="detail_high_impact_body">رویدادهای تقویم اقتصادی نزدیک این سیگنال فعال. این هشدار ریسک است، نه پیش‌بینی.</string>
+    <string name="detail_eyebrow">سیگنال</string>
+    <string name="detail_reading_direction">جهت</string>
+    <string name="detail_reading_confidence">اعتماد</string>
+    <string name="detail_reading_risk_reward">ریسک به بازده</string>
 </resources>

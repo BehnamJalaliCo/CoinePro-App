@@ -47,6 +47,52 @@ def check_module_map() -> None:
     require(actual == documented, f"Gradle modules != roadmap module map\nactual={actual}\ndocumented={documented}")
 
 
+def check_every_screen_is_rendered() -> None:
+    """Every feature module must have a case in the screenshot render test.
+
+    A feature module is a screen, and a screen nobody has looked at is a screen nobody knows is
+    broken. Eight of them had no case, which is how a toolbar two hundred and sixty points tall
+    shipped: the render existed for the chart but not for what sat under it.
+
+    Modules that are deliberately not renderable are listed with the reason. The list is short and
+    every entry has to earn its place — "it is hard to fake" is not one, since a fake gateway is
+    what every other case here uses.
+    """
+    unrenderable = {
+        # A WebView. Robolectric has no renderer for one, so an off-device capture is a white
+        # rectangle that would pass this gate while proving nothing.
+        "terminal",
+        # Both AI screens stream. A capture is one frame of an animation, and which frame it is
+        # depends on the scheduler — the picture would change between runs without the code
+        # changing, which is a screenshot test that cries wolf.
+        "ai-vision",
+        "ai-assistant",
+        # Two screens whose whole content is a server's answer about one account. Rendering them
+        # means fabricating a membership or an execution, and a picture of an invented account
+        # state is a picture of something that cannot happen.
+        "membership",
+        "execution",
+    }
+    modules = sorted(
+        path.name
+        for path in (ROOT / "feature").iterdir()
+        if path.is_dir() and (path / "build.gradle.kts").exists()
+    )
+    rendered = read("app/src/test/kotlin/com/coinepro/app/ScreenshotRenderTest.kt")
+    missing = [
+        module
+        for module in modules
+        if module not in unrenderable
+        and f"com.coinepro.feature.{module.replace('-', '')}." not in rendered
+    ]
+    require(
+        not missing,
+        "Feature modules with no screenshot render case: "
+        + ", ".join(missing)
+        + "\nAdd one to ScreenshotRenderTest, or list the module in this gate with the reason.",
+    )
+
+
 def check_bottom_navigation() -> None:
     """Bottom navigation identity and order are repository-owned; the labels are not.
 
@@ -166,6 +212,7 @@ def check_staging_validation() -> None:
 
 def main() -> None:
     check_module_map()
+    check_every_screen_is_rendered()
     check_bottom_navigation()
     check_environment_contract()
     check_persisted_signal_identity()

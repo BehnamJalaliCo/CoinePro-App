@@ -33,6 +33,10 @@ import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
+import com.coinepro.core.designsystem.CoineProPageHeading
+import com.coinepro.core.designsystem.CoineProHeroFigure
+import com.coinepro.core.designsystem.CoineProReading
+import com.coinepro.core.designsystem.CoineProReadingRow
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
@@ -152,33 +156,50 @@ private fun Content(state: PortfolioUiState, onLoadMore: () -> Unit, zone: ZoneI
     }
 }
 
+/**
+ * The gold voice: this screen shows one thing, so the net result gets a heading and the size that
+ * says it is the subject, with the three figures a reader checks beside it.
+ *
+ * Not a card any more. A card around the page's own headline made it read as one panel among the
+ * panels below it, when it is what the rest of the page explains.
+ */
 @Composable
 private fun Headline(stats: PortfolioStats) {
-    CoineProCard(modifier = Modifier.fillMaxWidth()) {
-        CardLabel(stringResource(R.string.portfolio_net))
-        Text(
-            text = MarketNumberFormatter.money(stats.net, signed = true),
-            style = MaterialTheme.typography.headlineMedium,
-            color = resultColour(stats.net),
+    Column(modifier = Modifier.fillMaxWidth()) {
+        CoineProPageHeading(
+            title = stringResource(R.string.portfolio_net),
+            eyebrow = stringResource(R.string.portfolio_eyebrow),
+            modifier = Modifier.padding(horizontal = 0.dp),
         )
-        Spacer(Modifier.height(CoineProSpacing.Half))
-        Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf)) {
-            Text(
-                // Latin digits: this is a market figure, not a prose count.
-                text = BidiText.isolateLtr("${stats.trades}") + " " +
-                    stringResource(R.string.portfolio_trades),
-                style = MaterialTheme.typography.bodySmall,
-                color = CoineProColors.TextMuted,
-            )
-            stats.winRate?.let {
-                Text(
-                    text = stringResource(R.string.portfolio_win_rate) + " " +
-                        BidiText.isolateLtr(MarketNumberFormatter.price(it, 1) + "%"),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = CoineProColors.TextMuted,
-                )
-            }
-        }
+        CoineProHeroFigure(
+            figure = MarketNumberFormatter.money(stats.net, signed = true),
+            captionColour = resultColour(stats.net),
+            modifier = Modifier.padding(horizontal = 0.dp),
+        )
+        CoineProReadingRow(
+            readings = listOfNotNull(
+                CoineProReading(
+                    label = stringResource(R.string.portfolio_trades),
+                    // Latin digits: this is a market figure, not a prose count.
+                    value = BidiText.isolateLtr("${stats.trades}"),
+                ),
+                stats.winRate?.let {
+                    CoineProReading(
+                        label = stringResource(R.string.portfolio_win_rate),
+                        value = BidiText.isolateLtr(MarketNumberFormatter.price(it, 1) + "%"),
+                        tone = if (it >= 50.0) CoineProColors.Buy else CoineProColors.Sell,
+                    )
+                },
+                stats.profitFactor?.let {
+                    CoineProReading(
+                        label = stringResource(R.string.portfolio_reading_factor),
+                        value = BidiText.isolateLtr(MarketNumberFormatter.price(it, 2)),
+                        tone = if (it >= 1.0) CoineProColors.Buy else CoineProColors.Sell,
+                    )
+                },
+            ),
+            modifier = Modifier.padding(horizontal = 0.dp),
+        )
     }
 }
 

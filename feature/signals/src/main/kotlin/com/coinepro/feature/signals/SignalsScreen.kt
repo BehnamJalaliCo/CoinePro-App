@@ -31,6 +31,18 @@ import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProCard
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
+import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.CoineProColumnHeadings
+import com.coinepro.core.designsystem.CoineProHeaderAction
+import com.coinepro.core.designsystem.CoineProListHeader
+import com.coinepro.core.designsystem.CoineProRowDivider
+import com.coinepro.core.designsystem.CoineProSegmentTabs
+import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPrimaryButton
@@ -65,50 +77,38 @@ fun SignalsScreen(
     LaunchedEffect(controller, platform) { controller.selectMarket(platform.toFilter()) }
     val state by controller.state.collectAsStateWithLifecycle()
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),
-        contentPadding = PaddingValues(
-            horizontal = CoineProSpacing.Gutter,
-            vertical = CoineProSpacing.Gutter,
-        ),
-        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
-    ) {
-        item {
-            Column(
-                modifier = Modifier.padding(horizontal = CoineProSpacing.Half),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.signals_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = CoineProColors.TextPrimary,
+    Column(modifier = Modifier.fillMaxSize().background(CoineProColors.Stage)) {
+        CoineProListHeader(
+            title = stringResource(R.string.signals_title),
+            subtitle = if (state.items.isEmpty()) {
+                stringResource(R.string.signals_subtitle)
+            } else {
+                pluralCount(state.items.size)
+            },
+            actions = {
+                CoineProHeaderAction(
+                    icon = DesignR.drawable.icon_arrows_clockwise,
+                    label = stringResource(R.string.signals_retry),
+                    onClick = controller::refresh,
                 )
-                Text(
-                    text = stringResource(R.string.signals_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = CoineProColors.TextSecondary,
-                )
-            }
-        }
-
-        item {
-            CoineProSegmentedControl(
-                options = SignalStatusFilter.entries.map { it to stringResource(it.labelRes()) },
-                selected = state.status,
-                onSelect = controller::selectStatus,
-            )
-        }
+            },
+        )
+        CoineProSegmentTabs(
+            options = SignalStatusFilter.entries.map { it to stringResource(it.labelRes()) },
+            selected = state.status,
+            onSelect = controller::selectStatus,
+        )
 
         when {
-            state.loading && state.items.isEmpty() -> item {
-                Placeholder { CircularProgressIndicator(color = CoineProColors.Gold) }
+            state.loading && state.items.isEmpty() -> Placeholder {
+                CircularProgressIndicator(color = CoineProColors.Gold, strokeWidth = 2.dp)
             }
 
-            state.membershipRequired -> item {
+            state.membershipRequired -> Placeholder {
                 MembershipRequired(state.membershipMessage, onRetry = controller::refresh)
             }
 
-            state.error != null && state.items.isEmpty() -> item {
+            state.error != null && state.items.isEmpty() -> Placeholder {
                 CoineProCard(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         // Server wording when there is any: the client does not restate a failure
@@ -125,40 +125,157 @@ fun SignalsScreen(
                 }
             }
 
-            state.items.isEmpty() -> item {
-                Placeholder {
-                    Text(
-                        text = stringResource(R.string.signals_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = CoineProColors.TextSecondary,
-                        textAlign = TextAlign.Center,
-                    )
-                }
+            state.items.isEmpty() -> Placeholder {
+                Text(
+                    text = stringResource(R.string.signals_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CoineProColors.TextSecondary,
+                    textAlign = TextAlign.Center,
+                )
             }
 
             else -> {
-                if (state.loading) {
-                    item {
-                        Text(
-                            text = stringResource(R.string.signals_refreshing),
-                            modifier = Modifier.padding(horizontal = CoineProSpacing.Half),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = CoineProColors.TextMuted,
-                        )
+                CoineProColumnHeadings(
+                    start = stringResource(R.string.signals_column_symbol),
+                    middle = stringResource(R.string.signals_column_direction),
+                    end = stringResource(R.string.signals_column_levels),
+                )
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    if (state.loading) {
+                        item {
+                            Text(
+                                text = stringResource(R.string.signals_refreshing),
+                                modifier = Modifier.padding(
+                                    horizontal = CoineProSpacing.Two,
+                                    vertical = CoineProSpacing.Half,
+                                ),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = CoineProColors.TextMuted,
+                            )
+                        }
                     }
-                }
-                items(state.items, key = { it.id }) { signal ->
-                    SignalCard(signal = signal, onClick = { onOpenSignal(signal.id) })
+                    items(state.items, key = { it.id }) { signal ->
+                        SignalRow(signal = signal, onClick = { onOpenSignal(signal.id) })
+                        CoineProRowDivider()
+                    }
                 }
             }
         }
     }
 }
 
+/**
+ * One signal as two lines.
+ *
+ * The list voice wants one row per thing, and a signal is four numbers — so the row carries the
+ * identity and the call on the first line and the three levels, labelled, on the second. Dropping
+ * the levels would have made the list scannable and useless: "BTCUSDT خرید" without a stop is not
+ * something anybody can act on, and making the reader open every row to find out is worse than a
+ * second line.
+ */
 @Composable
-private fun Placeholder(content: @Composable () -> Unit) {
+private fun SignalRow(signal: TradingSignal, onClick: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = CoineProSpacing.Two, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+        ) {
+            CoineProAssetLogo(symbol = signal.symbol, size = 30.dp)
+            Column(modifier = Modifier.width(96.dp)) {
+                Text(
+                    text = BidiText.isolateLtr(signal.symbol),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = CoineProColors.TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val context = listOfNotNull(signal.timeframe, signal.strategy).joinToString(" · ")
+                if (context.isNotBlank()) {
+                    Text(
+                        text = context,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CoineProColors.TextDisabled,
+                        fontWeight = FontWeight.Normal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                DirectionPill(signal.direction)
+            }
+            signal.currentQuote?.let { quote ->
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = formatPrice(signal.symbol, quote.price),
+                        style = MaterialTheme.typography.labelMedium.copy(textDirection = TextDirection.Ltr),
+                        color = CoineProColors.TextPrimary,
+                    )
+                    // Only a stale quote says anything. The column is already named «قیمت
+                    // لحظه‌ای» at the top of the list, so repeating it on every row is a word the
+                    // reader has to skip past to reach the one row where it means something.
+                    if (quote.isStale) {
+                        Text(
+                            text = stringResource(R.string.signals_quote_last),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = CoineProColors.Warning,
+                            fontWeight = FontWeight.Normal,
+                        )
+                    }
+                }
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = CoineProSpacing.Two, end = CoineProSpacing.Two, bottom = 9.dp),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
+        ) {
+            LevelFigure(R.string.signals_metric_entry, signal.entry, signal.symbol, CoineProColors.TextSecondary)
+            LevelFigure(R.string.signals_metric_stop_loss, signal.stopLoss, signal.symbol, CoineProColors.Sell)
+            LevelFigure(
+                R.string.signals_metric_target_one,
+                signal.targets.firstOrNull { it.level == 1 }?.price,
+                signal.symbol,
+                CoineProColors.Buy,
+            )
+        }
+    }
+}
+
+/** One labelled level on a signal row's second line. */
+@Composable
+private fun LevelFigure(labelRes: Int, value: Double?, symbol: String, colour: androidx.compose.ui.graphics.Color) {
+    Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+        Text(
+            text = stringResource(labelRes),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextDisabled,
+            fontWeight = FontWeight.Normal,
+        )
+        Text(
+            text = value?.let { formatPrice(symbol, it) } ?: stringResource(R.string.signals_value_missing),
+            style = MaterialTheme.typography.labelSmall.copy(textDirection = TextDirection.Ltr),
+            color = if (value == null) CoineProColors.TextDisabled else colour,
+        )
+    }
+}
+
+/** «۴ سیگنال» — a count in prose, so Persian digits. */
+@Composable
+private fun pluralCount(count: Int): String =
+    stringResource(R.string.signals_count, count.toPersianDigits())
+
+@Composable
+private fun ColumnScope.Placeholder(content: @Composable () -> Unit) {
     Box(
-        modifier = Modifier.fillMaxWidth().padding(vertical = CoineProSpacing.Six),
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxWidth()
+            .padding(CoineProSpacing.Gutter),
         contentAlignment = Alignment.Center,
     ) { content() }
 }
