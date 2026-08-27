@@ -1,5 +1,6 @@
 package com.coinepro.core.chart
 
+import com.coinepro.core.common.toPersianDigits
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -45,7 +46,6 @@ import com.coinepro.core.designsystem.CoineProSheetEmpty
 import com.coinepro.core.designsystem.CoineProSheetSearch
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
-import com.coinepro.core.designsystem.persianDigits
 import com.coinepro.core.designsystem.R as DesignR
 
 /**
@@ -245,7 +245,7 @@ fun ActiveToolBar(
             if (tool.points > 0) {
                 Text(
                     // A prose count, so Persian digits — unlike a price, which stays Latin.
-                    text = "نقطهٔ ${persianDigits(placed + 1)} از ${persianDigits(tool.points)}",
+                    text = "نقطهٔ ${(placed + 1).toPersianDigits()} از ${(tool.points).toPersianDigits()}",
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,
                 )

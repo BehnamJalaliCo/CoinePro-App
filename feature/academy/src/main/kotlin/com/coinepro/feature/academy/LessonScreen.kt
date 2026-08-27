@@ -1,5 +1,6 @@
 package com.coinepro.feature.academy
 
+import com.coinepro.core.common.toPersianDigits
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -41,7 +42,6 @@ import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
-import com.coinepro.core.designsystem.persianDigits
 
 /**
  * One lesson: the prose, then its quiz.
@@ -88,7 +88,7 @@ fun LessonScreen(
                     Text(
                         text = stringResource(
                             R.string.academy_reading_time,
-                            persianDigits(lesson.readingTimeMinutes),
+                            (lesson.readingTimeMinutes).toPersianDigits(),
                         ),
                         style = MaterialTheme.typography.labelSmall,
                         color = CoineProColors.TextMuted,
@@ -171,7 +171,7 @@ private fun QuizSection(
             )
             quiz.lastScore?.let {
                 Text(
-                    text = stringResource(R.string.academy_quiz_last_score, persianDigits(it)),
+                    text = stringResource(R.string.academy_quiz_last_score, (it).toPersianDigits()),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,
                     fontWeight = FontWeight.Normal,
@@ -201,7 +201,7 @@ private fun QuizSection(
         } else {
             CoineProCard(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = stringResource(R.string.academy_quiz_score, persianDigits(result.score)),
+                    text = stringResource(R.string.academy_quiz_score, (result.score).toPersianDigits()),
                     style = MaterialTheme.typography.titleMedium,
                     color = if (result.passed) CoineProColors.Buy else CoineProColors.Sell,
                 )
@@ -227,7 +227,7 @@ private fun QuestionCard(
 ) {
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = persianDigits(index + 1) + ". " + question.question,
+            text = (index + 1).toPersianDigits() + ". " + question.question,
             style = MaterialTheme.typography.bodyMedium,
             color = CoineProColors.TextPrimary,
         )

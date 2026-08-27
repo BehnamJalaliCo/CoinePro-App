@@ -1,5 +1,6 @@
 package com.coinepro.feature.academy
 
+import com.coinepro.core.common.toPersianDigits
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -53,7 +54,6 @@ import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
-import com.coinepro.core.designsystem.persianDigits
 
 /**
  * The curriculum, as a path rather than a list.
@@ -208,21 +208,21 @@ private fun ProfileHeader(profile: AcademyProfile) {
                 Text(
                     text = stringResource(
                         R.string.academy_progress,
-                        persianDigits(profile.completed),
-                        persianDigits(profile.totalLessons),
+                        (profile.completed).toPersianDigits(),
+                        (profile.totalLessons).toPersianDigits(),
                     ),
                     style = MaterialTheme.typography.titleMedium,
                     color = CoineProColors.TextPrimary,
                 )
                 Text(
-                    text = persianDigits(profile.xp) + " " + stringResource(R.string.academy_xp),
+                    text = (profile.xp).toPersianDigits() + " " + stringResource(R.string.academy_xp),
                     style = MaterialTheme.typography.bodySmall,
                     color = CoineProColors.TextMuted,
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "🔥 " + persianDigits(profile.streak.current),
+                    text = "🔥 " + (profile.streak.current).toPersianDigits(),
                     style = MaterialTheme.typography.titleMedium,
                     color = if (profile.streak.todayDone) CoineProColors.Gold else CoineProColors.TextSecondary,
                 )
@@ -279,7 +279,7 @@ private fun LevelHeader(level: AcademyLevel) {
             color = CoineProColors.TextPrimary,
         )
         Text(
-            text = persianDigits(level.completed) + " / " + persianDigits(level.lessons.size),
+            text = (level.completed).toPersianDigits() + " / " + (level.lessons.size).toPersianDigits(),
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
             fontWeight = FontWeight.Normal,
@@ -357,7 +357,7 @@ private fun Disc(lesson: LessonSummary) {
             text = when {
                 done -> "✓"
                 lesson.locked -> "🔒"
-                else -> persianDigits(lesson.order)
+                else -> (lesson.order).toPersianDigits()
             },
             style = MaterialTheme.typography.labelMedium,
             color = when {

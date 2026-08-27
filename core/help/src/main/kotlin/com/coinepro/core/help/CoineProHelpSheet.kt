@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -331,6 +332,3 @@ private fun BulletLine(text: String) {
     }
 }
 
-/** Persian digits, for prose counts only. */
-internal fun Int.toPersianDigits(): String =
-    toString().map { character -> '۰' + (character - '0') }.joinToString("")

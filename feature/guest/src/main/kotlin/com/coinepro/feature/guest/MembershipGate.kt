@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
@@ -71,8 +72,10 @@ fun MembershipGate(
             ).forEachIndexed { index, line ->
                 Text(
                     // Numbered in the string rather than by a list marker: a Compose bullet or
-                    // counter paints at a fixed left offset, which is the wrong side in RTL.
-                    text = "${index + 1}. " + stringResource(line),
+                    // counter paints at a fixed left offset, which is the wrong side in RTL. The
+                    // numeral is Persian because this is a prose count, not a market figure — the
+                    // rule the whole app follows, and the one a hand-written "1." quietly breaks.
+                    text = (index + 1).toPersianDigits() + ". " + stringResource(line),
                     style = MaterialTheme.typography.bodyMedium,
                     color = CoineProColors.TextSecondary,
                 )

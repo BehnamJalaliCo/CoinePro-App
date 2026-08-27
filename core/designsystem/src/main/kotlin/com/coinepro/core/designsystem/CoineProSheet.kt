@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.coinepro.core.common.toPersianDigits
 
 /**
  * The app's bottom sheet.
@@ -185,7 +186,7 @@ private fun Chip(label: String, count: Int?, selected: Boolean, onClick: () -> U
             Text(
                 // A prose count, so Persian digits — unlike a price, which stays Latin. The chip
                 // said «9» beside a subtitle that said «۵۲» until this line existed.
-                text = persianDigits(count),
+                text = count.toPersianDigits(),
                 style = MaterialTheme.typography.labelSmall,
                 color = if (selected) {
                     CoineProColors.OnAccent.copy(alpha = 0.7f)
@@ -276,14 +277,3 @@ fun CoineProSheetEmpty(text: String, modifier: Modifier = Modifier) {
 /** Transparent, for a chip that is not selected. Named so the intent is not read as a mistake. */
 internal val UnselectedChip: Color = Color.Transparent
 
-/**
- * A count, in Persian digits.
- *
- * For prose only — «۵۲ ابزار», «نقطهٔ ۲ از ۵». A price, a percentage or any other market figure stays
- * in Latin digits, because a trader reads those against a chart and a broker statement that use
- * Latin digits, and because the two sets are not interchangeable at a glance in a column of numbers.
- */
-fun persianDigits(value: Int): String =
-    value.toString().map { character ->
-        if (character in '0'..'9') '۰' + (character - '0') else character
-    }.joinToString("")

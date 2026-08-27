@@ -33,12 +33,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProAgentOrb
 import com.coinepro.core.designsystem.CoineProAssetLogo
+import com.coinepro.core.designsystem.CoineProMarketRow
 import com.coinepro.core.designsystem.CoineProAssetToken
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -429,77 +431,21 @@ private fun MarketCard(quotes: List<MarketQuote>, onOpenSymbol: ((String) -> Uni
 
 @Composable
 private fun QuoteRow(quote: MarketQuote, onOpenSymbol: ((String) -> Unit)?) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = CoineProSpacing.Row)
-            // The clear comes first and the click after it, in that order. `clearAndSetSemantics`
-            // wipes everything declared before it on this node, so a clickable above this line
-            // would have its action erased and the row would be unreachable with TalkBack while
-            // still working under a finger — the worst version of this bug, because it looks fine.
-            .clearAndSetSemantics { contentDescription = quote.instrument.symbol }
-            .let { base ->
-                if (onOpenSymbol == null) {
-                    base
-                } else {
-                    base.clickable { onOpenSymbol(quote.instrument.symbol) }
-                }
-            },
-        horizontalArrangement = Arrangement.spacedBy(13.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CoineProAssetLogo(symbol = quote.instrument.symbol)
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = quote.instrument.displayName,
-                style = MaterialTheme.typography.titleSmall,
-                color = CoineProColors.TextPrimary,
-            )
-            Text(
-                text = BidiText.isolateLtr(quote.instrument.symbol),
-                style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextMuted,
-                fontWeight = FontWeight.Normal,
-            )
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                text = MarketNumberFormatter.price(quote.price, quote.decimals()),
-                style = CoineProTextStyles.RowFigure,
-                color = CoineProColors.TextPrimary,
-            )
-            ChangeText(quote)
-        }
-    }
-}
-
-/** The 24-hour move, or the staleness marker when the feed has stopped moving. */
-@Composable
-private fun ChangeText(quote: MarketQuote) {
-    val change = quote.changePercent
-    when {
-        change != null -> Text(
-            text = MarketNumberFormatter.signedPercent(change),
-            style = MaterialTheme.typography.labelSmall,
-            color = if (change >= 0) CoineProColors.Buy else CoineProColors.Sell,
-            fontWeight = FontWeight.Normal,
-        )
+    val stale = stringResource(R.string.home_quote_stale)
+    CoineProMarketRow(
+        symbol = quote.instrument.symbol,
+        title = AnnotatedString(quote.instrument.displayName),
+        subtitle = AnnotatedString(BidiText.isolateLtr(quote.instrument.symbol)),
+        price = MarketNumberFormatter.price(quote.price, quote.decimals()),
+        changePercent = quote.changePercent,
         // No dash standing in for zero: a missing change is reported as missing, and a stale price
         // says so, because a stale quote drawn like a live one is the failure that costs money.
-        quote.isStale -> Text(
-            text = stringResource(R.string.home_quote_stale),
-            style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.Warning,
-            fontWeight = FontWeight.Normal,
-        )
-        else -> Text(
-            text = stringResource(R.string.home_value_missing),
-            style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.TextMuted,
-            fontWeight = FontWeight.Normal,
-        )
-    }
+        trailingNote = stale.takeIf { quote.changePercent == null && quote.isStale },
+        trailingNoteColor = CoineProColors.Warning,
+        onClick = onOpenSymbol?.let { open -> { open(quote.instrument.symbol) } },
+    )
 }
+
 
 @Composable
 private fun EmptyMarket(state: MarketDataState, onRetry: () -> Unit) {

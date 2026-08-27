@@ -15,6 +15,39 @@ it is for.
 
 ---
 
+## [1.2.0] — 2026-08-27 — One market row, at the density the job needs
+
+### Added
+- `CoineProMarketRow` — the row Home, search and the guest market now share. There were three,
+  and they had already drifted: different logo sizes, different vertical rhythm, the percentage as
+  plain text in two of them and absent from the third.
+- `CoineProPercentPill`. Coloured text has to be found before it can be read; a filled block is
+  found before it is read, which is the actual job — someone scanning a market list is looking for
+  *which rows moved*, not for any particular figure. The fill is the system's 8% tint rather than a
+  flat alpha, so it is the same colour on a card, on the stage, and in the light theme.
+- `CoineProRangeBar` — where the price sits between the day's low and high. Two numbers the feed
+  already carries and almost no app draws: 64,180 says nothing, 64,180 at the top of a
+  62,800–64,900 day says the thing a reader opened the app for. It sits *beside* the pill rather
+  than under it, so the range costs no extra row height.
+- A hairline between search results, inset past the logo. Sixty-five markets on a bare stage had
+  nothing for the eye to count by.
+
+### Changed
+- The guest market went from a card per quote — a stack of blocks to scroll — to one card of dense
+  rows to scan. A market list is read by comparison, and comparison needs the rows close enough to
+  hold in one glance.
+- The guest lockup is smaller. A logo taking a fifth of the first screen is a brand announcing
+  itself; the live market underneath is what does the convincing.
+
+### Fixed
+- Persian numerals in the membership steps. They were hand-written `1.` `2.` `3.` — Latin digits in
+  a prose count, which is the app's one number rule and the way it actually gets broken: nobody
+  writing a numbered list thinks of themselves as formatting a number.
+- Three copies of the Latin-to-Persian digit helper became one, in `core:common` beside its
+  opposite, with the market-figure exception written down where both live.
+
+---
+
 ## [1.1.1] — 2026-08-26
 
 ### Changed

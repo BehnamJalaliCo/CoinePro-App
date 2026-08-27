@@ -1,5 +1,6 @@
 package com.coinepro.feature.academy
 
+import com.coinepro.core.common.toPersianDigits
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,7 +37,6 @@ import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProSheetSearch
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
-import com.coinepro.core.designsystem.persianDigits
 
 /**
  * The badges, earned and unearned together.
@@ -59,8 +59,8 @@ internal fun AchievementsBody(achievements: Achievements) {
             Text(
                 text = stringResource(
                     R.string.academy_achievements_count,
-                    persianDigits(achievements.earnedCount),
-                    persianDigits(achievements.total),
+                    (achievements.earnedCount).toPersianDigits(),
+                    (achievements.total).toPersianDigits(),
                 ),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextMuted,
@@ -129,8 +129,8 @@ internal fun LeaderboardBody(leaderboard: Leaderboard) {
                 text = leaderboard.myRank?.let {
                     stringResource(
                         R.string.academy_leaderboard_rank,
-                        persianDigits(it),
-                        persianDigits(leaderboard.totalStudents),
+                        (it).toPersianDigits(),
+                        (leaderboard.totalStudents).toPersianDigits(),
                     )
                 } ?: stringResource(R.string.academy_leaderboard_unranked),
                 style = MaterialTheme.typography.bodySmall,
@@ -157,7 +157,7 @@ internal fun LeaderboardBody(leaderboard: Leaderboard) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = persianDigits(row.rank),
+                    text = (row.rank).toPersianDigits(),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (row.isMe) CoineProColors.Gold else CoineProColors.TextMuted,
                     modifier = Modifier.width(28.dp),
@@ -169,7 +169,7 @@ internal fun LeaderboardBody(leaderboard: Leaderboard) {
                     modifier = Modifier.weight(1f),
                 )
                 Text(
-                    text = persianDigits(row.xp),
+                    text = (row.xp).toPersianDigits(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (row.isMe) CoineProColors.Gold else CoineProColors.TextSecondary,
                 )

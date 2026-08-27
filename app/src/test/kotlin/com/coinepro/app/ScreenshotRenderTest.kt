@@ -1,5 +1,6 @@
 package com.coinepro.app
 
+import com.coinepro.core.common.toPersianDigits
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Looper
@@ -71,7 +72,6 @@ import com.coinepro.core.chart.CoineProChart
 import com.coinepro.core.chart.Indicators
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProSheetBody
-import com.coinepro.core.designsystem.persianDigits
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.feature.search.SearchScreen
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -1011,7 +1011,7 @@ class ScreenshotRenderTest {
     fun chartTypePicker() = capture("37-chart-type-picker-fa") {
         CoineProSheetBody(
             title = "نوع چارت",
-            subtitle = "${persianDigits(ChartCatalog.CHART_TYPES.size)} نوع — برای راهنما «؟» را بزن",
+            subtitle = "${(ChartCatalog.CHART_TYPES.size).toPersianDigits()} نوع — برای راهنما «؟» را بزن",
         ) {
             ChartTypePicker(
                 selected = ChartType.HEIKIN_ASHI,
@@ -1028,7 +1028,7 @@ class ScreenshotRenderTest {
         CoineProSheetBody(
             title = "اندیکاتورها",
             // Counted, not typed. A hand-written total is wrong the first time the list grows.
-            subtitle = "${persianDigits(ChartCatalog.INDICATORS.size)} اندیکاتور — برای راهنما «؟» را بزن",
+            subtitle = "${(ChartCatalog.INDICATORS.size).toPersianDigits()} اندیکاتور — برای راهنما «؟» را بزن",
         ) {
             IndicatorPicker(
                 active = setOf("ema", "bollinger", "rsi"),
@@ -1062,7 +1062,7 @@ class ScreenshotRenderTest {
     fun toolRail() = capture("40-tool-rail-fa") {
         CoineProSheetBody(
             title = "ابزارهای ترسیم",
-            subtitle = "${persianDigits(DrawingTools.ALL.size)} ابزار — برای راهنما روی هر کدام نگه دار",
+            subtitle = "${(DrawingTools.ALL.size).toPersianDigits()} ابزار — برای راهنما روی هر کدام نگه دار",
         ) {
             ToolRail(selected = "fib", onSelect = {}, onHelp = {})
         }

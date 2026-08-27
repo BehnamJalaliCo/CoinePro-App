@@ -3,7 +3,9 @@ package com.coinepro.feature.guest
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -17,12 +19,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
-import com.coinepro.core.designsystem.CoineProAssetLogo
+import com.coinepro.core.designsystem.CoineProMarketRow
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProLockup
@@ -78,8 +81,11 @@ fun GuestScreen(
                 verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
             ) {
                 CoineProLockup(
-                    markSize = 72.dp,
-                    wordmarkWidth = 150.dp,
+                    // Smaller than it was. A logo taking a fifth of the first screen is a brand
+                    // being announced; the market underneath it is the thing that does the
+                    // convincing, and it should be visible without a scroll.
+                    markSize = 48.dp,
+                    wordmarkWidth = 118.dp,
                     contentDescription = stringResource(R.string.guest_wordmark_description),
                 )
                 Text(
@@ -95,8 +101,22 @@ fun GuestScreen(
 
         when (val current = prices) {
             GuestPricesState.Loading -> item { CoineProThinkingDots() }
-            is GuestPricesState.Ready -> items(current.prices.quotes, key = GuestQuote::symbol) { quote ->
-                QuoteRow(quote)
+            // One card holding every row, not a card per row: the divider between two rows is a
+            // hairline the eye crosses, where a gap between two cards is a boundary it stops at.
+            is GuestPricesState.Ready -> item {
+                CoineProCard(modifier = Modifier.fillMaxWidth()) {
+                    current.prices.quotes.forEachIndexed { index, quote ->
+                        if (index > 0) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(CoineProColors.Border),
+                            )
+                        }
+                        QuoteRow(quote)
+                    }
+                }
             }
             is GuestPricesState.Unavailable -> item {
                 Text(
@@ -162,48 +182,38 @@ private fun PricesHeader(state: GuestPricesState) {
     }
 }
 
+/**
+ * One market, in the app's own row.
+ *
+ * The list used to be one card per quote — a stack of large blocks a reader scrolled rather than
+ * scanned. A market list is read by comparison and comparison needs the rows close enough to hold
+ * in one glance, so this is a single card with dense rows inside it, which is what Home already
+ * does and what every exchange's list looks like.
+ */
 @Composable
 private fun QuoteRow(quote: GuestQuote) {
-    CoineProCard(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                CoineProAssetLogo(symbol = quote.symbol, size = 32.dp)
-                Text(
-                    // Isolated: a Latin ticker inside a right-to-left paragraph reorders without it,
-                    // and BTCUSDT becomes USDTBTC on the reader's screen.
-                    text = BidiText.isolateLtr(quote.symbol),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = CoineProColors.TextPrimary,
-                )
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    // `price` isolates its own output, so there is no second isolate here. Nesting
-                    // two would be harmless but would say the author was unsure which one worked.
-                    text = MarketNumberFormatter.priceAuto(quote.price),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = CoineProColors.TextPrimary,
-                )
-                // Null is drawn as nothing rather than as zero. The server omits the key when it
-                // does not know, and a zero would draw a flat day it never claimed.
-                quote.changePercent24h?.let { change ->
-                    Text(
-                        text = MarketNumberFormatter.signedPercent(change),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (change >= 0) CoineProColors.Buy else CoineProColors.Sell,
-                    )
-                }
-            }
-        }
-    }
+    CoineProMarketRow(
+        symbol = quote.symbol,
+        // The ticker is the name here. The public feed carries no display name, and inventing a
+        // Persian one for several hundred symbols would be a table that is wrong somewhere.
+        title = AnnotatedString(BidiText.isolateLtr(quote.base())),
+        subtitle = AnnotatedString(BidiText.isolateLtr(quote.symbol)),
+        price = MarketNumberFormatter.priceAuto(quote.price),
+        changePercent = quote.changePercent24h,
+        low24h = quote.low24h,
+        high24h = quote.high24h,
+        rawPrice = quote.price,
+    )
 }
+
+/**
+ * `BTCUSDT` without its quote currency.
+ *
+ * Every row on this list is quoted in USDT, so repeating it on every line spends the widest column
+ * saying the one thing that never varies. The full symbol stays underneath, where it is the thing
+ * a reader copies into an exchange.
+ */
+private fun GuestQuote.base(): String = symbol.removeSuffix("USDT").ifEmpty { symbol }
 
 @Composable
 private fun HeadlineRow(headline: GuestHeadline) {

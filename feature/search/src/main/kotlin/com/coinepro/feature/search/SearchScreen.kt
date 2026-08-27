@@ -10,10 +10,12 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
-import com.coinepro.core.designsystem.CoineProAssetLogo
+import com.coinepro.core.designsystem.CoineProMarketRow
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPrimaryButton
@@ -147,7 +149,20 @@ fun SearchScreen(
                         )
                     }
                 }
-                items(state.results, key = { it.meta.symbol }) { row ->
+                itemsIndexed(state.results, key = { _, row -> row.meta.symbol }) { index, row ->
+                    // A hairline between rows, inset past the logo so it separates the text
+                    // columns rather than cutting the artwork. Without it a long list of rows on a
+                    // bare stage has nothing for the eye to count by, and sixty-five markets read
+                    // as one block of text.
+                    if (index > 0) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(start = CoineProSpacing.Gutter, end = 66.dp)
+                                .height(1.dp)
+                                .background(CoineProColors.Border),
+                        )
+                    }
                     MarketRow(row, onOpenSymbol)
                 }
             }
@@ -209,95 +224,41 @@ private fun SectionHeader(title: String) {
 
 @Composable
 private fun MarketRow(row: MarketSearchRow, onOpenSymbol: ((String) -> Unit)?) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            // Clickable only when there is somewhere to go. The chart screen is the somewhere, and
-            // it did not exist when this list was written.
-            .let { base ->
-                if (onOpenSymbol == null) base else base.clickable { onOpenSymbol(row.meta.symbol) }
-            }
-            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.OneHalf),
-        horizontalArrangement = Arrangement.spacedBy(13.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CoineProAssetLogo(symbol = row.meta.symbol, size = 36.dp)
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = highlighted(
-                    text = BidiText.isolateLtr(row.meta.pretty),
-                    range = row.highlight
-                        .takeIf { row.field != MatchField.DESCRIPTION }
-                        ?.intoPretty(row.meta.base?.length),
-                ),
-                style = MaterialTheme.typography.titleSmall,
-                color = CoineProColors.TextPrimary,
-            )
-            Text(
-                text = highlighted(
-                    text = row.meta.description,
-                    range = row.highlight.takeIf { row.field == MatchField.DESCRIPTION },
-                ),
-                style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextMuted,
-                fontWeight = FontWeight.Normal,
-            )
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Price(row)
-            Change(row)
-        }
-    }
-}
-
-@Composable
-private fun Price(row: MarketSearchRow) {
+    val status = MarketHours.statusOf(row.meta)
     val quote = row.quote
-    Text(
-        text = if (quote == null) {
-            stringResource(R.string.search_no_price)
-        } else {
-            MarketNumberFormatter.price(quote.price, quote.decimals())
-        },
-        style = CoineProTextStyles.RowFigure,
-        color = if (quote == null) CoineProColors.TextMuted else CoineProColors.TextPrimary,
+    // A closed market is said to be closed rather than shown a stale percentage, and the weekend is
+    // named separately from an unexplained close — one passes by Monday and the other does not.
+    val closedNote = stringResource(
+        if (status.weekend) R.string.search_weekend else R.string.search_closed,
+    ).takeIf { !status.open }
+
+    CoineProMarketRow(
+        symbol = row.meta.symbol,
+        title = highlighted(
+            text = BidiText.isolateLtr(row.meta.pretty),
+            range = row.highlight
+                .takeIf { row.field != MatchField.DESCRIPTION }
+                ?.intoPretty(row.meta.base?.length),
+        ),
+        subtitle = highlighted(
+            text = row.meta.description,
+            range = row.highlight.takeIf { row.field == MatchField.DESCRIPTION },
+        ),
+        price = quote?.let { MarketNumberFormatter.price(it.price, it.decimals()) },
+        changePercent = quote?.changePercent?.takeIf { status.open },
+        // Closed, and otherwise nothing. A closed market explains a missing number and is worth a
+        // word; an open one with no quote already shows a dash where the price goes, and a second
+        // dash under the first says the same thing twice.
+        trailingNote = closedNote,
+        // The list sits on the stage rather than inside a card, so the pill's tint is computed
+        // against the stage. Against the wrong ground it is a different colour by a few percent —
+        // small, and visible the moment two lists sit next to each other in a review.
+        background = CoineProColors.Stage,
+        horizontalPadding = CoineProSpacing.Gutter,
+        onClick = onOpenSymbol?.let { open -> { open(row.meta.symbol) } },
     )
 }
 
-/**
- * The move, or why there is not one.
- *
- * A closed market is said to be closed rather than shown a stale percentage, and the weekend is
- * named separately from an unexplained close — one passes by Monday and the other does not.
- */
-@Composable
-private fun Change(row: MarketSearchRow) {
-    val status = MarketHours.statusOf(row.meta)
-    val change = row.quote?.changePercent
-    when {
-        !status.open -> Text(
-            text = stringResource(
-                if (status.weekend) R.string.search_weekend else R.string.search_closed,
-            ),
-            style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.TextMuted,
-            fontWeight = FontWeight.Normal,
-        )
-        change != null -> Text(
-            text = MarketNumberFormatter.signedPercent(change),
-            style = MaterialTheme.typography.labelSmall,
-            color = if (change >= 0) CoineProColors.Buy else CoineProColors.Sell,
-            fontWeight = FontWeight.Normal,
-        )
-        // No dash standing in for zero: an unknown move is reported as unknown.
-        else -> Text(
-            text = stringResource(R.string.search_no_price),
-            style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.TextMuted,
-            fontWeight = FontWeight.Normal,
-        )
-    }
-}
 
 /**
  * Move a span measured on the bare ticker onto the slashed form shown in the row.

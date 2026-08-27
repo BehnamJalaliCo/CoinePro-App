@@ -1,5 +1,6 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.common.toPersianDigits
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -53,7 +54,6 @@ import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.LtrDirection
-import com.coinepro.core.designsystem.persianDigits
 import com.coinepro.core.chart.decimalsFor
 import com.coinepro.core.chart.formatPrice
 import com.coinepro.core.marketdata.Timeframe
@@ -150,7 +150,7 @@ fun ChartScreen(
     when (sheet) {
         ChartSheet.TYPE -> CoineProSheet(
             title = "نوع چارت",
-            subtitle = "${persianDigits(ChartCatalog.CHART_TYPES.size)} نوع",
+            subtitle = "${(ChartCatalog.CHART_TYPES.size).toPersianDigits()} نوع",
             onDismiss = { sheet = null },
         ) {
             ChartTypePicker(
@@ -165,7 +165,7 @@ fun ChartScreen(
 
         ChartSheet.INDICATORS -> CoineProSheet(
             title = "اندیکاتورها",
-            subtitle = "${persianDigits(ChartCatalog.INDICATORS.size)} اندیکاتور",
+            subtitle = "${(ChartCatalog.INDICATORS.size).toPersianDigits()} اندیکاتور",
             onDismiss = { sheet = null },
         ) {
             // No dismiss on select: switching four indicators on is four taps, and a sheet that
@@ -179,7 +179,7 @@ fun ChartScreen(
 
         ChartSheet.TOOLS -> CoineProSheet(
             title = "ابزارهای ترسیم",
-            subtitle = "${persianDigits(DrawingTools.ALL.size)} ابزار",
+            subtitle = "${(DrawingTools.ALL.size).toPersianDigits()} ابزار",
             onDismiss = { sheet = null },
         ) {
             ToolRail(
@@ -351,7 +351,7 @@ private fun ToolbarButton(icon: Int, label: String, count: Int = 0, onClick: () 
         Text(
             // The count is what makes this readable at a glance: "اندیکاتور ۴" says four are on,
             // where a highlighted icon only says "some".
-            text = if (count > 0) "$label ${persianDigits(count)}" else label,
+            text = if (count > 0) "$label ${(count).toPersianDigits()}" else label,
             style = MaterialTheme.typography.labelSmall,
             color = if (count > 0) CoineProColors.Accent else CoineProColors.TextMuted,
         )
