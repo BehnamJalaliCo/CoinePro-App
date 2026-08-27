@@ -19,6 +19,7 @@ dependencies {
     implementation(project(":core:backtest"))
     implementation(project(":core:papertrade"))
     implementation(project(":core:datastore"))
+    implementation(libs.androidx.core.ktx)
     implementation(project(":core:marketdata"))
     implementation(project(":core:model"))
     implementation(project(":core:designsystem"))

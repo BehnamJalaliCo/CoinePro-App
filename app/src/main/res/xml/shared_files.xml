@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The one directory the app is willing to hand a file out of.
+
+  A chart screenshot is written here, shared, and forgotten. Nothing else is exposed: a provider
+  scoped to `files/` or to external storage would offer a reader's cached quotes and, on a device
+  where the app ever writes one, their journal export. One directory, one purpose.
+-->
+<paths>
+    <cache-path name="shared" path="shared/" />
+</paths>

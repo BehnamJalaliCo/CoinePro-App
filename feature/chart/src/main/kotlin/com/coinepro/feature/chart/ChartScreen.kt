@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
@@ -33,6 +34,9 @@ import com.coinepro.core.help.HelpCatalog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.draw.clip
@@ -42,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.backtest.Backtest
+import kotlinx.coroutines.launch
 import com.coinepro.core.datastore.ChartLayout
 import com.coinepro.core.chart.Replay
 import com.coinepro.core.chart.ChartDecoration
@@ -117,6 +122,10 @@ fun ChartScreen(
 
     LaunchedStart(controller)
 
+    val chartLayer = rememberGraphicsLayer()
+    val shareScope = rememberCoroutineScope()
+    val context = LocalContext.current
+
     val focusRequester = remember { FocusRequester() }
     // Requested once, so a keyboard works without the reader first tapping the chart. It is
     // harmless where there is no keyboard: focus on a container changes nothing a finger sees.
@@ -143,7 +152,17 @@ fun ChartScreen(
         }
         TimeframeRow(state.timeframe, controller::setTimeframe)
 
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                // The chart alone, recorded into a layer. Sharing the whole screen would hand over
+                // the status bar and the toolbar; sharing this hands over the chart.
+                .drawWithContent {
+                    chartLayer.record { this@drawWithContent.drawContent() }
+                    drawLayer(chartLayer)
+                },
+        ) {
             when {
                 state.loading && state.series.isEmpty -> Loading()
                 state.error != null && state.series.isEmpty -> ChartFailure(state.error!!, controller::retry)
@@ -195,6 +214,11 @@ fun ChartScreen(
             hasSetup = state.setup != null,
             canBacktest = state.series.bars.size >= Backtest.MINIMUM_BARS,
             hasLayouts = layouts != null,
+            onShare = {
+                shareScope.launch {
+                    ChartShare.share(context, chartLayer.toImageBitmap(), state.symbol)
+                }
+            },
             // Offered only when there is something to replay. A button that answers "not enough
             // bars" is a button that should not have been there.
             onReplay = controller::enterReplay
@@ -430,6 +454,7 @@ private fun Toolbar(
     hasSetup: Boolean,
     canBacktest: Boolean,
     hasLayouts: Boolean,
+    onShare: () -> Unit,
     onReplay: (() -> Unit)?,
     onOpen: (ChartSheet) -> Unit,
 ) {
@@ -460,6 +485,7 @@ private fun Toolbar(
         // On the chart because the bars are already here. A backtest screen elsewhere would need a
         // symbol picker, a timeframe picker and a second fetch to answer the same question.
         if (canBacktest) ToolbarButton(DesignR.drawable.icon_chart_line_up, "بک‌تست") { onOpen(ChartSheet.BACKTEST) }
+        ToolbarButton(DesignR.drawable.icon_camera, "اشتراک تصویر", onClick = onShare)
         if (hasLayouts) {
             ToolbarButton(DesignR.drawable.icon_sliders_horizontal, "چیدمان") { onOpen(ChartSheet.LAYOUTS) }
         }

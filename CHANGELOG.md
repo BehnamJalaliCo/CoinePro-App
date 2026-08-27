@@ -15,6 +15,22 @@ it is for.
 
 ---
 
+## [1.16.0] — 2026-08-27 — Sharing the chart
+
+### Added
+- One button captures the chart itself — not the screen — and hands it to the system share sheet.
+  The phone already has a screenshot key; what a reader wants is the chart without the status bar,
+  the navigation bar and the toolbar around it.
+
+### Security
+- A FileProvider scoped to one cache directory and nothing else. A provider over `files/` would
+  offer the reader's cached quotes and a journal export to any app that could be persuaded to ask.
+- The previous share is deleted before the next is written, so the app does not accumulate a hidden
+  folder of every chart anybody ever sent.
+- The URI is granted for one intent rather than the file being made readable to everything.
+
+---
+
 ## [1.15.0] — 2026-08-27 — Saved chart layouts
 
 ### Added
