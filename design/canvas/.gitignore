@@ -1,0 +1,5 @@
+# The seeded canvas page: two and a half megabytes of editor runtime with these
+# artboards embedded in it. It is regenerated from the sources beside it on every
+# change, so tracking it would put a 2.7 MB binary-ish blob in the history for
+# every tweak to a 30 KB source file.
+coinepro-directions.html
