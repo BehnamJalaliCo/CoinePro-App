@@ -115,8 +115,15 @@ Answers below map one-to-one onto the form's own wording. Every "yes" has a reas
 **Is all of the user data collected by your app encrypted in transit?** — **Yes.** Every call is
 HTTPS; `usesCleartextTraffic` is `false` and a network security config pins that.
 
-**Do you provide a way for users to request that their data is deleted?** — **[OWNER]** — needs a
-deletion URL before this can be answered yes. Play requires an out-of-app route.
+**Do you provide a way for users to request that their data is deleted?** — **Yes**, both routes
+Play asks for.
+
+| Question | Answer |
+| --- | --- |
+| In-app deletion | **Yes** — Settings → Delete account. Both servers serve it; the app hides the button where a deployment reports `accountDeletion: false`, so it is never a button that does nothing. |
+| Web deletion URL | `https://behnamjalalico.github.io/CoinePro-App/delete-account/` |
+
+The web page requires no sign-in, which is what Play checks for.
 
 | Data type | Collected | Shared | Optional | Purpose |
 | --- | --- | --- | --- | --- |
@@ -127,7 +134,7 @@ deletion URL before this can be answered yes. Play requires an out-of-app route.
 | Other personal info (national id, date of birth) | Yes | No | Yes — identity form only | Account management |
 | Photos | Yes | No | Yes — image analysis only | App functionality |
 | Other financial info (exchange API key) | Yes | No | Yes — only if you connect an exchange | App functionality |
-| Purchase history | **[OWNER]** | | | only if in-app purchases ship |
+| Purchase history | No | | | CoinePro sells nothing in the app: no subscription, no in-app purchase, no activation fee. Membership is an account check, not a transaction. |
 
 **Not collected**, and each is a deliberate absence rather than an oversight: location, contacts,
 calendar, messages, audio, files, health, app activity, search history, installed apps, device or
@@ -168,25 +175,40 @@ executes trades. **[OWNER]** — check the target-country list before release; w
 required and absent, the copy-trading and order-execution features must be withheld in that country
 rather than shipped and hidden.
 
-## 7) App access — **[OWNER]**
+## 7) App access — **no credentials needed**
 
-Play reviewers cannot see past the sign-in screen. Supply demo credentials for both platforms, or
-the review will be rejected as "unable to access the app".
+This section used to ask for demo accounts. It no longer needs them, and answering it wrongly would
+invite a rejection for a problem the app does not have.
+
+**Answer: "All functionality is available without special access."** — with this note:
+
+> اپ بدون ثبت‌نام باز می‌شود. بازار، نمودار، اخبار و کارنامهٔ سیگنال‌ها همگی برای کاربر مهمان در
+> دسترس‌اند. سیگنال و کپی‌تریدینگ حساب رایگان می‌خواهند و شرایطش داخل اپ توضیح داده شده است.
+>
+> The app opens without registration. Markets, charts, news and the published signal record are all
+> available to a guest. Signals and copy trading require a free account, and the conditions are
+> explained inside the app.
+
+A reviewer who opens the app sees a working product on the first screen, which is a stronger answer
+than a demo account: a credential can expire between submission and review, and a rejection for
+"unable to access the app" is then a week lost to a password.
+
+## 8) Contact and policy URLs — ready
 
 | Field | Value |
 | --- | --- |
-| Instructions | «برای فارکس از حساب اول و برای رمزارز از حساب دوم استفاده کنید. پلتفرم با کلید بالای صفحهٔ خانه عوض می‌شود.» |
-| CoinePro-FX demo account | **[OWNER]** |
-| TradeYar demo account | **[OWNER]** |
+| Email | `behnamjalali88@gmail.com` |
+| Website | `https://behnamjalalico.github.io/CoinePro-App/` |
+| Privacy policy URL | `https://behnamjalalico.github.io/CoinePro-App/privacy/` |
+| Terms URL | `https://behnamjalalico.github.io/CoinePro-App/terms/` |
 
-## 8) Contact and policy URLs — **[OWNER]**
+All three pages are live and were checked for a `200` rather than assumed. The English privacy
+policy is at `/privacy/en/` for a reviewer who does not read Persian.
 
-| Field | Value |
-| --- | --- |
-| Email | **[OWNER]** |
-| Website | **[OWNER]** |
-| Privacy policy URL | **[OWNER]** — `docs/legal/PRIVACY_POLICY.md` must be published at a public HTTPS address; Play rejects a link to a repository file |
-| Terms URL | **[OWNER]** — same, for `docs/legal/TERMS.md` |
+**Developer name and address**, for the Play Console account rather than the listing:
+
+> Behnam Jalali
+> Unit 6, No. 19, 12th Alley, Elahi Street, Ayatollah Kashani Street, Tehran, Iran
 
 ## 9) Release blockers
 
