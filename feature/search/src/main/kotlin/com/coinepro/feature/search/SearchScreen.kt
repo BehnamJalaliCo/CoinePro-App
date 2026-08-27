@@ -72,6 +72,9 @@ fun SearchScreen(
      * a broken screen, and the caller is the only thing that knows whether there is a chart to open.
      */
     onOpenSymbol: ((String) -> Unit)? = null,
+    /** The reader's own list, so a row can show whether it is on it. */
+    watchlist: List<String> = emptyList(),
+    onToggleWatch: ((String) -> Unit)? = null,
 ) {
     LaunchedEffect(controller) { controller.start() }
     val state by controller.state.collectAsStateWithLifecycle()
@@ -163,7 +166,7 @@ fun SearchScreen(
                                 .background(CoineProColors.Border),
                         )
                     }
-                    MarketRow(row, onOpenSymbol)
+                    MarketRow(row, onOpenSymbol, watchlist, onToggleWatch)
                 }
             }
         }
@@ -223,7 +226,12 @@ private fun SectionHeader(title: String) {
 }
 
 @Composable
-private fun MarketRow(row: MarketSearchRow, onOpenSymbol: ((String) -> Unit)?) {
+private fun MarketRow(
+    row: MarketSearchRow,
+    onOpenSymbol: ((String) -> Unit)?,
+    watchlist: List<String>,
+    onToggleWatch: ((String) -> Unit)?,
+) {
     val status = MarketHours.statusOf(row.meta)
     val quote = row.quote
     // A closed market is said to be closed rather than shown a stale percentage, and the weekend is
@@ -253,6 +261,8 @@ private fun MarketRow(row: MarketSearchRow, onOpenSymbol: ((String) -> Unit)?) {
         // The list sits on the stage rather than inside a card, so the pill's tint is computed
         // against the stage. Against the wrong ground it is a different colour by a few percent —
         // small, and visible the moment two lists sit next to each other in a review.
+        starred = onToggleWatch?.let { row.meta.symbol in watchlist },
+        onToggleStar = onToggleWatch?.let { toggle -> { toggle(row.meta.symbol) } },
         background = CoineProColors.Stage,
         horizontalPadding = CoineProSpacing.Gutter,
         onClick = onOpenSymbol?.let { open -> { open(row.meta.symbol) } },

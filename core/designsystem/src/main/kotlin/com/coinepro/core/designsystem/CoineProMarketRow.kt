@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.AnnotatedString
@@ -160,6 +163,14 @@ fun CoineProMarketRow(
      * touching the glass — which is what happened the first time this row was shared.
      */
     horizontalPadding: androidx.compose.ui.unit.Dp = 0.dp,
+    /**
+     * Whether this instrument is on the reader's watchlist, or null where the row has no star.
+     *
+     * Null rather than false, so a list that does not offer starring shows no star at all. A grey
+     * star on every row of a screen where it cannot be pressed is an invitation that goes nowhere.
+     */
+    starred: Boolean? = null,
+    onToggleStar: (() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -176,6 +187,23 @@ fun CoineProMarketRow(
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (starred != null && onToggleStar != null) {
+            // Leading, on the reading edge. The star is a state the reader scans down the list as
+            // much as a control they press, and putting it beside the price would make it compete
+            // with the number that has to be read first.
+            Icon(
+                painter = painterResource(
+                    if (starred) R.drawable.icon_filled_star else R.drawable.icon_star,
+                ),
+                contentDescription = null,
+                modifier = Modifier
+                    .clip(CoineProShapes.small)
+                    .clickable(onClick = onToggleStar)
+                    .padding(4.dp)
+                    .size(18.dp),
+                tint = if (starred) CoineProColors.Accent else CoineProColors.TextDisabled,
+            )
+        }
         CoineProAssetLogo(symbol = symbol, size = 34.dp)
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(

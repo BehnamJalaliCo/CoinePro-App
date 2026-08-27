@@ -23,6 +23,7 @@
     <string name="home_age_hours">%1$d ساعت پیش</string>
     <string name="home_age_days">%1$d روز پیش</string>
 
+    <string name="home_watchlist_title">فهرست من</string>
     <string name="home_market_title">بازار</string>
     <string name="home_market_empty">هنوز داده‌ای از بازار نرسیده است.</string>
     <string name="home_market_connecting">در حال اتصال به داده‌های بازار…</string>

@@ -8,6 +8,7 @@ import com.coinepro.app.BuildConfig
 import com.coinepro.core.account.AccountController
 import com.coinepro.core.account.AccountGateway
 import com.coinepro.core.account.NetworkAccountGateway
+import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.guest.GuestGateway
 import com.coinepro.core.guest.NetworkGuestGateway
@@ -309,6 +310,17 @@ object AppModule {
      * token for the auth interceptor to attach, and the install-id header these calls do carry is
      * exactly what the server's rate limiter wants from an anonymous caller.
      */
+    /**
+     * The reader's watchlist, on the same preferences file as every other local choice.
+     *
+     * Not per platform. A reader who stars gold on the forex side and bitcoin on the crypto side
+     * has one list of things they are watching, and splitting it in two would mean the star they
+     * pressed vanishing when they switched tabs.
+     */
+    @Provides
+    @Singleton
+    fun watchlistStore(dataStore: DataStore<Preferences>): WatchlistStore = WatchlistStore(dataStore)
+
     @Provides
     @Singleton
     fun guestGateway(@CryptoPlatform retrofit: Retrofit): GuestGateway =

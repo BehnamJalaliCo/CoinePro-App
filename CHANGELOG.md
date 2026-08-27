@@ -15,6 +15,23 @@ it is for.
 
 ---
 
+## [1.5.0] — 2026-08-27 — A watchlist
+
+### Added
+- A star on every market row, on Home and in search, and the reader's own list above the market on
+  Home. The most-used control in a trading app, and the app did not have one.
+- Order is insertion order, oldest first — not alphabetical and not by price. The reader put them in
+  a sequence and the sequence is information; a personal list that rearranges itself while being
+  read is the one thing it must never do.
+- Local, in the same preferences file as every other choice. TradeYar does serve a watchlist, but
+  behind its own device-link flow — a second identity to establish before the first star. A round
+  trip per star turns the most-tapped control into the slowest one; sync belongs on top of this,
+  not instead of it.
+- One list across both platforms. A reader watching gold and bitcoin has one list, and splitting it
+  would mean the star they pressed vanishing when they switched tab.
+
+---
+
 ## [1.4.0] — 2026-08-27 — What the setup on the chart is worth
 
 ### Added

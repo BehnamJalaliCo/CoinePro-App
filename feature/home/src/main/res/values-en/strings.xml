@@ -23,6 +23,7 @@
 
     <string name="home_portfolio_total">Total balance</string>
 
+    <string name="home_watchlist_title">My list</string>
     <string name="home_market_title">Market</string>
     <string name="home_market_empty">No market data has arrived yet.</string>
     <string name="home_market_connecting">Connecting to market data…</string>

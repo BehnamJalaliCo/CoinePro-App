@@ -89,6 +89,9 @@ fun HomeScreen(
     onOpenSafety: (() -> Unit)? = null,
     onLogout: (() -> Unit)? = null,
     onDeleteAccount: (() -> Unit)? = null,
+    /** The reader's own list, oldest first. Empty hides the card rather than showing a placeholder. */
+    watchlist: List<String> = emptyList(),
+    onToggleWatch: ((String) -> Unit)? = null,
     platforms: List<MarketPlatform> = emptyList(),
     activePlatform: MarketPlatform? = null,
     onSelectPlatform: (MarketPlatform) -> Unit = {},
@@ -170,7 +173,30 @@ fun HomeScreen(
         if (quotes.isEmpty()) {
             item { EmptyMarket(state = state, onRetry = onRetry) }
         } else {
-            item { MarketCard(quotes, onOpenSymbol) }
+            // Above the market, because a watchlist that sits under a fixed list is a list the
+            // reader scrolls past to reach their own. Hidden when empty: an empty card explaining
+            // what a watchlist is takes the place of the market on a first run.
+            val watched = quotes.filter { it.instrument.symbol in watchlist }
+                .sortedBy { watchlist.indexOf(it.instrument.symbol) }
+            if (watched.isNotEmpty()) {
+                item {
+                    MarketCard(
+                        quotes = watched,
+                        onOpenSymbol = onOpenSymbol,
+                        titleRes = R.string.home_watchlist_title,
+                        watchlist = watchlist,
+                        onToggleWatch = onToggleWatch,
+                    )
+                }
+            }
+            item {
+                MarketCard(
+                    quotes = quotes,
+                    onOpenSymbol = onOpenSymbol,
+                    watchlist = watchlist,
+                    onToggleWatch = onToggleWatch,
+                )
+            }
         }
 
         if (openSignals.isNotEmpty()) {
@@ -419,21 +445,34 @@ private fun SubscriptionCard(subscription: HomeSubscription) {
 /* ------------------------------------------------------------------ market */
 
 @Composable
-private fun MarketCard(quotes: List<MarketQuote>, onOpenSymbol: ((String) -> Unit)?) {
+private fun MarketCard(
+    quotes: List<MarketQuote>,
+    onOpenSymbol: ((String) -> Unit)?,
+    titleRes: Int = R.string.home_market_title,
+    watchlist: List<String> = emptyList(),
+    onToggleWatch: ((String) -> Unit)? = null,
+) {
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
-        CardLabel(stringResource(R.string.home_market_title))
+        CardLabel(stringResource(titleRes))
         quotes.forEachIndexed { index, quote ->
             if (index > 0) RowDivider()
-            QuoteRow(quote, onOpenSymbol)
+            QuoteRow(quote, onOpenSymbol, watchlist, onToggleWatch)
         }
     }
 }
 
 @Composable
-private fun QuoteRow(quote: MarketQuote, onOpenSymbol: ((String) -> Unit)?) {
+private fun QuoteRow(
+    quote: MarketQuote,
+    onOpenSymbol: ((String) -> Unit)?,
+    watchlist: List<String>,
+    onToggleWatch: ((String) -> Unit)?,
+) {
     val stale = stringResource(R.string.home_quote_stale)
     CoineProMarketRow(
         symbol = quote.instrument.symbol,
+        starred = onToggleWatch?.let { quote.instrument.symbol in watchlist },
+        onToggleStar = onToggleWatch?.let { toggle -> { toggle(quote.instrument.symbol) } },
         title = AnnotatedString(quote.instrument.displayName),
         subtitle = AnnotatedString(BidiText.isolateLtr(quote.instrument.symbol)),
         price = MarketNumberFormatter.price(quote.price, quote.decimals()),

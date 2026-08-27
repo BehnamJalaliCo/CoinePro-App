@@ -97,6 +97,7 @@ import com.coinepro.feature.home.HomeBriefing
 import com.coinepro.feature.home.HomePortfolio
 import com.coinepro.feature.home.HomeSubscription
 import com.coinepro.feature.home.HomeScreen
+import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
 import com.coinepro.feature.account.DeleteAccountScreen
 import com.coinepro.feature.guest.GuestScreen
@@ -181,6 +182,7 @@ fun CoineProApp(
     sessionController: SessionController,
     emailAuthController: EmailAuthController,
     guestController: GuestController,
+    watchlistStore: WatchlistStore,
     marketDataControllers: Map<MarketPlatform, MarketDataController>,
     marketSearchControllers: Map<MarketPlatform, MarketSearchController>,
     candleGateways: Map<MarketPlatform, CandleGateway>,
@@ -249,6 +251,7 @@ fun CoineProApp(
     val briefingReadAt = remember(briefingState) { System.currentTimeMillis() / 1_000 }
     val scope = rememberCoroutineScope()
     val signedIn = session is SessionState.SignedIn
+    val watchlist by watchlistStore.symbols.collectAsStateWithLifecycle(initialValue = emptyList())
 
     val capabilities by platformCapabilities.state.collectAsStateWithLifecycle()
     // What each deployment offers. Read once on sign-in: it is server configuration, not live
@@ -404,6 +407,8 @@ fun CoineProApp(
                 briefing = briefingState.toHomeBriefing(briefingReadAt),
                 portfolio = portfolioState.toHomePortfolio(),
                 subscription = current.entitlement.toHomeSubscription(),
+                watchlist = watchlist,
+                onToggleWatch = { symbol -> scope.launch { watchlistStore.toggle(symbol) } },
                 onRefreshAccount = accountController::refresh,
                 signalController = signalController,
                 notificationController = notificationController,
@@ -563,6 +568,8 @@ private fun MainShell(
     assistantAvailable: Boolean,
     aiSignalsAvailable: Boolean,
     accountDeletionAvailable: Boolean,
+    watchlist: List<String>,
+    onToggleWatch: (String) -> Unit,
     onSignalLaunchConsumed: () -> Unit,
     onActivityLaunchConsumed: () -> Unit,
     onRequestNotificationPermission: () -> Unit,
@@ -712,6 +719,8 @@ private fun MainShell(
             composable(AppDestination.HOME.route) {
                 HomeScreen(
                     state = marketState,
+                    watchlist = watchlist,
+                    onToggleWatch = onToggleWatch,
                     onVisibleSymbols = onSubscribeSymbols,
                     onOpenSymbol = { navController.navigate(chartRoute(it)) },
                     briefing = briefing,
@@ -856,6 +865,8 @@ private fun MainShell(
             }
             composable(MARKET_SEARCH_ROUTE) {
                 SearchScreen(
+                    watchlist = watchlist,
+                    onToggleWatch = onToggleWatch,
                     controller = marketSearchController,
                     onOpenSymbol = { navController.navigate(chartRoute(it)) },
                 )
