@@ -753,6 +753,78 @@ class ScreenshotRenderTest {
         )
     }
 
+    /* ----------------------------------------------------- the Persian six */
+
+    /*
+     * Six screens had only ever been rendered in the default English locale, left over from before
+     * Persian became the app's default. That is precisely where the bugs of this app hide: a Latin
+     * figure inside a right-to-left paragraph reorders, a label and its value swap ends, a form's
+     * suffix lands on the wrong side of its field. None of it shows in an English render.
+     *
+     * A screen the app ships in Persian and has only been looked at in English has not been looked
+     * at.
+     */
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun toolsPersian() = capture("67-tools-fa") {
+        ToolsScreen(onOpenConnections = {}, onOpenNews = {}, onOpenCalendar = {})
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun activityPersian() {
+        val notifications = NotificationController(FakeNotificationGateway(), scope)
+        val executions = ExecutionController(FakeExecutionGateway(), scope)
+        val signals = SignalController(FakeSignalGateway(), scope)
+        notifications.refresh()
+        executions.refreshExecutions()
+        signals.refreshHistory()
+        capture("68-activity-fa") {
+            ActivityScreen(
+                controller = notifications,
+                executionController = executions,
+                signalController = signals,
+                onOpenSignal = {},
+            )
+        }
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun connectionsPersian() {
+        val controller = ExecutionController(FakeExecutionGateway(), scope)
+        controller.refreshConnections()
+        capture("69-connections-fa") { ConnectionsScreen(controller = controller) }
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun newsPersian() {
+        val controller = MarketIntelController(FakeMarketIntelGateway(), scope)
+        controller.refresh()
+        capture("70-news-fa") { NewsScreen(controller = controller, onOpenCalendar = {}) }
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun calendarPersian() {
+        val controller = MarketIntelController(FakeMarketIntelGateway(), scope)
+        controller.refresh()
+        capture("71-calendar-fa") { EconomicCalendarScreen(controller = controller, onOpenNews = {}) }
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun launchReadinessPersian() = capture("72-launch-readiness-fa") {
+        LaunchReadinessScreen(
+            notificationPermissionState = NotificationPermissionUiState.AVAILABLE_TO_REQUEST,
+            onRequestNotificationPermission = {},
+            onOpenNotificationSettings = {},
+            onSendFeedback = {},
+        )
+    }
+
     /** The panel five taps behind the version number, with a dead route among the live ones. */
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1800dp-xxhdpi")

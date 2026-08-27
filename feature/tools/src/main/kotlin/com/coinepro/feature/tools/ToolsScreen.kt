@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.annotation.StringRes
+import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -168,19 +169,19 @@ private fun ToolkitHeader(expanded: ToolId?, onQuickOpen: (ToolId) -> Unit) {
             style = MaterialTheme.typography.bodyMedium,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricPill("8", "calculators", CoineProColors.Gold, Modifier.weight(1f))
-            MetricPill("0", "orders sent", CoineProColors.Buy, Modifier.weight(1f))
-            MetricPill(stringResource(R.string.tools_local), "calculation", CoineProColors.Silver, Modifier.weight(1f))
+            MetricPill(8.toPersianDigits(), stringResource(R.string.tools_f_calculators), CoineProColors.Gold, Modifier.weight(1f))
+            MetricPill(0.toPersianDigits(), stringResource(R.string.tools_f_orders_sent), CoineProColors.Buy, Modifier.weight(1f))
+            MetricPill(stringResource(R.string.tools_local), stringResource(R.string.tools_f_calculation), CoineProColors.Silver, Modifier.weight(1f))
         }
         Text(stringResource(R.string.tools_quick_open), color = CoineProColors.TextMuted, style = MaterialTheme.typography.labelSmall)
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            QuickChip("Risk", expanded == ToolId.RISK) { onQuickOpen(ToolId.RISK) }
-            QuickChip("Position", expanded == ToolId.POSITION_SIZE) { onQuickOpen(ToolId.POSITION_SIZE) }
-            QuickChip("R:R", expanded == ToolId.RISK_REWARD) { onQuickOpen(ToolId.RISK_REWARD) }
-            QuickChip("Crypto PnL", expanded == ToolId.CRYPTO_PNL) { onQuickOpen(ToolId.CRYPTO_PNL) }
+            QuickChip(stringResource(R.string.tools_f_risk), expanded == ToolId.RISK) { onQuickOpen(ToolId.RISK) }
+            QuickChip(stringResource(R.string.tools_f_position), expanded == ToolId.POSITION_SIZE) { onQuickOpen(ToolId.POSITION_SIZE) }
+            QuickChip(stringResource(R.string.tools_f_r_r), expanded == ToolId.RISK_REWARD) { onQuickOpen(ToolId.RISK_REWARD) }
+            QuickChip(stringResource(R.string.tools_f_crypto_pnl), expanded == ToolId.CRYPTO_PNL) { onQuickOpen(ToolId.CRYPTO_PNL) }
         }
     }
 }
@@ -310,13 +311,15 @@ private fun RiskCalculatorContent() {
     var capital by remember { mutableStateOf("") }
     var riskPercent by remember { mutableStateOf("") }
     val result = calculateDoublePair(capital, riskPercent) { a, b -> TraderToolsCalculator.risk(a, b) }
-    NumericField("Account capital", capital, { capital = it }, "Account currency")
-    NumericField("Risk", riskPercent, { riskPercent = it }, "%")
+    NumericField(stringResource(R.string.tools_f_account_capital), capital, { capital = it }, stringResource(R.string.tools_f_account_currency))
+    NumericField(stringResource(R.string.tools_f_risk), riskPercent, { riskPercent = it }, "%")
+    val l_tools_f_capital_after_full_risk = stringResource(R.string.tools_f_capital_after_full_risk)
+    val l_tools_f_risk_budget = stringResource(R.string.tools_f_risk_budget)
     CalculationResultPanel(result) { value ->
         val risk = value as RiskResult
-        listOf("Risk budget" to TraderToolsFormat.money(risk.riskAmount), "Capital after full risk" to TraderToolsFormat.money(risk.capitalAfterRisk))
+        listOf(l_tools_f_risk_budget to TraderToolsFormat.money(risk.riskAmount), l_tools_f_capital_after_full_risk to TraderToolsFormat.money(risk.capitalAfterRisk))
     }
-    Assumption("Account currency is display-only. This calculator does not read broker equity or place an order.")
+    Assumption(stringResource(R.string.tools_a_risk))
     ResetRow { capital = ""; riskPercent = "" }
 }
 
@@ -326,14 +329,16 @@ private fun PositionSizeContent() {
     var stopPips by remember { mutableStateOf("") }
     var pipValue by remember { mutableStateOf("") }
     val result = calculateTriple(risk, stopPips, pipValue) { a, b, c -> TraderToolsCalculator.positionSize(a, b, c) }
-    NumericField("Risk amount", risk, { risk = it }, "Account currency")
-    NumericField("Stop-loss distance", stopPips, { stopPips = it }, "pips")
-    NumericField("Pip value per standard lot", pipValue, { pipValue = it }, "currency / pip / lot")
+    NumericField(stringResource(R.string.tools_f_risk_amount), risk, { risk = it }, stringResource(R.string.tools_f_account_currency))
+    NumericField(stringResource(R.string.tools_f_stop_loss_distance), stopPips, { stopPips = it }, stringResource(R.string.tools_f_pips))
+    NumericField(stringResource(R.string.tools_f_pip_value_per_standard_lot), pipValue, { pipValue = it }, stringResource(R.string.tools_f_currency_pip_lot))
+    val l_tools_f_position_size = stringResource(R.string.tools_f_position_size)
+    val l_tools_f_risk_amount = stringResource(R.string.tools_f_risk_amount)
     CalculationResultPanel(result) { value ->
         val sized = value as PositionSizeResult
-        listOf("Position size" to "${TraderToolsFormat.decimal(sized.lots, 4)} lots", "Risk amount" to TraderToolsFormat.money(sized.monetaryRisk))
+        listOf(l_tools_f_position_size to "${TraderToolsFormat.decimal(sized.lots, 4)} lots", l_tools_f_risk_amount to TraderToolsFormat.money(sized.monetaryRisk))
     }
-    Assumption("Pip value must match the instrument, account currency and one standard lot. No symbol-specific value is guessed.")
+    Assumption(stringResource(R.string.tools_a_position))
     ResetRow { risk = ""; stopPips = ""; pipValue = "" }
 }
 
@@ -344,15 +349,18 @@ private fun RiskRewardContent() {
     var target by remember { mutableStateOf("") }
     var direction by remember { mutableStateOf(TradeDirection.LONG) }
     DirectionSelector(direction) { direction = it }
-    NumericField("Entry", entry, { entry = it }, "price")
-    NumericField("Stop loss", stop, { stop = it }, "price")
-    NumericField("Take profit", target, { target = it }, "price")
+    NumericField(stringResource(R.string.tools_f_entry), entry, { entry = it }, stringResource(R.string.tools_f_price))
+    NumericField(stringResource(R.string.tools_f_stop_loss), stop, { stop = it }, stringResource(R.string.tools_f_price))
+    NumericField(stringResource(R.string.tools_f_take_profit), target, { target = it }, stringResource(R.string.tools_f_price))
     val result = calculateTriple(entry, stop, target) { a, b, c -> TraderToolsCalculator.riskReward(a, b, c, direction) }
+    val l_tools_f_reward_distance = stringResource(R.string.tools_f_reward_distance)
+    val l_tools_f_reward_risk = stringResource(R.string.tools_f_reward_risk)
+    val l_tools_f_risk_distance = stringResource(R.string.tools_f_risk_distance)
     CalculationResultPanel(result) { value ->
         val rr = value as RiskRewardResult
-        listOf("Risk distance" to TraderToolsFormat.decimal(rr.riskDistance, 5), "Reward distance" to TraderToolsFormat.decimal(rr.rewardDistance, 5), "Reward / Risk" to "${TraderToolsFormat.decimal(rr.ratio, 2)} R")
+        listOf(l_tools_f_risk_distance to TraderToolsFormat.decimal(rr.riskDistance, 5), l_tools_f_reward_distance to TraderToolsFormat.decimal(rr.rewardDistance, 5), l_tools_f_reward_risk to "${TraderToolsFormat.decimal(rr.ratio, 2)} R")
     }
-    Assumption("Direction geometry is validated. Long requires SL < Entry < TP; short requires TP < Entry < SL.")
+    Assumption(stringResource(R.string.tools_a_rr))
     ResetRow { entry = ""; stop = ""; target = ""; direction = TradeDirection.LONG }
 }
 
@@ -361,18 +369,21 @@ private fun DrawdownContent() {
     var balance by remember { mutableStateOf("") }
     var lossPercent by remember { mutableStateOf("") }
     var losses by remember { mutableStateOf("") }
-    NumericField("Starting balance", balance, { balance = it }, "Account currency")
-    NumericField("Loss per trade", lossPercent, { lossPercent = it }, "%")
-    IntegerField("Consecutive losses", losses, { losses = it }, "trades")
+    NumericField(stringResource(R.string.tools_f_starting_balance), balance, { balance = it }, stringResource(R.string.tools_f_account_currency))
+    NumericField(stringResource(R.string.tools_f_loss_per_trade), lossPercent, { lossPercent = it }, "%")
+    IntegerField(stringResource(R.string.tools_f_consecutive_losses), losses, { losses = it }, stringResource(R.string.tools_f_trades))
     val result: ToolCalculation<*>? = if (balance.isBlank() || lossPercent.isBlank() || losses.isBlank()) null else {
         val a = balance.toDoubleOrNull(); val b = lossPercent.toDoubleOrNull(); val c = losses.toIntOrNull()
         if (a == null || b == null || c == null) ToolCalculation.Invalid(R.string.tools_input, R.string.tools_invalid) else TraderToolsCalculator.drawdown(a, b, c)
     }
+    val l_tools_f_drawdown = stringResource(R.string.tools_f_drawdown)
+    val l_tools_f_ending_balance = stringResource(R.string.tools_f_ending_balance)
+    val l_tools_f_recovery_required = stringResource(R.string.tools_f_recovery_required)
     CalculationResultPanel(result) { value ->
         val d = value as DrawdownResult
-        listOf("Ending balance" to TraderToolsFormat.money(d.endingBalance), "Drawdown" to TraderToolsFormat.percent(d.drawdownPercent), "Recovery required" to TraderToolsFormat.percent(d.recoveryPercent))
+        listOf(l_tools_f_ending_balance to TraderToolsFormat.money(d.endingBalance), l_tools_f_drawdown to TraderToolsFormat.percent(d.drawdownPercent), l_tools_f_recovery_required to TraderToolsFormat.percent(d.recoveryPercent))
     }
-    Assumption("Each loss is applied to the remaining balance. Recovery % is the gain required to return to the starting balance.")
+    Assumption(stringResource(R.string.tools_a_drawdown))
     ResetRow { balance = ""; lossPercent = ""; losses = "" }
 }
 
@@ -384,16 +395,18 @@ private fun ProfitContent() {
     var contract by remember { mutableStateOf("") }
     var direction by remember { mutableStateOf(TradeDirection.LONG) }
     DirectionSelector(direction) { direction = it }
-    NumericField("Entry", entry, { entry = it }, "price")
-    NumericField("Exit", exit, { exit = it }, "price")
-    NumericField("Lots", lots, { lots = it }, "standard lots")
-    NumericField("Contract size", contract, { contract = it }, "units / lot")
+    NumericField(stringResource(R.string.tools_f_entry), entry, { entry = it }, stringResource(R.string.tools_f_price))
+    NumericField(stringResource(R.string.tools_f_exit), exit, { exit = it }, stringResource(R.string.tools_f_price))
+    NumericField(stringResource(R.string.tools_f_lots), lots, { lots = it }, stringResource(R.string.tools_f_standard_lots))
+    NumericField(stringResource(R.string.tools_f_contract_size), contract, { contract = it }, stringResource(R.string.tools_f_units_lot))
     val result: ToolCalculation<*>? = calculateQuad(entry, exit, lots, contract) { a, b, c, d -> TraderToolsCalculator.profit(a, b, c, d, direction) }
+    val l_tools_f_estimated_pnl = stringResource(R.string.tools_f_estimated_pnl)
+    val l_tools_f_signed_price_move = stringResource(R.string.tools_f_signed_price_move)
     CalculationResultPanel(result) { value ->
         val profit = value as ProfitResult
-        listOf("Estimated PnL" to TraderToolsFormat.money(profit.pnl), "Signed price move" to TraderToolsFormat.decimal(profit.priceMove, 5))
+        listOf(l_tools_f_estimated_pnl to TraderToolsFormat.money(profit.pnl), l_tools_f_signed_price_move to TraderToolsFormat.decimal(profit.priceMove, 5))
     }
-    Assumption("Contract size is explicit because XAUUSD/XAGUSD broker specifications can differ. Fees, spread and swap are not guessed.")
+    Assumption(stringResource(R.string.tools_a_metal))
     ResetRow { entry = ""; exit = ""; lots = ""; contract = ""; direction = TradeDirection.LONG }
 }
 
@@ -406,21 +419,23 @@ private fun PipContent() {
     var pipValue by remember { mutableStateOf("") }
     var direction by remember { mutableStateOf(TradeDirection.LONG) }
     DirectionSelector(direction) { direction = it }
-    NumericField("Entry", entry, { entry = it }, "price")
-    NumericField("Exit", exit, { exit = it }, "price")
-    NumericField("Lots", lots, { lots = it }, "standard lots")
-    NumericField("Pip size", pipSize, { pipSize = it }, "price units / pip")
-    NumericField("Pip value per lot", pipValue, { pipValue = it }, "currency / pip / lot")
+    NumericField(stringResource(R.string.tools_f_entry), entry, { entry = it }, stringResource(R.string.tools_f_price))
+    NumericField(stringResource(R.string.tools_f_exit), exit, { exit = it }, stringResource(R.string.tools_f_price))
+    NumericField(stringResource(R.string.tools_f_lots), lots, { lots = it }, stringResource(R.string.tools_f_standard_lots))
+    NumericField(stringResource(R.string.tools_f_pip_size), pipSize, { pipSize = it }, stringResource(R.string.tools_f_price_units_pip))
+    NumericField(stringResource(R.string.tools_f_pip_value_per_lot), pipValue, { pipValue = it }, stringResource(R.string.tools_f_currency_pip_lot))
     val result: ToolCalculation<*>? = if (listOf(entry, exit, lots, pipSize, pipValue).any(String::isBlank)) null else {
         val values = listOf(entry, exit, lots, pipSize, pipValue).map(String::toDoubleOrNull)
         if (values.any { it == null }) ToolCalculation.Invalid(R.string.tools_input, R.string.tools_invalid)
         else TraderToolsCalculator.pips(values[0]!!, values[1]!!, values[2]!!, values[3]!!, values[4]!!, direction)
     }
+    val l_tools_f_estimated_pnl = stringResource(R.string.tools_f_estimated_pnl)
+    val l_tools_f_signed_pips = stringResource(R.string.tools_f_signed_pips)
     CalculationResultPanel(result) { value ->
         val pip = value as PipResult
-        listOf("Signed pips" to TraderToolsFormat.decimal(pip.pips, 1), "Estimated PnL" to TraderToolsFormat.money(pip.pnl))
+        listOf(l_tools_f_signed_pips to TraderToolsFormat.decimal(pip.pips, 1), l_tools_f_estimated_pnl to TraderToolsFormat.money(pip.pnl))
     }
-    Assumption("Pip size and pip value are supplied by the user. The app does not infer broker-specific contract specifications.")
+    Assumption(stringResource(R.string.tools_a_pip))
     ResetRow { entry = ""; exit = ""; lots = ""; pipSize = ""; pipValue = ""; direction = TradeDirection.LONG }
 }
 
@@ -432,16 +447,20 @@ private fun CryptoPnlContent() {
     var fee by remember { mutableStateOf("") }
     var direction by remember { mutableStateOf(TradeDirection.LONG) }
     DirectionSelector(direction) { direction = it }
-    NumericField("Entry", entry, { entry = it }, "USDT")
-    NumericField("Exit", exit, { exit = it }, "USDT")
-    NumericField("Quantity", quantity, { quantity = it }, "base asset")
-    NumericField("Fee per side", fee, { fee = it }, "%")
+    NumericField(stringResource(R.string.tools_f_entry), entry, { entry = it }, "USDT")
+    NumericField(stringResource(R.string.tools_f_exit), exit, { exit = it }, "USDT")
+    NumericField(stringResource(R.string.tools_f_quantity), quantity, { quantity = it }, stringResource(R.string.tools_f_base_asset))
+    NumericField(stringResource(R.string.tools_f_fee_per_side), fee, { fee = it }, "%")
     val result: ToolCalculation<*>? = calculateQuad(entry, exit, quantity, fee) { a, b, c, d -> TraderToolsCalculator.cryptoPnl(a, b, c, d, direction) }
+    val l_tools_f_fees = stringResource(R.string.tools_f_fees)
+    val l_tools_f_gross_pnl = stringResource(R.string.tools_f_gross_pnl)
+    val l_tools_f_net_pnl = stringResource(R.string.tools_f_net_pnl)
+    val l_tools_f_return = stringResource(R.string.tools_f_return)
     CalculationResultPanel(result) { value ->
         val pnl = value as CryptoPnlResult
-        listOf("Gross PnL" to TraderToolsFormat.money(pnl.grossPnl, "USDT "), "Fees" to TraderToolsFormat.money(pnl.fees, "USDT "), "Net PnL" to TraderToolsFormat.money(pnl.netPnl, "USDT "), "Return" to TraderToolsFormat.percent(pnl.returnPercent))
+        listOf(l_tools_f_gross_pnl to TraderToolsFormat.money(pnl.grossPnl, "USDT "), l_tools_f_fees to TraderToolsFormat.money(pnl.fees, "USDT "), l_tools_f_net_pnl to TraderToolsFormat.money(pnl.netPnl, "USDT "), l_tools_f_return to TraderToolsFormat.percent(pnl.returnPercent))
     }
-    Assumption("Designed for USDT-quoted pairs. Fees apply to both entry and exit notional. Funding, slippage and leverage liquidation are not modeled.")
+    Assumption(stringResource(R.string.tools_a_crypto))
     ResetRow { entry = ""; exit = ""; quantity = ""; fee = ""; direction = TradeDirection.LONG }
 }
 
@@ -450,18 +469,20 @@ private fun CompoundContent() {
     var principal by remember { mutableStateOf("") }
     var rate by remember { mutableStateOf("") }
     var periods by remember { mutableStateOf("") }
-    NumericField("Principal", principal, { principal = it }, "Account currency")
-    NumericField("Return per period", rate, { rate = it }, "%")
-    IntegerField("Periods", periods, { periods = it }, "periods")
+    NumericField(stringResource(R.string.tools_f_principal), principal, { principal = it }, stringResource(R.string.tools_f_account_currency))
+    NumericField(stringResource(R.string.tools_f_return_per_period), rate, { rate = it }, "%")
+    IntegerField(stringResource(R.string.tools_f_periods), periods, { periods = it }, stringResource(R.string.tools_u_periods))
     val result: ToolCalculation<*>? = if (principal.isBlank() || rate.isBlank() || periods.isBlank()) null else {
         val a = principal.toDoubleOrNull(); val b = rate.toDoubleOrNull(); val c = periods.toIntOrNull()
         if (a == null || b == null || c == null) ToolCalculation.Invalid(R.string.tools_input, R.string.tools_invalid) else TraderToolsCalculator.compound(a, b, c)
     }
+    val l_tools_f_ending_balance = stringResource(R.string.tools_f_ending_balance)
+    val l_tools_f_net_change = stringResource(R.string.tools_f_net_change)
     CalculationResultPanel(result) { value ->
         val c = value as CompoundResult
-        listOf("Ending balance" to TraderToolsFormat.money(c.endingBalance), "Net change" to TraderToolsFormat.money(c.profit))
+        listOf(l_tools_f_ending_balance to TraderToolsFormat.money(c.endingBalance), l_tools_f_net_change to TraderToolsFormat.money(c.profit))
     }
-    Assumption("This is arithmetic compounding only. The entered return is an assumption, not an AI forecast or expected market return.")
+    Assumption(stringResource(R.string.tools_a_compound))
     ResetRow { principal = ""; rate = ""; periods = "" }
 }
 

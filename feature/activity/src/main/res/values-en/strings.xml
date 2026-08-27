@@ -97,4 +97,6 @@
     <string name="activity_alert_cross_up">Crosses up through %1$s</string>
     <string name="activity_alert_cross_down">Crosses down through %1$s</string>
     <string name="activity_alert_cross">Crosses %1$s</string>
+    <string name="activity_metric_executions">executions</string>
+    <string name="activity_sample_size">n=%1$s</string>
 </resources>

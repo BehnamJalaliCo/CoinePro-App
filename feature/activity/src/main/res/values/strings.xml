@@ -98,4 +98,6 @@
     <string name="activity_alert_cross_up">عبور رو به بالا از %1$s</string>
     <string name="activity_alert_cross_down">عبور رو به پایین از %1$s</string>
     <string name="activity_alert_cross">عبور از %1$s</string>
+    <string name="activity_metric_executions">اجرا</string>
+    <string name="activity_sample_size">%1$s نمونه</string>
 </resources>

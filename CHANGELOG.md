@@ -15,6 +15,26 @@ it is for.
 
 ---
 
+## [1.2.1] — 2026-08-27
+
+### Fixed
+- **The trader toolkit was half in English.** Fifty-six hard-coded English literals — every
+  calculator's field labels, units, result rows and assumption notes — on the screen a Persian
+  trader uses to size a position. It had only ever been rendered in the English locale, which is
+  the reason nobody saw it.
+- Two more of the same: an `executions` metric label on Activity, and `n=1` as a sample-size
+  marker.
+- Latin numerals in three prose counts, where the app's own rule says Persian.
+
+### Added
+- Persian renders of the six screens that had only ever been captured in English — tools,
+  activity, connections, news, calendar and launch readiness. A screen the app ships in Persian and
+  has only been looked at in English has not been looked at, and this is where its bugs live: a
+  Latin figure inside a right-to-left paragraph reorders, a label and its value swap ends, a unit
+  lands on the wrong side of its field.
+
+---
+
 ## [1.2.0] — 2026-08-27 — One market row, at the density the job needs
 
 ### Added
