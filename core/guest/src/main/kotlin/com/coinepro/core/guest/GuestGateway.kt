@@ -23,6 +23,9 @@ interface GuestGateway {
     suspend fun prices(symbols: List<String>): AppResult<GuestPrices>
 
     suspend fun news(limit: Int = 12): AppResult<List<GuestHeadline>>
+
+    /** What the published signals actually did. See [GuestTrackRecord.available]. */
+    suspend fun trackRecord(limit: Int = 12): AppResult<GuestTrackRecord>
 }
 
 class NetworkGuestGateway internal constructor(
@@ -67,6 +70,28 @@ class NetworkGuestGateway internal constructor(
                 publishedAt = item.publishedAt?.takeIf(String::isNotBlank),
             )
         }
+    }
+
+    override suspend fun trackRecord(limit: Int): AppResult<GuestTrackRecord> = call {
+        val dto = api.trackRecord(limit = limit)
+        val entries = dto.signals.orEmpty().mapNotNull { row ->
+            val symbol = row.symbol?.takeIf(String::isNotBlank) ?: return@mapNotNull null
+            // A row with no recorded outcome is not a record of anything. Dropped rather than
+            // drawn as a flat zero, which would read as a trade that went nowhere.
+            val gain = row.pctGain ?: return@mapNotNull null
+            TrackRecordEntry(
+                symbol = symbol,
+                timeframe = row.timeframe?.takeIf(String::isNotBlank),
+                buy = !row.direction.equals("SHORT", ignoreCase = true),
+                // The server's own verdict, not `gain > 0`. It defines a win by the ladder rungs
+                // banked, which is not the same test, and disagreeing with it here would put two
+                // different win rates in front of the same reader.
+                win = row.isWin ?: (gain > 0),
+                percentGain = gain,
+                riskReward = row.riskReward,
+            )
+        }
+        GuestTrackRecord(entries = entries, available = dto.dataAvailable ?: entries.isNotEmpty())
     }
 
     private suspend fun <T> call(block: suspend () -> T): AppResult<T> = try {

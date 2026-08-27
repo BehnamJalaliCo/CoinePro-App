@@ -89,4 +89,7 @@ private class FakeGuestGateway(
     }
 
     override suspend fun news(limit: Int): AppResult<List<GuestHeadline>> = news
+
+    override suspend fun trackRecord(limit: Int) =
+        AppResult.Success(GuestTrackRecord(emptyList(), available = false))
 }

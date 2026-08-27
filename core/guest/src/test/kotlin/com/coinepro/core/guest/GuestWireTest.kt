@@ -96,4 +96,6 @@ private class FakeApi(private val body: String) : GuestApi {
         GsonBuilder().create().fromJson(body, PriceSnapshotDto::class.java)
 
     override suspend fun news(type: String, limit: Int): NewsListDto = NewsListDto(emptyList())
+
+    override suspend fun trackRecord(limit: Int): TrackRecordDto = TrackRecordDto(emptyList())
 }

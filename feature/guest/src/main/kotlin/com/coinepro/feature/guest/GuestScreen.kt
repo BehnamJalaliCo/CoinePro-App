@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
+import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProMarketRow
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -35,6 +36,8 @@ import com.coinepro.core.guest.GuestController
 import com.coinepro.core.guest.GuestHeadline
 import com.coinepro.core.guest.GuestNewsState
 import com.coinepro.core.guest.GuestPricesState
+import com.coinepro.core.guest.GuestTrackRecord
+import com.coinepro.core.guest.GuestTrackRecordState
 import com.coinepro.core.guest.GuestQuote
 
 /**
@@ -59,6 +62,7 @@ fun GuestScreen(
 ) {
     val prices by controller.prices.collectAsStateWithLifecycle()
     val news by controller.news.collectAsStateWithLifecycle()
+    val trackRecord by controller.trackRecord.collectAsStateWithLifecycle()
 
     // Started and stopped with the screen rather than the process. A poll that outlives the screen
     // is a request nobody is looking at, on a connection somebody is paying for.
@@ -125,6 +129,25 @@ fun GuestScreen(
                     color = CoineProColors.TextMuted,
                 )
             }
+        }
+
+        // The track record goes *above* the membership card, not below it. It is the reason to
+        // read the card; a card asking for a sign-up before showing what the signals did is asking
+        // for trust it has not earned yet.
+        when (val record = trackRecord) {
+            is GuestTrackRecordState.Ready -> {
+                item {
+                    Text(
+                        text = stringResource(R.string.guest_record_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = CoineProColors.TextPrimary,
+                    )
+                }
+                item { TrackRecordSummary(record.record) }
+            }
+            // Nothing at all when the server has nothing gradeable. An empty section headed
+            // "results" is worse than no section: it reads as a bot that has never traded.
+            GuestTrackRecordState.Loading, GuestTrackRecordState.Unavailable -> Unit
         }
 
         item { MembershipGate(onSignIn = onSignIn) }
@@ -214,6 +237,57 @@ private fun QuoteRow(quote: GuestQuote) {
  * a reader copies into an exchange.
  */
 private fun GuestQuote.base(): String = symbol.removeSuffix("USDT").ifEmpty { symbol }
+
+/**
+ * What the published signals did, as a record rather than a promise.
+ *
+ * Every figure here is the server's own: the win rate is counted from rows the server marked won,
+ * by its own ladder definition, and the percentages are the ones it banked. The app does not
+ * recompute any of it — the route says in as many words that a client must not, and two different
+ * win rates in front of one reader is worse than none.
+ */
+@Composable
+private fun TrackRecordSummary(record: GuestTrackRecord) {
+    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+            record.winRate?.let { rate ->
+                Text(
+                    text = stringResource(
+                        R.string.guest_record_summary,
+                        record.wins.toPersianDigits(),
+                        record.entries.size.toPersianDigits(),
+                        MarketNumberFormatter.price(rate, 1),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CoineProColors.TextSecondary,
+                )
+            }
+            record.entries.take(6).forEach { entry ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = BidiText.isolateLtr(entry.symbol),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = CoineProColors.TextPrimary,
+                    )
+                    Text(
+                        text = MarketNumberFormatter.signedPercent(entry.percentGain),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (entry.win) CoineProColors.Buy else CoineProColors.Sell,
+                    )
+                }
+            }
+            Text(
+                text = stringResource(R.string.guest_record_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = CoineProColors.TextMuted,
+            )
+        }
+    }
+}
 
 @Composable
 private fun HeadlineRow(headline: GuestHeadline) {

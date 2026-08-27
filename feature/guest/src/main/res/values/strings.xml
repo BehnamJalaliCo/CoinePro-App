@@ -18,4 +18,7 @@
     <string name="membership_referral_note">گام یک را جدی بگیرید: حسابی که بدون لینک اختصاصی ساخته شود، در سامانهٔ صرافی به کوین‌پرو متصل نمی‌شود و بعداً قابل احراز نخواهد بود.</string>
     <string name="membership_sign_in">ورود یا ثبت‌نام</string>
     <string name="membership_read_terms">شرایط کامل عضویت</string>
+    <string name="guest_record_title">کارنامهٔ سیگنال‌ها</string>
+    <string name="guest_record_summary">از %2$s سیگنالِ بسته‌شدهٔ اخیر، %1$s تا با سود بسته شد — نرخ برد %3$s٪.</string>
+    <string name="guest_record_note">این‌ها سیگنال‌های واقعیِ منتشرشده‌اند که بسته شده‌اند، نه نمونهٔ ساختگی. عملکرد گذشته تضمینی برای آینده نیست.</string>
 </resources>

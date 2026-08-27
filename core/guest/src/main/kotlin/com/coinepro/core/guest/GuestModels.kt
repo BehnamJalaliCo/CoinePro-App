@@ -37,3 +37,37 @@ data class GuestHeadline(
     /** ISO-8601 as the server sent it, unparsed — the screen shows the source, not a computed age. */
     val publishedAt: String?,
 )
+
+/**
+ * One signal that has already closed, with what it did.
+ *
+ * Deliberately not the app's `Signal` type. That one is a live instruction — it has an entry to
+ * act on and targets still ahead of it — and this is a finished record. Sharing a type would let a
+ * screen offer to execute something that closed last week.
+ */
+data class TrackRecordEntry(
+    val symbol: String,
+    val timeframe: String?,
+    val buy: Boolean,
+    val win: Boolean,
+    /** Percentage gain as the ladder actually banked it. The server forbids recomputing it. */
+    val percentGain: Double,
+    val riskReward: Double?,
+)
+
+/**
+ * The published track record.
+ *
+ * [available] is the server's own word, carried through rather than inferred from the list being
+ * empty. Empty-because-the-query-failed and empty-because-nothing-closed are different sentences
+ * to put in front of somebody deciding whether to trust the product.
+ */
+data class GuestTrackRecord(
+    val entries: List<TrackRecordEntry>,
+    val available: Boolean,
+) {
+    val wins: Int get() = entries.count(TrackRecordEntry::win)
+
+    /** Null rather than zero on an empty record: a win rate of nothing is not a win rate of 0%. */
+    val winRate: Double? get() = if (entries.isEmpty()) null else wins * 100.0 / entries.size
+}

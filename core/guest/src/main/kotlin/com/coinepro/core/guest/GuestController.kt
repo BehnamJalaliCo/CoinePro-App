@@ -17,6 +17,14 @@ sealed interface GuestPricesState {
     data class Unavailable(val reason: String?) : GuestPricesState
 }
 
+sealed interface GuestTrackRecordState {
+    data object Loading : GuestTrackRecordState
+    data class Ready(val record: GuestTrackRecord) : GuestTrackRecordState
+
+    /** Includes the server saying it has nothing gradeable — see [GuestTrackRecord.available]. */
+    data object Unavailable : GuestTrackRecordState
+}
+
 sealed interface GuestNewsState {
     data object Loading : GuestNewsState
     data class Ready(val headlines: List<GuestHeadline>) : GuestNewsState
@@ -43,9 +51,11 @@ class GuestController(
 ) {
     private val pricesMutable = MutableStateFlow<GuestPricesState>(GuestPricesState.Loading)
     private val newsMutable = MutableStateFlow<GuestNewsState>(GuestNewsState.Loading)
+    private val recordMutable = MutableStateFlow<GuestTrackRecordState>(GuestTrackRecordState.Loading)
 
     val prices: StateFlow<GuestPricesState> = pricesMutable.asStateFlow()
     val news: StateFlow<GuestNewsState> = newsMutable.asStateFlow()
+    val trackRecord: StateFlow<GuestTrackRecordState> = recordMutable.asStateFlow()
 
     private var poll: Job? = null
 
@@ -58,6 +68,7 @@ class GuestController(
             }
         }
         refreshNews()
+        refreshTrackRecord()
     }
 
     fun stop() {
@@ -87,6 +98,28 @@ class GuestController(
             newsMutable.value = when (val result = gateway.news()) {
                 is AppResult.Success -> GuestNewsState.Ready(result.value)
                 is AppResult.Failure -> GuestNewsState.Unavailable(result.message)
+            }
+        }
+    }
+
+    /**
+     * The track record, fetched once rather than polled.
+     *
+     * These are closed trades. Nothing about them changes between one minute and the next, and
+     * polling a finished history would be a request that can only ever return the same answer.
+     */
+    fun refreshTrackRecord() {
+        scope.launch {
+            recordMutable.value = when (val result = gateway.trackRecord()) {
+                is AppResult.Success ->
+                    if (result.value.available && result.value.entries.isNotEmpty()) {
+                        GuestTrackRecordState.Ready(result.value)
+                    } else {
+                        // The server said it has nothing gradeable, or the list came back empty.
+                        // Drawing "0 trades" here would be a claim about a bot that has traded.
+                        GuestTrackRecordState.Unavailable
+                    }
+                is AppResult.Failure -> GuestTrackRecordState.Unavailable
             }
         }
     }

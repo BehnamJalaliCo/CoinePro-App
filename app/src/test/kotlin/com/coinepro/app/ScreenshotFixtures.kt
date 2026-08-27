@@ -99,6 +99,8 @@ import com.coinepro.core.guest.GuestGateway
 import com.coinepro.core.guest.GuestHeadline
 import com.coinepro.core.guest.GuestPrices
 import com.coinepro.core.guest.GuestQuote
+import com.coinepro.core.guest.GuestTrackRecord
+import com.coinepro.core.guest.TrackRecordEntry
 import com.coinepro.core.account.KycState
 import com.coinepro.core.account.KycStatus
 import com.coinepro.core.common.AppResult
@@ -1494,6 +1496,17 @@ internal class FakeGuestGateway : GuestGateway {
             ),
             stale = false,
             ageMillis = 340,
+        ),
+    )
+
+    override suspend fun trackRecord(limit: Int) = AppResult.Success(
+        GuestTrackRecord(
+            entries = listOf(
+                TrackRecordEntry("BTCUSDT", "15m", buy = true, win = true, percentGain = 4.82, riskReward = 2.1),
+                TrackRecordEntry("ETHUSDT", "1h", buy = false, win = true, percentGain = 3.14, riskReward = 1.8),
+                TrackRecordEntry("SOLUSDT", "15m", buy = true, win = false, percentGain = -1.96, riskReward = 2.4),
+            ),
+            available = true,
         ),
     )
 

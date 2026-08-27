@@ -15,6 +15,21 @@ it is for.
 
 ---
 
+## [1.6.0] — 2026-08-27 — What the signals actually did, before the sign-up
+
+### Added
+- A track record on the guest screen: real published signals that have already closed, with the
+  outcome the server recorded. Above the membership card, not below it — a card asking for a
+  sign-up before showing what the signals did is asking for trust it has not earned.
+- The win rate is the server's own count by its own ladder definition, not recomputed here. The
+  route says in as many words that a client must not, and two different win rates in front of one
+  reader is worse than none.
+- `data_available` is read rather than inferred from an empty list. Empty-because-the-query-failed
+  and empty-because-nothing-closed are different sentences to put in front of somebody deciding
+  whether to trust the product, and the section is hidden rather than showing either.
+
+---
+
 ## [1.5.0] — 2026-08-27 — A watchlist
 
 ### Added

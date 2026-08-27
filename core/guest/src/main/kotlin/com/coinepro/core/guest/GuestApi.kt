@@ -32,6 +32,17 @@ internal interface GuestApi {
     @GET("api/v1/public/prices")
     suspend fun prices(@Query("symbols") symbols: String): PriceSnapshotDto
 
+    /**
+     * Closed signals with their recorded outcome — a track record, not a demonstration.
+     *
+     * The route's own name says "demo" and the word is misleading: every row is a real published
+     * signal that has already closed, with the P&L the ladder actually banked. That is the only
+     * thing worth showing somebody who has not signed up, because anything invented would be a
+     * claim about performance.
+     */
+    @GET("api/demo/signals")
+    suspend fun trackRecord(@Query("limit") limit: Int = 12): TrackRecordDto
+
     @GET("api/v1/news/list")
     suspend fun news(
         @Query("type") type: String = "news",
@@ -62,6 +73,30 @@ internal data class PriceRowDto(
     @SerializedName("h") val high24h: Double? = null,
     @SerializedName("l") val low24h: Double? = null,
     @SerializedName("v") val volume24h: Double? = null,
+)
+
+internal data class TrackRecordDto(
+    val signals: List<TrackRecordSignalDto>? = null,
+    /**
+     * The server's own statement that it has something to say.
+     *
+     * Read rather than inferred from an empty list, because the route documents the distinction
+     * and it matters: an empty list can mean the query failed, and drawing it as "no trades yet"
+     * would be a false claim about a bot that has traded.
+     */
+    @SerializedName("data_available") val dataAvailable: Boolean? = null,
+    @SerializedName("empty_reason") val emptyReason: String? = null,
+)
+
+internal data class TrackRecordSignalDto(
+    val symbol: String? = null,
+    val timeframe: String? = null,
+    val direction: String? = null,
+    @SerializedName("entry_price") val entryPrice: Double? = null,
+    @SerializedName("is_win") val isWin: Boolean? = null,
+    @SerializedName("pct_gain") val pctGain: Double? = null,
+    @SerializedName("risk_reward") val riskReward: Double? = null,
+    @SerializedName("closed_at") val closedAt: String? = null,
 )
 
 internal data class NewsListDto(val data: List<NewsItemDto>? = null)
