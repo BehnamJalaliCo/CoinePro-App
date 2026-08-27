@@ -15,6 +15,22 @@ it is for.
 
 ---
 
+## [1.3.0] — 2026-08-27 — Bar replay, reachable
+
+### Added
+- Replay is on the chart. The engine had been ported and tested for weeks and wired to nothing —
+  dead code with a green test suite, which is the worst kind, because the tests say it works and
+  nobody can use it.
+- A transport bar that says loudly that replay is on: a reader who forgets is reading a live chart
+  that is hours stale. Leaving is one tap and never behind a menu.
+
+### Fixed
+- Indicators and structure levels now compute over the *visible* slice. Derived from the whole
+  series they would place a moving average using prices the reader is not allowed to have seen —
+  the future leaking back in through the one door nobody watches.
+
+---
+
 ## [1.2.1] — 2026-08-27
 
 ### Fixed

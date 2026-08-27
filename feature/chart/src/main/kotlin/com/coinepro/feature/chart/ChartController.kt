@@ -11,11 +11,15 @@ import com.coinepro.core.chart.DrawingState
 import com.coinepro.core.chart.DrawingTool
 import com.coinepro.core.chart.IndicatorPane
 import com.coinepro.core.chart.PriceLevel
+import com.coinepro.core.chart.Replay
+import com.coinepro.core.chart.ReplayState
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.OhlcBar
 import com.coinepro.core.marketdata.Timeframe
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,28 +45,52 @@ data class ChartUiState(
     val activeIndicators: Set<String> = emptySet(),
     val drawing: DrawingState = DrawingState(),
     val hasMore: Boolean = false,
+    /**
+     * Bar replay: the chart rewound and walked forward.
+     *
+     * Off is [ReplayState] with no bars, not a null, so every read below is a plain property
+     * access rather than a null check that somebody will forget in the one place that matters —
+     * the place that would then draw the future.
+     */
+    val replay: ReplayState = ReplayState(),
 ) {
-    /** The price-scale overlays for whatever is switched on. Recomputed when the series changes. */
+    /**
+     * The price-scale overlays for whatever is switched on. Recomputed when the series changes.
+     *
+     * Derived from [visibleSeries], not [series]. During replay an indicator computed over every
+     * bar would place a moving average using prices the reader is not allowed to have seen yet —
+     * the future leaking back in through the one door nobody watches.
+     */
     val overlays: List<ChartLine>
         get() = ChartCatalog.INDICATORS
             .filter { it.id in activeIndicators && it.pane == IndicatorPane.PRICE }
-            .flatMap { ChartCatalog.overlayFor(it, series) } +
+            .flatMap { ChartCatalog.overlayFor(it, visibleSeries) } +
             ChartCatalog.INDICATORS
                 .filter { it.id in activeIndicators && it.pane == IndicatorPane.STRUCTURE }
-                .flatMap { ChartCatalog.structureFor(it, series).lines }
+                .flatMap { ChartCatalog.structureFor(it, visibleSeries).lines }
 
     val levels: List<PriceLevel>
         get() = ChartCatalog.INDICATORS
             .filter { it.id in activeIndicators && it.pane == IndicatorPane.STRUCTURE }
-            .flatMap { ChartCatalog.structureFor(it, series).levels }
+            .flatMap { ChartCatalog.structureFor(it, visibleSeries).levels }
 
     val markers: List<ChartMarker>
         get() = ChartCatalog.INDICATORS
             .filter { it.id in activeIndicators && it.pane == IndicatorPane.STRUCTURE }
-            .flatMap { ChartCatalog.structureFor(it, series).markers }
+            .flatMap { ChartCatalog.structureFor(it, visibleSeries).markers }
 
     /** The last close, which is what the header shows beside the symbol. */
-    val lastPrice: Double? get() = series.bars.lastOrNull()?.c
+    /**
+     * What the chart may draw.
+     *
+     * Every consumer reads this rather than [series], and that is the whole safety property of
+     * replay: the future is not hidden by the renderer, it is absent from what the renderer is
+     * given. A screen that filtered while drawing would leak it through the crosshair, the price
+     * axis, the last-price line and the indicator panes, one at a time.
+     */
+    val visibleSeries: CandleSeries get() = if (replay.isOn) replay.visible else series
+
+    val lastPrice: Double? get() = visibleSeries.bars.lastOrNull()?.c
 }
 
 /**
@@ -101,6 +129,7 @@ class ChartController(
     val state: StateFlow<ChartUiState> = _state.asStateFlow()
 
     private var loadJob: Job? = null
+    private var replayJob: Job? = null
 
     fun start() {
         if (_state.value.series.isEmpty && loadJob == null) reload()
@@ -143,6 +172,73 @@ class ChartController(
 
     fun deleteDrawing(id: Long) =
         _state.update { it.copy(drawing = DrawingActions.delete(it.drawing, id)) }
+
+    /* ------------------------------------------------------------------ replay */
+
+    /**
+     * Enter replay at the loaded bars.
+     *
+     * Refused below [Replay.MINIMUM_BARS], where the cursor would start at the chart's own right
+     * edge and the exercise would be pointless rather than merely short. Returning silently is
+     * right here: the button that calls this is only shown when there are enough bars, so a
+     * refusal means the series shrank under it, and a dialog about that helps nobody.
+     */
+    fun enterReplay() {
+        val bars = _state.value.series.bars
+        val entered = Replay.enter(bars) ?: return
+        _state.update { it.copy(replay = entered) }
+    }
+
+    fun exitReplay() {
+        replayJob?.cancel()
+        replayJob = null
+        _state.update { it.copy(replay = Replay.exit()) }
+    }
+
+    fun replayStep() = withReplay(Replay::step)
+
+    fun replayStepBack() = withReplay(Replay::stepBack)
+
+    fun replaySeek(fraction: Float) = withReplay { current ->
+        Replay.seek(current, index = ((current.bars.size - 1) * fraction).toInt())
+    }
+
+    fun replaySetSpeed(speed: Double) = withReplay { Replay.setSpeed(it, speed) }
+
+    /**
+     * Play or pause.
+     *
+     * The clock lives here rather than in the composable. A `LaunchedEffect` driving this would
+     * stop when the screen left composition — which is correct for an animation and wrong for a
+     * replay, because a reader who opens the indicator sheet mid-replay has not asked it to stop.
+     */
+    fun replayToggle() {
+        val next = Replay.toggle(_state.value.replay)
+        _state.update { it.copy(replay = next) }
+        replayJob?.cancel()
+        replayJob = if (!next.playing) {
+            null
+        } else {
+            scope.launch {
+                while (isActive) {
+                    delay(Replay.delayMillis(_state.value.replay.speed))
+                    val stepped = Replay.step(_state.value.replay)
+                    _state.update { it.copy(replay = stepped) }
+                    if (!stepped.playing) break
+                }
+            }
+        }
+    }
+
+    private fun withReplay(transform: (ReplayState) -> ReplayState) {
+        val current = _state.value.replay
+        if (!current.isOn) return
+        // Any manual move pauses. A reader stepping back while it plays is trying to look at
+        // something, and a chart that keeps advancing under them is fighting the finger.
+        replayJob?.cancel()
+        replayJob = null
+        _state.update { it.copy(replay = transform(current).copy(playing = false)) }
+    }
 
     fun retry() = reload()
 

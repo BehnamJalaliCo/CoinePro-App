@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hand-drawn to the Phosphor regular grid. One bar forward in replay: a triangle against a stop. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="256"
+    android:viewportHeight="256"
+    >
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M40,56V200a8,8,0,0,0,12.2,6.8l112-72a8,8,0,0,0,0-13.6l-112-72A8,8,0,0,0,40,56Zm16,14.6L146.6,128,56,185.4ZM200,48a8,8,0,0,1,8,8V200a8,8,0,0,1-16,0V56A8,8,0,0,1,200,48Z" />
+</vector>

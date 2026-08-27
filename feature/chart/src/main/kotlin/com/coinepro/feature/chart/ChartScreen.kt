@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.chart.ChartCatalog
+import com.coinepro.core.chart.Replay
 import com.coinepro.core.chart.ChartDecoration
 import com.coinepro.core.chart.ChartTypePicker
 import com.coinepro.core.chart.CoineProChart
@@ -111,7 +112,7 @@ fun ChartScreen(
                 state.loading && state.series.isEmpty -> Loading()
                 state.error != null && state.series.isEmpty -> ChartFailure(state.error!!, controller::retry)
                 else -> CoineProChart(
-                    series = state.series,
+                    series = state.visibleSeries,
                     modifier = Modifier.fillMaxSize(),
                     type = state.chartType,
                     decoration = ChartDecoration(
@@ -133,6 +134,18 @@ fun ChartScreen(
             }
         }
 
+        if (state.replay.isOn) {
+            ReplayBar(
+                state = state.replay,
+                onToggle = controller::replayToggle,
+                onStep = controller::replayStep,
+                onStepBack = controller::replayStepBack,
+                onSeek = controller::replaySeek,
+                onSpeed = controller::replaySetSpeed,
+                onExit = controller::exitReplay,
+            )
+        }
+
         ActiveToolBar(
             tool = state.drawing.tool,
             placed = state.drawing.pending.size,
@@ -143,6 +156,10 @@ fun ChartScreen(
         Toolbar(
             activeIndicators = state.activeIndicators.size,
             drawings = state.drawing.drawings.size,
+            // Offered only when there is something to replay. A button that answers "not enough
+            // bars" is a button that should not have been there.
+            onReplay = controller::enterReplay
+                .takeIf { !state.replay.isOn && state.series.bars.size >= Replay.MINIMUM_BARS },
             onOpen = { sheet = it },
         )
     }
@@ -310,7 +327,12 @@ private fun TimeframeRow(selected: Timeframe, onSelect: (Timeframe) -> Unit) {
 }
 
 @Composable
-private fun Toolbar(activeIndicators: Int, drawings: Int, onOpen: (ChartSheet) -> Unit) {
+private fun Toolbar(
+    activeIndicators: Int,
+    drawings: Int,
+    onReplay: (() -> Unit)?,
+    onOpen: (ChartSheet) -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -329,6 +351,7 @@ private fun Toolbar(activeIndicators: Int, drawings: Int, onOpen: (ChartSheet) -
                 onOpen(ChartSheet.DRAWINGS)
             }
         }
+        onReplay?.let { ToolbarButton(DesignR.drawable.tv_play, "بازپخش", onClick = it) }
     }
 }
 
