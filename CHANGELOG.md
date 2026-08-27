@@ -15,7 +15,7 @@ it is for.
 
 ---
 
-## [1.22.0] — 2026-08-27 — Membership status, and the eight people it is for
+## [1.22.0] — 2026-08-27 — Membership status
 
 Both backends confirmed everything again on live servers. The one gap left in the app was the
 membership check itself: the routes were contracted but nothing called them.
@@ -30,10 +30,11 @@ membership check itself: the routes were contracted but nothing called them.
   that reads as a judgement about the person rather than about the keyboard.
 
 ### Changed
-- `pending_deposit` is drawn in the warning colour, not the refusal colour, and that is the whole
-  point of the screen. TradeYar's dry run over the parked submissions found zero approvals and
-  **eight genuine sub-accounts whose balance had not reached the threshold**. Those eight succeeded
-  at everything except the last step; painting that red tells them they were turned away.
+- `pending_deposit` is drawn in the warning colour, not the refusal colour. It means a genuine
+  sub-account whose balance has not reached the threshold — somebody who did everything right
+  except the last step — and painting that red tells a reader who succeeded that they were turned
+  away. How many readers are in that state on any given day is the server's business, not a
+  premise this screen rests on.
 - `note` is carried and never rendered. TradeYar found their own web form printing it — a reader
   seeing `referral_status=false` — which is exactly the mistake the field's separation prevents.
 
