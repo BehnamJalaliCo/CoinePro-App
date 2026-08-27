@@ -31,8 +31,10 @@ import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.EmailAuthController
 import com.coinepro.core.datastore.ChartLayoutStore
+import com.coinepro.core.datastore.ProfileStore
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
+import com.coinepro.core.guest.GuestGateway
 import com.coinepro.core.journal.JournalController
 import com.coinepro.core.papertrade.PaperTradeController
 import com.coinepro.core.script.ScriptController
@@ -60,6 +62,8 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var sessionController: SessionController
     @Inject lateinit var emailAuthController: EmailAuthController
     @Inject lateinit var guestController: GuestController
+    @Inject lateinit var profileStore: ProfileStore
+    @Inject lateinit var guestGateway: GuestGateway
     @Inject lateinit var watchlistStore: WatchlistStore
     @Inject lateinit var chartLayoutStore: ChartLayoutStore
     @Inject lateinit var journalController: JournalController
@@ -116,6 +120,8 @@ class MainActivity : ComponentActivity() {
                 sessionController = sessionController,
                 emailAuthController = emailAuthController,
                 guestController = guestController,
+                guestGateway = guestGateway,
+                profileStore = profileStore,
                 watchlistStore = watchlistStore,
                 chartLayoutStore = chartLayoutStore,
                 journalController = journalController,

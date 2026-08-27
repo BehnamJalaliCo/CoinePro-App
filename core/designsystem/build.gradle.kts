@@ -23,6 +23,10 @@ android {
 
 dependencies {
     api(project(":core:common"))
+    // api, not implementation: AvatarSpec is in CoineProAvatar's signature, so every screen
+    // that draws one needs the type on its own classpath.
+    api(project(":core:model"))
+    implementation(libs.kotlinx.coroutines.core)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.animation)

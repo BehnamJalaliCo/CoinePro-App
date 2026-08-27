@@ -106,9 +106,18 @@ private val pnlTools = listOf(ToolId.PROFIT, ToolId.PIP, ToolId.CRYPTO_PNL, Tool
 @Composable
 fun ToolsScreen(
     platform: MarketPlatform = MarketPlatform.TRADEYAR,
-    onOpenConnections: () -> Unit,
-    onOpenNews: () -> Unit,
-    onOpenCalendar: () -> Unit,
+    /**
+     * The three that need a signed-in session.
+     *
+     * Nullable, and null is what a guest gets. Every other card on this screen is local to the
+     * device — paper trading, the journal, NamaScript — and works with no account at all, which is
+     * why the toolkit is one of the surfaces the guest experience opens rather than gates. A card
+     * that led to a 401 worded as an outage would be the one broken thing on an otherwise honest
+     * screen.
+     */
+    onOpenConnections: (() -> Unit)? = null,
+    onOpenNews: (() -> Unit)? = null,
+    onOpenCalendar: (() -> Unit)? = null,
     /** Opens the closed-trade history. Null on a build with no portfolio screen. */
     onOpenPortfolio: (() -> Unit)? = null,
     /** Opens the academy. Null on a platform that has none — TradeYar. */
@@ -622,9 +631,9 @@ private fun ResetRow(onReset: () -> Unit) {
 
 @Composable
 private fun OperationalTools(
-    onOpenNews: () -> Unit,
-    onOpenCalendar: () -> Unit,
-    onOpenConnections: () -> Unit,
+    onOpenNews: (() -> Unit)?,
+    onOpenCalendar: (() -> Unit)?,
+    onOpenConnections: (() -> Unit)?,
     onOpenPortfolio: (() -> Unit)?,
     onOpenAcademy: (() -> Unit)?,
     onOpenJournal: (() -> Unit)?,
@@ -663,9 +672,15 @@ private fun OperationalTools(
                 onClick = it,
             )
         }
-        OperationalCard(stringResource(R.string.tools_news_title), stringResource(R.string.tools_news_body), stringResource(R.string.tools_news_open), onOpenNews)
-        OperationalCard(stringResource(R.string.tools_calendar_title), stringResource(R.string.tools_calendar_body), stringResource(R.string.tools_calendar_open), onOpenCalendar)
-        OperationalCard(stringResource(R.string.tools_connections_title), stringResource(R.string.tools_connections_body), "MT5 & LBank", onOpenConnections)
+        onOpenNews?.let {
+            OperationalCard(stringResource(R.string.tools_news_title), stringResource(R.string.tools_news_body), stringResource(R.string.tools_news_open), it)
+        }
+        onOpenCalendar?.let {
+            OperationalCard(stringResource(R.string.tools_calendar_title), stringResource(R.string.tools_calendar_body), stringResource(R.string.tools_calendar_open), it)
+        }
+        onOpenConnections?.let {
+            OperationalCard(stringResource(R.string.tools_connections_title), stringResource(R.string.tools_connections_body), "MT5 & LBank", it)
+        }
         // Last, because it is the only one of the four that needs an account already linked. A
         // card offering a history above the card that connects the account it comes from reads as
         // broken the first time somebody opens this screen.

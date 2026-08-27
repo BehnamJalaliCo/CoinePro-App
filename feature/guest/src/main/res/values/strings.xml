@@ -25,10 +25,16 @@
     <string name="guest_record_summary">از %2$s سیگنالِ بسته‌شدهٔ اخیر، %1$s تا با سود بسته شد — نرخ برد %3$s٪.</string>
     <string name="guest_record_note">این‌ها سیگنال‌های واقعیِ منتشرشده‌اند که بسته شده‌اند، نه نمونهٔ ساختگی. عملکرد گذشته تضمینی برای آینده نیست.</string>
     <string name="guest_market_count">از %1$s بازار</string>
-    <string name="guest_community_title">جامعهٔ کوین‌پرو</string>
-    <string name="guest_community_total">%1$s عضو در کانال‌ها و گروه‌های عمومی</string>
-    <string name="guest_community_bot">%1$s کاربر ربات</string>
-    <string name="guest_community_members">%1$s عضو</string>
-    <string name="guest_community_unknown">داده در دسترس نیست</string>
-    <string name="guest_community_open">باز کردن</string>
+    <string name="guest_greeting">سلام</string>
+    <string name="guest_greeting_note">همه‌ی بازارها، نمودار و ابزارها بدون حساب باز است.</string>
+    <string name="guest_initial">م</string>
+    <string name="guest_profile_description">نیمرخ شما</string>
+    <string name="guest_action_markets">همه‌ی بازارها</string>
+    <string name="guest_action_tools">ابزارها</string>
+    <string name="guest_signals_title">سیگنال‌ها</string>
+    <string name="guest_signals_body">سیگنال‌های زنده با یک حساب رایگان باز می‌شود. کارنامه‌ی زیر، نتیجه‌ی واقعی سیگنال‌های بسته‌شده است — نه نمونه و نه تبلیغ.</string>
+    <string name="guest_ai_title">هوش مصنوعی</string>
+    <string name="guest_ai_body">تحلیل نمودار، دستیار و ساخت سیگنال با هوش مصنوعی به یک حساب نیاز دارد؛ نمودار، اندیکاتورها و نما‌اسکریپت بدون حساب کار می‌کنند.</string>
+    <string name="guest_gate_action">ورود یا ثبت نام رایگان</string>
+    <string name="guest_gate_eyebrow">با یک حساب رایگان</string>
 </resources>

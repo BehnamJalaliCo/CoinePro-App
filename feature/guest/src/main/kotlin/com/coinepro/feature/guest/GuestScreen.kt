@@ -3,12 +3,12 @@ package com.coinepro.feature.guest
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,59 +19,70 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.toPersianDigits
-import com.coinepro.core.common.toPersianGroupedDigits
-import com.coinepro.core.designsystem.CoineProMarketRow
+import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
-import com.coinepro.core.designsystem.CoineProLockup
+import com.coinepro.core.designsystem.CoineProMarketRow
+import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
-import com.coinepro.core.guest.CommunityChannel
-import com.coinepro.core.guest.GuestCommunity
-import com.coinepro.core.guest.GuestCommunityState
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.guest.GuestHeadline
 import com.coinepro.core.guest.GuestMembershipState
 import com.coinepro.core.guest.GuestNewsState
 import com.coinepro.core.guest.GuestPricesState
+import com.coinepro.core.guest.GuestQuote
 import com.coinepro.core.guest.GuestTrackRecord
 import com.coinepro.core.guest.GuestTrackRecordState
-import com.coinepro.core.guest.GuestQuote
-import com.coinepro.core.guest.MemberCount
+import com.coinepro.core.model.AvatarSpec
 
 /**
- * What the app looks like before anyone has signed in.
+ * Home, for somebody who has not signed in.
  *
- * The app used to open on a sign-in form. That is the wrong first screen for this product: a reader
- * arriving from a link has no idea yet whether the thing is worth an account, and a password field
- * is a question asked before any reason to answer it. So the first screen is the market — real
- * prices, moving, from TradeYar's public feed — with the account explained underneath rather than
- * demanded on top.
+ * It is Home — not a landing page in front of the app. The bottom bar under it is the same bar, the
+ * markets tab beside it lists the same several hundred instruments, and the chart it opens is the
+ * same chart. What this screen is, is the *first* of those surfaces: the reader's own corner with
+ * their avatar in it, the market moving underneath, what the published signals actually did, and
+ * the account offered once.
  *
- * It is a real screen and not a teaser. The prices are the same numbers the web site shows, the
- * headlines are the published ones, and nothing here is blurred or truncated to make a point.
- * Something dressed up to look withheld is an advertisement; this is the product, as much of it as
- * can honestly be given away.
+ * Two things it deliberately does **not** do.
+ *
+ * It does not demand an account. The membership card states what an account adds and then stops;
+ * there is no second, more insistent version of it further down and no interstitial anywhere in the
+ * guest experience. That is the owner's rule for this product — «به زور کسی رو ما ثبت نام نمی‌کنیم»
+ * — and it is also the only rule that survives contact with a reader who arrived from a link and is
+ * deciding, in about eight seconds, whether this is a serious app.
+ *
+ * And it no longer carries the community section. A member count and a list of Telegram channels is
+ * a crowd shown to somebody who has not yet been told what the crowd is for, and it was taking the
+ * place of the market on the one screen where the market is the argument.
  */
 @Composable
 fun GuestScreen(
     controller: GuestController,
     onSignIn: () -> Unit,
     modifier: Modifier = Modifier,
+    /** The reader's own chosen avatar. A guest has one too — that is the point of the profile. */
+    avatar: AvatarSpec = AvatarSpec.Default,
+    onOpenProfile: (() -> Unit)? = null,
+    /** Opens the chart on a market row, exactly as the signed-in home does. */
+    onOpenSymbol: ((String) -> Unit)? = null,
+    /** The full market list — the several hundred this screen is showing twenty of. */
+    onOpenMarket: (() -> Unit)? = null,
+    /** The local toolkit: journal, paper trading, NamaScript. None of it needs an account. */
+    onOpenTools: (() -> Unit)? = null,
 ) {
     val prices by controller.prices.collectAsStateWithLifecycle()
     val news by controller.news.collectAsStateWithLifecycle()
     val trackRecord by controller.trackRecord.collectAsStateWithLifecycle()
-    val community by controller.community.collectAsStateWithLifecycle()
     val membership by controller.membership.collectAsStateWithLifecycle()
 
     // Started and stopped with the screen rather than the process. A poll that outlives the screen
@@ -88,26 +99,26 @@ fun GuestScreen(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(CoineProSpacing.Two),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
     ) {
-        item {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
-            ) {
-                CoineProLockup(
-                    // Smaller than it was. A logo taking a fifth of the first screen is a brand
-                    // being announced; the market underneath it is the thing that does the
-                    // convincing, and it should be visible without a scroll.
-                    markSize = 48.dp,
-                    wordmarkWidth = 118.dp,
-                    contentDescription = stringResource(R.string.guest_wordmark_description),
-                )
-                Text(
-                    text = stringResource(R.string.guest_tagline),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = CoineProColors.TextSecondary,
-                    textAlign = TextAlign.Center,
-                )
+        item { ProfileHeader(avatar = avatar, onOpenProfile = onOpenProfile) }
+
+        if (onOpenMarket != null || onOpenTools != null) {
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+                    onOpenMarket?.let {
+                        CoineProSecondaryButton(
+                            text = stringResource(R.string.guest_action_markets),
+                            onClick = it,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    onOpenTools?.let {
+                        CoineProSecondaryButton(
+                            text = stringResource(R.string.guest_action_tools),
+                            onClick = it,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
             }
         }
 
@@ -128,7 +139,7 @@ fun GuestScreen(
                                     .background(CoineProColors.Border),
                             )
                         }
-                        QuoteRow(quote)
+                        QuoteRow(quote = quote, onOpenSymbol = onOpenSymbol)
                     }
                 }
             }
@@ -167,26 +178,6 @@ fun GuestScreen(
             )
         }
 
-        // The community sits under the membership card rather than over it. It is the answer to
-        // "is anyone else here", which is a question a reader asks *after* they know what the
-        // thing is — putting a member count first is a crowd shown to somebody who has not yet
-        // been told what the crowd is for.
-        when (val current = community) {
-            is GuestCommunityState.Ready -> {
-                item {
-                    Text(
-                        text = stringResource(R.string.guest_community_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = CoineProColors.TextPrimary,
-                    )
-                }
-                item { CommunitySummary(current.community) }
-            }
-            // Nothing while loading, and nothing when it failed. A heading over «داده در دسترس
-            // نیست» is a section that exists only to report its own absence.
-            GuestCommunityState.Loading, GuestCommunityState.Unavailable -> Unit
-        }
-
         item {
             Text(
                 text = stringResource(R.string.guest_news_title),
@@ -207,6 +198,48 @@ fun GuestScreen(
                 )
             }
         }
+    }
+}
+
+/**
+ * The reader's own row, at the top, where the member's greeting sits on the signed-in home.
+ *
+ * A guest has a profile in this app. Not a placeholder for one — a real page with their own avatar,
+ * their own name if they typed one, and their own watchlist counted. That is what makes the guest
+ * experience the app rather than a preview of it, and it is why this row is the first thing on the
+ * screen rather than a sign-up banner.
+ */
+@Composable
+private fun ProfileHeader(avatar: AvatarSpec, onOpenProfile: (() -> Unit)?) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.guest_greeting),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = CoineProColors.TextPrimary,
+            )
+            Text(
+                text = stringResource(R.string.guest_greeting_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = CoineProColors.TextMuted,
+            )
+        }
+        CoineProAvatar(
+            spec = avatar,
+            initial = stringResource(R.string.guest_initial),
+            size = 40.dp,
+            contentDescription = stringResource(R.string.guest_profile_description),
+            modifier = if (onOpenProfile == null) {
+                Modifier
+            } else {
+                Modifier.clickable(onClick = onOpenProfile)
+            },
+        )
     }
 }
 
@@ -253,13 +286,13 @@ private fun PricesHeader(state: GuestPricesState) {
 /**
  * One market, in the app's own row.
  *
- * The list used to be one card per quote — a stack of large blocks a reader scrolled rather than
- * scanned. A market list is read by comparison and comparison needs the rows close enough to hold
- * in one glance, so this is a single card with dense rows inside it, which is what Home already
- * does and what every exchange's list looks like.
+ * Tappable, and that is the substance of the guest work rather than a detail of it: the row opens
+ * the same chart a member opens, on the same candles, because the public candle route runs the same
+ * code path as the signed-in one. A market list a guest could look at but not open would be a
+ * catalogue, not an app.
  */
 @Composable
-private fun QuoteRow(quote: GuestQuote) {
+private fun QuoteRow(quote: GuestQuote, onOpenSymbol: ((String) -> Unit)?) {
     CoineProMarketRow(
         symbol = quote.symbol,
         // The ticker is the name here. The public feed carries no display name, and inventing a
@@ -271,6 +304,7 @@ private fun QuoteRow(quote: GuestQuote) {
         low24h = quote.low24h,
         high24h = quote.high24h,
         rawPrice = quote.price,
+        onClick = onOpenSymbol?.let { open -> { open(quote.symbol) } },
     )
 }
 
@@ -292,8 +326,8 @@ private fun GuestQuote.base(): String = symbol.removeSuffix("USDT").ifEmpty { sy
  * win rates in front of one reader is worse than none.
  */
 @Composable
-private fun TrackRecordSummary(record: GuestTrackRecord) {
-    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+fun TrackRecordSummary(record: GuestTrackRecord, modifier: Modifier = Modifier) {
+    CoineProCard(modifier = modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
             record.winRate?.let { rate ->
                 Text(
@@ -331,101 +365,6 @@ private fun TrackRecordSummary(record: GuestTrackRecord) {
                 color = CoineProColors.TextMuted,
             )
         }
-    }
-}
-
-/**
- * The public channels, and how many people are in them.
- *
- * One rule governs this whole composable and it comes from the route itself: a count the server
- * could not fetch renders as «داده در دسترس نیست», never as a zero and never as a remembered
- * number. Telegram refuses often enough that this is the ordinary case rather than the edge one,
- * and a channel of fifty thousand drawn as «۰ عضو» is not a cautious understatement, it is a lie
- * about the size of the thing a reader is deciding whether to join.
- *
- * That is why [MemberCount] is a sealed type rather than a `Long?`: there is no `?: 0` to write.
- *
- * The counts are Persian digits because they are prose — people, not a market figure. The rule
- * everywhere else in this app is the opposite, and the difference is exactly that nobody converts
- * a member count into a trade.
- */
-@Composable
-private fun CommunitySummary(community: GuestCommunity) {
-    val unknown = stringResource(R.string.guest_community_unknown)
-    CoineProCard(modifier = Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
-            (community.total as? MemberCount.Known)?.let { total ->
-                Text(
-                    text = stringResource(
-                        R.string.guest_community_total,
-                        total.value.toPersianGroupedDigits(),
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = CoineProColors.TextSecondary,
-                )
-            }
-            (community.botUsers as? MemberCount.Known)?.let { bot ->
-                Text(
-                    text = stringResource(
-                        R.string.guest_community_bot,
-                        bot.value.toPersianGroupedDigits(),
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = CoineProColors.TextSecondary,
-                )
-            }
-
-            community.channels.forEach { channel -> ChannelRow(channel, unknown) }
-
-            community.note?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = CoineProColors.TextMuted,
-                )
-            }
-        }
-    }
-}
-
-/**
- * One channel. Tappable only where the server gave a link — a row that looks tappable and does
- * nothing is worse than one that plainly does not.
- */
-@Composable
-private fun ChannelRow(channel: CommunityChannel, unknown: String) {
-    val context = LocalContext.current
-    val url = channel.url
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (url == null) Modifier else Modifier.clickable { context.open(url) }),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = channel.label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = CoineProColors.TextPrimary,
-        )
-        Text(
-            text = when (val members = channel.members) {
-                is MemberCount.Known ->
-                    stringResource(
-                        R.string.guest_community_members,
-                        members.value.toPersianGroupedDigits(),
-                    )
-                MemberCount.Unavailable -> unknown
-            },
-            style = MaterialTheme.typography.bodySmall,
-            // Muted for the unknown case rather than the same weight as a real figure: it is an
-            // absence being reported, and it should not read as a number.
-            color = if (channel.members is MemberCount.Known) {
-                CoineProColors.TextSecondary
-            } else {
-                CoineProColors.TextMuted
-            },
-        )
     }
 }
 

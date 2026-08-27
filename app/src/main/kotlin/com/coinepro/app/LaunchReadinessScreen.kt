@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,6 +30,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProCard
+import com.coinepro.core.diagnostics.Crash
+import com.coinepro.core.common.PersianDateTime
+import com.coinepro.core.designsystem.LtrDirection
+import androidx.compose.ui.text.font.FontFamily
+import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -58,6 +64,17 @@ fun LaunchReadinessScreen(
     onSendFeedback: () -> Unit,
     versionLabel: String = "",
     onOpenDiagnostics: () -> Unit = {},
+    /**
+     * The last crash, if the app has had one since it was cleared.
+     *
+     * On this screen and not behind the five-tap gate. A reader who has just been thrown back to
+     * the first screen needs to be able to say *what* broke without a cable and without knowing
+     * there is an admin panel — and the sentence that names the fault is the whole of what anybody
+     * fixing it needs.
+     */
+    lastCrash: Crash? = null,
+    onCopyCrash: (String) -> Unit = {},
+    onClearCrash: () -> Unit = {},
 ) {
     // Five taps, and they have to be consecutive: the counter resets whenever the gap between two
     // taps grows past a deliberate rhythm, so an ordinary stray tap on a scrolling screen never
@@ -72,6 +89,9 @@ fun LaunchReadinessScreen(
             .padding(CoineProSpacing.Gutter),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
     ) {
+        lastCrash?.let { crash ->
+            CrashCard(crash = crash, onCopy = onCopyCrash, onClear = onClearCrash)
+        }
         Column(
             modifier = Modifier.padding(horizontal = CoineProSpacing.Half),
             verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -224,4 +244,62 @@ private fun NotificationPermissionUiState.copyRes(): Int = when (this) {
     NotificationPermissionUiState.AVAILABLE_TO_REQUEST -> R.string.safety_push_available
     NotificationPermissionUiState.DENIED -> R.string.safety_push_denied
     NotificationPermissionUiState.GRANTED -> R.string.safety_push_granted
+}
+
+/**
+ * What broke, in the reader's own hands.
+ *
+ * Three things and no more: when, the exception's own line, and the first frame inside this app —
+ * which between them are what somebody fixing it starts from. The whole trace is behind "کپی"
+ * rather than on screen, because forty frames of stack is not something to read on a phone and is
+ * exactly what should be pasted into a message.
+ */
+@Composable
+private fun CrashCard(crash: Crash, onCopy: (String) -> Unit, onClear: () -> Unit) {
+    CoineProCard(modifier = Modifier.fillMaxWidth(), accent = CoineProColors.Sell) {
+        Text(
+            text = stringResource(R.string.safety_crash_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = CoineProColors.Sell,
+        )
+        Text(
+            text = PersianDateTime.moment(java.time.Instant.ofEpochMilli(crash.atEpochMillis)),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        LtrDirection {
+            Text(
+                text = crash.summary,
+                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                color = CoineProColors.TextPrimary,
+                modifier = Modifier.padding(top = CoineProSpacing.One),
+            )
+        }
+        crash.culprit?.let {
+            LtrDirection {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                    color = CoineProColors.TextSecondary,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.padding(top = CoineProSpacing.OneHalf),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        ) {
+            CoineProPrimaryButton(
+                text = stringResource(R.string.safety_crash_copy),
+                onClick = { onCopy(crash.trace) },
+                modifier = Modifier.weight(1f),
+            )
+            CoineProSecondaryButton(
+                text = stringResource(R.string.safety_crash_clear),
+                onClick = onClear,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
 }

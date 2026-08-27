@@ -60,4 +60,17 @@
     <string name="screen_chart_studio">استودیوی چارت</string>
     <string name="screen_tools">ابزارها</string>
     <string name="screen_activity">فعالیت</string>
+    <string name="safety_crash_title">آخرین خطای برنامه</string>
+    <string name="safety_crash_copy">کپی گزارش</string>
+    <string name="safety_crash_clear">پاک کردن</string>
+    <string name="screen_profile">نیمرخ</string>
+    <string name="platform_crypto">کریپتو</string>
+    <string name="platform_forex">فارکس</string>
+    <string name="profile_initial_fallback">ک</string>
+    <string name="profile_reading_watchlist">بازارهای دنبال‌شده</string>
+    <string name="profile_action_verification">احراز هویت</string>
+    <string name="profile_action_alerts">هشدارهای قیمت</string>
+    <string name="profile_action_safety">ایمنی و نسخه</string>
+    <string name="profile_action_safety_note">اعلان‌ها، گزارش خطا و شماره‌ی نسخه</string>
+    <string name="profile_action_delete">حذف حساب</string>
 </resources>

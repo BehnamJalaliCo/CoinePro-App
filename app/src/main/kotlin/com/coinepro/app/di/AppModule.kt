@@ -9,6 +9,7 @@ import com.coinepro.core.account.AccountController
 import com.coinepro.core.account.AccountGateway
 import com.coinepro.core.account.NetworkAccountGateway
 import com.coinepro.core.datastore.ChartLayoutStore
+import com.coinepro.core.datastore.ProfileStore
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.journal.JournalController
@@ -361,6 +362,16 @@ object AppModule {
     @Singleton
     fun chartLayoutStore(dataStore: DataStore<Preferences>): ChartLayoutStore = ChartLayoutStore(dataStore)
 
+    /**
+     * The reader's own name and face.
+     *
+     * The same preferences file as the watchlist, and for the same reason: it is a local
+     * preference, not account data. Nothing in it is sent to either backend — see [ProfileStore].
+     */
+    @Provides
+    @Singleton
+    fun profileStore(dataStore: DataStore<Preferences>): ProfileStore = ProfileStore(dataStore)
+
     @Provides
     @Singleton
     fun guestGateway(@CryptoPlatform retrofit: Retrofit): GuestGateway =
@@ -467,13 +478,20 @@ object AppModule {
     /**
      * The sign-in screen's controller.
      *
-     * CoinePro-FX, matching the unqualified [SessionController]: that session is what gates the
-     * shell, so the screen that opens it must be the one that fills it. Signing in to TradeYar
-     * instead would leave the reader looking at a completed sign-in and a locked app.
+     * **TradeYar**, and it must stay matched to the unqualified [SessionController] below: that
+     * session is what gates the shell, so the screen that opens it has to be the one that fills it.
+     * Signing in to one and gating on the other leaves the reader looking at a completed sign-in
+     * and a locked app.
+     *
+     * It was CoinePro-FX, and that was the wrong home for the account. A reader registering here is
+     * registering with **CoinePro**, not with one of its two backends — and the CoinePro-FX server
+     * signs its mail as "CoinePro Fx" and files the account in the forex product's user table. The
+     * name in the reader's inbox is the product they think they joined, and the row is in the
+     * system that owns the account: both belong to TradeYar.
      */
     @Provides
     @Singleton
-    fun emailAuthController(@ForexPlatform controller: EmailAuthController): EmailAuthController =
+    fun emailAuthController(@CryptoPlatform controller: EmailAuthController): EmailAuthController =
         controller
 
     /**
@@ -639,9 +657,16 @@ object AppModule {
         scope: CoroutineScope,
     ): SessionController = SessionController(storage, memory, gateway, scope, emailAuth)
 
+    /**
+     * The session that gates the shell.
+     *
+     * TradeYar, matched to the unqualified [emailAuthController]. See the note there for why the
+     * account lives on that side; the pair moves together or the app locks itself out.
+     */
     @Provides
     @Singleton
-    fun sessionController(@ForexPlatform controller: SessionController): SessionController = controller
+    fun sessionController(@CryptoPlatform controller: SessionController): SessionController =
+        controller
 
     @Provides
     @Singleton
@@ -911,6 +936,12 @@ object AppModule {
     ): ActivePlatformStore = ActivePlatformStore(
         dataStore = preferences,
         available = MarketPlatform.entries.filter { it in controllers },
+        // TradeYar where this build can reach it, because that is where the account lives — see
+        // the note on `emailAuthController`. A reader who has never chosen a platform should be
+        // looking at the one their sign-in belongs to.
+        fallback = MarketPlatform.TRADEYAR
+            .takeIf { it in controllers }
+            ?: MarketPlatform.entries.first { it in controllers },
     )
 
     /**

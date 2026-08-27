@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_guest_name">Guest</string>
+    <string name="profile_guest_tagline">Every market and every chart, with no account.</string>
+    <string name="profile_member_tagline">CoinePro member</string>
+    <string name="profile_avatar_description">Your profile picture</string>
+    <string name="profile_edit_avatar">Change picture</string>
+    <string name="profile_account_section">Account</string>
+    <string name="profile_local_note">Your name, picture and description are kept on this phone only and are never sent to a server. Uninstalling the app loses them.</string>
+
+    <string name="profile_signin_title">Make an account, if you want one</string>
+    <string name="profile_signin_body">Markets, the professional chart, search, the journal, paper trading and NamaScript all work without an account. An account adds signals, the AI, the wallet and copy trading.</string>
+    <string name="profile_signin_action">Sign in or register</string>
+    <string name="profile_signin_note">Nobody is pushed into signing up. It is here whenever you want it.</string>
+
+    <string name="profile_identity_title">Name and description</string>
+    <string name="profile_identity_edit">Edit</string>
+    <string name="profile_identity_save">Save</string>
+    <string name="profile_identity_cancel">Cancel</string>
+    <string name="profile_identity_unset">No name chosen</string>
+    <string name="profile_field_name">Display name</string>
+    <string name="profile_field_tagline">One line about you</string>
+
+    <string name="avatar_title">Profile picture</string>
+    <string name="avatar_subtitle">Pick a picture, or one of our marks</string>
+    <string name="avatar_tab_mine">Mine</string>
+    <string name="avatar_tab_crypto">Crypto</string>
+    <string name="avatar_tab_forex">Forex</string>
+    <string name="avatar_tab_metal">Metals</string>
+    <string name="avatar_tab_mark">Marks</string>
+    <string name="avatar_ring_none">None</string>
+    <string name="avatar_pick_photo">Choose a picture</string>
+    <string name="avatar_pick_another">Choose another picture</string>
+    <string name="avatar_photo_note">The picture stays on this phone and is not sent anywhere.</string>
+    <string name="avatar_save">Save</string>
+    <string name="avatar_cancel">Cancel</string>
+
+    <string name="avatar_mark_rocket">Rocket</string>
+    <string name="avatar_mark_bull">Bull</string>
+    <string name="avatar_mark_bear">Bear</string>
+    <string name="avatar_mark_candle">Candle</string>
+    <string name="avatar_mark_diamond">Diamond</string>
+    <string name="avatar_mark_flame">Flame</string>
+    <string name="avatar_mark_bolt">Bolt</string>
+    <string name="avatar_mark_trend">Trend</string>
+    <string name="avatar_mark_shield">Shield</string>
+    <string name="avatar_mark_globe">Global</string>
+    <string name="profile_identity_hint">A display name and one line about you, on this phone only.</string>
+</resources>

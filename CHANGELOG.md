@@ -15,6 +15,91 @@ it is for.
 
 ---
 
+## [1.27.0] — 2026-08-27 — The app, for everybody
+
+Four things the owner asked for, and one they did not have to: sign-in now creates the right kind of
+account, the guest experience *is* the app rather than a page in front of it, and everybody who uses
+this product — signed in or not — has a profile with a face they chose.
+
+### Added
+- **A profile, and it is a real one.** `feature:profile`: a hero with the reader's avatar, their own
+  name and one line about themselves, the platform and plan they are on, and the account rows that
+  used to hide in a dropdown off Home's corner. It is the gold voice, because it is a screen about
+  one thing and the thing is a person — and it is the one page in the app where no number moves.
+- **An avatar composer.** A reader picks a **photograph** from their phone, or an **instrument** —
+  five hundred and sixty crypto marks, the major currency pairs drawn as two flags, the four metal
+  discs, all of it the same artwork the market rows use — or one of **ten marks the app draws
+  itself**: a rocket, a bull, a bear, a candle, a diamond, a flame, a bolt, a trend line, a shield
+  and a globe. Each one moves, once every few seconds, and every one of them stops dead when the
+  device has animations turned off.
+- **A ring around it**, in the colours this app already means something by: brand gold, analysis
+  blue, the buy green and the sell red. Not a colour wheel — a ring is a small flag somebody plants,
+  and the set they can plant should be made of things that mean something here.
+- **`ProfileStore`**, and one rule with it: nothing in the profile leaves the device. Neither backend
+  has a route for an avatar and this app is not going to invent one by uploading a reader's
+  photograph to a trading server. The screen says so, including the part where a reinstall loses it.
+- **`GuestMarketCatalogGateway` and `GuestCandleGateway`** — TradeYar's public routes wearing the two
+  interfaces the signed-in app already builds against. That is the whole trick behind the guest
+  work: the markets list, the search, the chart and every sparkline are unchanged, with no `if
+  (guest)` anywhere inside them.
+
+### Changed
+- **The guest experience is the app.** Signed out no longer means a single scrolling page in front
+  of a sign-in form: it is the same shell, the same bottom bar, the same several hundred markets, the
+  same chart on the same candles, the same toolkit — journal, paper trading, NamaScript — and the
+  same profile. Two tabs need an account, say so once, and show the real closed-signal record while
+  they say it. Nothing is blurred and nothing is withheld to make a point. **به زور کسی رو ما ثبت
+  نام نمی‌کنیم.**
+- **Sign-in creates a CoinePro account, not a CoinePro-FX one.** `emailAuthController` and the
+  unqualified `sessionController` are bound to **TradeYar**, so the mail arrives signed *CoinePro*
+  and the account is filed in TradeYar's user table — which is where an account made in this app
+  belongs. It was the forex product's, and that was wrong twice over: the wrong sender's name on the
+  mail, and the wrong table underneath it.
+- **The shell follows the session rather than a remembered preference.** This is the second half of
+  the same fix and it is the half that showed up as "I sign in and it throws me straight back to the
+  guest screen". The two backends are separate accounts; the shell reads one of them, chosen by a
+  stored preference that on an upgraded phone still said CoinePro-FX. The new session was TradeYar's,
+  so the first request came back 401, the 401 handler ended the session, and the app landed back on
+  the guest screen — indistinguishable, from the outside, from a crash. If the platform on screen has
+  no session and exactly one platform does, the app now follows it.
+- **The top corner is the reader, not two words.** «ایمنی» and «خروج» were a pair of text buttons on
+  every screen and neither is something anybody reaches for often. The corner is now the avatar, and
+  safety, verification, alerts, sign-out and deletion are rows on the page it opens.
+- **«جامعهٔ کوین‌پرو» is gone from the guest home.** A member count and a list of Telegram channels is
+  a crowd shown to somebody who has not yet been told what the crowd is for, and it was taking the
+  place of the market on the one screen where the market is the argument. The controller no longer
+  spends a request on it either.
+- **The toolkit's three signed-in cards are hidden from a guest** rather than leading to a 401 worded
+  as an outage. Everything else on that screen is local to the phone and opens for anybody.
+- **Signing out clears the profile.** The next person to open this app on this phone is not
+  necessarily the same person.
+
+### Fixed
+- **Marks that were blank for part of their loop.** The trend line and the shield's tick were drawn
+  *up to* the animation phase, so at the start of every cycle the avatar was an empty disc — and the
+  screenshot caught it, because a render holds the clock at zero. Both are now whole at every
+  instant and the motion decorates them instead of constituting them.
+- **`PathMeasure.getSegment` drew nothing under the renderer**, which is how the above shipped
+  unnoticed in the first capture. Replaced with a hand-walked polyline: a dozen lines, the same
+  arithmetic, and no platform behind it to disagree with.
+- **A ring of `NONE` tinted the artwork transparent**, so seven of the ten marks rendered as
+  invisible discs in the composer's own grid. The unringed avatar now falls back to the brand gold.
+- **The bull read as a dog and the bear as a mouse.** Both redrawn from the silhouette out: the bull
+  has horns that leave the head and a muzzle that tapers, the bear has small ears set low and a
+  light snout. The contact sheet is in `87-avatar-gallery-fa.png` and is the reason either was
+  caught.
+
+### Notes
+- The avatar marks are drawn in Compose rather than taken from an emoji font. A licensed emoji
+  cannot be redrawn at forty points without looking like a sticker pasted onto a trading app, and an
+  animated GIF would mean a decoder, a cache and a frame loop for something that is forty pixels
+  across.
+- `AvatarRing.PREMIUM` is in the enum and not on the shelf. It is `#D4AF37` against the brand's
+  `#D8A848`: side by side in a picker they are the same swatch, and offering it would also let
+  anybody wear the ring the design system reserves for a subscription.
+
+---
+
 ## [1.26.0] — 2026-08-27 — The rest of the app, and the debt
 
 The design rule the owner set — content screens speak the gold voice, lists speak the terminal one

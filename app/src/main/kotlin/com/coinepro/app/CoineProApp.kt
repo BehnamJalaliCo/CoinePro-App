@@ -9,7 +9,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -23,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -41,7 +41,11 @@ import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionState
 import com.coinepro.core.datastore.ActivePlatformStore
+import com.coinepro.core.datastore.ProfileStore
+import com.coinepro.core.datastore.StoredProfile
+import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProReading
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.PageAccent
 import com.coinepro.core.designsystem.ProvidePageAccent
@@ -55,6 +59,7 @@ import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.marketintel.MarketIntelController
+import com.coinepro.core.model.AvatarSpec
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.SignalDirection
 import com.coinepro.core.navigation.AppDestination
@@ -80,6 +85,7 @@ import com.coinepro.core.auth.EmailAuthController
 import com.coinepro.core.auth.EmailAuthStep
 import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.common.BidiText
+import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.diagnostics.Appearance
 import com.coinepro.core.diagnostics.ControlHub
 import com.coinepro.core.diagnostics.FeedStatus
@@ -95,6 +101,9 @@ import com.coinepro.core.execution.ConnectionsState
 import com.coinepro.core.marketdata.MarketConnectionState
 import com.coinepro.core.marketdata.MarketDataCache
 import com.coinepro.core.marketdata.AcademyTokenStore
+import android.content.ClipData
+import android.content.ClipboardManager
+import com.coinepro.core.diagnostics.CrashReport
 import com.coinepro.core.diagnostics.AdminController
 import com.coinepro.feature.admin.AdminScreen
 import com.coinepro.feature.home.HomeBriefing
@@ -105,6 +114,9 @@ import com.coinepro.core.datastore.ChartLayout
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
+import com.coinepro.core.guest.GuestGateway
+import com.coinepro.core.guest.GuestCandleGateway
+import com.coinepro.core.guest.GuestMarketCatalogGateway
 import com.coinepro.core.journal.JournalController
 import com.coinepro.core.papertrade.PaperTradeController
 import com.coinepro.core.script.ScriptController
@@ -113,8 +125,13 @@ import com.coinepro.feature.account.DeleteAccountScreen
 import com.coinepro.feature.alerts.AlertsScreen
 import com.coinepro.feature.journal.JournalScreen
 import com.coinepro.feature.papertrade.PaperTradeScreen
+import com.coinepro.feature.guest.GuestGate
+import com.coinepro.feature.guest.GuestGateScreen
 import com.coinepro.feature.guest.GuestScreen
 import com.coinepro.feature.kyc.KycScreen
+import com.coinepro.feature.profile.AvatarComposerSheet
+import com.coinepro.feature.profile.ProfileAction
+import com.coinepro.feature.profile.ProfileScreen
 import com.coinepro.feature.home.toHomeBriefing
 import com.coinepro.feature.home.toHomePortfolio
 import com.coinepro.feature.home.toHomeSubscription
@@ -153,6 +170,7 @@ private const val NEWS_ROUTE = "market/news"
 private const val CALENDAR_ROUTE = "market/calendar"
 private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
 private const val ADMIN_ROUTE = "diagnostics"
+private const val PROFILE_ROUTE = "profile"
 private const val KYC_ROUTE = "account/verify"
 private const val DELETE_ACCOUNT_ROUTE = "account/delete"
 private const val ALERTS_ROUTE = "alerts"
@@ -230,6 +248,7 @@ private val SELF_TITLED: Set<String> = setOf(
     CALENDAR_ROUTE,
     ACTIVITY_ROUTE,
     MARKET_SEARCH_ROUTE,
+    PROFILE_ROUTE,
 )
 
 private fun accentFor(route: String?): PageAccent = when (route) {
@@ -257,6 +276,9 @@ fun CoineProApp(
     sessionController: SessionController,
     emailAuthController: EmailAuthController,
     guestController: GuestController,
+    /** The public feed, which is what makes the guest experience the app rather than a teaser. */
+    guestGateway: GuestGateway,
+    profileStore: ProfileStore,
     watchlistStore: WatchlistStore,
     chartLayoutStore: ChartLayoutStore,
     journalController: JournalController,
@@ -333,6 +355,9 @@ fun CoineProApp(
     val scope = rememberCoroutineScope()
     val signedIn = session is SessionState.SignedIn
     val watchlist by watchlistStore.symbols.collectAsStateWithLifecycle(initialValue = emptyList())
+    // Read here rather than inside the shell, because both branches need it: a guest has a profile
+    // in this app and it is the same profile they keep when they sign in.
+    val profile by profileStore.profile.collectAsStateWithLifecycle(initialValue = StoredProfile())
     val chartLayouts by chartLayoutStore.layouts.collectAsStateWithLifecycle(initialValue = emptyList())
 
     val capabilities by platformCapabilities.state.collectAsStateWithLifecycle()
@@ -399,6 +424,31 @@ fun CoineProApp(
     val notificationState by notificationController.state.collectAsStateWithLifecycle()
     val venueState by executionController.connections.collectAsStateWithLifecycle()
     val sessionStates by platformSessions.states.collectAsStateWithLifecycle(initialValue = emptyMap())
+
+    // The shell follows the session, not a remembered preference.
+    //
+    // This is the second half of the sign-in fix, and it is the half that shows up as "I sign in
+    // and it throws me straight back to the guest screen".
+    //
+    // The two backends are separate accounts with separate tokens, and the shell reads *one* of
+    // them: every controller on screen is `controllers.getValue(activePlatform)`. Sign-in now
+    // creates a **TradeYar** session — that is where a CoinePro account belongs, and it is what
+    // fixes the mail arriving as "CoinePro Fx" — but `activePlatform` is a stored preference, and
+    // on a phone that ran an earlier build it still says CoinePro-FX. The shell then opens on a
+    // platform this reader has no token for, the first request comes back 401, the 401 handler
+    // ends the session, and the app lands back on the guest screen. From the outside that is
+    // indistinguishable from a crash, which is exactly how it was reported.
+    //
+    // So: if the platform on screen has no session and exactly one platform does, follow it. Only
+    // when it is unambiguous — somebody signed in to both has made a real choice and this must not
+    // overrule it.
+    LaunchedEffect(sessionStates, activePlatform) {
+        if (sessionStates[activePlatform] is SessionState.SignedIn) return@LaunchedEffect
+        activePlatformStore.available
+            .filter { sessionStates[it] is SessionState.SignedIn }
+            .singleOrNull()
+            ?.let { activePlatformStore.setActive(it) }
+    }
     val context = LocalContext.current
     val googleSignIn = remember(context) { GoogleSignInClient(context) }
 
@@ -480,6 +530,15 @@ fun CoineProApp(
     CoineProTheme {
         when (val current = session) {
             is SessionState.SignedIn -> MainShell(
+                guest = false,
+                profile = profile,
+                accountName = current.profile.name,
+                accountEmail = current.profile.email,
+                onSetDisplayName = { name -> scope.launch { profileStore.setDisplayName(name) } },
+                onSetTagline = { line -> scope.launch { profileStore.setTagline(line) } },
+                onSetAvatar = { spec -> scope.launch { profileStore.setAvatar(spec) } },
+                onSignIn = null,
+                guestController = guestController,
                 marketState = marketState,
                 marketSearchController = marketSearchController,
                 candleGateway = candleGateways.getValue(activePlatform),
@@ -534,6 +593,11 @@ fun CoineProApp(
                 onLogout = {
                     scope.launch {
                         pushCoordinator.unregisterCurrentToken()
+                        // The name and the face go with the session. The next person to open this
+                        // app on this phone is not necessarily the same person, and a stranger's
+                        // photograph over a stranger's name is the loudest possible way to tell
+                        // them the sign-out did not work.
+                        profileStore.clear()
                         sessionController.logout()
                     }
                 },
@@ -552,22 +616,105 @@ fun CoineProApp(
                     }
                 }
 
-                // Signed out is not the same as unwelcome.
+                // Signed out is not the same as unwelcome, and it is no longer a smaller app.
                 //
-                // This used to be a sign-in form and nothing else, which asked for a password
-                // before giving any reason to have one. Now the app opens on the market — real
-                // prices from TradeYar's public feed — and the form appears when the reader asks
-                // for it, or when a recovery link says they are already mid-flow.
+                // This was a sign-in form, then a single scrolling page of prices in front of one.
+                // Both were the same mistake at different sizes: they made somebody who had not
+                // signed in look at a *preview* of the product rather than the product. What runs
+                // here now is the app — the same shell, the same bottom bar, the same markets list
+                // over the same several hundred instruments, the same chart on the same candles,
+                // the same toolkit, the same profile with the reader's own avatar in it.
+                //
+                // What makes that honest rather than a trick is that TradeYar publishes the routes
+                // for it. `api/v1/public/prices` is the whole universe, `api/v1/public/candles`
+                // runs the *same server code* as the signed-in route — their note, and it is why
+                // the numbers agree — and the news and the closed-signal record are published too.
+                // So the guest is not being shown a mock: they are being shown the product, as
+                // much of it as can honestly be given away.
+                //
+                // Two tabs need an account and say so once, without a wall and without anything
+                // blurred behind them. Nobody is pushed: «به زور کسی رو ما ثبت نام نمی‌کنیم».
                 //
                 // Saveable, so a rotation mid-password does not throw the reader back to the
-                // market screen with a half-typed form gone.
+                // market with a half-typed form gone.
                 var signingIn by rememberSaveable { mutableStateOf(false) }
                 val showForm = signingIn || launchResetToken != null
 
                 if (!showForm) {
-                    GuestScreen(
-                        controller = guestController,
+                    // Built here rather than in Hilt because they are the guest's alone and their
+                    // lifetime is this branch: signing in disposes them along with the shell.
+                    val guestCatalog = remember(guestGateway) { GuestMarketCatalogGateway(guestGateway) }
+                    val guestCandles = remember(guestGateway) { GuestCandleGateway(guestGateway) }
+                    val guestSearch = remember(guestCatalog, scope) {
+                        MarketSearchController(gateway = guestCatalog, scope = scope)
+                    }
+                    MainShell(
+                        guest = true,
+                        profile = profile,
+                        accountName = null,
+                        accountEmail = null,
+                        onSetDisplayName = { name -> scope.launch { profileStore.setDisplayName(name) } },
+                        onSetTagline = { line -> scope.launch { profileStore.setTagline(line) } },
+                        onSetAvatar = { spec -> scope.launch { profileStore.setAvatar(spec) } },
                         onSignIn = { signingIn = true },
+                        guestController = guestController,
+                        // Empty rather than the signed-in feed's, which is stopped while signed
+                        // out. Nothing a guest reaches reads it: their home is the public one and
+                        // their markets list reads the catalogue below.
+                        marketState = MarketDataState(),
+                        marketSearchController = guestSearch,
+                        candleGateway = guestCandles,
+                        portfolioController = portfolioControllers.getValue(activePlatform),
+                        academyController = academyController,
+                        terminalController = terminalController,
+                        // No academy for a guest: its routes are behind the academy scope, which is
+                        // minted from a mobile token nobody here holds.
+                        hasAcademy = false,
+                        adminController = adminController,
+                        hub = hub,
+                        hubActions = hubActions,
+                        briefing = HomeBriefing.Resting,
+                        portfolio = null,
+                        subscription = null,
+                        watchlist = watchlist,
+                        onToggleWatch = { symbol -> scope.launch { watchlistStore.toggle(symbol) } },
+                        onRefreshAccount = {},
+                        signalController = signalController,
+                        notificationController = notificationController,
+                        executionController = executionController,
+                        copyTradeController = copyTradeController,
+                        aiSignalController = aiSignalController,
+                        aiVisionController = aiVisionController,
+                        aiAssistantController = aiAssistantController,
+                        marketIntelController = marketIntelController,
+                        accountController = accountController,
+                        launchSignalId = null,
+                        launchActivity = false,
+                        notificationPermissionState = deliverablePermissionState,
+                        chartVisionAvailable = false,
+                        pushAvailable = false,
+                        assistantAvailable = false,
+                        aiSignalsAvailable = false,
+                        accountDeletionAvailable = false,
+                        journalController = journalController,
+                        paperTradeController = paperTradeController,
+                        scriptController = scriptController,
+                        chartLayouts = chartLayouts,
+                        onSaveLayout = { layout -> scope.launch { chartLayoutStore.save(layout) } },
+                        onDeleteLayout = { name -> scope.launch { chartLayoutStore.delete(name) } },
+                        onSignalLaunchConsumed = onSignalLaunchConsumed,
+                        onActivityLaunchConsumed = onActivityLaunchConsumed,
+                        onRequestNotificationPermission = onRequestNotificationPermission,
+                        onOpenNotificationSettings = onOpenNotificationSettings,
+                        onSendFeedback = onSendFeedback,
+                        onMarketRetry = { guestSearch.refresh() },
+                        onSubscribeSymbols = {},
+                        // One platform, and no switcher. The public routes are TradeYar's; a
+                        // control offering CoinePro-FX would offer a feed with no public side.
+                        platforms = listOf(MarketPlatform.TRADEYAR),
+                        activePlatform = MarketPlatform.TRADEYAR,
+                        onSelectPlatform = {},
+                        onLogout = { signingIn = true },
                     )
                     return@CoineProTheme
                 }
@@ -621,6 +768,32 @@ fun CoineProApp(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainShell(
+    /**
+     * Whether nobody is signed in.
+     *
+     * This is the whole of the guest work in one parameter, and the point of putting it here rather
+     * than in a second shell is that there is no second shell: a guest gets this Scaffold, this
+     * bottom bar, this navigation graph and these screens. Five destinations change what they draw
+     * — Home becomes the public one, Signals and the AI become an offer rather than a wall, the
+     * toolkit hides the three cards that need a session, and the profile loses the account rows —
+     * and everything else is byte-for-byte the app a member uses.
+     *
+     * A separate guest shell would drift within a release, and the one that drifted would be the
+     * one nobody on the team looks at.
+     */
+    guest: Boolean,
+    /** The reader's own name, face and line, whether or not they have an account. */
+    profile: StoredProfile,
+    /** What the server calls this reader, and where to reach them. Null for a guest. */
+    accountName: String?,
+    accountEmail: String?,
+    onSetDisplayName: (String?) -> Unit,
+    onSetTagline: (String?) -> Unit,
+    onSetAvatar: (AvatarSpec) -> Unit,
+    /** Offered on the guest surfaces. Null when there is already a session. */
+    onSignIn: (() -> Unit)?,
+    /** The public feed's controller — Home and the two gates read it when [guest] is true. */
+    guestController: GuestController,
     marketState: MarketDataState,
     marketSearchController: MarketSearchController,
     /** The candle source for the platform on screen. See the chart route below. */
@@ -695,6 +868,7 @@ private fun MainShell(
         CONNECTIONS_ROUTE,
         MARKET_SEARCH_ROUTE,
         CHART_PATTERN,
+        PROFILE_ROUTE,
         PORTFOLIO_ROUTE,
         ACADEMY_ROUTE,
         LESSON_PATTERN,
@@ -726,6 +900,7 @@ private fun MainShell(
             MarketPlatform.COINEPRO_FX -> R.string.screen_copy_trading
             MarketPlatform.TRADEYAR -> R.string.screen_connections
         }
+        PROFILE_ROUTE -> R.string.screen_profile
         KYC_ROUTE -> R.string.screen_kyc
         DELETE_ACCOUNT_ROUTE -> R.string.screen_delete_account
         ALERTS_ROUTE -> R.string.screen_alerts
@@ -795,12 +970,22 @@ private fun MainShell(
                         }
                     },
                     actions = {
+                        // One control where there were two text buttons.
+                        //
+                        // «ایمنی» and «خروج» were a pair of words in the corner of every screen,
+                        // and neither is something a reader reaches for often. What they do want in
+                        // that corner is themselves — so the corner is now the avatar, and safety,
+                        // sign-out, verification and deletion are rows on the page it opens. A
+                        // guest gets the same control with the same avatar; what differs is that
+                        // their page offers an account instead of listing one.
                         if (!isSubScreen) {
-                            TextButton(onClick = { navController.navigate(LAUNCH_READINESS_ROUTE) }) {
-                                Text(stringResource(R.string.action_safety))
-                            }
-                            TextButton(onClick = onLogout) {
-                                Text(stringResource(R.string.action_logout))
+                            IconButton(onClick = { navController.navigate(PROFILE_ROUTE) }) {
+                                CoineProAvatar(
+                                    spec = profile.avatar,
+                                    initial = (profile.displayName ?: accountName)?.take(1) ?: "",
+                                    size = 30.dp,
+                                    contentDescription = stringResource(R.string.screen_profile),
+                                )
                             }
                         }
                     },
@@ -840,8 +1025,27 @@ private fun MainShell(
             modifier = Modifier.padding(innerPadding),
         ) {
             composable(AppDestination.HOME.route) {
+                // The same tab, two homes. A guest's is the public feed's — real prices, the real
+                // track record, the real headlines — with their own avatar at the top of it, and
+                // the market rows open the same chart a member's do.
+                if (guest) {
+                    GuestScreen(
+                        controller = guestController,
+                        onSignIn = onSignIn ?: {},
+                        avatar = profile.avatar,
+                        onOpenProfile = { navController.navigate(PROFILE_ROUTE) },
+                        onOpenSymbol = { navController.navigate(chartRoute(it)) },
+                        onOpenMarket = { navController.navigate(AppDestination.MARKETS.route) },
+                        onOpenTools = { navController.navigate(TOOLS_ROUTE) },
+                    )
+                    return@composable
+                }
                 HomeScreen(
                     state = marketState,
+                    // The reader's own name if they chose one, the server's otherwise. Without this
+                    // the greeting row does not render at all — and with it goes the avatar, which
+                    // is Home's only way into the account.
+                    displayName = profile.displayName ?: accountName,
                     watchlist = watchlist,
                     onToggleWatch = onToggleWatch,
                     onVisibleSymbols = onSubscribeSymbols,
@@ -870,11 +1074,10 @@ private fun MainShell(
                     // was no list worth opening.
                     onOpenMarket = { navController.navigate(MARKET_SEARCH_ROUTE) },
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
-                    // Home carries no top bar, so the account actions hang off the avatar.
-                    onOpenVerification = { navController.navigate(KYC_ROUTE) },
-                    onOpenSafety = { navController.navigate(LAUNCH_READINESS_ROUTE) },
-                    onDeleteAccount = { navController.navigate(DELETE_ACCOUNT_ROUTE) },
-                    onLogout = onLogout,
+                    // Home carries no top bar, so the avatar is the way into the account — and it
+                    // now opens the profile page rather than a four-item dropdown.
+                    avatar = profile.avatar,
+                    onOpenProfile = { navController.navigate(PROFILE_ROUTE) },
                     platforms = platforms,
                     activePlatform = activePlatform,
                     onSelectPlatform = onSelectPlatform,
@@ -889,6 +1092,14 @@ private fun MainShell(
                 )
             }
             composable(AppDestination.SIGNALS.route) {
+                if (guest) {
+                    GuestGateScreen(
+                        gate = GuestGate.SIGNALS,
+                        controller = guestController,
+                        onSignIn = onSignIn ?: {},
+                    )
+                    return@composable
+                }
                 SignalsScreen(
                     controller = signalController,
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
@@ -936,6 +1147,99 @@ private fun MainShell(
                     onOpenConnections = { navController.navigate(CONNECTIONS_ROUTE) },
                 )
             }
+            composable(PROFILE_ROUTE) {
+                // The one page in the app that is about the reader rather than about a market.
+                //
+                // A guest reaches it from the same corner, sees the same hero, edits the same
+                // avatar and keeps the same name — what they do not get is the account rows,
+                // because there is no account to act on. They get the offer instead, once.
+                var composing by rememberSaveable { mutableStateOf(false) }
+                val initial = (profile.displayName ?: accountName)?.trim()?.take(1)
+                    ?: stringResource(R.string.profile_initial_fallback)
+
+                ProfileScreen(
+                    profile = profile,
+                    accountName = accountName,
+                    email = accountEmail,
+                    guest = guest,
+                    planLabel = subscription?.planLabel,
+                    platformLabel = stringResource(activePlatform.labelRes()),
+                    // Three figures, and every one of them is about this reader: what they chose
+                    // to watch, what they wrote down, what they practised. No market number
+                    // belongs on this page.
+                    readings = listOf(
+                        CoineProReading(
+                            label = stringResource(R.string.profile_reading_watchlist),
+                            value = watchlist.size.toPersianDigits(),
+                        ),
+                    ),
+                    onEditAvatar = { composing = true },
+                    onSetDisplayName = onSetDisplayName,
+                    onSetTagline = onSetTagline,
+                    onSignIn = onSignIn.takeIf { guest },
+                    actions = if (guest) {
+                        // Safety is offered to a guest too. It is where the crash report and the
+                        // version live, and a reader who has hit a bug should not have to make an
+                        // account to tell us about it.
+                        listOf(
+                            ProfileAction(
+                                label = stringResource(R.string.profile_action_safety),
+                                note = stringResource(R.string.profile_action_safety_note),
+                                onClick = { navController.navigate(LAUNCH_READINESS_ROUTE) },
+                            ),
+                        )
+                    } else {
+                        buildList {
+                            add(
+                                ProfileAction(
+                                    label = stringResource(R.string.profile_action_verification),
+                                    onClick = { navController.navigate(KYC_ROUTE) },
+                                ),
+                            )
+                            add(
+                                ProfileAction(
+                                    label = stringResource(R.string.profile_action_alerts),
+                                    onClick = { navController.navigate(ALERTS_ROUTE) },
+                                ),
+                            )
+                            add(
+                                ProfileAction(
+                                    label = stringResource(R.string.profile_action_safety),
+                                    note = stringResource(R.string.profile_action_safety_note),
+                                    onClick = { navController.navigate(LAUNCH_READINESS_ROUTE) },
+                                ),
+                            )
+                            add(
+                                ProfileAction(
+                                    label = stringResource(R.string.action_logout),
+                                    onClick = onLogout,
+                                ),
+                            )
+                            // Last, and drawn in the refusal colour. It is the one row here that
+                            // cannot be undone.
+                            add(
+                                ProfileAction(
+                                    label = stringResource(R.string.profile_action_delete),
+                                    destructive = true,
+                                    onClick = { navController.navigate(DELETE_ACCOUNT_ROUTE) },
+                                ),
+                            )
+                        }
+                    },
+                )
+
+                if (composing) {
+                    AvatarComposerSheet(
+                        current = profile.avatar,
+                        initial = initial,
+                        onSave = { spec ->
+                            onSetAvatar(spec)
+                            composing = false
+                        },
+                        onDismiss = { composing = false },
+                    )
+                }
+            }
             composable(KYC_ROUTE) {
                 KycScreen(controller = accountController)
             }
@@ -976,6 +1280,14 @@ private fun MainShell(
                 }
             }
             composable(AppDestination.AI.route) {
+                if (guest) {
+                    GuestGateScreen(
+                        gate = GuestGate.AI,
+                        controller = guestController,
+                        onSignIn = onSignIn ?: {},
+                    )
+                    return@composable
+                }
                 // AiStudioScreen, not the older AiScreen: the two carried the same generator, and
                 // only this one shows the evidence the server returns alongside the verdict.
                 AiStudioScreen(
@@ -1146,11 +1458,13 @@ private fun MainShell(
                         navController.navigate(scriptRoute(defaultScriptSymbol(activePlatform, watchlist)))
                     },
                     platform = activePlatform,
-                    onOpenConnections = { navController.navigate(CONNECTIONS_ROUTE) },
-                    onOpenNews = { navController.navigate(NEWS_ROUTE) },
-                    onOpenCalendar = { navController.navigate(CALENDAR_ROUTE) },
-                    onOpenPortfolio = { navController.navigate(PORTFOLIO_ROUTE) },
-                    onOpenAcademy = if (hasAcademy) {
+                    // Null for a guest, on the three that read a signed-in route. Everything else
+                    // on this screen is local to the phone and opens for anybody.
+                    onOpenConnections = if (guest) null else ({ navController.navigate(CONNECTIONS_ROUTE) }),
+                    onOpenNews = if (guest) null else ({ navController.navigate(NEWS_ROUTE) }),
+                    onOpenCalendar = if (guest) null else ({ navController.navigate(CALENDAR_ROUTE) }),
+                    onOpenPortfolio = if (guest) null else ({ navController.navigate(PORTFOLIO_ROUTE) }),
+                    onOpenAcademy = if (hasAcademy && !guest) {
                         { navController.navigate(ACADEMY_ROUTE) }
                     } else {
                         null
@@ -1198,6 +1512,11 @@ private fun MainShell(
                 )
             }
             composable(LAUNCH_READINESS_ROUTE) {
+                val context = LocalContext.current
+                val crashes = remember(context) { CrashReport(context) }
+                // Read once per visit rather than watched: a crash file cannot change while the
+                // app that would write it is the one on screen.
+                var lastCrash by remember { mutableStateOf(crashes.last()) }
                 LaunchReadinessScreen(
                     notificationPermissionState = notificationPermissionState,
                     onRequestNotificationPermission = onRequestNotificationPermission,
@@ -1205,6 +1524,20 @@ private fun MainShell(
                     onSendFeedback = onSendFeedback,
                     versionLabel = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                     onOpenDiagnostics = { navController.navigate(ADMIN_ROUTE) },
+                    lastCrash = lastCrash,
+                    onCopyCrash = { trace ->
+                        val clipboard = context.getSystemService(ClipboardManager::class.java)
+                        clipboard?.setPrimaryClip(
+                            ClipData.newPlainText(
+                                "CoinePro crash",
+                                "CoinePro ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\n\n" + trace,
+                            ),
+                        )
+                    },
+                    onClearCrash = {
+                        crashes.clear()
+                        lastCrash = null
+                    },
                 )
             }
         }
@@ -1225,6 +1558,13 @@ private fun MarketConnectionState.tone(): HubTone = when (this) {
     MarketConnectionState.CONNECTING, MarketConnectionState.DEGRADED -> HubTone.WARN
     MarketConnectionState.OFFLINE -> HubTone.BAD
     MarketConnectionState.IDLE -> HubTone.IDLE
+}
+
+/** The platform's own short name, for the badge on the profile hero. */
+@StringRes
+private fun MarketPlatform.labelRes(): Int = when (this) {
+    MarketPlatform.TRADEYAR -> R.string.platform_crypto
+    MarketPlatform.COINEPRO_FX -> R.string.platform_forex
 }
 
 @StringRes

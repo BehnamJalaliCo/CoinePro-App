@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,6 +47,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.ui.res.painterResource
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.R as DesignR
+import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
@@ -59,6 +58,7 @@ import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.marketdata.MarketConnectionState
 import com.coinepro.core.marketdata.MarketDataOrigin
 import com.coinepro.core.marketdata.MarketDataState
+import com.coinepro.core.model.AvatarSpec
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketQuote
 import java.time.Instant
@@ -90,7 +90,17 @@ fun HomeScreen(
     onSendChart: () -> Unit = {},
     onOpenMarket: () -> Unit = {},
     onOpenSignal: (Long) -> Unit = {},
-    onOpenVerification: (() -> Unit)? = null,
+    /**
+     * The reader's chosen avatar, and where tapping it goes.
+     *
+     * The greeting row used to open a dropdown of account actions from a lettered disc. Those
+     * actions moved to the profile page, which is a better home for them — verification, alerts,
+     * safety, sign-out and deletion are a list, and a list belongs on a page rather than in a menu
+     * that shows four of them at a time. What is left here is the avatar itself, which is now the
+     * reader's own picture rather than their initial, and it is the way in.
+     */
+    avatar: AvatarSpec = AvatarSpec.Default,
+    onOpenProfile: (() -> Unit)? = null,
     /**
      * The toolkit and the activity log, which used to be bottom-navigation tabs.
      *
@@ -100,9 +110,6 @@ fun HomeScreen(
      */
     onOpenTools: (() -> Unit)? = null,
     onOpenActivity: (() -> Unit)? = null,
-    onOpenSafety: (() -> Unit)? = null,
-    onLogout: (() -> Unit)? = null,
-    onDeleteAccount: (() -> Unit)? = null,
     /** The reader's own list, oldest first. Empty hides the card rather than showing a placeholder. */
     watchlist: List<String> = emptyList(),
     onToggleWatch: ((String) -> Unit)? = null,
@@ -139,7 +146,7 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
     ) {
         if (displayName != null) {
-            item { GreetingRow(displayName, onOpenVerification, onOpenSafety, onLogout, onDeleteAccount) }
+            item { GreetingRow(displayName, avatar, onOpenProfile) }
         }
 
         // Only when the build actually serves both. A one-option switch is a label pretending to be
@@ -241,16 +248,11 @@ fun HomeScreen(
 @Composable
 private fun GreetingRow(
     displayName: String,
-    onOpenVerification: (() -> Unit)?,
-    onOpenSafety: (() -> Unit)?,
-    onLogout: (() -> Unit)?,
-    onDeleteAccount: (() -> Unit)?,
+    avatar: AvatarSpec,
+    onOpenProfile: (() -> Unit)?,
 ) {
-    var menuOpen by rememberSaveable { mutableStateOf(false) }
-    val hasMenu = onOpenVerification != null || onOpenSafety != null || onLogout != null ||
-        onDeleteAccount != null
     // Resolved out here: the semantics block is not a composable scope.
-    val accountMenuLabel = stringResource(R.string.home_menu_account)
+    val profileLabel = stringResource(R.string.home_menu_account)
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
@@ -262,62 +264,20 @@ private fun GreetingRow(
             style = MaterialTheme.typography.bodyLarge,
             color = CoineProColors.TextSecondary,
         )
-        Box {
-            // The reader's own initial rather than a generic avatar glyph: it is the one place on
-            // the screen that says whose account this is, and — since Home carries no top bar —
-            // the way into the account actions.
-            CoineProAssetToken(
-                label = displayName.trim().take(1),
-                tint = CoineProColors.Accent,
-                size = 34.dp,
-                modifier = if (hasMenu) {
-                    Modifier
-                        .clickable { menuOpen = true }
-                        .semantics { contentDescription = accountMenuLabel }
-                } else {
-                    Modifier
-                },
-            )
-            if (hasMenu) {
-                DropdownMenu(
-                    expanded = menuOpen,
-                    onDismissRequest = { menuOpen = false },
-                    containerColor = CoineProColors.SurfaceElevated,
-                ) {
-                    onOpenVerification?.let { action ->
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.home_menu_verification)) },
-                            onClick = { menuOpen = false; action() },
-                        )
-                    }
-                    onOpenSafety?.let { action ->
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.home_menu_safety)) },
-                            onClick = { menuOpen = false; action() },
-                        )
-                    }
-                    onLogout?.let { action ->
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.home_menu_logout)) },
-                            onClick = { menuOpen = false; action() },
-                        )
-                    }
-                    // Last, and in the refusal colour. It is the one item here that cannot be
-                    // undone, and it must not sit next to "sign out" looking like its neighbour.
-                    onDeleteAccount?.let { action ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = stringResource(R.string.home_menu_delete_account),
-                                    color = CoineProColors.Sell,
-                                )
-                            },
-                            onClick = { menuOpen = false; action() },
-                        )
-                    }
-                }
-            }
-        }
+        // The one place on the screen that says whose account this is, and — since Home carries no
+        // top bar — the way into everything the account can do.
+        CoineProAvatar(
+            spec = avatar,
+            initial = displayName.trim().take(1),
+            size = 38.dp,
+            modifier = if (onOpenProfile == null) {
+                Modifier
+            } else {
+                Modifier
+                    .clickable(onClick = onOpenProfile)
+                    .semantics { contentDescription = profileLabel }
+            },
+        )
     }
 }
 

@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.coinepro.app.notifications.NotificationChannels
+import com.coinepro.core.diagnostics.CrashReport
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import dagger.hilt.android.HiltAndroidApp
@@ -20,6 +21,10 @@ class CoineProApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        // First, before anything else can throw. A crash during start-up is the one this app had
+        // no way to see: the process dies, the launcher restarts it at the first screen, and the
+        // reader reports "it crashed" with nothing to go on.
+        CrashReport(this).install()
         initializeFirebaseIfConfigured()
         NotificationChannels.ensure(this)
     }

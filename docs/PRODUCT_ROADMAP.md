@@ -320,6 +320,7 @@ feature:signals
 feature:signal-detail
 feature:connections
 feature:execution
+feature:profile
 feature:kyc
 feature:account
 feature:guest

@@ -21,6 +21,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -133,6 +134,18 @@ import org.robolectric.annotation.GraphicsMode
 import com.coinepro.feature.home.HomeSubscription
 import com.coinepro.core.guest.GuestController
 import com.coinepro.feature.account.DeleteAccountScreen
+import com.coinepro.core.datastore.StoredProfile
+import com.coinepro.core.designsystem.CoineProAvatar
+import com.coinepro.core.designsystem.CoineProReading
+import com.coinepro.core.model.AvatarBase
+import com.coinepro.core.model.AvatarMark
+import com.coinepro.core.model.AvatarRing
+import com.coinepro.core.model.AvatarSpec
+import com.coinepro.feature.guest.GuestGate
+import com.coinepro.feature.guest.GuestGateScreen
+import com.coinepro.feature.profile.AvatarComposerBody
+import com.coinepro.feature.profile.ProfileAction
+import com.coinepro.feature.profile.ProfileScreen
 import com.coinepro.feature.guest.GuestScreen
 import com.coinepro.feature.kyc.KycScreen
 import com.coinepro.core.account.AccountController
@@ -292,7 +305,124 @@ class ScreenshotRenderTest {
         GuestScreen(
             controller = GuestController(FakeGuestGateway(), scope, pollMillis = 60_000),
             onSignIn = {},
+            avatar = AvatarSpec(AvatarBase.Mark(AvatarMark.ROCKET), AvatarRing.GOLD),
+            onOpenProfile = {},
+            onOpenSymbol = {},
+            onOpenMarket = {},
+            onOpenTools = {},
         )
+    }
+
+    /**
+     * What a guest finds on the signals tab.
+     *
+     * Rendered because it is the one place in the guest experience where the app asks for
+     * something, and the render is the only way to check it still reads as an offer rather than as
+     * a wall: the track record has to be *below* the card and visible without a scroll, because the
+     * argument for the account is what the signals did, not the sentence saying they exist.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun guestSignalsGate() = capture("83-guest-signals-gate-fa") {
+        val controller = GuestController(FakeGuestGateway(), scope, pollMillis = 60_000)
+        controller.refreshTrackRecord()
+        GuestGateScreen(gate = GuestGate.SIGNALS, controller = controller, onSignIn = {})
+    }
+
+    /**
+     * The profile, for somebody who has not signed in.
+     *
+     * A guest has a real page here — their own avatar, their own name, their own watchlist counted
+     * — and one offer. The render is the check that the offer reads as an offer: it sits under the
+     * hero rather than over it, and nothing above it is withheld or blurred.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun profileGuest() = capture("84-profile-guest-fa") {
+        ProfileScreen(
+            profile = StoredProfile(
+                avatar = AvatarSpec(AvatarBase.Mark(AvatarMark.TREND), AvatarRing.ANALYSIS),
+            ),
+            guest = true,
+            platformLabel = "کریپتو",
+            readings = listOf(CoineProReading(label = "بازارهای دنبال‌شده", value = "۷")),
+            onSignIn = {},
+            actions = listOf(
+                ProfileAction(label = "ایمنی و نسخه", note = "اعلان‌ها، گزارش خطا و شماره‌ی نسخه") {},
+            ),
+        )
+    }
+
+    /**
+     * The same page with an account behind it.
+     *
+     * The five account rows are the ones that used to be a dropdown off Home's avatar, and the
+     * render is what says whether they read as a list rather than as a menu that escaped. The
+     * deletion row is last and in the refusal colour; if it does not look different from "sign out"
+     * at a glance, the screen has failed.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun profileMember() = capture("85-profile-member-fa") {
+        ProfileScreen(
+            profile = StoredProfile(
+                displayName = "بهنام",
+                tagline = "طلا و بیت‌کوین، روزانه",
+                avatar = AvatarSpec(AvatarBase.Symbol("XAUUSD"), AvatarRing.PREMIUM),
+            ),
+            accountName = "بهنام جلالی",
+            email = "behnam@example.com",
+            planLabel = "اشتراک حرفه‌ای",
+            platformLabel = "فارکس",
+            readings = listOf(
+                CoineProReading(label = "بازارهای دنبال‌شده", value = "۱۲"),
+                CoineProReading(label = "معامله‌های ثبت‌شده", value = "۳۴"),
+            ),
+            actions = listOf(
+                ProfileAction(label = "احراز هویت") {},
+                ProfileAction(label = "هشدارهای قیمت") {},
+                ProfileAction(label = "ایمنی و نسخه", note = "اعلان‌ها، گزارش خطا و شماره‌ی نسخه") {},
+                ProfileAction(label = "خروج") {},
+                ProfileAction(label = "حذف حساب", destructive = true) {},
+            ),
+        )
+    }
+
+    /**
+     * The avatar composer, on the marks shelf.
+     *
+     * This is the render that matters for the whole feature. Ten marks are drawn here — each one a
+     * Compose path rather than an emoji font — and the capture is the only thing that says they are
+     * legible at forty-two points rather than a smudge. The preview at the top is the live avatar,
+     * so the same render also checks the ring and the base compose into one object.
+     *
+     * They are drawn at rest: [continuousMotionAllowed] reports false under a render, which holds
+     * every mark on the frame it looks best on and keeps the capture deterministic.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun avatarComposerMarks() = capture("86-avatar-composer-fa") {
+        AvatarComposerBody(
+            current = AvatarSpec(AvatarBase.Mark(AvatarMark.ROCKET), AvatarRing.GOLD),
+            initial = "ب",
+            photoPath = null,
+            onSave = {},
+            onCancel = {},
+            onPickPhoto = {},
+        )
+    }
+
+    /**
+     * Every mark and every ring, side by side.
+     *
+     * A contact sheet rather than a screen, for the same reason the drawing tools have one: ten
+     * marks reviewed one at a time is ten judgements about whether something looks right, and what
+     * actually matters is whether they look like one set.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun avatarGallery() = capture("87-avatar-gallery-fa") {
+        AvatarGallery()
     }
 
     /**
@@ -1723,3 +1853,79 @@ private val SHEET_GROUPS = listOf(
     ToolGroup.POSITION,
     ToolGroup.ANNOTATION,
 )
+
+/**
+ * Every mark, and every ring, in one grid.
+ *
+ * Two rows of five for the marks with the gold ring, then one row showing the same mark in each of
+ * the six rings. That second row is the one that earns the sheet: a ring is only right if it works
+ * on every colour the mark can be, and the two that carry their own colour — the bull and the bear
+ * — have to still read as themselves inside a ring that disagrees with them.
+ */
+@Composable
+private fun AvatarGallery() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(CoineProColors.Stage)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = "نشان‌های نیمرخ",
+            style = MaterialTheme.typography.titleMedium,
+            color = CoineProColors.TextPrimary,
+        )
+        AvatarMark.entries.chunked(5).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                row.forEach { mark ->
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CoineProAvatar(
+                            spec = AvatarSpec(AvatarBase.Mark(mark), AvatarRing.GOLD),
+                            size = 62.dp,
+                        )
+                        Text(
+                            text = mark.name.lowercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = CoineProColors.TextMuted,
+                        )
+                    }
+                }
+            }
+        }
+        Text(
+            text = "حلقه‌ها",
+            style = MaterialTheme.typography.titleMedium,
+            color = CoineProColors.TextPrimary,
+        )
+        // 48dp, not 56: six of them at 56 with gaps overflow a 411dp screen, and the one that
+        // overflows is squashed into a pill rather than clipped — which is what the first capture
+        // showed, and is worth knowing about any avatar in a tight row.
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            AvatarRing.entries.forEach { ring ->
+                CoineProAvatar(
+                    spec = AvatarSpec(AvatarBase.Mark(AvatarMark.DIAMOND), ring),
+                    size = 48.dp,
+                )
+            }
+        }
+        Text(
+            text = "بازارها و حرف اول",
+            style = MaterialTheme.typography.titleMedium,
+            color = CoineProColors.TextPrimary,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            listOf("BTC", "ETH", "XAUUSD", "EURUSD").forEach { symbol ->
+                CoineProAvatar(
+                    spec = AvatarSpec(AvatarBase.Symbol(symbol), AvatarRing.ANALYSIS),
+                    size = 56.dp,
+                )
+            }
+            CoineProAvatar(
+                spec = AvatarSpec(AvatarBase.Initial, AvatarRing.GOLD),
+                initial = "ب",
+                size = 56.dp,
+            )
+        }
+    }
+}

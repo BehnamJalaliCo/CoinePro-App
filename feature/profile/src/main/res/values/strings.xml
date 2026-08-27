@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_guest_name">مهمان</string>
+    <string name="profile_guest_tagline">بدون حساب، همه‌ی بازارها و نمودارها در دسترس شماست.</string>
+    <string name="profile_member_tagline">عضو کوین‌پرو</string>
+    <string name="profile_avatar_description">تصویر نیمرخ شما</string>
+    <string name="profile_edit_avatar">تغییر تصویر</string>
+    <string name="profile_account_section">حساب</string>
+    <string name="profile_local_note">نام، تصویر و توضیح شما فقط روی همین گوشی ذخیره می‌شود و به هیچ سروری فرستاده نمی‌شود. با حذف یا نصب دوباره‌ی برنامه از بین می‌رود.</string>
+
+    <string name="profile_signin_title">حساب بسازید، اگر خواستید</string>
+    <string name="profile_signin_body">بازارها، نمودار حرفه‌ای، جست‌وجو، دفترچه‌ی معاملات، معامله‌ی آزمایشی و نما‌اسکریپت بدون حساب کار می‌کنند. حساب فقط سیگنال‌ها، هوش مصنوعی، کیف پول و کپی‌تریدینگ را اضافه می‌کند.</string>
+    <string name="profile_signin_action">ورود یا ثبت نام</string>
+    <string name="profile_signin_note">به زور کسی را ثبت نام نمی‌کنیم. هر وقت خواستید، همین‌جاست.</string>
+
+    <string name="profile_identity_title">نام و معرفی</string>
+    <string name="profile_identity_edit">ویرایش</string>
+    <string name="profile_identity_save">ذخیره</string>
+    <string name="profile_identity_cancel">انصراف</string>
+    <string name="profile_identity_unset">نامی انتخاب نکرده‌اید</string>
+    <string name="profile_field_name">نام نمایشی</string>
+    <string name="profile_field_tagline">یک خط درباره‌ی خودتان</string>
+
+    <string name="avatar_title">تصویر نیمرخ</string>
+    <string name="avatar_subtitle">یک تصویر یا یکی از نشان‌های ما را انتخاب کنید</string>
+    <string name="avatar_tab_mine">خودم</string>
+    <string name="avatar_tab_crypto">رمزارز</string>
+    <string name="avatar_tab_forex">فارکس</string>
+    <string name="avatar_tab_metal">فلزات</string>
+    <string name="avatar_tab_mark">نشان‌ها</string>
+    <string name="avatar_ring_none">بدون</string>
+    <string name="avatar_pick_photo">انتخاب تصویر از گوشی</string>
+    <string name="avatar_pick_another">انتخاب تصویر دیگر</string>
+    <string name="avatar_photo_note">تصویر روی همین گوشی می‌ماند و جایی فرستاده نمی‌شود.</string>
+    <string name="avatar_save">ذخیره</string>
+    <string name="avatar_cancel">انصراف</string>
+
+    <string name="avatar_mark_rocket">موشک</string>
+    <string name="avatar_mark_bull">گاو</string>
+    <string name="avatar_mark_bear">خرس</string>
+    <string name="avatar_mark_candle">کندل</string>
+    <string name="avatar_mark_diamond">الماس</string>
+    <string name="avatar_mark_flame">شعله</string>
+    <string name="avatar_mark_bolt">صاعقه</string>
+    <string name="avatar_mark_trend">روند</string>
+    <string name="avatar_mark_shield">سپر</string>
+    <string name="avatar_mark_globe">جهانی</string>
+    <string name="profile_identity_hint">نام نمایشی و یک خط معرفی، فقط روی همین گوشی.</string>
+</resources>

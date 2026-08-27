@@ -109,7 +109,10 @@ class GuestController(
         }
         refreshNews()
         refreshTrackRecord()
-        refreshCommunity()
+        // Not the community. The section it fed was removed from the guest home — a member count
+        // and a list of Telegram channels is a crowd shown to somebody who has not yet been told
+        // what the crowd is for — and a request whose answer nothing draws is a request not worth
+        // making. [refreshCommunity] stays for a caller that wants it back.
         refreshMembership()
     }
 

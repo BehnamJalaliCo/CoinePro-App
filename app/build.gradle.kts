@@ -353,6 +353,7 @@ dependencies {
     implementation(project(":feature:signal-detail"))
     implementation(project(":feature:connections"))
     implementation(project(":feature:execution"))
+    implementation(project(":feature:profile"))
     implementation(project(":feature:kyc"))
     implementation(project(":feature:account"))
     implementation(project(":feature:guest"))

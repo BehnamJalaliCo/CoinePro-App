@@ -25,10 +25,16 @@
     <string name="guest_record_summary">%1$s of the last %2$s closed signals finished in profit — a %3$s%% win rate.</string>
     <string name="guest_record_note">These are real published signals that have closed, not samples. Past performance is not a guarantee of future results.</string>
     <string name="guest_market_count">of %1$s markets</string>
-    <string name="guest_community_title">The CoinePro community</string>
-    <string name="guest_community_total">%1$s members across the public channels and groups</string>
-    <string name="guest_community_bot">%1$s bot users</string>
-    <string name="guest_community_members">%1$s members</string>
-    <string name="guest_community_unknown">No data available</string>
-    <string name="guest_community_open">Open</string>
+    <string name="guest_greeting">Hello</string>
+    <string name="guest_greeting_note">Every market, the chart and the tools are open with no account.</string>
+    <string name="guest_initial">G</string>
+    <string name="guest_profile_description">Your profile</string>
+    <string name="guest_action_markets">All markets</string>
+    <string name="guest_action_tools">Tools</string>
+    <string name="guest_signals_title">Signals</string>
+    <string name="guest_signals_body">Live signals open with a free account. The record below is what the closed signals actually did — not a sample, and not an advertisement.</string>
+    <string name="guest_ai_title">The AI</string>
+    <string name="guest_ai_body">Chart analysis, the assistant and AI signal generation need an account; the chart, the indicators and NamaScript do not.</string>
+    <string name="guest_gate_action">Sign in or register, free</string>
+    <string name="guest_gate_eyebrow">With a free account</string>
 </resources>
