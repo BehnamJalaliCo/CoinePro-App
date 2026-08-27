@@ -15,6 +15,35 @@ it is for.
 
 ---
 
+## [1.20.0] — 2026-08-27 — An icon with a ground under it
+
+### Changed
+- The launcher icon's background is a fifteen-level radial rather than one flat slab of #0E1118. A
+  flat slab is what makes an icon look dead on a home screen full of icons that are not flat: there
+  is nothing for the mark to sit *in*. It is not a glow — centred on the canvas rather than on the
+  mark, and neutral rather than tinted with either brand colour.
+- The mark is centred on its ink centroid rather than its bounding box. Its mass sits at 44% of the
+  height, because it is an interlocking C and P with a tail hanging off the bottom, so a box-centred
+  mark floats high.
+- The size is unchanged, and that is a finding rather than an oversight: measuring the artwork says
+  the old fit was within 3% of the largest it can honestly be. The icon was not lifeless because it
+  was small.
+
+### Added
+- A real monochrome layer for themed icons. Android tints that layer flat, so pointing it at the
+  colour artwork threw away everything separating the silver C from the gold P and left one blob.
+  The generated one keeps the crossing by cutting a thin seam where the two materials meet — thin
+  because the mark is drawn as six-dp ribbons, and a wide knock-out chews through a stroke.
+- `design/play/icon-512.png`, composited from the same two layers the launcher draws, so the store
+  icon and the installed one cannot drift apart. That row of the Play checklist is now done.
+
+### Fixed
+- The mark no longer overruns the adaptive icon's 72dp viewport. Sizing it to the guaranteed circle
+  alone pushed the end of the P's tail off the bottom of the canvas — an error that only shows up on
+  a phone.
+
+---
+
 ## [1.19.0] — 2026-08-27 — "Coine" in the mark's own silver
 
 ### Changed

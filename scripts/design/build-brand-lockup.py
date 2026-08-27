@@ -11,6 +11,8 @@ What it produces:
 * `coinepro_mark` and `coinepro_wordmark`, five densities each, in `core:designsystem`.
 * `ic_launcher_foreground`, `ic_launcher_background` and `ic_launcher_monochrome`, five densities
   each, in `app`.
+* `design/play/icon-512.png`, the Play listing's icon, composited from the same two layers so the
+  store and the home screen cannot drift apart.
 
 Two of those outputs are not straight crops, and the reasons are in `silver_matched` and
 `launcher_foreground` below.
@@ -41,6 +43,7 @@ REPO = Path(__file__).resolve().parents[2]
 MASTER = REPO / "core" / "designsystem" / "brand" / "coinepro-lockup-master.png"
 DESIGN_RES = REPO / "core" / "designsystem" / "src" / "main" / "res"
 APP_RES = REPO / "app" / "src" / "main" / "res"
+PLAY = REPO / "design" / "play"
 
 # The regions of the master. Recorded here rather than in a README so that changing one means
 # changing the thing that actually reads it.
@@ -65,6 +68,14 @@ ICON_SAFE_DIAMETER = 66
 # Anything outside it is not "maybe cropped", it is gone — so this is a hard bound and the safe
 # circle above is a soft one. One dp is left as margin so a rounding error is not a shaved edge.
 ICON_VIEWPORT = 71
+
+# What a launcher actually draws: the middle 72 of the canvas, exactly. ICON_VIEWPORT above is that
+# same number minus a dp of margin, and is the bound the artwork is sized against; this one is the
+# geometry, and is what the Play listing's crop has to use.
+ICON_VIEWPORT_ACTUAL = 72
+
+# Set once by `build`, so `play_icon` composites the same mark rather than re-reading the master.
+MARK_CACHE: list = []
 
 # A pixel is gold rather than silver when its channels disagree by more than this. The mark's
 # silver is genuinely neutral (mean r = g = b to within half a level), so the split is clean.
@@ -361,6 +372,24 @@ def odd(value: int) -> int:
     return value if value % 2 else value + 1
 
 
+def play_icon(size: int = 512) -> Image.Image:
+    """The Play listing's icon, composited from the very layers the launcher draws.
+
+    Generated rather than exported by hand, because a store icon that was made separately drifts
+    from the installed one — and the two sitting side by side in a search result is exactly where
+    somebody notices.
+
+    It is the 72 viewport rather than the full 108 canvas: Play applies its own rounding, and giving
+    it the whole canvas would hand it 18dp of empty margin on every side to round the corners of.
+    Flattened onto the background with no alpha, which the store requires.
+    """
+    source = size * ICON_CANVAS_MDPI // ICON_VIEWPORT_ACTUAL
+    composed = Image.alpha_composite(launcher_background(source), launcher_foreground(MARK_CACHE[0], source))
+    inset = round(source * (ICON_CANVAS_MDPI - ICON_VIEWPORT_ACTUAL) / 2 / ICON_CANVAS_MDPI)
+    viewport = composed.crop((inset, inset, source - inset, source - inset))
+    return viewport.resize((size, size), Image.LANCZOS).convert("RGB")
+
+
 def write(image: Image.Image, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     image.save(path, "PNG", optimize=True)
@@ -371,9 +400,11 @@ def scaled_to_height(image: Image.Image, height: int) -> Image.Image:
     return image.resize((width, height), Image.LANCZOS)
 
 
-def build(design_res: Path, app_res: Path) -> None:
+def build(design_res: Path, app_res: Path, play: Path) -> None:
     master = Image.open(MASTER).convert("RGBA")
     mark = master.crop(MARK_BOX)
+    MARK_CACHE.clear()
+    MARK_CACHE.append(mark)
     wordmark = silver_matched(master.crop(WORDMARK_BOX), mark)
 
     for bucket, factor in DENSITIES.items():
@@ -392,6 +423,8 @@ def build(design_res: Path, app_res: Path) -> None:
         write(launcher_background(size), app_res / f"mipmap-{bucket}" / "ic_launcher_background.png")
         write(launcher_monochrome(foreground), app_res / f"mipmap-{bucket}" / "ic_launcher_monochrome.png")
 
+    write(play_icon(), play / "icon-512.png")
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -399,20 +432,22 @@ def main() -> int:
     arguments = parser.parse_args()
 
     if not arguments.check:
-        build(DESIGN_RES, APP_RES)
+        build(DESIGN_RES, APP_RES, PLAY)
         print("brand rasters regenerated from the master")
         return 0
 
     with tempfile.TemporaryDirectory() as directory:
         design = Path(directory) / "design"
         app = Path(directory) / "app"
-        build(design, app)
+        play = Path(directory) / "play"
+        build(design, app, play)
+        roots = {design: DESIGN_RES, app: APP_RES, play: PLAY}
         drifted = []
-        for produced in sorted(list(design.rglob("*.png")) + list(app.rglob("*.png"))):
-            root = design if design in produced.parents else app
-            target = (DESIGN_RES if root is design else APP_RES) / produced.relative_to(root)
-            if not target.exists() or target.read_bytes() != produced.read_bytes():
-                drifted.append(str(target.relative_to(REPO)))
+        for root, committed in roots.items():
+            for produced in sorted(root.rglob("*.png")):
+                target = committed / produced.relative_to(root)
+                if not target.exists() or target.read_bytes() != produced.read_bytes():
+                    drifted.append(str(target.relative_to(REPO)))
         if drifted:
             print("these rasters are not what the master produces:", file=sys.stderr)
             for path in drifted:

@@ -1,6 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    The launcher icon.
+
+    The background is a drawable rather than `@color/ic_launcher_background`, which is what it used
+    to be. A flat slab is what makes an icon look dead on a home screen full of icons that are not
+    flat — there is nothing for the mark to sit in. The replacement is fifteen levels of luminance
+    from the middle to the corners; see `scripts/design/build-brand-lockup.py`, which generates it.
+
+    The monochrome layer is its own asset and not the foreground reused. Android tints that layer
+    flat, so pointing it at the colour artwork throws away everything that separates the silver C
+    from the gold P. The generated one keeps the crossing by cutting a seam where the two meet.
+
+    The colour is still defined in `values/brand.xml`: a launcher that wants one solid colour for
+    the icon's ground has it, and the Play listing is generated against the same value.
+-->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background" />
+    <background android:drawable="@mipmap/ic_launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
-    <monochrome android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome android:drawable="@mipmap/ic_launcher_monochrome" />
 </adaptive-icon>
