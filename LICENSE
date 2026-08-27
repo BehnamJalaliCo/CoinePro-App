@@ -1,0 +1,35 @@
+# Proprietary — all rights reserved
+
+Copyright © 2026 Behnam Jalali. All rights reserved.
+
+This repository, its source code, its documentation, its build tooling and its brand assets are
+proprietary. No licence is granted to any person to use, copy, modify, merge, publish, distribute,
+sublicense or sell any part of it, whether in source or compiled form, whether as a whole or in
+part, and whether or not modified.
+
+Being able to read this repository is not permission to use it. GitHub's Terms of Service permit
+viewing and forking a public repository through GitHub's own interface; they do not grant any other
+right, and in the absence of a licence every other right is retained by the copyright holder.
+
+Specifically, and without limiting the above, you may not:
+
+* build, publish or distribute an application derived from this code, in any store or by any other
+  means;
+* reuse the CoinePro name, the interlocking C/P mark, the wordmark or any brand asset in this
+  repository, which are additionally protected as trade marks;
+* use this code, in whole or in part, to train a machine-learning model intended to reproduce it.
+
+## Third-party components
+
+This repository vendors work belonging to other people, each under its own licence, and those
+licences continue to govern that work rather than this notice. They are recorded beside the files
+they cover — see `design/asset-logos/*/LICENSE` and `design/ui-icons/README.md`. Where a vendored
+licence permits something this notice forbids, the vendored licence wins for that file, and only
+for that file.
+
+The font IRANYekanX is licensed to the copyright holder and is **not** sublicensed by this
+repository. Do not extract it.
+
+## Contact
+
+behnamjalali88@gmail.com
