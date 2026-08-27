@@ -21,4 +21,5 @@
     <string name="guest_record_title">کارنامهٔ سیگنال‌ها</string>
     <string name="guest_record_summary">از %2$s سیگنالِ بسته‌شدهٔ اخیر، %1$s تا با سود بسته شد — نرخ برد %3$s٪.</string>
     <string name="guest_record_note">این‌ها سیگنال‌های واقعیِ منتشرشده‌اند که بسته شده‌اند، نه نمونهٔ ساختگی. عملکرد گذشته تضمینی برای آینده نیست.</string>
+    <string name="guest_market_count">از %1$s بازار</string>
 </resources>

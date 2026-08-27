@@ -27,6 +27,13 @@ data class GuestPrices(
     val quotes: List<GuestQuote>,
     val stale: Boolean,
     val ageMillis: Long?,
+    /**
+     * How many instruments the feed carries in total, or null before the first full read.
+     *
+     * Worth a line on screen: a guest looking at twenty rows has no other way to know the app
+     * quotes six hundred, and "twenty markets" is a much smaller product than the real one.
+     */
+    val universeSize: Int? = null,
 )
 
 data class GuestHeadline(

@@ -195,12 +195,22 @@ private fun PricesHeader(state: GuestPricesState) {
             style = MaterialTheme.typography.titleMedium,
             color = CoineProColors.TextPrimary,
         )
-        if (state is GuestPricesState.Ready && state.prices.stale) {
-            Text(
+        when {
+            state !is GuestPricesState.Ready -> Unit
+            state.prices.stale -> Text(
                 text = stringResource(R.string.guest_prices_stale),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.Warning,
             )
+            // How many there really are. Twenty rows with nothing saying otherwise is a much
+            // smaller product than the one the feed actually carries.
+            else -> state.prices.universeSize?.let { total ->
+                Text(
+                    text = stringResource(R.string.guest_market_count, total.toPersianDigits()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = CoineProColors.TextMuted,
+                )
+            }
         }
     }
 }

@@ -15,6 +15,20 @@ it is for.
 
 ---
 
+## [1.7.0] — 2026-08-27 — The guest market is the real one
+
+### Changed
+- The guest shelf is chosen from the feed's actual universe instead of eight tickers compiled into
+  the app months ago. The first read asks for everything, takes the twenty busiest, and polls only
+  those.
+- The order is fixed at that first read and never recomputed. A list that re-sorts itself by volume
+  every ten seconds rearranges under the reader's finger — the market decides what is on the shelf,
+  not where each thing sits while somebody is looking at it.
+- The header says how many markets there really are. Twenty rows with nothing saying otherwise is a
+  much smaller product than the one the feed carries.
+
+---
+
 ## [1.6.0] — 2026-08-27 — What the signals actually did, before the sign-up
 
 ### Added

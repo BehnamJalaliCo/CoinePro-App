@@ -46,8 +46,15 @@ sealed interface GuestNewsState {
 class GuestController(
     private val gateway: GuestGateway,
     private val scope: CoroutineScope,
-    private val symbols: List<String> = DEFAULT_SYMBOLS,
     private val pollMillis: Long = 10_000,
+    /**
+     * How many instruments a guest is shown at once.
+     *
+     * The feed carries several hundred. Handing all of them to somebody who has just opened the app
+     * is a wall, not a market — and the server's own note beside the route says the same thing. The
+     * rest are reachable by search; this is the shelf, not the warehouse.
+     */
+    private val visibleCount: Int = 20,
 ) {
     private val pricesMutable = MutableStateFlow<GuestPricesState>(GuestPricesState.Loading)
     private val newsMutable = MutableStateFlow<GuestNewsState>(GuestNewsState.Loading)
@@ -59,12 +66,25 @@ class GuestController(
 
     private var poll: Job? = null
 
+    /**
+     * The symbols polled, chosen once from the first full snapshot.
+     *
+     * Fixed after that first read rather than recomputed each poll, and that is deliberate: a list
+     * that re-sorts itself by volume every ten seconds rearranges under the reader's finger. The
+     * market decides what is on the shelf; it does not get to decide where each thing sits while
+     * somebody is looking at it.
+     */
+    private var polled: List<String> = emptyList()
+
     fun start() {
         if (poll?.isActive == true) return
         poll = scope.launch {
+            // The first pass asks for everything, so the shelf is chosen from the real universe
+            // rather than from a list compiled into the app months ago.
+            refreshPrices(all = polled.isEmpty())
             while (true) {
-                refreshPrices()
                 delay(pollMillis)
+                refreshPrices()
             }
         }
         refreshNews()
@@ -83,9 +103,27 @@ class GuestController(
      * not want it to become an error message because one poll in ten timed out; the numbers stay,
      * and the staleness the server reports is what tells them how much to trust them.
      */
-    suspend fun refreshPrices() {
-        when (val result = gateway.prices(symbols)) {
-            is AppResult.Success -> pricesMutable.value = GuestPricesState.Ready(result.value)
+    suspend fun refreshPrices(all: Boolean = false) {
+        val asked = if (all || polled.isEmpty()) emptyList() else polled
+        when (val result = gateway.prices(asked)) {
+            is AppResult.Success -> {
+                val prices = if (polled.isEmpty()) {
+                    // Busiest first, once. Volume is the honest ordering for a shelf nobody has
+                    // personalised yet: it is what other people are actually trading, rather than
+                    // what moved most in the last hour, which rewards whatever is briefly wild.
+                    val chosen = result.value.quotes
+                        .sortedByDescending { it.volume24h ?: 0.0 }
+                        .take(visibleCount)
+                    polled = chosen.map(GuestQuote::symbol)
+                    result.value.copy(quotes = chosen, universeSize = result.value.quotes.size)
+                } else {
+                    // Later polls answer in the feed's order; the shelf keeps the order it was
+                    // given, so nothing moves under the reader.
+                    val bySymbol = result.value.quotes.associateBy(GuestQuote::symbol)
+                    result.value.copy(quotes = polled.mapNotNull(bySymbol::get))
+                }
+                pricesMutable.value = GuestPricesState.Ready(prices)
+            }
             is AppResult.Failure ->
                 if (pricesMutable.value !is GuestPricesState.Ready) {
                     pricesMutable.value = GuestPricesState.Unavailable(result.message)
@@ -124,17 +162,4 @@ class GuestController(
         }
     }
 
-    companion object {
-        /**
-         * What a guest sees first.
-         *
-         * Eight, matching the server's own default hero set, and the reason for a fixed list rather
-         * than "the top movers" is that a first screen which reorders itself between two glances is
-         * a first screen nobody can learn.
-         */
-        val DEFAULT_SYMBOLS = listOf(
-            "BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT",
-            "BNBUSDT", "DOGEUSDT", "ADAUSDT", "TONUSDT",
-        )
-    }
 }

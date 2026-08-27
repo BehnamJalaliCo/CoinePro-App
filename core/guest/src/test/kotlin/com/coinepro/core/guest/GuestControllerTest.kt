@@ -17,7 +17,7 @@ class GuestControllerTest {
         val gateway = FakeGuestGateway(
             prices = AppResult.Success(GuestPrices(listOf(quote("BTCUSDT", 64_000.0)), stale = false, ageMillis = 120)),
         )
-        val controller = GuestController(gateway, this, symbols = listOf("BTCUSDT"))
+        val controller = GuestController(gateway, this)
 
         controller.refreshPrices()
         gateway.prices = AppResult.Failure(ErrorKind.NETWORK)
@@ -33,7 +33,7 @@ class GuestControllerTest {
     @Test
     fun `a first failure with nothing to keep does say so`() = runTest {
         val gateway = FakeGuestGateway(prices = AppResult.Failure(ErrorKind.NETWORK))
-        val controller = GuestController(gateway, this, symbols = listOf("BTCUSDT"))
+        val controller = GuestController(gateway, this)
 
         controller.refreshPrices()
 
@@ -58,9 +58,49 @@ class GuestControllerTest {
     }
 
     @Test
+    fun `the shelf keeps its order while the feed reorders underneath it`() = runTest {
+        val gateway = FakeGuestGateway(
+            prices = AppResult.Success(
+                GuestPrices(
+                    listOf(
+                        quote("SMALLUSDT", 1.0, volume = 10.0),
+                        quote("BIGUSDT", 2.0, volume = 900.0),
+                        quote("MIDUSDT", 3.0, volume = 400.0),
+                    ),
+                    stale = false, ageMillis = 10,
+                ),
+            ),
+        )
+        val controller = GuestController(gateway, this, visibleCount = 3)
+
+        controller.refreshPrices(all = true)
+        val first = (controller.prices.value as GuestPricesState.Ready).prices.quotes.map { it.symbol }
+
+        // Busiest first on the first read, and the total is carried so the screen can say how many
+        // markets there really are.
+        assertEquals(listOf("BIGUSDT", "MIDUSDT", "SMALLUSDT"), first)
+
+        // Now the feed answers in a different order. The shelf must not move.
+        gateway.prices = AppResult.Success(
+            GuestPrices(
+                listOf(
+                    quote("MIDUSDT", 3.5, volume = 4000.0),
+                    quote("SMALLUSDT", 1.5, volume = 20.0),
+                    quote("BIGUSDT", 2.5, volume = 10.0),
+                ),
+                stale = false, ageMillis = 10,
+            ),
+        )
+        controller.refreshPrices()
+
+        val second = (controller.prices.value as GuestPricesState.Ready).prices.quotes.map { it.symbol }
+        assertEquals(first, second)
+    }
+
+    @Test
     fun `start polls once, not once per call`() = runTest {
         val gateway = FakeGuestGateway()
-        val controller = GuestController(gateway, this, symbols = listOf("BTCUSDT"), pollMillis = 10_000)
+        val controller = GuestController(gateway, this, pollMillis = 10_000)
 
         controller.start()
         controller.start()
@@ -74,8 +114,8 @@ class GuestControllerTest {
     }
 }
 
-private fun quote(symbol: String, price: Double) =
-    GuestQuote(symbol, price, changePercent24h = null, high24h = null, low24h = null, volume24h = null)
+private fun quote(symbol: String, price: Double, volume: Double? = null) =
+    GuestQuote(symbol, price, changePercent24h = null, high24h = null, low24h = null, volume24h = volume)
 
 private class FakeGuestGateway(
     var prices: AppResult<GuestPrices> = AppResult.Success(GuestPrices(emptyList(), stale = true, ageMillis = null)),
