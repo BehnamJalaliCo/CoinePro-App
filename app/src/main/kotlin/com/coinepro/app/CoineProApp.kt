@@ -919,6 +919,9 @@ private fun MainShell(
                 }
                 ChartScreen(
                     watchlist = watchlist,
+                    onPaperTrade = { symbol, buy, entry, size ->
+                        paperTradeController.open(symbol, buy, entry, size)
+                    },
                     onSelectSymbol = { symbol ->
                         // Replaces the chart rather than stacking one on top of another: flipping
                         // through six symbols must not build a six-deep back stack that takes six

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="setup_paper_trade">Open as a paper trade</string>
+    <string name="setup_paper_trade_note">Same entry and the size worked out above, with no money. No order is sent to any exchange or broker.</string>
+</resources>

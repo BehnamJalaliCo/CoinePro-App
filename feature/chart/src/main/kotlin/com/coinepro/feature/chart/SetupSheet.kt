@@ -24,7 +24,9 @@ import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.foldDigitsToLatin
 import com.coinepro.core.designsystem.CoineProCard
+import androidx.compose.ui.res.stringResource
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextField
 
@@ -45,7 +47,21 @@ import com.coinepro.core.designsystem.CoineProTextField
  * builds the opposite habit.
  */
 @Composable
-internal fun SetupSheetBody(order: ChartOrder, symbol: String, livePrice: Double?) {
+internal fun SetupSheetBody(
+    order: ChartOrder,
+    symbol: String,
+    livePrice: Double?,
+    /**
+     * Takes the setup as a paper trade: side, entry and size.
+     *
+     * The order ticket that can honestly exist today. Neither backend serves a free-form order —
+     * TradeYar executes against a *published signal* and CoinePro-FX mirrors a copy account — so a
+     * button here that claimed to place a real trade would be a button that cannot. What it can do
+     * is open the same position with no money, at the entry the reader drew, sized by the risk
+     * they entered. `docs/REQUEST4_ACCOUNT_DELETION.md` asks both servers for the real route.
+     */
+    onPaperTrade: ((buy: Boolean, entry: Double, size: Double) -> Unit)? = null,
+) {
     var riskInput by rememberSaveable { mutableStateOf("") }
     val risk = riskInput.foldDigitsToLatin().trim().toDoubleOrNull()
 
@@ -121,6 +137,20 @@ internal fun SetupSheetBody(order: ChartOrder, symbol: String, livePrice: Double
             }
             Text(
                 text = "لات استاندارد بر پایهٔ قرارداد ۱۰۰٬۰۰۰ واحدی حساب می‌شود. اگر کارگزار شما اندازهٔ دیگری دارد، از ماشین‌حساب حجم در «ابزارها» استفاده کنید.",
+                style = MaterialTheme.typography.bodySmall,
+                color = CoineProColors.TextMuted,
+            )
+        }
+
+        if (risk != null && risk > 0 && valid && onPaperTrade != null) {
+            val size = TradeFromChart.positionSize(order, risk)
+            CoineProPrimaryButton(
+                text = stringResource(R.string.setup_paper_trade),
+                onClick = { onPaperTrade(order.side == TradeSide.BUY, order.entry, size.units) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                text = stringResource(R.string.setup_paper_trade_note),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextMuted,
             )

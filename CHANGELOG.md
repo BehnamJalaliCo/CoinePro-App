@@ -15,6 +15,18 @@ it is for.
 
 ---
 
+## [1.13.0] — 2026-08-27 — The order ticket that can honestly exist
+
+### Added
+- The setup drawn on the chart can be taken as a paper trade: same side, same entry, sized by the
+  risk the reader entered. One tap from the numbers to the position.
+- Deliberately not a real order. Neither backend serves a free-form one — TradeYar executes against
+  a *published signal*, CoinePro-FX mirrors a copy account — so a button claiming to place a trade
+  would be a button that cannot. The note under it says no order is sent anywhere, and
+  `docs/REQUEST4_ACCOUNT_DELETION.md` asks both servers for the real route.
+
+---
+
 ## [1.12.0] — 2026-08-27 — Switching symbol without leaving the chart
 
 ### Added

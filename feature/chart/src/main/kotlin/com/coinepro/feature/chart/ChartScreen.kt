@@ -91,6 +91,8 @@ fun ChartScreen(
     /** The reader's watchlist, for the switcher strip. Fewer than two symbols hides it. */
     watchlist: List<String> = emptyList(),
     onSelectSymbol: ((String) -> Unit)? = null,
+    /** Takes the drawn setup as a paper trade. See [SetupSheetBody]. */
+    onPaperTrade: ((symbol: String, buy: Boolean, entry: Double, size: Double) -> Unit)? = null,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var sheet by remember { mutableStateOf<ChartSheet?>(null) }
@@ -232,7 +234,17 @@ fun ChartScreen(
                 subtitle = state.symbol,
                 onDismiss = { sheet = null },
             ) {
-                SetupSheetBody(order = order, symbol = state.symbol, livePrice = state.lastPrice)
+                SetupSheetBody(
+                    order = order,
+                    symbol = state.symbol,
+                    livePrice = state.lastPrice,
+                    onPaperTrade = onPaperTrade?.let { take ->
+                        { buy, entry, size ->
+                            take(state.symbol, buy, entry, size)
+                            sheet = null
+                        }
+                    },
+                )
             }
         }
 
