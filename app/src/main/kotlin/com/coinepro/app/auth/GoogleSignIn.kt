@@ -82,16 +82,23 @@ class GoogleSignInClient(private val context: Context) {
 /**
  * What to show a reader when Credential Manager refuses.
  *
- * Google's own wording is passed through for anything that describes the reader's situation — no
- * account on the device, no network. One case is deliberately replaced: `NoCredentialException`
- * and the "developer console is not set up correctly" family are not about the reader at all. They
- * mean this build's signing certificate is not registered against the Google Cloud project that
- * issued the server client id, so Google will not mint a token for it no matter who is signed in.
+ * Google's own wording is passed through for anything that plainly describes the reader's
+ * situation. One family is replaced, and the replacement has to name **two** causes rather than
+ * one, because Google reports them with the same exception and there is no way from inside the app
+ * to tell them apart:
  *
- * That distinction matters because the two look identical from the sheet — nothing happens — and
- * a reader told "no account found" will go and add a Google account, which cannot help. It is the
- * release key's SHA-1 that is missing from the console; `docs/PLAY_LISTING.md` §9 carries the
- * fingerprint and what to do with it.
+ *  * the app's signing certificate is not registered against the Google Cloud project that issued
+ *    the audience, so Google will not mint a token for this build whoever is signed in; or
+ *  * the phone genuinely has no Google account on it.
+ *
+ * The first version of this message named only the first cause. That was right while the console
+ * was known to be missing an Android client and wrong the moment it is not: a reader with no Google
+ * account would be told the app is broken, and would have no idea that adding an account fixes it.
+ * Naming both is the only honest wording, and it costs nothing — the reader can check one and act
+ * on the other.
+ *
+ * `docs/PLAY_LISTING.md` carries the console side, and «ایمنی و نسخه» in the app shows the
+ * fingerprint the console needs.
  */
 private fun explain(context: Context, error: GetCredentialException): String? {
     val text = (error.errorMessage?.toString().orEmpty() + " " + error.type).lowercase()

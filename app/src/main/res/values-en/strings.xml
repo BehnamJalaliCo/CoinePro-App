@@ -70,7 +70,7 @@
     <string name="profile_action_safety">Safety and version</string>
     <string name="profile_action_safety_note">Notifications, the crash report and the version</string>
     <string name="profile_action_delete">Delete account</string>
-    <string name="auth_google_not_registered">Google sign-in is not enabled for this build — this app\'s signing certificate is not registered in the Google console. Sign in with e-mail for now.</string>
+    <string name="auth_google_not_registered">Google sign-in did not complete. Either this build\'s signing certificate is not registered in the Google console, or there is no Google account on this phone. Sign in with e-mail instead.</string>
     <string name="tampered_title">This is not the real CoinePro</string>
     <string name="tampered_body">This file has been modified and re-signed with a different key. We did not build it and we do not know what was changed inside it. Please delete it now and install CoinePro only from its official channel.</string>
     <string name="tampered_fingerprint">This file\'s signing fingerprint</string>

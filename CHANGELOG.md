@@ -15,6 +15,26 @@ it is for.
 
 ---
 
+## [1.29.1] — 2026-08-27 — Two causes, one message
+
+### Fixed
+- **The Google sign-in failure now names both things it can be.** Credential Manager reports "the
+  signing certificate is not registered" and "there is no Google account on this phone" with the
+  same exception, and nothing inside the app can tell them apart. The message named only the first,
+  which was right while the console was known to be missing an Android client and becomes wrong the
+  moment it is not: somebody with no Google account would be told the app is broken and would never
+  guess that adding an account fixes it. Naming both costs nothing and is the only honest wording.
+
+### Notes
+- A second OAuth client id in the project was reported: `…-aji26kov4…`. The app uses
+  `…-nnr0l8q2…`, the **web** client, which is what TradeYar serves as the audience — and the two
+  being different is what a *correct* setup looks like, because an Android client is never sent by
+  an app. `docs/PLAY_LISTING.md` records how to confirm the new one is of type Android, including
+  the one test that is now meaningful: a freshly downloaded `google-services.json` should at last
+  contain a `client_type: 1` entry. Nothing in the app changes either way.
+
+---
+
 ## [1.29.0] — 2026-08-27 — A copy that refuses to be it
 
 Three things: why Google sign-in has not been fixed by six downloads of the same file, what is

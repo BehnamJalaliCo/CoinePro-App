@@ -272,6 +272,24 @@ SHA-256  96:12:AB:6C:BF:BB:4F:4F:FB:F1:51:D8:60:2C:12:9D:CC:E8:A9:77:1E:85:46:69
    creates that same client automatically, and evidently has not here — which is why the direct
    route above is the one to take.
 
+   **How to tell whether the client you created is the right kind.** On 27 August a second client
+   id in this project was reported: `1033486124390-aji26kov4…`. The one the app uses is
+   `1033486124390-nnr0l8q2…`, which is the **web** client and is served by TradeYar at
+   `auth/methods`. Those two being different is not a problem — it is what a correct setup looks
+   like. An Android client is never sent by the app; it exists so Google can check the caller's
+   package and SHA-1, and the audience stays the web client.
+
+   So:
+
+   * In the Credentials list, the **Type** column of the new entry must read **Android**. If it
+     reads "Web application", it is not the client this needs and an Android one still has to be
+     created.
+   * The definitive proof is the file that was useless until now: download `google-services.json`
+     again. It should now contain a `client_type: 1` entry carrying `package_name` and
+     `certificate_hash`. Every copy supplied before 27 August contained only `client_type: 3`,
+     which is exactly what "no Android client exists" looks like. Send the new file and it can be
+     checked in a second — though nothing in the app has to change either way.
+
    **If the SHA-1 above is not the key on the phone being tested**, the app now says so itself:
    «ایمنی و نسخه» shows the running install's own SHA-1 and SHA-256 with a copy button. Use that
    number rather than this document if the two ever disagree.
