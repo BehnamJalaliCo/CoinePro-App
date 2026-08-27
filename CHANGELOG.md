@@ -15,6 +15,22 @@ it is for.
 
 ---
 
+## [1.4.0] — 2026-08-27 — What the setup on the chart is worth
+
+### Added
+- The `longshort` tool has always drawn three lines. This is the other half: entry, stop and target
+  as prices, the two distances, the stop in pips, and the risk-to-reward ratio — from
+  `TradeFromChart`, the web terminal's own trade maths, which had been ported, tested and wired to
+  nothing.
+- Position size from a risk amount. Asked for as "how much are you prepared to lose", never as a
+  lot size: risk decides size, and the reverse question is the same arithmetic with the opposite
+  habit.
+- The side is read off the geometry — a stop below the entry is a buy — so the numbers cannot
+  disagree with the lines on screen. A setup whose stop sits on its entry is refused rather than
+  printed, because a ratio there would be read as a real one.
+
+---
+
 ## [1.3.0] — 2026-08-27 — Bar replay, reachable
 
 ### Added

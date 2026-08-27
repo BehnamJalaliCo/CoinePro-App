@@ -156,6 +156,7 @@ fun ChartScreen(
         Toolbar(
             activeIndicators = state.activeIndicators.size,
             drawings = state.drawing.drawings.size,
+            hasSetup = state.setup != null,
             // Offered only when there is something to replay. A button that answers "not enough
             // bars" is a button that should not have been there.
             onReplay = controller::enterReplay
@@ -209,6 +210,16 @@ fun ChartScreen(
             )
         }
 
+        ChartSheet.SETUP -> state.setup?.let { order ->
+            CoineProSheet(
+                title = "معاملهٔ روی نمودار",
+                subtitle = state.symbol,
+                onDismiss = { sheet = null },
+            ) {
+                SetupSheetBody(order = order, symbol = state.symbol, livePrice = state.lastPrice)
+            }
+        }
+
         ChartSheet.DRAWINGS -> CoineProSheet(
             title = "ترسیم‌های روی چارت",
             onDismiss = { sheet = null },
@@ -252,7 +263,7 @@ private fun rememberHelpCatalog(wanted: Boolean): HelpCatalog? {
     return catalog
 }
 
-private enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS }
+private enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP }
 
 @Composable
 private fun LaunchedStart(controller: ChartController) {
@@ -330,6 +341,7 @@ private fun TimeframeRow(selected: Timeframe, onSelect: (Timeframe) -> Unit) {
 private fun Toolbar(
     activeIndicators: Int,
     drawings: Int,
+    hasSetup: Boolean,
     onReplay: (() -> Unit)?,
     onOpen: (ChartSheet) -> Unit,
 ) {
@@ -352,6 +364,11 @@ private fun Toolbar(
             }
         }
         onReplay?.let { ToolbarButton(DesignR.drawable.tv_play, "بازپخش", onClick = it) }
+        // Only once a setup exists to talk about. The button is the drawing's consequence, not a
+        // second way to start one.
+        if (hasSetup) {
+            ToolbarButton(DesignR.drawable.tv_tool_longshort, "معامله") { onOpen(ChartSheet.SETUP) }
+        }
     }
 }
 

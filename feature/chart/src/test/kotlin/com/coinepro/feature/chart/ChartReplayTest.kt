@@ -1,5 +1,9 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.chart.ChartPoint
+import com.coinepro.core.chart.Drawing
+import com.coinepro.core.chart.DrawingState
+import com.coinepro.core.chart.TradeSide
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.CandlePage
 import com.coinepro.core.marketdata.OhlcBar
@@ -9,6 +13,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -99,5 +104,62 @@ private class FakeCandleGateway(private val bars: Int) : CandleGateway {
             )
         },
         hasMore = false,
+    )
+}
+
+/**
+ * The setup read off the drawing.
+ *
+ * The side comes from the geometry rather than from the reader, and that is the assertion worth
+ * having: a drawing whose stop is above its entry is a sell no matter what anybody selected, and
+ * the numbers under it have to agree with the lines on screen.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+class ChartSetupTest {
+
+    @Test
+    fun `a stop below the entry is a buy, and the target is the 2R the chart draws`() = runTest {
+        val controller = ChartController("BTCUSDT", FakeCandleGateway(bars = 60), this)
+        controller.place(entry = 100.0, stop = 90.0)
+
+        val setup = controller.state.value.setup!!
+
+        assertEquals(TradeSide.BUY, setup.side)
+        assertEquals(100.0, setup.entry, 0.0)
+        assertEquals(90.0, setup.stopLoss, 0.0)
+        assertEquals(120.0, setup.takeProfit, 0.0)
+    }
+
+    @Test
+    fun `a stop above the entry is a sell`() = runTest {
+        val controller = ChartController("BTCUSDT", FakeCandleGateway(bars = 60), this)
+        controller.place(entry = 100.0, stop = 110.0)
+
+        assertEquals(TradeSide.SELL, controller.state.value.setup!!.side)
+    }
+
+    @Test
+    fun `a stop sitting on the entry is not a setup at all`() = runTest {
+        val controller = ChartController("BTCUSDT", FakeCandleGateway(bars = 60), this)
+        controller.place(entry = 100.0, stop = 100.0)
+
+        // No risk, therefore no ratio and no size. Refusing here is what stops every number on the
+        // sheet being a confident answer to a question the reader did not ask.
+        assertNull(controller.state.value.setup)
+    }
+}
+
+/** Places a completed `longshort` drawing, the way two taps on the chart would. */
+private fun ChartController.place(entry: Double, stop: Double) {
+    onDrawing(
+        DrawingState(
+            drawings = listOf(
+                Drawing(
+                    id = 1,
+                    toolId = "longshort",
+                    points = listOf(ChartPoint(1_700_000_000L, entry), ChartPoint(1_700_003_600L, stop)),
+                ),
+            ),
+        ),
     )
 }

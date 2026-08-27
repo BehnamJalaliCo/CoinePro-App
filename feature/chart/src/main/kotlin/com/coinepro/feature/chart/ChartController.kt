@@ -3,6 +3,7 @@ package com.coinepro.feature.chart
 import com.coinepro.core.chart.Candle
 import com.coinepro.core.chart.CandleSeries
 import com.coinepro.core.chart.ChartCatalog
+import com.coinepro.core.chart.ChartOrder
 import com.coinepro.core.chart.ChartLine
 import com.coinepro.core.chart.ChartMarker
 import com.coinepro.core.chart.ChartType
@@ -13,6 +14,7 @@ import com.coinepro.core.chart.IndicatorPane
 import com.coinepro.core.chart.PriceLevel
 import com.coinepro.core.chart.Replay
 import com.coinepro.core.chart.ReplayState
+import com.coinepro.core.chart.TradeSide
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.OhlcBar
 import com.coinepro.core.marketdata.Timeframe
@@ -89,6 +91,30 @@ data class ChartUiState(
      * axis, the last-price line and the indicator panes, one at a time.
      */
     val visibleSeries: CandleSeries get() = if (replay.isOn) replay.visible else series
+
+    /**
+     * The setup the reader has drawn, as numbers.
+     *
+     * Read off the newest complete `longshort` drawing rather than held separately, because the
+     * drawing *is* the setup — a second copy would be the one that disagrees with the lines on
+     * screen, and the numbers disagreeing with the picture is the whole failure mode here.
+     *
+     * Side comes from the geometry: a stop below the entry is a buy. Asking the reader to also
+     * pick a direction would let them pick the one their drawing does not show.
+     */
+    val setup: ChartOrder?
+        get() {
+            val drawing = drawing.drawings.lastOrNull { it.toolId == "longshort" && it.complete }
+                ?: return null
+            val points = drawing.points.takeIf { it.size >= 2 } ?: return null
+            val entry = points[0].price
+            val stop = points[1].price
+            if (entry == stop || !entry.isFinite() || !stop.isFinite()) return null
+            val side = if (stop < entry) TradeSide.BUY else TradeSide.SELL
+            // The same 2R the renderer draws. One arithmetic, two consumers: if the target line
+            // and the target number came from different expressions they would drift.
+            return ChartOrder(side, entry, stop, entry + 2 * (entry - stop))
+        }
 
     val lastPrice: Double? get() = visibleSeries.bars.lastOrNull()?.c
 }
