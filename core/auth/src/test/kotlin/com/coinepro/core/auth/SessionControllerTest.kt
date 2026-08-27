@@ -1,6 +1,7 @@
 package com.coinepro.core.auth
 
 import com.coinepro.core.common.AppResult
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.common.ErrorKind
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -183,6 +184,7 @@ class SessionControllerTest {
             EmailAuthSession(
                 tokens = AuthTokens(accessToken = "access", refreshToken = "refresh"),
                 profile = profile(isPaid = true, panelAllowed = true),
+                platform = MarketPlatform.TRADEYAR,
             ),
         )
 
@@ -222,6 +224,7 @@ class SessionControllerTest {
                     accessValidForSeconds = 900,
                 ),
                 profile = profile(),
+                platform = MarketPlatform.TRADEYAR,
             ),
         )
         runCurrent()
@@ -250,6 +253,7 @@ class SessionControllerTest {
             EmailAuthSession(
                 tokens = AuthTokens(accessToken = "only", refreshToken = "refresh"),
                 profile = profile(),
+                platform = MarketPlatform.TRADEYAR,
             ),
         )
         advanceTimeBy(86_400_000)
@@ -278,6 +282,7 @@ class SessionControllerTest {
                     accessValidForSeconds = 900,
                 ),
                 profile = profile(),
+                platform = MarketPlatform.TRADEYAR,
             ),
         )
         runCurrent()

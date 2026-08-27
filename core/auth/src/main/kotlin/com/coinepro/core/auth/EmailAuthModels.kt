@@ -1,5 +1,7 @@
 package com.coinepro.core.auth
 
+import com.coinepro.core.model.MarketPlatform
+
 /**
  * The email-first identity flow, in the app's own vocabulary.
  *
@@ -34,6 +36,16 @@ data class AuthTokens(
 data class EmailAuthSession(
     val tokens: AuthTokens,
     val profile: UserProfile,
+    /**
+     * Which backend issued this.
+     *
+     * Carried rather than assumed, because one sign-in screen now serves two user tables: a new
+     * account is made on TradeYar, and an account made before that decision lives on CoinePro-FX.
+     * A token is only ever valid against the server that minted it, so the caller has to know which
+     * session to put it in — writing a CoinePro-FX token into TradeYar's storage produces a signed
+     * -in app whose every request comes back 401.
+     */
+    val platform: MarketPlatform,
 )
 
 /**

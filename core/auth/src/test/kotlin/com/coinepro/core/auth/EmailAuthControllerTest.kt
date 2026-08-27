@@ -1,6 +1,7 @@
 package com.coinepro.core.auth
 
 import com.coinepro.core.common.AppResult
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.common.ErrorKind
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
@@ -184,13 +185,97 @@ class EmailAuthControllerTest {
         assertEquals(EmailAuthNotice.PASSWORD_CHANGED, controller.state.value.notice)
     }
 
+    /**
+     * The address is lower-cased before it leaves.
+     *
+     * A phone keyboard capitalises the first letter of a field often enough that the same person
+     * registers as `Reader@…` and signs in as `reader@…`. A server that compares the local part
+     * exactly then answers, correctly from its own point of view, that the password is wrong — and
+     * there is no case in which a reader means two different accounts by two spellings of one
+     * address.
+     */
+    @Test
+    fun `the address is normalised on every step that sends one`() = runTest {
+        val gateway = FakeEmailAuthGateway()
+        val controller = controller(gateway)
+
+        controller.signIn("  Reader@Example.COM ", "password")
+        runCurrent()
+        assertEquals("reader@example.com", gateway.lastEmail)
+
+        controller.startRegistration("  Reader@Example.COM ", "password", " Reader ")
+        runCurrent()
+        assertEquals("reader@example.com", gateway.lastEmail)
+
+        controller.requestPasswordReset("  Reader@Example.COM ")
+        runCurrent()
+        assertEquals("reader@example.com", gateway.lastEmail)
+    }
+
+    /**
+     * A registration survives the app being killed while the reader is in their inbox.
+     *
+     * Without this the token lives only in memory: they come back to a sign-in screen for an
+     * account that was never created, try to sign in, and are told the credentials are wrong.
+     */
+    @Test
+    fun `an unfinished registration is picked back up`() = runTest {
+        val memory = FakeRegistrationMemory()
+        val gateway = FakeEmailAuthGateway()
+        gateway.registration = AppResult.Success(RegistrationChallenge("reg-9", cooldownSeconds = null))
+
+        val first = controller(gateway, memory)
+        first.startRegistration("reader@example.com", "a-long-enough-password", "Reader")
+        runCurrent()
+        assertEquals(PendingRegistration("reg-9", "reader@example.com"), memory.pending)
+
+        // A second controller stands in for the process having been killed and restarted.
+        val second = controller(gateway, memory)
+        second.resume()
+        runCurrent()
+
+        assertEquals(EmailAuthStep.VERIFY_CODE, second.state.value.step)
+        assertEquals("reader@example.com", second.state.value.pendingEmail)
+
+        second.verifyCode("123456")
+        runCurrent()
+        assertNull("A completed registration must not be resumed again", memory.pending)
+    }
+
+    @Test
+    fun `starting over forgets the abandoned registration`() = runTest {
+        val memory = FakeRegistrationMemory()
+        val gateway = FakeEmailAuthGateway()
+        val controller = controller(gateway, memory)
+
+        controller.startRegistration("reader@example.com", "a-long-enough-password", "Reader")
+        runCurrent()
+        controller.startOver()
+        runCurrent()
+
+        assertNull(memory.pending)
+    }
+
     private fun kotlinx.coroutines.test.TestScope.controller(
         gateway: FakeEmailAuthGateway,
+        memory: RegistrationMemory? = null,
         onAuthenticated: (EmailAuthSession) -> Unit = {},
-    ) = EmailAuthController(gateway, this, { onAuthenticated(it) })
+    ) = EmailAuthController(gateway, this, { onAuthenticated(it) }, memory)
+}
+
+private class FakeRegistrationMemory : RegistrationMemory {
+    var pending: PendingRegistration? = null
+
+    override suspend fun save(pending: PendingRegistration?) {
+        this.pending = pending
+    }
+
+    override suspend fun load(): PendingRegistration? = pending
 }
 
 private class FakeEmailAuthGateway : EmailAuthGateway {
+    /** The last address that actually went out, so normalisation can be asserted on. */
+    var lastEmail: String? = null
     var methods: AppResult<AuthMethods> = AppResult.Success(AuthMethods(emailPassword = true))
     var registration: AppResult<RegistrationChallenge> =
         AppResult.Success(RegistrationChallenge("reg", null))
@@ -202,7 +287,7 @@ private class FakeEmailAuthGateway : EmailAuthGateway {
     override suspend fun methods() = methods
 
     override suspend fun startRegistration(email: String, password: String, fullName: String) =
-        registration
+        registration.also { lastEmail = email }
 
     override suspend fun verifyRegistration(registrationToken: String, code: String):
         AppResult<EmailAuthSession> {
@@ -212,12 +297,16 @@ private class FakeEmailAuthGateway : EmailAuthGateway {
 
     override suspend fun signIn(email: String, password: String): AppResult<EmailAuthSession> {
         signInCalls++
+        lastEmail = email
         return signIn
     }
 
     override suspend fun signInWithGoogle(idToken: String) = signIn
 
-    override suspend fun requestPasswordReset(email: String): AppResult<Unit> = AppResult.Success(Unit)
+    override suspend fun requestPasswordReset(email: String): AppResult<Unit> {
+        lastEmail = email
+        return AppResult.Success(Unit)
+    }
 
     override suspend fun resetPassword(resetToken: String, newPassword: String): AppResult<Unit> =
         AppResult.Success(Unit)
@@ -231,4 +320,5 @@ private class FakeEmailAuthGateway : EmailAuthGateway {
 private fun session() = EmailAuthSession(
     tokens = AuthTokens("access", "refresh", accessValidForSeconds = 1_800),
     profile = UserProfile(telegramId = 0, name = "Reader"),
+    platform = MarketPlatform.TRADEYAR,
 )

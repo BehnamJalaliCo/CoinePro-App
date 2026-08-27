@@ -27,7 +27,13 @@ hits="$(git grep -n '^import .*\*$' -- '*.kt' || true)"
 
 # Printing to stdout. Android throws it away and it never reaches a bug report; anything worth
 # recording goes through core:diagnostics, which the admin screen can show.
-hits="$(git grep -n 'println(\|System\.out\.print' -- \
+#
+# Only a *bare* `println` — Kotlin's stdlib one, which writes to stdout. `out.println(...)` on a
+# PrintWriter is a different function that writes wherever the writer points, and the crash recorder
+# uses one to build the trace it saves to disk. The first version of this rule matched the substring
+# and failed that file, which is a gate objecting to the one thing in the app whose whole job is to
+# make a crash reportable.
+hits="$(git grep -nE '(^|[^.[:alnum:]_])println\(|System\.out\.print' -- \
   'core/*/src/main/**/*.kt' 'feature/*/src/main/**/*.kt' 'app/src/main/**/*.kt' || true)"
 [[ -n "$hits" ]] && report "println in shipping code goes nowhere. Use core:diagnostics." "$hits"
 

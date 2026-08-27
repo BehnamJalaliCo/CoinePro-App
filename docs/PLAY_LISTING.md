@@ -236,13 +236,24 @@ SHA-256  96:12:AB:6C:BF:BB:4F:4F:FB:F1:51:D8:60:2C:12:9D:CC:E8:A9:77:1E:85:46:69
 
 **Still open**
 
-1. **Google sign-in will fail on a signed build.** `google-services.json` holds exactly one OAuth
-   client and it is type 3 — the web client. There is no type-1 Android client, which means no
-   SHA-1 is registered. The file supplied on 2026-08-26 is byte-identical to the one already in the
-   tree and does not change this. Add an Android OAuth client in the Firebase console with the
-   SHA-1 above, download the file again and replace `app/google-services.json`. Until then, Google
-   sign-in fails with an error the app words as a build-configuration fault rather than a network
-   one; e-mail sign-in is unaffected.
+1. **Google sign-in fails on a signed build, and this is the one thing that fixes it.**
+   `google-services.json` holds exactly one OAuth client and it is type 3 — the web client. There
+   is no type-1 Android client, which means no SHA-1 is registered, so Google will not mint a token
+   for this build no matter who is signed in on the phone. The file supplied on 2026-08-26 is
+   byte-identical to the one already in the tree and does not change this.
+
+   **Verified 2026-08-27:** the audience the app sends is TradeYar's `google_client_id` from
+   `api/mobile/v1/auth/methods`, and its Google Cloud project number is the *same* as this app's
+   Firebase project. So there is one project to fix, not two:
+
+   1. Firebase console → Project settings → Your apps → the Android app `com.coinepro.app`.
+   2. Add fingerprint → paste the SHA-1 above (`5D:E8:…:9A:A8`). Add the SHA-256 too while there;
+      Play App Signing needs it later.
+   3. Download `google-services.json` again and replace `app/google-services.json`.
+
+   No app change is needed once that is done — the audience is read from the server at runtime.
+   Until then Google sign-in fails and the app says so in Persian, and points the reader at e-mail;
+   e-mail sign-in is unaffected.
 
 2. **Support e-mail and the developer's legal name and address.** Both legal documents carry a
    marked slot. The Telegram support channel is published; an e-mail address is the owner's to

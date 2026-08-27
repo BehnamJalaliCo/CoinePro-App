@@ -25,6 +25,8 @@ import retrofit2.Retrofit
 class NetworkEmailAuthGateway internal constructor(
     private val api: MobileAuthApi,
     private val paths: AuthPaths,
+    /** Stamped onto every session this gateway returns. See [EmailAuthSession.platform]. */
+    private val platform: MarketPlatform,
 ) : EmailAuthGateway {
 
     override suspend fun methods(): AppResult<AuthMethods> = call {
@@ -100,6 +102,7 @@ class NetworkEmailAuthGateway internal constructor(
     private fun TokenResponseDto.toSession() = EmailAuthSession(
         tokens = toTokens(),
         profile = requireNotNull(user) { "A sign-in response without a profile." }.toDomain(),
+        platform = platform,
     )
 
     private suspend fun <T> call(block: suspend () -> T): AppResult<T> = try {
@@ -137,6 +140,7 @@ class NetworkEmailAuthGateway internal constructor(
             NetworkEmailAuthGateway(
                 api = retrofit.create(MobileAuthApi::class.java),
                 paths = AuthPaths.of(platform),
+                platform = platform,
             )
 
         /**

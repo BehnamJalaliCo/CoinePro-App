@@ -320,14 +320,28 @@ fun CoineProApp(
     onOpenNotificationSettings: () -> Unit,
     onSendFeedback: () -> Unit,
 ) {
-    LaunchedEffect(sessionController) { sessionController.start() }
-    val session by sessionController.state.collectAsStateWithLifecycle()
+    // Every configured platform restores, not just the one the shell happens to open on.
+    //
+    // Sign-in can now land on either backend — a new account is TradeYar's, an account made before
+    // 1.27.0 is CoinePro-FX's — so restoring only one of them on launch would leave a returning
+    // reader signed out of the app while a perfectly good session sat in storage.
+    LaunchedEffect(platformSessions) { platformSessions.start() }
+    val sessionStates by platformSessions.states.collectAsStateWithLifecycle(initialValue = emptyMap())
     val emailAuthState by emailAuthController.state.collectAsStateWithLifecycle()
     val loginConfigState by sessionController.loginConfigState.collectAsStateWithLifecycle()
     // Exactly one feed runs at a time. Switching platform stops the old controller before the new
     // one starts, so two sockets are never open and the screen can never blend their quotes.
     val activePlatform by activePlatformStore.active
         .collectAsStateWithLifecycle(initialValue = activePlatformStore.available.first())
+    // What gates the shell: the session belonging to the platform on screen.
+    //
+    // It used to be the unqualified controller's, which is TradeYar's — and that is wrong the
+    // moment sign-in can succeed on the other backend. A reader whose account is on CoinePro-FX
+    // would have completed a sign-in, had a valid session written, and still been looking at the
+    // sign-in screen, because the app was asking a server they do not have an account with.
+    //
+    // The fallback is for the first frame only, before the map has been collected.
+    val session = sessionStates[activePlatform] ?: SessionState.Loading
     val marketDataController = marketDataControllers.getValue(activePlatform)
     val marketSearchController = marketSearchControllers.getValue(activePlatform)
     val marketState by marketDataController.state.collectAsStateWithLifecycle()
@@ -423,8 +437,6 @@ fun CoineProApp(
 
     val notificationState by notificationController.state.collectAsStateWithLifecycle()
     val venueState by executionController.connections.collectAsStateWithLifecycle()
-    val sessionStates by platformSessions.states.collectAsStateWithLifecycle(initialValue = emptyMap())
-
     // The shell follows the session, not a remembered preference.
     //
     // This is the second half of the sign-in fix, and it is the half that shows up as "I sign in
@@ -598,7 +610,10 @@ fun CoineProApp(
                         // photograph over a stranger's name is the loudest possible way to tell
                         // them the sign-out did not work.
                         profileStore.clear()
-                        sessionController.logout()
+                        // Every platform, not the one on screen. «خروج» means leaving, and a reader
+                        // who holds a session on the other backend would otherwise be signed out
+                        // and then silently moved onto it by the effect that follows a session.
+                        platformSessions.logoutAll()
                     }
                 },
             )
@@ -607,7 +622,12 @@ fun CoineProApp(
             // revalidated — and putting credential fields in front of either would ask the reader
             // to solve a problem that is not theirs.
             SessionState.SignedOut -> {
-                LaunchedEffect(emailAuthController) { emailAuthController.loadMethods() }
+                LaunchedEffect(emailAuthController) {
+                    emailAuthController.loadMethods()
+                    // Picks up a registration that was started and not finished — the reader left
+                    // for their inbox and the process was killed while they were gone.
+                    emailAuthController.resume()
+                }
                 // Arriving on a recovery link means the reader is mid-recovery, so the screen opens
                 // where they left off rather than on a sign-in form they cannot yet complete.
                 LaunchedEffect(launchResetToken) {
@@ -758,8 +778,8 @@ fun CoineProApp(
                 state = session,
                 loginConfigState = loginConfigState,
                 onRetryLoginConfig = { scope.launch { sessionController.prepareLogin() } },
-                onRetry = { scope.launch { sessionController.restore() } },
-                onLogout = { scope.launch { sessionController.logout() } },
+                onRetry = { scope.launch { platformSessions.controller(activePlatform).restore() } },
+                onLogout = { scope.launch { platformSessions.logoutAll() } },
             )
         }
     }

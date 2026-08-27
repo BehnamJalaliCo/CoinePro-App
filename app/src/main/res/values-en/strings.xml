@@ -70,4 +70,5 @@
     <string name="profile_action_safety">Safety and version</string>
     <string name="profile_action_safety_note">Notifications, the crash report and the version</string>
     <string name="profile_action_delete">Delete account</string>
+    <string name="auth_google_not_registered">Google sign-in is not enabled for this build — this app\'s signing certificate is not registered in the Google console. Sign in with e-mail for now.</string>
 </resources>

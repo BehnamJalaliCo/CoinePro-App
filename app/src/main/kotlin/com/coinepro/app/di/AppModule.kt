@@ -28,6 +28,8 @@ import com.coinepro.core.aivision.AiVisionGateway
 import com.coinepro.core.aivision.NetworkAiVisionGateway
 import com.coinepro.core.auth.AuthGateway
 import com.coinepro.core.auth.EmailAuthController
+import com.coinepro.app.auth.RegistrationStore
+import com.coinepro.core.auth.FederatedEmailAuthGateway
 import com.coinepro.core.auth.EmailAuthGateway
 import com.coinepro.core.auth.NetworkEmailAuthGateway
 import com.coinepro.core.auth.NetworkAuthGateway
@@ -476,23 +478,55 @@ object AppModule {
     ): EmailAuthController = EmailAuthController(gateway, scope, session::adoptSession)
 
     /**
-     * The sign-in screen's controller.
+     * The sign-in screen's controller: one screen, two user tables.
      *
-     * **TradeYar**, and it must stay matched to the unqualified [SessionController] below: that
-     * session is what gates the shell, so the screen that opens it has to be the one that fills it.
-     * Signing in to one and gating on the other leaves the reader looking at a completed sign-in
-     * and a locked app.
+     * **New accounts are TradeYar's.** A reader registering here is registering with *CoinePro*,
+     * not with one of its two backends — and the CoinePro-FX server signs its mail as "CoinePro Fx"
+     * and files the account in the forex product's user table. The name in the reader's inbox is
+     * the product they think they joined, and the row belongs in the system that owns the account.
      *
-     * It was CoinePro-FX, and that was the wrong home for the account. A reader registering here is
-     * registering with **CoinePro**, not with one of its two backends — and the CoinePro-FX server
-     * signs its mail as "CoinePro Fx" and files the account in the forex product's user table. The
-     * name in the reader's inbox is the product they think they joined, and the row is in the
-     * system that owns the account: both belong to TradeYar.
+     * **Existing accounts are wherever they already are.** Until 1.27.0 this was CoinePro-FX, so
+     * every account made before that release lives there, with a correct password TradeYar has
+     * never heard of. Sign-in therefore federates — see [FederatedEmailAuthGateway] for the whole
+     * argument, including what deliberately does not.
+     *
+     * **The session goes to the backend that issued it.** That is what the `when` below is for, and
+     * it is not a detail: a CoinePro-FX token written into TradeYar's storage makes an app that
+     * believes it is signed in and is answered 401 by everything, which a reader experiences as
+     * being thrown straight back to the guest screen the instant they get in.
      */
     @Provides
     @Singleton
-    fun emailAuthController(@CryptoPlatform controller: EmailAuthController): EmailAuthController =
-        controller
+    fun emailAuthController(
+        @CryptoPlatform home: EmailAuthGateway,
+        @ForexPlatform legacy: EmailAuthGateway,
+        @CryptoPlatform homeSession: SessionController,
+        @ForexPlatform legacySession: SessionController,
+        dataStore: DataStore<Preferences>,
+        scope: CoroutineScope,
+    ): EmailAuthController {
+        // New accounts are TradeYar's; an account made before 1.27.0 is CoinePro-FX's and its owner
+        // must still be able to get in. See [FederatedEmailAuthGateway] for the whole argument,
+        // including what deliberately does not federate.
+        val gateway = FederatedEmailAuthGateway(home = home, legacy = listOf(legacy))
+        return EmailAuthController(
+            gateway = gateway,
+            scope = scope,
+            // Survives the process being killed while the reader is in their inbox looking for the
+            // code. Without it they come back to a sign-in screen for an account that was never
+            // created — see [RegistrationMemory].
+            memory = RegistrationStore(dataStore),
+            onAuthenticated = { session ->
+            // The token goes to the session that can use it. A CoinePro-FX token written into
+            // TradeYar's storage produces a signed-in app whose every request comes back 401 —
+            // which the reader experiences as being thrown straight back to the guest screen.
+                when (session.platform) {
+                    MarketPlatform.TRADEYAR -> homeSession.adoptSession(session)
+                    MarketPlatform.COINEPRO_FX -> legacySession.adoptSession(session)
+                }
+            },
+        )
+    }
 
     /**
      * What each server says it can do, for every screen that fronts an optional feature.

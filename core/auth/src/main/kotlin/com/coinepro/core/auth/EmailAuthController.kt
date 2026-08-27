@@ -11,6 +11,28 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+/**
+ * Somewhere to keep a half-finished registration across a process death.
+ *
+ * Registration is two steps with a wait in the middle, and the wait is somebody leaving the app to
+ * open their e-mail. Android is free to kill the process while they are gone — and it does — which
+ * used to lose the registration token held in memory here. What that looks like from the outside is
+ * the worst possible thing: the reader typed their details, got a code, came back, and found a
+ * sign-in screen for an account that was never created. Then they try to sign in and are told,
+ * accurately, that the credentials are wrong.
+ *
+ * So the token is written down. It is not a credential — it names an unfinished registration and is
+ * spent by the code — and the password is deliberately **not** stored beside it.
+ */
+interface RegistrationMemory {
+    suspend fun save(pending: PendingRegistration?)
+
+    suspend fun load(): PendingRegistration?
+}
+
+/** A registration that has been started and not yet verified. */
+data class PendingRegistration(val registrationToken: String, val email: String)
+
 /** Which part of the flow the reader is in. One screen renders all of them. */
 enum class EmailAuthStep {
     SIGN_IN,
@@ -76,6 +98,8 @@ class EmailAuthController(
     private val gateway: EmailAuthGateway,
     private val scope: CoroutineScope,
     private val onAuthenticated: suspend (EmailAuthSession) -> Unit,
+    /** Null keeps the old in-memory behaviour, which is what the tests want. */
+    private val memory: RegistrationMemory? = null,
 ) {
     private val stateMutable = MutableStateFlow(EmailAuthUiState())
     val state: StateFlow<EmailAuthUiState> = stateMutable.asStateFlow()
@@ -107,7 +131,7 @@ class EmailAuthController(
     fun dismissNotice() = stateMutable.update { it.copy(notice = null) }
 
     fun signIn(email: String, password: String) = run {
-        gateway.signIn(email.trim(), password).authenticated()
+        gateway.signIn(email.normalizedAddress(), password).authenticated()
     }
 
     fun signInWithGoogle(idToken: String) = run {
@@ -133,10 +157,11 @@ class EmailAuthController(
     }
 
     fun startRegistration(email: String, password: String, fullName: String) = run {
-        val address = email.trim()
+        val address = email.normalizedAddress()
         when (val result = gateway.startRegistration(address, password, fullName.trim())) {
             is AppResult.Success -> {
                 registration = result.value
+                memory?.save(PendingRegistration(result.value.registrationToken, address))
                 stateMutable.update {
                     it.copy(
                         step = EmailAuthStep.VERIFY_CODE,
@@ -152,7 +177,28 @@ class EmailAuthController(
 
     fun verifyCode(code: String) = run {
         val token = registration?.registrationToken ?: return@run restartRegistration()
-        gateway.verifyRegistration(token, code.trim()).authenticated()
+        val result = gateway.verifyRegistration(token, code.trim())
+        // Cleared on success only. A wrong code leaves the registration open, which is the whole
+        // point of having written it down.
+        if (result is AppResult.Success) memory?.save(null)
+        result.authenticated()
+    }
+
+    /**
+     * Picks a half-finished registration back up.
+     *
+     * Called when the sign-in surface appears. Landing the reader on the code screen with their own
+     * address already named is the difference between "where did my sign-up go" and "oh, right".
+     */
+    fun resume() {
+        val store = memory ?: return
+        scope.launch {
+            val pending = store.load() ?: return@launch
+            registration = RegistrationChallenge(pending.registrationToken, cooldownSeconds = null)
+            stateMutable.update {
+                it.copy(step = EmailAuthStep.VERIFY_CODE, pendingEmail = pending.email)
+            }
+        }
     }
 
     /**
@@ -169,7 +215,7 @@ class EmailAuthController(
     }
 
     fun requestPasswordReset(email: String) = run {
-        when (val result = gateway.requestPasswordReset(email.trim())) {
+        when (val result = gateway.requestPasswordReset(email.normalizedAddress())) {
             is AppResult.Success ->
                 stateMutable.update { it.copy(notice = EmailAuthNotice.RESET_REQUESTED) }
             is AppResult.Failure -> fail(result)
@@ -192,6 +238,9 @@ class EmailAuthController(
      */
     private fun restartRegistration() {
         registration = null
+        // Forgotten here too, or a reader who chose to start over would be put back on the code
+        // screen for the abandoned attempt the next time the app opened.
+        memory?.let { store -> scope.launch { store.save(null) } }
         stateMutable.update {
             it.copy(step = EmailAuthStep.REGISTER, failure = null, notice = null, pendingEmail = "")
         }
@@ -255,3 +304,19 @@ class EmailAuthController(
         }
     }
 }
+
+/**
+ * An e-mail address as the server should see it: trimmed, and lower-cased.
+ *
+ * The case matters more than it looks. A phone keyboard capitalises the first letter of a field
+ * often enough that the same person types `Panizd…@gmail.com` when registering and `panizd…` when
+ * signing in — and a server that compares the local part exactly then answers, correctly from its
+ * own point of view and falsely from theirs, that the password is wrong. There is no case in which
+ * a reader means two different accounts by two spellings of one address, so this is normalised at
+ * the one place every step goes through rather than trusted to five call sites and a keyboard.
+ *
+ * The domain is case-insensitive by the RFC; the local part is not, in theory. In practice no mail
+ * provider a reader of this app uses treats it as case-sensitive, and the alternative — lower-
+ * casing the domain only — leaves exactly the bug above in place.
+ */
+private fun String.normalizedAddress(): String = trim().lowercase()

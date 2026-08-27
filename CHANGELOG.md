@@ -15,6 +15,60 @@ it is for.
 
 ---
 
+## [1.28.0] — 2026-08-27 — Sign in wherever your account already is
+
+1.27.0 moved sign-in to TradeYar, which was right, and stranded every account made before it, which
+was not. This is that, fixed — plus two other ways the same flow could leave somebody outside.
+
+### Fixed
+- **An account made before 1.27.0 can sign in again.** CoinePro runs two independent user tables.
+  Until 1.27.0 the app registered against CoinePro-FX; from 1.27.0 it registers against TradeYar,
+  where a CoinePro account belongs. Every older account is therefore real, with a correct password,
+  on a server the app had stopped asking — so TradeYar answered `TYR-001 Auth Invalid Credentials`
+  and the reader was told, accurately from the server's side and falsely from theirs, that their
+  password was wrong. Sign-in now asks TradeYar first and, **only when TradeYar says the credentials
+  are wrong**, asks CoinePro-FX. A network failure, a rate limit or a 500 stops at the first server:
+  none of those is evidence the account lives elsewhere, and a fallback sends the reader's password
+  to a second host.
+- **The session goes to the backend that issued it, and the shell opens on that backend.** A
+  CoinePro-FX token written into TradeYar's storage is an app that believes it is signed in and is
+  answered 401 by everything — which is the "it throws me back to the guest screen" symptom again,
+  from the other direction. `EmailAuthSession` now carries its platform, and the shell is gated on
+  the session of the platform on screen rather than on TradeYar's alone.
+- **Every configured platform restores on launch**, not just TradeYar. Restoring one of two would
+  have left a returning reader signed out of the app with a perfectly good session in storage.
+- **The address is lower-cased before it is sent.** A phone keyboard capitalises the first letter of
+  a field often enough that the same person registers as `Reader@…` and signs in as `reader@…`; a
+  server comparing the local part exactly then reports a wrong password. There is no case in which
+  a reader means two different accounts by two spellings of one address.
+- **Signing out signs out of both backends.** «خروج» means leaving, and logging out of one would
+  otherwise let the effect that follows a session move the reader silently onto the other.
+- **Google sign-in's failure speaks Persian.** It was an English sentence in an RTL message box,
+  which does not read as a note to a developer — it reads as the app being broken, full stop in the
+  wrong place included. It now says what a reader can do, and keeps one clause of cause because the
+  person testing this build is the one who can fix it.
+
+### Added
+- **A half-finished registration survives the process being killed.** Registration is two steps with
+  a wait in the middle, and the wait is somebody leaving the app to open their e-mail — which is
+  exactly when Android reclaims the process. The registration token used to live in memory, so they
+  came back to a sign-in screen for an account that had never been created, tried to sign in, and
+  were told the credentials were wrong. It is written down now, and the code screen picks up where
+  they left off. The password is not stored, here or anywhere.
+- Tests for all of it: what does and does not federate, that only a credential refusal reaches the
+  second server, that home's wording is the one reported when both refuse, that registration is
+  never made twice, and that recovery is asked of every backend — because a route that answers
+  identically for a registered and an unregistered address cannot tell the app where to send it.
+
+### Notes
+- **Google sign-in still needs one thing from the Google console and no app change.** This build has
+  no Android OAuth client, so no SHA-1 is registered and Google will not mint a token for it.
+  Verified today: the audience the app sends is TradeYar's `google_client_id`, and its Google Cloud
+  project is the *same* one as this app's Firebase project — so it is one fingerprint added in one
+  console, not two. `docs/PLAY_LISTING.md` carries the fingerprint and the three steps.
+
+---
+
 ## [1.27.0] — 2026-08-27 — The app, for everybody
 
 Four things the owner asked for, and one they did not have to: sign-in now creates the right kind of

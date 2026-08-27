@@ -6,6 +6,7 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
+import com.coinepro.app.R
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 
@@ -73,7 +74,7 @@ class GoogleSignInClient(private val context: Context) {
         } catch (_: GetCredentialCancellationException) {
             GoogleSignInOutcome.Cancelled
         } catch (error: GetCredentialException) {
-            GoogleSignInOutcome.Failed(explain(error))
+            GoogleSignInOutcome.Failed(explain(context, error))
         }
     }
 }
@@ -92,7 +93,7 @@ class GoogleSignInClient(private val context: Context) {
  * release key's SHA-1 that is missing from the console; `docs/PLAY_LISTING.md` §9 carries the
  * fingerprint and what to do with it.
  */
-private fun explain(error: GetCredentialException): String? {
+private fun explain(context: Context, error: GetCredentialException): String? {
     val text = (error.errorMessage?.toString().orEmpty() + " " + error.type).lowercase()
     val misconfigured = listOf(
         "developer console",
@@ -100,16 +101,19 @@ private fun explain(error: GetCredentialException): String? {
         "no credentials available",
         "type_no_credential",
     ).any { it in text }
-    return if (misconfigured) GOOGLE_NOT_REGISTERED else error.errorMessage?.toString()
+    return if (misconfigured) {
+        context.getString(R.string.auth_google_not_registered)
+    } else {
+        error.errorMessage?.toString()
+    }
 }
 
-/**
- * Deliberately not a string resource.
- *
- * It is a build-configuration fault, not a state a reader can be in, and the person who needs to
- * read it is whoever is installing the app rather than whoever is using it. Translating it would
- * imply it is a normal outcome.
+/*
+ * It *was* deliberately not a string resource, on the argument that a build-configuration fault is
+ * for whoever installs the app rather than whoever uses it. That argument was wrong in practice:
+ * this is a shipped release, a Persian reader is the one looking at it, and English inside an RTL
+ * message box does not read as a note to a developer — it reads as the app being broken, with the
+ * full stop rendered in the wrong place for good measure. So it is Persian now, it says what a
+ * reader can actually do, and it keeps one clause of cause because the person testing this build is
+ * the one who can fix it.
  */
-private const val GOOGLE_NOT_REGISTERED =
-    "Google sign-in is not registered for this build: the app's signing certificate (SHA-1) is " +
-        "missing from the Google Cloud project. Sign in with e-mail instead."
