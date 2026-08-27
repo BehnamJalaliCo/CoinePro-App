@@ -285,6 +285,7 @@ core:designsystem
 core:auth
 core:security
 core:marketdata
+core:membership
 core:chart
 core:help
 core:symbols
@@ -320,6 +321,7 @@ feature:execution
 feature:kyc
 feature:account
 feature:guest
+feature:membership
 feature:alerts
 feature:journal
 feature:papertrade

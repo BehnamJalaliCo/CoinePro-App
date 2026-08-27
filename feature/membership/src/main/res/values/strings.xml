@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="membership_status_title">وضعیت عضویت</string>
+    <string name="membership_status_unavailable">وضعیت عضویت در دسترس نیست.</string>
+    <string name="membership_retry">تلاش دوباره</string>
+
+    <string name="membership_state_awaiting_uid">در انتظار شناسهٔ کاربری</string>
+    <string name="membership_state_verifying">در حال بررسی</string>
+    <string name="membership_state_approved">تأیید شده</string>
+    <string name="membership_state_pending_deposit">در انتظار واریز</string>
+    <string name="membership_state_rejected_referral">حساب متصل نیست</string>
+    <string name="membership_state_error">بررسی ناتمام ماند</string>
+    <string name="membership_state_pending">در انتظار</string>
+    <string name="membership_state_unknown">وضعیت نامشخص</string>
+
+    <string name="membership_fallback_approved">عضویت شما فعال است.</string>
+    <string name="membership_fallback_waiting">بررسی در جریان است. لازم نیست کاری بکنید.</string>
+    <string name="membership_fallback_error">بررسی به نتیجه نرسید. کمی بعد دوباره تلاش کنید.</string>
+    <string name="membership_fallback_generic">برای دیدن جزئیات، وضعیت را به‌روز کنید.</string>
+
+    <string name="membership_uid_title">ثبت شناسهٔ کاربری صرافی</string>
+    <string name="membership_uid_help">شناسهٔ کاربری (UID) را از پروفایل حساب صرافی خود بردارید. با ارقام فارسی هم بنویسید مشکلی نیست.</string>
+    <string name="membership_uid_label">شناسهٔ کاربری</string>
+    <string name="membership_uid_submit">ارسال برای بررسی</string>
+    <string name="membership_uid_sent">ارسال شد. بررسی چند دقیقه طول می‌کشد.</string>
+    <string name="membership_uid_refused">شناسه ثبت نشد.</string>
+    <string name="membership_uid_retry_after">تعداد تلاش‌ها زیاد بود. %1$s ثانیه دیگر دوباره تلاش کنید.</string>
+    <string name="membership_uid_on_file">شناسهٔ ثبت‌شده: %1$s</string>
+</resources>

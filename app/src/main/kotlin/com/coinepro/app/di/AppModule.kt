@@ -69,6 +69,9 @@ import com.coinepro.core.marketdata.NetworkMarketSnapshotGateway
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.marketintel.MarketIntelGateway
 import com.coinepro.core.marketintel.NetworkMarketIntelGateway
+import com.coinepro.core.membership.MembershipController
+import com.coinepro.core.membership.MembershipGateway
+import com.coinepro.core.membership.NetworkMembershipGateway
 import com.coinepro.core.academy.AcademyController
 import com.coinepro.feature.terminal.TerminalController
 import com.coinepro.core.academy.AcademyGateway
@@ -353,6 +356,23 @@ object AppModule {
     @Singleton
     fun guestController(gateway: GuestGateway, scope: CoroutineScope): GuestController =
         GuestController(gateway, scope)
+
+    /**
+     * Membership is TradeYar's, and only TradeYar's.
+     *
+     * The affiliate arrangement, the UID check and the deposit threshold all live on the crypto
+     * side; CoinePro-FX sells subscriptions instead. Binding this per-platform would offer a UID
+     * form on a server that has no route for it.
+     */
+    @Provides
+    @Singleton
+    fun membershipGateway(@CryptoPlatform retrofit: Retrofit): MembershipGateway =
+        NetworkMembershipGateway.create(retrofit)
+
+    @Provides
+    @Singleton
+    fun membershipController(gateway: MembershipGateway, scope: CoroutineScope): MembershipController =
+        MembershipController(gateway, scope)
 
     @Provides
     @Singleton

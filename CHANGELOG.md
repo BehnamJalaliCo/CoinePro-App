@@ -15,6 +15,30 @@ it is for.
 
 ---
 
+## [1.22.0] — 2026-08-27 — Membership status, and the eight people it is for
+
+Both backends confirmed everything again on live servers. The one gap left in the app was the
+membership check itself: the routes were contracted but nothing called them.
+
+### Added
+- `core:membership` and `feature:membership` — the status read, the UID form, and the seven states
+  the server actually uses, mapped one to one. A state added server-side after this build ships maps
+  to `UNKNOWN` and draws the server's own sentence, rather than to the nearest neighbour, which
+  would be a guess about somebody's membership.
+- The UID is folded to Latin digits before it is sent. A Persian keyboard produces ۰-۹ by default,
+  and the exchange asked about `۱۲۳` answers that it has never heard of that account — a refusal
+  that reads as a judgement about the person rather than about the keyboard.
+
+### Changed
+- `pending_deposit` is drawn in the warning colour, not the refusal colour, and that is the whole
+  point of the screen. TradeYar's dry run over the parked submissions found zero approvals and
+  **eight genuine sub-accounts whose balance had not reached the threshold**. Those eight succeeded
+  at everything except the last step; painting that red tells them they were turned away.
+- `note` is carried and never rendered. TradeYar found their own web form printing it — a reader
+  seeing `referral_status=false` — which is exactly the mistake the field's separation prevents.
+
+---
+
 ## [1.21.1] — 2026-08-27 — What deletion actually takes
 
 CoinePro-FX asked whether deleting an account should take the academy account created with the same
