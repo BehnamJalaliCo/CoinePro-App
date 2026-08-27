@@ -97,6 +97,14 @@ fun ChartScreen(
      * WebView, and an ordinary reader who never presses it never meets one.
      */
     onOpenTerminal: (() -> Unit)? = null,
+    /**
+     * Opens the NamaScript studio on this symbol.
+     *
+     * On the chart's own toolbar because that is where a reader is when they think "I want a line
+     * this app does not have". A script written anywhere else would be written against a symbol
+     * chosen twice.
+     */
+    onOpenScript: (() -> Unit)? = null,
     /** The reader's watchlist, for the switcher strip. Fewer than two symbols hides it. */
     watchlist: List<String> = emptyList(),
     onSelectSymbol: ((String) -> Unit)? = null,
@@ -175,6 +183,7 @@ fun ChartScreen(
                         signal = signal,
                         levels = state.levels,
                         markers = state.markers,
+                        panes = state.panes,
                     ),
                     drawing = state.drawing,
                     onDrawing = controller::onDrawing,
@@ -223,6 +232,7 @@ fun ChartScreen(
             // bars" is a button that should not have been there.
             onReplay = controller::enterReplay
                 .takeIf { !state.replay.isOn && state.series.bars.size >= Replay.MINIMUM_BARS },
+            onOpenScript = onOpenScript,
             onOpen = { sheet = it },
         )
     }
@@ -456,6 +466,7 @@ private fun Toolbar(
     hasLayouts: Boolean,
     onShare: () -> Unit,
     onReplay: (() -> Unit)?,
+    onOpenScript: (() -> Unit)?,
     onOpen: (ChartSheet) -> Unit,
 ) {
     Row(
@@ -485,6 +496,9 @@ private fun Toolbar(
         // On the chart because the bars are already here. A backtest screen elsewhere would need a
         // symbol picker, a timeframe picker and a second fetch to answer the same question.
         if (canBacktest) ToolbarButton(DesignR.drawable.icon_chart_line_up, "بک‌تست") { onOpen(ChartSheet.BACKTEST) }
+        onOpenScript?.let {
+            ToolbarButton(DesignR.drawable.tv_code2, "نما اسکریپت", onClick = it)
+        }
         ToolbarButton(DesignR.drawable.icon_camera, "اشتراک تصویر", onClick = onShare)
         if (hasLayouts) {
             ToolbarButton(DesignR.drawable.icon_sliders_horizontal, "چیدمان") { onOpen(ChartSheet.LAYOUTS) }

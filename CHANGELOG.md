@@ -15,6 +15,65 @@ it is for.
 
 ---
 
+## [1.23.0] — 2026-08-27 — NamaScript
+
+The reader writes their own indicator, saves it, and sees it on the chart they were already looking
+at. Ten scripts ship with it and a twelve-part course teaches the language beside the editor.
+
+The design decision this rests on: **evaluation is vectorised**. Every expression is evaluated once
+over the whole series and scalars broadcast, rather than a bar loop with rolling state per call
+site. That is why the language has no `for` and no user functions, and why running a script over a
+thousand bars on a phone is a few milliseconds rather than a spinner. `iff` and `[n]` cover what a
+loop would have been used for.
+
+### Added
+- `core:script` — the whole language. Lexer, parser, interpreter and about fifty built-ins across
+  `ta.*`, `math.*`, control (`iff`, `nz`), inputs and output (`plot`, `hline`, `marker`, `signal`,
+  `log`). Every `ta.*` delegates to `core:chart`'s own `Indicators`, so a script's EMA is bit for
+  bit the EMA the chart draws — not a second implementation that agrees most of the time.
+- Ten shipped scripts, each a study somebody actually trades and each written the way it would be
+  written by hand: two-average cross, RSI zones, Bollinger squeeze, ATR stop, breakout setup, MACD,
+  trend filter, volume spike, inside bar, session range.
+- A twelve-lesson course in Persian, in the order the ideas depend on each other. The two hardest —
+  that everything is a whole series at once, and that an absent value is not zero — come third and
+  fourth, before anything quietly relies on them. Every example is runnable, and one tap puts it in
+  the editor against the symbol on screen.
+- A function reference derived from the interpreter's own dispatch table, and a colour list derived
+  from its own palette map. A test calls every entry: a reference that names a function the language
+  does not have teaches an error in the reader's own hand.
+- `feature:script` — the studio. A live chart preview at the top, the code field under it, the input
+  panel, the setup readout and the log. Four tabs: editor, library, lessons, reference.
+- Saved scripts, in a new `saved_scripts` table with `MIGRATION_3_4` written out by hand. That is
+  the third table in this database that nobody can give back if it is dropped, beside the journal
+  and the paper trades.
+- Reader-set input values are saved with the script and restored when it is reopened, clamped into
+  the range the script declares now rather than the range it declared when the value was stored.
+- Indicator panes on the chart — `ChartPane` and `ChartCatalog.paneFor`. This closes a real gap that
+  had nothing to do with scripting: thirty separate-pane indicators were in the catalogue with their
+  arithmetic already written, and switching one on drew nothing at all, because there was nowhere on
+  the canvas to put a second scale. RSI, MACD, ATR and twenty-seven others now draw.
+- Two ways in, both from where a reader already is: the chart's toolbar, and a card in the toolkit.
+
+### Changed
+- Whether a plotted line goes over the price or into its own pane is decided by **measuring its
+  typical distance from the close**, not by overlapping ranges and not by reading its title. Ranges
+  overlap by accident — an RSI reading 0–100 sits neatly inside a price that trades between 100 and
+  160 — and an RSI drawn over the candles flattens the price axis to a line.
+- Volume and the indicator panes are now capped *together* rather than each on its own. Separately
+  clamped they added up, and three oscillators plus volume left the candles less height than the
+  volume bars underneath them.
+- Chart axis labels are laid out left-to-right explicitly. The measurer took its direction from the
+  composition, so on a Persian device a MACD pane's lower bound printed as `4.92-`.
+
+### Notes
+- A script cannot reach the network, cannot read the account, and cannot place an order. It reads
+  candles and it draws. Each run has a node budget, so a mistake in a reader's own script cannot
+  lock the app.
+- During bar replay a script sees exactly the bars the reader sees. The future is absent from what
+  the interpreter is given, not hidden by the renderer.
+
+---
+
 ## [1.22.0] — 2026-08-27 — Membership status
 
 Both backends confirmed everything again on live servers. The one gap left in the app was the

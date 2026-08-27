@@ -870,6 +870,37 @@ object ScreenshotFixtures {
      * The gateway hands back the same walk `chartSeries` draws, so a reader comparing the screen
      * render with the engine renders is looking at the same market.
      */
+    /**
+     * A script controller with an in-memory store.
+     *
+     * No Room, because the render only needs the editor's own state and standing up a database in
+     * a screenshot test would make every capture wait on a schema migration.
+     */
+    fun scriptController(
+        scope: kotlinx.coroutines.CoroutineScope,
+    ): com.coinepro.core.script.ScriptController {
+        val dao = object : com.coinepro.core.database.SavedScriptDao {
+            private val rows =
+                kotlinx.coroutines.flow.MutableStateFlow(emptyList<com.coinepro.core.database.SavedScriptEntity>())
+
+            override fun scripts() = rows
+            override suspend fun byId(id: Long) = rows.value.firstOrNull { it.id == id }
+            override suspend fun count() = rows.value.size
+            override suspend fun insert(script: com.coinepro.core.database.SavedScriptEntity): Long {
+                val id = (rows.value.maxOfOrNull { it.id } ?: 0L) + 1
+                rows.value = rows.value + script.copy(id = id)
+                return id
+            }
+            override suspend fun update(script: com.coinepro.core.database.SavedScriptEntity) {
+                rows.value = rows.value.map { if (it.id == script.id) script else it }
+            }
+            override suspend fun delete(id: Long) {
+                rows.value = rows.value.filterNot { it.id == id }
+            }
+        }
+        return com.coinepro.core.script.ScriptController(dao, scope)
+    }
+
     fun chartController(
         scope: kotlinx.coroutines.CoroutineScope,
         symbol: String = "XAUUSD",

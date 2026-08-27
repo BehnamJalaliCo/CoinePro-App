@@ -12,6 +12,7 @@
     <string name="screen_delete_account">Delete account</string>
     <string name="screen_alerts">Price alerts</string>
     <string name="screen_journal">Trading journal</string>
+    <string name="screen_script">NamaScript</string>
     <string name="screen_paper_trade">Paper trading</string>
     <string name="screen_ai_vision">Chart analysis</string>
     <string name="screen_ai_assistant">AI assistant</string>

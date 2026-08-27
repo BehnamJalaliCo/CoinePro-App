@@ -45,6 +45,7 @@ import com.coinepro.core.auth.LoginConfigState
 import com.coinepro.core.auth.SessionState
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProAssetLogo
+import com.coinepro.feature.script.ScriptScreen
 import com.coinepro.core.chart.ActiveToolBar
 import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.chart.ChartPoint
@@ -1257,6 +1258,50 @@ class ScreenshotRenderTest {
         val controller = ScreenshotFixtures.chartController(scope)
         listOf("ema", "bollinger", "supertrend", "pivots").forEach(controller::toggleIndicator)
         ChartScreen(controller = controller)
+    }
+
+    /**
+     * The oscillator panes.
+     *
+     * Until the pane renderer existed, switching on an RSI in the picker did nothing at all: the
+     * option was in the catalogue, the arithmetic was in `Indicators`, and there was nowhere on the
+     * canvas to put a second scale. This is the render that proves the join — three strips under
+     * the price, each on its own extremes, with the reference levels inside them.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun chartPanes() = capture("73-chart-panes-fa") {
+        val controller = ScreenshotFixtures.chartController(scope)
+        listOf("ema", "rsi", "macd", "atr").forEach(controller::toggleIndicator)
+        ChartScreen(controller = controller)
+    }
+
+    /**
+     * The NamaScript studio, with a preset run.
+     *
+     * The render checks the thing that is easy to get wrong on this screen and invisible in a unit
+     * test: the code field is laid out left-to-right inside a right-to-left page, so `close - atr *
+     * 2` reads in the order it will run rather than mirrored.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun scriptStudio() = capture("74-script-studio-fa") {
+        val series = ScreenshotFixtures.chartSeries()
+        val controller = ScreenshotFixtures.scriptController(scope)
+        controller.setSeries(series)
+        controller.openPreset(com.coinepro.core.script.ScriptPresets.byId("rsi-zones")!!)
+        ScriptScreen(controller = controller, symbol = "XAUUSD", series = series)
+    }
+
+    /** The same studio failing: a script with a stray bracket, and the caret's line and column. */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun scriptFailure() = capture("75-script-failure-fa") {
+        val series = ScreenshotFixtures.chartSeries()
+        val controller = ScreenshotFixtures.scriptController(scope)
+        controller.setSeries(series)
+        controller.edit("fast = ta.ema(close, 9\nplot(fast)")
+        ScriptScreen(controller = controller, symbol = "XAUUSD", series = series)
     }
 
     /**

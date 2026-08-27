@@ -172,6 +172,9 @@
     <string name="tools_journal_title">ژورنال معاملاتی</string>
     <string name="tools_journal_body">چه دیدی، چه حسی داشتی، دفعهٔ بعد چه می‌کنی. روی همین گوشی می‌ماند و جایی فرستاده نمی‌شود.</string>
     <string name="tools_journal_open">باز کردن ژورنال</string>
+    <string name="tools_script_title">نما اسکریپت</string>
+    <string name="tools_script_body">اندیکاتور خودتان را بنویسید، ذخیره کنید و روی نمودار ببینید. ده اسکریپت آماده و یک دورهٔ کوتاه هم همراهش هست.</string>
+    <string name="tools_script_open">نوشتن</string>
     <string name="tools_paper_title">معاملهٔ آزمایشی</string>
     <string name="tools_paper_body">با قیمت زنده، بدون پول. برای روزهایی که هنوز حسابی شارژ نکرده‌اید.</string>
     <string name="tools_paper_open">شروع</string>

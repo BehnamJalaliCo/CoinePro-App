@@ -287,6 +287,7 @@ core:security
 core:marketdata
 core:membership
 core:chart
+core:script
 core:help
 core:symbols
 core:signals
@@ -309,6 +310,7 @@ core:database
 feature:admin
 feature:auth
 feature:home
+feature:script
 feature:search
 feature:chart
 feature:portfolio

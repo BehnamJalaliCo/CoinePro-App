@@ -3,6 +3,8 @@ package com.coinepro.core.chart
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -174,6 +176,57 @@ class ChartCatalogTest {
             )
         }
     }
+
+    @Test
+    fun `every separate-pane indicator produces a pane`() {
+        // The gap this closed: for a long time the option was in the catalogue, the arithmetic was
+        // in Indicators, and nothing joined them — switching on an RSI drew nothing at all. An
+        // entry here with no pane is that bug coming back.
+        val series = wavySeries()
+        for (option in ChartCatalog.INDICATORS.filter { it.pane == IndicatorPane.SEPARATE }) {
+            val pane = ChartCatalog.paneFor(option, series)
+            assertNotNull("${option.id} must produce a pane", pane)
+            assertTrue(
+                "${option.id} must draw at least one line or histogram",
+                pane!!.lines.isNotEmpty() || pane.histogram != null,
+            )
+        }
+    }
+
+    @Test
+    fun `paneFor refuses an indicator that belongs on the price`() {
+        val series = wavySeries()
+        for (option in ChartCatalog.INDICATORS.filter { it.pane != IndicatorPane.SEPARATE }) {
+            assertNull(ChartCatalog.paneFor(option, series))
+        }
+    }
+
+    @Test
+    fun `an empty series produces no pane rather than an exception`() {
+        for (option in ChartCatalog.INDICATORS) {
+            assertNull(ChartCatalog.paneFor(option, CandleSeries.EMPTY))
+        }
+    }
+
+    /**
+     * A series with turns and a volume that varies.
+     *
+     * A flat one would let a broken indicator pass: every oscillator pins to one end of its range,
+     * and every volume study returns an empty line because the feed looks like it reported none.
+     */
+    private fun wavySeries(count: Int = 300): CandleSeries = CandleSeries(
+        (0 until count).map { index ->
+            val close = 100.0 + kotlin.math.sin(index / 11.0) * 5 + index * 0.05
+            Candle(
+                t = 1_700_000_000L + index * 3_600L,
+                o = close - 0.3,
+                h = close + 0.9,
+                l = close - 1.0,
+                c = close,
+                v = 800.0 + (index % 23) * 30,
+            )
+        },
+    )
 
     @Test
     fun `an empty series produces no overlay rather than an exception`() {

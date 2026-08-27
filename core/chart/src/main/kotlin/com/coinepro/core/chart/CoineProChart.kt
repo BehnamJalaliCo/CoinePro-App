@@ -25,6 +25,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
@@ -194,7 +195,22 @@ fun CoineProChart(
                 0f
             }
             val timeAxis = if (decoration.showAxes && decoration.showTimeAxis) timeHeight else 0f
-            val plotHeight = max(0f, size.height - volumeHeight - timeAxis)
+            // Panes eat into the price's height, never into each other or the axis. Clamped in
+            // total, because four oscillators at 18% each would leave the candles a sliver — and
+            // the candles are what the reader came for.
+            val paneRatio = min(PANE_BUDGET, decoration.panes.sumOf { it.heightRatio.toDouble() }.toFloat())
+            val paneRequest = if (decoration.panes.isEmpty()) 0f else size.height * paneRatio
+            // Volume and panes are capped *together*, not each on its own. Separately clamped they
+            // add up: volume at a fifth plus three oscillators at their own limit left the candles
+            // with less height than the volume bars underneath them, which is a picture of the
+            // wrong thing. Both shrink by the same factor so their relative sizes survive.
+            val available = max(0f, size.height - timeAxis)
+            val requested = volumeHeight + paneRequest
+            val ceiling = available * LOWER_BUDGET
+            val squeeze = if (requested > ceiling && requested > 0f) ceiling / requested else 1f
+            val volume = volumeHeight * squeeze
+            val paneHeight = paneRequest * squeeze
+            val plotHeight = max(0f, available - volume - paneHeight)
 
             val view = viewport
                 .sized(plotWidth, plotHeight)
@@ -246,11 +262,20 @@ fun CoineProChart(
                     }
                 }
             }
-            if (volumeHeight > 0) drawVolume(view, plotHeight, volumeHeight, palette)
+            if (volume > 0) drawVolume(view, plotHeight, volume, palette)
+            if (paneHeight > 0f) {
+                var top = plotHeight + volume
+                val share = paneHeight / decoration.panes.sumOf { it.heightRatio.toDouble() }.toFloat()
+                for (pane in decoration.panes) {
+                    val height = pane.heightRatio * share
+                    drawPane(view, pane, top, height, plotWidth, palette, measurer, density.density)
+                    top += height
+                }
+            }
             if (decoration.showAxes) {
                 drawPriceAxis(view, plotWidth, palette, measurer)
                 if (decoration.showTimeAxis) {
-                    drawTimeAxis(view, plotHeight + volumeHeight, plotWidth, type, palette, measurer)
+                    drawTimeAxis(view, plotHeight + volume + paneHeight, plotWidth, type, palette, measurer)
                 }
             }
             crosshair?.let { drawCrosshair(view, it, plotWidth, palette, measurer) }
@@ -399,6 +424,151 @@ private fun DrawScope.drawVolume(
             )
         }
     }
+}
+
+/**
+ * One indicator pane: a hairline lid, a title, and the lines on their own scale.
+ *
+ * The scale is taken from what is *visible*, not from the whole series. An RSI that spent last
+ * March at 12 must not flatten today's range, and a reader who has zoomed in is asking about the
+ * bars in front of them.
+ *
+ * Levels declared by the pane are folded into the extremes before the scale is fixed, so RSI's 30
+ * and 70 are always on screen even on a stretch where the line never reached them — a pane whose
+ * reference lines are outside its own scale is a pane that lies about where the line is sitting.
+ */
+private fun DrawScope.drawPane(
+    view: ChartViewport,
+    pane: ChartPane,
+    top: Float,
+    height: Float,
+    plotWidth: Float,
+    palette: ChartPalette,
+    measurer: TextMeasurer,
+    density: Float,
+) {
+    if (height <= 0f || plotWidth <= 0f) return
+    drawLine(
+        color = palette.grid.copy(alpha = GRID_ALPHA),
+        start = Offset(0f, top),
+        end = Offset(plotWidth, top),
+        strokeWidth = HAIRLINE,
+    )
+
+    var low = Double.MAX_VALUE
+    var high = -Double.MAX_VALUE
+    val series = (pane.lines + listOfNotNull(pane.histogram))
+    for (line in series) {
+        for (index in view.firstVisible..view.lastVisible) {
+            val value = line.values[index] ?: continue
+            if (value < low) low = value
+            if (value > high) high = value
+        }
+    }
+    for (level in pane.levels) {
+        if (level.price < low) low = level.price
+        if (level.price > high) high = level.price
+    }
+    // A histogram is read against zero, so zero has to be inside the scale even when every bar in
+    // view is on one side of it. Without this a run of positive MACD draws as bars hanging off the
+    // bottom edge with no baseline to hang from.
+    if (pane.histogram != null) {
+        if (low > 0.0) low = 0.0
+        if (high < 0.0) high = 0.0
+    }
+    if (high < low) return
+    // A perfectly flat pane still has to draw, and dividing by a zero span would put it at NaN.
+    val span = (high - low).takeIf { it > 0.0 } ?: 1.0
+    val padded = span * PANE_PADDING
+    val bottom = low - padded
+    val ceiling = high + padded
+    fun yOf(value: Double): Float =
+        top + height * (1.0 - (value - bottom) / (ceiling - bottom)).toFloat()
+
+    clipRect(0f, top, plotWidth, top + height) {
+        pane.levels.forEach { level ->
+            val y = yOf(level.price)
+            drawLine(
+                color = Color(level.colour.toInt()),
+                start = Offset(0f, y),
+                end = Offset(plotWidth, y),
+                strokeWidth = HAIRLINE,
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(DASH_ON, DASH_OFF)),
+            )
+        }
+        pane.histogram?.let { histogram ->
+            val zero = yOf(0.0)
+            val body = view.bodyWidth
+            for (index in view.firstVisible..view.lastVisible) {
+                val value = histogram.values[index] ?: continue
+                val y = yOf(value)
+                drawRect(
+                    color = if (value >= 0) palette.up else palette.down,
+                    topLeft = Offset(view.xOf(index) - body / 2, min(y, zero)),
+                    size = Size(body, max(1f, abs(y - zero))),
+                )
+            }
+        }
+        pane.lines.forEach { line ->
+            val path = Path()
+            var started = false
+            for (index in view.firstVisible..view.lastVisible) {
+                val value = line.values[index]
+                if (value == null) {
+                    if (!line.connectNulls) started = false
+                    continue
+                }
+                val x = view.xOf(index)
+                val y = yOf(value)
+                if (!started) {
+                    path.moveTo(x, y)
+                    started = true
+                } else {
+                    path.lineTo(x, y)
+                }
+            }
+            drawPath(
+                path = path,
+                color = Color(line.colour),
+                style = Stroke(
+                    width = line.widthDp * density,
+                    pathEffect = if (line.dashed) {
+                        PathEffect.dashPathEffect(floatArrayOf(DASH_ON, DASH_OFF))
+                    } else {
+                        null
+                    },
+                ),
+            )
+        }
+    }
+
+    val title = measurer.measure(pane.title, axisStyle(palette.text))
+    drawText(title, topLeft = Offset(AXIS_PADDING, top + AXIS_PADDING))
+    // The two extremes at the right edge rather than a full axis: a pane is a shape to read, not a
+    // scale to measure off, and five gridline labels in a 90px strip is unreadable noise.
+    val decimals = paneDecimals(high - low)
+    val topLabel = measurer.measure(formatPrice(ceiling, decimals), axisStyle(palette.text))
+    drawText(topLabel, topLeft = Offset(plotWidth + AXIS_PADDING, top + AXIS_PADDING))
+    val bottomLabel = measurer.measure(formatPrice(bottom, decimals), axisStyle(palette.text))
+    drawText(
+        bottomLabel,
+        topLeft = Offset(plotWidth + AXIS_PADDING, top + height - bottomLabel.size.height - AXIS_PADDING),
+    )
+}
+
+/**
+ * How many decimals a pane's extremes need.
+ *
+ * Driven by the pane's own span, not by the price's: an RSI spanning 40 points needs none and a
+ * MACD spanning 0.004 needs four. Reusing the price rule would print "0.00" for both edges of a
+ * MACD pane, which says nothing at all.
+ */
+private fun paneDecimals(span: Double): Int = when {
+    span >= 100 -> 0
+    span >= 10 -> 1
+    span >= 1 -> 2
+    span >= 0.01 -> 4
+    else -> 6
 }
 
 // ---------------------------------------------------------------------------- axes
@@ -645,7 +815,19 @@ private fun ChartViewport.chartPointAt(
     return if (magnet) DrawingActions.snap(point, series) else point
 }
 
-private fun axisStyle(colour: Color) = TextStyle(color = colour, fontSize = AXIS_TEXT_SIZE)
+/**
+ * The style every label on this canvas is measured in.
+ *
+ * Left-to-right explicitly. The measurer takes its direction from the composition, so on a Persian
+ * device an axis label was laid out as a right-to-left paragraph — and a leading minus sign is a
+ * neutral character, so a MACD pane's lower bound printed as `4.92-`. The digits are Latin market
+ * figures and they read in one direction only.
+ */
+private fun axisStyle(colour: Color) = TextStyle(
+    color = colour,
+    fontSize = AXIS_TEXT_SIZE,
+    textDirection = TextDirection.Ltr,
+)
 
 /**
  * How many decimals a price on this chart deserves.
@@ -690,6 +872,25 @@ private val TIME_HEIGHT: Dp = 20.dp
 
 /** The volume band, as a share of the canvas. */
 private const val VOLUME_RATIO = 0.20f
+
+/**
+ * The most of the canvas indicator panes may take between them.
+ *
+ * Half. Past that the candles stop being the subject of the picture, and a reader with four
+ * oscillators switched on has usually forgotten they switched on the fourth.
+ */
+private const val PANE_BUDGET = 0.5f
+
+/**
+ * The most of the canvas the volume pane and the indicator panes may take between them.
+ *
+ * Applied to the two together rather than to each, so the price keeps the larger half of the
+ * picture no matter how many strips are switched on.
+ */
+private const val LOWER_BUDGET = 0.55f
+
+/** Breathing room above and below a pane's extremes, so the line never touches the lid. */
+private const val PANE_PADDING = 0.06
 
 private const val GRID_ROWS = 5
 private const val GRID_COLUMNS = 5

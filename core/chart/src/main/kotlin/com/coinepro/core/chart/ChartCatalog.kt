@@ -220,6 +220,221 @@ object ChartCatalog {
     }
 
     /**
+     * What a separate-pane indicator draws, on its own scale.
+     *
+     * The third of the three shapes an indicator can take, beside [overlayFor] and [structureFor],
+     * and the last one the chart learned. Until it existed, switching on an RSI in the picker did
+     * nothing at all: the option was in the catalogue, the arithmetic was in [Indicators], and
+     * nothing joined them because there was nowhere on the canvas to put a second scale.
+     *
+     * The reference levels each pane declares — RSI's 30 and 70, the zero line under a momentum
+     * oscillator — are part of the indicator, not decoration. An RSI without them is a wiggle.
+     */
+    fun paneFor(option: IndicatorOption, series: CandleSeries): ChartPane? {
+        if (option.pane != IndicatorPane.SEPARATE || series.isEmpty) return null
+        val open = series.open
+        val high = series.high
+        val low = series.low
+        val close = series.close
+        val volume = series.volume
+        val colour = option.colour
+        val second = shade(colour)
+        fun pane(
+            title: String,
+            vararg lines: ChartLine,
+            levels: List<PriceLevel> = emptyList(),
+            histogram: ChartLine? = null,
+        ) = ChartPane(title = title, lines = lines.toList(), levels = levels, histogram = histogram)
+
+        return when (option.id) {
+            "rsi" -> pane(
+                "RSI 14",
+                ChartLine(Indicators.rsi(close, 14), colour, label = "RSI"),
+                levels = listOf(band(70.0), band(50.0, faint = true), band(30.0)),
+            )
+            "macd" -> Indicators.macd(close).let { macd ->
+                pane(
+                    "MACD 12/26/9",
+                    ChartLine(macd.macd, colour, label = "MACD"),
+                    ChartLine(macd.signal, second, label = "سیگنال"),
+                    levels = listOf(band(0.0, faint = true)),
+                    histogram = ChartLine(macd.histogram, colour),
+                )
+            }
+            "stochastic" -> Indicators.stochastic(high, low, close).let { stoch ->
+                pane(
+                    "Stochastic 14/3",
+                    ChartLine(stoch.k, colour, label = "%K"),
+                    ChartLine(stoch.d, second, label = "%D"),
+                    levels = listOf(band(80.0), band(20.0)),
+                )
+            }
+            "cci" -> pane(
+                "CCI 20",
+                ChartLine(Indicators.cci(high, low, close), colour),
+                levels = listOf(band(100.0), band(0.0, faint = true), band(-100.0)),
+            )
+            "williams" -> pane(
+                "Williams %R 14",
+                ChartLine(Indicators.williamsR(high, low, close), colour),
+                levels = listOf(band(-20.0), band(-80.0)),
+            )
+            "atr" -> pane("ATR 14", ChartLine(Indicators.atr(high, low, close), colour))
+            "adx" -> Indicators.adx(high, low, close).let { adx ->
+                pane(
+                    "ADX 14",
+                    ChartLine(adx.adx, colour, label = "ADX"),
+                    ChartLine(adx.plusDi, 0xFF00B15C, label = "+DI"),
+                    ChartLine(adx.minusDi, 0xFFF6465D, label = "−DI"),
+                    // Twenty-five is Wilder's own threshold for "there is a trend here at all",
+                    // and reading ADX without it is reading a number with no scale.
+                    levels = listOf(band(25.0)),
+                )
+            }
+            "choppiness" -> pane(
+                "Choppiness 14",
+                ChartLine(Indicators.choppiness(high, low, close), colour),
+                levels = listOf(band(61.8), band(38.2)),
+            )
+            "vortex" -> Indicators.vortex(high, low, close).let { vortex ->
+                pane(
+                    "Vortex 14",
+                    ChartLine(vortex.plus, 0xFF00B15C, label = "VI+"),
+                    ChartLine(vortex.minus, 0xFFF6465D, label = "VI−"),
+                    levels = listOf(band(1.0, faint = true)),
+                )
+            }
+            "obv" -> pane("OBV", ChartLine(Indicators.obv(close, volume), colour))
+            "stddev" -> pane("StdDev 20", ChartLine(IndicatorsExt.stdDev(close, 20), colour))
+            "hv" -> pane("HV 10", ChartLine(IndicatorsExt.historicalVolatility(close), colour))
+            "chaikinVol" -> pane(
+                "Chaikin Vol 10",
+                ChartLine(IndicatorsExt.chaikinVolatility(high, low), colour),
+                levels = listOf(band(0.0, faint = true)),
+            )
+            "bbpercent" -> pane(
+                "%B 20",
+                ChartLine(IndicatorsExt.bollingerPercent(close), colour),
+                levels = listOf(band(1.0), band(0.0)),
+            )
+            "bbw" -> pane("BBW 20", ChartLine(IndicatorsExt.bollingerWidth(close), colour))
+            "mom" -> pane(
+                "Momentum 10",
+                ChartLine(IndicatorsExt.momentum(close, 10), colour),
+                levels = listOf(band(0.0, faint = true)),
+            )
+            "roc" -> pane(
+                "ROC 12",
+                ChartLine(IndicatorsExt.rateOfChange(close, 12), colour),
+                levels = listOf(band(0.0, faint = true)),
+            )
+            "trix" -> IndicatorsExt.trix(close).let { trix ->
+                pane(
+                    "TRIX 18/9",
+                    ChartLine(trix.line, colour, label = "TRIX"),
+                    ChartLine(trix.signal, second, label = "سیگنال"),
+                    levels = listOf(band(0.0, faint = true)),
+                )
+            }
+            "ac" -> pane(
+                "Accelerator",
+                levels = listOf(band(0.0, faint = true)),
+                histogram = ChartLine(IndicatorsExt.accelerator(high, low), colour),
+            )
+            "uo" -> pane(
+                "Ultimate 7/14/28",
+                ChartLine(IndicatorsExt.ultimateOscillator(high, low, close), colour),
+                levels = listOf(band(70.0), band(30.0)),
+            )
+            "fisher" -> IndicatorsExt.fisherTransform(high, low).let { fisher ->
+                pane(
+                    "Fisher 9",
+                    ChartLine(fisher.line, colour, label = "Fisher"),
+                    ChartLine(fisher.signal, second, label = "سیگنال"),
+                    levels = listOf(band(0.0, faint = true)),
+                )
+            }
+            "crsi" -> pane(
+                "Connors RSI 3/2/100",
+                ChartLine(IndicatorsExt.connorsRsi(close), colour),
+                levels = listOf(band(90.0), band(10.0)),
+            )
+            "smiErgodic" -> IndicatorsExt.smiErgodic(close).let { smi ->
+                pane(
+                    "SMI Ergodic 20/5/5",
+                    ChartLine(smi.line, colour, label = "SMI"),
+                    ChartLine(smi.signal, second, label = "سیگنال"),
+                    levels = listOf(band(0.0, faint = true)),
+                )
+            }
+            "smi" -> pane(
+                "Stochastic Momentum 10",
+                ChartLine(IndicatorsExt.stochasticMomentum(high, low, close), colour),
+                levels = listOf(band(40.0), band(0.0, faint = true), band(-40.0)),
+            )
+            "bop" -> pane(
+                "Balance of Power",
+                levels = listOf(band(0.0, faint = true)),
+                histogram = ChartLine(IndicatorsExt.balanceOfPower(open, high, low, close), colour),
+            )
+            "adline" -> pane(
+                "A/D Line",
+                ChartLine(IndicatorsExt.accumulationDistribution(high, low, close, volume), colour),
+            )
+            "chaikinOsc" -> pane(
+                "Chaikin Osc 3/10",
+                levels = listOf(band(0.0, faint = true)),
+                histogram = ChartLine(IndicatorsExt.chaikinOscillator(high, low, close, volume), colour),
+            )
+            "eom" -> pane(
+                "Ease of Movement 14",
+                ChartLine(IndicatorsExt.easeOfMovement(high, low, volume), colour),
+                levels = listOf(band(0.0, faint = true)),
+            )
+            "forceIndex" -> pane(
+                "Force Index 13",
+                ChartLine(IndicatorsExt.forceIndex(close, volume), colour),
+                levels = listOf(band(0.0, faint = true)),
+            )
+            "klinger" -> IndicatorsExt.klinger(high, low, close, volume).let { klinger ->
+                pane(
+                    "Klinger 34/55/13",
+                    ChartLine(klinger.line, colour, label = "KVO"),
+                    ChartLine(klinger.signal, second, label = "سیگنال"),
+                    levels = listOf(band(0.0, faint = true)),
+                )
+            }
+            "pvt" -> pane("PVT", ChartLine(IndicatorsExt.priceVolumeTrend(close, volume), colour))
+            else -> null
+        }
+    }
+
+    /**
+     * A reference line inside a pane.
+     *
+     * [faint] is for the ones that mark a *centre* rather than a threshold — zero on a momentum
+     * oscillator, fifty on an RSI. Drawn at the same weight as the thresholds they compete with
+     * them for attention, and the thresholds are the ones a reader is watching for.
+     */
+    private fun band(value: Double, faint: Boolean = false): PriceLevel =
+        PriceLevel(value, if (faint) 0xFF5E6673 else 0xFF848E9C, label = null)
+
+    /**
+     * A companion colour for an indicator's second line.
+     *
+     * Derived from the first rather than picked, so a pane with a signal line always reads as one
+     * indicator in two shades instead of two indicators sharing a box. Halving each channel towards
+     * black is enough separation to tell them apart and not enough to look unrelated.
+     */
+    private fun shade(argb: Long): Long {
+        val alpha = argb and 0xFF000000L
+        val red = ((argb shr 16 and 0xFF) * 55 / 100) shl 16
+        val green = ((argb shr 8 and 0xFF) * 55 / 100) shl 8
+        val blue = (argb and 0xFF) * 55 / 100
+        return alpha or red or green or blue
+    }
+
+    /**
      * Defaults for the two regression curves.
      *
      * A hundred bars for the curve and twenty-five for the projected average, which are the web

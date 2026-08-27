@@ -6,6 +6,7 @@ import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.chart.ChartOrder
 import com.coinepro.core.chart.ChartLine
 import com.coinepro.core.chart.ChartMarker
+import com.coinepro.core.chart.ChartPane
 import com.coinepro.core.chart.ChartType
 import com.coinepro.core.chart.DrawingActions
 import com.coinepro.core.chart.DrawingState
@@ -80,6 +81,18 @@ data class ChartUiState(
         get() = ChartCatalog.INDICATORS
             .filter { it.id in activeIndicators && it.pane == IndicatorPane.STRUCTURE }
             .flatMap { ChartCatalog.structureFor(it, visibleSeries).markers }
+
+    /**
+     * The strips below the price — one per switched-on oscillator.
+     *
+     * In catalogue order rather than in the order the reader switched them on, so the same three
+     * indicators always stack the same way. A pane order that depended on tap history would move
+     * under a reader who turned one off and back on.
+     */
+    val panes: List<ChartPane>
+        get() = ChartCatalog.INDICATORS
+            .filter { it.id in activeIndicators && it.pane == IndicatorPane.SEPARATE }
+            .mapNotNull { ChartCatalog.paneFor(it, visibleSeries) }
 
     /** The last close, which is what the header shows beside the symbol. */
     /**

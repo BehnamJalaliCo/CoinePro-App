@@ -117,6 +117,8 @@ fun ToolsScreen(
     onOpenJournal: (() -> Unit)? = null,
     /** Opens paper trading. Local, and the only thing a reader can do on day one. */
     onOpenPaperTrade: (() -> Unit)? = null,
+    /** Opens the NamaScript studio. Local, and needs neither an account nor a connection. */
+    onOpenScript: (() -> Unit)? = null,
 ) {
     var expanded by remember { mutableStateOf<ToolId?>(ToolId.RISK) }
 
@@ -154,6 +156,7 @@ fun ToolsScreen(
                 onOpenPortfolio = onOpenPortfolio,
                 onOpenJournal = onOpenJournal,
                 onOpenPaperTrade = onOpenPaperTrade,
+                onOpenScript = onOpenScript,
                 onOpenAcademy = onOpenAcademy,
             )
         }
@@ -626,6 +629,7 @@ private fun OperationalTools(
     onOpenAcademy: (() -> Unit)?,
     onOpenJournal: (() -> Unit)?,
     onOpenPaperTrade: (() -> Unit)?,
+    onOpenScript: (() -> Unit)?,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -640,6 +644,14 @@ private fun OperationalTools(
                 title = stringResource(R.string.tools_paper_title),
                 description = stringResource(R.string.tools_paper_body),
                 button = stringResource(R.string.tools_paper_open),
+                onClick = it,
+            )
+        }
+        onOpenScript?.let {
+            OperationalCard(
+                title = stringResource(R.string.tools_script_title),
+                description = stringResource(R.string.tools_script_body),
+                button = stringResource(R.string.tools_script_open),
                 onClick = it,
             )
         }

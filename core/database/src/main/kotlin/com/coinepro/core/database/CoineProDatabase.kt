@@ -156,17 +156,19 @@ abstract class CoineProCacheDao {
         CacheMetadataEntity::class,
         JournalEntryEntity::class,
         PaperTradeEntity::class,
+        SavedScriptEntity::class,
     ],
-    // Bumped for the journal table. `fallbackToDestructiveMigration` is deliberately *not* used:
-    // every other table here is a cache that can be refetched, and the journal is the one thing in
-    // this database that cannot. See the migration below.
-    version = 3,
+    // Bumped for saved scripts. `fallbackToDestructiveMigration` is deliberately *not* used: every
+    // cache table here can be refetched, and the three that cannot — the journal, the paper trades
+    // and the reader's own scripts — are the whole reason the migrations below are written out.
+    version = 4,
     exportSchema = false,
 )
 abstract class CoineProDatabase : RoomDatabase() {
     abstract fun cacheDao(): CoineProCacheDao
     abstract fun journalDao(): JournalDao
     abstract fun paperTradeDao(): PaperTradeDao
+    abstract fun savedScriptDao(): SavedScriptDao
 }
 
 /**
@@ -219,6 +221,30 @@ val MIGRATION_2_3: Migration = object : Migration(2, 3) {
     }
 }
 
+/**
+ * Version 3 to 4: the reader's own NamaScript sources.
+ *
+ * The third table in this database that nobody can give back if it is dropped. A script somebody
+ * spent an evening writing is worth more than every cached quote here put together.
+ */
+val MIGRATION_3_4: Migration = object : Migration(3, 4) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS saved_scripts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL,
+                source TEXT NOT NULL,
+                presetId TEXT,
+                inputs TEXT NOT NULL DEFAULT '',
+                createdAtEpochMillis INTEGER NOT NULL,
+                updatedAtEpochMillis INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+    }
+}
+
 object CoineProDatabaseFactory {
     fun create(context: Context): CoineProDatabase = Room.databaseBuilder(
         context.applicationContext,
@@ -227,7 +253,7 @@ object CoineProDatabaseFactory {
     )
         // The journal migration is registered rather than the database being allowed to fall back
         // to destructive recreation. Every other table here is a cache; the journal is not.
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
         .build()
 }
 

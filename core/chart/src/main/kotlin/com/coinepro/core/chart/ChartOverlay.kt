@@ -147,6 +147,12 @@ data class ChartDecoration(
     val levels: List<PriceLevel> = emptyList(),
     /** Per-bar marks: swing points, fractals, zigzag turns. */
     val markers: List<ChartMarker> = emptyList(),
+    /**
+     * Strips below the price, each on its own scale — oscillators, and a script's own-pane plots.
+     *
+     * Order is top to bottom. Empty is the common case and costs nothing.
+     */
+    val panes: List<ChartPane> = emptyList(),
     /** Whether the volume pane is drawn. Hidden when the feed reports none — see [CandleSeries]. */
     val showVolume: Boolean = true,
     /** Whether the price grid and its labels are drawn. Off for a thumbnail. */
@@ -164,3 +170,36 @@ data class ChartDecoration(
 
 /** Where the crosshair is, in chart space. Null when nobody is touching the chart. */
 data class Crosshair(val index: Int, val price: Double)
+
+/**
+ * A strip below the price with its own vertical scale.
+ *
+ * The reason this type exists rather than the lines being folded into [ChartDecoration.overlays]:
+ * an RSI reads 0–100 and gold reads 2,600, and drawing them on one axis collapses the price to a
+ * flat line. A pane is the promise that a line inside it is measured against *its own* extremes and
+ * nothing else on the chart.
+ *
+ * [heightRatio] is a share of the whole canvas rather than a height in dp, so a phone and a tablet
+ * give an oscillator the same proportion of the picture. The renderer clamps the total: panes never
+ * take so much that the candles stop being the subject.
+ */
+data class ChartPane(
+    /** Written in the pane's top-left corner, e.g. "RSI 14". */
+    val title: String,
+    val lines: List<ChartLine> = emptyList(),
+    /**
+     * Horizontal references inside the pane — RSI's 30 and 70, MACD's zero.
+     *
+     * [PriceLevel.price] is read on the pane's own scale here, not the price's. It is the same
+     * shape because it is drawn the same way, and a second near-identical type would be worse.
+     */
+    val levels: List<PriceLevel> = emptyList(),
+    /**
+     * Drawn as columns from zero rather than as a line — MACD's histogram, OBV's bars.
+     *
+     * Separate from [lines] because a histogram is not a line with a different stroke: it is
+     * anchored to zero, and its colour changes with its sign.
+     */
+    val histogram: ChartLine? = null,
+    val heightRatio: Float = 0.18f,
+)

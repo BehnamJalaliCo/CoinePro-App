@@ -171,6 +171,9 @@
     <string name="tools_journal_title">Trading journal</string>
     <string name="tools_journal_body">What you saw, how it felt, what you will do next time. It stays on this device and is sent nowhere.</string>
     <string name="tools_journal_open">Open the journal</string>
+    <string name="tools_script_title">NamaScript</string>
+    <string name="tools_script_body">Write your own indicator, save it, and see it on the chart. Ten ready-made scripts and a short course come with it.</string>
+    <string name="tools_script_open">Write</string>
     <string name="tools_paper_title">Paper trading</string>
     <string name="tools_paper_body">Live prices, no money. For the days before an account is funded.</string>
     <string name="tools_paper_open">Start</string>

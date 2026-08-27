@@ -48,6 +48,7 @@ import com.coinepro.core.designsystem.ProvidePageAccent
 import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.execution.ExecutionController
+import com.coinepro.core.marketdata.MarketDataSymbols
 import com.coinepro.core.marketdata.MarketDataController
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.MarketSearchController
@@ -104,6 +105,8 @@ import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.journal.JournalController
 import com.coinepro.core.papertrade.PaperTradeController
+import com.coinepro.core.script.ScriptController
+import com.coinepro.feature.script.ScriptScreen
 import com.coinepro.feature.account.DeleteAccountScreen
 import com.coinepro.feature.alerts.AlertsScreen
 import com.coinepro.feature.journal.JournalScreen
@@ -150,6 +153,7 @@ private const val DELETE_ACCOUNT_ROUTE = "account/delete"
 private const val ALERTS_ROUTE = "alerts"
 private const val JOURNAL_ROUTE = "journal"
 private const val PAPER_TRADE_ROUTE = "paper-trade"
+private const val SCRIPT_PATTERN = "script/{symbol}"
 private fun signalDetailRoute(signalId: Long) = "signal/$signalId"
 private fun executionRoute(signalId: Long) = "execution/$signalId"
 
@@ -158,6 +162,25 @@ private fun executionRoute(signalId: Long) = "execution/$signalId"
  * encoding it costs nothing and a symbol that ever grows a slash would otherwise route nowhere.
  */
 private fun chartRoute(symbol: String) = "chart/" + Uri.encode(symbol)
+
+/**
+ * The script studio, on a symbol.
+ *
+ * A symbol in the path rather than a screen that picks one, because every way into this screen
+ * already knows which instrument the reader is looking at — the chart's toolbar, and the toolkit
+ * card, which passes the first symbol on the watchlist.
+ */
+private fun scriptRoute(symbol: String) = "script/" + Uri.encode(symbol)
+
+/**
+ * Which symbol the studio opens on when it was not reached from a chart.
+ *
+ * The reader's own first watchlist entry, and the platform's first quoted instrument otherwise.
+ * Both are real symbols on the active backend, which matters: opening the studio on a ticker this
+ * platform does not carry would greet a first-time reader with an empty chart and an error.
+ */
+private fun defaultScriptSymbol(platform: MarketPlatform, watchlist: List<String>): String =
+    watchlist.firstOrNull() ?: MarketDataSymbols.forPlatform(platform).first()
 
 /**
  * Which domain a route belongs to.
@@ -179,6 +202,7 @@ private fun accentFor(route: String?): PageAccent = when (route) {
     CALENDAR_ROUTE,
     AI_VISION_ROUTE,
     AI_ASSISTANT_ROUTE,
+    SCRIPT_PATTERN,
     AppDestination.AI.route,
     -> PageAccent.ANALYSIS
 
@@ -197,6 +221,7 @@ fun CoineProApp(
     chartLayoutStore: ChartLayoutStore,
     journalController: JournalController,
     paperTradeController: PaperTradeController,
+    scriptController: ScriptController,
     marketDataControllers: Map<MarketPlatform, MarketDataController>,
     marketSearchControllers: Map<MarketPlatform, MarketSearchController>,
     candleGateways: Map<MarketPlatform, CandleGateway>,
@@ -450,6 +475,7 @@ fun CoineProApp(
                 accountDeletionAvailable = accountDeletionAvailable,
                 journalController = journalController,
                 paperTradeController = paperTradeController,
+                scriptController = scriptController,
                 chartLayouts = chartLayouts,
                 onSaveLayout = { layout -> scope.launch { chartLayoutStore.save(layout) } },
                 onDeleteLayout = { name -> scope.launch { chartLayoutStore.delete(name) } },
@@ -596,6 +622,7 @@ private fun MainShell(
     accountDeletionAvailable: Boolean,
     journalController: JournalController,
     paperTradeController: PaperTradeController,
+    scriptController: ScriptController,
     chartLayouts: List<ChartLayout>,
     onSaveLayout: (ChartLayout) -> Unit,
     onDeleteLayout: (String) -> Unit,
@@ -634,6 +661,7 @@ private fun MainShell(
         ALERTS_ROUTE,
         JOURNAL_ROUTE,
         PAPER_TRADE_ROUTE,
+        SCRIPT_PATTERN,
         NEWS_ROUTE,
         CALENDAR_ROUTE,
         LAUNCH_READINESS_ROUTE,
@@ -655,6 +683,7 @@ private fun MainShell(
         ALERTS_ROUTE -> R.string.screen_alerts
         JOURNAL_ROUTE -> R.string.screen_journal
         PAPER_TRADE_ROUTE -> R.string.screen_paper_trade
+        SCRIPT_PATTERN -> R.string.screen_script
         AI_VISION_ROUTE -> R.string.screen_ai_vision
         AI_ASSISTANT_ROUTE -> R.string.screen_ai_assistant
         MARKET_SEARCH_ROUTE -> R.string.screen_market_search
@@ -952,11 +981,34 @@ private fun MainShell(
                         }
                     },
                     controller = chartController,
+                    onOpenScript = { navController.navigate(scriptRoute(symbol)) },
                     onOpenTerminal = if (terminalController.isConfigured) {
                         { navController.navigate(TERMINAL_ROUTE) }
                     } else {
                         null
                     },
+                )
+            }
+            composable(
+                route = SCRIPT_PATTERN,
+                arguments = listOf(navArgument("symbol") { type = NavType.StringType }),
+            ) { entry ->
+                val symbol = entry.arguments?.getString("symbol").orEmpty()
+                val scope = rememberCoroutineScope()
+                // A chart controller purely to fetch bars: the studio draws its own preview, and
+                // reusing the chart's loader means the studio's candles and the chart's candles
+                // come from one place. A second fetcher here would be a second thing to keep in
+                // step with paging, timeframes and the academy-token failure modes.
+                val previewController = remember(symbol, candleGateway) {
+                    ChartController(symbol = symbol, gateway = candleGateway, scope = scope)
+                }
+                val previewState by previewController.state.collectAsStateWithLifecycle()
+                LaunchedEffect(previewController) { previewController.start() }
+                ScriptScreen(
+                    controller = scriptController,
+                    symbol = symbol,
+                    series = previewState.series,
+                    loading = previewState.loading,
                 )
             }
             composable(NEWS_ROUTE) {
@@ -976,6 +1028,12 @@ private fun MainShell(
                 ToolsScreen(
                     onOpenJournal = { navController.navigate(JOURNAL_ROUTE) },
                     onOpenPaperTrade = { navController.navigate(PAPER_TRADE_ROUTE) },
+                    // The studio needs a symbol to run against, and from here there is no chart to
+                    // take one from. The watchlist's first entry is the reader's own choice; the
+                    // platform's default is the fallback for somebody who has not made one yet.
+                    onOpenScript = {
+                        navController.navigate(scriptRoute(defaultScriptSymbol(activePlatform, watchlist)))
+                    },
                     platform = activePlatform,
                     onOpenConnections = { navController.navigate(CONNECTIONS_ROUTE) },
                     onOpenNews = { navController.navigate(NEWS_ROUTE) },

@@ -13,6 +13,7 @@ import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.journal.JournalController
 import com.coinepro.core.papertrade.PaperTradeController
+import com.coinepro.core.script.ScriptController
 import com.coinepro.core.guest.GuestGateway
 import com.coinepro.core.guest.NetworkGuestGateway
 import com.coinepro.core.aiassistant.AiAssistantController
@@ -338,6 +339,19 @@ object AppModule {
     @Singleton
     fun paperTradeController(database: CoineProDatabase, scope: CoroutineScope): PaperTradeController =
         PaperTradeController(database.paperTradeDao(), scope)
+
+    /**
+     * The script studio, on the app-wide scope and not per platform.
+     *
+     * A script the reader wrote is theirs, not the backend's: the same moving-average cross means
+     * the same thing on gold and on bitcoin, and switching platform must not take it away. One
+     * instance rather than one per chart, so opening the studio from a second symbol keeps the
+     * script that was already in the editor.
+     */
+    @Provides
+    @Singleton
+    fun scriptController(database: CoineProDatabase, scope: CoroutineScope): ScriptController =
+        ScriptController(database.savedScriptDao(), scope)
 
     @Provides
     @Singleton
