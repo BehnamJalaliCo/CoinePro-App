@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="journal_new">Log a trade</string>
+    <string name="journal_symbol">Symbol</string>
+    <string name="journal_buy">Buy</string>
+    <string name="journal_sell">Sell</string>
+    <string name="journal_entry">Entry</string>
+    <string name="journal_exit">Exit</string>
+    <string name="journal_pnl">Profit or loss</string>
+    <string name="journal_emotion">How it felt</string>
+    <string name="journal_tags">Tags</string>
+    <string name="journal_note">What did you see?</string>
+    <string name="journal_lesson">What will you do next time?</string>
+    <string name="journal_save">Save</string>
+    <string name="journal_delete">Delete</string>
+    <string name="journal_export">Export CSV</string>
+    <string name="journal_stat_entries">Entries</string>
+    <string name="journal_stat_graded">With a P&amp;L</string>
+    <string name="journal_stat_winrate">Win rate</string>
+    <string name="journal_stat_net">Net profit</string>
+    <string name="journal_stat_pf">Profit factor</string>
+    <string name="journal_stat_expectancy">Expectancy per trade</string>
+</resources>

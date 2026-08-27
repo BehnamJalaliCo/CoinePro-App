@@ -168,4 +168,7 @@
     <string name="tools_a_pip">Pip size and pip value are supplied by the user. The app does not infer broker-specific contract specifications.</string>
     <string name="tools_a_crypto">Designed for USDT-quoted pairs. Fees apply to both entry and exit notional. Funding, slippage and leverage liquidation are not modeled.</string>
     <string name="tools_a_compound">This is arithmetic compounding only. The entered return is an assumption, not an AI forecast or expected market return.</string>
+    <string name="tools_journal_title">Trading journal</string>
+    <string name="tools_journal_body">What you saw, how it felt, what you will do next time. It stays on this device and is sent nowhere.</string>
+    <string name="tools_journal_open">Open the journal</string>
 </resources>

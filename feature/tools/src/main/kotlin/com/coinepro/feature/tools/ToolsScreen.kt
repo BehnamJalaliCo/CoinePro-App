@@ -113,6 +113,8 @@ fun ToolsScreen(
     onOpenPortfolio: (() -> Unit)? = null,
     /** Opens the academy. Null on a platform that has none — TradeYar. */
     onOpenAcademy: (() -> Unit)? = null,
+    /** Opens the trading journal. Local to the device and available on both platforms. */
+    onOpenJournal: (() -> Unit)? = null,
 ) {
     var expanded by remember { mutableStateOf<ToolId?>(ToolId.RISK) }
 
@@ -148,6 +150,7 @@ fun ToolsScreen(
                 onOpenCalendar = onOpenCalendar,
                 onOpenConnections = onOpenConnections,
                 onOpenPortfolio = onOpenPortfolio,
+                onOpenJournal = onOpenJournal,
                 onOpenAcademy = onOpenAcademy,
             )
         }
@@ -618,6 +621,7 @@ private fun OperationalTools(
     onOpenConnections: () -> Unit,
     onOpenPortfolio: (() -> Unit)?,
     onOpenAcademy: (() -> Unit)?,
+    onOpenJournal: (() -> Unit)?,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -625,6 +629,16 @@ private fun OperationalTools(
     ) {
         Text(stringResource(R.string.tools_connected), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Text(stringResource(R.string.tools_connected_body), color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
+        // First of the four, because it is the only one that needs nothing: no account, no
+        // connection, no network. A reader can start keeping a journal on the day they install.
+        onOpenJournal?.let {
+            OperationalCard(
+                title = stringResource(R.string.tools_journal_title),
+                description = stringResource(R.string.tools_journal_body),
+                button = stringResource(R.string.tools_journal_open),
+                onClick = it,
+            )
+        }
         OperationalCard(stringResource(R.string.tools_news_title), stringResource(R.string.tools_news_body), stringResource(R.string.tools_news_open), onOpenNews)
         OperationalCard(stringResource(R.string.tools_calendar_title), stringResource(R.string.tools_calendar_body), stringResource(R.string.tools_calendar_open), onOpenCalendar)
         OperationalCard(stringResource(R.string.tools_connections_title), stringResource(R.string.tools_connections_body), "MT5 & LBank", onOpenConnections)

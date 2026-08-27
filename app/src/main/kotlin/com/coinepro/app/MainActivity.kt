@@ -32,6 +32,7 @@ import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.EmailAuthController
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
+import com.coinepro.core.journal.JournalController
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionState
 import com.coinepro.core.copytrade.CopyTradeController
@@ -56,6 +57,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var emailAuthController: EmailAuthController
     @Inject lateinit var guestController: GuestController
     @Inject lateinit var watchlistStore: WatchlistStore
+    @Inject lateinit var journalController: JournalController
     @Inject lateinit var marketDataControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketDataController>
     @Inject lateinit var marketSearchControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketSearchController>
     @Inject lateinit var candleGateways: Map<MarketPlatform, @JvmSuppressWildcards CandleGateway>
@@ -106,6 +108,7 @@ class MainActivity : ComponentActivity() {
                 emailAuthController = emailAuthController,
                 guestController = guestController,
                 watchlistStore = watchlistStore,
+                journalController = journalController,
                 marketDataControllers = marketDataControllers,
                 marketSearchControllers = marketSearchControllers,
                 candleGateways = candleGateways,

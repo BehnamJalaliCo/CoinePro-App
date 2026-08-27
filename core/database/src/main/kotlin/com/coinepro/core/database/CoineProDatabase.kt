@@ -10,6 +10,9 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 import androidx.room.Transaction
 
 @Entity(tableName = "cached_market_quotes")
@@ -151,12 +154,47 @@ abstract class CoineProCacheDao {
         CachedSignalEntity::class,
         CachedSignalTargetEntity::class,
         CacheMetadataEntity::class,
+        JournalEntryEntity::class,
     ],
-    version = 1,
+    // Bumped for the journal table. `fallbackToDestructiveMigration` is deliberately *not* used:
+    // every other table here is a cache that can be refetched, and the journal is the one thing in
+    // this database that cannot. See the migration below.
+    version = 2,
     exportSchema = false,
 )
 abstract class CoineProDatabase : RoomDatabase() {
     abstract fun cacheDao(): CoineProCacheDao
+    abstract fun journalDao(): JournalDao
+}
+
+/**
+ * Version 1 to 2: the journal table.
+ *
+ * Written out rather than letting Room destroy and recreate. Every other table in this database is
+ * a cache and losing one costs a refetch; the journal is the reader's own writing and losing it is
+ * losing something nobody can give back.
+ */
+val MIGRATION_1_2: Migration = object : Migration(1, 2) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS journal_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                symbol TEXT NOT NULL,
+                buy INTEGER NOT NULL,
+                entry REAL,
+                exit REAL,
+                size REAL,
+                pnl REAL,
+                emotion TEXT NOT NULL,
+                note TEXT NOT NULL,
+                lesson TEXT NOT NULL,
+                tags TEXT NOT NULL,
+                createdAtEpochMillis INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+    }
 }
 
 object CoineProDatabaseFactory {
@@ -164,7 +202,11 @@ object CoineProDatabaseFactory {
         context.applicationContext,
         CoineProDatabase::class.java,
         "coinepro-read-cache.db",
-    ).build()
+    )
+        // The journal migration is registered rather than the database being allowed to fall back
+        // to destructive recreation. Every other table here is a cache; the journal is not.
+        .addMigrations(MIGRATION_1_2)
+        .build()
 }
 
 internal const val MARKET_METADATA_KEY = "market_snapshot"

@@ -14,6 +14,7 @@
     <string name="screen_kyc">احراز هویت</string>
     <string name="screen_delete_account">حذف حساب کاربری</string>
     <string name="screen_alerts">هشدارهای قیمت</string>
+    <string name="screen_journal">ژورنال معاملاتی</string>
     <string name="screen_ai_vision">تحلیل چارت</string>
     <string name="screen_ai_assistant">دستیار هوشمند</string>
     <string name="screen_market_search">بازارها</string>

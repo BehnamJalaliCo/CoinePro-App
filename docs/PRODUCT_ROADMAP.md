@@ -300,6 +300,7 @@ core:aiassistant
 core:marketintel
 core:account
 core:guest
+core:journal
 core:diagnostics
 core:database
 feature:admin
@@ -318,6 +319,7 @@ feature:kyc
 feature:account
 feature:guest
 feature:alerts
+feature:journal
 feature:copytrade
 feature:ai
 feature:ai-vision

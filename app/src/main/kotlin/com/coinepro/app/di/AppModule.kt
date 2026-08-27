@@ -10,6 +10,7 @@ import com.coinepro.core.account.AccountGateway
 import com.coinepro.core.account.NetworkAccountGateway
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
+import com.coinepro.core.journal.JournalController
 import com.coinepro.core.guest.GuestGateway
 import com.coinepro.core.guest.NetworkGuestGateway
 import com.coinepro.core.aiassistant.AiAssistantController
@@ -317,6 +318,17 @@ object AppModule {
      * has one list of things they are watching, and splitting it in two would mean the star they
      * pressed vanishing when they switched tabs.
      */
+    /**
+     * The journal, on the app-wide scope.
+     *
+     * Not per platform and not per session: a trading diary belongs to the person, not to whichever
+     * backend they were looking at when they wrote the entry, and signing out must not take it away.
+     */
+    @Provides
+    @Singleton
+    fun journalController(database: CoineProDatabase, scope: CoroutineScope): JournalController =
+        JournalController(database.journalDao(), scope)
+
     @Provides
     @Singleton
     fun watchlistStore(dataStore: DataStore<Preferences>): WatchlistStore = WatchlistStore(dataStore)

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="journal_new">ثبت معامله</string>
+    <string name="journal_symbol">نماد</string>
+    <string name="journal_buy">خرید</string>
+    <string name="journal_sell">فروش</string>
+    <string name="journal_entry">ورود</string>
+    <string name="journal_exit">خروج</string>
+    <string name="journal_pnl">سود یا زیان</string>
+    <string name="journal_emotion">حال‌وهوا</string>
+    <string name="journal_tags">برچسب</string>
+    <string name="journal_note">چه دیدی؟</string>
+    <string name="journal_lesson">دفعهٔ بعد چه می‌کنی؟</string>
+    <string name="journal_save">ثبت</string>
+    <string name="journal_delete">حذف</string>
+    <string name="journal_export">خروجی CSV</string>
+    <string name="journal_stat_entries">تعداد ثبت</string>
+    <string name="journal_stat_graded">با عدد سود و زیان</string>
+    <string name="journal_stat_winrate">نرخ برد</string>
+    <string name="journal_stat_net">سود خالص</string>
+    <string name="journal_stat_pf">ضریب سود</string>
+    <string name="journal_stat_expectancy">انتظار هر معامله</string>
+</resources>

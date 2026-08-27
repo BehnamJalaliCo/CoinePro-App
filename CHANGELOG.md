@@ -15,6 +15,29 @@ it is for.
 
 ---
 
+## [1.9.0] — 2026-08-27 — A trading journal
+
+### Added
+- `core:journal` and `feature:journal`. The signals list holds what the service published and the
+  portfolio holds what the broker executed; neither holds the record that actually changes how
+  somebody trades — what they thought at the time and what they would do differently.
+- Everything optional but the symbol. A journal is written in the ninety seconds after a trade
+  closes, and a form demanding four numbers first is a journal abandoned in the second week.
+- Statistics that exclude ungraded rows rather than averaging them as zeros, and say how many were
+  excluded. An entry with no P&L is not a break-even trade.
+- Profit factor is null where there is no loss to divide by: three winners is not an infinite
+  profit factor, it is one not yet produced.
+- Tag filtering, with the statistics recomputed over the filter — a reader tapping "بریک‌اوت" is
+  asking what their breakouts do.
+- CSV export with a UTF-8 byte-order mark, shared rather than written to a file the app then owns.
+  Without the mark Excel opens a Persian journal as mojibake, and nobody exports twice.
+
+### Changed
+- The database is at version 2 with a written migration rather than destructive recreation. Every
+  other table in it is a cache; the journal is the one thing that cannot be refetched.
+
+---
+
 ## [1.8.0] — 2026-08-27 — Somewhere to create a price alert
 
 ### Added
