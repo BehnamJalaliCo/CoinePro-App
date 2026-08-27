@@ -113,7 +113,8 @@
 | از داخل اپ | تنظیمات ← حذف حساب کاربری |
 | از بیرون اپ | <https://behnamjalalico.github.io/CoinePro-App/delete-account/> |
 
-**چه چیزی حذف می‌شود:** حساب، ایمیل، نام، اطلاعات احراز هویتی که خودتان وارد کرده‌اید، UID صرافی،
+**چه چیزی حذف می‌شود:** حساب، ایمیل، نام، اطلاعات احراز هویتی که خودتان وارد کرده‌اید، **حساب
+آکادمی و پیشرفت درس‌هایتان اگر با همین ایمیل ساخته شده باشد**، UID صرافی،
 کلیدهای API صرافی، تنظیمات اعلان، توکن اعلان، تاریخچهٔ سیگنال‌های ذخیره‌شده و هشدارهای قیمت.
 
 **چه چیزی نگه داشته می‌شود و چرا:** سوابق معاملاتی که به‌حکم قانون یا قرارداد صرافی باید نگهداری
@@ -217,8 +218,9 @@ Signing out clears both tokens. Uninstalling or clearing app data removes everyt
 | In the app | Settings → Delete account |
 | Outside the app | <https://behnamjalalico.github.io/CoinePro-App/delete-account/> |
 
-**Deleted:** the account, your e-mail and name, any identity details you entered, your exchange UID,
-exchange API keys, notification preferences and token, saved signal history and price alerts.
+**Deleted:** the account, your e-mail and name, any identity details you entered, **your academy
+account and lesson progress where it was created with the same e-mail**, your exchange UID, exchange
+API keys, notification preferences and token, saved signal history and price alerts.
 
 **Kept, and why:** trading records that law or the exchange's own contract requires be retained, and
 security/anti-fraud logs — both **anonymised**, carrying no e-mail, name or UID, for at most twelve

@@ -91,6 +91,7 @@ import com.coinepro.core.diagnostics.VenueStatus
 import com.coinepro.core.execution.ConnectionsState
 import com.coinepro.core.marketdata.MarketConnectionState
 import com.coinepro.core.marketdata.MarketDataCache
+import com.coinepro.core.marketdata.AcademyTokenStore
 import com.coinepro.core.diagnostics.AdminController
 import com.coinepro.feature.admin.AdminScreen
 import com.coinepro.feature.home.HomeBriefing
@@ -216,6 +217,8 @@ fun CoineProApp(
     aiVisionControllers: Map<MarketPlatform, AiVisionController>,
     aiAssistantController: AiAssistantController,
     marketIntelControllers: Map<MarketPlatform, MarketIntelController>,
+    /** Cleared on sign-out — a derived credential that would otherwise outlive the session. */
+    academyTokenStore: AcademyTokenStore,
     pushCoordinator: PushCoordinator,
     backgroundSyncScheduler: BackgroundSyncScheduler,
     launchSignalId: Long?,
@@ -315,6 +318,10 @@ fun CoineProApp(
             aiVisionControllers.values.forEach(AiVisionController::clear)
             aiAssistantController.clear()
             marketIntelControllers.values.forEach(MarketIntelController::clear)
+            // The academy token is a second credential, derived from the mobile one and held only
+            // in memory. Without this it outlives the sign-out by up to twelve hours — and after a
+            // *deletion* it is a live bearer for an account that no longer exists.
+            academyTokenStore.clear()
         }
     }
 

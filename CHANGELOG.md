@@ -15,6 +15,23 @@ it is for.
 
 ---
 
+## [1.21.1] — 2026-08-27 — What deletion actually takes
+
+CoinePro-FX asked whether deleting an account should take the academy account created with the same
+verified e-mail. It should, and both servers do. This makes the app say so.
+
+### Changed
+- The deletion screen and the published privacy policy both name the academy account and lesson
+  progress. It is the one item a reader would not predict, and somebody who asked to be forgotten
+  and could still recover an academy password with the same e-mail has not been forgotten.
+
+### Fixed
+- The academy token is cleared on sign-out. It is a second credential, derived from the mobile one
+  and held in memory, and without this it outlived the session by up to twelve hours — after a
+  *deletion*, as a live bearer for an account that no longer exists.
+
+---
+
 ## [1.21.0] — 2026-08-27 — Both backends answered
 
 Every blocker either team owned is now built and on production. This is the app catching up to it.

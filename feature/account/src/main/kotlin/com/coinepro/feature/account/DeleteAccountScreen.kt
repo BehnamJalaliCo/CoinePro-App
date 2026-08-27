@@ -109,6 +109,11 @@ fun DeleteAccountScreen(
             title = stringResource(R.string.delete_account_removed_title),
             lines = listOf(
                 R.string.delete_account_removed_identity,
+                    // Named explicitly because it is the one a reader would not predict. Both
+                    // servers delete the academy identity along with the account, and somebody who
+                    // asked to be forgotten and could still recover an academy password with the
+                    // same e-mail has not been forgotten.
+                    R.string.delete_account_removed_academy,
                 R.string.delete_account_removed_exchange,
                 R.string.delete_account_removed_notifications,
                 R.string.delete_account_removed_history,

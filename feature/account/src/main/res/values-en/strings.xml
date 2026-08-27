@@ -5,6 +5,7 @@
 
     <string name="delete_account_removed_title">What is deleted</string>
     <string name="delete_account_removed_identity">The account, your e-mail and name, and any identity details you entered</string>
+    <string name="delete_account_removed_academy">Your academy account and lesson progress, where it was created with the same e-mail</string>
     <string name="delete_account_removed_exchange">Your exchange UID and exchange API keys</string>
     <string name="delete_account_removed_notifications">Notification preferences and token</string>
     <string name="delete_account_removed_history">Saved signal history and price alerts</string>

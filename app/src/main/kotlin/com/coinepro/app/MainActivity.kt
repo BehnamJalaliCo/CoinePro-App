@@ -48,6 +48,7 @@ import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.portfolio.PortfolioController
 import com.coinepro.core.signals.SignalController
+import com.coinepro.core.marketdata.AcademyTokenStore
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
@@ -81,6 +82,8 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var aiSignalControllers: Map<MarketPlatform, @JvmSuppressWildcards AiSignalController>
     @Inject lateinit var aiVisionControllers: Map<MarketPlatform, @JvmSuppressWildcards AiVisionController>
     @Inject lateinit var aiAssistantController: AiAssistantController
+    @Inject
+    lateinit var academyTokenStore: AcademyTokenStore
     @Inject lateinit var marketIntelControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketIntelController>
     @Inject lateinit var pushCoordinator: PushCoordinator
     @Inject lateinit var backgroundSyncScheduler: BackgroundSyncScheduler
@@ -135,6 +138,7 @@ class MainActivity : ComponentActivity() {
                 aiVisionControllers = aiVisionControllers,
                 aiAssistantController = aiAssistantController,
                 marketIntelControllers = marketIntelControllers,
+                academyTokenStore = academyTokenStore,
                 pushCoordinator = pushCoordinator,
                 backgroundSyncScheduler = backgroundSyncScheduler,
                 launchSignalId = launchSignalId,

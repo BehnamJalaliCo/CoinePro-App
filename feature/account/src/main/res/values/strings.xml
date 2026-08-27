@@ -5,6 +5,7 @@
 
     <string name="delete_account_removed_title">چه چیزی حذف می‌شود</string>
     <string name="delete_account_removed_identity">حساب، ایمیل، نام و اطلاعات احراز هویتی که خودتان وارد کرده‌اید</string>
+    <string name="delete_account_removed_academy">حساب آکادمی و پیشرفت درس‌ها، اگر با همین ایمیل ساخته شده باشد</string>
     <string name="delete_account_removed_exchange">شناسهٔ کاربری صرافی (UID) و کلیدهای API صرافی</string>
     <string name="delete_account_removed_notifications">تنظیمات و توکن اعلان</string>
     <string name="delete_account_removed_history">تاریخچهٔ سیگنال‌های ذخیره‌شده و هشدارهای قیمت</string>
