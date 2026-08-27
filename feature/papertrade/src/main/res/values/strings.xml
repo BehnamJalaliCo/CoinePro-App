@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="paper_symbol">نماد</string>
+    <string name="paper_size">حجم</string>
+    <string name="paper_buy">خرید</string>
+    <string name="paper_sell">فروش</string>
+    <string name="paper_open">باز کردن معاملهٔ آزمایشی</string>
+    <string name="paper_close">بستن</string>
+    <string name="paper_no_price">قیمتی برای این نماد نداریم</string>
+    <string name="paper_open_title">معامله‌های باز</string>
+    <string name="paper_closed_title">بسته‌شده‌ها</string>
+    <string name="paper_record_closed">%1$s معاملهٔ بسته‌شده</string>
+    <string name="paper_record_winrate">نرخ برد %1$s٪</string>
+    <string name="paper_disclaimer">اینجا پولی جابه‌جا نمی‌شود. کارمزد، اسپرد، سواپ، فاندینگ و لغزش حساب نمی‌شوند — پس عدد اینجا با فیلِ واقعی یکی نیست.</string>
+</resources>

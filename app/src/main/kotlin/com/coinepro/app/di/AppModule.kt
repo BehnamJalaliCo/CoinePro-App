@@ -11,6 +11,7 @@ import com.coinepro.core.account.NetworkAccountGateway
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.journal.JournalController
+import com.coinepro.core.papertrade.PaperTradeController
 import com.coinepro.core.guest.GuestGateway
 import com.coinepro.core.guest.NetworkGuestGateway
 import com.coinepro.core.aiassistant.AiAssistantController
@@ -328,6 +329,11 @@ object AppModule {
     @Singleton
     fun journalController(database: CoineProDatabase, scope: CoroutineScope): JournalController =
         JournalController(database.journalDao(), scope)
+
+    @Provides
+    @Singleton
+    fun paperTradeController(database: CoineProDatabase, scope: CoroutineScope): PaperTradeController =
+        PaperTradeController(database.paperTradeDao(), scope)
 
     @Provides
     @Singleton

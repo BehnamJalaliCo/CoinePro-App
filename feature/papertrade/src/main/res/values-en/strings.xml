@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="paper_symbol">Symbol</string>
+    <string name="paper_size">Size</string>
+    <string name="paper_buy">Buy</string>
+    <string name="paper_sell">Sell</string>
+    <string name="paper_open">Open a paper trade</string>
+    <string name="paper_close">Close</string>
+    <string name="paper_no_price">No price for this symbol</string>
+    <string name="paper_open_title">Open</string>
+    <string name="paper_closed_title">Closed</string>
+    <string name="paper_record_closed">%1$s closed trades</string>
+    <string name="paper_record_winrate">%1$s%% win rate</string>
+    <string name="paper_disclaimer">No money moves here. Fees, spread, swap, funding and slippage are not modelled — so these numbers are not a real fill.</string>
+</resources>

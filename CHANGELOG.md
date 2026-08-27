@@ -15,6 +15,25 @@ it is for.
 
 ---
 
+## [1.10.0] — 2026-08-27 — Paper trading
+
+### Added
+- `core:papertrade` and `feature:papertrade`: open a position at the price on screen, close it at
+  the price on screen, keep the record. For the reader who has installed the app and has not funded
+  an exchange account — which, given that membership needs fifty tether, is most first-day readers.
+- The entry price is the one the screen was showing at the moment of the tap, passed in rather than
+  fetched inside. Filling at a number the reader never saw teaches them something untrue about
+  market orders.
+- A closed trade marks at its exit, never at today's price, so yesterday's win does not grow every
+  time the screen is opened.
+- The record counts only closed trades: an open position's profit changes while being read, and a
+  win rate that moves when nothing happened is not a win rate.
+- What is not modelled — fees, spread, swap, funding, slippage — is stated on the screen rather than
+  left to be discovered against a real fill. A simulation that guesses a broker's fee schedule
+  produces a number that looks like a real result and is not.
+
+---
+
 ## [1.9.0] — 2026-08-27 — A trading journal
 
 ### Added

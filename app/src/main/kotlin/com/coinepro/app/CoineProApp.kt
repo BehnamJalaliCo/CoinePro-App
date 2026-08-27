@@ -100,9 +100,11 @@ import com.coinepro.feature.home.HomeScreen
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.journal.JournalController
+import com.coinepro.core.papertrade.PaperTradeController
 import com.coinepro.feature.account.DeleteAccountScreen
 import com.coinepro.feature.alerts.AlertsScreen
 import com.coinepro.feature.journal.JournalScreen
+import com.coinepro.feature.papertrade.PaperTradeScreen
 import com.coinepro.feature.guest.GuestScreen
 import com.coinepro.feature.kyc.KycScreen
 import com.coinepro.feature.home.toHomeBriefing
@@ -144,6 +146,7 @@ private const val KYC_ROUTE = "account/verify"
 private const val DELETE_ACCOUNT_ROUTE = "account/delete"
 private const val ALERTS_ROUTE = "alerts"
 private const val JOURNAL_ROUTE = "journal"
+private const val PAPER_TRADE_ROUTE = "paper-trade"
 private fun signalDetailRoute(signalId: Long) = "signal/$signalId"
 private fun executionRoute(signalId: Long) = "execution/$signalId"
 
@@ -189,6 +192,7 @@ fun CoineProApp(
     guestController: GuestController,
     watchlistStore: WatchlistStore,
     journalController: JournalController,
+    paperTradeController: PaperTradeController,
     marketDataControllers: Map<MarketPlatform, MarketDataController>,
     marketSearchControllers: Map<MarketPlatform, MarketSearchController>,
     candleGateways: Map<MarketPlatform, CandleGateway>,
@@ -434,6 +438,7 @@ fun CoineProApp(
                 aiSignalsAvailable = aiSignalsAvailable,
                 accountDeletionAvailable = accountDeletionAvailable,
                 journalController = journalController,
+                paperTradeController = paperTradeController,
                 onSignalLaunchConsumed = onSignalLaunchConsumed,
                 onActivityLaunchConsumed = onActivityLaunchConsumed,
                 onRequestNotificationPermission = onRequestNotificationPermission,
@@ -576,6 +581,7 @@ private fun MainShell(
     aiSignalsAvailable: Boolean,
     accountDeletionAvailable: Boolean,
     journalController: JournalController,
+    paperTradeController: PaperTradeController,
     watchlist: List<String>,
     onToggleWatch: (String) -> Unit,
     onSignalLaunchConsumed: () -> Unit,
@@ -610,6 +616,7 @@ private fun MainShell(
         DELETE_ACCOUNT_ROUTE,
         ALERTS_ROUTE,
         JOURNAL_ROUTE,
+        PAPER_TRADE_ROUTE,
         NEWS_ROUTE,
         CALENDAR_ROUTE,
         LAUNCH_READINESS_ROUTE,
@@ -630,6 +637,7 @@ private fun MainShell(
         DELETE_ACCOUNT_ROUTE -> R.string.screen_delete_account
         ALERTS_ROUTE -> R.string.screen_alerts
         JOURNAL_ROUTE -> R.string.screen_journal
+        PAPER_TRADE_ROUTE -> R.string.screen_paper_trade
         AI_VISION_ROUTE -> R.string.screen_ai_vision
         AI_ASSISTANT_ROUTE -> R.string.screen_ai_assistant
         MARKET_SEARCH_ROUTE -> R.string.screen_market_search
@@ -826,6 +834,14 @@ private fun MainShell(
             composable(KYC_ROUTE) {
                 KycScreen(controller = accountController)
             }
+            composable(PAPER_TRADE_ROUTE) {
+                PaperTradeScreen(
+                    controller = paperTradeController,
+                    // The same feed the market list is showing. A second source would let this
+                    // screen and the row above it disagree about one instrument's price.
+                    priceFor = { symbol -> marketState.quotes[symbol]?.price },
+                )
+            }
             composable(JOURNAL_ROUTE) {
                 JournalScreen(controller = journalController)
             }
@@ -926,6 +942,7 @@ private fun MainShell(
             composable(AppDestination.TOOLS.route) {
                 ToolsScreen(
                     onOpenJournal = { navController.navigate(JOURNAL_ROUTE) },
+                    onOpenPaperTrade = { navController.navigate(PAPER_TRADE_ROUTE) },
                     platform = activePlatform,
                     onOpenConnections = { navController.navigate(CONNECTIONS_ROUTE) },
                     onOpenNews = { navController.navigate(NEWS_ROUTE) },

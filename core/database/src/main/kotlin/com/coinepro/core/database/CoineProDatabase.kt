@@ -155,16 +155,18 @@ abstract class CoineProCacheDao {
         CachedSignalTargetEntity::class,
         CacheMetadataEntity::class,
         JournalEntryEntity::class,
+        PaperTradeEntity::class,
     ],
     // Bumped for the journal table. `fallbackToDestructiveMigration` is deliberately *not* used:
     // every other table here is a cache that can be refetched, and the journal is the one thing in
     // this database that cannot. See the migration below.
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class CoineProDatabase : RoomDatabase() {
     abstract fun cacheDao(): CoineProCacheDao
     abstract fun journalDao(): JournalDao
+    abstract fun paperTradeDao(): PaperTradeDao
 }
 
 /**
@@ -197,6 +199,26 @@ val MIGRATION_1_2: Migration = object : Migration(1, 2) {
     }
 }
 
+/** Version 2 to 3: paper trades. Written out for the same reason as the journal's. */
+val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS paper_trades (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                symbol TEXT NOT NULL,
+                buy INTEGER NOT NULL,
+                entry REAL NOT NULL,
+                size REAL NOT NULL,
+                openedAtEpochMillis INTEGER NOT NULL,
+                exit REAL,
+                closedAtEpochMillis INTEGER
+            )
+            """.trimIndent(),
+        )
+    }
+}
+
 object CoineProDatabaseFactory {
     fun create(context: Context): CoineProDatabase = Room.databaseBuilder(
         context.applicationContext,
@@ -205,7 +227,7 @@ object CoineProDatabaseFactory {
     )
         // The journal migration is registered rather than the database being allowed to fall back
         // to destructive recreation. Every other table here is a cache; the journal is not.
-        .addMigrations(MIGRATION_1_2)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
         .build()
 }
 

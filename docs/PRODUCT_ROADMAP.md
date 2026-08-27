@@ -301,6 +301,7 @@ core:marketintel
 core:account
 core:guest
 core:journal
+core:papertrade
 core:diagnostics
 core:database
 feature:admin
@@ -320,6 +321,7 @@ feature:account
 feature:guest
 feature:alerts
 feature:journal
+feature:papertrade
 feature:copytrade
 feature:ai
 feature:ai-vision

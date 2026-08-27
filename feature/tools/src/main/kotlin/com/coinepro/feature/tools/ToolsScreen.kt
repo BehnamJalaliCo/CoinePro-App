@@ -115,6 +115,8 @@ fun ToolsScreen(
     onOpenAcademy: (() -> Unit)? = null,
     /** Opens the trading journal. Local to the device and available on both platforms. */
     onOpenJournal: (() -> Unit)? = null,
+    /** Opens paper trading. Local, and the only thing a reader can do on day one. */
+    onOpenPaperTrade: (() -> Unit)? = null,
 ) {
     var expanded by remember { mutableStateOf<ToolId?>(ToolId.RISK) }
 
@@ -151,6 +153,7 @@ fun ToolsScreen(
                 onOpenConnections = onOpenConnections,
                 onOpenPortfolio = onOpenPortfolio,
                 onOpenJournal = onOpenJournal,
+                onOpenPaperTrade = onOpenPaperTrade,
                 onOpenAcademy = onOpenAcademy,
             )
         }
@@ -622,6 +625,7 @@ private fun OperationalTools(
     onOpenPortfolio: (() -> Unit)?,
     onOpenAcademy: (() -> Unit)?,
     onOpenJournal: (() -> Unit)?,
+    onOpenPaperTrade: (() -> Unit)?,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -631,6 +635,14 @@ private fun OperationalTools(
         Text(stringResource(R.string.tools_connected_body), color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
         // First of the four, because it is the only one that needs nothing: no account, no
         // connection, no network. A reader can start keeping a journal on the day they install.
+        onOpenPaperTrade?.let {
+            OperationalCard(
+                title = stringResource(R.string.tools_paper_title),
+                description = stringResource(R.string.tools_paper_body),
+                button = stringResource(R.string.tools_paper_open),
+                onClick = it,
+            )
+        }
         onOpenJournal?.let {
             OperationalCard(
                 title = stringResource(R.string.tools_journal_title),
