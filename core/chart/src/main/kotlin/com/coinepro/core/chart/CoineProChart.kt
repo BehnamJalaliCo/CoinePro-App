@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -189,28 +190,14 @@ fun CoineProChart(
                 ),
         ) {
             val plotWidth = max(0f, size.width - if (decoration.showAxes) axisWidth else 0f)
-            val volumeHeight = if (decoration.showVolume && series.hasVolume) {
-                size.height * VOLUME_RATIO
-            } else {
-                0f
-            }
             val timeAxis = if (decoration.showAxes && decoration.showTimeAxis) timeHeight else 0f
             // Panes eat into the price's height, never into each other or the axis. Clamped in
             // total, because four oscillators at 18% each would leave the candles a sliver — and
             // the candles are what the reader came for.
             val paneRatio = min(PANE_BUDGET, decoration.panes.sumOf { it.heightRatio.toDouble() }.toFloat())
-            val paneRequest = if (decoration.panes.isEmpty()) 0f else size.height * paneRatio
-            // Volume and panes are capped *together*, not each on its own. Separately clamped they
-            // add up: volume at a fifth plus three oscillators at their own limit left the candles
-            // with less height than the volume bars underneath them, which is a picture of the
-            // wrong thing. Both shrink by the same factor so their relative sizes survive.
             val available = max(0f, size.height - timeAxis)
-            val requested = volumeHeight + paneRequest
-            val ceiling = available * LOWER_BUDGET
-            val squeeze = if (requested > ceiling && requested > 0f) ceiling / requested else 1f
-            val volume = volumeHeight * squeeze
-            val paneHeight = paneRequest * squeeze
-            val plotHeight = max(0f, available - volume - paneHeight)
+            val paneHeight = if (decoration.panes.isEmpty()) 0f else available * paneRatio
+            val plotHeight = max(0f, available - paneHeight)
 
             val view = viewport
                 .sized(plotWidth, plotHeight)
@@ -218,10 +205,17 @@ fun CoineProChart(
             lastView[0] = view
             if (view.visibleCount == 0) return@Canvas
 
-            if (decoration.showAxes) drawGrid(view, plotWidth, palette, measurer)
+            if (decoration.showAxes) drawGrid(view, plotWidth, palette, measurer, type)
             // The setup goes *under* the price. It is context for the bars, and drawn over them it
             // tints every candle it covers — which on a full-height risk band is most of them.
             decoration.signal?.let { drawSignal(view, it, plotWidth, palette, measurer) }
+            // Volume sits in the foot of the price pane rather than in a band of its own — the way
+            // every terminal draws it. A separate band cost a fifth of the canvas to say something
+            // the reader glances at, and on a chart with three oscillators the volume bars ended up
+            // taller than the candles above them.
+            if (decoration.showVolume && series.hasVolume) {
+                clipRect(0f, 0f, plotWidth, plotHeight) { drawVolume(view, plotHeight, palette) }
+            }
             when {
                 type.isLine -> drawLineSeries(view, palette, filled = type == ChartType.AREA)
                 type == ChartType.BARS -> drawOhlcBars(view, palette)
@@ -262,9 +256,8 @@ fun CoineProChart(
                     }
                 }
             }
-            if (volume > 0) drawVolume(view, plotHeight, volume, palette)
             if (paneHeight > 0f) {
-                var top = plotHeight + volume
+                var top = plotHeight
                 val share = paneHeight / decoration.panes.sumOf { it.heightRatio.toDouble() }.toFloat()
                 for (pane in decoration.panes) {
                     val height = pane.heightRatio * share
@@ -272,13 +265,25 @@ fun CoineProChart(
                     top += height
                 }
             }
+            // The live edge, and its price against the axis. This is the one number on the chart a
+            // reader looks for without being asked, and before this it was only in the header —
+            // where it says nothing about *where* on the scale the market currently is.
+            val lastPriceY = if (decoration.showLastPrice) lastPriceTagY(view, measurer) else null
             if (decoration.showAxes) {
-                drawPriceAxis(view, plotWidth, palette, measurer)
+                drawPriceAxis(view, plotWidth, palette, measurer, lastPriceY)
                 if (decoration.showTimeAxis) {
-                    drawTimeAxis(view, plotHeight + volume + paneHeight, plotWidth, type, palette, measurer)
+                    drawTimeAxis(view, plotHeight + paneHeight, plotWidth, type, palette, measurer)
                 }
             }
-            crosshair?.let { drawCrosshair(view, it, plotWidth, palette, measurer) }
+            if (decoration.showLastPrice) {
+                drawLastPrice(view, plotWidth, axisWidth, palette, measurer, decoration.showAxes)
+            }
+            if (decoration.showLegend) {
+                drawLegend(view, decoration, crosshair, palette, measurer)
+            }
+            crosshair?.let {
+                drawCrosshair(view, it, plotWidth, axisWidth, plotHeight + paneHeight, palette, measurer, decoration)
+            }
         }
     }
 }
@@ -401,28 +406,33 @@ private fun DrawScope.drawOverlay(view: ChartViewport, overlay: ChartLine, densi
 
 // ---------------------------------------------------------------------------- panes
 
-private fun DrawScope.drawVolume(
-    view: ChartViewport,
-    top: Float,
-    height: Float,
-    palette: ChartPalette,
-) {
+/**
+ * Volume in the foot of the price pane.
+ *
+ * Anchored to the bottom of the plot and scaled so the tallest visible bar reaches [VOLUME_INLINE]
+ * of the plot's height. Drawn faint and *under* the candles, so it reads as ground rather than as a
+ * second series competing with the price.
+ *
+ * The peak is taken from what is visible, not from the whole series. One record day three months
+ * back would otherwise flatten every bar on screen to a millimetre — which is the same failure the
+ * price axis avoids by scaling to the window.
+ */
+private fun DrawScope.drawVolume(view: ChartViewport, plotHeight: Float, palette: ChartPalette) {
     var peak = 0.0
     for (index in view.firstVisible..view.lastVisible) {
         if (view.series.volume[index] > peak) peak = view.series.volume[index]
     }
     if (peak <= 0.0) return
     val body = view.bodyWidth
-    translate(top = top) {
-        for (index in view.firstVisible..view.lastVisible) {
-            val bar = view.series[index]
-            val barHeight = (view.series.volume[index] / peak * height).toFloat()
-            drawRect(
-                color = (if (bar.up) palette.up else palette.down).copy(alpha = VOLUME_ALPHA),
-                topLeft = Offset(view.xOf(index) - body / 2, height - barHeight),
-                size = Size(body, barHeight),
-            )
-        }
+    val band = plotHeight * VOLUME_INLINE
+    for (index in view.firstVisible..view.lastVisible) {
+        val bar = view.series[index]
+        val height = (view.series.volume[index] / peak * band).toFloat()
+        drawRect(
+            color = (if (bar.up) palette.up else palette.down).copy(alpha = VOLUME_ALPHA),
+            topLeft = Offset(view.xOf(index) - body / 2, plotHeight - height),
+            size = Size(body, height),
+        )
     }
 }
 
@@ -542,8 +552,16 @@ private fun DrawScope.drawPane(
         }
     }
 
+    // The title on its own ground. A pane's own reference lines run the full width and one of them
+    // is usually near the top — RSI's seventy, MACD's zero on a positive stretch — so without this
+    // the dashes ran straight through the letters.
     val title = measurer.measure(pane.title, axisStyle(palette.text))
-    drawText(title, topLeft = Offset(AXIS_PADDING, top + AXIS_PADDING))
+    drawRect(
+        color = palette.stage,
+        topLeft = Offset(0f, top + 1f),
+        size = Size(title.size.width + LEGEND_INSET * 2, title.size.height + AXIS_PADDING * 2),
+    )
+    drawText(title, topLeft = Offset(LEGEND_INSET, top + AXIS_PADDING))
     // The two extremes at the right edge rather than a full axis: a pane is a shape to read, not a
     // scale to measure off, and five gridline labels in a 90px strip is unreadable noise.
     val decimals = paneDecimals(high - low)
@@ -578,16 +596,35 @@ private fun DrawScope.drawGrid(
     plotWidth: Float,
     palette: ChartPalette,
     measurer: TextMeasurer,
+    type: ChartType,
 ) {
     val grid = palette.grid.copy(alpha = GRID_ALPHA)
     for (step in 0..GRID_ROWS) {
         val y = view.plotHeight * step / GRID_ROWS
         drawLine(grid, Offset(0f, y), Offset(plotWidth, y), HAIRLINE)
     }
-    for (step in 0..GRID_COLUMNS) {
-        val x = plotWidth * step / GRID_COLUMNS
+    // Verticals stand where the time labels stand, not at even fractions of the width. A grid whose
+    // columns do not line up with the dates underneath them is a grid a reader cannot use to read
+    // a date off a bar — which is the only thing vertical gridlines are for.
+    for (index in timeLabelIndices(view)) {
+        val x = view.xOf(index)
+        if (x < 0f || x > plotWidth) continue
         drawLine(grid, Offset(x, 0f), Offset(x, view.plotHeight), HAIRLINE)
     }
+}
+
+/**
+ * Which bars carry a label on the time axis.
+ *
+ * Shared by the axis and the grid so the two cannot disagree: the columns are placed by the same
+ * arithmetic that places the dates, rather than by a second rule that happens to look similar.
+ */
+private fun timeLabelIndices(view: ChartViewport): List<Int> {
+    if (view.visibleCount <= 0) return emptyList()
+    return (0 until TIME_LABELS)
+        .map { step -> view.firstVisible + (view.visibleCount - 1) * step / max(1, TIME_LABELS - 1) }
+        .filter { it <= view.lastVisible }
+        .distinct()
 }
 
 private fun DrawScope.drawPriceAxis(
@@ -595,6 +632,7 @@ private fun DrawScope.drawPriceAxis(
     plotWidth: Float,
     palette: ChartPalette,
     measurer: TextMeasurer,
+    suppressNear: Float?,
 ) {
     val span = view.priceRange.endInclusive - view.priceRange.start
     val decimals = decimalsFor(view.priceRange.endInclusive)
@@ -605,7 +643,149 @@ private fun DrawScope.drawPriceAxis(
         // Centred on the gridline, except at the two ends where centring would push half the label
         // off the canvas — the top one was clipped to a row of stumps before this.
         val top = (y - label.size.height / 2).coerceIn(0f, view.plotHeight - label.size.height)
+        // A gridline label under the live-price tag is a number half-covered by another number.
+        // The tag wins: it is the price the reader came for, and the gridline it hides is the one
+        // they can infer from the two either side of it.
+        if (suppressNear != null && abs(top - suppressNear) < label.size.height * 1.4f) continue
         drawText(textLayoutResult = label, topLeft = Offset(plotWidth + AXIS_PADDING, top))
+    }
+}
+
+/**
+ * Where the live-price tag will sit, so the axis can step around it.
+ *
+ * Computed separately rather than returned from [drawLastPrice], because the axis is drawn first —
+ * the tag has to land on top of the gridline labels, not under them.
+ */
+private fun DrawScope.lastPriceTagY(view: ChartViewport, measurer: TextMeasurer): Float? {
+    val bar = view.series.bars.getOrNull(view.lastVisible) ?: return null
+    val y = view.yOf(bar.c)
+    if (y < 0f || y > view.plotHeight) return null
+    val height = measurer.measure("0", axisStyle(Color.White)).size.height + TAG_PADDING * 2
+    return (y - height / 2).coerceIn(0f, max(0f, view.plotHeight - height))
+}
+
+/**
+ * The price at the live edge, tagged against the axis.
+ *
+ * A dashed rule the width of the plot and a filled tag on the axis in the last bar's own direction.
+ * The rule is what places the price on the visible scale; the tag is what makes the number legible
+ * against the gridline labels it sits between.
+ *
+ * Skipped when the last close is outside the visible price range, which happens whenever the reader
+ * has panned back — a tag pinned to the top or bottom edge would claim a price the chart is not
+ * showing.
+ */
+private fun DrawScope.drawLastPrice(
+    view: ChartViewport,
+    plotWidth: Float,
+    axisWidth: Float,
+    palette: ChartPalette,
+    measurer: TextMeasurer,
+    withAxis: Boolean,
+) {
+    val bar = view.series.bars.getOrNull(view.lastVisible) ?: return
+    val y = view.yOf(bar.c)
+    if (y < 0f || y > view.plotHeight) return
+    val colour = if (bar.up) palette.up else palette.down
+    drawLine(
+        color = colour.copy(alpha = LAST_PRICE_ALPHA),
+        start = Offset(0f, y),
+        end = Offset(plotWidth, y),
+        strokeWidth = HAIRLINE,
+        pathEffect = PathEffect.dashPathEffect(floatArrayOf(DASH_ON, DASH_OFF)),
+    )
+    if (!withAxis) return
+    drawAxisTag(
+        text = formatPrice(bar.c, decimalsFor(bar.c)),
+        y = y,
+        plotWidth = plotWidth,
+        axisWidth = axisWidth,
+        fill = colour,
+        textColour = palette.stage,
+        measurer = measurer,
+        plotHeight = view.plotHeight,
+    )
+}
+
+/**
+ * A filled label in the price gutter.
+ *
+ * Shared by the last-price tag and the crosshair's, so the two are the same object in two colours
+ * rather than two things that drifted apart. Clamped inside the plot so a tag near an edge stays
+ * whole instead of being sliced by the canvas boundary.
+ */
+private fun DrawScope.drawAxisTag(
+    text: String,
+    y: Float,
+    plotWidth: Float,
+    axisWidth: Float,
+    fill: Color,
+    textColour: Color,
+    measurer: TextMeasurer,
+    plotHeight: Float,
+) {
+    val label = measurer.measure(text, axisStyle(textColour))
+    val height = label.size.height + TAG_PADDING * 2
+    val top = (y - height / 2).coerceIn(0f, max(0f, plotHeight - height))
+    drawRoundRect(
+        color = fill,
+        topLeft = Offset(plotWidth + 1f, top),
+        size = Size(max(0f, axisWidth - 2f), height),
+        cornerRadius = CornerRadius(TAG_RADIUS, TAG_RADIUS),
+    )
+    drawText(
+        textLayoutResult = label,
+        topLeft = Offset(plotWidth + AXIS_PADDING, top + TAG_PADDING),
+    )
+}
+
+/**
+ * The corner readout.
+ *
+ * The bar's four prices, then one line per overlay in that overlay's own colour. Which bar it
+ * reads is the crosshair's when there is one and the last otherwise — so putting a finger on the
+ * chart turns the legend into a scrubber over history rather than a second copy of the header.
+ *
+ * Capped at [LEGEND_LINES] rows. A chart with nine overlays would otherwise print a paragraph over
+ * its own candles, and the overflow is stated rather than silently dropped.
+ */
+private fun DrawScope.drawLegend(
+    view: ChartViewport,
+    decoration: ChartDecoration,
+    crosshair: Crosshair?,
+    palette: ChartPalette,
+    measurer: TextMeasurer,
+) {
+    val index = (crosshair?.index ?: view.lastVisible).coerceIn(view.firstVisible, view.lastVisible)
+    val bar = view.series.bars.getOrNull(index) ?: return
+    val decimals = decimalsFor(bar.c)
+    var y = LEGEND_INSET
+
+    val ohlc = "O ${formatPrice(bar.o, decimals)}   H ${formatPrice(bar.h, decimals)}   " +
+        "L ${formatPrice(bar.l, decimals)}   C ${formatPrice(bar.c, decimals)}"
+    val head = measurer.measure(ohlc, axisStyle(if (bar.up) palette.up else palette.down))
+    drawText(head, topLeft = Offset(LEGEND_INSET, y))
+    y += head.size.height + LEGEND_GAP
+
+    // The legend may take a quarter of the plot and no more. On a full-height chart that is every
+    // row it wants; on a card two hundred pixels tall it is the OHLC line and one overlay, which is
+    // the difference between a legend and a chart with writing over it.
+    val budget = view.plotHeight * LEGEND_BUDGET
+    val named = decoration.overlays.filter { !it.label.isNullOrBlank() }
+    var drawn = 0
+    for (overlay in named.take(LEGEND_LINES)) {
+        val value = overlay.values[index]
+        val text = overlay.label + (value?.let { "  " + formatPrice(it, decimals) } ?: "  —")
+        val line = measurer.measure(text, axisStyle(Color(overlay.colour)))
+        if (y + line.size.height > budget) break
+        drawText(line, topLeft = Offset(LEGEND_INSET, y))
+        y += line.size.height + LEGEND_GAP
+        drawn++
+    }
+    if (named.size > drawn) {
+        val more = measurer.measure("+${(named.size - drawn)}", axisStyle(palette.text))
+        if (y + more.size.height <= budget) drawText(more, topLeft = Offset(LEGEND_INSET, y))
     }
 }
 
@@ -768,28 +948,62 @@ private fun DrawScope.drawDashedLevel(y: Float, width: Float, colour: Color) {
     )
 }
 
+/**
+ * The crosshair, and the two labels that make it readable.
+ *
+ * Snapped to a bar in x and free in y: the reader is asking "what happened at this bar", and a
+ * crosshair between two bars answers a question about a bar that does not exist.
+ *
+ * The price is tagged in the axis gutter and the time under the plot, rather than being printed in
+ * a corner. A crosshair whose value is written somewhere else makes the reader look away from the
+ * place they are pointing at — and the OHLC readout, which used to live here, is now the legend's
+ * job and follows the same bar.
+ *
+ * The vertical rule runs the full height, panes included, so a turn in the price and the reading in
+ * the oscillator below it are measured against the same bar.
+ */
 private fun DrawScope.drawCrosshair(
     view: ChartViewport,
     crosshair: Crosshair,
     plotWidth: Float,
+    axisWidth: Float,
+    fullHeight: Float,
     palette: ChartPalette,
     measurer: TextMeasurer,
+    decoration: ChartDecoration,
 ) {
     val index = crosshair.index.coerceIn(view.firstVisible, view.lastVisible)
     val bar = view.series[index]
     val x = view.xOf(index)
-    // Snapped to the bar in x, free in y. The reader is asking "what happened at this bar", and a
-    // crosshair between two bars answers a question about a bar that does not exist.
     val y = view.yOf(crosshair.price)
     val dash = PathEffect.dashPathEffect(floatArrayOf(DASH_ON, DASH_OFF))
-    drawLine(palette.crosshair, Offset(x, 0f), Offset(x, view.plotHeight), HAIRLINE, pathEffect = dash)
+    drawLine(palette.crosshair, Offset(x, 0f), Offset(x, fullHeight), HAIRLINE, pathEffect = dash)
     drawLine(palette.crosshair, Offset(0f, y), Offset(plotWidth, y), HAIRLINE, pathEffect = dash)
 
-    val decimals = decimalsFor(bar.c)
-    val readout = "O ${formatPrice(bar.o, decimals)}  H ${formatPrice(bar.h, decimals)}  " +
-        "L ${formatPrice(bar.l, decimals)}  C ${formatPrice(bar.c, decimals)}"
-    val label = measurer.measure(readout, axisStyle(palette.text))
-    drawText(label, topLeft = Offset(AXIS_PADDING, AXIS_PADDING))
+    if (!decoration.showAxes) return
+    drawAxisTag(
+        text = formatPrice(crosshair.price, decimalsFor(bar.c)),
+        y = y,
+        plotWidth = plotWidth,
+        axisWidth = axisWidth,
+        fill = palette.crosshair,
+        textColour = palette.stage,
+        measurer = measurer,
+        plotHeight = view.plotHeight,
+    )
+    if (!decoration.showTimeAxis) return
+    // The time under the finger, centred on the rule and held inside the canvas. Without the clamp
+    // the label at either end of a scrolled chart hangs half off the edge.
+    val stamp = measurer.measure(formatTime(bar.t), axisStyle(palette.stage))
+    val width = stamp.size.width + TAG_PADDING * 4
+    val left = (x - width / 2).coerceIn(0f, max(0f, plotWidth - width))
+    drawRoundRect(
+        color = palette.crosshair,
+        topLeft = Offset(left, fullHeight + 1f),
+        size = Size(width, stamp.size.height + TAG_PADDING * 2),
+        cornerRadius = CornerRadius(TAG_RADIUS, TAG_RADIUS),
+    )
+    drawText(stamp, topLeft = Offset(left + TAG_PADDING * 2, fullHeight + 1f + TAG_PADDING))
 }
 
 // ---------------------------------------------------------------------------- helpers
@@ -871,7 +1085,13 @@ private val AXIS_WIDTH: Dp = 58.dp
 private val TIME_HEIGHT: Dp = 20.dp
 
 /** The volume band, as a share of the canvas. */
-private const val VOLUME_RATIO = 0.20f
+/**
+ * How much of the price pane the tallest visible volume bar reaches.
+ *
+ * A fifth. Enough to compare one bar against its neighbours, short enough that the candles above it
+ * are never in doubt about which series the chart is about.
+ */
+private const val VOLUME_INLINE = 0.20f
 
 /**
  * The most of the canvas indicator panes may take between them.
@@ -881,13 +1101,32 @@ private const val VOLUME_RATIO = 0.20f
  */
 private const val PANE_BUDGET = 0.5f
 
+
+/** How far the last-price tag's rounded corner is cut. */
+private const val TAG_RADIUS = 3f
+
+/** How solid the last-price rule is. Present, and never competing with the candles. */
+private const val LAST_PRICE_ALPHA = 0.75f
+
+/** Rows the corner legend will print before it starts counting instead. */
+private const val LEGEND_LINES = 4
+
+/** Between two rows of the corner legend. */
+private const val LEGEND_GAP = 2f
+
 /**
- * The most of the canvas the volume pane and the indicator panes may take between them.
+ * How far the corner legend sits from the canvas edge.
  *
- * Applied to the two together rather than to each, so the price keeps the larger half of the
- * picture no matter how many strips are switched on.
+ * Wider than the axis padding: the legend's first glyph is a letter and the axis's is a digit, and
+ * four pixels that read as tight beside a number read as clipped beside an «O».
  */
-private const val LOWER_BUDGET = 0.55f
+private const val LEGEND_INSET = 10f
+
+/** The share of the plot's height the corner legend may occupy before it stops adding rows. */
+private const val LEGEND_BUDGET = 0.25f
+
+/** Padding inside the last-price and crosshair tags. */
+private const val TAG_PADDING = 3f
 
 /** Breathing room above and below a pane's extremes, so the line never touches the lid. */
 private const val PANE_PADDING = 0.06
@@ -907,7 +1146,7 @@ private val AXIS_TEXT_SIZE = 9.sp
 
 private const val GRID_ALPHA = 0.35f
 private const val AREA_ALPHA = 0.16f
-private const val VOLUME_ALPHA = 0.45f
+private const val VOLUME_ALPHA = 0.30f
 private const val ZONE_ALPHA = 0.12f
 
 private const val DASH_ON = 6f

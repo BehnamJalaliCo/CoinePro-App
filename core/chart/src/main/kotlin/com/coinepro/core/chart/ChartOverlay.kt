@@ -158,6 +158,21 @@ data class ChartDecoration(
     /** Whether the price grid and its labels are drawn. Off for a thumbnail. */
     val showAxes: Boolean = true,
     /**
+     * The dashed line at the last close, with its price tagged against the axis.
+     *
+     * On by default and off for a thumbnail. It is the one number a reader looks for without being
+     * asked, and a header showing it says nothing about *where* on the visible scale the market is.
+     */
+    val showLastPrice: Boolean = true,
+    /**
+     * The corner readout: the bar's open, high, low and close, then each overlay's own name in its
+     * own colour.
+     *
+     * Without it a chart with four lines on it is four anonymous curves. With the crosshair down it
+     * follows the crosshair's bar; without one it reads the last bar.
+     */
+    val showLegend: Boolean = true,
+    /**
      * Whether the dates along the bottom are drawn.
      *
      * Separate from [showAxes] for one honest reason: some feeds send bars with no timestamps at

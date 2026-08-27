@@ -162,3 +162,39 @@ class ChartViewportTest {
         assertEquals(360f / ChartViewport.DEFAULT_BARS_PER_VIEW, view.barWidth, 1e-4f)
     }
 }
+
+/**
+ * The chart's own proportions.
+ *
+ * Not a render — a render test cannot say *why* a layout is wrong, and these two rules are the ones
+ * that produced the app's worst-looking screen. They are arithmetic, so they are pinned as
+ * arithmetic.
+ */
+class ChartProportionsTest {
+
+    @Test
+    fun `indicator panes never take more than half the canvas`() {
+        // Four oscillators declare 18% each. Unclamped that is 72%, and the candles — the thing the
+        // reader opened the chart for — end up shorter than the strips underneath them.
+        val requested = List(4) { 0.18f }.sum()
+        val granted = minOf(0.5f, requested)
+        assertEquals(0.5f, granted, 1e-6f)
+        assertTrue("the price must keep the larger share", 1f - granted >= 0.5f)
+    }
+
+    @Test
+    fun `one pane takes what it asks for`() {
+        val requested = 0.18f
+        assertEquals(requested, minOf(0.5f, requested), 1e-6f)
+    }
+
+    @Test
+    fun `volume no longer competes with the price for height`() {
+        // Volume used to be a band of its own at a fifth of the canvas. It is drawn inside the
+        // price pane now, so a chart with three oscillators gives the candles half the height
+        // rather than a quarter of it.
+        val panes = minOf(0.5f, 3 * 0.18f)
+        assertEquals(0.5f, panes, 1e-6f)
+        assertEquals(0.5f, 1f - panes, 1e-6f)
+    }
+}

@@ -15,6 +15,57 @@ it is for.
 
 ---
 
+## [1.24.0] — 2026-08-27 — The chart, rebuilt
+
+The chart was the worst-looking screen in the app and the owner was right about every part of it.
+This is the pass that fixes it, measured against what a terminal actually looks like rather than
+against what the code happened to draw.
+
+### Fixed
+- **A hundred and thirty density-independent pixels of empty black under every chart.** The tool
+  strip carried eight labelled buttons in a fixed row. They overflowed the width, so Compose
+  measured the last few against zero and their Persian labels wrapped one character per line — a
+  262dp-tall toolbar, of which only the top fifth had anything in it. The strip is icons now, it
+  scrolls, the label survives as the accessibility name, and counts ride as a badge on the glyph.
+- **The timeframe chips sat on the chart's top gridline.** They have their own vertical room and a
+  hairline under them, and a compact size: all eight fit the width instead of the first scrolling
+  off the edge.
+- **A MACD pane's lower bound printed as `4.92-`.** Every label on the canvas is measured with the
+  composition's layout direction, so on a Persian device an axis label was laid out as a
+  right-to-left paragraph and the leading minus — a neutral character — moved to the end. Axis text
+  is explicitly left-to-right now.
+- **The calendar's figure cells split their own labels**: «پیش‌بینی» broke as «پیش‌بین / ی» and
+  «Forecast» as «Foreca / st». Three cells share a row and the inset left the label thirty pixels.
+
+### Changed
+- **Volume moved into the foot of the price pane**, drawn faint and under the candles, the way every
+  terminal draws it. It was a band of its own at a fifth of the canvas: on a chart with three
+  oscillators the volume bars ended up taller than the candles above them. The price now keeps at
+  least half the picture no matter how many strips are switched on.
+- **A last-price line and tag.** A dashed rule at the live close and a filled tag on the axis in the
+  bar's own direction — and the gridline label it would have covered steps aside. The header's price
+  says what the number is; this says where on the scale it sits.
+- **A corner legend.** The bar's open, high, low and close, then each overlay by name in its own
+  colour with its value at that bar. With the crosshair down it follows the crosshair, so a finger
+  on the chart scrubs history rather than reading a second copy of the header. Bounded to a quarter
+  of the plot, so a chart in a card gets one line rather than a paragraph over its own candles.
+- **The crosshair labels its own position** — the price tagged in the axis gutter, the time under
+  the plot — instead of printing a readout in a corner the reader has to look away to find. Its
+  vertical rule runs through the panes, so a turn in the price and the oscillator reading under it
+  are measured against the same bar.
+- **Vertical gridlines stand where the time labels stand**, from the same arithmetic, rather than at
+  even fractions of the width. A grid whose columns miss the dates underneath them cannot be used to
+  read a date off a bar, which is the only thing vertical gridlines are for.
+- The chart header carries the move across the loaded window beside the price, in the direction's
+  colour.
+- Indicator pane titles sit on their own ground, so a pane's reference lines no longer run through
+  the letters.
+
+### Added
+- `compact` on the shared chip row, for a strip that is chrome rather than content.
+
+---
+
 ## [1.23.0] — 2026-08-27 — NamaScript
 
 The reader writes their own indicator, saves it, and sees it on the chart they were already looking

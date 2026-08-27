@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
@@ -288,14 +289,32 @@ private fun ValueCell(label: String, value: String?, modifier: Modifier = Modifi
         color = CoineProColors.Stage.copy(alpha = 0.55f),
         border = BorderStroke(1.dp, CoineProColors.Border),
     ) {
-        Column(modifier = Modifier.padding(CoineProSpacing.OneHalf), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(label, color = CoineProColors.TextMuted, style = MaterialTheme.typography.labelSmall)
+        Column(
+            // Padding tightened from OneHalf. Three of these share the row's width, and at the
+            // wider inset the label had barely thirty pixels to print in — «پیش‌بینی» broke across
+            // two lines as «پیش‌بین / ی» and «Forecast» as «Foreca / st».
+            modifier = Modifier.padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.OneHalf),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = label,
+                color = CoineProColors.TextMuted,
+                style = MaterialTheme.typography.labelSmall,
+                // One line, shrunk to fit rather than wrapped. A word split down the middle is
+                // unreadable in a way a slightly smaller word is not — and these three labels are
+                // the only thing telling the reader which figure is which.
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Visible,
+            )
             Text(
                 // A release with no number yet gets an em dash. Server values arrive as text and
                 // are shown as text — reparsing one would risk printing a figure nobody published.
                 text = value?.let(BidiText::isolateLtr) ?: stringResource(R.string.calendar_value_missing),
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (value == null) CoineProColors.TextMuted else CoineProColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

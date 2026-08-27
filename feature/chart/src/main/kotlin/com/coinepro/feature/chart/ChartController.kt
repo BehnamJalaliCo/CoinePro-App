@@ -130,6 +130,21 @@ data class ChartUiState(
         }
 
     val lastPrice: Double? get() = visibleSeries.bars.lastOrNull()?.c
+
+    /**
+     * The move across the loaded window, as a percentage.
+     *
+     * Measured from the first loaded bar rather than from a session open, because a session open is
+     * something only the server knows and neither feed sends one. Naming it after the window is the
+     * honest version: it describes the picture, and the picture is what the reader is looking at.
+     */
+    val changePercent: Double?
+        get() {
+            val bars = visibleSeries.bars
+            val first = bars.firstOrNull()?.c ?: return null
+            val last = bars.lastOrNull()?.c ?: return null
+            return if (first == 0.0) null else (last - first) / first * 100.0
+        }
 }
 
 /**

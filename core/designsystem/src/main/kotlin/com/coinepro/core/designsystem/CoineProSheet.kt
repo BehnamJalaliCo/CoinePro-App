@@ -139,17 +139,32 @@ fun CoineProChipRow(
     modifier: Modifier = Modifier,
     /** The chip that clears the filter. Null omits it. */
     allLabel: String? = null,
+    /**
+     * A tighter chip, for a row that is chrome rather than content.
+     *
+     * The chart's timeframe strip is the case: eight chips at the sheet's size filled a third of
+     * the screen above the plot and read as a headline rather than as a control. Same shape, less
+     * of it.
+     */
+    compact: Boolean = false,
 ) {
     LazyRow(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        horizontalArrangement = Arrangement.spacedBy(
+            if (compact) CoineProSpacing.Half else CoineProSpacing.One,
+        ),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            horizontal = CoineProSpacing.Gutter,
+            horizontal = if (compact) CoineProSpacing.One else CoineProSpacing.Gutter,
         ),
     ) {
         if (allLabel != null) {
             item(key = "__all") {
-                Chip(label = allLabel, count = null, selected = selectedId == null) { onSelect(null) }
+                Chip(
+                    label = allLabel,
+                    count = null,
+                    selected = selectedId == null,
+                    compact = compact,
+                ) { onSelect(null) }
             }
         }
         items(options, key = { it.id }) { option ->
@@ -157,6 +172,7 @@ fun CoineProChipRow(
                 label = option.label,
                 count = option.count,
                 selected = option.id == selectedId,
+                compact = compact,
             ) { onSelect(option.id) }
         }
     }
@@ -166,19 +182,32 @@ fun CoineProChipRow(
 data class CoineProChip(val id: String, val label: String, val count: Int? = null)
 
 @Composable
-private fun Chip(label: String, count: Int?, selected: Boolean, onClick: () -> Unit) {
+private fun Chip(
+    label: String,
+    count: Int?,
+    selected: Boolean,
+    compact: Boolean = false,
+    onClick: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .clip(CoineProPillShape)
             .background(if (selected) CoineProColors.Accent else CoineProColors.SurfaceElevated)
             .clickable(onClick = onClick)
-            .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
+            .padding(
+                horizontal = if (compact) CoineProSpacing.One else CoineProSpacing.OneHalf,
+                vertical = if (compact) CoineProSpacing.Half else CoineProSpacing.One,
+            ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
+            style = if (compact) {
+                MaterialTheme.typography.labelSmall
+            } else {
+                MaterialTheme.typography.labelMedium
+            },
             color = if (selected) CoineProColors.OnAccent else CoineProColors.TextSecondary,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
         )
