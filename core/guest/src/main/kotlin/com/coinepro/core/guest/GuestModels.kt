@@ -78,3 +78,51 @@ data class GuestTrackRecord(
     /** Null rather than zero on an empty record: a win rate of nothing is not a win rate of 0%. */
     val winRate: Double? get() = if (entries.isEmpty()) null else wins * 100.0 / entries.size
 }
+
+/**
+ * A count the server may or may not have been able to fetch.
+ *
+ * The community route fetches its member counts from Telegram at request time, and Telegram is
+ * allowed to say no. The route's own documentation is explicit that a channel it could not read
+ * must be shown as unavailable — never as a zero, and never as the number it returned last time.
+ *
+ * That rule is why this is a type and not a `Long?`. A nullable number invites `?: 0` at the call
+ * site, and a channel with fifty thousand members drawn as «۰ عضو» is not a smaller claim than the
+ * truth, it is a false one. [Unavailable] has nothing to accidentally render.
+ */
+sealed interface MemberCount {
+    data class Known(val value: Long) : MemberCount
+    data object Unavailable : MemberCount
+}
+
+/**
+ * One public channel — a Telegram group, a channel, the bot.
+ *
+ * [url] is the server's, not built here from [username]. Which channels exist and where they live
+ * is the product's business and it changes; a link assembled in the app is one that keeps pointing
+ * at last year's group after the server has moved on.
+ */
+data class CommunityChannel(
+    val key: String,
+    val label: String,
+    val url: String?,
+    val members: MemberCount,
+)
+
+/**
+ * The public community, as the server reports it.
+ *
+ * [total] is read from the server's own total rather than summed from [channels], and the two are
+ * genuinely different numbers: a total summed here would silently omit every channel whose count
+ * failed, producing a figure that is confidently wrong instead of honestly partial.
+ */
+data class GuestCommunity(
+    val channels: List<CommunityChannel>,
+    val total: MemberCount,
+    val botUsers: MemberCount,
+    val note: String?,
+) {
+    /** True when there is nothing to draw — no channel and no number worth a section heading. */
+    val isEmpty: Boolean
+        get() = channels.isEmpty() && total is MemberCount.Unavailable && botUsers is MemberCount.Unavailable
+}

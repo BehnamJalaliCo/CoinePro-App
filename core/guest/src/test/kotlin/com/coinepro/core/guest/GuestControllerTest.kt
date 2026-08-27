@@ -132,4 +132,13 @@ private class FakeGuestGateway(
 
     override suspend fun trackRecord(limit: Int) =
         AppResult.Success(GuestTrackRecord(emptyList(), available = false))
+
+    override suspend fun community() = AppResult.Success(
+        GuestCommunity(
+            channels = emptyList(),
+            total = MemberCount.Unavailable,
+            botUsers = MemberCount.Unavailable,
+            note = null,
+        ),
+    )
 }

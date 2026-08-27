@@ -95,7 +95,10 @@ import com.coinepro.core.account.AccountBriefing
 import com.coinepro.core.account.AccountGateway
 import com.coinepro.core.account.AccountPortfolio
 import com.coinepro.core.account.DeletionOutcome
+import com.coinepro.core.guest.CommunityChannel
+import com.coinepro.core.guest.GuestCommunity
 import com.coinepro.core.guest.GuestGateway
+import com.coinepro.core.guest.MemberCount
 import com.coinepro.core.guest.GuestHeadline
 import com.coinepro.core.guest.GuestPrices
 import com.coinepro.core.guest.GuestQuote
@@ -1526,6 +1529,22 @@ internal class FakeGuestGateway : GuestGateway {
                 source = "TradeYar",
                 publishedAt = null,
             ),
+        ),
+    )
+
+    /**
+     * One channel whose count the server could read and one it could not — the mixed case is the
+     * one worth capturing, because the whole rule beside that route is what the second row does.
+     */
+    override suspend fun community() = AppResult.Success(
+        GuestCommunity(
+            channels = listOf(
+                CommunityChannel("signals", "کانال سیگنال", "https://t.me/example", MemberCount.Known(18_420)),
+                CommunityChannel("chat", "گروه گفت‌وگو", "https://t.me/example_chat", MemberCount.Unavailable),
+            ),
+            total = MemberCount.Known(52_340),
+            botUsers = MemberCount.Known(7_915),
+            note = null,
         ),
     )
 }

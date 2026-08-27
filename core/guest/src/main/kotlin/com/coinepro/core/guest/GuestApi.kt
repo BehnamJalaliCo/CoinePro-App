@@ -48,6 +48,18 @@ internal interface GuestApi {
         @Query("type") type: String = "news",
         @Query("limit") limit: Int = 20,
     ): NewsListDto
+
+    /**
+     * The public channels and how many people are in them.
+     *
+     * The route's own docstring is unusually firm about one thing, and it is the whole reason the
+     * DTO below is shaped the way it is: a channel whose count could not be fetched must render as
+     * unavailable. Not as a zero, and not as the number that was fetched an hour ago. Every count
+     * therefore arrives beside its own `available` flag, and the app reads the flag rather than
+     * testing the number.
+     */
+    @GET("api/v1/public/community")
+    suspend fun community(): CommunityDto
 }
 
 internal data class PriceSnapshotDto(
@@ -109,4 +121,30 @@ internal data class NewsItemDto(
     @SerializedName("summaryFa") val summaryFa: String? = null,
     @SerializedName("publishedAt") val publishedAt: String? = null,
     val importance: Int? = null,
+)
+
+internal data class CommunityDto(
+    val channels: List<CommunityChannelDto>? = null,
+    @SerializedName("telegram_members_total") val telegramMembersTotal: Long? = null,
+    @SerializedName("telegram_members_total_available") val telegramMembersTotalAvailable: Boolean? = null,
+    @SerializedName("bot_users") val botUsers: CommunityCountDto? = null,
+    val note: String? = null,
+)
+
+internal data class CommunityChannelDto(
+    val key: String? = null,
+    val username: String? = null,
+    val url: String? = null,
+    val label: String? = null,
+    /** The server's verdict on its own number. Read instead of testing [members] against zero. */
+    val available: Boolean? = null,
+    val members: Long? = null,
+    val source: String? = null,
+)
+
+internal data class CommunityCountDto(
+    val available: Boolean? = null,
+    val value: Long? = null,
+    val label: String? = null,
+    val source: String? = null,
 )

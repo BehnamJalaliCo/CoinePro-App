@@ -1,6 +1,7 @@
 package com.coinepro.feature.guest
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
@@ -18,6 +19,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
@@ -26,12 +28,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.common.toPersianGroupedDigits
 import com.coinepro.core.designsystem.CoineProMarketRow
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProLockup
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
+import com.coinepro.core.guest.CommunityChannel
+import com.coinepro.core.guest.GuestCommunity
+import com.coinepro.core.guest.GuestCommunityState
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.guest.GuestHeadline
 import com.coinepro.core.guest.GuestNewsState
@@ -39,6 +45,7 @@ import com.coinepro.core.guest.GuestPricesState
 import com.coinepro.core.guest.GuestTrackRecord
 import com.coinepro.core.guest.GuestTrackRecordState
 import com.coinepro.core.guest.GuestQuote
+import com.coinepro.core.guest.MemberCount
 
 /**
  * What the app looks like before anyone has signed in.
@@ -63,6 +70,7 @@ fun GuestScreen(
     val prices by controller.prices.collectAsStateWithLifecycle()
     val news by controller.news.collectAsStateWithLifecycle()
     val trackRecord by controller.trackRecord.collectAsStateWithLifecycle()
+    val community by controller.community.collectAsStateWithLifecycle()
 
     // Started and stopped with the screen rather than the process. A poll that outlives the screen
     // is a request nobody is looking at, on a connection somebody is paying for.
@@ -151,6 +159,26 @@ fun GuestScreen(
         }
 
         item { MembershipGate(onSignIn = onSignIn) }
+
+        // The community sits under the membership card rather than over it. It is the answer to
+        // "is anyone else here", which is a question a reader asks *after* they know what the
+        // thing is — putting a member count first is a crowd shown to somebody who has not yet
+        // been told what the crowd is for.
+        when (val current = community) {
+            is GuestCommunityState.Ready -> {
+                item {
+                    Text(
+                        text = stringResource(R.string.guest_community_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = CoineProColors.TextPrimary,
+                    )
+                }
+                item { CommunitySummary(current.community) }
+            }
+            // Nothing while loading, and nothing when it failed. A heading over «داده در دسترس
+            // نیست» is a section that exists only to report its own absence.
+            GuestCommunityState.Loading, GuestCommunityState.Unavailable -> Unit
+        }
 
         item {
             Text(
@@ -296,6 +324,101 @@ private fun TrackRecordSummary(record: GuestTrackRecord) {
                 color = CoineProColors.TextMuted,
             )
         }
+    }
+}
+
+/**
+ * The public channels, and how many people are in them.
+ *
+ * One rule governs this whole composable and it comes from the route itself: a count the server
+ * could not fetch renders as «داده در دسترس نیست», never as a zero and never as a remembered
+ * number. Telegram refuses often enough that this is the ordinary case rather than the edge one,
+ * and a channel of fifty thousand drawn as «۰ عضو» is not a cautious understatement, it is a lie
+ * about the size of the thing a reader is deciding whether to join.
+ *
+ * That is why [MemberCount] is a sealed type rather than a `Long?`: there is no `?: 0` to write.
+ *
+ * The counts are Persian digits because they are prose — people, not a market figure. The rule
+ * everywhere else in this app is the opposite, and the difference is exactly that nobody converts
+ * a member count into a trade.
+ */
+@Composable
+private fun CommunitySummary(community: GuestCommunity) {
+    val unknown = stringResource(R.string.guest_community_unknown)
+    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+            (community.total as? MemberCount.Known)?.let { total ->
+                Text(
+                    text = stringResource(
+                        R.string.guest_community_total,
+                        total.value.toPersianGroupedDigits(),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CoineProColors.TextSecondary,
+                )
+            }
+            (community.botUsers as? MemberCount.Known)?.let { bot ->
+                Text(
+                    text = stringResource(
+                        R.string.guest_community_bot,
+                        bot.value.toPersianGroupedDigits(),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CoineProColors.TextSecondary,
+                )
+            }
+
+            community.channels.forEach { channel -> ChannelRow(channel, unknown) }
+
+            community.note?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = CoineProColors.TextMuted,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * One channel. Tappable only where the server gave a link — a row that looks tappable and does
+ * nothing is worse than one that plainly does not.
+ */
+@Composable
+private fun ChannelRow(channel: CommunityChannel, unknown: String) {
+    val context = LocalContext.current
+    val url = channel.url
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (url == null) Modifier else Modifier.clickable { context.open(url) }),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = channel.label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = CoineProColors.TextPrimary,
+        )
+        Text(
+            text = when (val members = channel.members) {
+                is MemberCount.Known ->
+                    stringResource(
+                        R.string.guest_community_members,
+                        members.value.toPersianGroupedDigits(),
+                    )
+                MemberCount.Unavailable -> unknown
+            },
+            style = MaterialTheme.typography.bodySmall,
+            // Muted for the unknown case rather than the same weight as a real figure: it is an
+            // absence being reported, and it should not read as a number.
+            color = if (channel.members is MemberCount.Known) {
+                CoineProColors.TextSecondary
+            } else {
+                CoineProColors.TextMuted
+            },
+        )
     }
 }
 

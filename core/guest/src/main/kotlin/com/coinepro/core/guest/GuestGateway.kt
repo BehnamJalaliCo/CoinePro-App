@@ -26,6 +26,9 @@ interface GuestGateway {
 
     /** What the published signals actually did. See [GuestTrackRecord.available]. */
     suspend fun trackRecord(limit: Int = 12): AppResult<GuestTrackRecord>
+
+    /** The public channels and their member counts, each carrying its own availability. */
+    suspend fun community(): AppResult<GuestCommunity>
 }
 
 class NetworkGuestGateway internal constructor(
@@ -94,6 +97,30 @@ class NetworkGuestGateway internal constructor(
         GuestTrackRecord(entries = entries, available = dto.dataAvailable ?: entries.isNotEmpty())
     }
 
+    override suspend fun community(): AppResult<GuestCommunity> = call {
+        val dto = api.community()
+        GuestCommunity(
+            channels = dto.channels.orEmpty().mapNotNull { row ->
+                val key = row.key?.takeIf(String::isNotBlank) ?: return@mapNotNull null
+                // The label is the server's Persian one. Falling back to the @username keeps a
+                // channel on screen when the label is missing, which is better than dropping a
+                // real place people can go because one field was empty.
+                val label = row.label?.takeIf(String::isNotBlank)
+                    ?: row.username?.takeIf(String::isNotBlank)
+                    ?: return@mapNotNull null
+                CommunityChannel(
+                    key = key,
+                    label = label,
+                    url = row.url?.takeIf(String::isNotBlank),
+                    members = row.members.availableOr(row.available),
+                )
+            },
+            total = dto.telegramMembersTotal.availableOr(dto.telegramMembersTotalAvailable),
+            botUsers = dto.botUsers?.value.availableOr(dto.botUsers?.available),
+            note = dto.note?.takeIf(String::isNotBlank),
+        )
+    }
+
     private suspend fun <T> call(block: suspend () -> T): AppResult<T> = try {
         AppResult.Success(block())
     } catch (error: HttpException) {
@@ -116,3 +143,14 @@ class NetworkGuestGateway internal constructor(
             NetworkGuestGateway(retrofit.create(GuestApi::class.java))
     }
 }
+
+/**
+ * A count is [MemberCount.Known] only when the server both sent a number **and** said it is good.
+ *
+ * Both halves matter and neither implies the other. An absent flag reads as unavailable rather than
+ * as available, because the route documents the flag as the thing to read: a number that arrives
+ * without one is a number nothing is vouching for, and the whole rule beside that route is that an
+ * unvouched count must not be drawn.
+ */
+private fun Long?.availableOr(available: Boolean?): MemberCount =
+    if (available == true && this != null) MemberCount.Known(this) else MemberCount.Unavailable

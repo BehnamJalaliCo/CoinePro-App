@@ -22,4 +22,10 @@
     <string name="guest_record_summary">از %2$s سیگنالِ بسته‌شدهٔ اخیر، %1$s تا با سود بسته شد — نرخ برد %3$s٪.</string>
     <string name="guest_record_note">این‌ها سیگنال‌های واقعیِ منتشرشده‌اند که بسته شده‌اند، نه نمونهٔ ساختگی. عملکرد گذشته تضمینی برای آینده نیست.</string>
     <string name="guest_market_count">از %1$s بازار</string>
+    <string name="guest_community_title">جامعهٔ کوین‌پرو</string>
+    <string name="guest_community_total">%1$s عضو در کانال‌ها و گروه‌های عمومی</string>
+    <string name="guest_community_bot">%1$s کاربر ربات</string>
+    <string name="guest_community_members">%1$s عضو</string>
+    <string name="guest_community_unknown">داده در دسترس نیست</string>
+    <string name="guest_community_open">باز کردن</string>
 </resources>

@@ -89,13 +89,78 @@ class GuestWireTest {
         // The reader is looking at a price list. A row that cannot carry a price is not a row.
         assertEquals(1, (result as AppResult.Success).value.quotes.size)
     }
+
+    @Test
+    fun `the community payload parses, including its snake_case availability flags`() {
+        val json = """
+            {"channels":[{"key":"signals","username":"@coinepro","url":"https://t.me/coinepro",
+                          "label":"کانال سیگنال","available":true,"members":18420,"source":"telegram"},
+                         {"key":"chat","username":"@coinepro_chat","url":"https://t.me/coinepro_chat",
+                          "label":"گروه گفت‌وگو","available":false,"members":null,"source":"telegram"}],
+             "telegram_members_total":18420,"telegram_members_total_available":true,
+             "bot_users":{"available":true,"value":7915,"label":"کاربر ربات","source":"db"},
+             "fetched_at":"2026-08-26T10:00:00+00:00","note":"شمارش‌ها هر ساعت به‌روز می‌شود."}
+        """.trimIndent()
+
+        val dto = gson.fromJson(json, CommunityDto::class.java)
+
+        assertEquals(true, dto.telegramMembersTotalAvailable)
+        assertEquals(18_420L, dto.telegramMembersTotal)
+        assertEquals(7_915L, dto.botUsers?.value)
+        assertEquals(false, dto.channels!![1].available)
+    }
+
+    @Test
+    fun `a channel the server could not read is unavailable, never a zero`() = runTest {
+        val gateway = NetworkGuestGateway(
+            FakeApi(
+                community = CommunityDto(
+                    channels = listOf(
+                        CommunityChannelDto(key = "a", label = "الف", available = true, members = 12),
+                        // The shape the route actually returns when Telegram refuses: the flag is
+                        // false and `members` is whatever it last had, or nothing at all. Both must
+                        // render as unavailable.
+                        CommunityChannelDto(key = "b", label = "ب", available = false, members = 99),
+                        CommunityChannelDto(key = "c", label = "ج", available = null, members = null),
+                    ),
+                    telegramMembersTotal = 500,
+                    telegramMembersTotalAvailable = false,
+                ),
+            ),
+        )
+
+        val community = (gateway.community() as AppResult.Success).value
+
+        assertEquals(MemberCount.Known(12), community.channels[0].members)
+        // 99 is on the wire and is *not* used. The flag is the thing the route documents, and a
+        // stale count drawn as current is the failure it documents it against.
+        assertEquals(MemberCount.Unavailable, community.channels[1].members)
+        assertEquals(MemberCount.Unavailable, community.channels[2].members)
+        // Likewise the total: a number with a false flag beside it is not a number.
+        assertEquals(MemberCount.Unavailable, community.total)
+        assertEquals(MemberCount.Unavailable, community.botUsers)
+    }
+
+    @Test
+    fun `a community with no channel and no readable count reports itself empty`() = runTest {
+        val gateway = NetworkGuestGateway(FakeApi(community = CommunityDto()))
+
+        // The screen draws no heading for this. A section headed "the community" over nothing at
+        // all reads as a community nobody joined, which is a worse claim than staying quiet.
+        assertTrue((gateway.community() as AppResult.Success).value.isEmpty)
+    }
 }
 
-private class FakeApi(private val body: String) : GuestApi {
+private class FakeApi(
+    private val body: String = """{"data":[]}""",
+    private val community: CommunityDto = CommunityDto(),
+) : GuestApi {
     override suspend fun prices(symbols: String): PriceSnapshotDto =
         GsonBuilder().create().fromJson(body, PriceSnapshotDto::class.java)
 
     override suspend fun news(type: String, limit: Int): NewsListDto = NewsListDto(emptyList())
 
     override suspend fun trackRecord(limit: Int): TrackRecordDto = TrackRecordDto(emptyList())
+
+    override suspend fun community(): CommunityDto = community
 }

@@ -25,6 +25,14 @@ sealed interface GuestTrackRecordState {
     data object Unavailable : GuestTrackRecordState
 }
 
+sealed interface GuestCommunityState {
+    data object Loading : GuestCommunityState
+    data class Ready(val community: GuestCommunity) : GuestCommunityState
+
+    /** The request failed, or the server had no channel and no count worth a heading. */
+    data object Unavailable : GuestCommunityState
+}
+
 sealed interface GuestNewsState {
     data object Loading : GuestNewsState
     data class Ready(val headlines: List<GuestHeadline>) : GuestNewsState
@@ -59,10 +67,12 @@ class GuestController(
     private val pricesMutable = MutableStateFlow<GuestPricesState>(GuestPricesState.Loading)
     private val newsMutable = MutableStateFlow<GuestNewsState>(GuestNewsState.Loading)
     private val recordMutable = MutableStateFlow<GuestTrackRecordState>(GuestTrackRecordState.Loading)
+    private val communityMutable = MutableStateFlow<GuestCommunityState>(GuestCommunityState.Loading)
 
     val prices: StateFlow<GuestPricesState> = pricesMutable.asStateFlow()
     val news: StateFlow<GuestNewsState> = newsMutable.asStateFlow()
     val trackRecord: StateFlow<GuestTrackRecordState> = recordMutable.asStateFlow()
+    val community: StateFlow<GuestCommunityState> = communityMutable.asStateFlow()
 
     private var poll: Job? = null
 
@@ -89,6 +99,7 @@ class GuestController(
         }
         refreshNews()
         refreshTrackRecord()
+        refreshCommunity()
     }
 
     fun stop() {
@@ -162,4 +173,26 @@ class GuestController(
         }
     }
 
+    /**
+     * The community, fetched once per screen rather than polled.
+     *
+     * The counts move by a handful of people an hour and the server fetches them from Telegram on
+     * every request. Polling them would spend somebody else's rate limit to redraw a number that
+     * has not visibly changed.
+     */
+    fun refreshCommunity() {
+        scope.launch {
+            communityMutable.value = when (val result = gateway.community()) {
+                is AppResult.Success ->
+                    // Nothing to draw is Unavailable rather than an empty Ready. A section heading
+                    // over no channels and no numbers reads as a community nobody joined.
+                    if (result.value.isEmpty) {
+                        GuestCommunityState.Unavailable
+                    } else {
+                        GuestCommunityState.Ready(result.value)
+                    }
+                is AppResult.Failure -> GuestCommunityState.Unavailable
+            }
+        }
+    }
 }

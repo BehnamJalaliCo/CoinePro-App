@@ -15,6 +15,25 @@ it is for.
 
 ---
 
+## [1.17.0] — 2026-08-27 — The community, counted honestly
+
+### Added
+- The public channels and their member counts on the guest screen, from TradeYar's
+  `GET /api/v1/public/community`. It answers the question a reader asks after they know what the
+  product is — is anyone else here — which is why it sits under the membership card and not over it.
+- `Long.toPersianGroupedDigits()` in `core:common`, for counts that run to five and six figures.
+  The separator is U+066C and not a Latin comma, which reads as a decimal point to half the world.
+
+### Fixed
+- A count the server could not fetch renders as «داده در دسترس نیست» — never as a zero, and never as
+  the number it returned last time. The route documents this rule; `MemberCount` is a sealed type
+  rather than a `Long?` precisely so there is no `?: 0` for anyone to write.
+- The total is the server's own, not summed from the channels. A sum here would silently omit every
+  channel whose count failed and report a figure that is confidently wrong instead of honestly
+  partial.
+
+---
+
 ## [1.16.0] — 2026-08-27 — Sharing the chart
 
 ### Added

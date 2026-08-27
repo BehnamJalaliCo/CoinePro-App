@@ -22,4 +22,10 @@
     <string name="guest_record_summary">%1$s of the last %2$s closed signals finished in profit — a %3$s%% win rate.</string>
     <string name="guest_record_note">These are real published signals that have closed, not samples. Past performance is not a guarantee of future results.</string>
     <string name="guest_market_count">of %1$s markets</string>
+    <string name="guest_community_title">The CoinePro community</string>
+    <string name="guest_community_total">%1$s members across the public channels and groups</string>
+    <string name="guest_community_bot">%1$s bot users</string>
+    <string name="guest_community_members">%1$s members</string>
+    <string name="guest_community_unknown">No data available</string>
+    <string name="guest_community_open">Open</string>
 </resources>

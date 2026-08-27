@@ -36,3 +36,24 @@ fun String.foldDigitsToLatin(): String = map { character ->
 fun Int.toPersianDigits(): String = toString().map { character ->
     if (character in '0'..'9') '۰' + (character - '0') else character
 }.joinToString("")
+
+/**
+ * A large prose count, grouped — «۵۲٬۳۴۰ عضو».
+ *
+ * Same licence as [Int.toPersianDigits] and the same prohibition: prose only, never a market
+ * figure. The separator is U+066C, the Arabic thousands separator, and not a Latin comma, because
+ * a comma between Persian digits is the one punctuation mark that reads as a decimal point to
+ * roughly half the world.
+ *
+ * Grouping is the reason this exists separately rather than as an overload of [Int.toPersianDigits].
+ * The counts it is for run to five and six figures, where ungrouped digits stop being readable; the
+ * counts that one is for are list positions and lesson numbers, where a separator would be noise.
+ */
+fun Long.toPersianGroupedDigits(): String {
+    val digits = toString().removePrefix("-")
+    val grouped = digits.reversed().chunked(3).joinToString("٬").reversed()
+    val signed = if (this < 0) "−" + grouped else grouped
+    return signed.map { character ->
+        if (character in '0'..'9') '۰' + (character - '0') else character
+    }.joinToString("")
+}
