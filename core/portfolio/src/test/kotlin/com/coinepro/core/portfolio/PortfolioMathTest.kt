@@ -204,30 +204,50 @@ class PortfolioMathTest {
 
     @Test
     fun `a quiet month is a zero rather than a missing column`() {
-        // January and March, no February. A chart that omits the empty month draws them adjacent
-        // and compresses two months of time into one gap.
+        // Dey and Esfand, no Bahman. A chart that omits the empty month draws them adjacent and
+        // compresses two months of time into one gap.
         val rows = PortfolioMath.byMonth(
             listOf(
-                trade("1", net = 100.0, closedAt = 1_767_225_600L), // 2026-01-01
-                trade("2", net = -20.0, closedAt = 1_772_323_200L), // 2026-03-01
+                trade("1", net = 100.0, closedAt = 1_767_225_600L), // 2026-01-01 = 1404-10-11
+                trade("2", net = -20.0, closedAt = 1_772_323_200L), // 2026-03-01 = 1404-12-10
             ),
             ZoneOffset.UTC,
         )
-        assertEquals(listOf(1 to 1, 2 to 0, 3 to 1), rows.map { it.month to it.trades })
-        assertEquals(listOf(2026, 2026, 2026), rows.map { it.year })
+        assertEquals(listOf(10 to 1, 11 to 0, 12 to 1), rows.map { it.month to it.trades })
+        assertEquals(listOf(1404, 1404, 1404), rows.map { it.year })
         assertEquals(0.0, rows[1].net, 1e-9)
+    }
+
+    @Test
+    fun `the buckets are Solar Hijri months, not Gregorian ones`() {
+        // Both trades fall in March 2026, and they are two *different* Persian months: the 15th is
+        // Esfand 1404 and the 25th is Farvardin 1405, with Nowruz between them. Grouping by the
+        // Gregorian month would put them in one bar and label it with a month neither belongs to.
+        val rows = PortfolioMath.byMonth(
+            listOf(
+                trade("1", net = 1.0, closedAt = 1_773_532_800L), // 2026-03-15 = 1404-12-24
+                trade("2", net = 2.0, closedAt = 1_774_396_800L), // 2026-03-25 = 1405-01-05
+            ),
+            ZoneOffset.UTC,
+        )
+        assertEquals(listOf(1404 to 12, 1405 to 1), rows.map { it.year to it.month })
     }
 
     @Test
     fun `months run across a year boundary`() {
         val rows = PortfolioMath.byMonth(
             listOf(
-                trade("1", net = 1.0, closedAt = 1_764_547_200L), // 2025-12-01
-                trade("2", net = 2.0, closedAt = 1_769_904_000L), // 2026-02-01
+                trade("1", net = 1.0, closedAt = 1_773_532_800L), // 2026-03-15 = 1404-12-24
+                trade("2", net = 2.0, closedAt = 1_777_939_200L), // 2026-05-05 = 1405-02-15
             ),
             ZoneOffset.UTC,
         )
-        assertEquals(listOf(2025 to 12, 2026 to 1, 2026 to 2), rows.map { it.year to it.month })
+        // Esfand 1404 runs into Farvardin 1405 — the gap-filler has to roll the year at 12, not
+        // at whatever the Gregorian calendar was doing at the time.
+        assertEquals(
+            listOf(1404 to 12, 1405 to 1, 1405 to 2),
+            rows.map { it.year to it.month },
+        )
     }
 
     @Test

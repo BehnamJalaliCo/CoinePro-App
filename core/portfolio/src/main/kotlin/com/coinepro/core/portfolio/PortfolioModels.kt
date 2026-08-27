@@ -180,10 +180,16 @@ data class SymbolPerformance(
     val winRate: Double? get() = trades.takeIf { it > 0 }?.let { wins.toDouble() / it * 100.0 }
 }
 
-/** One calendar month's total, in the reader's own time zone. */
+/** One month's total, in the reader's own time zone and the reader's own calendar. */
 data class MonthlyPerformance(
+    /** Solar Hijri, e.g. 1405. */
     val year: Int,
-    /** 1–12. Gregorian, because both servers timestamp in UTC and the axis is derived from that. */
+    /**
+     * 1–12, Solar Hijri — Farvardin is 1.
+     *
+     * Not Gregorian. A Jalali month spans two Gregorian ones, so a Gregorian bucket under a Persian
+     * month name would attribute three weeks of trades to the wrong month. See `PortfolioMath.byMonth`.
+     */
     val month: Int,
     val trades: Int,
     val net: Double,

@@ -48,6 +48,7 @@ import com.coinepro.core.chart.SignalOverlay
 import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.BidiText
+import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
@@ -63,11 +64,10 @@ import com.coinepro.core.signals.SignalController
 import com.coinepro.core.signals.TradingSignal
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 private val CHART_HEIGHT = 220.dp
 
-private val warningTimeFormatter = DateTimeFormatter.ofPattern("MMM d · HH:mm")
+
 
 @Composable
 fun SignalDetailScreen(
@@ -402,7 +402,7 @@ private fun HighImpactWarningCard(events: List<EconomicEvent>) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(event.title, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
                     Text(
-                        event.scheduledAt.atZone(ZoneId.systemDefault()).format(warningTimeFormatter),
+                        PersianDateTime.moment(event.scheduledAt),
                         color = CoineProColors.Warning,
                         style = MaterialTheme.typography.labelMedium,
                     )

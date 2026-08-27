@@ -15,6 +15,34 @@ it is for.
 
 ---
 
+## [1.18.0] — 2026-08-27 — The reader's own calendar
+
+### Added
+- `JalaliDate` in `core:common` — the Solar Hijri conversion, by the Borkowski algorithm with its
+  33-year break table rather than a modulus that is right most of the time. A simplified rule
+  disagrees with the printed calendar about once a decade, and the day it disagrees is a day the app
+  shows the wrong date for a release somebody is trading. Pinned against hand-checked fixtures and a
+  four-thousand-day round trip.
+- `PersianDateTime` — one place that decides how a date and a time are written, replacing the eight
+  copies of `"MMM d · HH:mm"` scattered through the calendar, the news list, the activity log, the
+  signal detail, the portfolio, copy trading and Home.
+- A date on each journal entry. A trading diary whose entries cannot be put in order is missing most
+  of what a diary is for.
+
+### Changed
+- The economic calendar, and every other date in the app, is Solar Hijri with Persian digits. It
+  printed «Wed, Aug 26» into a Persian interface, for a reader whose phone says ۵ شهریور.
+- The clock stays Latin and is deliberately not converted. `14:30` is read against MetaTrader or
+  LBank — it is a market figure in everything but name, and converting it would be the same mistake
+  as converting a price.
+
+### Fixed
+- The portfolio's monthly breakdown buckets by **Solar Hijri** months, not Gregorian ones. Mordad
+  runs from the 23rd of July to the 22nd of August; a Gregorian bucket under a Persian month name
+  would attribute three weeks of trades to a month they did not happen in.
+
+---
+
 ## [1.17.0] — 2026-08-27 — The community, counted honestly
 
 ### Added

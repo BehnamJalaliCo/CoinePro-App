@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
+import com.coinepro.core.common.JalaliDate
+import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
@@ -48,11 +50,7 @@ import com.coinepro.core.portfolio.SymbolPerformance
 import com.coinepro.core.portfolio.TradeDirection
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
-private val dayFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd")
-private val stampFormatter = DateTimeFormatter.ofPattern("MM/dd · HH:mm")
-private val monthFormatter = DateTimeFormatter.ofPattern("MMM")
 
 /**
  * What the account has actually done.
@@ -251,14 +249,10 @@ private fun StatsGrid(stats: PortfolioStats) {
 
 @Composable
 private fun MonthsCard(months: List<MonthlyPerformance>, zone: ZoneId) {
-    val labels = months.map { month ->
-        BidiText.isolateLtr(
-            java.time.YearMonth.of(month.year, month.month)
-                .atDay(1)
-                .atStartOfDay(zone)
-                .format(monthFormatter),
-        )
-    }
+    // The month is already Solar Hijri — PortfolioMath buckets by it — so the label is simply its
+    // name. No conversion here, and deliberately none: a label computed from a Gregorian month
+    // would disagree with the bucket it sits under.
+    val labels = months.map { month -> JalaliDate(month.year, month.month, 1).monthName }
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         CardLabel(stringResource(R.string.portfolio_by_month))
         Spacer(Modifier.height(CoineProSpacing.One))
@@ -343,9 +337,7 @@ private fun TradeRow(trade: ClosedTrade, zone: ZoneId) {
                     }
                 }
                 Text(
-                    text = BidiText.isolateLtr(
-                        Instant.ofEpochSecond(trade.closedAt).atZone(zone).format(stampFormatter),
-                    ),
+                    text = PersianDateTime.moment(Instant.ofEpochSecond(trade.closedAt), zone),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,
                     fontWeight = FontWeight.Normal,
@@ -378,15 +370,9 @@ private fun TradeRow(trade: ClosedTrade, zone: ZoneId) {
 
 @Composable
 private fun NarrowedWindowNote(window: ClosedRange<Long>, zone: ZoneId) {
-    val from = Instant.ofEpochSecond(window.start).atZone(zone).format(dayFormatter)
-    val to = Instant.ofEpochSecond(window.endInclusive).atZone(zone).format(dayFormatter)
-    Caveat(
-        stringResource(
-            R.string.portfolio_window_narrowed,
-            BidiText.isolateLtr(from),
-            BidiText.isolateLtr(to),
-        ),
-    )
+    val from = PersianDateTime.numericDay(Instant.ofEpochSecond(window.start), zone)
+    val to = PersianDateTime.numericDay(Instant.ofEpochSecond(window.endInclusive), zone)
+    Caveat(stringResource(R.string.portfolio_window_narrowed, from, to))
 }
 
 @Composable

@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
+import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.designsystem.CoineProAgentOrb
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProMarketRow
@@ -57,9 +58,8 @@ import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketQuote
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
-private val cacheTimeFormatter = DateTimeFormatter.ofPattern("MMM d · HH:mm")
+
 
 /**
  * The home screen, in the "آرام" direction.
@@ -660,10 +660,8 @@ private fun ConnectionRow(state: MarketDataState) {
 @Composable
 private fun cacheLabel(epochMillis: Long?): String {
     val value = epochMillis ?: return stringResource(R.string.home_cache_unknown)
-    val formatted = Instant.ofEpochMilli(value)
-        .atZone(ZoneId.systemDefault())
-        .format(cacheTimeFormatter)
-    return stringResource(R.string.home_cache_stored, BidiText.isolateLtr(formatted))
+    val formatted = PersianDateTime.moment(Instant.ofEpochMilli(value))
+    return stringResource(R.string.home_cache_stored, formatted)
 }
 
 /** The quiet label at the top of a card. */

@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
+import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.copytrade.CopyAccount
 import com.coinepro.core.copytrade.CopyExecutionEvent
 import com.coinepro.core.copytrade.CopyPosition
@@ -46,7 +47,6 @@ import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextField
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 /**
  * What CoinePro-FX has where the other platform has order execution.
@@ -695,7 +695,7 @@ private fun amount(value: Double, currency: String, signed: Boolean = false): St
         signed = signed,
     )
 
-private val stampFormat = DateTimeFormatter.ofPattern("MM-dd · HH:mm")
+
 
 /**
  * Absolute, not relative.
@@ -704,4 +704,4 @@ private val stampFormat = DateTimeFormatter.ofPattern("MM-dd · HH:mm")
  * terminal's own log needs a time they can find in it.
  */
 private fun stamp(at: Instant): String =
-    stampFormat.format(at.atZone(ZoneId.systemDefault()))
+    PersianDateTime.moment(at)

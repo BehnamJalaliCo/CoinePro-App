@@ -22,8 +22,9 @@ import java.time.ZoneId
  * already is the day number the algorithm needs, and the two thousand lines of civil-calendar edge
  * cases behind it are not worth reimplementing to save an import.
  *
- * Valid for Jalali years 1178–3177, which is 1799–3798 CE. Outside that the break table has nothing
- * to say, and [fromGregorian] throws rather than returning a date that is quietly wrong.
+ * Defined for Jalali years −61 to 3177 — 560 to 3798 CE — which is the span the break table covers.
+ * Outside it there is no answer to give, and [fromGregorian] throws rather than returning a date
+ * that is quietly wrong.
  */
 data class JalaliDate(val year: Int, val month: Int, val day: Int) {
 

@@ -1,5 +1,6 @@
 package com.coinepro.feature.news
 
+import com.coinepro.core.common.PersianDateTime
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
@@ -58,9 +59,8 @@ import com.coinepro.core.marketintel.MarketNewsItem
 import com.coinepro.core.marketintel.MarketRelevance
 import com.coinepro.core.marketintel.NewsSentiment
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
-private val timestampFormatter = DateTimeFormatter.ofPattern("MMM d · HH:mm")
+
 
 @Composable
 fun NewsScreen(
@@ -234,7 +234,7 @@ private fun NewsCard(item: MarketNewsItem, modifier: Modifier = Modifier) {
                     if (item.isStale) MetaPill(stringResource(R.string.news_stale), CoineProColors.Warning)
                 }
                 Text(
-                    item.publishedAt.atZone(ZoneId.systemDefault()).format(timestampFormatter),
+                    PersianDateTime.moment(item.publishedAt),
                     color = CoineProColors.TextMuted,
                     style = MaterialTheme.typography.labelSmall,
                 )

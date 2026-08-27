@@ -35,6 +35,7 @@ import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.foldDigitsToLatin
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.database.JournalEntryEntity
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -46,6 +47,7 @@ import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.journal.Journal
 import com.coinepro.core.journal.JournalController
 import com.coinepro.core.journal.JournalStats
+import java.time.Instant
 
 /**
  * The trading journal.
@@ -242,7 +244,11 @@ private fun EntryCard(record: JournalEntryEntity, onDelete: () -> Unit) {
                 }
             }
             Text(
-                text = stringResource(if (record.buy) R.string.journal_buy else R.string.journal_sell),
+                // Side and date on one line. A trading diary without a date is a list of
+                // observations that cannot be put in order, which is most of what a diary is for.
+                text = stringResource(if (record.buy) R.string.journal_buy else R.string.journal_sell) +
+                    " · " +
+                    PersianDateTime.moment(Instant.ofEpochMilli(record.createdAtEpochMillis)),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextMuted,
             )

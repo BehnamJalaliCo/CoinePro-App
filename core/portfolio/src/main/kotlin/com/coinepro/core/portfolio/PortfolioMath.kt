@@ -1,5 +1,6 @@
 package com.coinepro.core.portfolio
 
+import com.coinepro.core.common.JalaliDate
 import java.time.Instant
 import java.time.ZoneId
 
@@ -102,6 +103,12 @@ object PortfolioMath {
     /**
      * Calendar months, oldest first, with the gaps filled in.
      *
+     * The months are **Solar Hijri**, not Gregorian, and that is a correctness decision rather than
+     * a cosmetic one. A reader asking how last month went means Mordad, which starts on the 23rd of
+     * July and ends on the 22nd of August; bucketing their trades into August and then labelling
+     * the bucket «مرداد» would put three weeks of the wrong month under that bar. The two calendars
+     * do not line up anywhere, so either the grouping moves or the label lies.
+     *
      * A month with no trades is a bar of zero rather than a missing column, because a bar chart
      * that silently omits quiet months compresses time and makes a two-month gap look like a
      * consecutive pair.
@@ -109,8 +116,8 @@ object PortfolioMath {
     fun byMonth(trades: List<ClosedTrade>, zone: ZoneId = ZoneId.systemDefault()): List<MonthlyPerformance> {
         if (trades.isEmpty()) return emptyList()
         val keyed = trades.groupBy { trade ->
-            val date = Instant.ofEpochSecond(trade.closedAt).atZone(zone)
-            date.year to date.monthValue
+            val date = JalaliDate.fromInstant(Instant.ofEpochSecond(trade.closedAt), zone)
+            date.year to date.month
         }
         val first = keyed.keys.minWith(compareBy({ it.first }, { it.second }))
         val last = keyed.keys.maxWith(compareBy({ it.first }, { it.second }))

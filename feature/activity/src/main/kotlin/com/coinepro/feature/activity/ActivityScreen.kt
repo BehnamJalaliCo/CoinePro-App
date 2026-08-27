@@ -50,6 +50,7 @@ import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.parseWireInstant
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProColors
@@ -74,9 +75,8 @@ import com.coinepro.core.signals.performanceResult
 import com.coinepro.core.signals.summarizeSignalPerformance
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
-private val activityTimeFormatter = DateTimeFormatter.ofPattern("MMM d · HH:mm")
+
 
 @Composable
 fun ActivityScreen(
@@ -861,7 +861,7 @@ private fun finitePrice(value: Double?, symbol: String): String {
 private fun formatTimestamp(raw: String?): String {
     if (raw.isNullOrBlank()) return "—"
     val moment = parseWireInstant(raw) ?: return "—"
-    return runCatching { moment.atZone(ZoneId.systemDefault()).format(activityTimeFormatter) }.getOrDefault("—")
+    return runCatching { PersianDateTime.moment(moment) }.getOrDefault("—")
 }
 
 @androidx.annotation.StringRes

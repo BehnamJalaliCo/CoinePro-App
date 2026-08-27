@@ -45,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
+import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
@@ -57,10 +58,7 @@ import com.coinepro.core.marketintel.MarketImpact
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.marketintel.MarketRelevance
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
-private val eventTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-private val eventDateFormatter = DateTimeFormatter.ofPattern("EEE, MMM d")
 
 @Composable
 fun EconomicCalendarScreen(
@@ -191,7 +189,7 @@ private fun CalendarFreshnessStrip(refreshing: Boolean, onRefresh: () -> Unit) {
 
 @Composable
 private fun TimelineEventCard(event: EconomicEvent, modifier: Modifier = Modifier) {
-    val zoneTime = event.scheduledAt.atZone(ZoneId.systemDefault())
+    val zone = ZoneId.systemDefault()
     val impactColor = when (event.impact) {
         MarketImpact.HIGH -> CoineProColors.Sell
         MarketImpact.MEDIUM -> CoineProColors.Warning
@@ -207,8 +205,19 @@ private fun TimelineEventCard(event: EconomicEvent, modifier: Modifier = Modifie
             modifier = Modifier.padding(top = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(zoneTime.format(eventTimeFormatter), fontWeight = FontWeight.Bold, color = CoineProColors.TextPrimary)
-            Text(zoneTime.format(eventDateFormatter), style = MaterialTheme.typography.labelSmall, color = CoineProColors.TextMuted)
+            // The clock stays Latin and the date does not, and the difference is deliberate: a
+            // release time is checked against MetaTrader's session clock, where a date is prose.
+            // See PersianDateTime, which is where that line is drawn for the whole app.
+            Text(
+                PersianDateTime.clock(event.scheduledAt, zone),
+                fontWeight = FontWeight.Bold,
+                color = CoineProColors.TextPrimary,
+            )
+            Text(
+                PersianDateTime.weekdayAndDay(event.scheduledAt, zone),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+            )
         }
         // Only a live high-impact release is outlined. Outlining every card would make the edge mean
         // "card" rather than "this is the one that moves the market you are in".

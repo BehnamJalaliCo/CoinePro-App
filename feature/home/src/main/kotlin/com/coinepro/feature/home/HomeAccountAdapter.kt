@@ -10,10 +10,10 @@ import com.coinepro.core.auth.EntitlementSnapshot
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.parseWireInstant
+import com.coinepro.core.common.PersianDateTime
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 
 /**
@@ -156,7 +156,9 @@ fun EntitlementSnapshot.toHomeSubscription(now: Instant = Instant.now()): HomeSu
         // the app would be the app deciding what a plan it did not define is called.
         planLabel = planLabel?.trim()?.takeIf(String::isNotEmpty)
             ?: plan.trim().takeIf { it.isNotEmpty() && !it.equals("free", ignoreCase = true) },
-        expiresLabel = expiry?.let { BidiText.isolateLtr(DATE_ONLY.format(it)) },
+        // Solar Hijri: an expiry date is the one figure on this card a reader compares against
+        // their own calendar rather than against an exchange.
+        expiresLabel = expiry?.let(PersianDateTime::numericDay),
         daysRemaining = days,
         // A week is the point at which knowing changes what someone does about it. Sooner than that
         // and the warning arrives too late to renew calmly; much earlier and it is nagging.
@@ -165,5 +167,3 @@ fun EntitlementSnapshot.toHomeSubscription(now: Instant = Instant.now()): HomeSu
     )
 }
 
-private val DATE_ONLY: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.systemDefault())
