@@ -162,6 +162,72 @@ fun CoineProChart(
                                     onDragCancel = { samples.clear() },
                                 )
                             }
+                            .pointerInput(display, drawing, onDrawing, tolerancePx) {
+                                // Editing a drawing after it has been placed.
+                                //
+                                // `DrawingActions.movePoint` and `moveBy` have existed since the
+                                // drawing engine was written and had **zero callers** — the white
+                                // handles were painted on every selected drawing and were pure
+                                // decoration. A trend line could be placed and then never adjusted,
+                                // which on a chart is most of what drawing a trend line is.
+                                //
+                                // Only runs with nothing armed and something selected, so it
+                                // cannot steal the drag that places a freehand stroke or the one
+                                // that pans.
+                                var handle = -1
+                                var origin: ChartPoint? = null
+                                detectDragGestures(
+                                    onDragStart = { position ->
+                                        val state = drawing ?: return@detectDragGestures
+                                        if (state.tool != null) return@detectDragGestures
+                                        val id = state.selectedId ?: return@detectDragGestures
+                                        val view = lastView[0] ?: return@detectDragGestures
+                                        val target = state.drawings.firstOrNull { it.id == id }
+                                            ?: return@detectDragGestures
+                                        // A handle wins over the body: the reader who put a finger
+                                        // on an endpoint meant that endpoint, and treating it as a
+                                        // whole-shape drag would move the other end away from them.
+                                        handle = target.points.indexOfFirst { point ->
+                                            val dx = view.xOfTime(point.time) - position.x
+                                            val dy = view.yOf(point.price) - position.y
+                                            dx * dx + dy * dy <= tolerancePx * tolerancePx
+                                        }
+                                        origin = view.chartPointAt(position, display, state.magnet)
+                                    },
+                                    onDrag = { change, _ ->
+                                        val state = drawing ?: return@detectDragGestures
+                                        val emit = onDrawing ?: return@detectDragGestures
+                                        val id = state.selectedId ?: return@detectDragGestures
+                                        val view = lastView[0] ?: return@detectDragGestures
+                                        val from = origin ?: return@detectDragGestures
+                                        val to = view.chartPointAt(change.position, display, state.magnet)
+                                        change.consume()
+                                        if (handle >= 0) {
+                                            emit(DrawingActions.movePoint(state, id, handle, to))
+                                        } else {
+                                            // A delta in *chart* space, not pixels, so a shape
+                                            // dragged while zoomed lands where the finger did.
+                                            emit(
+                                                DrawingActions.moveBy(
+                                                    state = state,
+                                                    id = id,
+                                                    deltaTime = to.time - from.time,
+                                                    deltaPrice = to.price - from.price,
+                                                ),
+                                            )
+                                        }
+                                        origin = to
+                                    },
+                                    onDragEnd = {
+                                        handle = -1
+                                        origin = null
+                                    },
+                                    onDragCancel = {
+                                        handle = -1
+                                        origin = null
+                                    },
+                                )
+                            }
                             .pointerInput(display) {
                                 // Long-press to summon the crosshair, drag to move it, lift to
                                 // dismiss. A crosshair that follows every tap fights with panning;

@@ -8,6 +8,7 @@ import com.coinepro.app.BuildConfig
 import com.coinepro.core.account.AccountController
 import com.coinepro.core.account.AccountGateway
 import com.coinepro.core.account.NetworkAccountGateway
+import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
@@ -381,6 +382,18 @@ object AppModule {
     @Provides
     @Singleton
     fun chartLayoutStore(dataStore: DataStore<Preferences>): ChartLayoutStore = ChartLayoutStore(dataStore)
+
+    /**
+     * Where a reader's drawings live between sessions.
+     *
+     * Separate from the layout store and keyed per symbol, because they answer opposite questions:
+     * a layout is the apparatus a reader looks through and travels between instruments, and a
+     * drawing is a mark on one instrument's prices that means nothing on another.
+     */
+    @Provides
+    @Singleton
+    fun chartDrawingStore(dataStore: DataStore<Preferences>): ChartDrawingStore =
+        ChartDrawingStore(dataStore)
 
     /**
      * The reader's own name and face.

@@ -31,6 +31,7 @@ import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.EmailAuthController
+import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.app.security.AppIntegrity
 import com.coinepro.app.security.IntegrityState
@@ -79,6 +80,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var membershipController: MembershipController
     @Inject lateinit var watchlistStore: WatchlistStore
     @Inject lateinit var chartLayoutStore: ChartLayoutStore
+    @Inject lateinit var chartDrawingStore: ChartDrawingStore
     @Inject lateinit var journalController: JournalController
     @Inject lateinit var paperTradeController: PaperTradeController
     @Inject lateinit var scriptController: ScriptController
@@ -152,6 +154,7 @@ class MainActivity : ComponentActivity() {
                 localAlertScheduler = localAlertScheduler,
                 watchlistStore = watchlistStore,
                 chartLayoutStore = chartLayoutStore,
+                chartDrawingStore = chartDrawingStore,
                 journalController = journalController,
                 paperTradeController = paperTradeController,
                 scriptController = scriptController,

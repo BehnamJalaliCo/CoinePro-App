@@ -62,6 +62,7 @@ import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.datastore.ActivePlatformStore
 import com.coinepro.core.datastore.ChartLayout
+import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
@@ -308,6 +309,7 @@ fun CoineProApp(
     localAlertScheduler: LocalAlertScheduler,
     watchlistStore: WatchlistStore,
     chartLayoutStore: ChartLayoutStore,
+    chartDrawingStore: ChartDrawingStore,
     journalController: JournalController,
     paperTradeController: PaperTradeController,
     scriptController: ScriptController,
@@ -629,6 +631,7 @@ fun CoineProApp(
                 marketState = marketState,
                 marketSearchController = marketSearchController,
                 candleGateway = candleGateways.getValue(activePlatform),
+                chartDrawingStore = chartDrawingStore,
                 portfolioController = portfolioControllers.getValue(activePlatform),
                 academyController = academyController,
                 terminalController = terminalController,
@@ -767,6 +770,7 @@ fun CoineProApp(
                         marketState = MarketDataState(),
                         marketSearchController = guestSearch,
                         candleGateway = guestCandles,
+                        chartDrawingStore = chartDrawingStore,
                         portfolioController = portfolioControllers.getValue(activePlatform),
                         academyController = academyController,
                         terminalController = terminalController,
@@ -908,6 +912,7 @@ private fun MainShell(
     marketSearchController: MarketSearchController,
     /** The candle source for the platform on screen. See the chart route below. */
     candleGateway: CandleGateway,
+    chartDrawingStore: ChartDrawingStore,
     portfolioController: PortfolioController,
     academyController: AcademyController,
     terminalController: TerminalController,
@@ -974,7 +979,7 @@ private fun MainShell(
     val sparklineStore = remember(candleGateway) { SparklineStore(candleGateway, sparklineScope) }
     // The charts, held here rather than inside their own destinations. See `ChartControllers`:
     // one controller per destination is what made every drawing tool in the app inert.
-    val chartControllers = rememberChartControllers(candleGateway, sparklineScope)
+    val chartControllers = rememberChartControllers(candleGateway, sparklineScope, chartDrawingStore)
     val currentRoute = backStackEntry?.destination?.route
 
     // Every screen the reader reaches, in sequence. It is two lines and it is the single most

@@ -1,13 +1,16 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.chart.ArrowDirection
 import com.coinepro.core.chart.Candle
 import com.coinepro.core.chart.CandleSeries
 import com.coinepro.core.chart.ChartCatalog
-import com.coinepro.core.chart.ChartOrder
 import com.coinepro.core.chart.ChartLine
 import com.coinepro.core.chart.ChartMarker
+import com.coinepro.core.chart.ChartOrder
 import com.coinepro.core.chart.ChartPane
+import com.coinepro.core.chart.ChartPoint
 import com.coinepro.core.chart.ChartType
+import com.coinepro.core.chart.Drawing
 import com.coinepro.core.chart.DrawingActions
 import com.coinepro.core.chart.DrawingState
 import com.coinepro.core.chart.DrawingTool
@@ -16,17 +19,20 @@ import com.coinepro.core.chart.PriceLevel
 import com.coinepro.core.chart.Replay
 import com.coinepro.core.chart.ReplayState
 import com.coinepro.core.chart.TradeSide
+import com.coinepro.core.datastore.ChartDrawingStore
+import com.coinepro.core.datastore.StoredDrawing
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.OhlcBar
 import com.coinepro.core.marketdata.Timeframe
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -173,20 +179,68 @@ enum class ChartError {
  * timeframe switching, and both are much easier to be sure about as a unit test than as a screen.
  */
 class ChartController(
-    symbol: String,
+    private val symbol: String,
     private val gateway: CandleGateway,
     private val scope: CoroutineScope,
     timeframe: Timeframe = Timeframe.H1,
+    /**
+     * Where this symbol's drawings live between sessions.
+     *
+     * Null leaves the chart exactly as it was — everything in memory and gone with the composition
+     * — which is what the tests and the preview use. In the app it is always supplied, because a
+     * trend line whose lifetime is a scroll position is not a trend line.
+     */
+    private val drawings: ChartDrawingStore? = null,
 ) {
 
     private val _state = MutableStateFlow(ChartUiState(symbol = symbol, timeframe = timeframe))
     val state: StateFlow<ChartUiState> = _state.asStateFlow()
 
     private var loadJob: Job? = null
+
+    /** Read once per controller. See [restoreDrawings]. */
+    private var restored = false
     private var replayJob: Job? = null
 
     fun start() {
         if (_state.value.series.isEmpty && loadJob == null) reload()
+        restoreDrawings()
+    }
+
+    /**
+     * Reads this symbol's drawings back, once.
+     *
+     * `first()` rather than `collect`: the store is the *record*, not the source of truth while the
+     * chart is open. Collecting would mean every save the chart makes comes straight back as an
+     * update, and a reader dragging a trend line would fight their own persistence.
+     */
+    private fun restoreDrawings() {
+        val store = drawings ?: return
+        if (restored) return
+        restored = true
+        scope.launch {
+            val stored = runCatching { store.drawings(symbol).first() }.getOrNull().orEmpty()
+            if (stored.isEmpty()) return@launch
+            _state.update { current ->
+                // Merged behind whatever is already on the chart rather than replacing it: the
+                // restore is asynchronous, and a reader fast enough to draw before it lands must
+                // not have that drawing thrown away by it.
+                val existing = current.drawing.drawings.map(Drawing::id).toSet()
+                current.copy(
+                    drawing = current.drawing.copy(
+                        drawings = stored.map(StoredDrawing::toDrawing)
+                            .filterNot { it.id in existing } + current.drawing.drawings,
+                    ),
+                )
+            }
+        }
+    }
+
+    /** Writes the current set back. Called after every change that alters what is on the chart. */
+    private fun persistDrawings() {
+        val store = drawings ?: return
+        val snapshot = _state.value.drawing.drawings
+        scope.launch { runCatching { store.save(symbol, snapshot.map(Drawing::toStored)) } }
     }
 
     /**
@@ -218,14 +272,22 @@ class ChartController(
     fun arm(tool: DrawingTool?) =
         _state.update { it.copy(drawing = DrawingActions.arm(it.drawing, tool)) }
 
-    fun onDrawing(next: DrawingState) = _state.update { it.copy(drawing = next) }
+    fun onDrawing(next: DrawingState) {
+        _state.update { it.copy(drawing = next) }
+        persistDrawings()
+    }
 
-    fun undoDrawing() = _state.update { it.copy(drawing = DrawingActions.undo(it.drawing)) }
+    fun undoDrawing() {
+        _state.update { it.copy(drawing = DrawingActions.undo(it.drawing)) }
+        persistDrawings()
+    }
 
     fun cancelDrawing() = _state.update { it.copy(drawing = DrawingActions.cancel(it.drawing)) }
 
-    fun deleteDrawing(id: Long) =
+    fun deleteDrawing(id: Long) {
         _state.update { it.copy(drawing = DrawingActions.delete(it.drawing, id)) }
+        persistDrawings()
+    }
 
     /* ------------------------------------------------------------------ replay */
 
@@ -401,3 +463,33 @@ internal fun Throwable.toChartError(): ChartError {
         else -> ChartError.NETWORK
     }
 }
+
+/**
+ * The two halves of the drawing mapping.
+ *
+ * They live here rather than in either module because `core:chart` has no business knowing about
+ * DataStore and `core:datastore` has no business knowing about the chart engine — and this is the
+ * one file where both are already on the classpath.
+ */
+private fun Drawing.toStored(): StoredDrawing = StoredDrawing(
+    id = id,
+    toolId = toolId,
+    points = points.map { it.time to it.price },
+    colour = colour,
+    widthDp = widthDp,
+    text = text,
+    direction = direction.name,
+)
+
+private fun StoredDrawing.toDrawing(): Drawing = Drawing(
+    id = id,
+    toolId = toolId,
+    points = points.map { (time, price) -> ChartPoint(time, price) },
+    colour = colour,
+    widthDp = widthDp,
+    // Restored drawings are finished by definition: a half-placed one was never committed, so it
+    // was never written.
+    complete = true,
+    text = text,
+    direction = runCatching { ArrowDirection.valueOf(direction) }.getOrDefault(ArrowDirection.UP),
+)

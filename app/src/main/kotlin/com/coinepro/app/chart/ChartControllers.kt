@@ -3,6 +3,7 @@ package com.coinepro.app.chart
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.coinepro.feature.chart.ChartController
+import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.marketdata.CandleGateway
 import kotlinx.coroutines.CoroutineScope
 
@@ -48,6 +49,8 @@ import kotlinx.coroutines.CoroutineScope
 class ChartControllers(
     private val gateway: CandleGateway,
     private val scope: CoroutineScope,
+    /** Where each symbol's drawings are kept between sessions. */
+    private val drawings: ChartDrawingStore,
 ) {
     private val controllers = LinkedHashMap<String, ChartController>()
 
@@ -59,7 +62,12 @@ class ChartControllers(
             controllers[key] = existing
             return existing
         }
-        val created = ChartController(symbol = symbol, gateway = gateway, scope = scope)
+        val created = ChartController(
+            symbol = symbol,
+            gateway = gateway,
+            scope = scope,
+            drawings = drawings,
+        )
         controllers[key] = created
         while (controllers.size > MAX_CONTROLLERS) {
             controllers.remove(controllers.keys.first())
@@ -80,5 +88,10 @@ class ChartControllers(
  * load in flight died and the chart came back empty even when the controller survived.
  */
 @Composable
-fun rememberChartControllers(gateway: CandleGateway, scope: CoroutineScope): ChartControllers =
-    remember(gateway, scope) { ChartControllers(gateway, scope) }
+fun rememberChartControllers(
+    gateway: CandleGateway,
+    scope: CoroutineScope,
+    drawings: ChartDrawingStore,
+): ChartControllers = remember(gateway, scope, drawings) {
+    ChartControllers(gateway, scope, drawings)
+}
