@@ -1,31 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    LBank's mark, from their own published vector.
+    LBank's mark, as it is now.
 
-    The circular mark only — their lockup carries a wordmark beside it, and a wordmark on a button
-    that already says «ال‌بانک» in Persian would be the name twice in two scripts.
+    The first version of this file was their **old** blue circular mark, taken from a logo archive
+    that had not been updated. The archives are what a search finds; they are not what a company is
+    using. This one is measured from the icon the owner supplied, which is the current identity: a
+    black squircle, a yellow field inside it pinched at the right, and the black bone through the
+    middle that makes the whole thing read as a B.
 
-    Never tinted. It is somebody else's mark and its blue is part of it.
+    Measured rather than traced. The silhouette was scanned row by row, the two lobes of the bone
+    solved as circles from three rows each — centres (103, 52.8) and (103.5, 168.25), both radius
+    26 — and the two colours sampled from the file: `#FFD900` and `#161616`, not a guess at either.
+
+    The artwork is trimmed to its own bounds, so it sits at the same visual weight beside Ourbit's
+    mark on the membership card. The source icon carries about a tenth of padding; keeping it would
+    have made LBank's button look like the quieter of the two.
+
+    Never tinted. It is somebody else's mark and both colours are part of it.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="22dp"
     android:height="22dp"
-    android:viewportWidth="146.51"
-    android:viewportHeight="146.51">
+    android:viewportWidth="222"
+    android:viewportHeight="220">
+
+    <!-- The black squircle. -->
     <path
-        android:fillColor="#0080CA"
-        android:pathData="M73.25,0 A73.25,73.25 0 1,1 73.145,0 Z" />
-    <group
-        android:translateX="-0.04"
-        android:translateY="-0.08">
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="m120.58 87.88-.3-.47-.08-.13c-1.12-1.76-1.46-2.13-2-2.94-7.47-11.5-3.2-18.89.16-22.66.41-.46.79-1 1.14-1.42a9.86 9.86 0 0 0 1.31-1.94l.06-.1a9.55 9.55 0 0 0 1-4.37 10 10 0 0 0 -19.92 0 9.74 9.74 0 0 0 1.22 4.74c.12.24.69 1 .75 1.13s.27.36.42.53a14.32 14.32 0 0 0 1.12 1.22 19.74 19.74 0 0 1 2.6 3.64 17.75 17.75 0 0 1 -1.75 18.44l-2.5 3.54a3.62 3.62 0 0 0 -.22.32l-.06.08a9.7 9.7 0 0 0 -1.53 5.32 10 10 0 0 0 19.92 0 9.72 9.72 0 0 0 -1.35-4.93z" />
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="m81.91 87.88-.29-.47-.09-.13c-1.12-1.76-1.46-2.13-2-2.94-7.47-11.5-3.2-18.89.16-22.66.41-.46.79-1 1.14-1.42a9.86 9.86 0 0 0 1.31-1.94l.06-.1a9.68 9.68 0 0 0 1-4.37 10 10 0 1 0 -18.7 4.74c.12.24.69 1 .75 1.13s.27.36.42.53a14.32 14.32 0 0 0 1.12 1.22 20 20 0 0 1 2.61 3.64 17.77 17.77 0 0 1 -1.7 18.44 20.3 20.3 0 0 1 -2 2.41l-.17.17a20 20 0 0 1 -3.64 2.61c-10.42 4.94-18.89-1.93-18.89-1.93l-.85-.7a6.66 6.66 0 0 1 -1.59-1.77c-7.47-11.5-3.2-18.89.16-22.66.41-.46.79-1 1.14-1.42a9.86 9.86 0 0 0 1.31-1.94l.06-.1a9.55 9.55 0 0 0 1.05-4.37 10 10 0 0 0 -19.92 0 9.74 9.74 0 0 0 1.22 4.74c.12.24.69 1 .75 1.13s.27.36.42.53a14.32 14.32 0 0 0 1.12 1.22 19.74 19.74 0 0 1 2.6 3.64 17.75 17.75 0 0 1 -1.75 18.44l-1.27 1.8a10 10 0 0 0 -3.09 7.23s0 .09 0 .14 0 .06 0 .09a10 10 0 0 0 17.06 6.9c.49-.34.81-.58 1.26-.87 11.5-7.47 18.89-3.2 22.67.16.3.27.62.53.94.77a10 10 0 0 0 17-7 9.72 9.72 0 0 0 -1.35-4.93z" />
-    </group>
+        android:fillColor="#161616"
+        android:pathData="M54,0 L167,0 A54,54 0 0 1 221,54 L221,165 A54,54 0 0 1 167,219
+                          L54,219 A54,54 0 0 1 0,165 L0,54 A54,54 0 0 1 54,0 Z" />
+
+    <!--
+        The yellow field. Its right edge is the whole character of the mark: it bulges out at
+        roughly a third and two thirds of the height and pinches back to x=175 between them, which
+        is what turns a rounded square into a B.
+    -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M102.84,72.54 A10.21,10.33 0 1,1 102.735,72.54 Z" />
+        android:fillColor="#FFD900"
+        android:pathData="M53,10 L145,10 C172,10 191,34 191,69 C191,92 175,95 175,111
+                          C175,127 194,130 194,151 C194,185 178,210 145,210 L53,210
+                          C20,210 9,199 9,166 L9,54 C9,21 20,10 53,10 Z" />
+
+    <!--
+        The bone: two circles and the waist between them, as three subpaths of one path.
+
+        Three rather than one traced outline, and the same fill colour, so the overlaps simply
+        union under non-zero winding. Solving the tangents by hand would have been a longer way to
+        the same pixels with more places to be slightly wrong.
+    -->
+    <path
+        android:fillColor="#161616"
+        android:pathData="M77,52.8 A26,26 0 1 0 129,52.8 A26,26 0 1 0 77,52.8 Z
+                          M77.5,168.25 A26,26 0 1 0 129.5,168.25 A26,26 0 1 0 77.5,168.25 Z
+                          M121.4,66 C121.4,88 109,95 109,111 C109,127 121.4,134 121.4,155
+                          L85.6,155 C85.6,134 98,127 98,111 C98,95 85.6,88 85.6,66 Z" />
 </vector>

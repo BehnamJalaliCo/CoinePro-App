@@ -15,6 +15,26 @@ it is for.
 
 ---
 
+## [1.30.1] — 2026-08-28 — LBank's mark, the current one
+
+### Fixed
+- **The LBank logo was their old blue circular mark.** It came from a logo archive, and an archive
+  is what a search finds rather than what a company is using. The owner supplied the current icon —
+  a black squircle, a yellow field pinched at the right, and the black bone through the middle that
+  makes the whole thing read as a B — and it is now measured from that: the silhouette scanned row
+  by row, the two lobes solved as circles from three rows each, and both colours sampled from the
+  file rather than guessed (`#FFD900` and `#161616`).
+- The artwork is **trimmed to its own bounds**, where the source icon carries about a tenth of
+  padding. Keeping that padding would have made LBank's button read as the quieter of the two on a
+  card whose whole point is that the two choices are equal in weight and different in kind.
+
+### Notes
+- Worth recording as a habit rather than an incident: for a mark this app draws, the company's own
+  current file beats any archive, and where none is published — Ourbit — measuring the raster beats
+  tracing it by eye. Both marks in this release were built that way and both are documented with how.
+
+---
+
 ## [1.30.0] — 2026-08-28 — Notifications worth keeping on, and two exchanges told apart
 
 ### Added
