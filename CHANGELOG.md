@@ -15,6 +15,29 @@ it is for.
 
 ---
 
+## [1.31.1] — 2026-08-28 — LBank's mark, traced rather than drawn
+
+### Fixed
+- **The LBank mark was still wrong, and the reason was the method.** The first version was their old
+  blue circular logo out of an archive. The second was the right mark but *hand-fitted* — the two
+  lobes solved as circles from three rows each and the waist between them guessed at with cubics.
+  It was close and it looked wrong: the neck too thin, the notch on the right too shallow. A shape
+  like this is not made of primitives anybody can name, so fitting named primitives to it will
+  always be an approximation that reads as one.
+
+  It is machine-traced now. Every pixel classified, the ink split into components so the frame and
+  the mark inside it are separate, each boundary walked on the pixel grid, the staircase rounded
+  with three rounds of Chaikin corner-cutting, and the result simplified at 0.9px — against a source
+  of 294 pixels and a mark that ships at 66, which is four times finer than anything that can be
+  seen. Both colours are sampled from the file.
+
+### Added
+- **`scripts/design/trace-logo.py`**, because this will happen again. A company that publishes its
+  mark only as a raster is the ordinary case, and reproducing one by eye is the thing that just
+  cost three attempts. The script and the reasoning behind each step are in its own header.
+
+---
+
 ## [1.31.0] — 2026-08-28 — The step the card asked for, with nowhere to take it
 
 ### Fixed

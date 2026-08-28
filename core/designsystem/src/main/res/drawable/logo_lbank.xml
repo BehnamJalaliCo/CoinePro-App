@@ -1,20 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    LBank's mark, as it is now.
+    LBank's mark, traced from the icon the owner supplied.
 
-    The first version of this file was their **old** blue circular mark, taken from a logo archive
-    that had not been updated. The archives are what a search finds; they are not what a company is
-    using. This one is measured from the icon the owner supplied, which is the current identity: a
-    black squircle, a yellow field inside it pinched at the right, and the black bone through the
-    middle that makes the whole thing read as a B.
+    ### Why this is traced rather than drawn
 
-    Measured rather than traced. The silhouette was scanned row by row, the two lobes of the bone
-    solved as circles from three rows each — centres (103, 52.8) and (103.5, 168.25), both radius
-    26 — and the two colours sampled from the file: `#FFD900` and `#161616`, not a guess at either.
+    The first version was their old blue circular mark, out of a logo archive. The second was this
+    mark, but hand-fitted: circles solved from three rows each and the waist between them guessed at
+    with cubics. It was close and it looked wrong — the neck too thin, the notch on the right too
+    shallow — because a shape like this is not made of primitives anybody can name.
 
-    The artwork is trimmed to its own bounds, so it sits at the same visual weight beside Ourbit's
-    mark on the membership card. The source icon carries about a tenth of padding; keeping it would
-    have made LBank's button look like the quieter of the two.
+    So it is machine-traced instead. `scripts/design/trace-logo.py` scans the artwork into three
+    masks, walks each boundary on the pixel grid, rounds the staircase with three rounds of Chaikin
+    corner-cutting, and simplifies at 0.9px. The source is 294 pixels and this ships at 22dp — 66
+    pixels at xxhdpi — so the tolerance is more than four times finer than anything that can be
+    seen. Both colours are sampled from the file: #FFD900 and #161616.
+
+    ### The three layers
+
+    The silhouette, then the yellow field over it, then the bone. The field is traced as *yellow
+    plus the bone* rather than as the yellow pixels alone: the yellow pixels form a shape with a
+    hole in it, and a hole means a second contour and a fill rule to get right for no benefit.
+    Painting the field whole and putting the bone back on top is one fewer thing to be wrong about.
 
     Never tinted. It is somebody else's mark and both colours are part of it.
 -->
@@ -22,36 +28,14 @@
     android:width="22dp"
     android:height="22dp"
     android:viewportWidth="222"
-    android:viewportHeight="220">
-
-    <!-- The black squircle. -->
+    android:viewportHeight="222">
     <path
         android:fillColor="#161616"
-        android:pathData="M54,0 L167,0 A54,54 0 0 1 221,54 L221,165 A54,54 0 0 1 167,219
-                          L54,219 A54,54 0 0 1 0,165 L0,54 A54,54 0 0 1 54,0 Z" />
-
-    <!--
-        The yellow field. Its right edge is the whole character of the mark: it bulges out at
-        roughly a third and two thirds of the height and pinches back to x=175 between them, which
-        is what turns a rounded square into a B.
-    -->
+        android:pathData="M45.4,0.0L175.6,0.0L194.8,4.0L202.8,9.1L211.9,18.2L217.0,26.2L221.0,45.4L221.0,175.6L217.0,194.8L212.9,201.8L202.8,211.9L194.8,217.0L175.6,221.0L45.4,221.0L26.2,217.0L19.2,212.9L9.1,202.8L4.0,194.8L0.0,175.6L0.0,45.4L1.0,36.3L5.1,24.2L9.1,18.2L18.2,9.1L29.2,3.0L45.4,0.0Z" />
     <path
         android:fillColor="#FFD900"
-        android:pathData="M53,10 L145,10 C172,10 191,34 191,69 C191,92 175,95 175,111
-                          C175,127 194,130 194,151 C194,185 178,210 145,210 L53,210
-                          C20,210 9,199 9,166 L9,54 C9,21 20,10 53,10 Z" />
-
-    <!--
-        The bone: two circles and the waist between them, as three subpaths of one path.
-
-        Three rather than one traced outline, and the same fill colour, so the overlaps simply
-        union under non-zero winding. Solving the tangents by hand would have been a longer way to
-        the same pixels with more places to be slightly wrong.
-    -->
+        android:pathData="M46.4,9.0L138.6,9.0L144.7,10.0L158.8,15.0L166.8,20.1L175.9,28.2L181.9,36.2L186.0,43.2L190.0,55.3L191.0,84.6L187.9,92.8L176.1,103.2L174.0,111.6L175.1,114.8L180.2,119.9L184.8,122.1L190.9,128.2L193.0,132.2L194.0,135.4L194.0,161.6L190.0,175.8L185.9,183.8L180.9,190.8L166.8,202.9L154.8,209.0L142.6,212.0L46.4,212.0L30.2,208.0L25.2,204.9L16.1,195.8L12.0,188.8L9.0,174.6L9.0,46.4L10.0,39.3L14.1,28.2L25.2,16.1L32.2,12.0L46.4,9.0Z" />
     <path
         android:fillColor="#161616"
-        android:pathData="M77,52.8 A26,26 0 1 0 129,52.8 A26,26 0 1 0 77,52.8 Z
-                          M77.5,168.25 A26,26 0 1 0 129.5,168.25 A26,26 0 1 0 77.5,168.25 Z
-                          M121.4,66 C121.4,88 109,95 109,111 C109,127 121.4,134 121.4,155
-                          L85.6,155 C85.6,134 98,127 98,111 C98,95 85.6,88 85.6,66 Z" />
+        android:pathData="M97.4,27.0L109.7,27.0L116.8,30.1L123.9,36.2L129.0,46.4L129.0,58.8L126.0,65.8L114.0,84.2L109.0,104.4L109.0,117.6L112.0,131.7L119.0,145.8L128.0,159.2L129.0,174.6L125.9,181.8L120.8,187.9L114.8,192.0L108.6,194.0L97.3,194.0L87.2,188.9L80.0,180.8L77.0,171.6L78.0,161.2L93.0,136.8L98.0,118.6L98.0,102.4L96.0,92.3L91.0,80.2L78.0,59.8L77.0,49.4L83.1,36.2L90.2,30.1L97.4,27.0Z" />
 </vector>
