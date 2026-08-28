@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,21 +41,21 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProAssetLogo
-import androidx.compose.foundation.layout.defaultMinSize
-import com.coinepro.core.designsystem.CoineProPercentPill
-import com.coinepro.core.designsystem.coineProPriceFlash
-import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.CoineProPercentPill
 import com.coinepro.core.designsystem.CoineProPullToRefresh
+import com.coinepro.core.designsystem.CoineProSegmentTabs
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProSparkline
+import com.coinepro.core.designsystem.R as DesignR
+import com.coinepro.core.designsystem.coineProPriceFlash
+import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketSearchRow
 import com.coinepro.core.marketdata.SparklineStore
 import com.coinepro.core.symbols.SymbolCategory
-import com.coinepro.core.designsystem.R as DesignR
 
 /**
  * The markets tab, in the dense «ترمینال» language.
@@ -106,7 +107,15 @@ fun MarketsScreen(
 
     Column(modifier = modifier.fillMaxSize().background(CoineProColors.Stage)) {
         Header(onOpenSearch = onOpenSearch)
-        TabRow(selected = tab, onSelect = { tab = it })
+        // The shared strip. This screen had grown a byte-for-byte copy of it — same tray, same
+        // raised block, same weights — which is one more place for the next change to be applied
+        // once and forgotten once. It is also how this row ended up without the tick every other
+        // control in the app answers a tap with.
+        CoineProSegmentTabs(
+            options = MarketsTab.entries.map { it to stringResource(it.labelRes) },
+            selected = tab,
+            onSelect = { tab = it },
+        )
         ColumnHeadings()
 
         when {
@@ -195,42 +204,6 @@ private fun Header(onOpenSearch: () -> Unit) {
                 tint = CoineProColors.TextSecondary,
                 modifier = Modifier.size(17.dp),
             )
-        }
-    }
-}
-
-@Composable
-private fun TabRow(selected: MarketsTab, onSelect: (MarketsTab) -> Unit) {
-    Row(
-        modifier = Modifier
-            .padding(horizontal = CoineProSpacing.Two)
-            .fillMaxWidth()
-            .clip(CoineProShapes.small)
-            .background(CoineProColors.Surface)
-            .padding(3.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        MarketsTab.entries.forEach { tab ->
-            val active = tab == selected
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(CoineProShapes.extraSmall)
-                    .background(if (active) CoineProColors.SurfaceElevated else CoineProColors.Surface)
-                    .clickable { onSelect(tab) }
-                    .padding(vertical = 7.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = stringResource(tab.labelRes),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (active) CoineProColors.TextPrimary else CoineProColors.TextMuted,
-                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Visible,
-                )
-            }
         }
     }
 }

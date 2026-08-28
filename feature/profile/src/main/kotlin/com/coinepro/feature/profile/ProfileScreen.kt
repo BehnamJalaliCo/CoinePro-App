@@ -1,5 +1,6 @@
 package com.coinepro.feature.profile
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -33,8 +34,6 @@ import androidx.compose.ui.unit.dp
 import com.coinepro.core.datastore.StoredProfile
 import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProCard
-import androidx.annotation.DrawableRes
-import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProGoldRule
 import com.coinepro.core.designsystem.CoineProIcons
@@ -46,6 +45,7 @@ import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.CoineProTint
+import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.model.AvatarSpec
 
 /**

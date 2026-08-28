@@ -112,8 +112,18 @@ screen that shows the right numbers.
 - **The price flash**, on every shared market row: the row tints green or red for a moment when its
   price moves. It was built for this app months ago and never called from anywhere.
 
+- **Controls that were only punctuation.** The quiet-hours «+» and «−» were bare gold glyphs with a
+  target barely wider than themselves, and «حذف» on an alert row was red prose beside a switch —
+  which reads as a warning label about the switch rather than as a second control. Both are real
+  controls now: a 36dp disc for the stepper in the neutral surface the rest of the app uses, and the
+  bin glyph, still in the refusal colour, with a target around it. Gold stayed out of both, because
+  gold means the screen's primary action and a settings page's is not "add an hour".
+
 ### Changed
 
+- The markets screen's tab strip was a byte-for-byte copy of `CoineProSegmentTabs` — same tray, same
+  raised block, same weights — and that is how it ended up as the one strip in the app with no tick
+  under a finger. It uses the shared one.
 - The profile hero has more air above it than below. There is no top bar on that route, so a 112dp
   avatar sixteen points from the status bar read as an element that had been cut off.
 

@@ -259,6 +259,7 @@ fun <T> CoineProSegmentTabs(
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = rememberCoineProHaptics()
     Row(
         modifier = modifier
             .padding(horizontal = CoineProSpacing.Two)
@@ -275,7 +276,13 @@ fun <T> CoineProSegmentTabs(
                     .weight(1f)
                     .clip(CoineProShapes.extraSmall)
                     .background(if (active) CoineProColors.SurfaceElevated else CoineProColors.Surface)
-                    .clickable { onSelect(value) }
+                    // Only a change is worth a tick. Pressing the tab you are already on has
+                    // changed nothing, and a buzz that says otherwise teaches the reader to
+                    // distrust the ones that do mean something.
+                    .clickable {
+                        if (!active) haptics.select()
+                        onSelect(value)
+                    }
                     .padding(vertical = 7.dp),
                 contentAlignment = Alignment.Center,
             ) {

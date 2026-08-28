@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -26,6 +27,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -39,26 +42,23 @@ import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.designsystem.CoineProAgentOrb
 import com.coinepro.core.designsystem.CoineProAssetLogo
-import com.coinepro.core.designsystem.CoineProMarketRow
 import com.coinepro.core.designsystem.CoineProAssetToken
-import com.coinepro.core.designsystem.CoineProCard
-import androidx.compose.ui.draw.clip
-import androidx.compose.material3.Icon
-import androidx.compose.ui.res.painterResource
-import com.coinepro.core.designsystem.CoineProIcons
-import com.coinepro.core.designsystem.CoineProPrivacy
-import com.coinepro.core.designsystem.rememberCoineProHaptics
-import com.coinepro.core.designsystem.CoineProShapes
-import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.CoineProAvatar
+import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
-import com.coinepro.core.designsystem.CoineProPullToRefresh
+import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.CoineProMarketRow
 import com.coinepro.core.designsystem.CoineProPrimaryButton
+import com.coinepro.core.designsystem.CoineProPrivacy
+import com.coinepro.core.designsystem.CoineProPullToRefresh
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSegmentedControl
+import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProStreamingBar
 import com.coinepro.core.designsystem.CoineProTextStyles
+import com.coinepro.core.designsystem.R as DesignR
+import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.marketdata.MarketConnectionState
 import com.coinepro.core.marketdata.MarketDataOrigin
 import com.coinepro.core.marketdata.MarketDataState

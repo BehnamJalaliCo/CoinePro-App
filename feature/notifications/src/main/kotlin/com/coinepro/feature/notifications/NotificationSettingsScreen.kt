@@ -2,20 +2,28 @@ package com.coinepro.feature.notifications
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
@@ -23,11 +31,15 @@ import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPageHeading
+import com.coinepro.core.designsystem.CoineProPress
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProRowDivider
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.pressScale
+import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.notifications.LocalAlertCondition
 import com.coinepro.core.notifications.LocalPriceAlert
 import com.coinepro.core.notifications.NotificationCategory
@@ -278,17 +290,41 @@ private fun HourRow(label: String, minuteOfDay: Int, onChange: (Int) -> Unit) {
     }
 }
 
+/**
+ * One step of the quiet-hours clock.
+ *
+ * A bare gold «+» floating beside a number is not a control — it is punctuation that happens to be
+ * tappable, with a target barely wider than the glyph, and a reader who misses it twice concludes
+ * the hour cannot be changed. So it is a disc: the elevated surface the rest of the app uses for a
+ * neutral control, at the 36dp minimum a thumb can actually find, with the same press compression
+ * and tick every other control in the app has.
+ *
+ * The glyph is the ordinary ink rather than gold. Gold in this app means the primary action of the
+ * screen, and a settings page's primary action is not "add an hour".
+ */
 @Composable
 private fun Stepper(label: String, onClick: () -> Unit) {
-    Text(
-        text = label,
-        style = MaterialTheme.typography.titleMedium,
-        color = CoineProColors.Accent,
-        textAlign = TextAlign.Center,
+    val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberCoineProHaptics()
+    Box(
         modifier = Modifier
-            .clickable(onClick = onClick)
-            .padding(horizontal = CoineProSpacing.One, vertical = 2.dp),
-    )
+            .pressScale(interaction, CoineProPress.CONTROL)
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(CoineProColors.SurfaceElevated)
+            .clickable(interaction, null) {
+                haptics.select()
+                onClick()
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleMedium,
+            color = CoineProColors.TextPrimary,
+            textAlign = TextAlign.Center,
+        )
+    }
 }
 
 /**
@@ -361,12 +397,13 @@ private fun LocalAlertsCard(
 
 @Composable
 private fun AlertRow(alert: LocalPriceAlert, onToggle: (Boolean) -> Unit, onDelete: () -> Unit) {
+    val haptics = rememberCoineProHaptics()
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.padding(end = CoineProSpacing.One)) {
+        Column(modifier = Modifier.weight(1f).padding(end = CoineProSpacing.One)) {
             Text(
                 text = alertSentence(alert),
                 style = MaterialTheme.typography.bodyMedium,
@@ -384,13 +421,22 @@ private fun AlertRow(alert: LocalPriceAlert, onToggle: (Boolean) -> Unit, onDele
                 onCheckedChange = onToggle,
                 colors = switchColours(),
             )
-            Text(
-                text = stringRes(R.string.notifications_alerts_delete),
-                style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.Sell,
+            // The bin, not the word. «حذف» in red beside a switch reads as a warning label about
+            // the switch rather than as a second control, and it was the only text in the app that
+            // was really a button. The glyph keeps the refusal colour and gains a target.
+            Icon(
+                painter = painterResource(CoineProIcons.Delete),
+                contentDescription = stringRes(R.string.notifications_alerts_delete),
+                tint = CoineProColors.Sell,
                 modifier = Modifier
-                    .clickable(onClick = onDelete)
-                    .padding(start = CoineProSpacing.One),
+                    .padding(start = CoineProSpacing.Half)
+                    .clip(CircleShape)
+                    .clickable {
+                        haptics.commit()
+                        onDelete()
+                    }
+                    .padding(8.dp)
+                    .size(18.dp),
             )
         }
     }

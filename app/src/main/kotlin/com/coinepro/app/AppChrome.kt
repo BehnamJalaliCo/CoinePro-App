@@ -1,7 +1,7 @@
 package com.coinepro.app
 
-import androidx.compose.foundation.background
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
