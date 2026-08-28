@@ -127,4 +127,6 @@
     <string name="alert_fired_body_no_price">شرط هشدار %1$s برقرار شد.</string>
     <string name="screen_notifications">اعلان‌ها</string>
     <string name="profile_action_notifications_note">سیگنال، حد سود، کپی، هشدار قیمت و ساعات سکوت</string>
+    <string name="screen_membership">عضویت و شناسه‌ی صرافی</string>
+    <string name="profile_action_membership_note">وارد کردن UID و دیدن وضعیت تأیید</string>
 </resources>

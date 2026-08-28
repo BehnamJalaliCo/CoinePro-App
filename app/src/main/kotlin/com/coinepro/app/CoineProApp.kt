@@ -125,6 +125,9 @@ import com.coinepro.feature.home.HomeScreen
 import com.coinepro.core.datastore.ChartLayout
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.WatchlistStore
+import com.coinepro.core.guest.GuestMembershipState
+import com.coinepro.core.membership.MembershipController
+import com.coinepro.feature.membership.MembershipScreen
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.guest.GuestGateway
 import com.coinepro.core.guest.GuestCandleGateway
@@ -184,6 +187,7 @@ private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
 private const val ADMIN_ROUTE = "diagnostics"
 private const val PROFILE_ROUTE = "profile"
 private const val NOTIFICATIONS_ROUTE = "notifications"
+private const val MEMBERSHIP_ROUTE = "membership"
 private const val KYC_ROUTE = "account/verify"
 private const val DELETE_ACCOUNT_ROUTE = "account/delete"
 private const val ALERTS_ROUTE = "alerts"
@@ -263,6 +267,7 @@ private val SELF_TITLED: Set<String> = setOf(
     MARKET_SEARCH_ROUTE,
     PROFILE_ROUTE,
     NOTIFICATIONS_ROUTE,
+    MEMBERSHIP_ROUTE,
 )
 
 private fun accentFor(route: String?): PageAccent = when (route) {
@@ -292,6 +297,7 @@ fun CoineProApp(
     guestController: GuestController,
     /** The public feed, which is what makes the guest experience the app rather than a teaser. */
     guestGateway: GuestGateway,
+    membershipController: MembershipController,
     profileStore: ProfileStore,
     notificationSettingsStore: NotificationSettingsStore,
     localAlertStore: LocalAlertStore,
@@ -594,6 +600,7 @@ fun CoineProApp(
                 onSetAvatar = { spec -> scope.launch { profileStore.setAvatar(spec) } },
                 onSignIn = null,
                 guestController = guestController,
+                membershipController = membershipController,
                 marketState = marketState,
                 marketSearchController = marketSearchController,
                 candleGateway = candleGateways.getValue(activePlatform),
@@ -724,6 +731,7 @@ fun CoineProApp(
                         onSetAvatar = { spec -> scope.launch { profileStore.setAvatar(spec) } },
                         onSignIn = { signingIn = true },
                         guestController = guestController,
+                        membershipController = membershipController,
                         // Empty rather than the signed-in feed's, which is stopped while signed
                         // out. Nothing a guest reaches reads it: their home is the public one and
                         // their markets list reads the catalogue below.
@@ -863,6 +871,7 @@ private fun MainShell(
     onSignIn: (() -> Unit)?,
     /** The public feed's controller — Home and the two gates read it when [guest] is true. */
     guestController: GuestController,
+    membershipController: MembershipController,
     marketState: MarketDataState,
     marketSearchController: MarketSearchController,
     /** The candle source for the platform on screen. See the chart route below. */
@@ -939,6 +948,7 @@ private fun MainShell(
         CHART_PATTERN,
         PROFILE_ROUTE,
         NOTIFICATIONS_ROUTE,
+        MEMBERSHIP_ROUTE,
         PORTFOLIO_ROUTE,
         ACADEMY_ROUTE,
         LESSON_PATTERN,
@@ -972,6 +982,7 @@ private fun MainShell(
         }
         PROFILE_ROUTE -> R.string.screen_profile
         NOTIFICATIONS_ROUTE -> R.string.screen_notifications
+        MEMBERSHIP_ROUTE -> R.string.screen_membership
         KYC_ROUTE -> R.string.screen_kyc
         DELETE_ACCOUNT_ROUTE -> R.string.screen_delete_account
         ALERTS_ROUTE -> R.string.screen_alerts
@@ -1271,6 +1282,13 @@ private fun MainShell(
                         buildList {
                             add(
                                 ProfileAction(
+                                    label = stringResource(R.string.screen_membership),
+                                    note = stringResource(R.string.profile_action_membership_note),
+                                    onClick = { navController.navigate(MEMBERSHIP_ROUTE) },
+                                ),
+                            )
+                            add(
+                                ProfileAction(
                                     label = stringResource(R.string.profile_action_verification),
                                     onClick = { navController.navigate(KYC_ROUTE) },
                                 ),
@@ -1325,6 +1343,29 @@ private fun MainShell(
                         onDismiss = { composing = false },
                     )
                 }
+            }
+            composable(MEMBERSHIP_ROUTE) {
+                // The screen that step three of the membership card has always pointed at and
+                // that nothing in the app reached. A reader could register on an exchange, fund
+                // it, and then find no way to tell CoinePro their UID — which is the one step the
+                // whole arrangement turns on.
+                //
+                // Which exchanges accept a UID is the server's answer, not a constant here: it is
+                // deliberately a superset of the copy-trading list, because Ourbit earns membership
+                // and is never traded on. Compiling either list in would eventually offer somebody
+                // an exchange the platform had stopped taking.
+                val terms by guestController.membership.collectAsStateWithLifecycle()
+                // Asked for here, not assumed. The terms come from a public route that only the
+                // guest home polls, and a signed-in reader never renders that screen — so without
+                // this the exchange picker would be empty for exactly the people who need it.
+                LaunchedEffect(guestController) { guestController.refreshMembership() }
+                MembershipScreen(
+                    controller = membershipController,
+                    uidExchanges = (terms as? GuestMembershipState.Ready)
+                        ?.terms
+                        ?.uidExchanges
+                        .orEmpty(),
+                )
             }
             composable(NOTIFICATIONS_ROUTE) {
                 val context = LocalContext.current

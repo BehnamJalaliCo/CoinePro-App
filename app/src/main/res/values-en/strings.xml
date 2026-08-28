@@ -124,4 +124,6 @@
     <string name="alert_fired_body_no_price">Your %1$s alert condition was met.</string>
     <string name="screen_notifications">Notifications</string>
     <string name="profile_action_notifications_note">Signals, targets, copies, price alerts and quiet hours</string>
+    <string name="screen_membership">Membership and exchange UID</string>
+    <string name="profile_action_membership_note">Enter your UID and see the verification status</string>
 </resources>

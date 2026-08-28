@@ -42,6 +42,7 @@ import com.coinepro.core.datastore.ProfileStore
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.guest.GuestGateway
+import com.coinepro.core.membership.MembershipController
 import com.coinepro.core.journal.JournalController
 import com.coinepro.core.papertrade.PaperTradeController
 import com.coinepro.core.script.ScriptController
@@ -74,6 +75,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var localAlertStore: LocalAlertStore
     @Inject lateinit var localAlertScheduler: LocalAlertScheduler
     @Inject lateinit var guestGateway: GuestGateway
+    @Inject lateinit var membershipController: MembershipController
     @Inject lateinit var watchlistStore: WatchlistStore
     @Inject lateinit var chartLayoutStore: ChartLayoutStore
     @Inject lateinit var journalController: JournalController
@@ -141,6 +143,7 @@ class MainActivity : ComponentActivity() {
                 emailAuthController = emailAuthController,
                 guestController = guestController,
                 guestGateway = guestGateway,
+                membershipController = membershipController,
                 profileStore = profileStore,
                 notificationSettingsStore = notificationSettingsStore,
                 localAlertStore = localAlertStore,

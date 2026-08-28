@@ -15,6 +15,33 @@ it is for.
 
 ---
 
+## [1.31.0] — 2026-08-28 — The step the card asked for, with nowhere to take it
+
+### Fixed
+- **A reader could register on an exchange, fund it, and then find no way to submit their UID.**
+  Step three of the membership card has always said «شناسهٔ کاربری (UID) حساب صرافی را در اپ وارد
+  کنید», and `feature:membership` has always had the screen for it — but nothing in the app ever
+  routed to it. The whole arrangement turns on that step. It is now reachable from the profile,
+  under «عضویت و شناسه‌ی صرافی».
+- **The exchange picker would have been empty for exactly the people who need it.** The list of
+  exchanges that accept a UID comes from the public membership route, which only the guest home
+  polls — and a signed-in reader never renders that screen. The membership screen now asks for the
+  terms itself.
+
+### Notes
+- **Both referral links come from TradeYar and always have.** Verified today against the live route:
+  `api/v1/public/membership` serves `lbankReferralUrl`, `ourbitReferralUrl`, the deposit threshold
+  and the Persian notice, and the app compiles none of them in — a link one release out of date
+  does not fail visibly, it silently costs the reader their membership.
+- Both links resolve. LBank's redirects to `lbank.com/signup?icode=…`; Ourbit's opens its register
+  page with the invite code attached.
+- **Which exchanges accept a UID is also the server's answer** — today `["lbank", "ourbit"]`, a
+  deliberate superset of `copyTradeExchanges`, which is `["lbank"]` alone. Ourbit earns membership
+  and every signal; it is never traded on. That distinction is now visible in three places: the two
+  labelled buttons on the card, the exchange picker here, and the copy-trading note.
+
+---
+
 ## [1.30.1] — 2026-08-28 — LBank's mark, the current one
 
 ### Fixed
