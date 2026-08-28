@@ -29,10 +29,18 @@ data class ReplayState(
     /**
      * What the chart may show.
      *
-     * Rebuilt on demand rather than held, because holding it means two representations of the same
-     * truth and one of them going stale — and the one that goes stale here shows the future.
+     * `by lazy`, not a getter, and the difference is the reason a replay could not be zoomed.
+     *
+     * `CandleSeries` has identity equality, so a getter that allocated a fresh one on every read
+     * made every recomposition look like a *new series* to the chart, whose viewport is remembered
+     * against exactly that. The view was rebuilt from defaults on every frame: pinch did nothing,
+     * pan did nothing, and the chart snapped back to 120 bars at the live edge several times a
+     * second. Computed once per state — and this class is immutable, so a new cursor is a new
+     * state and a new list — the identity is stable and the viewport survives.
      */
-    val visible: CandleSeries get() = CandleSeries(bars.take(cursor + 1))
+    val visible: CandleSeries by lazy(LazyThreadSafetyMode.NONE) {
+        CandleSeries(bars.take(cursor + 1))
+    }
 
     /** How far through, for a progress bar. */
     val progress: Float

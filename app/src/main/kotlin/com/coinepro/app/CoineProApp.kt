@@ -39,6 +39,7 @@ import androidx.navigation.navArgument
 import com.coinepro.app.alerts.LocalAlertScheduler
 import com.coinepro.app.auth.GoogleSignInClient
 import com.coinepro.app.auth.GoogleSignInOutcome
+import com.coinepro.app.chart.rememberChartControllers
 import com.coinepro.app.notifications.PushCoordinator
 import com.coinepro.app.notifications.channelDescriptionRes
 import com.coinepro.app.notifications.channelNameRes
@@ -947,6 +948,9 @@ private fun MainShell(
     // forex line beside a crypto price. The scope is the composition's: leaving the app cancels
     // whatever is in flight.
     val sparklineStore = remember(candleGateway) { SparklineStore(candleGateway, sparklineScope) }
+    // The charts, held here rather than inside their own destinations. See `ChartControllers`:
+    // one controller per destination is what made every drawing tool in the app inert.
+    val chartControllers = rememberChartControllers(candleGateway, sparklineScope)
     val currentRoute = backStackEntry?.destination?.route
     val isSubScreen = currentRoute in setOf(
         SIGNAL_DETAIL_PATTERN,
@@ -1579,13 +1583,7 @@ private fun MainShell(
                 arguments = listOf(navArgument("symbol") { type = NavType.StringType }),
             ) { entry ->
                 val symbol = entry.arguments?.getString("symbol").orEmpty()
-                val scope = rememberCoroutineScope()
-                // Keyed on both, so switching platform with a chart open rebuilds it against the
-                // right backend rather than paging a forex symbol out of the crypto route. The
-                // scope is the composition's: leaving the screen cancels the load in flight.
-                val chartController = remember(symbol, candleGateway) {
-                    ChartController(symbol = symbol, gateway = candleGateway, scope = scope)
-                }
+                val chartController = chartControllers.controllerFor(symbol)
                 ChartScreen(
                     layouts = chartLayouts,
                     onSaveLayout = onSaveLayout,
@@ -1639,10 +1637,11 @@ private fun MainShell(
                 arguments = listOf(navArgument("symbol") { type = NavType.StringType }),
             ) { entry ->
                 val symbol = entry.arguments?.getString("symbol").orEmpty()
-                val scope = rememberCoroutineScope()
-                val studioController = remember(symbol, candleGateway) {
-                    ChartController(symbol = symbol, gateway = candleGateway, scope = scope)
-                }
+                // The chart's own controller, not a second one. Two instances is what made the
+                // studio useless: arming a tool, toggling an indicator or choosing a chart type
+                // wrote to an object the chart could not see, and the studio's copy was thrown
+                // away on the way back. See `ChartControllers`.
+                val studioController = chartControllers.controllerFor(symbol)
                 LaunchedEffect(studioController) { studioController.start() }
                 ChartStudioScreen(
                     controller = studioController,

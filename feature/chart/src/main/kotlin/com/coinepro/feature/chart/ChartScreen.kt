@@ -1,10 +1,12 @@
 package com.coinepro.feature.chart
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,6 +64,7 @@ import com.coinepro.core.chart.ChartReading
 import com.coinepro.core.chart.ChartTypePicker
 import com.coinepro.core.chart.CoineProChart
 import com.coinepro.core.chart.DrawingList
+import com.coinepro.core.chart.DrawingState
 import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.chart.IndicatorPicker
 import com.coinepro.core.chart.Replay
@@ -82,6 +85,7 @@ import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProGoldRule
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPillShape
+import com.coinepro.core.designsystem.CoineProPress
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -89,6 +93,8 @@ import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.LtrDirection
 import com.coinepro.core.designsystem.R as DesignR
+import com.coinepro.core.designsystem.pressScale
+import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.help.CoineProHelpSheet
 import com.coinepro.core.help.HelpCatalog
 import com.coinepro.core.marketdata.Timeframe
@@ -187,6 +193,19 @@ fun ChartScreen(
             SymbolWheel(symbols = watchlist, current = state.symbol, onSelect = select)
         }
         TimeframeRow(state.timeframe, controller::setTimeframe)
+        // The bar that makes the chart a chart.
+        //
+        // Every one of these sheets was already written, tested and rendered — and **nothing in
+        // the app assigned `sheet` to any of them except SETUP**. Six of seven were unreachable
+        // dead code, which is why the owner reported that the drawing tools do not work. They
+        // were not broken; they had no door.
+        ChartToolBar(
+            drawing = state.drawing,
+            indicators = state.activeIndicators.size,
+            drawings = state.drawing.drawings.size,
+            onOpen = { sheet = it },
+            onOpenStudio = onOpenStudio,
+        )
 
         // The chart in a card with a gold hairline, rather than bled to the screen's edges. The
         // owner chose this and the reason it works is that it makes the chart an *object* on the
@@ -853,3 +872,129 @@ private fun ChartFailure(error: ChartError, onRetry: () -> Unit) {
  * a full-bleed chart.
  */
 private val CHART_HEIGHT = 300.dp
+
+/**
+ * The chart's own control bar.
+ *
+ * ### Why it exists
+ *
+ * The tool rail, the indicator picker, the chart-type picker and the drawing list all lived in
+ * sheets on this screen, and the only way to reach any of them was to leave for the studio — a
+ * separate destination which, until this release, also held a separate controller, so whatever you
+ * chose there was thrown away on the way back. The tools were two navigations and a lost state
+ * away from the chart they act on. Now they are one tap, on the chart, with nothing disposed.
+ *
+ * ### Why a row of icons and not a menu
+ *
+ * A menu hides how many indicators are on. These carry their own counts — «۴» beside the
+ * indicators glyph, «۷» beside the drawings — because the questions a reader actually has at this
+ * bar are *what have I got on this chart* and *how do I get it off*, and a menu answers neither
+ * until it is open.
+ *
+ * The studio stays, and stays last. It is the place for the long jobs — layouts, backtests,
+ * scripts — that deserve a screen rather than a sheet.
+ */
+@Composable
+private fun ChartToolBar(
+    drawing: DrawingState,
+    indicators: Int,
+    drawings: Int,
+    onOpen: (ChartSheet) -> Unit,
+    onOpenStudio: (() -> Unit)?,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.Half),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ToolBarButton(
+            icon = DesignR.drawable.tv_tool_trend,
+            label = "ابزار ترسیم",
+            // Armed is a state the reader has to be able to see without looking at the chart —
+            // it changes what the next tap on the canvas does.
+            active = drawing.tool != null,
+            onClick = { onOpen(ChartSheet.TOOLS) },
+        )
+        ToolBarButton(
+            icon = DesignR.drawable.icon_sliders_horizontal,
+            label = "اندیکاتورها",
+            count = indicators,
+            onClick = { onOpen(ChartSheet.INDICATORS) },
+        )
+        ToolBarButton(
+            icon = DesignR.drawable.tv_chart_candles,
+            label = "نوع چارت",
+            onClick = { onOpen(ChartSheet.TYPE) },
+        )
+        ToolBarButton(
+            icon = DesignR.drawable.tv_tool_cursor,
+            label = "ترسیم‌ها",
+            count = drawings,
+            onClick = { onOpen(ChartSheet.DRAWINGS) },
+        )
+        ToolBarButton(
+            icon = DesignR.drawable.icon_bookmark_simple,
+            label = "چیدمان‌ها",
+            onClick = { onOpen(ChartSheet.LAYOUTS) },
+        )
+        Spacer(Modifier.weight(1f))
+        onOpenStudio?.let {
+            ToolBarButton(
+                icon = DesignR.drawable.tv_maximize2,
+                label = "استودیو",
+                onClick = it,
+            )
+        }
+    }
+}
+
+/** One control on the chart's bar, with the count of what it holds where there is one. */
+@Composable
+private fun ToolBarButton(
+    @DrawableRes icon: Int,
+    label: String,
+    onClick: () -> Unit,
+    active: Boolean = false,
+    count: Int = 0,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberCoineProHaptics()
+    val ink = if (active) CoineProColors.Accent else CoineProColors.TextSecondary
+    Row(
+        modifier = Modifier
+            .pressScale(interaction, CoineProPress.CHIP)
+            .clip(CoineProShapes.small)
+            .background(
+                if (active) {
+                    CoineProTint.fill(CoineProColors.Accent, CoineProColors.Stage)
+                } else {
+                    CoineProColors.Surface
+                },
+            )
+            .clickable(interaction, null) {
+                haptics.select()
+                onClick()
+            }
+            .padding(horizontal = CoineProSpacing.One, vertical = 7.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = label,
+            modifier = Modifier.size(17.dp),
+            tint = ink,
+        )
+        // Zero is drawn as nothing rather than as «۰». A count is there to say how much is on the
+        // chart, and a nought says the same thing as no badge while costing a glyph.
+        if (count > 0) {
+            Text(
+                text = count.toPersianDigits(),
+                style = MaterialTheme.typography.labelSmall,
+                color = ink,
+            )
+        }
+    }
+}
