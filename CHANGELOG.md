@@ -15,6 +15,25 @@ it is for.
 
 ---
 
+## [1.29.3] — 2026-08-28 — One field, on TradeYar's side
+
+### Notes
+- **All three Google-side pieces now exist.** The replacement Web client `…-07nqc4h9…` answers
+  `redirect_uri_mismatch` to the probe, which is the healthy answer — Google resolved it and only
+  objected to the throwaway redirect URI. The Android client and the release fingerprint were
+  already verified. Nothing is missing in the Google project.
+- **What is left is one field on TradeYar**, and it cannot be worked around from here: their
+  `auth/methods` still returns the deleted `…-nnr0l8q2…`. It has to return the new id *and* verify
+  ID tokens against the same value in `auth/google` — both, or a valid token is refused at the far
+  end. `docs/REQUEST6_TRADEYAR_GOOGLE_CLIENT.md` is written to be forwarded as it stands, with the
+  probe, the two places to change, and the note that no client secret is involved in verifying an
+  ID token.
+- **No client-side workaround was built, deliberately.** The app could compile in an audience of its
+  own, and the token it minted would then be refused by a server verifying against a different one
+  — the same failure one layer deeper and harder to read. The audience belongs to the server.
+
+---
+
 ## [1.29.2] — 2026-08-27 — The audience had been deleted
 
 ### Notes

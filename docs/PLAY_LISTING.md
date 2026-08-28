@@ -261,14 +261,16 @@ SHA-256  96:12:AB:6C:BF:BB:4F:4F:FB:F1:51:D8:60:2C:12:9D:CC:E8:A9:77:1E:85:46:69
    entry that used to name it both disappeared from the file on the same day the Android client
    appeared, which is consistent with it having been deleted while the other was created.
 
-   **What is left to do, and it is not in the app:**
+   **The replacement Web client was created the same day** and is live:
+   `1033486124390-07nqc4h9…` answers `redirect_uri_mismatch`. So all three Google-side pieces now
+   exist — the Android client, its fingerprint, and an audience.
 
-   1. Google Cloud Console → Credentials → **Create credentials → OAuth client ID → Web
-      application**. Name it for what it is — the token verifier, not a website.
-   2. Give that new id to the **TradeYar** backend. It has to appear in `auth/methods` as
-      `google_client_id`, *and* be the `aud` their `auth/google` route verifies an ID token
-      against. Both, or sign-in fails at one end or the other.
-   3. Re-run the probe above against the new id. `redirect_uri_mismatch` means it is live.
+   **One step is left and it belongs to TradeYar, not to this app.** Their `auth/methods` still
+   returns the deleted `…-nnr0l8q2…`, and it has to return the new id — and verify ID tokens
+   against the same value in `auth/google`. `docs/REQUEST6_TRADEYAR_GOOGLE_CLIENT.md` is written to
+   be forwarded to them as it stands. There is no client-side workaround and it would be wrong to
+   build one: an audience the app chose for itself would produce a token their route then refuses,
+   which is the same failure one layer deeper.
 
    Nothing changes in the app: the audience has always been read from the server at runtime, which
    is what makes this fixable without a release.
