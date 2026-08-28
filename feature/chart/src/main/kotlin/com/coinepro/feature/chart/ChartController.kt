@@ -55,6 +55,13 @@ data class ChartUiState(
     val error: ChartError? = null,
     val activeIndicators: Set<String> = emptySet(),
     /**
+     * Whether the price axis is logarithmic.
+     *
+     * Part of the apparatus rather than of the data, so it survives a timeframe change and a chart
+     * type change the same way the indicator set does. See `ChartViewport.logScale`.
+     */
+    val logScale: Boolean = false,
+    /**
      * The lookbacks the reader has changed, by indicator id.
      *
      * Sparse: an indicator absent from this map is drawn at its own default, which is what nearly
@@ -144,9 +151,12 @@ data class ChartUiState(
             val stop = points[1].price
             if (entry == stop || !entry.isFinite() || !stop.isFinite()) return null
             val side = if (stop < entry) TradeSide.BUY else TradeSide.SELL
-            // The same 2R the renderer draws. One arithmetic, two consumers: if the target line
-            // and the target number came from different expressions they would drift.
-            return ChartOrder(side, entry, stop, entry + 2 * (entry - stop))
+            // The target the reader dragged, or the two-to-one it was placed at. The fallback is
+            // the same expression the renderer falls back to and covers the same case: a setup
+            // saved by a build from before the target was a point.
+            val target = points.getOrNull(2)?.price?.takeIf { it.isFinite() }
+                ?: (entry + 2 * (entry - stop))
+            return ChartOrder(side, entry, stop, target)
         }
 
     val lastPrice: Double? get() = visibleSeries.bars.lastOrNull()?.c
@@ -286,6 +296,8 @@ class ChartController(
     }
 
     fun setChartType(type: ChartType) = _state.update { it.copy(chartType = type) }
+
+    fun toggleLogScale() = _state.update { it.copy(logScale = !it.logScale) }
 
     fun toggleIndicator(id: String) = _state.update { old ->
         old.copy(

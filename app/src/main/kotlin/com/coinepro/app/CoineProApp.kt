@@ -1506,6 +1506,22 @@ private fun MainShell(
                                     onClick = { appearanceOpen = true },
                                 ),
                             )
+                            // A row of its own, reaching the share sheet in one tap.
+                            //
+                            // Support was already correct in the one way that matters most —
+                            // nothing in this app puts an AI between a reader and a person, which
+                            // in a corpus of reviews of this category is the worst-rated thing any
+                            // of them does — but it was *inside* «ایمنی و نسخه», two taps down a
+                            // row named after something else. Reachable and honest are different
+                            // properties and this product only had the second.
+                            add(
+                                ProfileAction(
+                                    label = stringResource(R.string.profile_action_support),
+                                    note = stringResource(R.string.profile_action_support_note),
+                                    icon = CoineProIcons.Help,
+                                    onClick = onSendFeedback,
+                                ),
+                            )
                             add(
                                 ProfileAction(
                                     label = stringResource(R.string.profile_action_safety),

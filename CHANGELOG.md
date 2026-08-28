@@ -15,6 +15,56 @@ it is for.
 
 ---
 
+## [1.36.0] — 2026-08-28 — A log axis, a target you can drag, and a door to a person
+
+### The price axis can be logarithmic
+
+On a linear axis equal distances mean equal amounts of money. On a log axis they mean equal
+*percentages*, which is what a trader actually reads: 100→110 and 1,000→1,100 are the same trade,
+and the linear axis draws the second ten times taller.
+
+It matters exactly where this chart was weakest. Bitcoin over two years spans more than an order of
+magnitude; linear, the whole first year is a flat line pressed against the bottom of the plot with
+every level and every trend line in it invisible. That is not a preference, it is a chart that
+cannot answer the question it was opened for.
+
+Two things had to be right beyond the arithmetic. The gridlines are a 1-2-5-per-decade ladder
+rather than the linear one — feeding evenly spaced *values* to a log placement over 1,000–100,000
+puts eight lines of ten inside the top fifth of the plot and leaves the rest empty — falling back
+to the linear ladder under a decade, where the two axes are indistinguishable anyway. And the
+headroom is multiplicative: a failing test caught that eight percent of a 100–10,000 span is 792,
+which put the bottom of the axis at −692, a price with no logarithm, which sent the whole axis back
+to the linear fallback and made the toggle do nothing at all.
+
+### The target is a point now
+
+The position tool drew entry, stop and a two-to-one target, with a comment beside the target saying
+a reader who wants a different multiple drags the line afterwards. There was no third handle. The
+comment described behaviour that did not exist and the tool drew exactly one reward, for ever.
+
+The target is placed as a real third point on commit — still two taps, no extra work for the reader
+— so it has a handle, `movePoint` already moves handles, and the label follows what was dragged
+rather than continuing to claim 2R. Setups saved before this have two points and still draw, by the
+same fallback the renderer and the controller both use.
+
+### Support is one tap and reaches a person
+
+Nothing in this app has ever put an AI between a reader and support, which in the corpus is the
+worst-rated thing any app in this category does — AI-as-support averages 1.57★, the lowest of any
+theme measured. But it was *inside* «ایمنی و نسخه», two taps down a row named after something else.
+Reachable and honest are different properties and this product only had the second.
+
+### On the fling
+
+Momentum after the finger lifts is not here, and that is a decision rather than an omission.
+`detectTransformGestures` offers no release callback and no velocity — getting one means
+reimplementing multi-touch transform detection, which is a rewrite of a gesture that works, for
+polish. The defect that actually made panning feel broken was the discarded sub-bar residue, and
+that was fixed in 1.35.0. The reasoning is written into the file so the next person does not have
+to rediscover it.
+
+---
+
 ## [1.35.1] — 2026-08-28 — What a candle means, and where it came from
 
 Four things the research corpus ranked and the last version did not reach.

@@ -236,6 +236,7 @@ fun ChartScreen(
                     // against asking for history the server has already said does not exist, so
                     // the chart can ask freely.
                     onLoadMore = controller::loadMore,
+                    logScale = state.logScale,
                 )
             }
             if (state.loadingMore) {
@@ -289,6 +290,8 @@ fun ChartScreen(
             onOpen = { sheet = it },
             onOpenStudio = onOpenStudio,
             onFullscreen = { fullscreen = true },
+            logScale = state.logScale,
+            onToggleLog = controller::toggleLogScale,
         )
 
         // The chart in a card with a gold hairline, rather than bled to the screen's edges. The
@@ -1198,6 +1201,8 @@ private fun ChartToolBar(
     onOpen: (ChartSheet) -> Unit,
     onOpenStudio: (() -> Unit)?,
     onFullscreen: () -> Unit,
+    logScale: Boolean,
+    onToggleLog: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -1239,6 +1244,15 @@ private fun ChartToolBar(
         // The chart, with the whole screen. Placed here rather than as a corner control on the
         // canvas, because a tap target floating over a chart is a tap target that steals a
         // gesture from the drawing tools underneath it.
+        // The axis. On a chart spanning more than a decade of price — which is most of crypto
+        // over a year — a linear axis presses the whole early history into a flat line against
+        // the bottom of the plot and hides every level in it.
+        ToolBarButton(
+            icon = DesignR.drawable.tv_scan_line,
+            label = "مقیاس لگاریتمی",
+            active = logScale,
+            onClick = onToggleLog,
+        )
         ToolBarButton(
             icon = DesignR.drawable.tv_maximize2,
             label = "تمام‌صفحه",

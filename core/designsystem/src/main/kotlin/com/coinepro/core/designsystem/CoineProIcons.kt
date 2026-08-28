@@ -107,6 +107,15 @@ object CoineProIcons {
     @DrawableRes val Warning = R.drawable.icon_warning
     @DrawableRes val Success = R.drawable.icon_check_circle
     @DrawableRes val Info = R.drawable.icon_info
+
+    /**
+     * A circled question mark: "ask us".
+     *
+     * The chart's «؟» dots already use this drawable, and reusing it for the support row is the
+     * point rather than a shortcut — a reader who has learned that this mark means "an explanation
+     * lives here" reads it the same way on a settings list.
+     */
+    @DrawableRes val Help = R.drawable.tv_help_circle
     @DrawableRes val Secure = R.drawable.icon_shield_check
     @DrawableRes val Locked = R.drawable.icon_lock_key
     @DrawableRes val Visible = R.drawable.icon_eye

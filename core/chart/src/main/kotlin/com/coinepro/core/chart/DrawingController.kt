@@ -222,6 +222,43 @@ object DrawingActions {
         )
 
     /**
+     * The position tool's third point, added on commit rather than tapped.
+     *
+     * ### Why it is not a third tap
+     *
+     * A setup is entry and stop — those are the two prices a trader has a *reason* for. The target
+     * is a consequence of them, and the two-to-one that this tool draws is the right first answer
+     * often enough that asking for it as a third tap would tax every setup to serve the minority
+     * that wants a different one.
+     *
+     * ### Why it is a real point and not a formula
+     *
+     * Because a formula cannot be dragged. The renderer computed the target as `entry + 2 × risk`
+     * and the comment beside it said "a reader who wants a different multiple drags the target line
+     * afterwards" — describing behaviour that did not exist, because there was no third handle to
+     * drag. Storing it as a point makes the sentence true: `movePoint` already moves handles, so
+     * the target became draggable the moment it became a point.
+     *
+     * A reader who drags it gets their own reward, and the label follows what they dragged rather
+     * than continuing to claim 2R.
+     */
+    private fun withTarget(tool: DrawingTool, points: List<ChartPoint>): List<ChartPoint> {
+        if (tool.id != POSITION_TOOL || points.size != 2) return points
+        val entry = points[0].price
+        val stop = points[1].price
+        if (!entry.isFinite() || !stop.isFinite() || entry == stop) return points
+        // The target sits at the stop's moment, so the three handles form a vertical column a
+        // thumb can tell apart rather than three points at the same x.
+        return points + ChartPoint(points[1].time, entry + DEFAULT_REWARD * (entry - stop))
+    }
+
+    /** The tool whose commit gains a target. */
+    internal const val POSITION_TOOL = "longshort"
+
+    /** The reward the position tool opens at, as a multiple of the risk. */
+    internal const val DEFAULT_REWARD = 2.0
+
+    /**
      * Snap a point to the nearest of a bar's four prices.
      *
      * The magnet, and it is a professional's feature rather than a convenience: a trend line meant
@@ -251,7 +288,7 @@ object DrawingActions {
 
     private fun commit(state: DrawingState, tool: DrawingTool, points: List<ChartPoint>): DrawingState {
         val id = (state.drawings.maxOfOrNull { it.id } ?: 0L) + 1
-        val drawing = Drawing(id = id, toolId = tool.id, points = points, colour = state.colour)
+        val drawing = Drawing(id = id, toolId = tool.id, points = withTarget(tool, points), colour = state.colour)
         return state.copy(
             drawings = state.drawings + drawing,
             pending = emptyList(),

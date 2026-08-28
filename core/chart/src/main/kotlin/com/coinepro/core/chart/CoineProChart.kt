@@ -98,6 +98,14 @@ fun CoineProChart(
      * and the caller is expected to ignore it while a load is already running.
      */
     onLoadMore: (() -> Unit)? = null,
+    /**
+     * Whether the price axis is logarithmic. See [ChartViewport.logScale] for why it exists.
+     *
+     * Passed in rather than owned here, because it belongs with the timeframe and the chart type —
+     * it is part of what a saved layout means, and a reader who set it should find it set when
+     * they come back.
+     */
+    logScale: Boolean = false,
 ) {
     val display = remember(series, type, typeConfig) { ChartTransforms.apply(series, type, typeConfig) }
     // Unkeyed, and that is the whole point. Keyed on `display`, this reset to the default 120 bars
@@ -135,6 +143,11 @@ fun CoineProChart(
             .copy(barsPerView = savedZoom)
             .atOffset(savedOffset)
     }
+
+    // Applied separately from the series, because it changes on its own — a reader toggling the
+    // axis has not changed a single bar, and folding it into the block above would make the
+    // toggle a no-op until the next series arrived.
+    remember(logScale) { viewport = viewport.copy(logScale = logScale) }
 
     // Written back whenever the reader moves. Cheap — two ints into the saved-state bundle — and
     // it has to be here rather than inside the gesture handlers, which do not all go through one
@@ -234,28 +247,39 @@ fun CoineProChart(
                                 // feels wrong" means.
                                 var panResidue = 0f
                                 var zoomResidue = 1f
-                                detectTransformGestures { _, pan, zoom, _ ->
-                                    if (abs(zoom - 1f) > ZOOM_DEADZONE) {
-                                        zoomResidue *= zoom
-                                        val before = viewport.barsPerView
-                                        val zoomed = viewport.zoomedBy(zoomResidue)
-                                        if (zoomed.barsPerView != before) {
-                                            viewport = zoomed
-                                            zoomResidue = 1f
-                                        }
-                                    }
-                                    if (abs(pan.x) > 0f) {
-                                        panResidue += pan.x
-                                        val width = viewport.barWidth
-                                        if (width > 0f) {
-                                            val bars = (panResidue / width).toInt()
-                                            if (bars != 0) {
-                                                viewport = viewport.atOffset(viewport.offset + bars)
-                                                panResidue -= bars * width
+                                // No fling, and that is a decision rather than an omission.
+                                //
+                                // Momentum after the finger lifts needs a release callback with a
+                                // velocity, and `detectTransformGestures` offers neither — it
+                                // never returns and reports only per-frame deltas. Getting one
+                                // means reimplementing multi-touch transform detection on
+                                // `awaitEachGesture`, which is a rewrite of a gesture that works,
+                                // for polish. The defect that actually made panning feel broken
+                                // was the discarded residue above, and that is fixed.
+                                detectTransformGestures(
+                                    onGesture = { _, pan, zoom, _ ->
+                                        if (abs(zoom - 1f) > ZOOM_DEADZONE) {
+                                            zoomResidue *= zoom
+                                            val before = viewport.barsPerView
+                                            val zoomed = viewport.zoomedBy(zoomResidue)
+                                            if (zoomed.barsPerView != before) {
+                                                viewport = zoomed
+                                                zoomResidue = 1f
                                             }
                                         }
-                                    }
-                                }
+                                        if (abs(pan.x) > 0f) {
+                                            panResidue += pan.x
+                                            val width = viewport.barWidth
+                                            if (width > 0f) {
+                                                val bars = (panResidue / width).toInt()
+                                                if (bars != 0) {
+                                                    viewport = viewport.atOffset(viewport.offset + bars)
+                                                    panResidue -= bars * width
+                                                }
+                                            }
+                                        }
+                                    },
+                                )
                             }
                             .pointerInput(display, armed, drawing, onDrawing) {
                                 if (onDrawing == null || drawing == null) return@pointerInput
@@ -813,6 +837,7 @@ private fun priceTicks(view: ChartViewport): PriceTicks {
     val high = view.priceRange.endInclusive
     val span = high - low
     if (span <= 0.0 || !span.isFinite()) return PriceTicks(emptyList(), 0.0)
+    if (view.logScale && low > 0.0) return logPriceTicks(low, high)
 
     val rough = span / GRID_ROWS
     val magnitude = 10.0.pow(floor(log10(rough)))
@@ -848,6 +873,74 @@ private class PriceTicks(
  * Driven by the gap between two ticks rather than by the price's magnitude: on a step of 0.05 a
  * reader needs two decimals whether the instrument trades at 3 or at 30,000.
  */
+/**
+ * Gridlines for a logarithmic axis.
+ *
+ * ### Why the linear ladder is wrong here
+ *
+ * Evenly spaced *values* are not evenly spaced on a log axis. Feeding a 1-2-5 ladder to a log
+ * placement over 1,000 to 100,000 puts eight of its ten lines inside the top fifth of the plot and
+ * leaves the bottom four fifths — which is where most of the price action is on exactly the charts
+ * a reader turns log scale on for — with nothing at all.
+ *
+ * ### The ladder that is right
+ *
+ * One, two and five per decade: 1, 2, 5, 10, 20, 50, 100 … Those are the numbers a reader already
+ * reads a log axis by, they are evenly spaced *in log space*, and they are round in every decade
+ * rather than round only near the top.
+ *
+ * When the visible range covers less than a decade — the common case once a reader has zoomed in
+ * with log scale still on — the ladder alone gives one or two lines, so the linear ticks are used
+ * instead. On that range the two axes are visually identical anyway, so nothing is lost.
+ *
+ * The returned `step` is the gap between the two lowest lines, which is what
+ * [PriceTicks.step] is for: it decides the decimal places of the labels, and on a log axis the
+ * smallest gap is the one that needs the most of them.
+ */
+private fun logPriceTicks(low: Double, high: Double): PriceTicks {
+    val decade = floor(log10(low)).toInt()
+    val prices = buildList {
+        var exponent = decade
+        while (exponent <= ceil(log10(high)).toInt() && size <= MAX_TICKS) {
+            val base = 10.0.pow(exponent)
+            for (multiple in LOG_MULTIPLES) {
+                val price = base * multiple
+                if (price in low..high) add(price)
+            }
+            exponent++
+        }
+    }
+    // Too few lines to be a grid. On a sub-decade range the linear ladder is both denser and, at
+    // that zoom, indistinguishable from a correct log one.
+    if (prices.size < MIN_LOG_TICKS) return linearPriceTicks(low, high)
+    val step = if (prices.size >= 2) prices[1] - prices[0] else high - low
+    return PriceTicks(prices, step)
+}
+
+/** The 1-2-5 ladder, factored out so the log branch can fall back to it. */
+private fun linearPriceTicks(low: Double, high: Double): PriceTicks {
+    val span = high - low
+    if (span <= 0.0 || !span.isFinite()) return PriceTicks(emptyList(), 0.0)
+    val rough = span / GRID_ROWS
+    val magnitude = 10.0.pow(floor(log10(rough)))
+    val step = when {
+        rough <= magnitude -> magnitude
+        rough <= magnitude * 2 -> magnitude * 2
+        rough <= magnitude * 2.5 -> magnitude * 2.5
+        rough <= magnitude * 5 -> magnitude * 5
+        else -> magnitude * 10
+    }
+    val first = ceil(low / step) * step
+    val prices = buildList {
+        var price = first
+        while (price <= high && size <= MAX_TICKS) {
+            add(price)
+            price += step
+        }
+    }
+    return PriceTicks(prices, step)
+}
+
 private fun decimalsForStep(step: Double): Int = when {
     step <= 0.0 || !step.isFinite() -> 2
     step >= 100 -> 0
@@ -1559,6 +1652,18 @@ private const val MAX_COUNTDOWN_SECONDS = 2L * 86_400
 
 /** What the countdown says when the new bar is late. A dash, never a negative number. */
 private const val COUNTDOWN_UNKNOWN = "—"
+
+/**
+ * The multiples a log axis puts a line at, once per decade.
+ *
+ * One, two and five. Three lines a decade is the density every terminal uses and it is not
+ * arbitrary: they are the round numbers a reader reads a logarithmic scale by, and they sit at
+ * roughly even intervals in log space (0, 0.30 and 0.70 of a decade).
+ */
+private val LOG_MULTIPLES = listOf(1.0, 2.0, 5.0)
+
+/** Below this many lines a log axis is not a grid, and the linear ladder is used instead. */
+private const val MIN_LOG_TICKS = 3
 
 /** How solid the last-price rule is. Present, and never competing with the candles. */
 private const val LAST_PRICE_ALPHA = 0.75f

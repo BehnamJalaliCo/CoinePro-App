@@ -361,16 +361,26 @@ fun DrawScope.drawDrawing(
 
         // ── Position ────────────────────────────────────────────────────────────────
         "longshort" -> b?.let { end ->
-            // Entry and stop are tapped; the target is the two-to-one that makes the drawing worth
-            // having. A reader who wants a different multiple drags the target line afterwards.
+            // Entry and stop are tapped; the target is a third point placed on commit at two-to-one
+            // — see `DrawingActions.withTarget`. It is a *point*, so it has a handle and the reader
+            // can drag it to whatever reward they actually want, and the label follows what they
+            // dragged rather than continuing to claim 2R.
+            //
+            // The fallback covers a drawing saved by a build before the target existed: those have
+            // two points, and reading `chart[2]` would drop them off the chart entirely.
             val entry = chart[0].price
             val stop = chart[1].price
-            val target = entry + 2 * (entry - stop)
+            val target = chart.getOrNull(2)?.price ?: (entry + 2 * (entry - stop))
+            val risk = abs(entry - stop)
+            val reward = if (risk > 0) abs(target - entry) / risk else 0.0
             val left = min(a.x, end.x)
             val right = max(a.x, end.x) + POSITION_OVERHANG.toPx()
             band(left, right, view.yOf(entry), view.yOf(target), buyColour().copy(alpha = ZONE))
             band(left, right, view.yOf(entry), view.yOf(stop), sellColour().copy(alpha = ZONE))
-            level(measurer, left, right, view.yOf(target), buyColour(), "هدف ۲R")
+            // Latin digits on the multiple: it is a market figure sitting on the chart's own
+            // canvas beside prices, and «هدف ۲٫۵R» in a column of Latin numbers reads as a
+            // different kind of thing from what it is.
+            level(measurer, left, right, view.yOf(target), buyColour(), "هدف " + fixed(reward, 1) + "R")
             level(measurer, left, right, view.yOf(entry), colour, "ورود")
             level(measurer, left, right, view.yOf(stop), sellColour(), "حد ضرر")
             true

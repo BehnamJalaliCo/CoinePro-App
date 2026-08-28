@@ -1,5 +1,7 @@
 package com.coinepro.core.chart
 
+import kotlin.math.exp
+import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -41,6 +43,35 @@ data class ChartViewport(
      * least useful possible drawing of "here is where you take profit".
      */
     val includedPrices: List<Double> = emptyList(),
+    /**
+     * Whether the price axis is logarithmic.
+     *
+     * ### Why a trading chart needs this and a general-purpose chart does not
+     *
+     * On a linear axis, equal *distances* mean equal amounts of money. On a log axis they mean
+     * equal *percentages*, which is what a trader actually reads: a move from 100 to 110 and one
+     * from 1,000 to 1,100 are the same trade and the linear axis draws the second one ten times
+     * larger.
+     *
+     * It matters most exactly where this app is weakest without it. Bitcoin over two years spans
+     * more than one order of magnitude; on a linear axis the whole of the first year is a flat
+     * line pressed against the bottom of the plot, and every structure in it — every level, every
+     * trend line a reader might want to draw — is invisible. That is not a preference, it is a
+     * chart that cannot answer the question it was opened for.
+     *
+     * ### Off by default
+     *
+     * Because on a single day of a single instrument the two are indistinguishable, and the axis a
+     * reader has not asked about should be the one they expect. It earns its place on the long
+     * views, and it is one tap away.
+     *
+     * ### What it does not touch
+     *
+     * Time. A log *time* axis is meaningless. And nothing in chart space: a drawing is still
+     * `(time, price)`, so a trend line drawn on the linear axis is the same two prices on the log
+     * one — it simply stops being straight, which is correct and is what every terminal does.
+     */
+    val logScale: Boolean = false,
 ) {
     /** Index of the first visible bar, inclusive. */
     val firstVisible: Int
@@ -101,6 +132,19 @@ data class ChartViewport(
             if (price < low) low = price
             if (price > high) high = price
         }
+        // The headroom has to be taken in the same space the axis is drawn in.
+        //
+        // Additive padding on a log axis is wrong twice over. On a range like 100–10,000 eight
+        // percent of the span is 792, so the bottom of the axis becomes −692 — a price with no
+        // logarithm, which sent the whole axis back to the linear fallback and made the log toggle
+        // do nothing at all. And even where it stayed positive it would be invisible at the top
+        // and enormous at the bottom, because a fixed amount of money is a different percentage at
+        // each end. Multiplicative padding is the same eight percent of the *visible height* at
+        // both ends, which is what the linear branch means by it too.
+        if (logScale && low > 0.0 && high > low) {
+            val factor = exp(ln(high / low) * PRICE_PADDING)
+            return@lazy (low / factor)..(high * factor)
+        }
         val padding = when {
             high > low -> (high - low) * PRICE_PADDING
             high != 0.0 -> abs(high) * 0.02
@@ -114,11 +158,29 @@ data class ChartViewport(
     /** Screen x of the bar at [index], at the centre of its slot. */
     fun xOf(index: Int): Float = (index - firstVisible) * barWidth + barWidth / 2
 
-    /** Screen y of a price. */
+    /**
+     * Screen y of a price.
+     *
+     * On a log axis the position is taken in log space rather than the value — which is the whole
+     * of what "logarithmic" means here. The guard is not a formality: a price at or below zero has
+     * no logarithm, and while a *price* cannot be negative, [includedPrices] can carry a target a
+     * reader dragged below the axis and an indicator pane reuses this function for values that
+     * routinely are (MACD, a rate of change). Anything the log axis cannot place falls back to the
+     * linear placement rather than to `NaN`, which would silently stop drawing that line.
+     */
     fun yOf(price: Double): Float {
-        val span = priceRange.endInclusive - priceRange.start
+        val low = priceRange.start
+        val high = priceRange.endInclusive
+        if (logScale && low > 0.0 && high > low && price > 0.0) {
+            val logLow = ln(low)
+            val logSpan = ln(high) - logLow
+            if (logSpan > 0.0) {
+                return (plotHeight - (ln(price) - logLow) / logSpan * plotHeight).toFloat()
+            }
+        }
+        val span = high - low
         if (span <= 0.0) return plotHeight / 2
-        return (plotHeight - (price - priceRange.start) / span * plotHeight).toFloat()
+        return (plotHeight - (price - low) / span * plotHeight).toFloat()
     }
 
     /**
@@ -143,11 +205,25 @@ data class ChartViewport(
         return (firstVisible + (x / barWidth).toInt()).coerceIn(firstVisible, lastVisible)
     }
 
-    /** The price at a screen y. Not clamped: dragging above the plot means a higher price. */
+    /**
+     * The price at a screen y. Not clamped: dragging above the plot means a higher price.
+     *
+     * The exact inverse of [yOf], including its log branch and its fallback — they have to agree
+     * or a drawing placed by a finger lands somewhere else. That is the failure this pairing
+     * exists to prevent, and `ChartViewportTest` holds them against each other.
+     */
     fun priceAt(y: Float): Double {
-        val span = priceRange.endInclusive - priceRange.start
-        if (plotHeight <= 0f) return priceRange.start
-        return priceRange.start + (plotHeight - y) / plotHeight * span
+        val low = priceRange.start
+        val high = priceRange.endInclusive
+        if (plotHeight <= 0f) return low
+        if (logScale && low > 0.0 && high > low) {
+            val logLow = ln(low)
+            val logSpan = ln(high) - logLow
+            if (logSpan > 0.0) {
+                return exp(logLow + (plotHeight - y) / plotHeight * logSpan)
+            }
+        }
+        return low + (plotHeight - y) / plotHeight * (high - low)
     }
 
     /** The moment at a screen x, interpolated between bars the same way [xOfTime] is. */
