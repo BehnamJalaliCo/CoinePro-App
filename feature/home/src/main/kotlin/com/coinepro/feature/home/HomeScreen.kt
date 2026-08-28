@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.PersianDateTime
+import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProAgentOrb
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProAssetToken
@@ -53,9 +54,9 @@ import com.coinepro.core.designsystem.CoineProPrivacy
 import com.coinepro.core.designsystem.CoineProPullToRefresh
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSegmentedControl
-import com.coinepro.core.designsystem.CoineProSparkline
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.CoineProSparkline
 import com.coinepro.core.designsystem.CoineProStreamingBar
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.R as DesignR
@@ -115,6 +116,8 @@ fun HomeScreen(
      */
     onOpenTools: (() -> Unit)? = null,
     onOpenActivity: (() -> Unit)? = null,
+    /** The headlines. See `ShortcutRow` for why this earned a slot. */
+    onOpenNews: (() -> Unit)? = null,
     /** The reader's own list, oldest first. Empty hides the card rather than showing a placeholder. */
     watchlist: List<String> = emptyList(),
     onToggleWatch: ((String) -> Unit)? = null,
@@ -141,6 +144,15 @@ fun HomeScreen(
      */
     balanceHidden: Boolean = false,
     onToggleBalanceHidden: (() -> Unit)? = null,
+    /**
+     * The portfolio, which the balance is a summary of.
+     *
+     * Home used to print every holding under the balance — a card that grew with the account and
+     * was, on a real one, the second-largest thing on the page. The portfolio screen already draws
+     * them with an equity curve, per-symbol attribution and a monthly breakdown; home now says how
+     * many there are and goes there.
+     */
+    onOpenPortfolio: (() -> Unit)? = null,
 ) {
     val quotes = state.quotes.values.sortedWith(
         compareBy<MarketQuote>({ marketRank(it) }, { it.instrument.symbol }),
@@ -190,11 +202,18 @@ fun HomeScreen(
                     state = state,
                     hidden = balanceHidden,
                     onToggleHidden = onToggleBalanceHidden,
+                    onOpenPortfolio = onOpenPortfolio,
                 )
             }
 
-            if (onOpenTools != null || onOpenActivity != null) {
-                item { ShortcutRow(onOpenTools = onOpenTools, onOpenActivity = onOpenActivity) }
+            if (onOpenTools != null || onOpenActivity != null || onOpenNews != null) {
+                item {
+                    ShortcutRow(
+                        onOpenTools = onOpenTools,
+                        onOpenActivity = onOpenActivity,
+                        onOpenNews = onOpenNews,
+                    )
+                }
             }
 
             item {
@@ -228,41 +247,33 @@ fun HomeScreen(
                 }
             }
 
-            // Only for someone who has one. There is no counterpart for everyone else, because there is
-            // nothing they are missing: the app withholds no feature from an account without a plan.
-            subscription?.let { item { SubscriptionCard(it) } }
-
-            if (portfolio != null && portfolio.holdings.isNotEmpty()) {
-                // The holdings are masked with the total. Hiding one figure and printing the
-                // three it is the sum of is a curtain with a hole in it.
-                item { HoldingsCard(portfolio.holdings, hidden = balanceHidden) }
-            }
+            // Only in the week it matters. A subscription that is healthy is not news, and a card
+            // on the home screen restating it every day for eleven months is 128dp spent saying
+            // nothing. The state this card exists for is the one where the plan is about to end.
+            subscription?.takeIf { it.endingSoon }?.let { item { SubscriptionCard(it) } }
 
             if (quotes.isEmpty()) {
                 item { EmptyMarket(state = state, onRetry = onRetry) }
             } else {
-                // Above the market, because a watchlist that sits under a fixed list is a list the
-                // reader scrolls past to reach their own. Hidden when empty: an empty card explaining
-                // what a watchlist is takes the place of the market on a first run.
+                // One card, not two. The watchlist used to be a second card above this one, so a
+                // reader with three starred symbols scrolled two headings and two card edges
+                // through the same rows twice. Starred symbols lead, in the order they were
+                // starred, and the rest follow — which is the same information in one object.
+                //
+                // Capped, and the cap is the point: eight rows at eighty points each was the
+                // largest thing on the page, and the markets screen holds all of them, denser,
+                // with a filter and a search. The footer says so and goes there.
                 val watched = quotes.filter { it.instrument.symbol in watchlist }
                     .sortedBy { watchlist.indexOf(it.instrument.symbol) }
-                if (watched.isNotEmpty()) {
-                    item {
-                        MarketCard(
-                            quotes = watched,
-                            onOpenSymbol = onOpenSymbol,
-                            titleRes = R.string.home_watchlist_title,
-                            watchlist = watchlist,
-                            onToggleWatch = onToggleWatch,
-                        )
-                    }
-                }
+                val rest = quotes.filterNot { it.instrument.symbol in watchlist }
                 item {
                     MarketCard(
-                        quotes = quotes,
+                        quotes = (watched + rest).take(HOME_MARKET_ROWS),
                         onOpenSymbol = onOpenSymbol,
                         watchlist = watchlist,
                         onToggleWatch = onToggleWatch,
+                        more = (watched.size + rest.size - HOME_MARKET_ROWS).takeIf { it > 0 },
+                        onOpenMarket = onOpenMarket,
                     )
                 }
             }
@@ -333,6 +344,7 @@ private fun BalanceBlock(
     state: MarketDataState,
     hidden: Boolean,
     onToggleHidden: (() -> Unit)?,
+    onOpenPortfolio: (() -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
@@ -413,56 +425,41 @@ private fun BalanceBlock(
                 color = CoineProColors.TextMuted,
             )
         }
-        Spacer(Modifier.height(6.dp))
-        ConnectionRow(state)
-    }
-}
-
-/* ------------------------------------------------------------------ holdings */
-
-@Composable
-private fun HoldingsCard(holdings: List<HomeHolding>, hidden: Boolean) {
-    CoineProCard(modifier = Modifier.fillMaxWidth()) {
-        CardLabel(stringResource(R.string.home_holdings_title))
-        holdings.forEachIndexed { index, holding ->
-            if (index > 0) RowDivider()
+        // One line where a card used to be. It says how many positions the figure above is the
+        // sum of, and goes to the screen that draws them — which is a better home for them than
+        // this one, and was already built.
+        if (portfolio != null && portfolio.holdings.isNotEmpty() && onOpenPortfolio != null) {
+            val haptics = rememberCoineProHaptics()
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = CoineProSpacing.Row),
-                horizontalArrangement = Arrangement.spacedBy(13.dp),
+                modifier = Modifier
+                    .clip(CoineProShapes.small)
+                    .clickable {
+                        haptics.select()
+                        onOpenPortfolio()
+                    }
+                    .padding(vertical = 3.dp),
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                CoineProAssetLogo(symbol = holding.symbol)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = holding.displayName,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = CoineProColors.TextPrimary,
-                    )
-                    Text(
-                        // The quantity is masked as well. "0.1482 BTC" beside a hidden dollar
-                        // total is the same figure in a different unit, and anybody who can read
-                        // one line of the price list can multiply.
-                        text = CoineProPrivacy.mask(holding.quantityLabel, hidden),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = CoineProColors.TextMuted,
-                        fontWeight = FontWeight.Normal,
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = CoineProPrivacy.mask(holding.valueLabel, hidden),
-                        style = CoineProTextStyles.RowFigure,
-                        color = CoineProColors.TextPrimary,
-                    )
-                    Text(
-                        text = holding.changeLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (holding.isUp) CoineProColors.Buy else CoineProColors.Sell,
-                        fontWeight = FontWeight.Normal,
-                    )
-                }
+                Icon(
+                    painter = painterResource(CoineProIcons.ChevronForward),
+                    contentDescription = null,
+                    tint = CoineProColors.TextDisabled,
+                    modifier = Modifier.size(14.dp),
+                )
+                Text(
+                    text = stringResource(
+                        R.string.home_holdings_count,
+                        portfolio.holdings.size.toPersianDigits(),
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextSecondary,
+                    fontWeight = FontWeight.Normal,
+                )
             }
         }
+        Spacer(Modifier.height(6.dp))
+        ConnectionRow(state)
     }
 }
 
@@ -531,6 +528,9 @@ private fun MarketCard(
     titleRes: Int = R.string.home_market_title,
     watchlist: List<String> = emptyList(),
     onToggleWatch: ((String) -> Unit)? = null,
+    /** How many markets are not on this card. Null when the card is showing all of them. */
+    more: Int? = null,
+    onOpenMarket: (() -> Unit)? = null,
 ) {
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         CardLabel(stringResource(titleRes))
@@ -538,8 +538,46 @@ private fun MarketCard(
             if (index > 0) RowDivider()
             QuoteRow(quote, onOpenSymbol, watchlist, onToggleWatch)
         }
+        // The way out, and it states the number rather than saying «بیشتر». A card that is showing
+        // six of two hundred markets and does not say so reads as a card showing the market.
+        if (more != null && onOpenMarket != null) {
+            RowDivider()
+            val haptics = rememberCoineProHaptics()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        haptics.select()
+                        onOpenMarket()
+                    }
+                    .padding(vertical = CoineProSpacing.Row),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.home_market_more, more.toPersianDigits()),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = CoineProColors.TextSecondary,
+                )
+                Icon(
+                    painter = painterResource(CoineProIcons.ChevronForward),
+                    contentDescription = null,
+                    tint = CoineProColors.TextDisabled,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
     }
 }
+
+/**
+ * How many instruments the home card carries.
+ *
+ * Six is what a reader takes in without scrolling past it, and the markets screen — one tap away
+ * through the footer — holds every one of them with a filter, a search and a sparkline per row.
+ * Eight rows at eighty points was the single largest object on the home screen.
+ */
+private const val HOME_MARKET_ROWS = 6
 
 @Composable
 private fun QuoteRow(
@@ -824,8 +862,12 @@ private fun marketRank(quote: MarketQuote): Int = when (quote.instrument.symbol)
  * would be hiding them.
  */
 @Composable
-private fun ShortcutRow(onOpenTools: (() -> Unit)?, onOpenActivity: (() -> Unit)?) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+private fun ShortcutRow(
+    onOpenTools: (() -> Unit)?,
+    onOpenActivity: (() -> Unit)?,
+    onOpenNews: (() -> Unit)?,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         onOpenTools?.let {
             Shortcut(
                 label = stringResource(R.string.home_shortcut_tools),
@@ -838,6 +880,18 @@ private fun ShortcutRow(onOpenTools: (() -> Unit)?, onOpenActivity: (() -> Unit)
             Shortcut(
                 label = stringResource(R.string.home_shortcut_activity),
                 icon = DesignR.drawable.nav_activity,
+                onClick = it,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        // The third slot, and the reason it exists: news had exactly one entry point in the whole
+        // app — the fourth card down a toolkit screen that is itself three thousand points long —
+        // while the guest home printed twelve headlines in full at the bottom of a page nobody
+        // scrolled to. One is now a place you go, from here.
+        onOpenNews?.let {
+            Shortcut(
+                label = stringResource(R.string.home_shortcut_news),
+                icon = CoineProIcons.News,
                 onClick = it,
                 modifier = Modifier.weight(1f),
             )

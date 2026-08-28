@@ -139,6 +139,7 @@ import com.coinepro.feature.copytrade.CopyTradeScreen
 import com.coinepro.feature.execution.ExecutionScreen
 import com.coinepro.feature.guest.GuestGate
 import com.coinepro.feature.guest.GuestGateScreen
+import com.coinepro.feature.guest.GuestNewsScreen
 import com.coinepro.feature.guest.GuestScreen
 import com.coinepro.feature.home.HomeBriefing
 import com.coinepro.feature.home.HomePortfolio
@@ -974,10 +975,12 @@ private fun MainShell(
         PAPER_TRADE_ROUTE,
         SCRIPT_PATTERN,
         STUDIO_PATTERN,
-        TOOLS_ROUTE,
-        ACTIVITY_ROUTE,
-        NEWS_ROUTE,
-        CALENDAR_ROUTE,
+        // Tools, Activity, News and the calendar are **not** sub-screens and used to be listed
+        // here. A sub-screen loses the bottom bar, which is right for a chart or a lesson — a
+        // place you are inside and leave by going back. These four are places a reader *goes*,
+        // and stripping the bar made Tools in particular a dead end: it fans out to eight
+        // destinations, so a reader who wanted Markets from there had to go back first. That is
+        // most of why the toolkit felt buried.
         LAUNCH_READINESS_ROUTE,
         ADMIN_ROUTE,
     )
@@ -1131,6 +1134,7 @@ private fun MainShell(
                         onOpenSymbol = { navController.navigate(chartRoute(it)) },
                         onOpenMarket = { navController.navigate(AppDestination.MARKETS.route) },
                         onOpenTools = { navController.navigate(TOOLS_ROUTE) },
+                        onOpenNews = { navController.navigate(NEWS_ROUTE) },
                     )
                     return@composable
                 }
@@ -1162,6 +1166,7 @@ private fun MainShell(
                     // Both pills lead to the AI section, which is where the work actually happens.
                     onOpenTools = { navController.navigate(TOOLS_ROUTE) },
                     onOpenActivity = { navController.navigate(ACTIVITY_ROUTE) },
+                    onOpenNews = { navController.navigate(NEWS_ROUTE) },
                     onGenerateSignal = { navController.navigate(AppDestination.AI.route) },
                     // Chart analysis is optional per deployment. Sending the reader to a screen the
                     // server has switched off is a wait that ends in an error every time, so the
@@ -1185,6 +1190,7 @@ private fun MainShell(
                     onSelectPlatform = onSelectPlatform,
                     balanceHidden = profile.balanceHidden,
                     onToggleBalanceHidden = onToggleBalanceHidden,
+                    onOpenPortfolio = { navController.navigate(PORTFOLIO_ROUTE) },
                 )
             }
             composable(ADMIN_ROUTE) {
@@ -1653,6 +1659,14 @@ private fun MainShell(
                 )
             }
             composable(NEWS_ROUTE) {
+                // A guest reads the public headline route, which needs no account and which their
+                // own home screen was already showing twelve of. Pointing them at the members'
+                // screen would hand them a 401 worded as an outage, on content the server
+                // publishes to anybody.
+                if (guest) {
+                    GuestNewsScreen(controller = guestController)
+                    return@composable
+                }
                 NewsScreen(
                     platform = activePlatform,
                     controller = marketIntelController,
@@ -1679,7 +1693,7 @@ private fun MainShell(
                     // Null for a guest, on the three that read a signed-in route. Everything else
                     // on this screen is local to the phone and opens for anybody.
                     onOpenConnections = if (guest) null else ({ navController.navigate(CONNECTIONS_ROUTE) }),
-                    onOpenNews = if (guest) null else ({ navController.navigate(NEWS_ROUTE) }),
+                    onOpenNews = { navController.navigate(NEWS_ROUTE) },
                     onOpenCalendar = if (guest) null else ({ navController.navigate(CALENDAR_ROUTE) }),
                     onOpenPortfolio = if (guest) null else ({ navController.navigate(PORTFOLIO_ROUTE) }),
                     onOpenAcademy = if (hasAcademy && !guest) {

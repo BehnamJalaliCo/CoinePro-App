@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,9 +21,11 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
@@ -30,6 +34,7 @@ import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProMarketRow
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -79,6 +84,15 @@ fun GuestScreen(
     onOpenMarket: (() -> Unit)? = null,
     /** The local toolkit: journal, paper trading, NamaScript. None of it needs an account. */
     onOpenTools: (() -> Unit)? = null,
+    /**
+     * The news screen, which a guest could not reach at all.
+     *
+     * This page used to print twelve headline cards in full — 1,700dp, about forty per cent of the
+     * whole page, at the very bottom, so a guest scrolled four screens to reach them and had
+     * nowhere to go afterwards. The headlines come from a public route; there was never a reason
+     * for them to be trapped here.
+     */
+    onOpenNews: (() -> Unit)? = null,
 ) {
     val prices by controller.prices.collectAsStateWithLifecycle()
     val news by controller.news.collectAsStateWithLifecycle()
@@ -128,9 +142,13 @@ fun GuestScreen(
             GuestPricesState.Loading -> item { CoineProThinkingDots() }
             // One card holding every row, not a card per row: the divider between two rows is a
             // hairline the eye crosses, where a gap between two cards is a boundary it stops at.
+            // Six, not twenty. The full list is one tap away on the markets screen and is
+            // denser there — sparklines, a category filter, a search. Twenty rows here was
+            // 1,600dp of one page that also has to hold a track record, a membership card and
+            // the news.
             is GuestPricesState.Ready -> item {
                 CoineProCard(modifier = Modifier.fillMaxWidth()) {
-                    current.prices.quotes.forEachIndexed { index, quote ->
+                    current.prices.quotes.take(HOME_PRICE_ROWS).forEachIndexed { index, quote ->
                         if (index > 0) {
                             Box(
                                 Modifier
@@ -187,8 +205,9 @@ fun GuestScreen(
         }
         when (val current = news) {
             GuestNewsState.Loading -> item { CoineProThinkingDots() }
-            is GuestNewsState.Ready -> items(current.headlines, key = GuestHeadline::slug) { headline ->
-                HeadlineRow(headline)
+            // The newest headline and a count, not twelve cards. See `onOpenNews`.
+            is GuestNewsState.Ready -> current.headlines.firstOrNull()?.let { newest ->
+                item { NewsTeaser(newest, current.headlines.size, onOpenNews) }
             }
             is GuestNewsState.Unavailable -> item {
                 Text(
@@ -368,29 +387,63 @@ fun TrackRecordSummary(record: GuestTrackRecord, modifier: Modifier = Modifier) 
     }
 }
 
+/**
+ * The news, as one card.
+ *
+ * Twelve headline cards at the foot of the guest home was the single largest thing on the page and
+ * the last thing on it — so a reader scrolled past everything the app is for to reach a list they
+ * then could not open. This says what the newest one is and how many there are, and goes to the
+ * screen built for reading them.
+ *
+ * Where there is nowhere to go — a build with no news route — the card still renders the headline
+ * and simply is not clickable. A teaser that led nowhere would be worse than the twelve cards.
+ */
 @Composable
-private fun HeadlineRow(headline: GuestHeadline) {
-    CoineProCard(modifier = Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
-            Text(
-                text = headline.title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = CoineProColors.TextPrimary,
-            )
-            headline.summary?.let {
+private fun NewsTeaser(newest: GuestHeadline, total: Int, onOpenNews: (() -> Unit)?) {
+    CoineProCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .let { base -> onOpenNews?.let { base.clickable(onClick = it) } ?: base },
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            ) {
                 Text(
-                    text = it,
+                    text = newest.title,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = CoineProColors.TextSecondary,
+                    color = CoineProColors.TextPrimary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    // A prose count, so Persian digits — the rule the whole app follows.
+                    text = stringResource(R.string.guest_news_count, total.toPersianDigits()),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextMuted,
+                    fontWeight = FontWeight.Normal,
                 )
             }
-            headline.source?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = CoineProColors.TextMuted,
+            if (onOpenNews != null) {
+                Icon(
+                    painter = painterResource(CoineProIcons.ChevronForward),
+                    contentDescription = null,
+                    tint = CoineProColors.TextDisabled,
+                    modifier = Modifier.size(16.dp),
                 )
             }
         }
     }
 }
+
+/**
+ * How many market rows the guest home carries.
+ *
+ * Six is what fits above a fold without pushing everything else off the page, and the markets
+ * screen holds the rest — denser, filtered and searchable.
+ */
+private const val HOME_PRICE_ROWS = 6

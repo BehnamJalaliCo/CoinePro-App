@@ -67,4 +67,7 @@
     <string name="home_shortcut_activity">Activity</string>
     <string name="home_balance_hide">Hide balance</string>
     <string name="home_balance_show">Show balance</string>
+    <string name="home_market_more">%1$s more markets</string>
+    <string name="home_holdings_count">%1$s holdings · portfolio</string>
+    <string name="home_shortcut_news">News</string>
 </resources>

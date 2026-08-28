@@ -68,4 +68,7 @@
     <string name="home_shortcut_activity">فعالیت</string>
     <string name="home_balance_hide">پنهان کردن موجودی</string>
     <string name="home_balance_show">نمایش موجودی</string>
+    <string name="home_market_more">%1$s بازار دیگر</string>
+    <string name="home_holdings_count">%1$s دارایی · پرتفوی</string>
+    <string name="home_shortcut_news">اخبار</string>
 </resources>

@@ -39,4 +39,7 @@
     <string name="guest_gate_eyebrow">With a free account</string>
     <string name="membership_lbank_note">If you want the service to trade for you (copy trading), this is the only one:</string>
     <string name="membership_ourbit_note">If you only want the signals and will place your own orders:</string>
+    <string name="guest_news_count">%1$s fresh headlines</string>
+    <string name="guest_news_retry">Retry</string>
+    <string name="guest_news_empty">No headlines published.</string>
 </resources>

@@ -237,14 +237,20 @@ class ScreenshotRenderTest {
             displayName = "بهنام",
             briefing = ScreenshotFixtures.homeBriefing,
             portfolio = ScreenshotFixtures.homePortfolio,
-            openSignals = ScreenshotFixtures.homeSignals,
+            // Not passed. The shipping app supplies no `openSignals` — home has never rendered
+            // this card — so the reference render carried 233dp the product does not have.
             platforms = MarketPlatform.entries,
             activePlatform = MarketPlatform.TRADEYAR,
-            // Passed because the running app passes it. A render that leaves an optional callback
-            // null draws a screen the app never shows — here, the balance without the control that
-            // hides it — and then the review that the screenshots exist for is a review of
-            // something else.
+            // Passed because the running app passes them. A render that leaves an optional
+            // callback null draws a screen the app never shows — the balance without the control
+            // that hides it, the quick row without any of its three slots — and then the review
+            // the screenshots exist for is a review of something else.
             onToggleBalanceHidden = {},
+            onOpenPortfolio = {},
+            onOpenTools = {},
+            onOpenActivity = {},
+            onOpenNews = {},
+            watchlist = listOf("ETHUSDT", "SOLUSDT"),
         )
     }
 

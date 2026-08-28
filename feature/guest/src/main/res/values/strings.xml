@@ -39,4 +39,7 @@
     <string name="guest_gate_eyebrow">با یک حساب رایگان</string>
     <string name="membership_lbank_note">اگر می‌خواهید سرویس به‌جای شما معامله کند (کپی‌تریدینگ)، فقط این یکی:</string>
     <string name="membership_ourbit_note">اگر فقط سیگنال‌ها را می‌خواهید و خودتان سفارش می‌گذارید:</string>
+    <string name="guest_news_count">%1$s خبر تازه</string>
+    <string name="guest_news_retry">تلاش دوباره</string>
+    <string name="guest_news_empty">خبری منتشر نشده است.</string>
 </resources>
