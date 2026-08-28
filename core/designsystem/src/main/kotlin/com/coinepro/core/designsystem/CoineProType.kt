@@ -45,38 +45,56 @@ private fun coineProTextStyle(
 )
 
 /**
- * The scale, one step above Material's defaults across the board.
+ * The scale: Persian's uplift over Material, and no more than that.
  *
- * Two reasons it is not the stock scale. Persian glyphs carry their meaning in marks and curves
- * that are small relative to the letter body — a dot's position separates ب from ت from ث — so
- * Persian needs more size than Latin to stay comfortable at the same reading distance. And this
- * direction spends whitespace generously, which only reads as calm if the type is confident enough
- * to hold the space; at Material's sizes the same layout reads as sparse instead.
+ * ### What this used to say, and why it was wrong
  *
- * Letter spacing goes the other way. Material's positive tracking is tuned for Latin and pushes
- * Persian glyphs apart at the joins, so it is dropped to zero everywhere except where a Latin
- * all-caps run needs it.
+ * It said "one step above Material's defaults across the board", and the argument was sound as far
+ * as it went — Persian glyphs carry their meaning in marks that are small relative to the letter
+ * body (a dot's position separates ب from ت from ث), so Persian genuinely does need more size than
+ * Latin at the same reading distance.
+ *
+ * The mistake was the size of the correction and where it was applied. Persian wants about **one
+ * point**; this was carrying two to three, on every role including the dense ones. And the line
+ * heights were left at Material's *reading* ratios — 1.63 on a list title, 1.73 on body, 1.76 on
+ * `bodyLarge` — which is right for a paragraph somebody sits down with and wrong for a row in a
+ * market list. Dense UI runs at 1.30–1.45.
+ *
+ * The two compounded. Every two-line row paid the size once and the leading twice, and the owner's
+ * verdict on the result was «همه چیز گنده و بزرگه … ظریف و شیک و لوکس نیست» — everything is bulky;
+ * it is not delicate. He is right, and this file is where it came from.
+ *
+ * So: reading text keeps Persian's point and loses the slack leading. The dense roles — labels,
+ * row titles, button text, captions — come back to where a terminal puts them. The hero balance
+ * stays a hero at 36sp, which is still twice the next-largest thing on its screen.
+ *
+ * ### Letter spacing
+ *
+ * Material's positive tracking is tuned for Latin and pushes Persian glyphs apart at the joins, so
+ * it stays at zero for everything a reader reads. The exception is [Typography.labelSmall], the
+ * caption and column-heading role, which gains a little: at 11sp a label wants to read as a label
+ * rather than as body text that has been shrunk.
  */
 val CoineProTypography = Typography(
-    displayLarge = coineProTextStyle(60, 76, FontWeight.Bold, -0.5),
-    displayMedium = coineProTextStyle(48, 62, FontWeight.Bold, -0.25),
-    displaySmall = coineProTextStyle(38, 50, FontWeight.Bold),
+    displayLarge = coineProTextStyle(52, 62, FontWeight.Bold, -0.5),
+    displayMedium = coineProTextStyle(42, 52, FontWeight.Bold, -0.25),
+    displaySmall = coineProTextStyle(34, 42, FontWeight.Bold),
 
-    headlineLarge = coineProTextStyle(34, 46, FontWeight.Bold),
-    headlineMedium = coineProTextStyle(30, 42, FontWeight.Bold),
-    headlineSmall = coineProTextStyle(26, 38, FontWeight.Bold),
+    headlineLarge = coineProTextStyle(30, 38, FontWeight.Bold),
+    headlineMedium = coineProTextStyle(25, 32, FontWeight.Bold),
+    headlineSmall = coineProTextStyle(22, 29, FontWeight.Bold),
 
-    titleLarge = coineProTextStyle(24, 36, FontWeight.Bold),
-    titleMedium = coineProTextStyle(18, 28, FontWeight.Bold),
-    titleSmall = coineProTextStyle(16, 26, FontWeight.Bold),
+    titleLarge = coineProTextStyle(21, 28, FontWeight.Bold),
+    titleMedium = coineProTextStyle(17, 23, FontWeight.Bold),
+    titleSmall = coineProTextStyle(15, 20, FontWeight.Bold),
 
-    bodyLarge = coineProTextStyle(17, 30, FontWeight.Normal),
-    bodyMedium = coineProTextStyle(15, 26, FontWeight.Normal),
-    bodySmall = coineProTextStyle(13, 22, FontWeight.Normal),
+    bodyLarge = coineProTextStyle(16, 23, FontWeight.Normal),
+    bodyMedium = coineProTextStyle(14, 20, FontWeight.Normal),
+    bodySmall = coineProTextStyle(13, 18, FontWeight.Normal),
 
-    labelLarge = coineProTextStyle(16, 24, FontWeight.Bold),
-    labelMedium = coineProTextStyle(14, 20, FontWeight.Bold),
-    labelSmall = coineProTextStyle(13, 18, FontWeight.Bold),
+    labelLarge = coineProTextStyle(15, 20, FontWeight.Bold),
+    labelMedium = coineProTextStyle(13, 17, FontWeight.Bold),
+    labelSmall = coineProTextStyle(11, 15, FontWeight.Normal, 0.4),
 )
 
 /** Styles that carry a specific job rather than a place on the Material scale. */
@@ -90,11 +108,11 @@ object CoineProTextStyles {
      * balance on a narrow phone. The negative tracking is what keeps a long Latin figure from
      * looking loose beside the Persian label above it.
      */
-    val Balance: TextStyle = coineProTextStyle(44, 58, FontWeight.Bold, -1.0)
+    val Balance: TextStyle = coineProTextStyle(36, 46, FontWeight.Bold, -0.8)
 
     /**
      * A figure that is the subject of its row rather than an annotation on it — a price in a market
      * list, a position's value. One step above the row's own title so the number leads.
      */
-    val RowFigure: TextStyle = coineProTextStyle(17, 26, FontWeight.Bold, -0.2)
+    val RowFigure: TextStyle = coineProTextStyle(15, 20, FontWeight.Bold, -0.2)
 }

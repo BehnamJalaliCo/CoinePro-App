@@ -183,9 +183,13 @@ fun CoineProSecondaryButton(
 @Composable
 private fun ButtonContent(text: String, @DrawableRes icon: Int?, ink: Color) {
     Row(
+        // Twelve, not sixteen. With the label at 15sp that is a 46dp button — a comfortable
+        // target and the height every reference app puts a primary action at. At sixteen it was
+        // 56dp, which is taller than a list row, and it appears 105 times in this app: it was the
+        // loudest object on every screen that had one.
         modifier = Modifier.padding(
-            horizontal = if (icon == null) 20.dp else 16.dp,
-            vertical = 16.dp,
+            horizontal = if (icon == null) 18.dp else 14.dp,
+            vertical = 12.dp,
         ),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,

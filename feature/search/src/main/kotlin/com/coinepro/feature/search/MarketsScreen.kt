@@ -36,6 +36,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -284,12 +285,21 @@ private fun MarketRow(row: MarketSearchRow, line: List<Double>, onClick: () -> U
                 colour = tone,
             )
         }
-        Column(horizontalAlignment = Alignment.End) {
+        Column(
+            // Fixed and end-aligned, so the decimal points line up down the column. Free-width,
+            // `1.08` and `91,248.30` both started at the same x and ended 36dp apart — a column of
+            // prices nothing could be compared across, which is most of what a market list is for.
+            modifier = Modifier.width(FIGURE_COLUMN),
+            horizontalAlignment = Alignment.End,
+        ) {
             Text(
                 text = row.quote?.let { MarketNumberFormatter.priceAuto(it.price) }
                     ?: stringResource(R.string.search_no_price),
                 style = MaterialTheme.typography.labelMedium.copy(textDirection = TextDirection.Ltr),
                 color = CoineProColors.TextPrimary,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Right,
+                maxLines = 1,
             )
             // The shared pill, not a local one. This row had grown its own — a flat alpha over the
             // move's colour rather than the tint formula the rest of the app computes against the
@@ -356,3 +366,6 @@ private fun SignalStrip(strip: MarketsSignalStrip) {
 private fun ColumnScope.Centred(content: @Composable () -> Unit) {
     Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { content() }
 }
+
+/** The price column's width, matching `CoineProMarketRow` so the two lists align the same way. */
+private val FIGURE_COLUMN = 92.dp

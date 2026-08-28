@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -308,6 +309,7 @@ private fun Stepper(label: String, onClick: () -> Unit) {
     val haptics = rememberCoineProHaptics()
     Box(
         modifier = Modifier
+            .minimumInteractiveComponentSize()
             .pressScale(interaction, CoineProPress.CONTROL)
             .size(36.dp)
             .clip(CircleShape)
@@ -429,6 +431,7 @@ private fun AlertRow(alert: LocalPriceAlert, onToggle: (Boolean) -> Unit, onDele
                 contentDescription = stringRes(R.string.notifications_alerts_delete),
                 tint = CoineProColors.Sell,
                 modifier = Modifier
+                    .minimumInteractiveComponentSize()
                     .padding(start = CoineProSpacing.Half)
                     .clip(CircleShape)
                     .clickable {

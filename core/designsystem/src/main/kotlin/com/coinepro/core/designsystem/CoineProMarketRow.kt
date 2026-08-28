@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +29,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.MarketNumberFormatter
 
@@ -64,7 +66,7 @@ fun CoineProPercentPill(
             .background(CoineProTint.fill(ink, background))
             // Wide enough that a row of pills forms a column rather than a ragged edge — the point
             // of the shape is comparison down the list, and comparison needs alignment.
-            .defaultMinSize(minWidth = 68.dp)
+            .defaultMinSize(minWidth = 60.dp)
             .padding(horizontal = 8.dp, vertical = 3.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -202,7 +204,7 @@ fun CoineProMarketRow(
                         }
                 } ?: base
             }
-            .padding(horizontal = horizontalPadding, vertical = CoineProSpacing.OneHalf),
+            .padding(horizontal = horizontalPadding, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -216,6 +218,12 @@ fun CoineProMarketRow(
                 ),
                 contentDescription = null,
                 modifier = Modifier
+                    // The glyph stays 18dp and the *target* becomes 48. This app was oversized in
+                    // everything the eye reads and undersized in everything the thumb hits — a
+                    // 26dp star beside 17sp type is what makes a layout read as scaled-up rather
+                    // than designed. Shrinking the type without growing these would have made the
+                    // app look tighter and feel worse.
+                    .minimumInteractiveComponentSize()
                     .clip(CoineProShapes.small)
                     .clickable {
                         // Starring is a change the reader made to their own list, not navigation,
@@ -228,7 +236,7 @@ fun CoineProMarketRow(
                 tint = if (starred) CoineProColors.Accent else CoineProColors.TextDisabled,
             )
         }
-        CoineProAssetLogo(symbol = symbol, size = 34.dp)
+        CoineProAssetLogo(symbol = symbol, size = 30.dp)
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(
                 text = title,
@@ -245,14 +253,25 @@ fun CoineProMarketRow(
             )
         }
         Column(
+            // A fixed width, and this is the single refinement that separates a terminal from a
+            // list of numbers. Free-width, the column aligned on its *first* digit: `1.08`,
+            // `91,248.30` and `3,147.62` all started at the same x and ended up to 36dp apart, so
+            // the decimal points wandered down the list and nothing could be compared by eye.
+            // Pinned and end-aligned, the units digit lands in the same place on every row.
+            //
+            // The face helps: every Latin digit in IRANYekanX carries the same advance, so a
+            // ticking price does not jitter either.
+            modifier = Modifier.width(FIGURE_COLUMN),
             horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(5.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
             Text(
                 text = price ?: "—",
                 style = CoineProTextStyles.RowFigure,
                 color = if (price == null) CoineProColors.TextMuted else CoineProColors.TextPrimary,
                 maxLines = 1,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Right,
             )
             // Two lines, never three. The range bar sits *beside* the pill rather than under it,
             // which buys the day's range for no extra height — the reason most lists do not carry
@@ -294,4 +313,13 @@ fun CoineProMarketRow(
  * than chosen, so a row that happens to have no price and no pill still reserves the same space as
  * its neighbours.
  */
-private val ROW_MIN_HEIGHT = 62.dp
+private val ROW_MIN_HEIGHT = 56.dp
+
+/**
+ * How wide the figure column is.
+ *
+ * Wide enough for `105,432.10` at the row figure's size, which is the longest price either backend
+ * quotes, and narrow enough to leave the instrument its name. Fixed rather than measured, because
+ * a column that resizes with its contents is a column that does not align.
+ */
+private val FIGURE_COLUMN = 92.dp

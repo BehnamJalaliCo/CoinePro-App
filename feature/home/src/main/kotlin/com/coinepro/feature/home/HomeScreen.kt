@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -347,7 +348,10 @@ private fun BalanceBlock(
     onOpenPortfolio: (() -> Unit)? = null,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+        // No horizontal inset. Four points here put the balance block on a third left edge,
+        // between the screen gutter and the cards' own content — three different edges down one
+        // scroll, which is the kind of thing that reads as "unfinished" without being nameable.
+        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Row(
@@ -373,6 +377,8 @@ private fun BalanceBlock(
                     ),
                     contentDescription = label,
                     modifier = Modifier
+                        // Glyph 18, target 48. See the star in `CoineProMarketRow`.
+                        .minimumInteractiveComponentSize()
                         .clip(CoineProShapes.small)
                         .clickable {
                             haptics.select()

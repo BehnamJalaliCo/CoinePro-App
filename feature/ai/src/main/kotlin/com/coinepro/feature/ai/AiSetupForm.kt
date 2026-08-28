@@ -72,8 +72,12 @@ internal fun AiChip(
     ) {
         Text(
             text,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-            style = MaterialTheme.typography.labelLarge,
+            // A filter chip, not a button. At `labelLarge` with 8dp of padding these were 40dp
+            // tall and there are twenty of them on this screen — a wall of chips a reader scrolls
+            // past to reach the action. The medium label at 6dp is 30dp, which is where every
+            // reference app puts one.
+            modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelMedium,
             color = if (selected) CoineProColors.GoldBright else CoineProColors.TextSecondary,
         )
     }

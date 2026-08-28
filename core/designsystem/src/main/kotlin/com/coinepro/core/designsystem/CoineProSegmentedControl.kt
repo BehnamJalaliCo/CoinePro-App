@@ -74,12 +74,14 @@ private fun RowScope.Segment(
                 color = if (selected) CoineProColors.SurfaceElevated else CoineProColors.Surface,
                 shape = CoineProPillShape,
             )
-            .padding(vertical = 12.dp),
+            // A filter above the balance should not weigh the same as the screen's primary
+            // action. Nine points and the medium label put it at 40dp instead of 56.
+            .padding(vertical = 9.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelMedium,
             color = if (selected) CoineProColors.TextPrimary else CoineProColors.TextMuted,
             textAlign = TextAlign.Center,
         )

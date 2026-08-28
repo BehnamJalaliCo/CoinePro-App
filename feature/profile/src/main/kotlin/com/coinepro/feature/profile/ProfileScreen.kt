@@ -217,7 +217,7 @@ private fun Hero(
             .padding(
                 start = CoineProSpacing.Gutter,
                 end = CoineProSpacing.Gutter,
-                top = CoineProSpacing.Four,
+                top = CoineProSpacing.Three,
                 bottom = CoineProSpacing.Two,
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -227,7 +227,10 @@ private fun Hero(
             CoineProAvatar(
                 spec = avatar,
                 initial = initial,
-                size = 112.dp,
+                // Eighty, not a hundred and twelve. At 112 the disc plus its top padding took
+                // 144dp before the reader's own name appeared — most of the first screen of the
+                // page about them spent on one circle.
+                size = 80.dp,
                 modifier = Modifier.clickable(onClick = onEditAvatar),
                 contentDescription = stringResource(R.string.profile_avatar_description),
             )

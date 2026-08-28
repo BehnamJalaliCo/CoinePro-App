@@ -21,15 +21,30 @@ object CoineProSpacing {
     val Six = 48.dp
 
     /** Screen edge to content. */
-    val Gutter = 20.dp
+    /**
+     * Screen edge to content.
+     *
+     * Sixteen, which is what Markets, Signals and Tools already used while Home, Profile and
+     * Notifications used twenty — so a reader moving between them watched the content edge jump
+     * four points. Cards also gain eight points of usable width, which lets a row breathe sideways
+     * instead of getting taller.
+     */
+    val Gutter = 16.dp
 
     /** Between cards in a scrolling stack. */
+    /**
+     * Between two cards.
+     *
+     * It has to be **larger than the padding inside a card** or the cards read as slabs rather than
+     * as a rhythm. Profile and Notifications had it inverted — 8dp between, 20dp within — which is
+     * exactly what made those two screens the heaviest in the app.
+     */
     val Stack = 20.dp
 
     /** Inside a card, edge to content. */
-    val CardHorizontal = 20.dp
-    val CardVertical = 20.dp
+    val CardHorizontal = 16.dp
+    val CardVertical = 16.dp
 
     /** Above and below one row inside a card. */
-    val Row = 14.dp
+    val Row = 10.dp
 }

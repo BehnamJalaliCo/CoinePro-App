@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -230,6 +231,9 @@ fun CoineProListHeader(
 fun CoineProHeaderAction(icon: Int, label: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
+            // Drawn at 34 and touchable at 48. This is the refresh button at the head of every
+            // list in the app, so it is the target a reader misses most often.
+            .minimumInteractiveComponentSize()
             .size(34.dp)
             .clip(CoineProShapes.small)
             .background(CoineProColors.SurfaceElevated)
@@ -240,7 +244,7 @@ fun CoineProHeaderAction(icon: Int, label: String, onClick: () -> Unit) {
             painter = painterResource(icon),
             contentDescription = label,
             tint = CoineProColors.TextSecondary,
-            modifier = Modifier.size(17.dp),
+            modifier = Modifier.size(18.dp),
         )
     }
 }
@@ -283,7 +287,7 @@ fun <T> CoineProSegmentTabs(
                         if (!active) haptics.select()
                         onSelect(value)
                     }
-                    .padding(vertical = 7.dp),
+                    .padding(vertical = 9.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
