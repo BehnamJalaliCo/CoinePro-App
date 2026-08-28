@@ -8,7 +8,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.coinepro.app.notifications.PushCoordinator
 import com.coinepro.app.sync.BackgroundSyncScheduler
@@ -70,7 +70,15 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+/**
+ * A `FragmentActivity` rather than a plain `ComponentActivity`, for one reason.
+ *
+ * `BiometricPrompt` takes a `FragmentActivity` — it hosts its dialog in a fragment so the prompt
+ * survives a rotation mid-authentication. `FragmentActivity` *is* a `ComponentActivity`, so
+ * nothing else in this file changes and Compose, Hilt and the result launchers all behave exactly
+ * as before. See `BiometricGate`.
+ */
+class MainActivity : FragmentActivity() {
     @Inject lateinit var sessionController: SessionController
     @Inject lateinit var emailAuthController: EmailAuthController
     @Inject lateinit var guestController: GuestController

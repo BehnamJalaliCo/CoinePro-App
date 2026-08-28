@@ -139,4 +139,19 @@
     <string name="action_undo">برگردان</string>
     <string name="profile_action_support">پشتیبانی و بازخورد</string>
     <string name="profile_action_support_note">مستقیم به یک آدم می‌رسد، نه به یک ربات.</string>
+    <string name="lock_prompt_title">کوین‌پرو قفل است</string>
+    <string name="lock_prompt_subtitle">با اثر انگشت، چهره یا رمز گوشی باز کنید.</string>
+    <string name="lock_screen_title">قفل است</string>
+    <string name="lock_screen_body">این گوشی می‌پرسد شما هستید یا نه. حسابتان باز است؛ فقط این پنجره بسته است.</string>
+    <string name="lock_screen_action">باز کردن</string>
+    <string name="profile_action_lock">قفل برنامه</string>
+    <string name="profile_action_lock_on">روشن</string>
+    <string name="profile_action_lock_off">خاموش</string>
+    <string name="lock_sheet_title">قفل برنامه</string>
+    <string name="lock_sheet_subtitle">کوین‌پرو با اثر انگشت، چهره یا رمز همین گوشی باز می‌شود.</string>
+    <string name="lock_sheet_switch">پرسیدن هنگام باز کردن آپ</string>
+    <string name="lock_sheet_note">رمز تازه‌ای نمی‌سازیم؛ همان قفل خود گوشی است. تا ۳۰ ثانیه بعد از بیرون رفتن از آپ دوباره نمی‌پرسد، تا کپی‌کردن یک کد از آپ دیگر هر بار به یک قفل نخورد.</string>
+    <string name="lock_sheet_not_enrolled">روی این گوشی هنوز اثر انگشت یا چهره‌ای ثبت نشده.</string>
+    <string name="lock_sheet_enrol">ثبت در تنظیمات گوشی</string>
+    <string name="lock_sheet_credential_only">این گوشی حسگر ندارد؛ با رمز، الگو یا پین خودش باز می‌شود.</string>
 </resources>

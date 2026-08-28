@@ -15,6 +15,61 @@ it is for.
 
 ---
 
+## [1.37.0] — 2026-08-28 — Open it with a finger
+
+An app lock: a fingerprint, a face, or the phone's own passcode, asked for when the app opens.
+
+### It locks the app, not the account
+
+The tokens stay where they were, in the hardware keystore, and unlocking signs nobody in or out.
+This is a curtain over a phone somebody else is holding and it answers exactly one threat — an
+unlocked phone in the wrong hands, briefly. It is not a defence against somebody with the device
+and time, and the file says so rather than letting a reader believe their balance is safe on a
+phone they lent out.
+
+It is the other half of the eye that hides the balance behind six dots: that one hides a number
+from a shoulder, this one hides the whole app from a hand.
+
+### No new passcode
+
+`BIOMETRIC_STRONG or DEVICE_CREDENTIAL`, both. A reader with wet hands, a cut finger or gloves has
+to be able to get into their own app, and biometric-only locks are the ones people uninstall over.
+The fallback is the phone's own PIN — the same secret it already uses — so nothing here asks
+anybody to remember a code this app invented.
+
+### The grace period is the whole design
+
+A lock that re-arms the instant the app leaves the foreground is a lock nobody keeps on. Copying a
+code out of an authenticator, answering a message, screenshotting a chart — every one is a trip out
+and back, and being challenged each time is what makes people switch the feature off. Thirty
+seconds is free; longer than that and the phone was put down.
+
+Measured on `elapsedRealtime`, not the wall clock: it is monotonic and counts while the phone
+sleeps, and a grace period that could be extended by changing the time is not a lock.
+
+### It never keeps anybody out
+
+If the phone loses its ability to authenticate — the reader removed their fingerprints, a work
+policy changed — the challenge is skipped rather than shown. An app that cannot be opened again is
+a far worse failure than the one this guards against. And the lock screen carries a button, because
+the prompt is dismissable and a locked screen with no way forward is the trap this kind of feature
+usually ships with.
+
+The policy is pure and is nine unit tests, including the ones that assert it does **not** challenge
+— a lock that asks too often gets switched off, and a lock that is off protects nothing.
+
+### The three phones that are not the happy one
+
+A switch alone would be right on a phone with a fingerprint enrolled and misleading on every other
+kind. Hardware but nothing enrolled gets a shortcut into the system's own enrolment; no sensor but
+a PIN is told plainly that its passcode is what will be used; a phone with no screen lock at all
+never sees the row, because the app cannot add a lock the device does not have.
+
+`MainActivity` becomes a `FragmentActivity` — `BiometricPrompt` requires one, so its dialog can
+survive a rotation mid-authentication. It is a subclass of what was there, so nothing else moved.
+
+---
+
 ## [1.36.1] — 2026-08-28 — Drag the price gutter
 
 The last gesture the chart was missing, and the one that answers two opposite complaints with one

@@ -81,6 +81,10 @@ import com.coinepro.core.designsystem.CoineProReading
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import com.coinepro.app.security.AppLockSheet
+import com.coinepro.app.security.BiometricGate
+import com.coinepro.app.security.LockScreen
+import com.coinepro.app.security.rememberLockCapability
 import com.coinepro.core.designsystem.CoineProConfirmDialog
 import com.coinepro.core.designsystem.CoineProOfflineBar
 import com.coinepro.core.designsystem.CoineProToast
@@ -640,6 +644,9 @@ fun CoineProApp(
     val online by networkStatus.online.collectAsStateWithLifecycle(initialValue = true)
     val marketColors by userPreferencesStore.marketColors
         .collectAsStateWithLifecycle(MarketColorScheme.GREEN_UP)
+    // `false` initially, which is also the stored default. Starting `true` would flash a lock
+    // screen at every reader who has never turned it on.
+    val appLockEnabled by userPreferencesStore.appLockEnabled.collectAsStateWithLifecycle(false)
     val systemDark = isSystemInDarkTheme()
     val darkTheme = when (themeMode) {
         ThemeMode.SYSTEM -> systemDark
@@ -655,6 +662,13 @@ fun CoineProApp(
         // action without a `Scaffold` and a `SnackbarHostState` being threaded to it. See
         // `CoineProToast`.
         ProvideToaster {
+        // Inside the theme, so the lock screen is drawn in the reader's own palette, and around
+        // *everything*, so nothing of the app composes behind it — a screenshot in the recents
+        // list cannot show a balance that is supposed to be behind a fingerprint.
+        BiometricGate(
+            enabled = appLockEnabled,
+            lockedContent = { unlock -> LockScreen(onUnlock = unlock) },
+        ) {
         when (val current = session) {
             is SessionState.SignedIn -> MainShell(
                 guest = false,
@@ -740,6 +754,8 @@ fun CoineProApp(
                         platformSessions.logoutAll()
                     }
                 },
+                appLockEnabled = appLockEnabled,
+                onSetAppLockEnabled = { on -> scope.launch { userPreferencesStore.setAppLockEnabled(on) } },
                 themeMode = themeMode,
                 onSetThemeMode = { mode -> scope.launch { userPreferencesStore.setThemeMode(mode) } },
                 marketColors = marketColors,
@@ -873,13 +889,15 @@ fun CoineProApp(
                         activePlatform = MarketPlatform.TRADEYAR,
                         onSelectPlatform = {},
                         onLogout = { signingIn = true },
+                        appLockEnabled = appLockEnabled,
+                        onSetAppLockEnabled = { on -> scope.launch { userPreferencesStore.setAppLockEnabled(on) } },
                         themeMode = themeMode,
                         onSetThemeMode = { mode -> scope.launch { userPreferencesStore.setThemeMode(mode) } },
                         marketColors = marketColors,
                         onSetMarketColors = { scheme -> scope.launch { userPreferencesStore.setMarketColors(scheme) } },
                         online = online,
                     )
-                    return@ProvideToaster
+                    return@BiometricGate
                 }
 
                 EmailAuthScreen(
@@ -924,6 +942,7 @@ fun CoineProApp(
                 onRetry = { scope.launch { platformSessions.controller(activePlatform).restore() } },
                 onLogout = { scope.launch { platformSessions.logoutAll() } },
             )
+        }
         }
         }
     }
@@ -1022,6 +1041,9 @@ private fun MainShell(
     /** Narrows the live price feed to what the markets list is showing. */
     onSubscribeSymbols: (Set<String>) -> Unit = {},
     onLogout: () -> Unit,
+    /** Whether the app asks for a fingerprint when it opens, and how to change it. */
+    appLockEnabled: Boolean,
+    onSetAppLockEnabled: (Boolean) -> Unit,
     /** Which palette this reader pinned, and how to change it. See [ThemeMode]. */
     themeMode: ThemeMode,
     onSetThemeMode: (ThemeMode) -> Unit,
@@ -1041,6 +1063,10 @@ private fun MainShell(
     // neither belongs to a navigation destination: a sheet a reader picks a palette in, and the
     // question asked before a sign-out throws away both platforms' tokens.
     var appearanceOpen by rememberSaveable { mutableStateOf(false) }
+    var appLockOpen by rememberSaveable { mutableStateOf(false) }
+    // What this phone can do about proving who is holding it. Read once — it changes only when
+    // somebody enrols a fingerprint, which happens outside this app.
+    val lockCapability = rememberLockCapability()
     var signOutAsked by rememberSaveable { mutableStateOf(false) }
     // What a finished action says back. Before this, no successful action anywhere in the app gave
     // any feedback at all — a saved layout, a created alert, a copied fingerprint all completed in
@@ -1493,6 +1519,25 @@ private fun MainShell(
                                     onClick = { navController.navigate(ALERTS_ROUTE) },
                                 ),
                             )
+                            // Only where the phone can carry a lock at all. On a device with no
+                            // screen lock the switch would be a question the reader cannot
+                            // answer — this app cannot add a lock the device does not have.
+                            if (lockCapability.offerable) {
+                                add(
+                                    ProfileAction(
+                                        label = stringResource(R.string.profile_action_lock),
+                                        icon = CoineProIcons.Locked,
+                                        value = stringResource(
+                                            if (appLockEnabled) {
+                                                R.string.profile_action_lock_on
+                                            } else {
+                                                R.string.profile_action_lock_off
+                                            },
+                                        ),
+                                        onClick = { appLockOpen = true },
+                                    ),
+                                )
+                            }
                             // Above the safety row rather than buried under it: in a corpus of
                             // Persian-language reviews of this category of app, an explicit theme
                             // control is the single most asked-for thing — ahead of chart
@@ -2015,6 +2060,15 @@ private fun MainShell(
             onDismiss = { appearanceOpen = false },
             colours = marketColors,
             onSelectColours = onSetMarketColors,
+        )
+    }
+
+    if (appLockOpen) {
+        AppLockSheet(
+            enabled = appLockEnabled,
+            capability = lockCapability,
+            onSetEnabled = onSetAppLockEnabled,
+            onDismiss = { appLockOpen = false },
         )
     }
 

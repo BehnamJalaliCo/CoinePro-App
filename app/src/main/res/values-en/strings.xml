@@ -136,4 +136,19 @@
     <string name="action_undo">Undo</string>
     <string name="profile_action_support">Support and feedback</string>
     <string name="profile_action_support_note">Reaches a person, not a bot.</string>
+    <string name="lock_prompt_title">CoinePro is locked</string>
+    <string name="lock_prompt_subtitle">Unlock with your fingerprint, face or phone passcode.</string>
+    <string name="lock_screen_title">Locked</string>
+    <string name="lock_screen_body">This phone is asking whether it is you. Your account is fine; only this window is shut.</string>
+    <string name="lock_screen_action">Unlock</string>
+    <string name="profile_action_lock">App lock</string>
+    <string name="profile_action_lock_on">On</string>
+    <string name="profile_action_lock_off">Off</string>
+    <string name="lock_sheet_title">App lock</string>
+    <string name="lock_sheet_subtitle">CoinePro opens with this phone\'s own fingerprint, face or passcode.</string>
+    <string name="lock_sheet_switch">Ask when the app opens</string>
+    <string name="lock_sheet_note">No new passcode — it is the phone\'s own lock. It does not ask again for 30 seconds after you leave, so copying a code from another app is not a locked door every time.</string>
+    <string name="lock_sheet_not_enrolled">No fingerprint or face is enrolled on this phone yet.</string>
+    <string name="lock_sheet_enrol">Enrol in phone settings</string>
+    <string name="lock_sheet_credential_only">This phone has no sensor; it opens with its own passcode, pattern or PIN.</string>
 </resources>
