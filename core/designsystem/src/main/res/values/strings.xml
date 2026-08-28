@@ -12,4 +12,17 @@
     <string name="message_alert_not_created">هشدار ساخته نشد.</string>
     <string name="message_alert_not_updated">هشدار تغییر نکرد.</string>
     <string name="message_alert_not_deleted">هشدار حذف نشد و همچنان فعال است.</string>
+    <string name="message_markets_unavailable">بازارها در دسترس نیستند.</string>
+    <string name="message_ai_job_expired">درخواست روی سرور منقضی شد.</string>
+    <string name="message_ai_entitlement_required">این بخش به اشتراک فعال نیاز دارد.</string>
+    <string name="message_ai_result_unusable">سرور نتیجه‌ای برگرداند که ساختار معتبری ندارد و قابل باز کردن یا اجرا نیست.</string>
+    <string name="message_ai_generation_failed">ساخت سیگنال انجام نشد.</string>
+    <string name="message_ai_symbol_unsupported">این نماد پشتیبانی نمی‌شود.</string>
+    <string name="message_ai_message_empty">پیش از ارسال، پیامی بنویسید.</string>
+    <string name="message_ai_message_too_long">پیام از حد مجاز بلندتر است.</string>
+    <string name="message_ai_image_too_large">تصویر برای تحلیل بزرگ‌تر از حد مجاز است.</string>
+    <string name="message_ai_image_type_unsupported">این نوع تصویر پشتیبانی نمی‌شود.</string>
+    <string name="market_row_watch">افزودن به دیده‌بان</string>
+    <string name="market_row_unwatch">حذف از دیده‌بان</string>
+    <string name="message_ai_conversation_changed">گفت‌وگو به‌طور غیرمنتظره عوض شد. یک گفت‌وگوی تازه شروع کنید.</string>
 </resources>

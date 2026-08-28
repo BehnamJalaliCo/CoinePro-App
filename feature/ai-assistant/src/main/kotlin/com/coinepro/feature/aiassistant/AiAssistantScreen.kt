@@ -36,6 +36,7 @@ import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProAgentOrb
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -165,10 +166,11 @@ fun AiAssistantScreen(
             }
         }
 
-        // Server wording, verbatim.
+        // The server's own wording where it sent one, this app's where it did not. See
+        // `UiMessage`: the controller used to write English sentences into this field.
         state.error?.let {
             Text(
-                text = it,
+                text = it.resolve(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(CoineProColors.Sell.copy(alpha = 0.10f), MaterialTheme.shapes.medium)

@@ -19,4 +19,6 @@
     <string name="kyc_sending">در حال ارسال…</string>
     <string name="kyc_refused_unexplained">سرور این اطلاعات را نپذیرفت و دلیلی اعلام نکرد.</string>
     <string name="kyc_required_fields">موارد لازم از نظر سرور: %1$s</string>
+    <string name="kyc_state_unknown">وضعیت احراز هویت در دسترس نیست</string>
+    <string name="kyc_body_unknown">وضعیت شما از سرور خوانده نشد. اگر پیش‌تر مدارک فرستاده‌اید، دوباره نفرستید — دوباره تلاش کنید یا بعداً برگردید.</string>
 </resources>

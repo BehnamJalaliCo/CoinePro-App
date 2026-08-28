@@ -13,6 +13,9 @@ android {
 }
 
 dependencies {
+    // `UiMessage`, so this module's failures reach a screen as owned copy rather than as the
+    // platform's own English exception text.
+    api(project(":core:common"))
     implementation(project(":core:model"))
     api(project(":core:symbols"))
     implementation(libs.okhttp.core)

@@ -15,9 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -25,8 +25,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -189,11 +192,16 @@ fun CoineProMarketRow(
             // question a market list answers is *which* instrument moved, and a flash confined to
             // eleven characters of number is one nobody catches in peripheral vision.
             .coineProPriceFlash(rawPrice)
-            // The clear comes first and the click after it. `clearAndSetSemantics` wipes everything
-            // declared before it on this node, so a clickable above this line would have its action
-            // erased — the row would still work under a finger and be unreachable with TalkBack,
-            // which is the worst version of the bug because it looks fine.
-            .clearAndSetSemantics { contentDescription = symbol }
+            // Merged, not cleared. `clearAndSetSemantics` wipes every *descendant* as well, so a
+            // screen reader heard "BTCUSDT" and never the price, never the move, never the day's
+            // range, never the stale note — and the star was unreachable with TalkBack while
+            // working perfectly under a finger. The comment that used to sit here reasoned
+            // correctly about the row's own click surviving and then made the identical mistake
+            // one node lower.
+            //
+            // Merging reads the row's real children in order, so the description is the row: the
+            // instrument, then the figure, then the move. Nothing has to be kept in step by hand.
+            .semantics(mergeDescendants = true) { }
             .let { base ->
                 onClick?.let { action ->
                     base
@@ -212,11 +220,17 @@ fun CoineProMarketRow(
             // Leading, on the reading edge. The star is a state the reader scans down the list as
             // much as a control they press, and putting it beside the price would make it compete
             // with the number that has to be read first.
+            val starLabel = stringResource(
+                if (starred) R.string.market_row_unwatch else R.string.market_row_watch,
+            )
             Icon(
                 painter = painterResource(
                     if (starred) R.drawable.icon_filled_star else R.drawable.icon_star,
                 ),
-                contentDescription = null,
+                // Named and given a role, because it is the one control on this row that is not
+                // the row: merging descendants would otherwise fold it into the row's own
+                // description and a reader would have no way to reach it.
+                contentDescription = starLabel,
                 modifier = Modifier
                     // The glyph stays 18dp and the *target* becomes 48. This app was oversized in
                     // everything the eye reads and undersized in everything the thumb hits — a
@@ -224,6 +238,7 @@ fun CoineProMarketRow(
                     // than designed. Shrinking the type without growing these would have made the
                     // app look tighter and feel worse.
                     .minimumInteractiveComponentSize()
+                    .semantics { role = Role.Checkbox }
                     .clip(CoineProShapes.small)
                     .clickable {
                         // Starring is a change the reader made to their own list, not navigation,

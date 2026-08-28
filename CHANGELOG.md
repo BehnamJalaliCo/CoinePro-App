@@ -15,6 +15,116 @@ it is for.
 
 ---
 
+## [1.34.0] — 2026-08-28 — Four specialists read the app line by line
+
+The owner asked for it read end to end and the gaps extracted. Four ran in parallel — the chart
+against TradingView, the visual scale, the information architecture, and functional gaps — and this
+is the first pass through what they found. Their three loudest findings are the three things he had
+already named, and in each case the cause was not what it looked like.
+
+### The drawing tools
+
+**They did not work for anybody, and there is no guest gate on the chart. There never was.** The
+complaint was right about the symptom and wrong about the cause, and the cause is worse.
+
+The chart screen holds seven bottom sheets — the tool rail, the indicator picker, the chart-type
+picker, the drawing list, layouts, backtest, setup — all written, all compiling, all in the
+screenshot suite. Exactly one line in the file ever assigned `sheet`, and it assigned `SETUP`. Six
+of the seven were unreachable dead code. The tools were not broken; they had no door. There is a
+tool bar under the timeframe strip now, carrying the counts, because *what have I got on this chart*
+and *how do I take it off* are the two questions a reader has there and a menu answers neither until
+it is open.
+
+And the chart and the studio each built their own `ChartController` inside their own `composable`. A
+`NavHost` composes one destination at a time, so they were never two views of one chart — they were
+two charts. Arming a tool in the studio wrote to an object the chart could not see. Indicators,
+chart type and a replay in progress went the same way, and the round trip disposed the chart's own
+composition, so its viewport and drawings went too. One controller per symbol now, above the graph,
+on the shell's scope rather than a screen's — a screen scope was cancelled the moment the studio
+opened, so even a surviving controller came back empty.
+
+Three rendering defects behind "it scores 10 out of 100":
+
+- The **viewport was remembered against the series identity**, so zoom and pan were erased on every
+  timeframe switch, every chart-type switch, and — because `ReplayState.visible` allocated a fresh
+  `CandleSeries` on every read, and `CandleSeries` has identity equality — on every frame of a
+  replay. A replay could not be zoomed at all.
+- The **price axis** divided the padded range into five and printed whatever fell out: `2571.34`,
+  `2578.85`, `2586.36`. Ticks come off the 1-2-5 ladder now, the grid draws on the same list, and
+  the precision comes from the step rather than the magnitude — zoomed into a thirty-cent window on
+  gold, every label used to round to the same string.
+- The **time axis** printed `HH:mm` in UTC. A reader in Tehran saw London's clock under their own
+  candles, and on a daily chart every label read `00:00`.
+- Every **stroke was a raw pixel**. On a 3× phone a 1.4f wick is 0.47dp, thinner than the platform
+  can draw honestly, while the same file's markers were density-scaled and came out right.
+
+### The home screen, and where news lives
+
+Home measured about 2,190dp for a real member — two and a half screens — with everything the app is
+for below the first 736dp. The guest home was 4,390dp, of which the news was 1,760dp: forty per cent
+of the page, at the very bottom, and there was nowhere to send them, because `market/news` is passed
+null for a guest. The one reader being shown the most news was the only one who could not open a
+news screen.
+
+News is a place you go now: a slot in the home quick row, a guest screen over the public headline
+route, and one teaser card where twelve cards used to be. The two market cards became one, capped at
+six, starred symbols first, with a footer that says how many are not shown. The holdings card became
+one line to the portfolio screen that already draws them properly. The subscription card appears
+only in the week a plan is ending. **Home is 1,241dp** — and that is *with* the quick row and the
+watchlist, which the reference render had been omitting.
+
+Which is its own fix: the screenshot everybody reviews was not the product. It left three entry
+points null and supplied an `openSignals` the shipping app has never passed.
+
+### The scale
+
+The source of «همه چیز گنده و بزرگه» is a comment in `CoineProType.kt` that says, in as many words,
+"one step above Material's defaults across the board". The argument behind it is sound — Persian
+does need more size than Latin, because its marks are small relative to the letter body. The mistake
+was the size of the correction (Persian wants about one point; this carried two to three) and the
+line heights, left at Material's *reading* ratios of 1.63–1.76 where dense UI runs at 1.30–1.45.
+The two compounded: every two-line row paid the size once and the leading twice.
+
+Reading text keeps Persian's point and loses the slack leading; the dense roles come back to where a
+terminal puts them. With it: the button 56dp → 46 (105 call sites), the platform switch 56 → 40,
+card padding and the gutter 20 → 16, the corner radius 22 → 16, the market row 80 → 63, the profile
+avatar 112 → 80.
+
+And the opposite correction, which matters more: this app was oversized in everything the eye reads
+and **undersized in everything the thumb hits**. The watchlist star was a 26dp target, so was the
+balance eye, and the refresh button at the head of every list was 34. Six controls keep their drawn
+size and get a 48dp target — shrinking the type without this would have made the app look tighter
+and feel worse.
+
+The most terminal-grade change is the smallest: the price column is fixed-width and right-aligned,
+so the decimal points line up. Free-width it aligned on the *first* digit, and `1.08`, `91,248.30`
+and `3,147.62` ended up to 36dp apart.
+
+### Fixed, from the functional read
+
+- **The Markets tab rendered a network failure as «موردی یافت نشد»** — the empty-search copy — with
+  no error, no retry and no pull target, on one of five bottom-bar destinations. The controller had
+  been setting `error` since it was written and the screen never read it.
+- **Nine authored English sentences** were being written into UI state by three AI controllers and
+  rendered verbatim to a Persian audience — "AI Signal job expired on the server.", "Write a message
+  before sending." Not exception text: sentences somebody wrote, in the wrong language, for the
+  reader. And the market search error *was* exception text — `Unable to resolve host …` as product
+  copy. All of it goes through `UiMessage` now, and the test that asserted on the exception's own
+  message, pinning the bug in place, asserts the opposite.
+- **The Markets tab had a watchlist tab and no way to fill it.** The star existed on search and on
+  Home, and Home lists only what the platform quotes — two instruments on the forex side.
+- **Every market row was mute to a screen reader.** `clearAndSetSemantics` wipes descendants, so
+  TalkBack heard the ticker and never the price, the move, the range or the stale note, and the star
+  was unreachable while working perfectly under a finger. The comment there reasoned correctly about
+  the row's own click surviving and then made the identical mistake one node lower.
+- **The broker and exchange connect forms lost everything on a rotation.** `remember`, not
+  `rememberSaveable`, on the two screens with the most to retype. Passwords and API secrets stay
+  unsaved, deliberately.
+- **KYC read a failed status as "not started"**, so a reader with a submission already pending was
+  invited to submit again.
+
+---
+
 ## [1.33.0] — 2026-08-28 — The five that were still missing
 
 The list I gave the owner at the end of 1.32.0, worked through — plus one correction to it.

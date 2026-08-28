@@ -67,7 +67,9 @@ fun KycScreen(controller: AccountController) {
     val sending = submission is KycSubmission.Sending
     val state = status?.state
     // Nothing to fill in while the server is already holding a submission or has accepted one.
-    val settled = state == KycState.PENDING || state == KycState.APPROVED ||
+    // An unknown status settles the form too. Offering somebody a verification form when the app
+    // does not know whether they have already been verified is how a duplicate submission happens.
+    val settled = state == null || state == KycState.PENDING || state == KycState.APPROVED ||
         submission is KycSubmission.Accepted
     val complete = remember(fullName, nationalId, birthDate, phone) {
         listOf(fullName, nationalId, birthDate, phone).all { it.isNotBlank() }
@@ -190,16 +192,26 @@ fun KycScreen(controller: AccountController) {
     }
 }
 
+/**
+ * Null is **not** "not started".
+ *
+ * They were mapped to the same heading and the same body, so a reader whose status read failed —
+ * no network, a 500, or simply the first frame before the request returns — was told they had not
+ * begun. Somebody with a submission already pending was then invited to submit it again. A status
+ * this app does not know is a status it must not assert.
+ */
 private fun KycState?.headingRes(): Int = when (this) {
     KycState.APPROVED -> R.string.kyc_state_approved
     KycState.PENDING -> R.string.kyc_state_pending
     KycState.REJECTED -> R.string.kyc_state_rejected
-    KycState.NOT_STARTED, null -> R.string.kyc_state_not_started
+    KycState.NOT_STARTED -> R.string.kyc_state_not_started
+    null -> R.string.kyc_state_unknown
 }
 
 private fun KycState?.explanationRes(): Int = when (this) {
     KycState.APPROVED -> R.string.kyc_body_approved
     KycState.PENDING -> R.string.kyc_body_pending
     KycState.REJECTED -> R.string.kyc_body_rejected
-    KycState.NOT_STARTED, null -> R.string.kyc_body_not_started
+    KycState.NOT_STARTED -> R.string.kyc_body_not_started
+    null -> R.string.kyc_body_unknown
 }

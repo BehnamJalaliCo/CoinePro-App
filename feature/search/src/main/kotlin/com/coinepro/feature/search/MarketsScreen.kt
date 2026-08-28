@@ -22,6 +22,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,14 +36,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPercentPill
 import com.coinepro.core.designsystem.CoineProPullToRefresh
@@ -53,6 +55,7 @@ import com.coinepro.core.designsystem.CoineProSparkline
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.coineProPriceFlash
 import com.coinepro.core.designsystem.rememberCoineProHaptics
+import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketSearchRow
 import com.coinepro.core.marketdata.SparklineStore
@@ -82,6 +85,15 @@ fun MarketsScreen(
     onOpenSearch: () -> Unit,
     modifier: Modifier = Modifier,
     watchlist: List<String> = emptyList(),
+    /**
+     * Starring, from the screen that owns the watchlist tab.
+     *
+     * It had a «دیده‌بان» tab and no way to put anything in it: the star existed on the search
+     * screen and on Home, and Home lists only what the platform quotes — two instruments on the
+     * forex side. So a reader on CoinePro-FX could star two markets, or go three levels deep into
+     * search, to fill a tab that is one tap away.
+     */
+    onToggleWatch: ((String) -> Unit)? = null,
     /** The open signals strip at the foot. Null on a build with nothing to link to. */
     openSignals: MarketsSignalStrip? = null,
 ) {
@@ -93,8 +105,9 @@ fun MarketsScreen(
     // The category chip and the watchlist tab are different filters over one list, so they are
     // applied here rather than pushed into the controller: the controller's category is what the
     // *search* screen uses, and a tab that quietly rewrote it would change the other screen too.
-    val rows = remember(state.results, tab, watchlist) {
-        val watched = watchlist.map { it.uppercase() }.toSet()
+    // Hoisted out of the filter block: the rows need it too, to draw each star's state.
+    val watched = remember(watchlist) { watchlist.map { it.uppercase() }.toSet() }
+    val rows = remember(state.results, tab, watched) {
         state.results.filter { row ->
             when (tab) {
                 MarketsTab.ALL -> true
@@ -122,6 +135,19 @@ fun MarketsScreen(
         when {
             state.loading && state.results.isEmpty() -> Centred {
                 CircularProgressIndicator(color = CoineProColors.Gold, strokeWidth = 2.dp)
+            }
+            // A failure is not an empty search. The controller has set `state.error` on every
+            // catalogue failure since it was written and this screen never read it, so a reader
+            // whose request failed was told «موردی یافت نشد» — the empty-search copy — with no
+            // error, no retry, and no pull target, because the pull lives in the branch below and
+            // is unreachable while the list is empty. On one of five bottom-bar destinations.
+            state.error != null && rows.isEmpty() -> Centred {
+                CoineProEmptyState(
+                    icon = CoineProIcons.Warning,
+                    message = state.error?.resolve() ?: stringResource(R.string.search_failed),
+                    action = stringResource(R.string.search_retry),
+                    onAction = controller::refresh,
+                )
             }
             rows.isEmpty() -> Centred {
                 Text(
@@ -151,6 +177,10 @@ fun MarketsScreen(
                             row = row,
                             line = lines[row.meta.symbol.uppercase()].orEmpty(),
                             onClick = { onOpenSymbol(row.meta.symbol) },
+                            starred = onToggleWatch?.let { row.meta.symbol.uppercase() in watched },
+                            onToggleStar = onToggleWatch?.let { toggle ->
+                                { toggle(row.meta.symbol) }
+                            },
                         )
                         HorizontalDivider(
                             modifier = Modifier.padding(horizontal = CoineProSpacing.Two),
@@ -232,7 +262,14 @@ private fun ColumnHeadings() {
 }
 
 @Composable
-private fun MarketRow(row: MarketSearchRow, line: List<Double>, onClick: () -> Unit) {
+private fun MarketRow(
+    row: MarketSearchRow,
+    line: List<Double>,
+    onClick: () -> Unit,
+    /** Null where the list offers no starring, so no grey star appears that cannot be pressed. */
+    starred: Boolean? = null,
+    onToggleStar: (() -> Unit)? = null,
+) {
     val change = row.quote?.changePercent
     val up = (change ?: 0.0) >= 0.0
     val tone = when {
@@ -258,6 +295,24 @@ private fun MarketRow(row: MarketSearchRow, line: List<Double>, onClick: () -> U
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
+        if (starred != null && onToggleStar != null) {
+            val starHaptics = rememberCoineProHaptics()
+            Icon(
+                painter = painterResource(
+                    if (starred) DesignR.drawable.icon_filled_star else DesignR.drawable.icon_star,
+                ),
+                contentDescription = null,
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .clip(CoineProShapes.small)
+                    .clickable {
+                        starHaptics.commit()
+                        onToggleStar()
+                    }
+                    .size(18.dp),
+                tint = if (starred) CoineProColors.Accent else CoineProColors.TextDisabled,
+            )
+        }
         CoineProAssetLogo(symbol = row.meta.symbol, size = 30.dp)
         // Wider than it was. Eighty-four points fitted the ticker and cut every Persian name
         // under it; the sparkline beside it was floating in a weighted box with room to spare.

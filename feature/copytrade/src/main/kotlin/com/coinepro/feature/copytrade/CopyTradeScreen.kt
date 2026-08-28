@@ -21,6 +21,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -233,9 +234,10 @@ private fun AccountCard(
 
 @Composable
 private fun LinkForm(saving: Boolean, onLink: (String, String, String, String) -> Unit) {
-    var broker by remember { mutableStateOf("") }
-    var server by remember { mutableStateOf("") }
-    var login by remember { mutableStateOf("") }
+    // See `ConnectionsScreen`: everything but the password survives a rotation.
+    var broker by rememberSaveable { mutableStateOf("") }
+    var server by rememberSaveable { mutableStateOf("") }
+    var login by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
     Text(

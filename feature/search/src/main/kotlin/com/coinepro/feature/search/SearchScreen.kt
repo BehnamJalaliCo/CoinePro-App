@@ -37,6 +37,7 @@ import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProMarketRow
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -109,7 +110,7 @@ fun SearchScreen(
                     verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
                 ) {
                     Text(
-                        text = state.error.orEmpty(),
+                        text = state.error?.resolve().orEmpty(),
                         style = MaterialTheme.typography.bodyMedium,
                         color = CoineProColors.TextSecondary,
                     )

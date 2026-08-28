@@ -1,5 +1,6 @@
 package com.coinepro.core.aisignal
 
+import com.coinepro.core.common.UiMessage
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.SignalDirection
 
@@ -155,5 +156,13 @@ data class AiSignalState(
     val quota: AiSignalQuota? = null,
     val entitlementRequired: Boolean = false,
     val quotaExhausted: Boolean = false,
-    val error: String? = null,
+    /**
+     * Owned copy, in the reader's language.
+     *
+     * This was a `String?` that the controller wrote authored **English** sentences into — "AI
+     * Signal job expired on the server.", "Write a message before sending." — and the screen
+     * rendered verbatim, to an audience whose default language is Persian. Not exception text
+     * leaking through: sentences somebody wrote, for the reader, in the wrong language.
+     */
+    val error: UiMessage? = null,
 )

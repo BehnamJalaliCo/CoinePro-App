@@ -50,6 +50,7 @@ import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSkeleton
@@ -201,7 +202,7 @@ fun AiVisionScreen(
         // Both are messages someone else produced — the platform or the server — so both are shown
         // as they came rather than reworded into a friendlier local sentence.
         selectionError?.let { VisionNotice(it, CoineProColors.Sell) }
-        state.error?.let { VisionNotice(it, CoineProColors.Sell) }
+        state.error?.let { VisionNotice(it.resolve(), CoineProColors.Sell) }
 
         state.job?.let { job ->
             VisionJobCard(

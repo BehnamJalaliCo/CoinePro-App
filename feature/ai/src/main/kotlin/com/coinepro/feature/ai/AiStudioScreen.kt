@@ -46,6 +46,7 @@ import com.coinepro.core.aisignal.AiTradeStyle
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -184,7 +185,7 @@ fun AiStudioScreen(
         }
 
         state.error?.let { message ->
-            item { AiNotice(message, CoineProColors.Warning) }
+            item { AiNotice(message.resolve(), CoineProColors.Warning) }
         }
 
         result?.let { signal ->

@@ -53,6 +53,28 @@ enum class MessageKey {
     ALERT_NOT_CREATED,
     ALERT_NOT_UPDATED,
     ALERT_NOT_DELETED,
+
+    /** The market catalogue failed to load. */
+    MARKETS_UNAVAILABLE,
+
+    /**
+     * The AI keys.
+     *
+     * These replace nine authored **English** sentences that three controllers were writing
+     * straight into UI state and three screens were rendering verbatim — "AI Signal job expired on
+     * the server.", "Write a message before sending." — to an audience whose default language is
+     * Persian. Not exception text: sentences somebody wrote, in the wrong language, for the reader.
+     */
+    AI_JOB_EXPIRED,
+    AI_ENTITLEMENT_REQUIRED,
+    AI_RESULT_UNUSABLE,
+    AI_GENERATION_FAILED,
+    AI_SYMBOL_UNSUPPORTED,
+    AI_MESSAGE_EMPTY,
+    AI_MESSAGE_TOO_LONG,
+    AI_IMAGE_TOO_LARGE,
+    AI_IMAGE_TYPE_UNSUPPORTED,
+    AI_CONVERSATION_CHANGED,
 }
 
 /**

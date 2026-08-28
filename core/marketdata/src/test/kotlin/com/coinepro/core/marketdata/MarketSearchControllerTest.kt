@@ -1,5 +1,7 @@
 package com.coinepro.core.marketdata
 
+import com.coinepro.core.common.MessageKey
+import com.coinepro.core.common.UiMessage
 import com.coinepro.core.symbols.SymbolCategory
 import com.coinepro.core.symbols.SymbolClassifier
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -87,14 +89,19 @@ class MarketSearchControllerTest {
     }
 
     @Test
-    fun `a failed load says so instead of showing an empty catalogue`() = runTest {
+    fun `a failed load says so in this app's own words, not the exception's`() = runTest {
         val failing = object : MarketCatalogGateway {
-            override suspend fun load(): MarketCatalog = throw IllegalStateException("no route")
+            override suspend fun load(): MarketCatalog =
+                throw IllegalStateException("Unable to resolve host \"api.example\"")
         }
         val controller = MarketSearchController(failing, this)
         controller.start()
         advanceUntilIdle()
-        assertEquals("no route", controller.state.value.error)
+
+        // This assertion used to be `assertEquals("no route", state.error)` — it pinned the bug
+        // in place. The exception's own message is an English platform string a reader can do
+        // nothing with, and the markets screen printed it as product copy.
+        assertEquals(UiMessage.of(MessageKey.MARKETS_UNAVAILABLE), controller.state.value.error)
         assertFalse(controller.state.value.loading)
     }
 }

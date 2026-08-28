@@ -1,5 +1,8 @@
 package com.coinepro.core.aivision
 
+import com.coinepro.core.common.MessageKey
+import com.coinepro.core.common.UiMessage
+import com.coinepro.core.network.serverTextOrNull
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -8,7 +11,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import com.coinepro.core.network.serverTextOrNull
 
 class AiVisionController(
     private val gateway: AiVisionGateway,
@@ -22,7 +24,7 @@ class AiVisionController(
 
     fun submit(upload: AiVisionImageUpload) {
         if (!upload.isSupported) {
-            _state.update { it.copy(error = "Choose a supported chart image under 6 MB.") }
+            _state.update { it.copy(error = UiMessage.of(MessageKey.AI_IMAGE_TYPE_UNSUPPORTED)) }
             return
         }
         if (_state.value.uploading || _state.value.job?.isPending == true) return
@@ -36,17 +38,17 @@ class AiVisionController(
                 applyJob(job, uploading = false)
                 if (job.isPending) startPolling(job.id)
             } catch (_: AiVisionEntitlementRequiredException) {
-                _state.update { it.copy(uploading = false, error = "AI Vision requires an active server entitlement.") }
+                _state.update { it.copy(uploading = false, error = UiMessage.of(MessageKey.AI_ENTITLEMENT_REQUIRED)) }
             } catch (_: AiVisionImageTooLargeException) {
-                _state.update { it.copy(uploading = false, error = "The prepared image is too large for AI Vision.") }
+                _state.update { it.copy(uploading = false, error = UiMessage.of(MessageKey.AI_IMAGE_TOO_LARGE)) }
             } catch (_: AiVisionUnsupportedMediaException) {
-                _state.update { it.copy(uploading = false, error = "The server does not support this image type.") }
+                _state.update { it.copy(uploading = false, error = UiMessage.of(MessageKey.AI_IMAGE_TYPE_UNSUPPORTED)) }
             } catch (error: AiVisionRequestRejectedException) {
-                _state.update { it.copy(uploading = false, error = error.message) }
+                _state.update { it.copy(uploading = false, error = UiMessage.fromServer(error.message, MessageKey.AI_GENERATION_FAILED)) }
             } catch (_: AiVisionRateLimitedException) {
-                _state.update { it.copy(uploading = false, error = "AI Vision is temporarily rate limited. Try again later.") }
+                _state.update { it.copy(uploading = false, error = UiMessage.of(MessageKey.AI_GENERATION_FAILED)) }
             } catch (error: Exception) {
-                _state.update { it.copy(uploading = false, error = error.serverTextOrNull()) }
+                _state.update { it.copy(uploading = false, error = UiMessage.fromServer(error.serverTextOrNull(), MessageKey.AI_GENERATION_FAILED)) }
             }
         }
     }
@@ -102,10 +104,10 @@ class AiVisionController(
             }
             false
         } catch (_: AiVisionEntitlementRequiredException) {
-            _state.update { it.copy(error = "AI Vision status requires an active server entitlement.") }
+            _state.update { it.copy(error = UiMessage.of(MessageKey.AI_ENTITLEMENT_REQUIRED)) }
             false
         } catch (error: Exception) {
-            _state.update { it.copy(error = error.serverTextOrNull()) }
+            _state.update { it.copy(error = UiMessage.fromServer(error.serverTextOrNull(), MessageKey.AI_GENERATION_FAILED)) }
             false
         }
     }
@@ -113,11 +115,11 @@ class AiVisionController(
     private fun applyJob(job: AiVisionJob, uploading: Boolean) {
         val jobError = when {
             job.status == AiVisionJobStatus.DONE && job.result == null ->
-                "Server returned DONE without a validated structured vision result."
+                UiMessage.of(MessageKey.AI_RESULT_UNUSABLE)
             job.status == AiVisionJobStatus.FAILED ->
-                job.errorMessage ?: "AI Vision analysis failed."
+                UiMessage.fromServer(job.errorMessage, MessageKey.AI_GENERATION_FAILED)
             job.status == AiVisionJobStatus.EXPIRED ->
-                job.errorMessage ?: "AI Vision analysis expired."
+                UiMessage.fromServer(job.errorMessage, MessageKey.AI_JOB_EXPIRED)
             else -> null
         }
         _state.update {

@@ -19,4 +19,6 @@
     <string name="kyc_sending">Sending…</string>
     <string name="kyc_refused_unexplained">The server did not accept these details and gave no reason.</string>
     <string name="kyc_required_fields">Fields the server requires: %1$s</string>
+    <string name="kyc_state_unknown">Verification status unavailable</string>
+    <string name="kyc_body_unknown">Your status could not be read from the server. If you have already submitted, do not submit again — retry, or come back later.</string>
 </resources>

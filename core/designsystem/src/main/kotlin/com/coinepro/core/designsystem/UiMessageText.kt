@@ -31,4 +31,15 @@ private val MessageKey.resourceId: Int
         MessageKey.ALERT_NOT_CREATED -> R.string.message_alert_not_created
         MessageKey.ALERT_NOT_UPDATED -> R.string.message_alert_not_updated
         MessageKey.ALERT_NOT_DELETED -> R.string.message_alert_not_deleted
+        MessageKey.MARKETS_UNAVAILABLE -> R.string.message_markets_unavailable
+        MessageKey.AI_JOB_EXPIRED -> R.string.message_ai_job_expired
+        MessageKey.AI_ENTITLEMENT_REQUIRED -> R.string.message_ai_entitlement_required
+        MessageKey.AI_RESULT_UNUSABLE -> R.string.message_ai_result_unusable
+        MessageKey.AI_GENERATION_FAILED -> R.string.message_ai_generation_failed
+        MessageKey.AI_SYMBOL_UNSUPPORTED -> R.string.message_ai_symbol_unsupported
+        MessageKey.AI_MESSAGE_EMPTY -> R.string.message_ai_message_empty
+        MessageKey.AI_MESSAGE_TOO_LONG -> R.string.message_ai_message_too_long
+        MessageKey.AI_IMAGE_TOO_LARGE -> R.string.message_ai_image_too_large
+        MessageKey.AI_IMAGE_TYPE_UNSUPPORTED -> R.string.message_ai_image_type_unsupported
+        MessageKey.AI_CONVERSATION_CHANGED -> R.string.message_ai_conversation_changed
     }

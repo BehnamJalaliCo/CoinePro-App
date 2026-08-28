@@ -25,4 +25,5 @@
     <string name="markets_column_trend">24h trend</string>
     <string name="markets_column_price">Price / change</string>
     <string name="markets_open_signals">%1$d open signals</string>
+    <string name="search_failed">Markets are unavailable.</string>
 </resources>

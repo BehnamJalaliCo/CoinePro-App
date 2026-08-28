@@ -13,6 +13,7 @@ android {
 }
 
 dependencies {
+    api(project(":core:common"))
     api(project(":core:model"))
     implementation(project(":core:aisignal"))
     implementation(project(":core:network"))

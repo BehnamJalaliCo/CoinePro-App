@@ -1,5 +1,6 @@
 package com.coinepro.core.aivision
 
+import com.coinepro.core.common.UiMessage
 import com.coinepro.core.model.SignalDirection
 
 const val AI_VISION_MAX_UPLOAD_BYTES: Int = 6_000_000
@@ -87,5 +88,13 @@ data class AiVisionJob(
 data class AiVisionState(
     val uploading: Boolean = false,
     val job: AiVisionJob? = null,
-    val error: String? = null,
+    /**
+     * Owned copy, in the reader's language.
+     *
+     * This was a `String?` that the controller wrote authored **English** sentences into — "Write a
+     * message before sending.", "The prepared image is too large for AI Vision." — and the screen
+     * rendered verbatim, to an audience whose default language is Persian. Not exception text
+     * leaking through: sentences somebody wrote, for the reader, in the wrong language.
+     */
+    val error: UiMessage? = null,
 )

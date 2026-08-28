@@ -13,6 +13,7 @@ android {
 }
 
 dependencies {
+    api(project(":core:common"))
     api(project(":core:model"))
     implementation(project(":core:network"))
     implementation(libs.retrofit.core)

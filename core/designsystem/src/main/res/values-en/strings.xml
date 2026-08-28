@@ -11,4 +11,17 @@
     <string name="message_alert_not_created">The alert was not created.</string>
     <string name="message_alert_not_updated">The alert was not changed.</string>
     <string name="message_alert_not_deleted">The alert was not deleted and is still armed.</string>
+    <string name="message_markets_unavailable">Markets are unavailable.</string>
+    <string name="message_ai_job_expired">The request expired on the server.</string>
+    <string name="message_ai_entitlement_required">This needs an active subscription.</string>
+    <string name="message_ai_result_unusable">The server returned a result with no valid structure; it cannot be opened or executed.</string>
+    <string name="message_ai_generation_failed">Signal generation failed.</string>
+    <string name="message_ai_symbol_unsupported">That symbol is not supported.</string>
+    <string name="message_ai_message_empty">Write a message before sending.</string>
+    <string name="message_ai_message_too_long">That message is longer than the limit.</string>
+    <string name="message_ai_image_too_large">The image is larger than the limit for analysis.</string>
+    <string name="message_ai_image_type_unsupported">That image type is not supported.</string>
+    <string name="market_row_watch">Add to watchlist</string>
+    <string name="market_row_unwatch">Remove from watchlist</string>
+    <string name="message_ai_conversation_changed">The conversation changed unexpectedly. Start a new chat and try again.</string>
 </resources>

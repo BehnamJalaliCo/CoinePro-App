@@ -1,5 +1,7 @@
 package com.coinepro.core.aiassistant
 
+import com.coinepro.core.common.UiMessage
+import com.coinepro.core.common.MessageKey
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -74,7 +76,13 @@ class AiAssistantControllerTest {
 
         assertEquals("conversation-1", controller.state.value.conversation?.id)
         assertEquals(3, controller.state.value.messages.size)
-        assertTrue(controller.state.value.error?.contains("changed unexpectedly") == true)
+        // The key, not the sentence. The controller used to write English prose into this field
+        // and the test asserted on a fragment of it, so the assertion broke the moment the copy was
+        // translated — which is the same coupling that let the English ship in the first place.
+        assertEquals(
+            UiMessage.of(MessageKey.AI_CONVERSATION_CHANGED),
+            controller.state.value.error,
+        )
     }
 
     @Test

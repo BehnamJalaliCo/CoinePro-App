@@ -26,4 +26,5 @@
     <string name="markets_column_trend">روند ۲۴ ساعت</string>
     <string name="markets_column_price">قیمت / تغییر</string>
     <string name="markets_open_signals">%1$d سیگنال باز</string>
+    <string name="search_failed">بازارها در دسترس نیستند.</string>
 </resources>

@@ -1,5 +1,8 @@
 package com.coinepro.core.marketdata
 
+import com.coinepro.core.common.MessageKey
+import com.coinepro.core.common.UiMessage
+import com.coinepro.core.common.toUiMessage
 import com.coinepro.core.model.MarketQuote
 import com.coinepro.core.symbols.MatchField
 import com.coinepro.core.symbols.SymbolCategory
@@ -29,7 +32,14 @@ data class MarketSearchState(
     val category: SymbolCategory? = null,
     val results: List<MarketSearchRow> = emptyList(),
     val loading: Boolean = false,
-    val error: String? = null,
+    /**
+     * Owned copy, not the exception's own message.
+     *
+     * This used to be `failure.message`, so a reader on a bad connection was shown
+     * `Unable to resolve host "api…"` or `HTTP 404 Not Found` as product copy — an English
+     * platform string, in a Persian app, that nobody can act on either way.
+     */
+    val error: UiMessage? = null,
     /** How many markets the catalogue holds — worth showing, since the answer used to be eight. */
     val catalogSize: Int = 0,
 ) {
@@ -84,7 +94,7 @@ class MarketSearchController(
                 }
                 .onFailure { failure ->
                     _state.update {
-                        it.copy(loading = false, error = failure.message ?: "بازارها در دسترس نیستند")
+                        it.copy(loading = false, error = failure.toUiMessage(MessageKey.MARKETS_UNAVAILABLE))
                     }
                 }
         }

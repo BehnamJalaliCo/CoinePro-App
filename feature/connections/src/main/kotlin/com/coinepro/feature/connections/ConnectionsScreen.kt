@@ -19,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -151,9 +152,15 @@ private fun Mt5Card(
     onConnect: (String, String, String, String) -> Unit,
     onDisconnect: () -> Unit,
 ) {
-    var broker by remember { mutableStateOf("") }
-    var server by remember { mutableStateOf("") }
-    var login by remember { mutableStateOf("") }
+    // Saveable, because a broker name, a server address and a login are things the reader had to
+    // go and look up — and `remember` threw all three away on a rotation or a trip to the app that
+    // has them. Every other form in this app already uses `rememberSaveable`; these two screens
+    // were the exception, and they are the two with the most to retype.
+    var broker by rememberSaveable { mutableStateOf("") }
+    var server by rememberSaveable { mutableStateOf("") }
+    var login by rememberSaveable { mutableStateOf("") }
+    // The password is *not* saveable. Saved instance state is written to disk by the platform, and
+    // a trading password does not belong there to save somebody one retype.
     var password by remember { mutableStateOf("") }
 
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
@@ -222,9 +229,10 @@ private fun LbankCard(
     onConnect: (String, String, LbankPermission) -> Unit,
     onDisconnect: () -> Unit,
 ) {
-    var apiKey by remember { mutableStateOf("") }
+    // The key survives a rotation; the secret does not, for the same reason the password does not.
+    var apiKey by rememberSaveable { mutableStateOf("") }
     var apiSecret by remember { mutableStateOf("") }
-    var permission by remember { mutableStateOf(LbankPermission.SPOT) }
+    var permission by rememberSaveable { mutableStateOf(LbankPermission.SPOT) }
 
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         VenueHeader("LBank", connection)

@@ -1,5 +1,7 @@
 package com.coinepro.core.aiassistant
 
+import com.coinepro.core.common.UiMessage
+
 enum class AssistantRole(val wireValue: String) {
     USER("user"),
     ASSISTANT("assistant"),
@@ -54,7 +56,15 @@ data class AssistantState(
     val sending: Boolean = false,
     val conversation: AssistantConversationMeta? = null,
     val messages: List<AssistantMessage> = emptyList(),
-    val error: String? = null,
+    /**
+     * Owned copy, in the reader's language.
+     *
+     * This was a `String?` that the controller wrote authored **English** sentences into — "Write a
+     * message before sending.", "The prepared image is too large for AI Vision." — and the screen
+     * rendered verbatim, to an audience whose default language is Persian. Not exception text
+     * leaking through: sentences somebody wrote, for the reader, in the wrong language.
+     */
+    val error: UiMessage? = null,
 ) {
     val canSend: Boolean
         get() = !sending

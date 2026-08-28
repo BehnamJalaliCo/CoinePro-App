@@ -1,5 +1,8 @@
 package com.coinepro.core.aiassistant
 
+import com.coinepro.core.common.MessageKey
+import com.coinepro.core.common.UiMessage
+import com.coinepro.core.network.serverTextOrNull
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -7,7 +10,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import com.coinepro.core.network.serverTextOrNull
 
 class AiAssistantController(
     private val gateway: AiAssistantGateway,
@@ -19,11 +21,11 @@ class AiAssistantController(
     fun send(rawMessage: String) {
         val message = rawMessage.trim()
         if (message.isBlank()) {
-            _state.update { it.copy(error = "Write a message before sending.") }
+            _state.update { it.copy(error = UiMessage.of(MessageKey.AI_MESSAGE_EMPTY)) }
             return
         }
         if (message.length > ASSISTANT_MAX_MESSAGE_CHARS) {
-            _state.update { it.copy(error = "Message is longer than $ASSISTANT_MAX_MESSAGE_CHARS characters.") }
+            _state.update { it.copy(error = UiMessage.of(MessageKey.AI_MESSAGE_TOO_LONG)) }
             return
         }
         if (_state.value.sending) return
@@ -47,9 +49,17 @@ class AiAssistantController(
             try {
                 val turn = gateway.send(conversationId, message)
                 if (conversationId != null && turn.conversation.id != conversationId) {
-                    throw AiAssistantRequestRejectedException(
-                        "Assistant conversation changed unexpectedly. Start a new chat and try again.",
-                    )
+                    // Set directly rather than thrown. `AiAssistantRequestRejectedException`
+                    // carries the *server's* wording, and the catch below passes it through as
+                    // server copy — so throwing this would have relabelled the app's own sentence
+                    // as something the server said.
+                    _state.update {
+                        it.copy(
+                            sending = false,
+                            error = UiMessage.of(MessageKey.AI_CONVERSATION_CHANGED),
+                        )
+                    }
+                    return@launch
                 }
                 _state.update {
                     it.copy(
@@ -60,13 +70,13 @@ class AiAssistantController(
                     )
                 }
             } catch (_: AiAssistantEntitlementRequiredException) {
-                _state.update { it.copy(sending = false, error = "AI Assistant requires an active server entitlement.") }
+                _state.update { it.copy(sending = false, error = UiMessage.of(MessageKey.AI_ENTITLEMENT_REQUIRED)) }
             } catch (_: AiAssistantRateLimitedException) {
-                _state.update { it.copy(sending = false, error = "AI Assistant is temporarily rate limited. Try again later.") }
+                _state.update { it.copy(sending = false, error = UiMessage.of(MessageKey.AI_GENERATION_FAILED)) }
             } catch (error: AiAssistantRequestRejectedException) {
-                _state.update { it.copy(sending = false, error = error.message) }
+                _state.update { it.copy(sending = false, error = UiMessage.fromServer(error.message, MessageKey.AI_GENERATION_FAILED)) }
             } catch (error: Exception) {
-                _state.update { it.copy(sending = false, error = error.serverTextOrNull()) }
+                _state.update { it.copy(sending = false, error = UiMessage.fromServer(error.serverTextOrNull(), MessageKey.AI_GENERATION_FAILED)) }
             }
         }
     }

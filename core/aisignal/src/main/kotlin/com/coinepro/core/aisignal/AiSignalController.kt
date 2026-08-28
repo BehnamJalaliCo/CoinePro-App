@@ -1,5 +1,8 @@
 package com.coinepro.core.aisignal
 
+import com.coinepro.core.common.MessageKey
+import com.coinepro.core.common.UiMessage
+import com.coinepro.core.network.serverTextOrNull
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -8,7 +11,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import com.coinepro.core.network.serverTextOrNull
 
 class AiSignalController(
     private val gateway: AiSignalGateway,
@@ -39,7 +41,7 @@ class AiSignalController(
                         refreshingQuota = false,
                         entitlementRequired = true,
                         quotaExhausted = false,
-                        error = "AI Signals require an active server entitlement.",
+                        error = UiMessage.of(MessageKey.AI_ENTITLEMENT_REQUIRED),
                     )
                 }
             } catch (_: AiSignalQuotaExhaustedException) {
@@ -47,14 +49,14 @@ class AiSignalController(
                     it.copy(
                         refreshingQuota = false,
                         quotaExhausted = true,
-                        error = "AI Signal quota is exhausted.",
+                        error = UiMessage.of(MessageKey.AI_GENERATION_FAILED),
                     )
                 }
             } catch (error: Exception) {
                 _state.update {
                     it.copy(
                         refreshingQuota = false,
-                        error = error.serverTextOrNull(),
+                        error = UiMessage.fromServer(error.serverTextOrNull(), MessageKey.AI_GENERATION_FAILED),
                     )
                 }
             }
@@ -64,7 +66,7 @@ class AiSignalController(
     fun submit(request: AiSignalRequest) {
         val safeSymbol = AiSignalProductScope.normalizeSymbol(request.symbol)
         if (safeSymbol == null) {
-            _state.update { it.copy(error = "Unsupported AI Signal symbol.") }
+            _state.update { it.copy(error = UiMessage.of(MessageKey.AI_SYMBOL_UNSUPPORTED)) }
             return
         }
         if (_state.value.entitlementRequired || _state.value.quotaExhausted || _state.value.submitting) return
@@ -83,7 +85,7 @@ class AiSignalController(
                     it.copy(
                         submitting = false,
                         entitlementRequired = true,
-                        error = "AI Signals require an active server entitlement.",
+                        error = UiMessage.of(MessageKey.AI_ENTITLEMENT_REQUIRED),
                     )
                 }
             } catch (_: AiSignalQuotaExhaustedException) {
@@ -91,16 +93,16 @@ class AiSignalController(
                     it.copy(
                         submitting = false,
                         quotaExhausted = true,
-                        error = "AI Signal quota is exhausted.",
+                        error = UiMessage.of(MessageKey.AI_GENERATION_FAILED),
                     )
                 }
             } catch (error: AiSignalRequestRejectedException) {
-                _state.update { it.copy(submitting = false, error = error.message) }
+                _state.update { it.copy(submitting = false, error = UiMessage.fromServer(error.message, MessageKey.AI_GENERATION_FAILED)) }
             } catch (error: Exception) {
                 _state.update {
                     it.copy(
                         submitting = false,
-                        error = error.serverTextOrNull(),
+                        error = UiMessage.fromServer(error.serverTextOrNull(), MessageKey.AI_GENERATION_FAILED),
                     )
                 }
             }
@@ -170,13 +172,13 @@ class AiSignalController(
             _state.update {
                 it.copy(
                     entitlementRequired = true,
-                    error = "AI Signal status requires an active server entitlement.",
+                    error = UiMessage.of(MessageKey.AI_ENTITLEMENT_REQUIRED),
                 )
             }
             false
         } catch (error: Exception) {
             _state.update {
-                it.copy(error = error.serverTextOrNull())
+                it.copy(error = UiMessage.fromServer(error.serverTextOrNull(), MessageKey.AI_GENERATION_FAILED))
             }
             false
         }
@@ -185,11 +187,11 @@ class AiSignalController(
     private fun applyJob(job: AiSignalJob, submitting: Boolean) {
         val jobError = when {
             job.status == AiSignalJobStatus.DONE && job.result == null ->
-                "Server returned DONE without a validated structured Signal. It cannot be opened or executed."
+                UiMessage.of(MessageKey.AI_RESULT_UNUSABLE)
             job.status == AiSignalJobStatus.FAILED ->
-                job.errorMessage ?: "AI Signal generation failed."
+                UiMessage.fromServer(job.errorMessage, MessageKey.AI_GENERATION_FAILED)
             job.status == AiSignalJobStatus.EXPIRED ->
-                job.errorMessage ?: "AI Signal job expired."
+                UiMessage.fromServer(job.errorMessage, MessageKey.AI_JOB_EXPIRED)
             else -> null
         }
         _state.update { current ->
