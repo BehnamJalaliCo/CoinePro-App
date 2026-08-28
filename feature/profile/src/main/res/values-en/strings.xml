@@ -54,4 +54,7 @@
     <string name="appearance_dark_note">Even when the phone is light.</string>
     <string name="appearance_light">Always light</string>
     <string name="appearance_light_note">Even when the phone is dark.</string>
+    <string name="appearance_colours">Rise and fall</string>
+    <string name="appearance_green_up">Green up, red down</string>
+    <string name="appearance_red_up">Red up, green down</string>
 </resources>

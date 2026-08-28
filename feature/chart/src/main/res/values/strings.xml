@@ -9,4 +9,5 @@
     <string name="chart_fullscreen_enter">تمام‌صفحه</string>
     <string name="chart_fullscreen_exit">خروج از تمام‌صفحه</string>
     <string name="chart_fullscreen_tools">ابزارها</string>
+    <string name="chart_source">منبع قیمت: %1$s</string>
 </resources>

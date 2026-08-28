@@ -133,4 +133,5 @@
     <string name="toast_alert_saved">Alert created</string>
     <string name="toast_deleted">Deleted</string>
     <string name="toast_layout_saved">Layout saved</string>
+    <string name="action_undo">Undo</string>
 </resources>

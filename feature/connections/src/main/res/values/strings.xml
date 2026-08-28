@@ -34,4 +34,7 @@
     <string name="connections_status_of">وضعیت اتصال %1$s: %2$s</string>
     <string name="connections_pending_verification">ذخیره شد؛ تأیید صرافی هنوز نیامده است. تا وقتی الْبانک تأیید نکند، اجرا در صف می‌ماند.</string>
     <string name="connections_key_scope_advice">کلید را در الْبانک بدون مجوز برداشت بسازید. اگر کلید لو برود، این تنها چیزی است که جلوی خارج شدن دارایی را می‌گیرد.</string>
+    <string name="connections_disconnect_title">اتصال قطع شود؟</string>
+    <string name="connections_disconnect_body">مشخصات این حساب پاک می‌شود و هر کپی‌ای که از روی آن باز بود متوقف می‌گردد. ما این مشخصات را جایی نگه نمی‌داریم؛ برای وصل شدن دوباره باید از نو واردشان کنید.</string>
+    <string name="connections_keep">بماند</string>
 </resources>

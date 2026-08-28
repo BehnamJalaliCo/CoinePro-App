@@ -110,6 +110,8 @@ import androidx.compose.ui.text.input.ImeAction
 import com.coinepro.core.chart.DrawingActions
 import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.CoineProPrimaryButton
+import com.coinepro.core.chart.CandleSeries
+import com.coinepro.core.common.BidiText
 
 /**
  * The chart screen.
@@ -314,6 +316,7 @@ fun ChartScreen(
                         drawLayer(chartLayer)
                     },
             )
+            ProvenanceLine(source = controller.sourceName, series = state.series)
         }
 
         if (state.replay.isOn) {
@@ -812,6 +815,61 @@ private fun TimeframeRow(selected: Timeframe, onSelect: (Timeframe) -> Unit) {
 }
 
 /** What the card above the chart says: the window, and its high and low. */
+/**
+ * Where these prices came from, and when the last one arrived.
+ *
+ * ### The accusation this answers
+ *
+ * «کندل‌سازی» — candle-manufacturing — is the loudest single accusation in Persian-language
+ * reviews of this whole category of app: that the broker draws its own prices. It is usually
+ * wrong, and an app with no provenance anywhere in it cannot say so credibly. A chart that simply
+ * asserts a number gives a suspicious reader nothing to check and an honest operator no way to be
+ * believed.
+ *
+ * One line settles it: the venue is named, so a reader can hold this chart against that venue's
+ * own, and the last bar's time is printed, so "the price is stuck" and "the market is closed" stop
+ * looking identical.
+ *
+ * ### Why the time is the *bar's* and not the request's
+ *
+ * A successful request that returns the same bars is not new data. Printing when the app last
+ * asked would be reassuring and false — which is exactly the kind of thing the accusation is
+ * about.
+ */
+@Composable
+private fun ProvenanceLine(source: String, series: CandleSeries) {
+    if (source.isEmpty() && series.isEmpty) return
+    val lastBar = series.time.lastOrNull()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = CoineProSpacing.Half, end = CoineProSpacing.Half, top = CoineProSpacing.Half),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (source.isNotEmpty()) {
+            // The venue name is a proper noun in Latin script inside a right-to-left line, so it
+            // is isolated: without it a name ending in a digit reorders the whole row.
+            Text(
+                text = stringResource(R.string.chart_source, BidiText.isolateLtr(source)),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextDisabled,
+                fontWeight = FontWeight.Normal,
+            )
+        }
+        lastBar?.let { time ->
+            LtrDirection {
+                Text(
+                    text = barClock(time),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextDisabled,
+                    fontWeight = FontWeight.Normal,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun ChartCardHeading(state: ChartUiState) {
     val extent = state.visibleSeries.let { series ->
@@ -1255,3 +1313,21 @@ private const val FLOATING_ALPHA = 0.72f
 
 /** The same, for the timeframe strip along the bottom. */
 private const val STRIP_ALPHA = 0.82f
+
+/**
+ * The last bar's clock time, in the reader's own zone.
+ *
+ * Hours and minutes and nothing else: the question this answers is "is this feed live", and a
+ * reader glancing at a chart at ten past three knows immediately whether 15:10 or 11:40 is the
+ * right answer. A date would be the answer to a different question and would double the width of
+ * the line.
+ *
+ * Latin digits and `Locale.US` on the pattern, deliberately. This sits in the same row as the
+ * price extremes above it — it is a market figure, not prose — and `ofPattern` follows the default
+ * locale, which on this app's Persian default would print «۱۵:۱۰» in a column of Latin numbers.
+ */
+private fun barClock(epochSeconds: Long): String = runCatching {
+    java.time.Instant.ofEpochSecond(epochSeconds)
+        .atZone(java.time.ZoneId.systemDefault())
+        .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm", java.util.Locale.US))
+}.getOrDefault("")

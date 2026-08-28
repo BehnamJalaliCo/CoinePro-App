@@ -56,6 +56,18 @@ private fun CoineProPalette.toColorScheme() = if (isDark) {
 @Composable
 fun CoineProTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    /**
+     * Whether a rise is drawn in the palette's green or its red.
+     *
+     * Swapped here, at the palette, rather than at any call site — which is the whole reason this
+     * is one line of change instead of a hundred. Every direction colour in the product reads
+     * `CoineProColors.Buy` or `CoineProColors.Sell`, and both resolve through
+     * [LocalCoineProPalette]; exchanging the two fields exchanges the meaning everywhere at once,
+     * including inside the chart's canvas, which never sees a composable colour at all.
+     *
+     * See `MarketColorScheme` in `core:datastore` for why this switch exists.
+     */
+    risingIsGreen: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     // Direction follows the language the app is running in, not the device locale. The two differ
@@ -70,7 +82,8 @@ fun CoineProTheme(
             LayoutDirection.Ltr
         }
     }
-    val palette = if (darkTheme) CoineProDarkPalette else CoineProLightPalette
+    val base = if (darkTheme) CoineProDarkPalette else CoineProLightPalette
+    val palette = if (risingIsGreen) base else base.copy(buy = base.sell, sell = base.buy)
 
     CompositionLocalProvider(
         LocalLayoutDirection provides layoutDirection,

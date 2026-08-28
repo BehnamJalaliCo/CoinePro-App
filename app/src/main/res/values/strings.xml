@@ -136,4 +136,5 @@
     <string name="toast_alert_saved">هشدار ساخته شد</string>
     <string name="toast_deleted">حذف شد</string>
     <string name="toast_layout_saved">چیدمان ذخیره شد</string>
+    <string name="action_undo">برگردان</string>
 </resources>

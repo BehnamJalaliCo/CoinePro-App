@@ -44,6 +44,8 @@ import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.LbankPermission
 import com.coinepro.core.execution.VenueConnection
 import com.coinepro.core.model.MarketPlatform
+import androidx.annotation.StringRes
+import com.coinepro.core.designsystem.CoineProConfirmDialog
 
 /**
  * Where a reader links the account their signals will execute through.
@@ -213,11 +215,7 @@ private fun Mt5Card(
                 connection.broker?.let { Detail(stringResource(R.string.connections_broker), it) }
                 connection.server?.let { Detail(stringResource(R.string.connections_server), it) }
                 connection.loginMasked?.let { Detail(stringResource(R.string.connections_login), it) }
-                CoineProSecondaryButton(
-                    text = stringResource(R.string.connections_disconnect),
-                    onClick = onDisconnect,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                DisconnectButton(label = R.string.connections_disconnect, onDisconnect = onDisconnect)
             }
         }
     }
@@ -270,11 +268,7 @@ private fun LbankCard(
                 if (!connection.connected) {
                     Caution(stringResource(R.string.connections_pending_verification))
                 }
-                CoineProSecondaryButton(
-                    text = stringResource(R.string.connections_lbank_remove),
-                    onClick = onDisconnect,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                DisconnectButton(label = R.string.connections_lbank_remove, onDisconnect = onDisconnect)
             }
 
             CoineProSegmentedControl(
@@ -386,4 +380,39 @@ private fun Submit(text: String, enabled: Boolean, onClick: () -> Unit) {
 private fun LbankPermission.label(): String = when (this) {
     LbankPermission.SPOT -> stringResource(R.string.connections_permission_spot)
     LbankPermission.FUTURES -> stringResource(R.string.connections_permission_futures)
+}
+
+/**
+ * The button that ends a venue connection, with the question in front of it.
+ *
+ * Disconnecting throws away credentials the reader typed by hand — an MT5 login and password, or
+ * an exchange key pair — and this app never keeps them locally, so the only way back is to find
+ * them again. It also stops every copy running from that account, which is the part that costs
+ * money rather than time.
+ *
+ * The dialog lives here rather than in either card because both ask the same question, and the
+ * wrong outcome is identical on either.
+ */
+@Composable
+private fun DisconnectButton(@StringRes label: Int, onDisconnect: () -> Unit) {
+    var asked by rememberSaveable { mutableStateOf(false) }
+    CoineProSecondaryButton(
+        text = stringResource(label),
+        onClick = { asked = true },
+        modifier = Modifier.fillMaxWidth(),
+    )
+    if (asked) {
+        CoineProConfirmDialog(
+            title = stringResource(R.string.connections_disconnect_title),
+            message = stringResource(R.string.connections_disconnect_body),
+            confirmLabel = stringResource(label),
+            dismissLabel = stringResource(R.string.connections_keep),
+            destructive = true,
+            onConfirm = {
+                asked = false
+                onDisconnect()
+            },
+            onDismiss = { asked = false },
+        )
+    }
 }

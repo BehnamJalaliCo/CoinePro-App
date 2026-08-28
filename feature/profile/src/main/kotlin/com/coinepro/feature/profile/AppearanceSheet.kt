@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.coinepro.core.datastore.MarketColorScheme
 import com.coinepro.core.datastore.ThemeMode
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProDarkPalette
@@ -51,6 +52,9 @@ fun AppearanceSheet(
     onSelect: (ThemeMode) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Which colour a rise is drawn in. See [MarketColorScheme]. */
+    colours: MarketColorScheme = MarketColorScheme.GREEN_UP,
+    onSelectColours: (MarketColorScheme) -> Unit = {},
 ) {
     CoineProSheet(
         title = stringResource(R.string.appearance_title),
@@ -58,7 +62,12 @@ fun AppearanceSheet(
         onDismiss = onDismiss,
         modifier = modifier,
     ) {
-        AppearanceOptions(selected = selected, onSelect = onSelect)
+        AppearanceOptions(
+            selected = selected,
+            onSelect = onSelect,
+            colours = colours,
+            onSelectColours = onSelectColours,
+        )
     }
 }
 
@@ -67,6 +76,8 @@ fun AppearanceSheet(
 fun ColumnScope.AppearanceOptions(
     selected: ThemeMode,
     onSelect: (ThemeMode) -> Unit,
+    colours: MarketColorScheme = MarketColorScheme.GREEN_UP,
+    onSelectColours: (MarketColorScheme) -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -79,6 +90,91 @@ fun ColumnScope.AppearanceOptions(
                 mode = mode,
                 selected = mode == selected,
                 onSelect = { onSelect(mode) },
+            )
+        }
+
+        // Below the theme and under its own heading, because it is a different question. The
+        // theme is about the room; this is about what a candle *means*, and getting it wrong
+        // inverts every price, percentage and signal direction in the product at once.
+        Text(
+            text = stringResource(R.string.appearance_colours),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextDisabled,
+            modifier = Modifier.padding(top = CoineProSpacing.Row),
+        )
+        MarketColorScheme.entries.forEach { scheme ->
+            ColourOption(
+                scheme = scheme,
+                selected = scheme == colours,
+                onSelect = { onSelectColours(scheme) },
+            )
+        }
+    }
+}
+
+/**
+ * One of the two conventions, shown as the thing itself.
+ *
+ * Two candles rather than two words: «سبز صعودی» is a sentence a reader has to parse, and a green
+ * candle beside a red one is the answer at a glance. They are drawn from the same two palette
+ * colours the chart uses, so the swatch cannot drift from what the chart will actually do.
+ */
+@Composable
+private fun ColourOption(
+    scheme: MarketColorScheme,
+    selected: Boolean,
+    onSelect: () -> Unit,
+) {
+    val haptics = rememberCoineProHaptics()
+    val accent = CoineProColors.Gold
+    val up = if (scheme == MarketColorScheme.GREEN_UP) CoineProColors.Buy else CoineProColors.Sell
+    val down = if (scheme == MarketColorScheme.GREEN_UP) CoineProColors.Sell else CoineProColors.Buy
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .background(
+                if (selected) {
+                    CoineProTint.fill(accent, CoineProColors.SurfaceElevated)
+                } else {
+                    CoineProColors.Surface
+                },
+            )
+            .border(
+                width = 1.dp,
+                color = if (selected) CoineProTint.edge(accent) else CoineProColors.Border,
+                shape = MaterialTheme.shapes.medium,
+            )
+            .clickable {
+                haptics.select()
+                onSelect()
+            }
+            .padding(horizontal = CoineProSpacing.CardHorizontal, vertical = CoineProSpacing.Row),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Row),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            Box(Modifier.size(width = CANDLE_WIDTH, height = SWATCH).background(up))
+            Box(Modifier.size(width = CANDLE_WIDTH, height = SWATCH).background(down))
+        }
+        Text(
+            text = stringResource(
+                if (scheme == MarketColorScheme.GREEN_UP) {
+                    R.string.appearance_green_up
+                } else {
+                    R.string.appearance_red_up
+                },
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = CoineProColors.TextPrimary,
+            modifier = Modifier.weight(1f),
+        )
+        if (selected) {
+            Icon(
+                painter = painterResource(CoineProIcons.Success),
+                contentDescription = null,
+                tint = accent,
+                modifier = Modifier.size(SWATCH_CHECK),
             )
         }
     }
@@ -206,3 +302,6 @@ private val LIGHT_STAGE = CoineProLightPalette.stage
 
 private val SWATCH = 28.dp
 private val SWATCH_CHECK = 18.dp
+
+/** A candle in the colour swatch. Narrow, so two of them read as a pair rather than as a flag. */
+private val CANDLE_WIDTH = 9.dp

@@ -86,26 +86,78 @@ object NotificationChannels {
             },
         )
 
-        // Removed rather than left to rot. A stale channel stays in the system's list for ever with
-        // nothing ever posted to it, and a reader looking for the switch that stops a notification
-        // will find the one that does nothing.
-        manager.deleteNotificationChannel(LEGACY_MARKET_EVENTS)
+        // Removed rather than left to rot. See `supersededChannelIds`.
+        supersededChannelIds().forEach(manager::deleteNotificationChannel)
     }
 
-    fun channelId(category: NotificationCategory): String = "cat_" + category.id + "_v2"
+    fun channelId(category: NotificationCategory): String =
+        "cat_" + category.id + "_v" + category.channelVersion()
+
+    /**
+     * Which generation of this category's channel to create, and why one of them is not 2.
+     *
+     * ### Android will not change a channel that already exists
+     *
+     * `createNotificationChannel` on an existing id updates the name and the description and
+     * **silently ignores the importance** — deliberately, because importance is the reader's to
+     * set once they have set it, and an app that could raise its own volume would raise it. The
+     * only way to ship a corrected default is a new id, and the only cost of a new id is that
+     * whatever the reader had customised on the old one does not follow.
+     *
+     * ### So it is per category, not one suffix for all of them
+     *
+     * Bumping a shared suffix would reset every category at once — sounds, vibration, the lot —
+     * to fix the default on one of them. This way exactly the corrected channel is replaced, and
+     * [supersededChannelIds] deletes the version it replaces so the reader is not left with two
+     * entries for one thing and no way to tell which is live.
+     *
+     * A reader who had *lowered* the price alert channel loses that choice, and that is the honest
+     * trade: the alternative is leaving everybody else's alerts silent to preserve one person's
+     * setting, and they can lower it again in two taps from the notification itself.
+     */
+    private fun NotificationCategory.channelVersion(): Int = when (this) {
+        // 3: shipped at DEFAULT importance, which delivered it silently to the shade — the most
+        // common form of "I never got my alert" there is. See `importance()`.
+        NotificationCategory.PRICE_ALERT -> 3
+        else -> 2
+    }
+
+    /**
+     * Channel ids this build has replaced, so they can be removed rather than left to rot.
+     *
+     * A stale channel stays in the system's list for ever with nothing ever posted to it, and a
+     * reader looking for the switch that stops a notification will find the one that does nothing.
+     */
+    private fun supersededChannelIds(): List<String> = buildList {
+        add(LEGACY_MARKET_EVENTS)
+        NotificationCategory.entries.forEach { category ->
+            for (version in 1 until category.channelVersion()) {
+                add("cat_" + category.id + "_v" + version)
+            }
+        }
+    }
 
     /**
      * How loudly each kind arrives, before the reader changes it.
      *
-     * High is reserved for the four things that are either money moving or an opportunity closing.
-     * Low is for the two streams — news and marketing — that are worth having and not worth a
-     * sound. Everything else is the ordinary default.
+     * High is reserved for the things that are either money moving or an opportunity closing. Low
+     * is for the two streams — news and marketing — that are worth having and not worth a sound.
+     * Everything else is the ordinary default.
+     *
+     * **[NotificationCategory.PRICE_ALERT] belongs in the first group and was in the third.** It
+     * is the one notification in this whole list that the reader *asked for by name*: they opened
+     * a screen, chose a market, typed a number and said tell me. Every other entry here is the app
+     * deciding something is worth an interruption; this one is the reader having decided. Delivering
+     * it at the default importance meant it arrived silently in the shade — which, in a corpus of
+     * reviews of this category of app, is the single most common form of "I never got my alert".
+     * The alert fired correctly and nobody was told.
      */
     private fun NotificationCategory.importance(): Int = when (this) {
         NotificationCategory.NEW_SIGNAL,
         NotificationCategory.COPY_OPENED,
         NotificationCategory.COPY_FAILED,
         NotificationCategory.SECURITY,
+        NotificationCategory.PRICE_ALERT,
         -> NotificationManager.IMPORTANCE_HIGH
 
         NotificationCategory.NEWS,

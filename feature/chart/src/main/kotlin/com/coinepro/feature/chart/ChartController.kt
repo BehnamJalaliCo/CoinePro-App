@@ -20,6 +20,8 @@ import com.coinepro.core.chart.Replay
 import com.coinepro.core.chart.ReplayState
 import com.coinepro.core.chart.TradeSide
 import com.coinepro.core.datastore.ChartDrawingStore
+import com.coinepro.core.diagnostics.AppLog
+import com.coinepro.core.diagnostics.LogTag
 import com.coinepro.core.datastore.StoredDrawing
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.OhlcBar
@@ -203,7 +205,21 @@ class ChartController(
      * trend line whose lifetime is a scroll position is not a trend line.
      */
     private val drawings: ChartDrawingStore? = null,
+    /**
+     * The app's structured log, or null in a test.
+     *
+     * Here for exactly one measurement: **time to first candle.** In a corpus of reviews of this
+     * category of app, load and render speed is the single largest sub-theme of chart complaints
+     * — larger than every missing feature put together. A budget that nothing measures is a wish,
+     * so every load is timed and anything past [FIRST_CANDLE_BUDGET_MS] is logged as a warning
+     * with the symbol, the timeframe and the bar count, which is enough to tell a slow network
+     * from a slow route from a response that was simply too big.
+     */
+    private val log: AppLog? = null,
 ) {
+
+    /** The venue these bars come from, named. See [CandleGateway.sourceName]. */
+    val sourceName: String get() = gateway.sourceName
 
     private val _state = MutableStateFlow(ChartUiState(symbol = symbol, timeframe = timeframe))
     val state: StateFlow<ChartUiState> = _state.asStateFlow()
@@ -451,6 +467,10 @@ class ChartController(
         _state.update { it.copy(loading = true, error = null) }
         loadJob = scope.launch {
             val current = _state.value
+            // Wall clock rather than `AppLog.timed`, because what is being measured is not the
+            // gateway call: it is the interval a reader spends looking at an empty chart, which
+            // ends when the state carrying the bars is published, not when the response lands.
+            val startedAt = System.nanoTime()
             runCatching { gateway.load(current.symbol, current.timeframe) }
                 .onSuccess { page ->
                     _state.update {
@@ -461,12 +481,48 @@ class ChartController(
                             hasMore = page.hasMore,
                         )
                     }
+                    val millis = (System.nanoTime() - startedAt) / 1_000_000
+                    val fields = mapOf(
+                        "symbol" to current.symbol,
+                        "tf" to current.timeframe.name,
+                        "bars" to page.candles.size.toString(),
+                        "ms" to millis.toString(),
+                    )
+                    if (millis > FIRST_CANDLE_BUDGET_MS) {
+                        log?.warn(LogTag.CHART, "first candle over budget", fields)
+                    } else {
+                        log?.debug(LogTag.CHART, "first candle", fields)
+                    }
                 }
                 .onFailure { failure ->
                     _state.update { it.copy(loading = false, error = failure.toChartError()) }
+                    log?.warn(
+                        LogTag.CHART,
+                        "chart load failed",
+                        mapOf(
+                            "symbol" to current.symbol,
+                            "tf" to current.timeframe.name,
+                            "ms" to ((System.nanoTime() - startedAt) / 1_000_000).toString(),
+                            // The owned error, never the exception's text — that is a platform
+                            // string in English and it is not this log's business to carry it.
+                            "error" to failure.toChartError().name,
+                        ),
+                    )
                 }
             loadJob = null
         }
+    }
+
+    private companion object {
+        /**
+         * How long a chart may take to show its first candle before it is worth complaining about.
+         *
+         * Twelve hundred milliseconds. Not a target — a target would be half that — but the point
+         * past which a reader on a phone has stopped waiting and started wondering. It is set
+         * above `AppLog.SLOW_MILLIS` deliberately: 250ms is the right threshold for an in-process
+         * operation and an absurd one for a round trip to a server over a mobile network in Iran.
+         */
+        const val FIRST_CANDLE_BUDGET_MS = 1_200L
     }
 }
 

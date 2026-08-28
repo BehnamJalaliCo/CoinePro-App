@@ -18,6 +18,23 @@ import retrofit2.http.Query
  */
 interface CandleGateway {
     /**
+     * Where these bars come from, named the way a reader would name it.
+     *
+     * ### Why a gateway has to say this out loud
+     *
+     * The loudest accusation in Persian-language reviews of this whole category of app is
+     * «کندل‌سازی» — that the broker manufactures its candles. It is usually wrong and it is never
+     * answerable by an app that shows a price with no provenance at all: a chart that simply
+     * asserts a number, with nothing saying where the number came from, gives a suspicious reader
+     * nothing to check and gives an honest operator no way to be believed.
+     *
+     * So every gateway names its venue, the chart prints it, and the claim becomes falsifiable —
+     * a reader can hold this chart against that venue's own. Default is empty rather than a guess:
+     * a test double has no venue, and inventing one for it would put a false name on a fixture.
+     */
+    val sourceName: String get() = ""
+
+    /**
      * One page, newest at the end.
      *
      * [before] pages backwards: pass the `t` of the oldest bar held and the answer is the page
@@ -76,6 +93,10 @@ internal data class WireBarDto(
 class TradeYarCandleGateway(retrofit: Retrofit) : CandleGateway {
 
     private val api = retrofit.create(CryptoCandleApi::class.java)
+
+    // The exchange, not the backend. TradeYar relays LBank's candles unchanged, and naming the
+    // relay would answer a question nobody asked while dodging the one they did.
+    override val sourceName: String = "LBank"
 
     override suspend fun load(
         symbol: String,
@@ -137,6 +158,11 @@ class CoineProFxCandleGateway(
 ) : CandleGateway {
 
     private val api = retrofit.create(AcademyChartApi::class.java)
+
+    // MetaTrader 5, by way of the master account's own feed — which is the honest description:
+    // these are the prices the copied account trades at, not an index or a composite. That is
+    // exactly the distinction a reader asking about «کندل‌سازی» wants settled.
+    override val sourceName: String = "MetaTrader 5"
 
     override suspend fun load(
         symbol: String,

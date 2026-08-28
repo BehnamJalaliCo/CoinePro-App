@@ -15,6 +15,80 @@ it is for.
 
 ---
 
+## [1.35.1] — 2026-08-28 — What a candle means, and where it came from
+
+Four things the research corpus ranked and the last version did not reach.
+
+### A rise is not always green
+
+Green-for-up is the convention in Europe and the Americas and the opposite of the convention
+across most of East Asia, where red marks a rise. A reader who learned the market on a Chinese,
+Korean or Japanese terminal reads a green candle as a fall — instantly, without thinking about it.
+Binance, OKX and Bybit all ship this switch. Getting it wrong is not cosmetic: it inverts every
+candle, every percentage, every profit figure and every signal direction in the product at once.
+
+Implemented by exchanging `buy` and `sell` on the palette rather than at any call site, which is
+what makes it one line instead of a hundred: every direction colour in the app resolves through
+those two fields, the chart's canvas included. A test holds the swap to being complete and
+symmetric, because a *partial* one is the worst outcome available — a chart drawing rises in red
+beside a percentage drawing them in green is two contradictory answers about whether the reader
+made money.
+
+The default stays green-up. Iran follows the Western convention; the switch is for the reader it
+is not right for, not a coin toss.
+
+### «کندل‌سازی»
+
+The loudest accusation in Persian-language reviews of this category of app is that the broker
+manufactures its candles. It is usually wrong and it was, until this version, unanswerable: a
+chart that asserts a number with no provenance gives a suspicious reader nothing to check and an
+honest operator no way to be believed.
+
+Every candle gateway now names its venue — LBank for crypto, MetaTrader 5 by way of the master
+account's own feed for forex — and the chart prints it under the canvas with the last bar's clock
+time beside it. The claim becomes falsifiable: a reader can hold this chart against that venue's
+own. The time is the *bar's*, not the request's, because a successful request that returns the
+same bars is not new data and printing when the app last asked would be reassuring and false.
+
+### Time to first candle
+
+Load and render speed is the single largest sub-theme of chart complaints in the corpus — larger
+than every missing feature put together. A budget nothing measures is a wish, so every chart load
+is now timed and anything past 1,200ms is logged as a warning carrying the symbol, the timeframe,
+the bar count and the elapsed milliseconds: enough to tell a slow network from a slow route from a
+response that was simply too big. Measured to the state update rather than to the response,
+because what matters is the interval a reader spends looking at an empty chart.
+
+### Asking, and not asking
+
+Disconnecting a venue asks first: it discards credentials the reader typed by hand, which this app
+never keeps locally, and it silently stops every copy running from that account.
+
+Deleting a saved layout or a price alert does **not** ask — it offers the thing straight back.
+That is the same rule read the other way: a confirmation is a tax on everybody who meant it, and
+it is only worth charging where recovery is otherwise impossible. Both of those are fully in hand
+at the moment of deletion, so an undo restores them exactly and costs the reader who meant it
+nothing.
+
+### The price alert nobody heard
+
+It shipped on a channel at Android's ordinary default importance, which means it arrives in the
+shade with no sound. A price alert is the one notification in the whole product the reader asked
+for **by name** — they opened a screen, chose a market, typed a number and said tell me — and it
+was the quietest thing the app sent. In the corpus that is the single most common shape of "I
+never got my alert": the alert fired correctly and nobody was told.
+
+Correcting it is not a one-line change, because Android takes a channel's importance only on the
+call that creates it and ignores it on every call after. That is deliberate and right — an app
+that could raise its own volume would — but it makes a channel id a one-way door. So channel
+versions are now per category rather than one shared suffix: the price alert moves to `_v3` and
+everything else stays on `_v2`, because bumping a shared suffix would reset every category's
+sounds and vibration to fix the default on one. The superseded id is deleted rather than left in
+the reader's list doing nothing, and a test pins every id — a diff there means somebody's settings
+are being reset, which is a decision rather than a refactor.
+
+---
+
 ## [1.35.0] — 2026-08-28 — The corpus, the questions, and the length of an average
 
 The research agent's report landed and its findings reorder what was left. It read 52,324 Apple RSS

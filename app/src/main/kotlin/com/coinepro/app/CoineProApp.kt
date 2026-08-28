@@ -69,6 +69,7 @@ import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
 import com.coinepro.core.network.NetworkStatus
+import com.coinepro.core.datastore.MarketColorScheme
 import com.coinepro.core.datastore.ThemeMode
 import com.coinepro.core.datastore.UserPreferencesStore
 import com.coinepro.core.datastore.StoredProfile
@@ -82,6 +83,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import com.coinepro.core.designsystem.CoineProConfirmDialog
 import com.coinepro.core.designsystem.CoineProOfflineBar
+import com.coinepro.core.designsystem.CoineProToast
 import com.coinepro.core.designsystem.LocalToaster
 import com.coinepro.core.designsystem.ToastTone
 import com.coinepro.core.designsystem.CoineProToastHost
@@ -636,6 +638,8 @@ fun CoineProApp(
     // `true` initially rather than false: the first frame arrives before the callback does, and an
     // offline bar that flashes on every cold start would be the app crying wolf once per launch.
     val online by networkStatus.online.collectAsStateWithLifecycle(initialValue = true)
+    val marketColors by userPreferencesStore.marketColors
+        .collectAsStateWithLifecycle(MarketColorScheme.GREEN_UP)
     val systemDark = isSystemInDarkTheme()
     val darkTheme = when (themeMode) {
         ThemeMode.SYSTEM -> systemDark
@@ -643,7 +647,10 @@ fun CoineProApp(
         ThemeMode.LIGHT -> false
     }
 
-    CoineProTheme(darkTheme = darkTheme) {
+    CoineProTheme(
+        darkTheme = darkTheme,
+        risingIsGreen = marketColors == MarketColorScheme.GREEN_UP,
+    ) {
         // One toaster for the whole tree, so a composable anywhere below can report a finished
         // action without a `Scaffold` and a `SnackbarHostState` being threaded to it. See
         // `CoineProToast`.
@@ -735,6 +742,8 @@ fun CoineProApp(
                 },
                 themeMode = themeMode,
                 onSetThemeMode = { mode -> scope.launch { userPreferencesStore.setThemeMode(mode) } },
+                marketColors = marketColors,
+                onSetMarketColors = { scheme -> scope.launch { userPreferencesStore.setMarketColors(scheme) } },
                 online = online,
             )
             // Signing in is the email flow's job now. The other two states are not sign-in at all —
@@ -866,6 +875,8 @@ fun CoineProApp(
                         onLogout = { signingIn = true },
                         themeMode = themeMode,
                         onSetThemeMode = { mode -> scope.launch { userPreferencesStore.setThemeMode(mode) } },
+                        marketColors = marketColors,
+                        onSetMarketColors = { scheme -> scope.launch { userPreferencesStore.setMarketColors(scheme) } },
                         online = online,
                     )
                     return@ProvideToaster
@@ -1014,6 +1025,9 @@ private fun MainShell(
     /** Which palette this reader pinned, and how to change it. See [ThemeMode]. */
     themeMode: ThemeMode,
     onSetThemeMode: (ThemeMode) -> Unit,
+    /** Which colour a rise is drawn in. See `MarketColorScheme`. */
+    marketColors: MarketColorScheme,
+    onSetMarketColors: (MarketColorScheme) -> Unit,
     /** Whether the phone has a network at all. See [CoineProOfflineBar]. */
     online: Boolean,
     platforms: List<MarketPlatform>,
@@ -1038,6 +1052,7 @@ private fun MainShell(
     val alertSavedMessage = stringResource(R.string.toast_alert_saved)
     val deletedMessage = stringResource(R.string.toast_deleted)
     val layoutSavedMessage = stringResource(R.string.toast_layout_saved)
+    val undoLabel = stringResource(R.string.action_undo)
 
     // The layout callbacks, with a sentence added. Wrapped once here rather than at the two
     // screens that take them, so the chart and the studio cannot disagree about whether saving
@@ -1046,9 +1061,24 @@ private fun MainShell(
         onSaveLayout(layout)
         toaster.show(layoutSavedMessage, ToastTone.SUCCESS)
     }
+    // Deleting one offers it straight back rather than asking first.
+    //
+    // That is the rule `CoineProConfirmDialog` states, applied the other way round: a question is
+    // a tax on everybody who meant it, and it is only worth charging where recovery is otherwise
+    // impossible. A layout is a name, a timeframe, a chart type and a list of indicator ids — all
+    // of it still in hand at the moment of deletion — so an undo recovers it exactly and costs the
+    // reader who meant it nothing at all.
     val onDeleteLayoutAnnounced: (String) -> Unit = { name ->
+        val removed = chartLayouts.firstOrNull { it.name == name }
         onDeleteLayout(name)
-        toaster.show(deletedMessage, ToastTone.NEUTRAL)
+        toaster.show(
+            CoineProToast(
+                message = deletedMessage,
+                tone = ToastTone.NEUTRAL,
+                actionLabel = removed?.let { undoLabel },
+                onAction = removed?.let { { onSaveLayout(it) } },
+            ),
+        )
     }
     // Keyed on the gateway, so switching platform builds a new store rather than drawing a
     // forex line beside a crypto price. The scope is the composition's: leaving the app cancels
@@ -1056,7 +1086,7 @@ private fun MainShell(
     val sparklineStore = remember(candleGateway) { SparklineStore(candleGateway, sparklineScope) }
     // The charts, held here rather than inside their own destinations. See `ChartControllers`:
     // one controller per destination is what made every drawing tool in the app inert.
-    val chartControllers = rememberChartControllers(candleGateway, sparklineScope, chartDrawingStore)
+    val chartControllers = rememberChartControllers(candleGateway, sparklineScope, chartDrawingStore, appLog)
     val currentRoute = backStackEntry?.destination?.route
 
     // Every screen the reader reaches, in sequence. It is two lines and it is the single most
@@ -1584,7 +1614,22 @@ private fun MainShell(
                             localAlertStore.remove(alert.id)
                             localAlertScheduler.sync(hasActiveAlerts = localAlerts.any { it.active && it.id != alert.id })
                         }
-                        toaster.show(deletedMessage, ToastTone.NEUTRAL)
+                        // The whole alert is in hand here, so the undo restores it exactly — the
+                        // symbol, the condition, the price the reader typed and whether it
+                        // repeats. Nothing to ask about.
+                        toaster.show(
+                            CoineProToast(
+                                message = deletedMessage,
+                                tone = ToastTone.NEUTRAL,
+                                actionLabel = undoLabel,
+                                onAction = {
+                                    scope.launch {
+                                        localAlertStore.add(alert)
+                                        localAlertScheduler.sync(hasActiveAlerts = true)
+                                    }
+                                },
+                            ),
+                        )
                     },
                     labelFor = { category -> context.getString(category.channelNameRes()) },
                     noteFor = { category -> context.getString(category.channelDescriptionRes()) },
@@ -1947,9 +1992,13 @@ private fun MainShell(
             selected = themeMode,
             onSelect = { mode ->
                 onSetThemeMode(mode)
+                // Not dismissed on the colour choice below, only on the theme: the two are
+                // different questions and a reader who came here for one often answers both.
                 appearanceOpen = false
             },
             onDismiss = { appearanceOpen = false },
+            colours = marketColors,
+            onSelectColours = onSetMarketColors,
         )
     }
 

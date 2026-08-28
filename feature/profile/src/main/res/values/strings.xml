@@ -54,4 +54,7 @@
     <string name="appearance_dark_note">حتی وقتی گوشی روشن است.</string>
     <string name="appearance_light">همیشه روشن</string>
     <string name="appearance_light_note">حتی وقتی گوشی تاریک است.</string>
+    <string name="appearance_colours">رنگ صعود و نزول</string>
+    <string name="appearance_green_up">صعود سبز، نزول قرمز</string>
+    <string name="appearance_red_up">صعود قرمز، نزول سبز</string>
 </resources>

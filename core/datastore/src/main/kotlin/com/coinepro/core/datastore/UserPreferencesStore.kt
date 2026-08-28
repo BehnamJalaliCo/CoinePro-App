@@ -37,8 +37,25 @@ class UserPreferencesStore(
         }
     }
 
+    /**
+     * Which colour a rise is drawn in. See [MarketColorScheme] for why this is not about taste.
+     *
+     * Device-wide like the theme, and for the same reason: it is how this reader reads a chart,
+     * not a property of the account they happen to be signed into.
+     */
+    val marketColors: Flow<MarketColorScheme> = dataStore.data.map { preferences ->
+        MarketColorScheme.fromId(preferences[MARKET_COLORS])
+    }
+
+    suspend fun setMarketColors(scheme: MarketColorScheme) {
+        dataStore.edit { preferences ->
+            preferences[MARKET_COLORS] = scheme.id
+        }
+    }
+
     private companion object {
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val MARKET_COLORS = stringPreferencesKey("market_colors")
     }
 }

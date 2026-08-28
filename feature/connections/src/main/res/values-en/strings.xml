@@ -29,4 +29,7 @@
     <string name="connections_status_of">%1$s connection status: %2$s</string>
     <string name="connections_pending_verification">Saved; the exchange has not verified it yet. Execution stays queued until LBank confirms.</string>
     <string name="connections_key_scope_advice">Create the key in LBank without withdrawal permission. If the key is ever exposed, that is the one thing standing between it and your funds.</string>
+    <string name="connections_disconnect_title">Disconnect?</string>
+    <string name="connections_disconnect_body">This account\'s details are cleared and any copying running from it stops. We do not keep those details anywhere, so reconnecting means entering them again.</string>
+    <string name="connections_keep">Keep it</string>
 </resources>
