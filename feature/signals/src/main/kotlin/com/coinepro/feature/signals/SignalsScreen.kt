@@ -46,7 +46,9 @@ import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPrimaryButton
+import com.coinepro.core.designsystem.CoineProPullToRefresh
 import com.coinepro.core.designsystem.CoineProSegmentedControl
+import com.coinepro.core.designsystem.CoineProSetupProgress
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.resolve
@@ -140,23 +142,18 @@ fun SignalsScreen(
                     middle = stringResource(R.string.signals_column_direction),
                     end = stringResource(R.string.signals_column_levels),
                 )
-                LazyColumn(modifier = Modifier.weight(1f)) {
-                    if (state.loading) {
-                        item {
-                            Text(
-                                text = stringResource(R.string.signals_refreshing),
-                                modifier = Modifier.padding(
-                                    horizontal = CoineProSpacing.Two,
-                                    vertical = CoineProSpacing.Half,
-                                ),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = CoineProColors.TextMuted,
-                            )
+                // The pull is the gesture a reader watching a signal actually makes; the arrow in
+                // the header stays for the reader who wants a target to aim at. Both call refresh.
+                CoineProPullToRefresh(
+                    refreshing = state.loading,
+                    onRefresh = controller::refresh,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(state.items, key = { it.id }) { signal ->
+                            SignalRow(signal = signal, onClick = { onOpenSignal(signal.id) })
+                            CoineProRowDivider()
                         }
-                    }
-                    items(state.items, key = { it.id }) { signal ->
-                        SignalRow(signal = signal, onClick = { onOpenSignal(signal.id) })
-                        CoineProRowDivider()
                     }
                 }
             }
@@ -231,7 +228,7 @@ private fun SignalRow(signal: TradingSignal, onClick: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = CoineProSpacing.Two, end = CoineProSpacing.Two, bottom = 9.dp),
+                .padding(start = CoineProSpacing.Two, end = CoineProSpacing.Two, bottom = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
         ) {
             LevelFigure(R.string.signals_metric_entry, signal.entry, signal.symbol, CoineProColors.TextSecondary)
@@ -243,6 +240,21 @@ private fun SignalRow(signal: TradingSignal, onClick: () -> Unit) {
                 CoineProColors.Buy,
             )
         }
+        // The three numbers above, drawn. It is the same information and it is not redundant: the
+        // figures say where the levels are and the bar says where the trade *is*, which is the
+        // thing a reader scanning the list actually came for and the one thing four prices in a
+        // row do not tell them.
+        CoineProSetupProgress(
+            entry = signal.entry,
+            stop = signal.stopLoss,
+            target = signal.targets.firstOrNull { it.level == 1 }?.price,
+            price = signal.currentQuote?.price,
+            modifier = Modifier.padding(
+                start = CoineProSpacing.Two,
+                end = CoineProSpacing.Two,
+                bottom = 9.dp,
+            ),
+        )
     }
 }
 

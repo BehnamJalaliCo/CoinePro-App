@@ -45,6 +45,15 @@ object CoineProIcons {
     @DrawableRes val Tools = R.drawable.nav_tools
     @DrawableRes val Activity = R.drawable.nav_activity
 
+    /**
+     * The two tabs that borrow a shape from elsewhere in the app.
+     *
+     * Markets takes Phosphor's rising line, Chart TradingView's candles. Both now have a filled
+     * weight like the other three — see `build-nav-icons.py`, which derives the candle's.
+     */
+    @DrawableRes val Markets = R.drawable.nav_markets
+    @DrawableRes val Chart = R.drawable.nav_chart
+
     /* ---------------------------------------------------------------- direction */
 
     /**
@@ -70,6 +79,29 @@ object CoineProIcons {
     @DrawableRes val Image = R.drawable.icon_image
     @DrawableRes val Link = R.drawable.icon_link_simple
 
+    /**
+     * The rows a settings list is made of.
+     *
+     * A settings list without them is eight lines of the same weight, and a reader looking for one
+     * particular row reads all eight — every time, because there is nothing to recognise. These are
+     * what turn the second visit into a glance.
+     */
+    @DrawableRes val Bell = R.drawable.icon_bell
+    @DrawableRes val Alarm = R.drawable.icon_alarm
+    @DrawableRes val IdentityCard = R.drawable.icon_identification_card
+    @DrawableRes val Delete = R.drawable.icon_trash
+
+    /**
+     * A transport pair, and they have to be a pair.
+     *
+     * The replay bar had a bare caret for "one bar back" beside a skip glyph for "one bar forward":
+     * a triangle on one side and a triangle-with-a-bar on the other, which reads as two different
+     * kinds of control rather than as one control's two directions. Both are auto-mirrored, so in
+     * Persian back points right and forward points left, which is what back and forward mean there.
+     */
+    @DrawableRes val StepBack = R.drawable.icon_skip_back
+    @DrawableRes val StepForward = R.drawable.icon_skip_forward
+
     /* ---------------------------------------------------------------- state */
 
     @DrawableRes val Warning = R.drawable.icon_warning
@@ -78,6 +110,9 @@ object CoineProIcons {
     @DrawableRes val Secure = R.drawable.icon_shield_check
     @DrawableRes val Locked = R.drawable.icon_lock_key
     @DrawableRes val Visible = R.drawable.icon_eye
+
+    /** The eye struck through: what the reader presses to put a figure back behind the dots. */
+    @DrawableRes val Hidden = R.drawable.icon_eye_slash
     @DrawableRes val Pending = R.drawable.icon_clock
 
     /* ---------------------------------------------------------------- domain */
@@ -115,6 +150,15 @@ object CoineProIcons {
         @DrawableRes val Signals = R.drawable.nav_signals_fill
         @DrawableRes val Ai = R.drawable.nav_ai_fill
         @DrawableRes val Tools = R.drawable.nav_tools_fill
-        @DrawableRes val Activity = R.drawable.nav_activity_fill
+        @DrawableRes val Activity = R.drawable.nav_activity
+
+    /**
+     * The two tabs that borrow a shape from elsewhere in the app.
+     *
+     * Markets takes Phosphor's rising line, Chart TradingView's candles. Both now have a filled
+     * weight like the other three — see `build-nav-icons.py`, which derives the candle's.
+     */
+    @DrawableRes val Markets = R.drawable.nav_markets
+    @DrawableRes val Chart = R.drawable.nav_chart_fill
     }
 }

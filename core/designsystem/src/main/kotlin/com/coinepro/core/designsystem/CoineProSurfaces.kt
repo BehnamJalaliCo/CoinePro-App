@@ -1,5 +1,10 @@
 package com.coinepro.core.designsystem
 
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.Icon
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -99,10 +104,26 @@ fun CoineProPrimaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    /**
+     * A glyph before the label, in the label's own colour.
+     *
+     * Optional and off by default, because most primary actions on this app's screens are the only
+     * button in view and an icon on a lone button decorates rather than distinguishes. It earns its
+     * place where buttons sit in a row and the reader is choosing between them — which is what Home
+     * does, and what a row of three identical pills was doing badly.
+     *
+     * Tinted with the text rather than drawn as artwork: this is one of ours. Another company's
+     * mark goes on [CoineProBrandButton], which uses `Image` precisely so it is never tinted.
+     */
+    @DrawableRes icon: Int? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberCoineProHaptics()
     Surface(
-        onClick = onClick,
+        onClick = {
+            haptics.commit()
+            onClick()
+        },
         modifier = modifier
             .alpha(if (enabled) 1f else DISABLED_ALPHA)
             .pressScale(interaction, CoineProPress.CTA),
@@ -115,12 +136,10 @@ fun CoineProPrimaryButton(
         color = CoineProColors.pageAccent,
         interactionSource = interaction,
     ) {
-        Text(
+        ButtonContent(
             text = text,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-            style = MaterialTheme.typography.labelLarge,
-            color = CoineProColors.onPageAccent,
-            textAlign = TextAlign.Center,
+            icon = icon,
+            ink = CoineProColors.onPageAccent,
         )
     }
 }
@@ -131,21 +150,60 @@ fun CoineProSecondaryButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    /** A glyph before the label. See [CoineProPrimaryButton]'s. */
+    @DrawableRes icon: Int? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberCoineProHaptics()
     Surface(
-        onClick = onClick,
+        onClick = {
+            haptics.select()
+            onClick()
+        },
         modifier = modifier.pressScale(interaction, CoineProPress.CONTROL),
         shape = CoineProPillShape,
         color = CoineProColors.SurfaceElevated,
         interactionSource = interaction,
     ) {
+        ButtonContent(
+            text = text,
+            icon = icon,
+            ink = CoineProColors.TextPrimary,
+        )
+    }
+}
+
+/**
+ * The inside of a button, shared so the two cannot drift apart.
+ *
+ * The padding is horizontally tighter when a glyph is present: an icon and a label need the same
+ * *optical* margin as a label alone, and keeping the number identical makes the iconed button look
+ * as though its text has been pushed off-centre.
+ */
+@Composable
+private fun ButtonContent(text: String, @DrawableRes icon: Int?, ink: Color) {
+    Row(
+        modifier = Modifier.padding(
+            horizontal = if (icon == null) 20.dp else 16.dp,
+            vertical = 16.dp,
+        ),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (icon != null) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = ink,
+            )
+        }
         Text(
             text = text,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
             style = MaterialTheme.typography.labelLarge,
-            color = CoineProColors.TextPrimary,
+            color = ink,
             textAlign = TextAlign.Center,
+            maxLines = 1,
         )
     }
 }

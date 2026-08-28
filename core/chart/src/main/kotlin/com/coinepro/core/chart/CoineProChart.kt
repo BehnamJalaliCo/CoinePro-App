@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextDirection
@@ -760,32 +761,74 @@ private fun DrawScope.drawLegend(
     val index = (crosshair?.index ?: view.lastVisible).coerceIn(view.firstVisible, view.lastVisible)
     val bar = view.series.bars.getOrNull(index) ?: return
     val decimals = decimalsFor(bar.c)
-    var y = LEGEND_INSET
+    val available = view.plotWidth - LEGEND_INSET * 2 - LEGEND_PLATE_PADDING * 2
 
-    val ohlc = "O ${formatPrice(bar.o, decimals)}   H ${formatPrice(bar.h, decimals)}   " +
-        "L ${formatPrice(bar.l, decimals)}   C ${formatPrice(bar.c, decimals)}"
-    val head = measurer.measure(ohlc, axisStyle(if (bar.up) palette.up else palette.down))
-    drawText(head, topLeft = Offset(LEGEND_INSET, y))
-    y += head.size.height + LEGEND_GAP
+    // Measured before anything is drawn, because the plate behind the block has to be sized to the
+    // block and a plate cannot be drawn after the text it is supposed to sit behind.
+    val lines = mutableListOf<TextLayoutResult>()
+
+    // The head line is fitted rather than truncated. Four prices at four decimals on a narrow
+    // phone will not fit at any spacing, and «O 2571.2  H 2575.7  L 2570.1  C 2…» is the one
+    // number a reader came for, cut off. So the separator tightens, then the labels go, and only
+    // then does it fall back to the close alone — which is still true and still useful.
+    val headColour = axisStyle(if (bar.up) palette.up else palette.down)
+    val heads = listOf(
+        "O ${formatPrice(bar.o, decimals)}   H ${formatPrice(bar.h, decimals)}   " +
+            "L ${formatPrice(bar.l, decimals)}   C ${formatPrice(bar.c, decimals)}",
+        "O ${formatPrice(bar.o, decimals)} H ${formatPrice(bar.h, decimals)} " +
+            "L ${formatPrice(bar.l, decimals)} C ${formatPrice(bar.c, decimals)}",
+        "${formatPrice(bar.o, decimals)} ${formatPrice(bar.h, decimals)} " +
+            "${formatPrice(bar.l, decimals)} ${formatPrice(bar.c, decimals)}",
+        "C ${formatPrice(bar.c, decimals)}",
+    )
+    lines += heads.map { measurer.measure(it, headColour) }
+        .let { measured -> measured.firstOrNull { it.size.width <= available } ?: measured.last() }
 
     // The legend may take a quarter of the plot and no more. On a full-height chart that is every
     // row it wants; on a card two hundred pixels tall it is the OHLC line and one overlay, which is
     // the difference between a legend and a chart with writing over it.
     val budget = view.plotHeight * LEGEND_BUDGET
     val named = decoration.overlays.filter { !it.label.isNullOrBlank() }
+    var height = lines[0].size.height.toFloat()
     var drawn = 0
     for (overlay in named.take(LEGEND_LINES)) {
         val value = overlay.values[index]
         val text = overlay.label + (value?.let { "  " + formatPrice(it, decimals) } ?: "  —")
         val line = measurer.measure(text, axisStyle(Color(overlay.colour)))
-        if (y + line.size.height > budget) break
-        drawText(line, topLeft = Offset(LEGEND_INSET, y))
-        y += line.size.height + LEGEND_GAP
+        if (height + LEGEND_GAP + line.size.height > budget) break
+        lines += line
+        height += LEGEND_GAP + line.size.height
         drawn++
     }
     if (named.size > drawn) {
-        val more = measurer.measure("+${(named.size - drawn)}", axisStyle(palette.text))
-        if (y + more.size.height <= budget) drawText(more, topLeft = Offset(LEGEND_INSET, y))
+        val more = measurer.measure("+${named.size - drawn}", axisStyle(palette.text))
+        if (height + LEGEND_GAP + more.size.height <= budget) {
+            lines += more
+            height += LEGEND_GAP + more.size.height
+        }
+    }
+
+    // The plate. Without it the legend is drawn *over* the candles, the moving averages and the
+    // dashed levels, and every stroke that crosses a glyph takes a bite out of it — which is how a
+    // five-line legend on a busy chart stops being readable at all. It is the stage colour rather
+    // than black so it disappears into the chart on either theme, and it is not opaque, because the
+    // reader is entitled to see roughly what is behind the writing.
+    val width = lines.maxOf { it.size.width }.toFloat()
+    drawRoundRect(
+        color = palette.stage,
+        topLeft = Offset(LEGEND_INSET, LEGEND_INSET),
+        size = Size(
+            width + LEGEND_PLATE_PADDING * 2,
+            height + LEGEND_PLATE_PADDING * 2,
+        ),
+        cornerRadius = CornerRadius(LEGEND_PLATE_RADIUS, LEGEND_PLATE_RADIUS),
+        alpha = LEGEND_PLATE_ALPHA,
+    )
+
+    var y = LEGEND_INSET + LEGEND_PLATE_PADDING
+    for (line in lines) {
+        drawText(line, topLeft = Offset(LEGEND_INSET + LEGEND_PLATE_PADDING, y))
+        y += line.size.height + LEGEND_GAP
     }
 }
 
@@ -1124,6 +1167,15 @@ private const val LEGEND_INSET = 10f
 
 /** The share of the plot's height the corner legend may occupy before it stops adding rows. */
 private const val LEGEND_BUDGET = 0.25f
+
+/** Breathing room between the legend's text and the edge of the plate behind it. */
+private const val LEGEND_PLATE_PADDING = 5f
+
+/** How much of the chart shows through the legend's plate. */
+private const val LEGEND_PLATE_ALPHA = 0.82f
+
+/** The plate's corner. Softer than a tag's, because it is a panel rather than a marker. */
+private const val LEGEND_PLATE_RADIUS = 6f
 
 /** Padding inside the last-price and crosshair tags. */
 private const val TAG_PADDING = 3f

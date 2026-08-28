@@ -2,6 +2,7 @@ package com.coinepro.core.datastore
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.coinepro.core.model.AvatarSpec
@@ -21,6 +22,20 @@ data class StoredProfile(
     val avatar: AvatarSpec = AvatarSpec.Default,
     /** A short line the reader wrote about themselves. Null until they write one. */
     val tagline: String? = null,
+    /**
+     * Whether the reader has asked for their money not to be drawn on screen.
+     *
+     * Every serious finance application has this and the reason is not squeamishness — it is that
+     * people open these apps on a bus, at a desk, in front of a camera. The reader who taps it is
+     * not hiding the figure from themselves; they are hiding it from whoever is over their
+     * shoulder, and the app is the only thing that can help with that.
+     *
+     * It is remembered rather than reset each launch, because somebody who wants their balance
+     * hidden wants it hidden the *next* time they open the app in the same room. The default is
+     * off: a first-run reader who cannot see their own balance has been given a bug, not a
+     * feature.
+     */
+    val balanceHidden: Boolean = false,
 )
 
 /**
@@ -46,6 +61,7 @@ class ProfileStore(private val dataStore: DataStore<Preferences>) {
             displayName = preferences[DISPLAY_NAME]?.takeIf(String::isNotBlank),
             avatar = AvatarSpec.decode(preferences[AVATAR]),
             tagline = preferences[TAGLINE]?.takeIf(String::isNotBlank),
+            balanceHidden = preferences[BALANCE_HIDDEN] == true,
         )
     }
 
@@ -61,6 +77,10 @@ class ProfileStore(private val dataStore: DataStore<Preferences>) {
             val trimmed = tagline?.trim().orEmpty().take(MAX_TAGLINE)
             if (trimmed.isEmpty()) preferences.remove(TAGLINE) else preferences[TAGLINE] = trimmed
         }
+    }
+
+    suspend fun setBalanceHidden(hidden: Boolean) {
+        dataStore.edit { preferences -> preferences[BALANCE_HIDDEN] = hidden }
     }
 
     suspend fun setAvatar(spec: AvatarSpec) {
@@ -79,6 +99,9 @@ class ProfileStore(private val dataStore: DataStore<Preferences>) {
             preferences.remove(DISPLAY_NAME)
             preferences.remove(TAGLINE)
             preferences.remove(AVATAR)
+            // The privacy choice goes too. It is a statement about one person's circumstances, and
+            // leaving it set would tell the next reader something about the last one.
+            preferences.remove(BALANCE_HIDDEN)
         }
     }
 
@@ -86,6 +109,7 @@ class ProfileStore(private val dataStore: DataStore<Preferences>) {
         val DISPLAY_NAME = stringPreferencesKey("profile_display_name")
         val TAGLINE = stringPreferencesKey("profile_tagline")
         val AVATAR = stringPreferencesKey("profile_avatar")
+        val BALANCE_HIDDEN = booleanPreferencesKey("profile_balance_hidden")
 
         /** Enough for a real name in either script, short enough to fit a row without eliding. */
         const val MAX_NAME = 40

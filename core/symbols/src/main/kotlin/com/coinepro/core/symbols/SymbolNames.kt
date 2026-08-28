@@ -169,4 +169,13 @@ internal object SymbolNames {
         "AR" to "آرویو",
         "CAKE" to "پنکیک‌سواپ",
     )
+
+    /**
+     * A currency or metal code as the app names it, or the code itself where it has no name.
+     *
+     * The code is a real answer rather than a fallback: an exotic leg an MT5 broker quotes and this
+     * app has never named is still better shown as «HKD» than as nothing.
+     */
+    fun displayOf(code: String): String =
+        CURRENCY[code] ?: METAL[code] ?: code
 }

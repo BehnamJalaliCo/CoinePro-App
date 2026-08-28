@@ -36,14 +36,45 @@ NAV = REPO / "design" / "ui-icons" / "nav"
 SVG_NS = "http://www.w3.org/2000/svg"
 PATH = f"{{{SVG_NS}}}path"
 
-# Every number in the path data. Good enough for a bounding box on these files: they are font
-# conversions and every coordinate is absolute, so the numbers are the points.
+# One SVG path command: its letter, then everything up to the next letter.
+COMMAND = re.compile(r"([MmZzLlHhVvCcSsQqTtAa])([^MmZzLlHhVvCcSsQqTtAa]*)")
+
+# Every number inside one command's argument list.
 NUMBER = re.compile(r"[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?")
+
+# How many numbers each command takes per repetition, and where in that group the endpoint sits.
+# Only the endpoint matters here: a bounding box drawn from on-path points is what decides whether
+# one contour sits inside another, and a control point that overshoots the curve would make an
+# enclosed counter look like it escaped its own body.
+ARITY = {
+    "m": (2, 0), "l": (2, 0), "t": (2, 0),
+    "h": (1, 0), "v": (1, 0),
+    "c": (6, 4), "s": (4, 2), "q": (4, 2),
+    "a": (7, 5),
+    "z": (0, 0),
+}
+
 
 # The five destinations, in AppDestination order. The value is the outline file's stem; a name in
 # PUBLISHED_FILL has its filled weight shipped by the vendor instead of derived.
 ICONS = ("home", "signals", "ai", "tools", "activity")
 PUBLISHED_FILL = {"ai"}
+
+# Markets and Chart have no glyph in the ``nav`` archive: they borrow shapes the reader has already
+# met elsewhere in the app. They still need both weights, though, or two of the five tabs would mark
+# selection by a shade of grey while the other three change shape — which is what shipped, and it
+# read as a bar where the selection had failed to register.
+#
+# Markets takes Phosphor's published pair, so nothing is derived. Chart takes TradingView's
+# candlestick, whose outline is built exactly like the nav glyphs — a rounded body with its counter
+# as a second subpath, and the wick as a separate solid path that no counter rule touches — so the
+# same `solidify` gives back the filled candles the outline was cut from.
+BORROWED = (
+    ("markets", REPO / "design/ui-icons/phosphor-regular/chart-line-up.svg", None),
+    ("markets_fill", REPO / "design/ui-icons/phosphor-fill/chart-line-up-fill.svg", None),
+    ("chart", REPO / "design/ui-icons/tradingview/chart_candles.svg", None),
+    ("chart_fill", REPO / "design/ui-icons/tradingview/chart_candles.svg", "solidify"),
+)
 
 
 def subpaths(data: str) -> list[str]:
@@ -51,12 +82,56 @@ def subpaths(data: str) -> list[str]:
     return [part for part in re.split(r"(?=[Mm])", data) if part.strip()]
 
 
-def bounds(subpath: str) -> tuple[float, float, float, float] | None:
-    numbers = [float(value) for value in NUMBER.findall(subpath)]
-    xs, ys = numbers[0::2], numbers[1::2]
-    if not xs or not ys:
-        return None
-    return min(xs), min(ys), max(xs), max(ys)
+def contours(data: str) -> list[tuple[tuple[float, float, float, float] | None, tuple[float, float]]]:
+    """The bounding box of each contour in one path, in absolute coordinates.
+
+    Walked over the whole path in one pass rather than over each split contour on its own, and that
+    is the part that matters. A contour after the first usually opens with a *relative* move-to, so
+    where it actually sits depends on where the contour before it ended; measuring it in isolation
+    puts it at the origin. Both mistakes were made here in turn, and neither fails loudly — a wrong
+    box simply decides that nothing encloses anything, and `solidify` hands back the outline it was
+    asked to fill.
+    """
+    boxes: list[tuple[tuple[float, float, float, float] | None, tuple[float, float]]] = []
+    current: list[tuple[float, float]] = []
+    x = y = 0.0
+    start_x = start_y = 0.0
+
+    def close() -> None:
+        if not current:
+            boxes.append((None, (start_x, start_y)))
+            return
+        xs = [point[0] for point in current]
+        ys = [point[1] for point in current]
+        boxes.append(((min(xs), min(ys), max(xs), max(ys)), (start_x, start_y)))
+
+    for letter, argument in COMMAND.findall(data):
+        lower = letter.lower()
+        relative = letter.islower()
+        if lower == "z":
+            x, y = start_x, start_y
+            continue
+        size, endpoint = ARITY[lower]
+        numbers = [float(value) for value in NUMBER.findall(argument)]
+        for offset in range(0, len(numbers) - size + 1, size):
+            group = numbers[offset:offset + size]
+            if lower == "h":
+                x = x + group[0] if relative else group[0]
+            elif lower == "v":
+                y = y + group[0] if relative else group[0]
+            else:
+                dx, dy = group[endpoint], group[endpoint + 1]
+                x, y = (x + dx, y + dy) if relative else (dx, dy)
+            # A move-to opens a contour; a repeated pair after it is an implicit line-to and stays
+            # in the one it opened.
+            if lower == "m" and offset == 0:
+                if current:
+                    close()
+                current = []
+                start_x, start_y = x, y
+            current.append((x, y))
+    close()
+    return boxes
 
 
 def encloses(outer: tuple, inner: tuple, tolerance: float = 0.5) -> bool:
@@ -72,9 +147,17 @@ def encloses(outer: tuple, inner: tuple, tolerance: float = 0.5) -> bool:
 def solidify(data: str) -> str:
     """Drop every counter, leaving the outer contours — the outline glyph's filled weight."""
     parts = subpaths(data)
-    boxes = [bounds(part) for part in parts]
+    walked = contours(data)
+    if len(walked) != len(parts):
+        raise SystemExit(f"path walker and splitter disagree: {len(walked)} vs {len(parts)} contours")
+    boxes = [box for box, _ in walked]
     kept = [
-        part
+        # A contour that follows another usually opens with a *relative* move-to, measured from
+        # where the one before it ended. Remove that one and the survivor moves. So each kept
+        # contour is re-anchored to the absolute point the walk found it at — which is a no-op for
+        # a contour that was already absolute, and the difference between a glyph and a smear for
+        # one that was not.
+        anchor(part, walked[index][1])
         for index, part in enumerate(parts)
         if boxes[index] is None
         or not any(
@@ -83,7 +166,22 @@ def solidify(data: str) -> str:
             if other != index
         )
     ]
+    if not kept:
+        raise SystemExit("solidify removed every contour; the enclosure test is wrong")
     return "".join(kept)
+
+
+def anchor(subpath: str, start: tuple[float, float]) -> str:
+    """Rewrite a contour's opening move-to as an absolute one at [start]."""
+    match = COMMAND.match(subpath.lstrip())
+    if match is None or match.group(1) not in "Mm":
+        return subpath
+    numbers = NUMBER.findall(match.group(2))
+    rest = subpath.lstrip()[match.end():]
+    # Anything after the first pair in a move-to is an implicit line-to and is left as written; it
+    # is relative to the endpoint this line is now pinning, so it still lands where it did.
+    trailing = "".join(match.group(2).split(numbers[1], 1)[1:]) if len(numbers) > 2 else ""
+    return f"M {start[0]:g} {start[1]:g}{trailing}{rest}"
 
 
 def write_fill(name: str) -> None:
@@ -103,12 +201,35 @@ def write_fill(name: str) -> None:
     )
 
 
+def write_borrowed() -> list[str]:
+    """Stage the two borrowed glyphs into the nav archive, deriving a fill where none is published."""
+    ET.register_namespace("", SVG_NS)
+    staged = []
+    for name, source, transform in BORROWED:
+        tree = ET.parse(source)
+        if transform == "solidify":
+            for path in tree.getroot().iter(PATH):
+                data = path.get("d")
+                if data:
+                    path.set("d", solidify(data))
+                path.set("fill-rule", "nonzero")
+        (NAV / f"{name}.svg").write_text(
+            "<!-- Generated by scripts/design/build-nav-icons.py from "
+            f"{source.relative_to(REPO)}. Do not hand-edit. -->\n"
+            + ET.tostring(tree.getroot(), encoding="unicode"),
+            encoding="utf-8",
+        )
+        staged.append(name)
+    return staged
+
+
 def main() -> int:
     derived = [name for name in ICONS if name not in PUBLISHED_FILL]
     for name in derived:
         write_fill(name)
 
-    names = [name for name in ICONS] + [f"{name}_fill" for name in ICONS]
+    borrowed = write_borrowed()
+    names = [name for name in ICONS] + [f"{name}_fill" for name in ICONS] + borrowed
     result = subprocess.run(
         [
             sys.executable, str(REPO / "scripts/design/svg-to-vector.py"),

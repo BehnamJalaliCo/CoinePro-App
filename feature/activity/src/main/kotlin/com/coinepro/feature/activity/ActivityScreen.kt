@@ -57,6 +57,7 @@ import com.coinepro.core.designsystem.CoineProListHeader
 import com.coinepro.core.designsystem.CoineProHeaderAction
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProPullToRefresh
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.ExecutionStatus
@@ -127,248 +128,258 @@ fun ActivityScreen(
         coverageComplete = historyState.coverageComplete,
     )
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+    CoineProPullToRefresh(
+        refreshing = historyState.loading || executionState.loading,
+        // The same three calls the header's button makes. Two ways to ask, one thing asked.
+        onRefresh = {
+            signalController.refreshHistory()
+            executionController.refreshExecutions()
+            controller.refresh()
+        },
     ) {
-        item {
-            ActivityHeader(
-                loadedSignals = historyState.items.size,
-                expectedSignals = historyState.expectedTotal,
-                executionCount = executionState.items.size,
-                refreshing = historyState.loading || executionState.loading,
-                onRefresh = {
-                    signalController.refreshHistory()
-                    executionController.refreshExecutions()
-                    controller.refresh()
-                },
-            )
-        }
-
-        onOpenAlerts?.let { open ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             item {
-                CoineProCard(
-                    modifier = Modifier.fillMaxWidth().clickable(onClick = open),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.activity_alerts_title),
-                                style = MaterialTheme.typography.titleSmall,
-                                color = CoineProColors.TextPrimary,
-                            )
-                            Text(
-                                text = stringResource(R.string.activity_alerts_body),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = CoineProColors.TextMuted,
-                            )
-                        }
-                        Text(
-                            text = notificationState.alerts.size.toPersianDigits(),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = CoineProColors.Accent,
-                        )
-                    }
-                }
-            }
-        }
-
-        if (historyState.loading && historyState.items.isEmpty()) {
-            item { LoadingPanel(stringResource(R.string.activity_history_loading)) }
-        } else if (historyState.membershipRequired) {
-            item {
-                StatePanel(
-                    title = stringResource(R.string.activity_history_locked_title),
-                    body = stringResource(R.string.activity_history_locked_body),
-                    action = stringResource(R.string.activity_check_again),
-                    onAction = signalController::refreshHistory,
-                )
-            }
-        } else if (historyState.error != null && historyState.items.isEmpty()) {
-            item {
-                StatePanel(
-                    title = stringResource(R.string.activity_history_unavailable_title),
-                    body = historyState.error?.resolve()
-                        ?: stringResource(R.string.activity_history_unavailable_body),
-                    action = stringResource(R.string.activity_retry),
-                    onAction = signalController::refreshHistory,
-                )
-            }
-        } else {
-            if (!historyState.coverageComplete) {
-                item { CoverageNotice(historyState) }
-            }
-            historyState.error?.let { error ->
-                item {
-                    NoticePanel(
-                        title = stringResource(R.string.activity_refresh_failed),
-                        body = stringResource(R.string.activity_refresh_failed_body, error),
-                        accent = CoineProColors.Warning,
-                    )
-                }
-            }
-            item {
-                PerformanceSection(
-                    summary = summary,
-                    hasRecords = filteredHistory.isNotEmpty(),
-                    coverageComplete = historyState.coverageComplete,
-                )
-            }
-            item {
-                HistoryFilters(
-                    result = resultFilter,
-                    symbol = symbolFilter,
-                    onResult = { resultFilter = it },
-                    onSymbol = { symbolFilter = it.uppercase().filter { ch -> ch.isLetterOrDigit() }.take(18) },
-                    onReset = {
-                        resultFilter = PerformanceResultFilter.ALL
-                        symbolFilter = ""
+                ActivityHeader(
+                    loadedSignals = historyState.items.size,
+                    expectedSignals = historyState.expectedTotal,
+                    executionCount = executionState.items.size,
+                    refreshing = historyState.loading || executionState.loading,
+                    onRefresh = {
+                        signalController.refreshHistory()
+                        executionController.refreshExecutions()
+                        controller.refresh()
                     },
                 )
             }
-            if (historyState.items.isEmpty()) {
+
+            onOpenAlerts?.let { open ->
+                item {
+                    CoineProCard(
+                        modifier = Modifier.fillMaxWidth().clickable(onClick = open),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.activity_alerts_title),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = CoineProColors.TextPrimary,
+                                )
+                                Text(
+                                    text = stringResource(R.string.activity_alerts_body),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = CoineProColors.TextMuted,
+                                )
+                            }
+                            Text(
+                                text = notificationState.alerts.size.toPersianDigits(),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = CoineProColors.Accent,
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (historyState.loading && historyState.items.isEmpty()) {
+                item { LoadingPanel(stringResource(R.string.activity_history_loading)) }
+            } else if (historyState.membershipRequired) {
                 item {
                     StatePanel(
-                        title = stringResource(R.string.activity_history_empty_title),
-                        body = stringResource(R.string.activity_history_empty_body),
+                        title = stringResource(R.string.activity_history_locked_title),
+                        body = stringResource(R.string.activity_history_locked_body),
+                        action = stringResource(R.string.activity_check_again),
+                        onAction = signalController::refreshHistory,
                     )
                 }
-            } else if (filteredHistory.isEmpty()) {
+            } else if (historyState.error != null && historyState.items.isEmpty()) {
                 item {
                     StatePanel(
-                        title = stringResource(R.string.activity_filtered_empty_title),
-                        body = stringResource(R.string.activity_filtered_empty_body),
-                        action = stringResource(R.string.activity_clear_filters),
-                        onAction = {
+                        title = stringResource(R.string.activity_history_unavailable_title),
+                        body = historyState.error?.resolve()
+                            ?: stringResource(R.string.activity_history_unavailable_body),
+                        action = stringResource(R.string.activity_retry),
+                        onAction = signalController::refreshHistory,
+                    )
+                }
+            } else {
+                if (!historyState.coverageComplete) {
+                    item { CoverageNotice(historyState) }
+                }
+                historyState.error?.let { error ->
+                    item {
+                        NoticePanel(
+                            title = stringResource(R.string.activity_refresh_failed),
+                            body = stringResource(R.string.activity_refresh_failed_body, error),
+                            accent = CoineProColors.Warning,
+                        )
+                    }
+                }
+                item {
+                    PerformanceSection(
+                        summary = summary,
+                        hasRecords = filteredHistory.isNotEmpty(),
+                        coverageComplete = historyState.coverageComplete,
+                    )
+                }
+                item {
+                    HistoryFilters(
+                        result = resultFilter,
+                        symbol = symbolFilter,
+                        onResult = { resultFilter = it },
+                        onSymbol = { symbolFilter = it.uppercase().filter { ch -> ch.isLetterOrDigit() }.take(18) },
+                        onReset = {
                             resultFilter = PerformanceResultFilter.ALL
                             symbolFilter = ""
                         },
                     )
                 }
-            } else {
-                item { SectionHeader(stringResource(R.string.activity_history_title), stringResource(R.string.activity_history_subtitle)) }
-                items(filteredHistory, key = { "signal-${it.id}" }) { signal ->
-                    SignalHistoryCard(signal = signal, onClick = { onOpenSignal(signal.id) })
-                }
-            }
-        }
-
-        // The whole section is dropped where the platform places no orders at all. A ledger heading
-        // above an explanation of why there is no ledger is two things saying nothing.
-        if (!executionState.unsupported) {
-        item { SectionHeader(stringResource(R.string.activity_ledger_title), stringResource(R.string.activity_ledger_subtitle)) }
-        if (executionState.loading && executionState.items.isEmpty()) {
-            item { LoadingPanel(stringResource(R.string.activity_executions_loading)) }
-        } else if (executionState.error != null && executionState.items.isEmpty()) {
-            item {
-                StatePanel(
-                    title = stringResource(R.string.activity_executions_unavailable_title),
-                    body = executionState.error ?: stringResource(R.string.activity_executions_unavailable_body),
-                    action = stringResource(R.string.activity_retry),
-                    onAction = executionController::refreshExecutions,
-                )
-            }
-        } else if (executionState.items.isEmpty()) {
-            item {
-                StatePanel(
-                    title = stringResource(R.string.activity_executions_empty_title),
-                    body = stringResource(R.string.activity_executions_empty_body),
-                )
-            }
-        } else {
-            executionState.error?.let { error ->
-                item { NoticePanel(stringResource(R.string.activity_execution_refresh_failed), error, CoineProColors.Warning) }
-            }
-            items(executionState.items, key = { "execution-${it.id}" }) { execution ->
-                ExecutionHistoryCard(execution, onOpenSignal)
-            }
-        }
-        }
-
-        item { SectionHeader(stringResource(R.string.activity_alerts_title), stringResource(R.string.activity_alerts_subtitle)) }
-        item {
-            PreferenceCard(
-                value = notificationState.preferences,
-                onChange = controller::updatePreferences,
-            )
-        }
-        item {
-            NewAlertCard(
-                symbol = alertSymbol,
-                value = alertValue,
-                condition = alertCondition,
-                onSymbol = { alertSymbol = it.uppercase().filter { ch -> ch.isLetterOrDigit() }.take(18) },
-                onValue = { alertValue = it.filter { ch -> ch.isDigit() || ch == '.' } },
-                onCondition = { alertCondition = it },
-                onCreate = {
-                    val target = alertValue.toDoubleOrNull()
-                    if (alertSymbol.isNotBlank() && target != null && target.isFinite() && target > 0.0) {
-                        controller.createAlert(
-                            symbol = alertSymbol,
-                            condition = alertCondition,
-                            value = target,
-                            trigger = PriceAlertTrigger.ONCE,
+                if (historyState.items.isEmpty()) {
+                    item {
+                        StatePanel(
+                            title = stringResource(R.string.activity_history_empty_title),
+                            body = stringResource(R.string.activity_history_empty_body),
                         )
-                        alertValue = ""
                     }
-                },
-            )
-        }
-        if (notificationState.alerts.isNotEmpty()) {
-            items(notificationState.alerts, key = { "alert-${it.id}" }) { alert ->
-                AlertRow(
-                    alert = alert,
-                    onToggle = { controller.setAlertActive(alert, it) },
-                    onDelete = { controller.deleteAlert(alert.id) },
-                )
-            }
-        }
-
-        item { SectionHeader(stringResource(R.string.activity_notifications_title), stringResource(R.string.activity_notifications_subtitle)) }
-        if (notificationState.notifications.isEmpty() && !notificationState.loading) {
-            item { StatePanel(stringResource(R.string.activity_notifications_empty_title), stringResource(R.string.activity_notifications_empty_body)) }
-        } else {
-            items(notificationState.notifications) { notification ->
-                PremiumCard(
-                    modifier = Modifier.clickable(enabled = notification.signalId != null) {
-                        notification.signalId?.let(onOpenSignal)
-                    },
-                ) {
-                    Text(notification.title, fontWeight = FontWeight.Bold)
-                    if (notification.body.isNotBlank()) {
-                        Text(notification.body, color = CoineProColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                } else if (filteredHistory.isEmpty()) {
+                    item {
+                        StatePanel(
+                            title = stringResource(R.string.activity_filtered_empty_title),
+                            body = stringResource(R.string.activity_filtered_empty_body),
+                            action = stringResource(R.string.activity_clear_filters),
+                            onAction = {
+                                resultFilter = PerformanceResultFilter.ALL
+                                symbolFilter = ""
+                            },
+                        )
+                    }
+                } else {
+                    item { SectionHeader(stringResource(R.string.activity_history_title), stringResource(R.string.activity_history_subtitle)) }
+                    items(filteredHistory, key = { "signal-${it.id}" }) { signal ->
+                        SignalHistoryCard(signal = signal, onClick = { onOpenSignal(signal.id) })
                     }
                 }
             }
-            // A truncated list that says nothing looks like the whole history, and a reader hunting
-            // for something from last week concludes it was never recorded.
-            if (notificationState.hasMoreNotifications) {
+
+            // The whole section is dropped where the platform places no orders at all. A ledger heading
+            // above an explanation of why there is no ledger is two things saying nothing.
+            if (!executionState.unsupported) {
+            item { SectionHeader(stringResource(R.string.activity_ledger_title), stringResource(R.string.activity_ledger_subtitle)) }
+            if (executionState.loading && executionState.items.isEmpty()) {
+                item { LoadingPanel(stringResource(R.string.activity_executions_loading)) }
+            } else if (executionState.error != null && executionState.items.isEmpty()) {
                 item {
-                    Text(
-                        stringResource(R.string.activity_notifications_truncated),
-                        modifier = Modifier.padding(horizontal = CoineProSpacing.Half),
-                        color = CoineProColors.TextMuted,
-                        style = MaterialTheme.typography.bodySmall,
+                    StatePanel(
+                        title = stringResource(R.string.activity_executions_unavailable_title),
+                        body = executionState.error ?: stringResource(R.string.activity_executions_unavailable_body),
+                        action = stringResource(R.string.activity_retry),
+                        onAction = executionController::refreshExecutions,
+                    )
+                }
+            } else if (executionState.items.isEmpty()) {
+                item {
+                    StatePanel(
+                        title = stringResource(R.string.activity_executions_empty_title),
+                        body = stringResource(R.string.activity_executions_empty_body),
+                    )
+                }
+            } else {
+                executionState.error?.let { error ->
+                    item { NoticePanel(stringResource(R.string.activity_execution_refresh_failed), error, CoineProColors.Warning) }
+                }
+                items(executionState.items, key = { "execution-${it.id}" }) { execution ->
+                    ExecutionHistoryCard(execution, onOpenSignal)
+                }
+            }
+            }
+
+            item { SectionHeader(stringResource(R.string.activity_alerts_title), stringResource(R.string.activity_alerts_subtitle)) }
+            item {
+                PreferenceCard(
+                    value = notificationState.preferences,
+                    onChange = controller::updatePreferences,
+                )
+            }
+            item {
+                NewAlertCard(
+                    symbol = alertSymbol,
+                    value = alertValue,
+                    condition = alertCondition,
+                    onSymbol = { alertSymbol = it.uppercase().filter { ch -> ch.isLetterOrDigit() }.take(18) },
+                    onValue = { alertValue = it.filter { ch -> ch.isDigit() || ch == '.' } },
+                    onCondition = { alertCondition = it },
+                    onCreate = {
+                        val target = alertValue.toDoubleOrNull()
+                        if (alertSymbol.isNotBlank() && target != null && target.isFinite() && target > 0.0) {
+                            controller.createAlert(
+                                symbol = alertSymbol,
+                                condition = alertCondition,
+                                value = target,
+                                trigger = PriceAlertTrigger.ONCE,
+                            )
+                            alertValue = ""
+                        }
+                    },
+                )
+            }
+            if (notificationState.alerts.isNotEmpty()) {
+                items(notificationState.alerts, key = { "alert-${it.id}" }) { alert ->
+                    AlertRow(
+                        alert = alert,
+                        onToggle = { controller.setAlertActive(alert, it) },
+                        onDelete = { controller.deleteAlert(alert.id) },
                     )
                 }
             }
-        }
-        notificationState.lastMessage?.let { message ->
-            item {
-                // Server wording when the server gave any, resolved owned copy otherwise. Either
-                // way it is one sentence a reader can act on, not an HTTP status.
-                NoticePanel(
-                    stringResource(R.string.activity_notification_error),
-                    message.resolve(),
-                    CoineProColors.Warning,
-                )
+
+            item { SectionHeader(stringResource(R.string.activity_notifications_title), stringResource(R.string.activity_notifications_subtitle)) }
+            if (notificationState.notifications.isEmpty() && !notificationState.loading) {
+                item { StatePanel(stringResource(R.string.activity_notifications_empty_title), stringResource(R.string.activity_notifications_empty_body)) }
+            } else {
+                items(notificationState.notifications) { notification ->
+                    PremiumCard(
+                        modifier = Modifier.clickable(enabled = notification.signalId != null) {
+                            notification.signalId?.let(onOpenSignal)
+                        },
+                    ) {
+                        Text(notification.title, fontWeight = FontWeight.Bold)
+                        if (notification.body.isNotBlank()) {
+                            Text(notification.body, color = CoineProColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+                // A truncated list that says nothing looks like the whole history, and a reader hunting
+                // for something from last week concludes it was never recorded.
+                if (notificationState.hasMoreNotifications) {
+                    item {
+                        Text(
+                            stringResource(R.string.activity_notifications_truncated),
+                            modifier = Modifier.padding(horizontal = CoineProSpacing.Half),
+                            color = CoineProColors.TextMuted,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
             }
+            notificationState.lastMessage?.let { message ->
+                item {
+                    // Server wording when the server gave any, resolved owned copy otherwise. Either
+                    // way it is one sentence a reader can act on, not an HTTP status.
+                    NoticePanel(
+                        stringResource(R.string.activity_notification_error),
+                        message.resolve(),
+                        CoineProColors.Warning,
+                    )
+                }
+            }
+            item { Spacer(Modifier.height(24.dp)) }
         }
-        item { Spacer(Modifier.height(24.dp)) }
     }
 }
 

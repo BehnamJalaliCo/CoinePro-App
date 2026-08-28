@@ -174,15 +174,34 @@ fun CoineProMarketRow(
     onClick: (() -> Unit)? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberCoineProHaptics()
     Row(
         modifier = modifier
             .fillMaxWidth()
+            // Every row is the same height whether or not the feed sent a move for it, because a
+            // list whose rows breathe according to how complete the data is reads as a list that
+            // is still loading. The minimum is the tall case — logo, two lines of text, price and
+            // pill — so a row with none of them holds the shape rather than collapsing into it.
+            .defaultMinSize(minHeight = ROW_MIN_HEIGHT)
+            // The tint the trader reads. It goes on the row rather than on the figure because the
+            // question a market list answers is *which* instrument moved, and a flash confined to
+            // eleven characters of number is one nobody catches in peripheral vision.
+            .coineProPriceFlash(rawPrice)
             // The clear comes first and the click after it. `clearAndSetSemantics` wipes everything
             // declared before it on this node, so a clickable above this line would have its action
             // erased — the row would still work under a finger and be unreachable with TalkBack,
             // which is the worst version of the bug because it looks fine.
             .clearAndSetSemantics { contentDescription = symbol }
-            .let { base -> onClick?.let { base.pressScale(interaction, CoineProPress.ROW).clickable(interaction, null, onClick = it) } ?: base }
+            .let { base ->
+                onClick?.let { action ->
+                    base
+                        .pressScale(interaction, CoineProPress.ROW)
+                        .clickable(interaction, null) {
+                            haptics.select()
+                            action()
+                        }
+                } ?: base
+            }
             .padding(horizontal = horizontalPadding, vertical = CoineProSpacing.OneHalf),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.CenterVertically,
@@ -198,7 +217,12 @@ fun CoineProMarketRow(
                 contentDescription = null,
                 modifier = Modifier
                     .clip(CoineProShapes.small)
-                    .clickable(onClick = onToggleStar)
+                    .clickable {
+                        // Starring is a change the reader made to their own list, not navigation,
+                        // so it gets the weight of a committed action rather than a selection.
+                        haptics.commit()
+                        onToggleStar()
+                    }
                     .padding(4.dp)
                     .size(18.dp),
                 tint = if (starred) CoineProColors.Accent else CoineProColors.TextDisabled,
@@ -262,3 +286,12 @@ fun CoineProMarketRow(
         }
     }
 }
+
+/**
+ * The shortest a market row is allowed to be.
+ *
+ * Set by the tallest thing inside it — the 34dp logo plus this row's own vertical padding — rather
+ * than chosen, so a row that happens to have no price and no pill still reserves the same space as
+ * its neighbours.
+ */
+private val ROW_MIN_HEIGHT = 62.dp

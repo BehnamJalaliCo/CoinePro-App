@@ -598,6 +598,9 @@ fun CoineProApp(
                 onSetDisplayName = { name -> scope.launch { profileStore.setDisplayName(name) } },
                 onSetTagline = { line -> scope.launch { profileStore.setTagline(line) } },
                 onSetAvatar = { spec -> scope.launch { profileStore.setAvatar(spec) } },
+                onToggleBalanceHidden = {
+                    scope.launch { profileStore.setBalanceHidden(!profile.balanceHidden) }
+                },
                 onSignIn = null,
                 guestController = guestController,
                 membershipController = membershipController,
@@ -729,6 +732,9 @@ fun CoineProApp(
                         onSetDisplayName = { name -> scope.launch { profileStore.setDisplayName(name) } },
                         onSetTagline = { line -> scope.launch { profileStore.setTagline(line) } },
                         onSetAvatar = { spec -> scope.launch { profileStore.setAvatar(spec) } },
+                        onToggleBalanceHidden = {
+                            scope.launch { profileStore.setBalanceHidden(!profile.balanceHidden) }
+                        },
                         onSignIn = { signingIn = true },
                         guestController = guestController,
                         membershipController = membershipController,
@@ -867,6 +873,8 @@ private fun MainShell(
     onSetDisplayName: (String?) -> Unit,
     onSetTagline: (String?) -> Unit,
     onSetAvatar: (AvatarSpec) -> Unit,
+    /** Puts the balance behind dots, or takes it back out. */
+    onToggleBalanceHidden: () -> Unit,
     /** Offered on the guest surfaces. Null when there is already a session. */
     onSignIn: (() -> Unit)?,
     /** The public feed's controller — Home and the two gates read it when [guest] is true. */
@@ -1163,6 +1171,8 @@ private fun MainShell(
                     platforms = platforms,
                     activePlatform = activePlatform,
                     onSelectPlatform = onSelectPlatform,
+                    balanceHidden = profile.balanceHidden,
+                    onToggleBalanceHidden = onToggleBalanceHidden,
                 )
             }
             composable(ADMIN_ROUTE) {
@@ -1270,11 +1280,13 @@ private fun MainShell(
                             ProfileAction(
                                 label = stringResource(R.string.screen_notifications),
                                 note = stringResource(R.string.profile_action_notifications_note),
+                                icon = CoineProIcons.Bell,
                                 onClick = { navController.navigate(NOTIFICATIONS_ROUTE) },
                             ),
                             ProfileAction(
                                 label = stringResource(R.string.profile_action_safety),
                                 note = stringResource(R.string.profile_action_safety_note),
+                                icon = CoineProIcons.Secure,
                                 onClick = { navController.navigate(LAUNCH_READINESS_ROUTE) },
                             ),
                         )
@@ -1284,12 +1296,14 @@ private fun MainShell(
                                 ProfileAction(
                                     label = stringResource(R.string.screen_membership),
                                     note = stringResource(R.string.profile_action_membership_note),
+                                    icon = CoineProIcons.Wallet,
                                     onClick = { navController.navigate(MEMBERSHIP_ROUTE) },
                                 ),
                             )
                             add(
                                 ProfileAction(
                                     label = stringResource(R.string.profile_action_verification),
+                                    icon = CoineProIcons.IdentityCard,
                                     onClick = { navController.navigate(KYC_ROUTE) },
                                 ),
                             )
@@ -1297,12 +1311,14 @@ private fun MainShell(
                                 ProfileAction(
                                     label = stringResource(R.string.screen_notifications),
                                     note = stringResource(R.string.profile_action_notifications_note),
+                                    icon = CoineProIcons.Bell,
                                     onClick = { navController.navigate(NOTIFICATIONS_ROUTE) },
                                 ),
                             )
                             add(
                                 ProfileAction(
                                     label = stringResource(R.string.profile_action_alerts),
+                                    icon = CoineProIcons.Alarm,
                                     onClick = { navController.navigate(ALERTS_ROUTE) },
                                 ),
                             )
@@ -1310,12 +1326,14 @@ private fun MainShell(
                                 ProfileAction(
                                     label = stringResource(R.string.profile_action_safety),
                                     note = stringResource(R.string.profile_action_safety_note),
+                                    icon = CoineProIcons.Secure,
                                     onClick = { navController.navigate(LAUNCH_READINESS_ROUTE) },
                                 ),
                             )
                             add(
                                 ProfileAction(
                                     label = stringResource(R.string.action_logout),
+                                    icon = CoineProIcons.SignOut,
                                     onClick = onLogout,
                                 ),
                             )
@@ -1325,6 +1343,7 @@ private fun MainShell(
                                 ProfileAction(
                                     label = stringResource(R.string.profile_action_delete),
                                     destructive = true,
+                                    icon = CoineProIcons.Delete,
                                     onClick = { navController.navigate(DELETE_ACCOUNT_ROUTE) },
                                 ),
                             )

@@ -36,6 +36,7 @@ fun <T> CoineProSegmentedControl(
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = rememberCoineProHaptics()
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -47,7 +48,13 @@ fun <T> CoineProSegmentedControl(
             Segment(
                 label = label,
                 selected = value == selected,
-                onClick = { onSelect(value) },
+                // Only a change is worth a tick. Pressing the segment you are already on has
+                // changed nothing, and a buzz that says otherwise teaches the reader to distrust
+                // the ones that do mean something.
+                onClick = {
+                    if (value != selected) haptics.select()
+                    onSelect(value)
+                },
             )
         }
     }

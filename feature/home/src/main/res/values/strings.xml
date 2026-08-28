@@ -66,4 +66,6 @@
     </plurals>
     <string name="home_shortcut_tools">ابزارها</string>
     <string name="home_shortcut_activity">فعالیت</string>
+    <string name="home_balance_hide">پنهان کردن موجودی</string>
+    <string name="home_balance_show">نمایش موجودی</string>
 </resources>

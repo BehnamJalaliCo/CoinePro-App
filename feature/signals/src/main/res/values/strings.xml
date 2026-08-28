@@ -12,7 +12,6 @@
 
     <string name="signals_retry">تلاش دوباره</string>
     <string name="signals_empty">سیگنالی در این نما وجود ندارد.</string>
-    <string name="signals_refreshing">در حال به‌روزرسانی…</string>
 
     <string name="signals_membership_title">سیگنال‌های ویژه</string>
     <string name="signals_membership_body">سطوح معاملاتی فعال با اشتراک فعال در دسترس هستند.</string>

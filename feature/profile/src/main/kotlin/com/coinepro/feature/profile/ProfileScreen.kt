@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import com.coinepro.core.datastore.StoredProfile
 import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProCard
+import androidx.annotation.DrawableRes
+import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProGoldRule
 import com.coinepro.core.designsystem.CoineProIcons
@@ -57,6 +59,18 @@ data class ProfileAction(
     val label: String,
     val note: String? = null,
     val destructive: Boolean = false,
+    /**
+     * The row's own glyph.
+     *
+     * Not decoration. This list is read by somebody looking for one particular row, and eight lines
+     * of identically weighted text is the layout that makes them read all eight. An icon per row is
+     * how every settings list worth comparing to works, and the reason is that the second visit is
+     * a recognition rather than a search.
+     *
+     * Nullable so a row with nothing honest to draw shows nothing — a generic dot on one row of
+     * eight is worse than no icons at all, because it breaks the column the others formed.
+     */
+    @DrawableRes val icon: Int? = null,
     val onClick: () -> Unit,
 )
 
@@ -196,7 +210,16 @@ private fun Hero(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.Two),
+            // More above than below, and not symmetry for its own sake. There is no top bar on
+            // this route, so the avatar is the first thing on the screen and sixteen points put a
+            // 112dp disc within a finger's width of the status bar — which reads as an element
+            // that has been cut off rather than one that has been placed.
+            .padding(
+                start = CoineProSpacing.Gutter,
+                end = CoineProSpacing.Gutter,
+                top = CoineProSpacing.Four,
+                bottom = CoineProSpacing.Two,
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
@@ -386,19 +409,34 @@ private fun IdentityCard(
 
 @Composable
 private fun ActionRow(action: ProfileAction) {
+    val haptics = rememberCoineProHaptics()
+    val ink = if (action.destructive) CoineProColors.Sell else CoineProColors.TextPrimary
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = action.onClick)
+            .clickable {
+                haptics.select()
+                action.onClick()
+            }
             .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.OneHalf),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.padding(end = CoineProSpacing.One)) {
+        action.icon?.let { glyph ->
+            Icon(
+                painter = painterResource(glyph),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                // The destructive row's glyph takes the refusal colour with its label. An icon in
+                // the ordinary tint beside red text reads as a row that is only half a warning.
+                tint = if (action.destructive) CoineProColors.Sell else CoineProColors.TextSecondary,
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = action.label,
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (action.destructive) CoineProColors.Sell else CoineProColors.TextPrimary,
+                color = ink,
             )
             action.note?.let {
                 Text(

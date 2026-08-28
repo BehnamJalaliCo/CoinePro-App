@@ -65,4 +65,6 @@
     </plurals>
     <string name="home_shortcut_tools">Toolkit</string>
     <string name="home_shortcut_activity">Activity</string>
+    <string name="home_balance_hide">Hide balance</string>
+    <string name="home_balance_show">Show balance</string>
 </resources>

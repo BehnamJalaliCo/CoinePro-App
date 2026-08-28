@@ -58,6 +58,7 @@ import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketQuote
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.QuoteSource
+import com.coinepro.core.symbols.SymbolArtwork
 import com.coinepro.core.symbols.SymbolCategory
 import com.coinepro.core.symbols.SymbolClassifier
 import com.coinepro.core.model.SignalDirection
@@ -1450,7 +1451,12 @@ object ScreenshotFixtures {
         )
         return object : MarketCatalogGateway {
             override suspend fun load(): MarketCatalog {
-                val metas = symbols.map(SymbolClassifier::classify)
+                // The same filter the real gateway applies, and it is here rather than assumed
+                // because the render is what the visual review looks at. Without it the sheet
+                // showed US30, GER40, UK100 and JPN225 as lettered grey discs — a state the app
+                // cannot produce, since `MarketCatalogGateway` drops anything without artwork —
+                // and a screenshot that shows something the app cannot do is not a gate.
+                val metas = symbols.map(SymbolClassifier::classify).filter(SymbolArtwork::covers)
                 return MarketCatalog(
                     markets = metas,
                     quotes = metas.mapNotNull { meta ->

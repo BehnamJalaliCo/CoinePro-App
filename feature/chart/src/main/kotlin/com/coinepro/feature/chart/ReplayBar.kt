@@ -27,6 +27,7 @@ import com.coinepro.core.chart.ReplayState
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.R as DesignR
@@ -80,14 +81,14 @@ internal fun ReplayBar(
                 color = CoineProColors.TextMuted,
                 modifier = Modifier.weight(1f),
             )
-            TransportButton(DesignR.drawable.icon_caret_left, "یک میله عقب", onStepBack)
+            TransportButton(CoineProIcons.StepBack, "یک میله عقب", onStepBack)
             TransportButton(
                 icon = if (state.playing) DesignR.drawable.icon_pause else DesignR.drawable.tv_play,
                 label = if (state.playing) "توقف" else "پخش",
                 onClick = onToggle,
                 tint = CoineProColors.Accent,
             )
-            TransportButton(DesignR.drawable.icon_skip_forward, "یک میله جلو", onStep)
+            TransportButton(CoineProIcons.StepForward, "یک میله جلو", onStep)
             TransportButton(DesignR.drawable.icon_x, "خروج از بازپخش", onExit)
         }
 

@@ -15,6 +15,110 @@ it is for.
 
 ---
 
+## [1.32.0] — 2026-08-28 — The polish pass: touch, gesture, privacy and the chart's legend
+
+A line-by-line and pixel-by-pixel review of every screen against what a reader would compare this
+app to. Nothing here is a new feature; all of it is the difference between an application and a
+screen that shows the right numbers.
+
+### Fixed
+
+- **The chart's legend was written over its own candles.** Five rows of coloured text — OHLC, the
+  moving average, the bands, the SuperTrend, a pivot — drawn straight onto the plot, with every
+  stroke that crossed a glyph taking a bite out of it. On a busy chart it stopped being readable at
+  all, and it was the centre of the app's most important screen. It sits on a plate now: the stage
+  colour at 82%, sized to the block and drawn before it. The OHLC line is *fitted* rather than
+  truncated — the separator tightens, then the labels go, and only then does it fall back to the
+  close alone — because «O 2571.2  H 2575.7  L 2570.1  C 2…» cuts off the one number a reader came
+  for.
+
+- **Two of the five navigation tabs never changed shape when selected.** Home, Signals and AI swap
+  to a filled weight; Markets and Chart borrowed glyphs that had no filled weight, so on those two
+  the entire selection was a shade of grey. `build-nav-icons.py` now derives both — Markets from
+  Phosphor's published pair, Chart by solidifying TradingView's candlestick the same way the other
+  four are solidified.
+
+- **And the tool that derives them was measuring nothing.** Its bounding boxes were "every number
+  in the path data taken as alternating x and y", which is true only of absolute path data; the
+  candlestick is written in relative commands, so every box was nonsense and the counter test found
+  no counters. It did not fail — it returned the outline it had been asked to fill. There is a real
+  path walker now, run over the whole path in one pass so a contour that opens with a relative
+  move-to is measured where it actually sits, and each surviving contour is re-anchored to the
+  absolute point the walk found it at. The five existing drawables regenerate byte-for-byte
+  identical, which is the proof that the fix changed only what was broken.
+
+- **A "go there" caret pointed back.** The markets screen's open-signals strip and the chart's studio
+  row both used the left caret, which is auto-mirrored — so in Persian, the app's default, it turned
+  round and pointed away from the screen it opens. Both now use the forward chevron the profile rows
+  already used.
+
+- **The replay bar's two transport buttons were not a pair** — a bare caret for one bar back beside a
+  skip glyph for one bar forward, which reads as two kinds of control rather than one control's two
+  directions. Both are the skip glyph now.
+
+- **Every forex row in the market list ended in an ellipsis.** «دلار آمریکا / ف..», «پوند انگلیس …» —
+  a column of cut words that says nothing and looks like a rendering fault. A pair's list line is the
+  base currency alone now; the ticker above it already spells both legs out and the two flags say it
+  again. Search still matches on the full description, so «فرانک» still finds USDCHF.
+
+- **The market list breathed as prices landed.** A row with no quote yet was shorter than its
+  neighbours, so the list resettled under the reader's thumb as the feed filled in. Both market rows
+  hold a minimum height now.
+
+- **The markets screen had grown its own percentage pill** — a flat alpha over the move's colour
+  rather than the tint formula computed against the surface behind it — so the same figure was a
+  slightly different green there than on Home, one tap away. It uses the shared pill.
+
+- **The screenshot gate was showing a screen the app cannot produce.** Its market catalogue skipped
+  the artwork filter the real gateway applies, so US30, GER40, UK100 and JPN225 appeared as lettered
+  grey discs — the exact thing the owner's rule forbids, in the render that exists to catch it. The
+  fixture filters like the gateway now.
+
+### Added
+
+- **The app answers the finger.** `CoineProHaptics`, wired into the segmented control, both buttons,
+  the brand button, every market row, the star and the profile rows — so it arrives everywhere
+  without a screen having to ask for it. Three weights and no more: a tick for a choice that
+  changed, a heavier one for something done that would want undoing, and a doubled one for a
+  refusal, because "it worked" and "it did not" must never feel the same. There is no in-app switch:
+  Android has one and `HapticFeedback` honours it.
+
+- **Pull to refresh**, on Home, Markets, Signals, Activity, News and the calendar. Every one of these
+  already had a refresh button and every one of them ignored the gesture a person watching a price
+  actually makes. The buttons stay — they say *when* the data is from, which a gesture cannot — and
+  both call the same function.
+
+- **A balance the reader can put away.** The eye beside «دارایی کل» hides the total, the day's
+  change, and every holding's value *and quantity* — hiding the total while printing the three
+  figures it is the sum of is a curtain with a hole in it. Masked, the change line loses its green
+  as well, since a green row of dots still tells the person behind you how the day went. The mask is
+  a fixed six dots whatever it covers, because a mask that tracked the real length would leak the
+  magnitude. Remembered across launches and cleared on sign-out.
+
+- **The trade, drawn.** Every signal row carries a track from its stop to its target with the entry
+  notched and the live price marked. The four prices were already there and the reader was left to
+  do the subtraction that turns them into the only thing they wanted to know. The axis is the trade
+  rather than the price — zero is always the stop and one always the target — so a long and a short
+  are the same picture, and it is forced left-to-right because a number line is not a sentence.
+
+- **Glyphs on the buttons that were choices.** Both shared buttons take an optional leading icon, and
+  Home's three pills — which differed only by one word — now differ by a picture as well. The signal
+  pill takes the sparkle rather than the candlesticks, because it opens the AI studio and the pill
+  beside it was already showing candles.
+
+- **An icon on every profile row.** Eight lines of identically weighted text is a list a reader reads
+  all of, every time. The destructive row's glyph takes the refusal colour with its label.
+
+- **The price flash**, on every shared market row: the row tints green or red for a moment when its
+  price moves. It was built for this app months ago and never called from anywhere.
+
+### Changed
+
+- The profile hero has more air above it than below. There is no top bar on that route, so a 112dp
+  avatar sixteen points from the status bar read as an element that had been cut off.
+
+---
+
 ## [1.31.1] — 2026-08-28 — LBank's mark, traced rather than drawn
 
 ### Fixed

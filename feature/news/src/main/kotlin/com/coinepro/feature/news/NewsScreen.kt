@@ -50,6 +50,7 @@ import com.coinepro.core.designsystem.CoineProListHeader
 import com.coinepro.core.designsystem.CoineProHeaderAction
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProPullToRefresh
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSegmentedControl
@@ -149,20 +150,27 @@ fun NewsScreen(
                     action = stringResource(R.string.news_refresh),
                     onAction = controller::refresh,
                 )
-                else -> LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                // The strip stays: it says how old the headlines are, which the gesture cannot.
+                // What the gesture adds is the answer to a tug, which this list had none of.
+                else -> CoineProPullToRefresh(
+                    refreshing = state.refreshing,
+                    onRefresh = controller::refresh,
                 ) {
-                    item {
-                        FreshnessStrip(
-                            refreshing = state.refreshing,
-                            onRefresh = controller::refresh,
-                        )
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        item {
+                            FreshnessStrip(
+                                refreshing = state.refreshing,
+                                onRefresh = controller::refresh,
+                            )
+                        }
+                        items(filtered, key = MarketNewsItem::id) { item ->
+                            NewsCard(item, Modifier.animateItem())
+                        }
+                        item { androidx.compose.foundation.layout.Spacer(Modifier.padding(8.dp)) }
                     }
-                    items(filtered, key = MarketNewsItem::id) { item ->
-                        NewsCard(item, Modifier.animateItem())
-                    }
-                    item { androidx.compose.foundation.layout.Spacer(Modifier.padding(8.dp)) }
                 }
             }
         }

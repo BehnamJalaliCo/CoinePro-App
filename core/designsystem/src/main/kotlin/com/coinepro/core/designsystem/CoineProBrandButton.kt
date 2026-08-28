@@ -61,6 +61,7 @@ fun CoineProBrandButton(
     logoSize: androidx.compose.ui.unit.Dp = 22.dp,
 ) {
     val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberCoineProHaptics()
     val background = if (primary) CoineProColors.Accent else CoineProColors.SurfaceElevated
     val ink = if (primary) CoineProColors.OnAccent else CoineProColors.TextPrimary
     Row(
@@ -73,7 +74,10 @@ fun CoineProBrandButton(
                 if (primary) Modifier else Modifier.border(1.dp, CoineProColors.Border, CoineProPillShape),
             )
             .pressScale(interaction, CoineProPress.CTA)
-            .clickable(interaction, null, onClick = onClick)
+            .clickable(interaction, null) {
+                haptics.commit()
+                onClick()
+            }
             .padding(horizontal = CoineProSpacing.Two),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,

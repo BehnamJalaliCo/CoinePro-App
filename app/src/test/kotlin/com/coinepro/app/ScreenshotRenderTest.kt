@@ -240,6 +240,29 @@ class ScreenshotRenderTest {
             openSignals = ScreenshotFixtures.homeSignals,
             platforms = MarketPlatform.entries,
             activePlatform = MarketPlatform.TRADEYAR,
+            // Passed because the running app passes it. A render that leaves an optional callback
+            // null draws a screen the app never shows — here, the balance without the control that
+            // hides it — and then the review that the screenshots exist for is a review of
+            // something else.
+            onToggleBalanceHidden = {},
+        )
+    }
+
+    /** The same screen with the balance put away, which is what the eye beside it does. */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun homeBalanceHidden() = capture("92-home-balance-hidden-fa") {
+        HomeScreen(
+            state = ScreenshotFixtures.marketState(),
+            onRetry = {},
+            displayName = "بهنام",
+            briefing = ScreenshotFixtures.homeBriefing,
+            portfolio = ScreenshotFixtures.homePortfolio,
+            openSignals = ScreenshotFixtures.homeSignals,
+            platforms = MarketPlatform.entries,
+            activePlatform = MarketPlatform.TRADEYAR,
+            balanceHidden = true,
+            onToggleBalanceHidden = {},
         )
     }
 

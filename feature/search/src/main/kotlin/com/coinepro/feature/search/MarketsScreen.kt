@@ -40,7 +40,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProAssetLogo
+import androidx.compose.foundation.layout.defaultMinSize
+import com.coinepro.core.designsystem.CoineProPercentPill
+import com.coinepro.core.designsystem.coineProPriceFlash
+import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.CoineProPullToRefresh
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProSparkline
@@ -118,24 +124,30 @@ fun MarketsScreen(
                     color = CoineProColors.TextMuted,
                 )
             }
-            else -> LazyColumn(
+            else -> CoineProPullToRefresh(
+                refreshing = state.loading,
+                onRefresh = controller::refresh,
                 modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(bottom = CoineProSpacing.One),
             ) {
-                items(rows, key = { it.meta.symbol }) { row ->
-                    // Asked for as the row appears, not for the whole catalogue up front — a
-                    // thousand markets would be a thousand requests nobody looked at.
-                    LaunchedEffect(row.meta.symbol) { sparklines.request(row.meta.symbol) }
-                    MarketRow(
-                        row = row,
-                        line = lines[row.meta.symbol.uppercase()].orEmpty(),
-                        onClick = { onOpenSymbol(row.meta.symbol) },
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = CoineProSpacing.Two),
-                        thickness = 1.dp,
-                        color = CoineProColors.BorderSubtle,
-                    )
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = CoineProSpacing.One),
+                ) {
+                    items(rows, key = { it.meta.symbol }) { row ->
+                        // Asked for as the row appears, not for the whole catalogue up front — a
+                        // thousand markets would be a thousand requests nobody looked at.
+                        LaunchedEffect(row.meta.symbol) { sparklines.request(row.meta.symbol) }
+                        MarketRow(
+                            row = row,
+                            line = lines[row.meta.symbol.uppercase()].orEmpty(),
+                            onClick = { onOpenSymbol(row.meta.symbol) },
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = CoineProSpacing.Two),
+                            thickness = 1.dp,
+                            color = CoineProColors.BorderSubtle,
+                        )
+                    }
                 }
             }
         }
@@ -254,16 +266,28 @@ private fun MarketRow(row: MarketSearchRow, line: List<Double>, onClick: () -> U
         up -> CoineProColors.Buy
         else -> CoineProColors.Sell
     }
+    val haptics = rememberCoineProHaptics()
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            // Every row the same height whether or not the feed has quoted it yet. Without this a
+            // list of forty markets where six are still waiting breathes as the prices land, and
+            // the reader's thumb lands on the row below the one they aimed at.
+            .defaultMinSize(minHeight = 58.dp)
+            // The tint a trader reads: which rows are moving, found before any figure is read.
+            .coineProPriceFlash(row.quote?.price)
+            .clickable {
+                haptics.select()
+                onClick()
+            }
             .padding(horizontal = CoineProSpacing.Two, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
         CoineProAssetLogo(symbol = row.meta.symbol, size = 30.dp)
-        Column(modifier = Modifier.width(84.dp)) {
+        // Wider than it was. Eighty-four points fitted the ticker and cut every Persian name
+        // under it; the sparkline beside it was floating in a weighted box with room to spare.
+        Column(modifier = Modifier.width(96.dp)) {
             Text(
                 text = row.meta.symbol,
                 style = MaterialTheme.typography.labelMedium.copy(textDirection = TextDirection.Ltr),
@@ -272,7 +296,7 @@ private fun MarketRow(row: MarketSearchRow, line: List<Double>, onClick: () -> U
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = row.meta.description,
+                text = row.meta.listDescription,
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextDisabled,
                 fontWeight = FontWeight.Normal,
@@ -294,16 +318,15 @@ private fun MarketRow(row: MarketSearchRow, line: List<Double>, onClick: () -> U
                 style = MaterialTheme.typography.labelMedium.copy(textDirection = TextDirection.Ltr),
                 color = CoineProColors.TextPrimary,
             )
+            // The shared pill, not a local one. This row had grown its own — a flat alpha over the
+            // move's colour rather than the tint formula the rest of the app computes against the
+            // surface behind it — so the same percentage was a slightly different green here than
+            // on Home, on a screen a reader reaches from Home.
             change?.let {
-                Text(
-                    text = MarketNumberFormatter.signedPercent(it),
-                    style = MaterialTheme.typography.labelSmall.copy(textDirection = TextDirection.Ltr),
-                    color = tone,
-                    modifier = Modifier
-                        .padding(top = 2.dp)
-                        .clip(CoineProShapes.extraSmall)
-                        .background(tone.copy(alpha = PILL_ALPHA))
-                        .padding(horizontal = 5.dp, vertical = 1.dp),
+                CoineProPercentPill(
+                    percent = it,
+                    modifier = Modifier.padding(top = 2.dp),
+                    background = CoineProColors.Stage,
                 )
             }
         }
@@ -345,7 +368,10 @@ private fun SignalStrip(strip: MarketsSignalStrip) {
             )
         }
         Icon(
-            painter = painterResource(DesignR.drawable.icon_caret_left),
+            // Forward in the reading direction, which is what this row offers. The left caret was
+            // here, and it is auto-mirrored — so in Persian it turned round and pointed *back*,
+            // away from the screen it opens, on the one glyph whose whole job is to say which way.
+            painter = painterResource(CoineProIcons.ChevronForward),
             contentDescription = null,
             tint = CoineProColors.TextMuted,
             modifier = Modifier.size(14.dp),
@@ -357,6 +383,3 @@ private fun SignalStrip(strip: MarketsSignalStrip) {
 private fun ColumnScope.Centred(content: @Composable () -> Unit) {
     Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { content() }
 }
-
-/** How solid the change pill's fill is behind its own colour. */
-private const val PILL_ALPHA = 0.12f

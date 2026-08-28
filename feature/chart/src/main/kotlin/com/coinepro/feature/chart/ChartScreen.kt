@@ -88,6 +88,7 @@ import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.LtrDirection
@@ -748,7 +749,9 @@ private fun StudioCard(
                     )
                 }
                 Icon(
-                    painter = painterResource(DesignR.drawable.icon_caret_left),
+                    // Forward in the reading direction. See the same fix in the markets strip:
+                    // the left caret is auto-mirrored and pointed back out of the row it opens.
+                    painter = painterResource(CoineProIcons.ChevronForward),
                     contentDescription = null,
                     tint = CoineProColors.TextMuted,
                     modifier = Modifier.size(14.dp),

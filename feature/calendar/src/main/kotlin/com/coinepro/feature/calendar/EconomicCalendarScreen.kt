@@ -52,6 +52,7 @@ import com.coinepro.core.designsystem.CoineProListHeader
 import com.coinepro.core.designsystem.CoineProHeaderAction
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProPullToRefresh
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSegmentedControl
@@ -134,17 +135,22 @@ fun EconomicCalendarScreen(
                     stringResource(R.string.calendar_refresh),
                     controller::refresh,
                 )
-                else -> LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                else -> CoineProPullToRefresh(
+                    refreshing = state.refreshing,
+                    onRefresh = controller::refresh,
                 ) {
-                    item {
-                        CalendarFreshnessStrip(state.refreshing, controller::refresh)
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        item {
+                            CalendarFreshnessStrip(state.refreshing, controller::refresh)
+                        }
+                        items(filtered, key = EconomicEvent::id) { event ->
+                            TimelineEventCard(event, Modifier.animateItem())
+                        }
+                        item { androidx.compose.foundation.layout.Spacer(Modifier.padding(8.dp)) }
                     }
-                    items(filtered, key = EconomicEvent::id) { event ->
-                        TimelineEventCard(event, Modifier.animateItem())
-                    }
-                    item { androidx.compose.foundation.layout.Spacer(Modifier.padding(8.dp)) }
                 }
             }
         }

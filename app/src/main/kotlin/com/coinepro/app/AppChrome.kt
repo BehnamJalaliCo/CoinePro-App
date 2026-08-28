@@ -18,7 +18,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
-import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.navigation.AppDestination
 
 /**
@@ -82,8 +81,10 @@ private fun AppDestination.icon(selected: Boolean): Int = when (this) {
     AppDestination.HOME -> if (selected) CoineProIcons.Filled.Home else CoineProIcons.Home
     AppDestination.SIGNALS -> if (selected) CoineProIcons.Filled.Signals else CoineProIcons.Signals
     AppDestination.AI -> if (selected) CoineProIcons.Filled.Ai else CoineProIcons.Ai
-    // Markets and Chart have no bespoke nav glyph: they borrow the trend line and the candle from
-    // the chart's own icon set, which is where a reader has already met both shapes.
-    AppDestination.MARKETS -> DesignR.drawable.icon_chart_line_up
-    AppDestination.CHART -> DesignR.drawable.tv_chart_candles
+    // Markets and Chart have no bespoke nav glyph: they borrow the rising line and the candle,
+    // which is where a reader has already met both shapes. They carry both weights like the rest —
+    // before, these two alone kept the same outline whether selected or not, so on two of the five
+    // tabs the selection was a shade of grey and nothing else.
+    AppDestination.MARKETS -> if (selected) CoineProIcons.Filled.Markets else CoineProIcons.Markets
+    AppDestination.CHART -> if (selected) CoineProIcons.Filled.Chart else CoineProIcons.Chart
 }

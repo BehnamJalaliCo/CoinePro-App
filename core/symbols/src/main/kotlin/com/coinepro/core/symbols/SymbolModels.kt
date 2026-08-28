@@ -62,6 +62,32 @@ data class SymbolMeta(
         base != null && quote != null -> "$base/$quote"
         else -> symbol
     }
+
+    /**
+     * [description], cut to something that fits under a ticker in a list.
+     *
+     * A forex pair's full description is two spelled-out currency names — «دلار آمریکا / فرانک
+     * سوئیس» is twenty-four characters, and no column narrow enough to leave room for a price will
+     * ever hold it. What shipped was every forex row ending in an ellipsis: «دلار آمریکا / ف..»,
+     * «پوند انگلیس …», a column of cut words that says nothing and looks like a rendering fault.
+     *
+     * So for a pair this is the **base** alone. The line above already spells both legs out in
+     * Latin, and the two flags say the same thing again in a third way; the name is there to tell a
+     * reader who does not read tickers *what the first asset is*, and «یورو» does that in full
+     * where «یورو / دلار آمر…» does it in part.
+     *
+     * Everything else keeps its description, which is already short: a coin's is its name and its
+     * ticker, an index's is its name.
+     *
+     * Search still matches on [description] — a reader typing «فرانک» must still find USDCHF, and
+     * would not if the quote leg had been dropped from the thing being searched rather than from
+     * the thing being drawn.
+     */
+    val listDescription: String get() = when (category) {
+        SymbolCategory.FOREX, SymbolCategory.METAL ->
+            base?.let(SymbolNames::displayOf) ?: description
+        else -> description
+    }
 }
 
 /** Whether a market is currently tradable, and whether the weekend is the reason it is not. */

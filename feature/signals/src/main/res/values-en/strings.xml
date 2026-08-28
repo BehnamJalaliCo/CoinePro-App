@@ -11,7 +11,6 @@
 
     <string name="signals_retry">Retry</string>
     <string name="signals_empty">No signals in this view.</string>
-    <string name="signals_refreshing">Refreshing…</string>
 
     <string name="signals_membership_title">VIP Signals</string>
     <string name="signals_membership_body">Active trade levels are available with an active subscription.</string>
