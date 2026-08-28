@@ -15,6 +15,40 @@ it is for.
 
 ---
 
+## [1.36.1] — 2026-08-28 — Drag the price gutter
+
+The last gesture the chart was missing, and the one that answers two opposite complaints with one
+control.
+
+The auto-fit price range is right for reading a *price* and wrong for reading a *shape*. A market
+that has moved half a percent all week fills the plot with a mountain range of noise; one that
+gapped ten percent on Monday spends the rest of the week as a flat line in the bottom third. Every
+terminal answers both by letting the reader drag the price gutter, and now so does this one — with
+a double-tap on the gutter to put it back, sitting beside the double-tap on the plot that returns
+to the live edge.
+
+Three things had to be right and each is a test:
+
+* **The middle does not move.** Widening about the wrong point slides the chart up the plot as the
+  reader drags, which reads as the chart running away from them. On the log axis that means the
+  *geometric* middle, which is a different number.
+* **It is bounded.** A quarter to eight. Below a quarter the visible bars are four times the height
+  of the plot; above eight the candles are a horizontal line. Both are reachable by accident.
+* **The default is bit-for-bit what the chart drew before.** The range calculation was rewritten to
+  take a factor, and a feature that silently changed every chart in the app by arriving would be a
+  worse outcome than not shipping it. A test holds the untouched range to the old fit-plus-eight-
+  percent exactly.
+
+The gesture is confined to the gutter plus twelve density-independent pixels — the axis alone is
+under the minimum tap target once its padding is off, and readers aim at the numbers rather than at
+the edge — and whether a drag counts is decided once, at the down event. Testing the current
+position every frame would let a finger that started on the plot wander into the gutter and begin
+rescaling mid-drag.
+
+The stretch is saved with the zoom and the pan position, so it survives a rotation like they do.
+
+---
+
 ## [1.36.0] — 2026-08-28 — A log axis, a target you can drag, and a door to a person
 
 ### The price axis can be logarithmic

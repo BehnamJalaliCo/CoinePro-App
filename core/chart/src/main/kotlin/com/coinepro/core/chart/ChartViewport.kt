@@ -72,6 +72,28 @@ data class ChartViewport(
      * one — it simply stops being straight, which is correct and is what every terminal does.
      */
     val logScale: Boolean = false,
+    /**
+     * How much of the price axis is shown, relative to what the visible bars need.
+     *
+     * One is the default and means "fit the bars, with headroom" — the behaviour the chart has
+     * always had. Above one the range widens and the candles flatten; below one they stretch and
+     * the extremes run off the top and bottom of the plot.
+     *
+     * ### Why a chart needs this
+     *
+     * The auto-fit range is right for reading price and wrong for reading *shape*. A market that
+     * has moved half a percent all week fills the plot with a mountain range of noise; one that
+     * gapped ten percent on Monday spends the rest of the week as a flat line in the bottom third.
+     * Every terminal answers both with the same gesture — drag the price gutter — and this is the
+     * number that gesture moves.
+     *
+     * ### The bounds
+     *
+     * A quarter to eight. Below a quarter the visible bars are four times the height of the plot
+     * and the reader is looking at a vertical line; above eight the candles are a horizontal one.
+     * Both are states somebody can reach by accident and neither is a chart.
+     */
+    val priceZoom: Float = 1f,
 ) {
     /** Index of the first visible bar, inclusive. */
     val firstVisible: Int
@@ -141,16 +163,23 @@ data class ChartViewport(
         // and enormous at the bottom, because a fixed amount of money is a different percentage at
         // each end. Multiplicative padding is the same eight percent of the *visible height* at
         // both ends, which is what the linear branch means by it too.
+        val zoom = priceZoom.coerceIn(MIN_PRICE_ZOOM, MAX_PRICE_ZOOM).toDouble()
         if (logScale && low > 0.0 && high > low) {
-            val factor = exp(ln(high / low) * PRICE_PADDING)
-            return@lazy (low / factor)..(high * factor)
+            // Widened about the geometric middle rather than the arithmetic one: on a log axis
+            // that is the point that stays still, and expanding about the wrong centre would slide
+            // the whole chart up the plot as the reader dragged.
+            val middle = exp((ln(low) + ln(high)) / 2)
+            val half = ln(high / low) / 2 * (1 + PRICE_PADDING * 2) * zoom
+            return@lazy (middle / exp(half))..(middle * exp(half))
         }
         val padding = when {
             high > low -> (high - low) * PRICE_PADDING
             high != 0.0 -> abs(high) * 0.02
             else -> 1.0
         }
-        (low - padding)..(high + padding)
+        val middle = (low + high) / 2
+        val half = (high - low) / 2 + padding
+        (middle - half * zoom)..(middle + half * zoom)
     }
 
     // ---------------------------------------------------------------- chart space to screen
@@ -267,6 +296,21 @@ data class ChartViewport(
         return copy(barsPerView = bars.coerceIn(MIN_BARS_PER_VIEW, MAX_BARS_PER_VIEW))
     }
 
+    /**
+     * Stretch or compress the price axis, as a factor on the current setting.
+     *
+     * Multiplicative rather than additive, because the gesture that drives it is a drag on the
+     * price gutter and a drag has to feel the same at every scale: adding a fixed amount would be
+     * imperceptible when zoomed out and violent when zoomed in.
+     */
+    fun priceZoomedBy(factor: Float): ChartViewport {
+        if (factor <= 0f || !factor.isFinite()) return this
+        return copy(priceZoom = (priceZoom * factor).coerceIn(MIN_PRICE_ZOOM, MAX_PRICE_ZOOM))
+    }
+
+    /** Back to fitting the visible bars. What a double-tap on the price gutter does. */
+    fun autoPriceScale(): ChartViewport = copy(priceZoom = 1f)
+
     /** Re-measure after a layout pass. */
     fun sized(width: Float, height: Float): ChartViewport =
         copy(plotWidth = max(0f, width), plotHeight = max(0f, height))
@@ -362,5 +406,11 @@ data class ChartViewport(
 
         /** Headroom above the highest wick and below the lowest, as a share of the visible range. */
         const val PRICE_PADDING = 0.08
+
+        /** Below this the visible bars are several times the plot's height. See [priceZoom]. */
+        const val MIN_PRICE_ZOOM = 0.25f
+
+        /** Above this the candles are a horizontal line. */
+        const val MAX_PRICE_ZOOM = 8f
     }
 }

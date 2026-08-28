@@ -5,11 +5,13 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -132,6 +134,15 @@ fun CoineProChart(
     var savedZoom by rememberSaveable { mutableIntStateOf(ChartViewport.DEFAULT_BARS_PER_VIEW) }
     var savedOffset by rememberSaveable { mutableIntStateOf(0) }
 
+    /**
+     * And how far the price axis was stretched.
+     *
+     * The third number that makes up "where the reader was looking". Saved with the other two for
+     * the same reason: a reader who compressed a noisy chart to see its shape, then rotated the
+     * phone, should not have to do it again.
+     */
+    var savedPriceZoom by rememberSaveable { mutableFloatStateOf(1f) }
+
     // Follow the live edge as bars arrive, but never drag the view out from under a reader who has
     // panned back. ChartViewport.withSeries decides which of those applies.
     //
@@ -140,7 +151,7 @@ fun CoineProChart(
     remember(display) {
         viewport = viewport
             .withSeries(display)
-            .copy(barsPerView = savedZoom)
+            .copy(barsPerView = savedZoom, priceZoom = savedPriceZoom)
             .atOffset(savedOffset)
     }
 
@@ -152,9 +163,10 @@ fun CoineProChart(
     // Written back whenever the reader moves. Cheap — two ints into the saved-state bundle — and
     // it has to be here rather than inside the gesture handlers, which do not all go through one
     // place.
-    LaunchedEffect(viewport.barsPerView, viewport.offset) {
+    LaunchedEffect(viewport.barsPerView, viewport.offset, viewport.priceZoom) {
         savedZoom = viewport.barsPerView
         savedOffset = viewport.offset
+        savedPriceZoom = viewport.priceZoom
     }
 
     // Ask for history when the reader gets near the edge of it. Keyed on the first visible bar, so
@@ -206,6 +218,15 @@ fun CoineProChart(
      * the moment a finger lands.
      */
     val lastView = remember { arrayOfNulls<ChartViewport>(1) }
+
+    /**
+     * Whether the drag in progress started in the price gutter.
+     *
+     * Decided once, at the down event, and held for the gesture. Testing the current position on
+     * every move would let a finger that started on the plot wander into the gutter and start
+     * rescaling mid-drag, which is the sort of thing that feels like the chart having a seizure.
+     */
+    var gutterDrag by remember { mutableStateOf(false) }
     val armed = drawing?.tool
 
     val palette = ChartPalette(
@@ -367,6 +388,37 @@ fun CoineProChart(
                                     },
                                 )
                             }
+                            .pointerInput(display, axisWidth) {
+                                // The price gutter: drag it to stretch or compress the scale.
+                                //
+                                // The gesture every terminal uses, and the reason it is worth
+                                // having is that the auto-fit range is right for reading a price
+                                // and wrong for reading a *shape*. A market that has moved half a
+                                // percent all week fills the plot with noise; one that gapped ten
+                                // percent on Monday spends the rest of it as a flat line.
+                                //
+                                // Confined to the gutter — the strip the axis labels are drawn in,
+                                // widened to a thumb — so it cannot steal a pan from the plot. In
+                                // a right-to-left layout the gutter is still on the right: the
+                                // chart is drawn left-to-right regardless of the reading
+                                // direction, because no trader on earth reads the newest bar on
+                                // the left.
+                                detectVerticalDragGestures(
+                                    onDragStart = { position ->
+                                        gutterDrag = position.x >= size.width - axisWidth - GUTTER_REACH_DP.toPx()
+                                    },
+                                    onDragEnd = { gutterDrag = false },
+                                    onDragCancel = { gutterDrag = false },
+                                ) { change, dragAmount ->
+                                    if (!gutterDrag) return@detectVerticalDragGestures
+                                    change.consume()
+                                    val height = viewport.plotHeight
+                                    if (height <= 0f) return@detectVerticalDragGestures
+                                    // Dragging *down* compresses, which is the convention
+                                    // everywhere: the finger pushes the extremes toward the middle.
+                                    viewport = viewport.priceZoomedBy(1f + dragAmount / height * GUTTER_SENSITIVITY)
+                                }
+                            }
                             .pointerInput(display) {
                                 // Long-press to summon the crosshair, drag to move it, lift to
                                 // dismiss. A crosshair that follows every tap fights with panning;
@@ -380,7 +432,16 @@ fun CoineProChart(
                             }
                             .pointerInput(display, armed, drawing, onDrawing, tolerancePx) {
                                 detectTapGestures(
-                                    onDoubleTap = { viewport = viewport.atOffset(0) },
+                                    onDoubleTap = { position ->
+                                        // In the gutter it resets the price scale; on the plot it
+                                        // returns to the live edge. Two double-taps, each one the
+                                        // "put this back" for the axis it lands on.
+                                        viewport = if (position.x >= size.width - axisWidth - GUTTER_REACH_DP.toPx()) {
+                                            viewport.autoPriceScale()
+                                        } else {
+                                            viewport.atOffset(0)
+                                        }
+                                    },
                                     onTap = { position ->
                                         val state = drawing ?: return@detectTapGestures
                                         val emit = onDrawing ?: return@detectTapGestures
@@ -1640,6 +1701,23 @@ private const val LOAD_MORE_MARGIN = 10
 
 /** Air between the live-price tag and the countdown under it. */
 private val COUNTDOWN_GAP_DP = 2.dp
+
+/**
+ * How far left of the price axis a finger still counts as being on it.
+ *
+ * The axis is 56dp of labels; a tap target of that width alone is under the 48dp minimum once the
+ * padding is taken off, and readers aim at the numbers rather than at the edge. Twelve more is
+ * enough to be reachable without eating a meaningful strip of the plot.
+ */
+private val GUTTER_REACH_DP = 12.dp
+
+/**
+ * How much of the plot's height a full drag is worth.
+ *
+ * Two: dragging from the top of the chart to the bottom roughly triples the scale, which is about
+ * one comfortable thumb travel for one useful change. Higher and a small correction overshoots.
+ */
+private const val GUTTER_SENSITIVITY = 2f
 
 /**
  * Above this the countdown stops being a countdown.
