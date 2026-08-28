@@ -110,4 +110,8 @@
     <string name="admin_language_fa">فارسی</string>
     <string name="admin_language_en">English</string>
     <string name="admin_language_note">تغییر زبان اپ را از نو باز می‌کند.</string>
+    <string name="admin_log_title">گزارش برنامه</string>
+    <string name="admin_log_count">%1$d خط</string>
+    <string name="admin_log_copy">کپی</string>
+    <string name="admin_log_empty">هنوز چیزی ثبت نشده است.</string>
 </resources>

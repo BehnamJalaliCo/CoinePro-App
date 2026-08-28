@@ -51,6 +51,7 @@ import com.coinepro.core.diagnostics.AdminBuildInfo
 import com.coinepro.core.diagnostics.AdminController
 import com.coinepro.core.diagnostics.EndpointProber
 import com.coinepro.core.diagnostics.PlatformBuildInfo
+import com.coinepro.core.diagnostics.AppLog
 import com.coinepro.core.diagnostics.RequestLog
 import com.coinepro.core.diagnostics.RequestLogInterceptor
 import com.coinepro.core.copytrade.CopyTradeController
@@ -138,6 +139,17 @@ object AppModule {
     fun requestLog(): RequestLog = RequestLog()
 
     /**
+     * The app's narrative log, one instance for the process.
+     *
+     * A singleton because its whole value is that everything lands in *one* sequence: a socket drop,
+     * the reconnect, the 401 on the next call and the sign-out that followed are one story, and
+     * three separate logs is three stories nobody can line up.
+     */
+    @Provides
+    @Singleton
+    fun appLog(): AppLog = AppLog()
+
+    /**
      * The panel's own view of the build.
      *
      * Assembled here because BuildConfig belongs to the application, and a core module reaching
@@ -149,6 +161,7 @@ object AppModule {
         @ForexPlatform forexClient: OkHttpClient,
         @CryptoPlatform cryptoClient: OkHttpClient,
         requestLog: RequestLog,
+        appLog: AppLog,
         activePlatformStore: ActivePlatformStore,
         scope: CoroutineScope,
     ): AdminController = AdminController(
@@ -177,6 +190,7 @@ object AppModule {
             ),
         ),
         requestLog = requestLog,
+        appLog = appLog,
         scope = scope,
         initialPlatform = activePlatformStore.available.first(),
     )
@@ -211,12 +225,13 @@ object AppModule {
         @ForexPlatform memory: SessionMemory,
         installIds: InstallIdStore,
         requestLog: RequestLog,
+        appLog: AppLog,
     ): OkHttpClient = NetworkFactory.okHttpClient(
         bearerToken = memory::token,
         onUnauthorized = memory::notifyUnauthorized,
         installId = installIds.providerFor(MarketPlatform.COINEPRO_FX),
         appVersion = BuildConfig.VERSION_NAME,
-        recorder = RequestLogInterceptor(requestLog, MarketPlatform.COINEPRO_FX),
+        recorder = RequestLogInterceptor(requestLog, MarketPlatform.COINEPRO_FX, appLog = appLog),
         enableHttpLogging = BuildConfig.DEBUG,
     )
 
@@ -256,12 +271,13 @@ object AppModule {
         @CryptoPlatform memory: SessionMemory,
         installIds: InstallIdStore,
         requestLog: RequestLog,
+        appLog: AppLog,
     ): OkHttpClient = NetworkFactory.okHttpClient(
         bearerToken = memory::token,
         onUnauthorized = memory::notifyUnauthorized,
         installId = installIds.providerFor(MarketPlatform.TRADEYAR),
         appVersion = BuildConfig.VERSION_NAME,
-        recorder = RequestLogInterceptor(requestLog, MarketPlatform.TRADEYAR),
+        recorder = RequestLogInterceptor(requestLog, MarketPlatform.TRADEYAR, appLog = appLog),
         enableHttpLogging = BuildConfig.DEBUG,
     )
 

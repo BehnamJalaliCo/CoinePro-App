@@ -44,6 +44,15 @@ data class AdminUiState(
     val selected: MarketPlatform,
     val requests: List<RecordedRequest> = emptyList(),
     val failuresOnly: Boolean = false,
+    /**
+     * The narrative log, newest last.
+     *
+     * Beside the request table rather than instead of it. The table answers "which call failed";
+     * this answers "and what was happening around it" — the socket that dropped, the screen the
+     * reader was on, the token that refreshed. A failure nothing recorded is one somebody has to
+     * reproduce before they can start.
+     */
+    val log: List<LogEntry> = emptyList(),
 )
 
 /**
@@ -59,6 +68,7 @@ class AdminController(
     private val platforms: List<PlatformBuildInfo>,
     private val probers: Map<MarketPlatform, EndpointProber>,
     private val requestLog: RequestLog,
+    private val appLog: AppLog,
     private val scope: CoroutineScope,
     initialPlatform: MarketPlatform,
 ) {
@@ -86,13 +96,24 @@ class AdminController(
                 stateMutable.update { it.copy(requests = entries) }
             }
         }
+        scope.launch {
+            appLog.entries.collect { entries ->
+                stateMutable.update { it.copy(log = entries) }
+            }
+        }
     }
 
     fun select(platform: MarketPlatform) = stateMutable.update { it.copy(selected = platform) }
 
     fun toggleFailuresOnly() = stateMutable.update { it.copy(failuresOnly = !it.failuresOnly) }
 
-    fun clearRequests() = requestLog.clear()
+    fun clearRequests() {
+        requestLog.clear()
+        appLog.clear()
+    }
+
+    /** The whole log as text, for the clipboard — which is how it reaches whoever can fix it. */
+    fun logText(): String = appLog.dump()
 
     /**
      * Fires every safe route for one platform, updating each row as its answer arrives.

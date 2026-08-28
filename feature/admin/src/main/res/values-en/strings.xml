@@ -109,4 +109,8 @@
     <string name="admin_language_fa">فارسی</string>
     <string name="admin_language_en">English</string>
     <string name="admin_language_note">Changing the language restarts the app.</string>
+    <string name="admin_log_title">App log</string>
+    <string name="admin_log_count">%1$d lines</string>
+    <string name="admin_log_copy">Copy</string>
+    <string name="admin_log_empty">Nothing recorded yet.</string>
 </resources>

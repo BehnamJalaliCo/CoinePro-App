@@ -22,7 +22,18 @@ import java.io.StringWriter
  * screen behind the five-tap gate, and is cleared when the reader asks. A crash trace can carry a
  * URL and a symbol; it is treated as the reader's, not as telemetry.
  */
-class CrashReport(private val context: Context) {
+class CrashReport(
+    private val context: Context,
+    /**
+     * The log to attach, or null to write the trace alone.
+     *
+     * A stack trace says *where* the app died and almost never *why*. The two hundred lines before
+     * it — the socket that dropped, the token that refreshed, the screen the reader was on — are
+     * what turn a report into a diagnosis, and they are gone the instant the process is. So they
+     * are written with it.
+     */
+    private val appLog: AppLog? = null,
+) {
 
     /** The most recent crash, or null when the app has never crashed since the file was cleared. */
     fun last(): Crash? {
@@ -60,6 +71,11 @@ class CrashReport(private val context: Context) {
             out.println("thread: ${thread.name}")
             out.println()
             error.printStackTrace(out)
+            appLog?.let { log ->
+                out.println()
+                out.println("--- log, oldest first ---")
+                out.println(log.dump(LOG_LINES))
+            }
         }
         // Truncated: a deeply nested cause chain can run to hundreds of kilobytes, and the part
         // that names the fault is at the top.
@@ -70,7 +86,16 @@ class CrashReport(private val context: Context) {
 
     private companion object {
         const val FILE_NAME = "last-crash.txt"
-        const val MAX_CHARS = 24_000
+        const val MAX_CHARS = 48_000
+
+        /**
+         * How much of the log travels with a crash.
+         *
+         * Two hundred lines is a few minutes at this app's rate — comfortably back past whatever
+         * the reader did that led here, and short enough that the trace itself is still at the top
+         * of the file where somebody will look first.
+         */
+        const val LOG_LINES = 200
     }
 }
 

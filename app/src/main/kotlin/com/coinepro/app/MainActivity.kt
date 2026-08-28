@@ -26,6 +26,7 @@ import com.coinepro.core.auth.PlatformCapabilities
 import com.coinepro.core.auth.PlatformSessions
 import com.coinepro.core.marketdata.MarketDataCache
 import com.coinepro.core.diagnostics.AdminController
+import com.coinepro.core.diagnostics.AppLog
 import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.aivision.AiVisionController
@@ -89,6 +90,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var terminalController: TerminalController
     @Inject lateinit var accountControllers: Map<MarketPlatform, @JvmSuppressWildcards AccountController>
     @Inject lateinit var adminController: AdminController
+    @Inject lateinit var appLog: AppLog
     @Inject lateinit var platformSessions: PlatformSessions
     @Inject lateinit var platformCapabilities: PlatformCapabilities
     @Inject lateinit var marketDataCache: MarketDataCache
@@ -161,6 +163,7 @@ class MainActivity : ComponentActivity() {
                 terminalController = terminalController,
                 accountControllers = accountControllers,
                 adminController = adminController,
+                appLog = appLog,
                 platformSessions = platformSessions,
                 platformCapabilities = platformCapabilities,
                 marketDataCache = marketDataCache,

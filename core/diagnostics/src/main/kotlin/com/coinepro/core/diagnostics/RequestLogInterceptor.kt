@@ -19,6 +19,16 @@ class RequestLogInterceptor(
     private val log: RequestLog,
     private val platform: MarketPlatform,
     private val clock: () -> Long = System::currentTimeMillis,
+    /**
+     * The narrative log, where the request log is the table.
+     *
+     * Null in tests and wherever the app has not built one yet, so this interceptor stays usable on
+     * its own. The two are not redundant: [RequestLog] is what the diagnostics screen tabulates,
+     * and [AppLog] is what puts a failed call *in sequence* with the sign-in that preceded it and
+     * the sign-out that followed — which is the difference between "this call 401ed" and knowing
+     * why.
+     */
+    private val appLog: AppLog? = null,
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -39,6 +49,19 @@ class RequestLogInterceptor(
                         elapsedRealtimeMillis = started,
                     ),
                 )
+                val millis = clock() - started
+                appLog?.log(
+                    // A call that failed is a warning even when the app recovers from it, because
+                    // the recovery is the thing somebody will be reading this to understand.
+                    level = if (response.code in 200..399) LogLevel.DEBUG else LogLevel.WARN,
+                    tag = LogTag.NETWORK,
+                    message = request.method + " " + request.url.encodedPath,
+                    fields = mapOf(
+                        "platform" to platform.name,
+                        "status" to response.code.toString(),
+                        "ms" to millis.toString(),
+                    ),
+                )
             }
         } catch (error: IOException) {
             log.record(
@@ -53,6 +76,15 @@ class RequestLogInterceptor(
                     // The class name, not the message. A message can carry the full URL including a
                     // query, and this string is rendered on screen.
                     failure = error::class.simpleName ?: "IOException",
+                ),
+            )
+            appLog?.error(
+                tag = LogTag.NETWORK,
+                message = request.method + " " + request.url.encodedPath + " never completed",
+                error = error,
+                fields = mapOf(
+                    "platform" to platform.name,
+                    "ms" to (clock() - started).toString(),
                 ),
             )
             throw error

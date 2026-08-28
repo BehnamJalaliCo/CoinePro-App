@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProCard
@@ -51,6 +52,8 @@ import com.coinepro.core.diagnostics.HubActions
 import com.coinepro.core.diagnostics.HubSection
 import com.coinepro.core.diagnostics.HubTile
 import com.coinepro.core.diagnostics.HubTone
+import com.coinepro.core.diagnostics.LogEntry
+import com.coinepro.core.diagnostics.LogLevel
 import com.coinepro.core.diagnostics.PlatformPanel
 import com.coinepro.core.diagnostics.ProbeOutcome
 import com.coinepro.core.diagnostics.PushPermission
@@ -148,8 +151,74 @@ fun AdminScreen(
                 Rows(requests.size) { index -> RequestRow(requests[index]) }
             }
         }
+
+        // The narrative, under the table. The table says which call failed; this says what was
+        // happening around it — the screen the reader was on, the socket that dropped, the session
+        // that changed. Copying it is the point: it is how a problem reaches whoever can fix it.
+        item {
+            SectionHeader(
+                title = stringResource(R.string.admin_log_title),
+                detail = stringResource(R.string.admin_log_count, state.log.size),
+                actionLabel = stringResource(R.string.admin_log_copy),
+                onAction = actions.onCopyLog,
+            )
+        }
+        if (state.log.isEmpty()) {
+            item { EmptyNote(R.string.admin_log_empty) }
+        } else {
+            item {
+                // Newest first, which is the order anybody reads a log in — and capped, because
+                // six hundred rows inside a `LazyColumn` item is six hundred rows composed at once.
+                val recent = state.log.asReversed().take(LOG_ROWS)
+                Rows(recent.size) { index -> LogRow(recent[index]) }
+            }
+        }
     }
 }
+
+/**
+ * One log line, in the monospaced shape the rest of this screen uses for machine text.
+ *
+ * The level is a coloured letter rather than a word: at this density the eye is scanning for the
+ * red ones, and «هشدار» spelled out on every row would push the message off the edge.
+ */
+@Composable
+private fun LogRow(entry: LogEntry) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+    ) {
+        Text(
+            text = entry.level.name.first().toString(),
+            style = MaterialTheme.typography.labelSmall.copy(textDirection = TextDirection.Ltr),
+            color = when (entry.level) {
+                LogLevel.ERROR -> CoineProColors.Sell
+                LogLevel.WARN -> CoineProColors.Warning
+                LogLevel.INFO -> CoineProColors.TextSecondary
+                else -> CoineProColors.TextDisabled
+            },
+        )
+        Text(
+            text = BidiText.isolateLtr(entry.render().substringAfter(' ').substringAfter(' ')),
+            style = MaterialTheme.typography.labelSmall.copy(textDirection = TextDirection.Ltr),
+            color = if (entry.level == LogLevel.ERROR) {
+                CoineProColors.TextPrimary
+            } else {
+                CoineProColors.TextSecondary
+            },
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+/**
+ * How many log lines the screen composes.
+ *
+ * The ring holds six hundred and the clipboard gets all of them; this is what is *drawn*, and it is
+ * capped because a `LazyColumn` item is composed whole — six hundred rows inside one item is six
+ * hundred rows built on the frame the section scrolls into view.
+ */
+private const val LOG_ROWS = 120
 
 /* --------------------------------------------------------------- overview */
 
@@ -726,8 +795,9 @@ private fun SectionHeader(
     detail: String,
     actionLabel: String,
     onAction: () -> Unit,
-    secondaryLabel: String,
-    onSecondary: () -> Unit,
+    /** The second action, where a section has one. Null draws a single action. */
+    secondaryLabel: String? = null,
+    onSecondary: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
@@ -742,8 +812,14 @@ private fun SectionHeader(
             TextButton(onClick = onAction) {
                 Text(actionLabel, style = MaterialTheme.typography.bodySmall, color = CoineProColors.Accent)
             }
-            TextButton(onClick = onSecondary) {
-                Text(secondaryLabel, style = MaterialTheme.typography.bodySmall, color = CoineProColors.TextMuted)
+            if (secondaryLabel != null && onSecondary != null) {
+                TextButton(onClick = onSecondary) {
+                    Text(
+                        text = secondaryLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CoineProColors.TextMuted,
+                    )
+                }
             }
         }
     }

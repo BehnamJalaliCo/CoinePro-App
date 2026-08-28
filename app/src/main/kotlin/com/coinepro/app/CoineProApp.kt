@@ -76,6 +76,8 @@ import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.designsystem.PageAccent
 import com.coinepro.core.designsystem.ProvidePageAccent
 import com.coinepro.core.diagnostics.AdminController
+import com.coinepro.core.diagnostics.AppLog
+import com.coinepro.core.diagnostics.LogTag
 import com.coinepro.core.diagnostics.Appearance
 import com.coinepro.core.diagnostics.ControlHub
 import com.coinepro.core.diagnostics.CrashReport
@@ -317,6 +319,8 @@ fun CoineProApp(
     terminalController: TerminalController,
     accountControllers: Map<MarketPlatform, AccountController>,
     adminController: AdminController,
+    /** The app's narrative log, for the crash report and the diagnostics screen. */
+    appLog: AppLog,
     platformSessions: PlatformSessions,
     platformCapabilities: PlatformCapabilities,
     marketDataCache: MarketDataCache,
@@ -404,6 +408,17 @@ fun CoineProApp(
     // Read here rather than inside the shell, because both branches need it: a guest has a profile
     // in this app and it is the same profile they keep when they sign in.
     val profile by profileStore.profile.collectAsStateWithLifecycle(initialValue = StoredProfile())
+
+    // Sign-in, sign-out and the platform the session belongs to. No email, no token, no name: the
+    // question a log answers here is *whether* there is a session and on which backend, and the
+    // rest is the thing that must never be in a file attached to a crash report.
+    LaunchedEffect(session) {
+        appLog.info(
+            tag = LogTag.AUTH,
+            message = "session " + session::class.java.simpleName,
+            fields = mapOf("platform" to activePlatform.name),
+        )
+    }
     val notificationSettings by notificationSettingsStore.settings
         .collectAsStateWithLifecycle(initialValue = NotificationSettings())
     val chartLayouts by chartLayoutStore.layouts.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -585,6 +600,11 @@ fun CoineProApp(
         onProbe = adminController::probe,
         onToggleFailuresOnly = adminController::toggleFailuresOnly,
         onClearRequests = adminController::clearRequests,
+        onCopyLog = {
+            context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(
+                ClipData.newPlainText("CoinePro log", adminController.logText()),
+            )
+        },
     )
 
     CoineProTheme {
@@ -614,6 +634,7 @@ fun CoineProApp(
                 terminalController = terminalController,
                 hasAcademy = activePlatform == MarketPlatform.COINEPRO_FX,
                 adminController = adminController,
+                appLog = appLog,
                 hub = hub,
                 hubActions = hubActions,
                 briefing = briefingState.toHomeBriefing(briefingReadAt),
@@ -753,6 +774,7 @@ fun CoineProApp(
                         // minted from a mobile token nobody here holds.
                         hasAcademy = false,
                         adminController = adminController,
+                        appLog = appLog,
                         hub = hub,
                         hubActions = hubActions,
                         briefing = HomeBriefing.Resting,
@@ -906,6 +928,7 @@ private fun MainShell(
     marketIntelController: MarketIntelController,
     accountController: AccountController,
     adminController: AdminController,
+    appLog: AppLog,
     hub: ControlHub,
     hubActions: HubActions,
     briefing: HomeBriefing,
@@ -953,6 +976,17 @@ private fun MainShell(
     // one controller per destination is what made every drawing tool in the app inert.
     val chartControllers = rememberChartControllers(candleGateway, sparklineScope)
     val currentRoute = backStackEntry?.destination?.route
+
+    // Every screen the reader reaches, in sequence. It is two lines and it is the single most
+    // useful thing in a bug report: "it crashed" becomes "it crashed on the chart, having come
+    // from search, forty seconds after a socket drop".
+    //
+    // The route *pattern* is logged, never the filled path — `chart/{symbol}` and not
+    // `chart/BTCUSDT`. A path carries arguments, and an argument on some other route is an id or
+    // an email; the pattern says which screen without ever saying whose data.
+    LaunchedEffect(currentRoute) {
+        currentRoute?.let { appLog.info(LogTag.NAVIGATION, it) }
+    }
     val isSubScreen = currentRoute in setOf(
         SIGNAL_DETAIL_PATTERN,
         EXECUTION_PATTERN,
@@ -1745,7 +1779,7 @@ private fun MainShell(
             }
             composable(LAUNCH_READINESS_ROUTE) {
                 val context = LocalContext.current
-                val crashes = remember(context) { CrashReport(context) }
+                val crashes = remember(context, appLog) { CrashReport(context, appLog) }
                 // Read once: an install's certificate cannot change while it is running.
                 val fingerprints = remember(context) {
                     listOf(

@@ -133,6 +133,8 @@ data class HubActions(
     val onRefreshCapabilities: (MarketPlatform) -> Unit = {},
     val onToggleFailuresOnly: () -> Unit = {},
     val onClearRequests: () -> Unit = {},
+    /** Puts the whole narrative log on the clipboard, which is how it reaches somebody who can act. */
+    val onCopyLog: () -> Unit = {},
 )
 
 enum class PushPreferenceKey { NEW_SIGNALS, SIGNAL_UPDATES, PRICE_ALERTS }
