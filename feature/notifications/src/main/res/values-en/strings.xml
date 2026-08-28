@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notifications_title">Notifications</string>
+    <string name="notifications_eyebrow">Settings</string>
+    <string name="notifications_subtitle">Exactly what you want, and nothing else</string>
+
+    <string name="notifications_permission_title">Notification permission not granted</string>
+    <string name="notifications_permission_body">Android has not yet allowed CoinePro to show notifications. Until it does, none of the settings below can do anything.</string>
+    <string name="notifications_permission_open">Open Android settings</string>
+
+    <string name="notifications_master">CoinePro notifications</string>
+    <string name="notifications_master_note">The master switch. Off, only security notifications arrive.</string>
+
+    <string name="notifications_quiet">Quiet hours</string>
+    <string name="notifications_quiet_note">Nothing is shown during this window</string>
+    <string name="notifications_quiet_from">From</string>
+    <string name="notifications_quiet_to">Until</string>
+    <string name="notifications_quiet_hour">%1$s</string>
+    <string name="notifications_quiet_exception">A copy that opened or failed, and anything about account security, come through anyway — money moved.</string>
+
+    <string name="notifications_alerts_title">My price alerts</string>
+    <string name="notifications_alerts_count">%1$s of %2$s</string>
+    <string name="notifications_alerts_empty">You have not made any alerts yet.</string>
+    <string name="notifications_alerts_add">New alert</string>
+    <string name="notifications_alerts_delete">Delete</string>
+    <string name="notifications_alerts_local_note">These are checked on this phone and need no account. Immediately while the app is open, and otherwise whenever Android next runs its periodic work — never more often than every quarter of an hour. A move that happens and reverses inside that gap is missed.</string>
+
+    <string name="notifications_channel_note">Each category is its own Android notification channel: long-press a notification to give that kind its own sound, vibration and importance. The switch above says whether to send it at all; the channel says how loudly.</string>
+
+    <string name="alert_condition_above">%1$s above %2$s</string>
+    <string name="alert_condition_below">%1$s below %2$s</string>
+    <string name="alert_condition_percent_up">%1$s rises %2$s</string>
+    <string name="alert_condition_percent_down">%1$s falls %2$s</string>
+    <string name="alert_condition_24h_over">%1$s 24h change over %2$s</string>
+    <string name="alert_condition_24h_under">%1$s 24h change under minus %2$s</string>
+    <string name="notifications_alert_percent">%1$s%%</string>
+
+    <string name="alert_repeat_once">Once</string>
+    <string name="alert_repeat_daily">Once a day</string>
+    <string name="alert_repeat_always">Every time</string>
+
+    <string name="alert_new_title">New alert</string>
+    <string name="alert_new_subtitle">The market, the condition, and how often to tell you</string>
+    <string name="alert_new_symbol">Market symbol</string>
+    <string name="alert_new_value">Value</string>
+    <string name="alert_new_value_price">Price</string>
+    <string name="alert_new_value_percent">Percent</string>
+    <string name="alert_new_save">Create alert</string>
+    <string name="alert_new_cancel">Cancel</string>
+    <string name="alert_new_full">You have reached the limit of %1$s alerts. Delete one first.</string>
+    <string name="alert_new_reference">The price now is %1$s; percentages are measured from there.</string>
+    <string name="alert_new_disclaimer">An alert only tells you — it never places an order.</string>
+    <string name="alert_short_above">Above price</string>
+    <string name="alert_short_below">Below price</string>
+    <string name="alert_short_percent_up">Rises %</string>
+    <string name="alert_short_percent_down">Falls %</string>
+    <string name="alert_short_24h_over">24h over</string>
+    <string name="alert_short_24h_under">24h under</string>
+</resources>

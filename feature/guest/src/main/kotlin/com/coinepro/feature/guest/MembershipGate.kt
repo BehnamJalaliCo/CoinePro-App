@@ -16,8 +16,10 @@ import androidx.compose.ui.res.stringResource
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.guest.MembershipTerms
+import com.coinepro.core.designsystem.CoineProBrandButton
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -106,18 +108,41 @@ fun MembershipGate(
                 color = CoineProColors.Warning,
             )
 
-            // The links, in the order the platform can actually serve: LBank first, because it is
-            // the only exchange copy trading runs on, and a reader who picks the other one gets
-            // membership and signals but never automatic execution.
+            // Two exchanges, two different products, and the difference is stated rather than
+            // left for somebody to discover after they have funded an account.
+            //
+            // LBank first and in gold, because it is the only one copy trading runs on: a reader
+            // who wants the service to trade for them has exactly one choice. Ourbit second and in
+            // the quieter treatment, because it is a real choice and not a lesser one — membership,
+            // every signal, the whole app — for the reader who wants to place their own orders. The
+            // server tells the app which exchanges do which; see `MembershipTerms.uidExchanges`,
+            // which is deliberately a superset of `copyTradeExchanges`.
+            //
+            // Each carries its own mark. A row of two identical gold buttons whose only difference
+            // is a word is a choice somebody makes by reading; with the marks it is a choice they
+            // make by recognising.
             terms?.lbankReferralUrl?.let { url ->
-                CoineProPrimaryButton(
+                Text(
+                    text = stringResource(R.string.membership_lbank_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = CoineProColors.TextMuted,
+                )
+                CoineProBrandButton(
+                    logo = CoineProIcons.Brand.LBank,
                     text = stringResource(R.string.membership_open_lbank),
                     onClick = { context.open(url) },
+                    primary = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
             terms?.ourbitReferralUrl?.let { url ->
-                CoineProSecondaryButton(
+                Text(
+                    text = stringResource(R.string.membership_ourbit_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = CoineProColors.TextMuted,
+                )
+                CoineProBrandButton(
+                    logo = CoineProIcons.Brand.Ourbit,
                     text = stringResource(R.string.membership_open_ourbit),
                     onClick = { context.open(url) },
                     modifier = Modifier.fillMaxWidth(),

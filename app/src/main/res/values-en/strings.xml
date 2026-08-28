@@ -79,4 +79,49 @@
     <string name="safety_signature_note">For the Google console. SHA-1 is what Google sign-in needs; SHA-256 is what Play needs.</string>
     <string name="safety_signature_copy">Copy the fingerprint</string>
     <string name="safety_signature_unsigned">This build is signed with the development key.</string>
+    <string name="channel_group_trading">Signals and trades</string>
+    <string name="channel_group_market">Market</string>
+    <string name="channel_group_account">Account</string>
+    <string name="channel_group_other">Other</string>
+    <string name="channel_general">General</string>
+    <string name="channel_general_description">Messages that fit no other category</string>
+
+    <string name="notify_new_signal">New signal</string>
+    <string name="notify_new_signal_note">The moment a new signal is published</string>
+    <string name="notify_target_hit">Target reached</string>
+    <string name="notify_target_hit_note">When the price reaches one of the targets</string>
+    <string name="notify_stop_hit">Stop hit</string>
+    <string name="notify_stop_hit_note">When the stop loss is triggered</string>
+    <string name="notify_signal_closed">Signal closed</string>
+    <string name="notify_signal_closed_note">How each signal finished</string>
+
+    <string name="notify_copy_opened">Copy opened</string>
+    <string name="notify_copy_opened_note">When a trade is opened on your account</string>
+    <string name="notify_copy_closed">Copy closed</string>
+    <string name="notify_copy_closed_note">When a copied trade closes</string>
+    <string name="notify_copy_failed">Copy failed</string>
+    <string name="notify_copy_failed_note">When a trade could not be opened on your account — the most important one here</string>
+
+    <string name="notify_price_alert">My price alerts</string>
+    <string name="notify_price_alert_note">The alerts you created yourself</string>
+    <string name="notify_watchlist_move">Starred market moves</string>
+    <string name="notify_watchlist_move_note">Unusual moves in markets you starred — no number to choose</string>
+    <string name="notify_news">Important news</string>
+    <string name="notify_news_note">Headlines the server marked important</string>
+    <string name="notify_calendar">Economic calendar</string>
+    <string name="notify_calendar_note">Before high-importance releases</string>
+    <string name="notify_ai_setup">AI setup</string>
+    <string name="notify_ai_setup_note">When the AI finds something worth looking at</string>
+
+    <string name="notify_security">Account security</string>
+    <string name="notify_security_note">Sign-ins, password changes, new devices. This one cannot be turned off.</string>
+    <string name="notify_account">Account status</string>
+    <string name="notify_account_note">Membership, verification and subscription</string>
+    <string name="notify_marketing">Offers and announcements</string>
+    <string name="notify_marketing_note">Off by default</string>
+    <string name="alert_fired_title">Price alert</string>
+    <string name="alert_fired_body">%1$s reached %2$s.</string>
+    <string name="alert_fired_body_no_price">Your %1$s alert condition was met.</string>
+    <string name="screen_notifications">Notifications</string>
+    <string name="profile_action_notifications_note">Signals, targets, copies, price alerts and quiet hours</string>
 </resources>

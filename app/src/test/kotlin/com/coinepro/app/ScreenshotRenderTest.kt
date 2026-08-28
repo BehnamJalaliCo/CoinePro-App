@@ -147,6 +147,16 @@ import com.coinepro.feature.guest.GuestGateScreen
 import com.coinepro.feature.profile.AvatarComposerBody
 import com.coinepro.feature.profile.ProfileAction
 import com.coinepro.feature.profile.ProfileScreen
+import com.coinepro.core.notifications.AlertRepeat
+import com.coinepro.core.notifications.LocalAlertCondition
+import com.coinepro.core.notifications.LocalPriceAlert
+import com.coinepro.core.notifications.NotificationCategory
+import com.coinepro.core.notifications.NotificationSettings
+import com.coinepro.core.notifications.QuietHours
+import com.coinepro.feature.guest.MembershipGate
+import com.coinepro.feature.notifications.AlertComposerBody
+import com.coinepro.feature.notifications.NotificationSection
+import com.coinepro.feature.notifications.NotificationSettingsScreen
 import com.coinepro.feature.guest.GuestScreen
 import com.coinepro.feature.kyc.KycScreen
 import com.coinepro.core.account.AccountController
@@ -1033,6 +1043,102 @@ class ScreenshotRenderTest {
             actualFingerprint = "3F:A1:0C:88:D2:47:B9:5E:11:6A:C4:70:29:8B:DD:04:E6:52:97:1F:" +
                 "AB:30:C9:75:44:E8:12:66:BF:0D:53:AA",
         )
+    }
+
+    /**
+     * The notification settings, for somebody with an account.
+     *
+     * The render is the check on the one thing this screen can get wrong invisibly: fifteen
+     * switches in four groups either read as a list somebody can find their way around, or as a
+     * wall they scroll past to reach the one they came for. Persian labels are long, and a switch
+     * whose label wraps onto three lines turns the wall into a certainty.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun notificationSettings() = capture("89-notifications-fa") {
+        NotificationSettingsScreen(
+            settings = NotificationSettings(
+                quietHours = QuietHours(enabled = true, fromMinuteOfDay = 23 * 60, toMinuteOfDay = 7 * 60),
+            ),
+            sections = listOf(
+                NotificationSection(
+                    title = "سیگنال و معامله",
+                    categories = listOf(
+                        NotificationCategory.NEW_SIGNAL,
+                        NotificationCategory.TARGET_HIT,
+                        NotificationCategory.STOP_HIT,
+                        NotificationCategory.COPY_FAILED,
+                    ),
+                ),
+                NotificationSection(
+                    title = "بازار",
+                    categories = listOf(
+                        NotificationCategory.PRICE_ALERT,
+                        NotificationCategory.WATCHLIST_MOVE,
+                        NotificationCategory.NEWS,
+                    ),
+                ),
+                NotificationSection(
+                    title = "حساب",
+                    categories = listOf(NotificationCategory.SECURITY, NotificationCategory.MARKETING),
+                ),
+            ),
+            alerts = listOf(
+                LocalPriceAlert(
+                    id = "1",
+                    symbol = "BTCUSDT",
+                    condition = LocalAlertCondition.ABOVE,
+                    value = 65_000.0,
+                ),
+                LocalPriceAlert(
+                    id = "2",
+                    symbol = "ETHUSDT",
+                    condition = LocalAlertCondition.PERCENT_DOWN,
+                    value = 5.0,
+                    repeat = AlertRepeat.DAILY,
+                    referencePrice = 3_142.0,
+                    active = false,
+                ),
+            ),
+            labelFor = { category -> ScreenshotFixtures.notificationLabel(category) },
+            noteFor = { category -> ScreenshotFixtures.notificationNote(category) },
+        )
+    }
+
+    /**
+     * Making an alert, on the shelf a guest can actually use.
+     *
+     * Six conditions as chips and three repeat rules as chips: the render is what says whether
+     * fifteen Persian words fit two scrolling rows without either wrapping or being cut mid-word.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun alertComposer() = capture("90-alert-composer-fa") {
+        AlertComposerBody(
+            symbol = "BTCUSDT",
+            currentPrice = 64_182.4,
+            onCreate = {},
+            onCancel = {},
+        )
+    }
+
+    /**
+     * The membership card, with both exchanges on it.
+     *
+     * Rendered because this is the screen where the product's whole commercial arrangement is put
+     * to a reader, and because the two marks are the point of this version: a reader choosing
+     * between copy trading and signals-only should be able to tell the two buttons apart without
+     * reading either of them.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun membershipGate() = capture("91-membership-fa") {
+        Column(Modifier.fillMaxSize().padding(16.dp)) {
+            MembershipGate(
+                onSignIn = {},
+                terms = ScreenshotFixtures.membershipTerms,
+            )
+        }
     }
 
     /** Google disabled server-side: the button is absent, not present and doomed. */

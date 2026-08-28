@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notifications_title">اعلان‌ها</string>
+    <string name="notifications_eyebrow">تنظیمات</string>
+    <string name="notifications_subtitle">دقیقاً همان چیزهایی که می‌خواهید، و نه بیشتر</string>
+
+    <string name="notifications_permission_title">اجازه‌ی اعلان داده نشده</string>
+    <string name="notifications_permission_body">اندروید هنوز اجازه‌ی نمایش اعلان به کوین‌پرو نداده است. تا وقتی این اجازه داده نشود، هیچ‌کدام از تنظیم‌های زیر کاری نمی‌کند.</string>
+    <string name="notifications_permission_open">باز کردن تنظیمات اندروید</string>
+
+    <string name="notifications_master">اعلان‌های کوین‌پرو</string>
+    <string name="notifications_master_note">کلید اصلی. خاموش که باشد، فقط اعلان‌های امنیتی می‌آیند.</string>
+
+    <string name="notifications_quiet">ساعات سکوت</string>
+    <string name="notifications_quiet_note">در این بازه چیزی نمایش داده نمی‌شود</string>
+    <string name="notifications_quiet_from">از ساعت</string>
+    <string name="notifications_quiet_to">تا ساعت</string>
+    <string name="notifications_quiet_hour">%1$s</string>
+    <string name="notifications_quiet_exception">باز شدن و خطای کپی، و اعلان‌های امنیتی، در ساعات سکوت هم می‌آیند — چون پول جابه‌جا شده است.</string>
+
+    <string name="notifications_alerts_title">هشدارهای قیمت من</string>
+    <string name="notifications_alerts_count">%1$s از %2$s</string>
+    <string name="notifications_alerts_empty">هنوز هشداری نساخته‌اید.</string>
+    <string name="notifications_alerts_add">هشدار تازه</string>
+    <string name="notifications_alerts_delete">حذف</string>
+    <string name="notifications_alerts_local_note">این هشدارها روی همین گوشی بررسی می‌شوند و به حساب نیاز ندارند. وقتی برنامه باز است بی‌درنگ، و در غیر این صورت هر بار که اندروید کارهای دوره‌ای را اجرا می‌کند — که از هر ربع ساعت بیشتر نیست. حرکتی که در همین فاصله رخ بدهد و برگردد، از دست می‌رود.</string>
+
+    <string name="notifications_channel_note">هر دسته یک کانال اعلان جداگانه در اندروید دارد: با نگه‌داشتن روی یک اعلان می‌توانید صدا، لرزش و اهمیت همان دسته را جدا تنظیم کنید. کلید بالا می‌گوید «اصلاً بفرست یا نه»، و کانال می‌گوید «چقدر بلند».</string>
+
+    <string name="alert_condition_above">%1$s بالای %2$s</string>
+    <string name="alert_condition_below">%1$s زیر %2$s</string>
+    <string name="alert_condition_percent_up">%1$s %2$s بالاتر برود</string>
+    <string name="alert_condition_percent_down">%1$s %2$s پایین‌تر بیاید</string>
+    <string name="alert_condition_24h_over">تغییر ۲۴ ساعته‌ی %1$s بیشتر از %2$s</string>
+    <string name="alert_condition_24h_under">تغییر ۲۴ ساعته‌ی %1$s کمتر از منفی %2$s</string>
+    <string name="notifications_alert_percent">%1$s٪</string>
+
+    <string name="alert_repeat_once">یک بار</string>
+    <string name="alert_repeat_daily">روزی یک بار</string>
+    <string name="alert_repeat_always">هر بار</string>
+
+    <string name="alert_new_title">هشدار تازه</string>
+    <string name="alert_new_subtitle">بازار، شرط و اینکه چند بار خبرتان کند</string>
+    <string name="alert_new_symbol">نماد بازار</string>
+    <string name="alert_new_value">مقدار</string>
+    <string name="alert_new_value_price">قیمت</string>
+    <string name="alert_new_value_percent">درصد</string>
+    <string name="alert_new_save">ساختن هشدار</string>
+    <string name="alert_new_cancel">انصراف</string>
+    <string name="alert_new_full">به سقف %1$s هشدار رسیده‌اید. یکی را حذف کنید.</string>
+    <string name="alert_new_reference">قیمت فعلی %1$s است؛ درصدها از همین نقطه حساب می‌شوند.</string>
+    <string name="alert_new_disclaimer">هشدار فقط خبر می‌دهد — هیچ سفارشی ثبت نمی‌کند.</string>
+    <string name="alert_short_above">بالای قیمت</string>
+    <string name="alert_short_below">زیر قیمت</string>
+    <string name="alert_short_percent_up">درصد بالا</string>
+    <string name="alert_short_percent_down">درصد پایین</string>
+    <string name="alert_short_24h_over">۲۴ ساعته بالای</string>
+    <string name="alert_short_24h_under">۲۴ ساعته زیر</string>
+</resources>

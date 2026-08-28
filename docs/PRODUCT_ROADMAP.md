@@ -325,6 +325,7 @@ feature:kyc
 feature:account
 feature:guest
 feature:membership
+feature:notifications
 feature:alerts
 feature:journal
 feature:papertrade

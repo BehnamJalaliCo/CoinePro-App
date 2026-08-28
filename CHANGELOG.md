@@ -15,6 +15,66 @@ it is for.
 
 ---
 
+## [1.30.0] — 2026-08-28 — Notifications worth keeping on, and two exchanges told apart
+
+### Added
+- **Fifteen notification categories instead of one switch.** New signal, target reached, stop hit,
+  signal closed; copy opened, closed, failed; price alerts, starred-market moves, news, calendar,
+  AI setups; account security, account status; and offers — the last separated from everything else
+  and **off by default**, because that is the switch people go looking for and burying it is how an
+  app loses the reader's trust in the whole screen. The shape is the one Binance, OKX, Bybit, Kraken
+  and Coinbase all converge on; converging with them means somebody who has used an exchange app
+  does not have to learn a new idea to find the switch they came for.
+- **Each category is its own Android notification channel**, in four groups, with importance chosen
+  per category rather than uniformly. That gives the reader the operating system's own per-kind
+  control — long-press a notification to change *that kind's* sound, vibration or importance — which
+  is better than the in-app sound picker OKX ships and is one nobody has to be taught. The app's
+  switch says whether to send it at all; the channel says how loudly. The single `market_events`
+  channel is deleted rather than left as a dead entry in the system list.
+- **Quiet hours.** Not one of the seven apps measured against has this; they all point at the
+  phone's Do Not Disturb instead. That is a fair answer where the market closes at night and a poor
+  one here, where the reader follows a market that never does — telling somebody to silence their
+  whole phone is telling them to silence their alarm. A copy that opened or failed, and anything
+  about account security, still come through: money moved.
+- **Price alerts that need no account.** Six conditions — above, below, up %, down %, 24-hour change
+  over and under — with an explicit repeat rule of once, once a day or every time, evaluated on the
+  device against the public feed. **Of Binance, Bybit, Coinbase, OKX, Kraken, eToro and TradingView,
+  not one lets somebody set a price alert without signing in**, and neither do CoinGecko or
+  CoinMarketCap. The screen is honest about the cost: they fire while the app is open and otherwise
+  when Android next runs its periodic work, never more often than every quarter of an hour.
+- **`CoineProBrandButton`** — a button that carries somebody else's mark, drawn with `Image` and
+  never `Icon`, because a tint on a company's logo produces a mark they do not have.
+
+### Changed
+- **The two exchanges are told apart, with their own marks on their own buttons.** LBank in gold
+  with «اگر می‌خواهید سرویس به‌جای شما معامله کند» over it, because it is the only one copy trading
+  runs on; Ourbit beneath it with «اگر فقط سیگنال‌ها را می‌خواهید و خودتان سفارش می‌گذارید» — a real
+  choice rather than a lesser one, for the reader who wants every signal and will place their own
+  orders. Two identical gold buttons differing by one word is a choice made by reading; with the
+  marks it is a choice made by recognising.
+  - LBank's mark is their own published vector, circle only.
+  - Ourbit publishes no vector, so theirs was **measured** off their 256px icon rather than traced:
+    the silhouette scanned row by row, the vertices solved where the edges meet, the green sampled
+    from the file. The ring is open at the top with the rhombus in the gap — drawing it as a closed
+    ring with a dot above would be a different mark that looks similar at a glance.
+- **Google's button carries Google's G**, the four published paths, uncoloured by us, on the
+  reading edge.
+- **The server's three flags are derived from the fifteen switches** rather than mirrored, and the
+  derivation has one rule worth knowing: the server sends target, stop and closed under one flag, so
+  turning it off to satisfy one would silence the other two *at the source*, where the app cannot
+  get them back. One wanted update keeps the flag on and the unwanted ones are dropped on arrival.
+  The screen says which kind of "off" each switch is.
+- **The alert schedule exists only while there is an alert.** A worker waking every quarter of an
+  hour to read an empty list is a battery cost with no possible benefit.
+
+### Notes
+- Everything above was designed against what Binance, Bybit, eToro, TradingView, Coinbase, OKX and
+  Kraken actually ship, read from their own documentation. Two ideas are taken almost whole —
+  Kraken's zero-configuration alert on starred markets, and the industry-standard category split —
+  and two are deliberately not theirs: quiet hours, and alerts without an account.
+
+---
+
 ## [1.29.4] — 2026-08-28 — The audience is live
 
 ### Notes

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Ourbit's mark, reconstructed from their own 256px app icon.
+
+    Their site publishes no vector, so the geometry was measured off the raster rather than traced
+    by eye: the silhouette was scanned row by row, the vertices solved from where the edges meet,
+    and the green sampled from the file — `#0DB459`, not a guess at it. The shape is entirely
+    straight-edged, so a measured reconstruction is exact rather than approximate.
+
+    Three parts, and the middle one is the point: the ring is **open at the top**. Two prongs, with
+    the rhombus floating in the gap between them. Drawing it as a closed ring with a dot above would
+    be a different mark that happens to look similar at a glance.
+
+    Never tinted, for the same reason as LBank's.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="22dp"
+    android:height="22dp"
+    android:viewportWidth="256"
+    android:viewportHeight="256">
+    <!-- The open ring: outside clockwise, then back along the inside to the other prong. -->
+    <path
+        android:fillColor="#0DB459"
+        android:pathData="M66.3,56.2 L36,74 L36,182 L127.75,236 L219,182 L219,74 L189.2,56.2
+                          L160.6,73.7 L190,91.1 L190,164.9 L127.75,201.8 L65,164.9 L65,91.1
+                          L94.9,73.7 Z" />
+    <!-- The core. -->
+    <path
+        android:fillColor="#0DB459"
+        android:pathData="M127.75,92 L158,110 L158,146 L127.75,164 L97,146 L97,110 Z" />
+    <!-- The mark above the gap. -->
+    <path
+        android:fillColor="#0DB459"
+        android:pathData="M127.75,20 L156,40 L127.75,59 L99,40 Z" />
+</vector>

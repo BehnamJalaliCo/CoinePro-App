@@ -91,6 +91,19 @@ object CoineProIcons {
     @DrawableRes val Assistant = R.drawable.icon_robot
 
     /**
+     * Other companies' marks, kept apart from the icon set on purpose.
+     *
+     * An icon in [CoineProIcons] is ours: it is tinted by whatever draws it, and its colour carries
+     * this app's meaning. These are the opposite — they belong to somebody else, their colour is
+     * part of the identity, and tinting one produces a mark that company does not have. Anything
+     * drawing these must use `Image`, never `Icon`.
+     */
+    object Brand {
+        @DrawableRes val LBank = R.drawable.logo_lbank
+        @DrawableRes val Ourbit = R.drawable.logo_ourbit
+    }
+
+    /**
      * The navigation glyphs in the fill weight, for the selected tab.
      *
      * OKX publishes both weights of the sparkle. The other four are derived from their own outlines

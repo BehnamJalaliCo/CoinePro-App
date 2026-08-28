@@ -35,6 +35,9 @@ import com.coinepro.app.security.AppIntegrity
 import com.coinepro.app.security.IntegrityState
 import com.coinepro.app.security.TamperedScreen
 import com.coinepro.core.designsystem.CoineProTheme
+import com.coinepro.app.alerts.LocalAlertScheduler
+import com.coinepro.core.datastore.LocalAlertStore
+import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
@@ -67,6 +70,9 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var emailAuthController: EmailAuthController
     @Inject lateinit var guestController: GuestController
     @Inject lateinit var profileStore: ProfileStore
+    @Inject lateinit var notificationSettingsStore: NotificationSettingsStore
+    @Inject lateinit var localAlertStore: LocalAlertStore
+    @Inject lateinit var localAlertScheduler: LocalAlertScheduler
     @Inject lateinit var guestGateway: GuestGateway
     @Inject lateinit var watchlistStore: WatchlistStore
     @Inject lateinit var chartLayoutStore: ChartLayoutStore
@@ -136,6 +142,9 @@ class MainActivity : ComponentActivity() {
                 guestController = guestController,
                 guestGateway = guestGateway,
                 profileStore = profileStore,
+                notificationSettingsStore = notificationSettingsStore,
+                localAlertStore = localAlertStore,
+                localAlertScheduler = localAlertScheduler,
                 watchlistStore = watchlistStore,
                 chartLayoutStore = chartLayoutStore,
                 journalController = journalController,

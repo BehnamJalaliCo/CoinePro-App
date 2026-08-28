@@ -40,6 +40,17 @@ import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionState
+import com.coinepro.app.alerts.LocalAlertScheduler
+import com.coinepro.app.notifications.channelDescriptionRes
+import com.coinepro.app.notifications.channelNameRes
+import com.coinepro.core.datastore.LocalAlertStore
+import com.coinepro.core.datastore.NotificationSettingsStore
+import com.coinepro.core.notifications.LocalPriceAlert
+import com.coinepro.core.notifications.NotificationCategory
+import com.coinepro.core.notifications.NotificationSettings
+import com.coinepro.feature.notifications.AlertComposerSheet
+import com.coinepro.feature.notifications.NotificationSection
+import com.coinepro.feature.notifications.NotificationSettingsScreen
 import com.coinepro.core.datastore.ActivePlatformStore
 import com.coinepro.core.datastore.ProfileStore
 import com.coinepro.core.datastore.StoredProfile
@@ -172,6 +183,7 @@ private const val CALENDAR_ROUTE = "market/calendar"
 private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
 private const val ADMIN_ROUTE = "diagnostics"
 private const val PROFILE_ROUTE = "profile"
+private const val NOTIFICATIONS_ROUTE = "notifications"
 private const val KYC_ROUTE = "account/verify"
 private const val DELETE_ACCOUNT_ROUTE = "account/delete"
 private const val ALERTS_ROUTE = "alerts"
@@ -250,6 +262,7 @@ private val SELF_TITLED: Set<String> = setOf(
     ACTIVITY_ROUTE,
     MARKET_SEARCH_ROUTE,
     PROFILE_ROUTE,
+    NOTIFICATIONS_ROUTE,
 )
 
 private fun accentFor(route: String?): PageAccent = when (route) {
@@ -280,6 +293,9 @@ fun CoineProApp(
     /** The public feed, which is what makes the guest experience the app rather than a teaser. */
     guestGateway: GuestGateway,
     profileStore: ProfileStore,
+    notificationSettingsStore: NotificationSettingsStore,
+    localAlertStore: LocalAlertStore,
+    localAlertScheduler: LocalAlertScheduler,
     watchlistStore: WatchlistStore,
     chartLayoutStore: ChartLayoutStore,
     journalController: JournalController,
@@ -370,9 +386,18 @@ fun CoineProApp(
     val scope = rememberCoroutineScope()
     val signedIn = session is SessionState.SignedIn
     val watchlist by watchlistStore.symbols.collectAsStateWithLifecycle(initialValue = emptyList())
+    // The periodic check exists only while there is something to check. A worker that wakes every
+    // quarter of an hour to read an empty list is a battery cost with no possible benefit — and it
+    // is exactly the kind of thing that never shows up in testing and does show up in a review.
+    val storedAlerts by localAlertStore.alerts.collectAsStateWithLifecycle(initialValue = emptyList())
+    LaunchedEffect(storedAlerts) {
+        localAlertScheduler.sync(hasActiveAlerts = storedAlerts.any { it.active })
+    }
     // Read here rather than inside the shell, because both branches need it: a guest has a profile
     // in this app and it is the same profile they keep when they sign in.
     val profile by profileStore.profile.collectAsStateWithLifecycle(initialValue = StoredProfile())
+    val notificationSettings by notificationSettingsStore.settings
+        .collectAsStateWithLifecycle(initialValue = NotificationSettings())
     val chartLayouts by chartLayoutStore.layouts.collectAsStateWithLifecycle(initialValue = emptyList())
 
     val capabilities by platformCapabilities.state.collectAsStateWithLifecycle()
@@ -428,6 +453,20 @@ fun CoineProApp(
             // *deletion* it is a live bearer for an account that no longer exists.
             academyTokenStore.clear()
         }
+    }
+
+    // The three flags the server understands, kept in step with the fifteen switches on the phone.
+    //
+    // It matters that this is derived rather than mirrored. Two of the categories map onto a server
+    // flag and the rest are the app's own, so what is sent is the *consequence* of the reader's
+    // choices — see `NotificationSettings.serverPreferences`, and in particular why one wanted
+    // update keeps a flag on that two unwanted ones would otherwise turn off at the source.
+    //
+    // Keyed on the derived value, not the settings: flipping a switch the server has never heard of
+    // must not spend a request telling it something it already knows.
+    val serverPushPreferences = remember(notificationSettings) { notificationSettings.serverPreferences() }
+    LaunchedEffect(signedIn, notificationController, serverPushPreferences) {
+        if (signedIn) notificationController.updatePreferences(serverPushPreferences)
     }
 
     // Refreshed here rather than in onResume, so a platform switch reads that platform's news
@@ -545,6 +584,9 @@ fun CoineProApp(
             is SessionState.SignedIn -> MainShell(
                 guest = false,
                 profile = profile,
+                notificationSettingsStore = notificationSettingsStore,
+                localAlertStore = localAlertStore,
+                localAlertScheduler = localAlertScheduler,
                 accountName = current.profile.name,
                 accountEmail = current.profile.email,
                 onSetDisplayName = { name -> scope.launch { profileStore.setDisplayName(name) } },
@@ -672,6 +714,9 @@ fun CoineProApp(
                     MainShell(
                         guest = true,
                         profile = profile,
+                        notificationSettingsStore = notificationSettingsStore,
+                        localAlertStore = localAlertStore,
+                        localAlertScheduler = localAlertScheduler,
                         accountName = null,
                         accountEmail = null,
                         onSetDisplayName = { name -> scope.launch { profileStore.setDisplayName(name) } },
@@ -805,6 +850,9 @@ private fun MainShell(
     guest: Boolean,
     /** The reader's own name, face and line, whether or not they have an account. */
     profile: StoredProfile,
+    notificationSettingsStore: NotificationSettingsStore,
+    localAlertStore: LocalAlertStore,
+    localAlertScheduler: LocalAlertScheduler,
     /** What the server calls this reader, and where to reach them. Null for a guest. */
     accountName: String?,
     accountEmail: String?,
@@ -890,6 +938,7 @@ private fun MainShell(
         MARKET_SEARCH_ROUTE,
         CHART_PATTERN,
         PROFILE_ROUTE,
+        NOTIFICATIONS_ROUTE,
         PORTFOLIO_ROUTE,
         ACADEMY_ROUTE,
         LESSON_PATTERN,
@@ -922,6 +971,7 @@ private fun MainShell(
             MarketPlatform.TRADEYAR -> R.string.screen_connections
         }
         PROFILE_ROUTE -> R.string.screen_profile
+        NOTIFICATIONS_ROUTE -> R.string.screen_notifications
         KYC_ROUTE -> R.string.screen_kyc
         DELETE_ACCOUNT_ROUTE -> R.string.screen_delete_account
         ALERTS_ROUTE -> R.string.screen_alerts
@@ -1203,6 +1253,14 @@ private fun MainShell(
                         // version live, and a reader who has hit a bug should not have to make an
                         // account to tell us about it.
                         listOf(
+                            // Offered to a guest too, and not as a courtesy: their price alerts
+                            // run on this device and need no account, so the screen is as real
+                            // for them as it is for a member.
+                            ProfileAction(
+                                label = stringResource(R.string.screen_notifications),
+                                note = stringResource(R.string.profile_action_notifications_note),
+                                onClick = { navController.navigate(NOTIFICATIONS_ROUTE) },
+                            ),
                             ProfileAction(
                                 label = stringResource(R.string.profile_action_safety),
                                 note = stringResource(R.string.profile_action_safety_note),
@@ -1215,6 +1273,13 @@ private fun MainShell(
                                 ProfileAction(
                                     label = stringResource(R.string.profile_action_verification),
                                     onClick = { navController.navigate(KYC_ROUTE) },
+                                ),
+                            )
+                            add(
+                                ProfileAction(
+                                    label = stringResource(R.string.screen_notifications),
+                                    note = stringResource(R.string.profile_action_notifications_note),
+                                    onClick = { navController.navigate(NOTIFICATIONS_ROUTE) },
                                 ),
                             )
                             add(
@@ -1255,6 +1320,71 @@ private fun MainShell(
                         initial = initial,
                         onSave = { spec ->
                             onSetAvatar(spec)
+                            composing = false
+                        },
+                        onDismiss = { composing = false },
+                    )
+                }
+            }
+            composable(NOTIFICATIONS_ROUTE) {
+                val context = LocalContext.current
+                val scope = rememberCoroutineScope()
+                val current by notificationSettingsStore.settings
+                    .collectAsStateWithLifecycle(initialValue = NotificationSettings())
+                val localAlerts by localAlertStore.alerts
+                    .collectAsStateWithLifecycle(initialValue = emptyList())
+                var composing by rememberSaveable { mutableStateOf(false) }
+
+                // Only the categories that can ever fire for this reader. A guest shown a switch
+                // for "a copy trade opened" is being offered control over something that cannot
+                // happen to them, which makes the whole screen read as decoration.
+                val sections = notificationSections(guest = guest)
+
+                NotificationSettingsScreen(
+                    settings = current,
+                    sections = sections,
+                    alerts = localAlerts,
+                    systemPermissionGranted =
+                        notificationPermissionState != NotificationPermissionUiState.DENIED,
+                    onOpenSystemSettings = onOpenNotificationSettings,
+                    onSetEnabled = { on -> scope.launch { notificationSettingsStore.setEnabled(on) } },
+                    onSetCategory = { category, on ->
+                        scope.launch { notificationSettingsStore.setCategory(category, on) }
+                    },
+                    onSetQuietHours = { on, from, to ->
+                        scope.launch { notificationSettingsStore.setQuietHours(on, from, to) }
+                    },
+                    onAddAlert = { composing = true },
+                    onToggleAlert = { alert, active ->
+                        scope.launch {
+                            localAlertStore.setActive(alert.id, active)
+                            localAlertScheduler.sync(hasActiveAlerts = active || localAlerts.any { it.active && it.id != alert.id })
+                        }
+                    },
+                    onDeleteAlert = { alert ->
+                        scope.launch {
+                            localAlertStore.remove(alert.id)
+                            localAlertScheduler.sync(hasActiveAlerts = localAlerts.any { it.active && it.id != alert.id })
+                        }
+                    },
+                    labelFor = { category -> context.getString(category.channelNameRes()) },
+                    noteFor = { category -> context.getString(category.channelDescriptionRes()) },
+                )
+
+                if (composing) {
+                    // The reader's own first market, or the platform's — the same rule the chart
+                    // tab and the script studio already follow, so "new alert" never opens on a
+                    // ticker this backend does not carry.
+                    val symbol = defaultScriptSymbol(activePlatform, watchlist)
+                    AlertComposerSheet(
+                        symbol = symbol,
+                        currentPrice = marketState.quotes[symbol]?.price,
+                        full = localAlerts.size >= LocalPriceAlert.MAX_ALERTS,
+                        onCreate = { alert ->
+                            scope.launch {
+                                localAlertStore.add(alert)
+                                localAlertScheduler.sync(hasActiveAlerts = true)
+                            }
                             composing = false
                         },
                         onDismiss = { composing = false },
@@ -1576,6 +1706,61 @@ private fun MainShell(
         }
         }
     }
+}
+
+
+/**
+ * The categories a given reader can actually receive, grouped the way every app in this market
+ * groups them.
+ *
+ * A guest is shown the market group and nothing else. The other three need an account to fire at
+ * all, and a switch for an event that cannot happen turns the whole screen into decoration —
+ * which is the fastest way to teach somebody that this app's settings do not mean anything.
+ */
+@Composable
+private fun notificationSections(guest: Boolean): List<NotificationSection> {
+    val market = NotificationSection(
+        title = stringResource(R.string.channel_group_market),
+        categories = listOfNotNull(
+            NotificationCategory.PRICE_ALERT,
+            NotificationCategory.WATCHLIST_MOVE,
+            NotificationCategory.NEWS,
+            NotificationCategory.CALENDAR,
+            NotificationCategory.AI_SETUP.takeUnless { guest },
+        ),
+    )
+    if (guest) {
+        return listOf(
+            market,
+            NotificationSection(
+                title = stringResource(R.string.channel_group_other),
+                categories = listOf(NotificationCategory.MARKETING),
+            ),
+        )
+    }
+    return listOf(
+        NotificationSection(
+            title = stringResource(R.string.channel_group_trading),
+            categories = listOf(
+                NotificationCategory.NEW_SIGNAL,
+                NotificationCategory.TARGET_HIT,
+                NotificationCategory.STOP_HIT,
+                NotificationCategory.SIGNAL_CLOSED,
+                NotificationCategory.COPY_OPENED,
+                NotificationCategory.COPY_CLOSED,
+                NotificationCategory.COPY_FAILED,
+            ),
+        ),
+        market,
+        NotificationSection(
+            title = stringResource(R.string.channel_group_account),
+            categories = listOf(NotificationCategory.SECURITY, NotificationCategory.ACCOUNT),
+        ),
+        NotificationSection(
+            title = stringResource(R.string.channel_group_other),
+            categories = listOf(NotificationCategory.MARKETING),
+        ),
+    )
 }
 
 /* -------------------------------------------------------------- hub glue */

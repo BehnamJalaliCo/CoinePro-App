@@ -82,4 +82,49 @@
     <string name="safety_signature_note">برای ثبت در کنسول گوگل. SHA-1 برای ورود با گوگل و SHA-256 برای گوگل پلی.</string>
     <string name="safety_signature_copy">کپی اثر انگشت</string>
     <string name="safety_signature_unsigned">این نسخه با کلید توسعه امضا شده است.</string>
+    <string name="channel_group_trading">سیگنال و معامله</string>
+    <string name="channel_group_market">بازار</string>
+    <string name="channel_group_account">حساب</string>
+    <string name="channel_group_other">سایر</string>
+    <string name="channel_general">عمومی</string>
+    <string name="channel_general_description">پیام‌هایی که در دسته‌ی دیگری نمی‌گنجند</string>
+
+    <string name="notify_new_signal">سیگنال جدید</string>
+    <string name="notify_new_signal_note">به محض انتشار یک سیگنال تازه</string>
+    <string name="notify_target_hit">رسیدن به حد سود</string>
+    <string name="notify_target_hit_note">وقتی قیمت به یکی از تارگت‌ها می‌رسد</string>
+    <string name="notify_stop_hit">خوردن حد ضرر</string>
+    <string name="notify_stop_hit_note">وقتی حد ضرر فعال می‌شود</string>
+    <string name="notify_signal_closed">بسته شدن سیگنال</string>
+    <string name="notify_signal_closed_note">نتیجه‌ی نهایی هر سیگنال</string>
+
+    <string name="notify_copy_opened">باز شدن کپی</string>
+    <string name="notify_copy_opened_note">وقتی معامله‌ای روی حساب شما باز می‌شود</string>
+    <string name="notify_copy_closed">بسته شدن کپی</string>
+    <string name="notify_copy_closed_note">وقتی معامله‌ی کپی‌شده بسته می‌شود</string>
+    <string name="notify_copy_failed">خطای کپی</string>
+    <string name="notify_copy_failed_note">وقتی معامله‌ای روی حساب شما باز نشد — مهم‌ترین اعلان این فهرست</string>
+
+    <string name="notify_price_alert">هشدارهای قیمت من</string>
+    <string name="notify_price_alert_note">هشدارهایی که خودتان ساخته‌اید</string>
+    <string name="notify_watchlist_move">نوسان بازارهای ستاره‌دار</string>
+    <string name="notify_watchlist_move_note">حرکت غیرعادی در بازارهایی که ستاره زده‌اید — بدون تعیین عدد</string>
+    <string name="notify_news">اخبار مهم</string>
+    <string name="notify_news_note">تیترهایی که سرور مهم علامت زده</string>
+    <string name="notify_calendar">تقویم اقتصادی</string>
+    <string name="notify_calendar_note">پیش از رویدادهای پراهمیت</string>
+    <string name="notify_ai_setup">ستاپ هوش مصنوعی</string>
+    <string name="notify_ai_setup_note">وقتی هوش مصنوعی موقعیتی پیدا می‌کند</string>
+
+    <string name="notify_security">امنیت حساب</string>
+    <string name="notify_security_note">ورود، تغییر رمز، دستگاه جدید. این یکی خاموش نمی‌شود.</string>
+    <string name="notify_account">وضعیت حساب</string>
+    <string name="notify_account_note">عضویت، احراز هویت و اشتراک</string>
+    <string name="notify_marketing">پیشنهادها و اطلاعیه‌ها</string>
+    <string name="notify_marketing_note">به‌صورت پیش‌فرض خاموش است</string>
+    <string name="alert_fired_title">هشدار قیمت</string>
+    <string name="alert_fired_body">%1$s به %2$s رسید.</string>
+    <string name="alert_fired_body_no_price">شرط هشدار %1$s برقرار شد.</string>
+    <string name="screen_notifications">اعلان‌ها</string>
+    <string name="profile_action_notifications_note">سیگنال، حد سود، کپی، هشدار قیمت و ساعات سکوت</string>
 </resources>

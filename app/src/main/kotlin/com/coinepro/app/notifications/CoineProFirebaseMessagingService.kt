@@ -10,14 +10,21 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.coinepro.app.MainActivity
 import com.coinepro.app.positiveSignalId
+import com.coinepro.core.datastore.NotificationSettingsStore
+import com.coinepro.core.notifications.NotificationCategory
+import com.coinepro.core.notifications.NotificationSettings
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import dagger.hilt.android.AndroidEntryPoint
+import java.util.Calendar
 import javax.inject.Inject
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 
 @AndroidEntryPoint
 class CoineProFirebaseMessagingService : FirebaseMessagingService() {
     @Inject lateinit var pushCoordinator: PushCoordinator
+    @Inject lateinit var settingsStore: NotificationSettingsStore
 
     override fun onNewToken(token: String) {
         pushCoordinator.registerToken(token)
@@ -25,6 +32,14 @@ class CoineProFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         val data = message.data
+        val category = NotificationCategory.forKind(data["kind"] ?: data["type"] ?: data["category"])
+
+        // Read on this thread on purpose. `onMessageReceived` already runs off the main thread, the
+        // read is a single small file, and the alternative — showing the notification and hiding it
+        // once the preference arrives — is a notification the reader has already seen.
+        val settings = runBlocking { settingsStore.settings.first() }
+        if (!settings.shouldShow(category, System.currentTimeMillis(), minuteOfDay())) return
+
         val title = data["_title"]?.takeIf { it.isNotBlank() } ?: "CoinePro"
         val body = data["_body"].orEmpty()
         val signalId = positiveSignalId(data["signal_id"])
@@ -44,7 +59,10 @@ class CoineProFirebaseMessagingService : FirebaseMessagingService() {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val notification = NotificationCompat.Builder(this, NotificationChannels.MARKET_EVENTS)
+        val channel = category
+            ?.let(NotificationChannels::channelId)
+            ?: NotificationChannels.GENERAL
+        val notification = NotificationCompat.Builder(this, channel)
             .setSmallIcon(android.R.drawable.stat_notify_more)
             .setContentTitle(title)
             .setContentText(body)
@@ -65,3 +83,16 @@ class CoineProFirebaseMessagingService : FirebaseMessagingService() {
         }
     }
 }
+
+/**
+ * Minutes since local midnight, for the quiet-hours window.
+ *
+ * The device's own calendar, not UTC. Quiet hours are a statement about the reader being asleep,
+ * and somebody in Tehran means eleven at night where they are.
+ */
+internal fun minuteOfDay(calendar: Calendar = Calendar.getInstance()): Int =
+    calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
+
+/** Kept for the settings screen's preview of what a category maps to. */
+internal fun NotificationSettings.allows(category: NotificationCategory): Boolean =
+    shouldShow(category, System.currentTimeMillis(), minuteOfDay())

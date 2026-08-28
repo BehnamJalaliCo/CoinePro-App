@@ -19,8 +19,8 @@
     <string name="membership_sign_in">ورود یا ثبت‌نام</string>
     <string name="membership_read_terms">شرایط کامل عضویت</string>
     <string name="membership_step_fund_amount">موجودی حساب را حداقل به %1$s تتر برسانید.</string>
-    <string name="membership_open_lbank">ثبت‌نام در LBank</string>
-    <string name="membership_open_ourbit">ثبت‌نام در Ourbit</string>
+    <string name="membership_open_lbank">ثبت‌نام در ال‌بانک</string>
+    <string name="membership_open_ourbit">ثبت‌نام در اوربیت</string>
     <string name="guest_record_title">کارنامهٔ سیگنال‌ها</string>
     <string name="guest_record_summary">از %2$s سیگنالِ بسته‌شدهٔ اخیر، %1$s تا با سود بسته شد — نرخ برد %3$s٪.</string>
     <string name="guest_record_note">این‌ها سیگنال‌های واقعیِ منتشرشده‌اند که بسته شده‌اند، نه نمونهٔ ساختگی. عملکرد گذشته تضمینی برای آینده نیست.</string>
@@ -37,4 +37,6 @@
     <string name="guest_ai_body">تحلیل نمودار، دستیار و ساخت سیگنال با هوش مصنوعی به یک حساب نیاز دارد؛ نمودار، اندیکاتورها و نما‌اسکریپت بدون حساب کار می‌کنند.</string>
     <string name="guest_gate_action">ورود یا ثبت نام رایگان</string>
     <string name="guest_gate_eyebrow">با یک حساب رایگان</string>
+    <string name="membership_lbank_note">اگر می‌خواهید سرویس به‌جای شما معامله کند (کپی‌تریدینگ)، فقط این یکی:</string>
+    <string name="membership_ourbit_note">اگر فقط سیگنال‌ها را می‌خواهید و خودتان سفارش می‌گذارید:</string>
 </resources>

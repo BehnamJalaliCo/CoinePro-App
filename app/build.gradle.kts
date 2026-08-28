@@ -433,6 +433,7 @@ dependencies {
     implementation(project(":feature:account"))
     implementation(project(":feature:guest"))
     implementation(project(":feature:membership"))
+    implementation(project(":feature:notifications"))
     implementation(project(":feature:alerts"))
     implementation(project(":feature:journal"))
     implementation(project(":feature:papertrade"))

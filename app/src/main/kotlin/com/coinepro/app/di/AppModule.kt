@@ -9,6 +9,8 @@ import com.coinepro.core.account.AccountController
 import com.coinepro.core.account.AccountGateway
 import com.coinepro.core.account.NetworkAccountGateway
 import com.coinepro.core.datastore.ChartLayoutStore
+import com.coinepro.core.datastore.LocalAlertStore
+import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
@@ -373,6 +375,23 @@ object AppModule {
     @Provides
     @Singleton
     fun profileStore(dataStore: DataStore<Preferences>): ProfileStore = ProfileStore(dataStore)
+
+    /**
+     * What the reader agreed to be interrupted about.
+     *
+     * Local, like the profile and for a stronger reason: of the fifteen categories, two map onto a
+     * flag either backend accepts and the rest are the app's own. Sending the whole set to one of
+     * two servers would leave somebody who switches platform with their choices half-applied.
+     */
+    @Provides
+    @Singleton
+    fun notificationSettingsStore(dataStore: DataStore<Preferences>): NotificationSettingsStore =
+        NotificationSettingsStore(dataStore)
+
+    /** Price alerts that need no account. See [LocalAlertStore] for why they are on the device. */
+    @Provides
+    @Singleton
+    fun localAlertStore(dataStore: DataStore<Preferences>): LocalAlertStore = LocalAlertStore(dataStore)
 
     @Provides
     @Singleton

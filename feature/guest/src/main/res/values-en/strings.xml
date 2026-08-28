@@ -19,8 +19,8 @@
     <string name="membership_sign_in">Sign in or register</string>
     <string name="membership_read_terms">Full membership terms</string>
     <string name="membership_step_fund_amount">Fund the account to at least %1$s USDT.</string>
-    <string name="membership_open_lbank">Register at LBank</string>
-    <string name="membership_open_ourbit">Register at Ourbit</string>
+    <string name="membership_open_lbank">Register on LBank</string>
+    <string name="membership_open_ourbit">Register on Ourbit</string>
     <string name="guest_record_title">Signal track record</string>
     <string name="guest_record_summary">%1$s of the last %2$s closed signals finished in profit — a %3$s%% win rate.</string>
     <string name="guest_record_note">These are real published signals that have closed, not samples. Past performance is not a guarantee of future results.</string>
@@ -37,4 +37,6 @@
     <string name="guest_ai_body">Chart analysis, the assistant and AI signal generation need an account; the chart, the indicators and NamaScript do not.</string>
     <string name="guest_gate_action">Sign in or register, free</string>
     <string name="guest_gate_eyebrow">With a free account</string>
+    <string name="membership_lbank_note">If you want the service to trade for you (copy trading), this is the only one:</string>
+    <string name="membership_ourbit_note">If you only want the signals and will place your own orders:</string>
 </resources>
