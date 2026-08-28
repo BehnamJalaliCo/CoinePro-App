@@ -46,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.designsystem.CoineProCard
+import com.coinepro.core.designsystem.CoineProEmptyState
+import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProHeaderAction
 import com.coinepro.core.designsystem.CoineProListHeader
@@ -145,7 +147,8 @@ fun NewsScreen(
                     action = stringResource(R.string.news_retry),
                     onAction = controller::refresh,
                 )
-                "empty" -> CenterState(
+                "empty" -> CoineProEmptyState(
+                    icon = CoineProIcons.News,
                     message = stringResource(R.string.news_empty),
                     action = stringResource(R.string.news_refresh),
                     onAction = controller::refresh,

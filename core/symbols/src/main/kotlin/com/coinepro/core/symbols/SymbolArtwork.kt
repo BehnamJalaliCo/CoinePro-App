@@ -943,6 +943,31 @@ object SymbolArtwork {
     )
 
     /**
+     * The country whose flag stands for each index the app can draw.
+     *
+     * An index has no base and no quote, so nothing about its ticker says what to draw. It does
+     * have a country, though, and that is what every terminal uses — DAX is a German flag, Nikkei a
+     * Japanese one — because the alternative is an exchange's wordmark, which is somebody's
+     * trademark, or a lettered disc, which the whole of this file exists to avoid.
+     *
+     * Absent is a real answer. `HK50` is missing because there is no Hong Kong flag in the set and
+     * its bauhinia is not something to approximate; the index stays out of the catalogue, which is
+     * the honest outcome rather than a grey square. So is `AUS200`, whose flag the set does have —
+     * it is in [INDEX_COUNTRY] and therefore listed.
+     */
+    val INDEX_COUNTRY: Map<String, String> = mapOf(
+        "US30" to "US",
+        "US100" to "US",
+        "US500" to "US",
+        "UK100" to "GB",
+        "GER40" to "DE",
+        "FRA40" to "FR",
+        "JPN225" to "JP",
+        "AUS200" to "AU",
+        "EU50" to "EU",
+    )
+
+    /**
      * Whether the app can draw this symbol.
      *
      * A forex pair needs **both** legs. Half a pair drawn as a flag and half as a lettered disc is
@@ -962,9 +987,14 @@ object SymbolArtwork {
                 base != null && quote != null && known(base) && known(quote)
             }
             SymbolCategory.CRYPTO -> base != null && base in BASES
-            // An index or an energy contract has no base to look up and no mark of its own beyond
-            // the handful in EQUITIES, which the first line already answered.
-            SymbolCategory.INDEX, SymbolCategory.ENERGY, SymbolCategory.OTHER -> false
+            // An index has no base to look up, but it does have a country, and the flag of that
+            // country is what every terminal draws for it. See INDEX_COUNTRY — an index missing
+            // from it stays out of the catalogue rather than appearing as a lettered disc.
+            SymbolCategory.INDEX -> meta.canonical.uppercase() in INDEX_COUNTRY
+
+            // An energy contract has neither, and no mark of its own beyond the handful in
+            // EQUITIES, which the first line already answered.
+            SymbolCategory.ENERGY, SymbolCategory.OTHER -> false
         }
     }
 

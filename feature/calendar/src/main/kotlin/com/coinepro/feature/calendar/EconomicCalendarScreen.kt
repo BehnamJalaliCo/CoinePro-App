@@ -48,6 +48,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.designsystem.CoineProCard
+import com.coinepro.core.designsystem.CoineProEmptyState
+import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProHeaderAction
 import com.coinepro.core.designsystem.CoineProListHeader
@@ -130,10 +132,11 @@ fun EconomicCalendarScreen(
                     stringResource(R.string.calendar_retry),
                     controller::refresh,
                 )
-                "empty" -> CenterState(
-                    stringResource(R.string.calendar_empty),
-                    stringResource(R.string.calendar_refresh),
-                    controller::refresh,
+                "empty" -> CoineProEmptyState(
+                    icon = CoineProIcons.Calendar,
+                    message = stringResource(R.string.calendar_empty),
+                    action = stringResource(R.string.calendar_refresh),
+                    onAction = controller::refresh,
                 )
                 else -> CoineProPullToRefresh(
                     refreshing = state.refreshing,

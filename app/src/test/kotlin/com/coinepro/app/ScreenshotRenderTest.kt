@@ -684,6 +684,20 @@ class ScreenshotRenderTest {
         capture("12-signals-fa") { SignalsScreen(controller = controller, onOpenSignal = {}) }
     }
 
+    /**
+     * The tab with nothing in it, which is most of a quiet week on «فعال».
+     *
+     * Rendered because it is the state a reader is most likely to mistake for a failure, and the
+     * only way to know it does not look like one is to look at it.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun signalsEmpty() {
+        val controller = SignalController(EmptySignalGateway(), scope)
+        controller.refresh()
+        capture("93-signals-empty-fa") { SignalsScreen(controller = controller, onOpenSignal = {}) }
+    }
+
     @Test
     @Config(sdk = [34], qualifiers = "en-rUS-w411dp-h914dp-xxhdpi")
     fun signalsEnglish() {

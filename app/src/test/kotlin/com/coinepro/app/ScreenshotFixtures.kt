@@ -158,6 +158,12 @@ object ScreenshotFixtures {
         changeLabel = MarketNumberFormatter.money(261.40, signed = true) + " · " +
             MarketNumberFormatter.signedPercent(2.14) + " امروز",
         isUp = true,
+        // A real-looking equity history — a rise with a drawdown in it, because a monotonic line
+        // renders as a diagonal and proves nothing about how the sparkline handles a shape.
+        equity = listOf(
+            10_940.0, 11_120.0, 11_060.0, 11_390.0, 11_720.0, 11_450.0, 11_280.0,
+            11_610.0, 11_980.0, 12_140.0, 11_890.0, 12_050.0, 12_310.0, 12_480.35,
+        ),
         holdings = listOf(
             HomeHolding(
                 symbol = "BTCUSDT",
@@ -226,6 +232,16 @@ object ScreenshotFixtures {
         isStale = false,
     )
 
+    /**
+     * The three live calls, with a P&L that agrees with their own prices.
+     *
+     * It did not, until the row started drawing it. XAUUSD said 0.61% where its entry and its quote
+     * make 0.18%, and the BTC *short* said −0.42% where a fall from 92,100 to 91,248 is +0.92% —
+     * a losing figure on a winning trade. Nobody caught it because no screen showed the number:
+     * it arrived on the wire, sat in the model, and was drawn for the first time in this release,
+     * directly above a progress bar computed from the prices, so the render now contradicted
+     * itself in two places at once. Fixture figures that no screen reads are figures nobody checks.
+     */
     val activeSignals: List<TradingSignal> = listOf(
         signal(
             id = 4821,
@@ -238,7 +254,7 @@ object ScreenshotFixtures {
             targets = listOf(2_421.0, 2_434.0, 2_452.0),
             confidence = 78,
             riskReward = 2.4,
-            livePnl = 0.61,
+            livePnl = 0.18,
             price = 2_412.85,
         ),
         signal(
@@ -252,7 +268,8 @@ object ScreenshotFixtures {
             targets = listOf(90_600.0, 89_200.0),
             confidence = 64,
             riskReward = 1.8,
-            livePnl = -0.42,
+            // A short that has fallen is winning. Positive.
+            livePnl = 0.92,
             price = 91_248.30,
         ),
         signal(
@@ -1787,4 +1804,17 @@ internal class FakeAccountGateway(
     ): AppResult<KycStatus> = submitResult ?: AppResult.Success(status)
 
     override suspend fun deleteAccount(): AppResult<DeletionOutcome> = deletionResult
+}
+
+/** A feed that is up and has nothing to report, which is not the same as a feed that is down. */
+class EmptySignalGateway : SignalGateway {
+    override suspend fun list(
+        market: SignalMarketFilter,
+        status: SignalStatusFilter,
+        limit: Int,
+        offset: Int,
+    ): SignalPage = SignalPage(emptyList(), 0, ScreenshotFixtures.NOW_MILLIS)
+
+    override suspend fun detail(signalId: Long): TradingSignal =
+        error("an empty feed has no signal to open")
 }

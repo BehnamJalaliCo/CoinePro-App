@@ -26,6 +26,10 @@ dependencies {
     // api, not implementation: AvatarSpec is in CoineProAvatar's signature, so every screen
     // that draws one needs the type on its own classpath.
     api(project(":core:model"))
+    // The index-to-country table. `core:symbols` is plain Kotlin with no Compose and no Android
+    // resources — it depends on `core:model` and nothing else — so this direction introduces no
+    // cycle, and the alternative was a second copy of the table living next to the drawables.
+    implementation(project(":core:symbols"))
     implementation(libs.kotlinx.coroutines.core)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material3)

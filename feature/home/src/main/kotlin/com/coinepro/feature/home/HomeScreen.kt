@@ -53,6 +53,7 @@ import com.coinepro.core.designsystem.CoineProPrivacy
 import com.coinepro.core.designsystem.CoineProPullToRefresh
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSegmentedControl
+import com.coinepro.core.designsystem.CoineProSparkline
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProStreamingBar
@@ -377,6 +378,20 @@ private fun BalanceBlock(
                 style = CoineProTextStyles.Balance,
                 color = CoineProColors.TextPrimary,
             )
+            // Under the figure, not beside it: the balance is the largest thing on the screen and
+            // a line at its shoulder would compete with it. Two points are not a curve — a segment
+            // between two closed trades says "it went up" with the authority of a chart — so the
+            // line waits until there is a shape to draw.
+            if (!hidden && portfolio.equity.size >= MIN_EQUITY_POINTS) {
+                CoineProSparkline(
+                    values = portfolio.equity,
+                    modifier = Modifier
+                        .padding(top = 2.dp, bottom = 2.dp)
+                        .fillMaxWidth(0.62f)
+                        .height(30.dp),
+                    colour = if (portfolio.isUp) CoineProColors.Buy else CoineProColors.Sell,
+                )
+            }
             Text(
                 text = CoineProPrivacy.mask(portfolio.changeLabel, hidden),
                 style = MaterialTheme.typography.bodyMedium,
@@ -854,3 +869,11 @@ private fun Shortcut(label: String, icon: Int, onClick: () -> Unit, modifier: Mo
         )
     }
 }
+
+/**
+ * The shortest history worth drawing as a line.
+ *
+ * Two points make a straight segment, which reads as a trend with none of a trend's evidence. Five
+ * is where the shape starts carrying information the change figure beside it does not already have.
+ */
+private const val MIN_EQUITY_POINTS = 5

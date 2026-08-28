@@ -14,6 +14,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.coinepro.core.symbols.SymbolArtwork
 import java.util.Locale
 
 /**
@@ -118,8 +119,48 @@ internal fun pairOf(symbol: String): Pair<String, String>? {
 /** Whether a symbol names a forex or metal market rather than a coin. */
 internal fun isPairSymbol(symbol: String): Boolean = pairOf(symbol) != null
 
+/**
+ * One index as its country's flag.
+ *
+ * A single disc rather than the pair composition, because an index is one thing. Null where the
+ * app has no flag for it, which is how `HK50` stays out of a list rather than appearing as a
+ * grey square — see `SymbolArtwork.INDEX_COUNTRY`.
+ */
+@Composable
+internal fun CoineProIndexLogo(symbol: String, modifier: Modifier = Modifier, size: Dp = 42.dp) {
+    val country = SymbolArtwork.INDEX_COUNTRY[symbol.uppercase(Locale.US)]
+    val art = country?.let { artworkFor(it) }
+    if (art == null) {
+        // The token directly, *not* back through `CoineProAssetLogo`. That call is what routed
+        // here in the first place, so returning to it is an infinite recursion — which is exactly
+        // what shipped when the country codes were missing from `ARTWORK`: every index render
+        // died with a StackOverflowError instead of drawing a fallback.
+        CoineProAssetToken(
+            label = symbol.take(2).uppercase(Locale.US),
+            tint = CoineProColors.assetTint(symbol),
+            modifier = modifier,
+            size = size,
+        )
+        return
+    }
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(CircleShape)
+            .border(1.dp, CoineProColors.assetRing, CircleShape),
+    ) {
+        Image(
+            painter = painterResource(art),
+            contentDescription = null,
+            modifier = Modifier.size(size).clip(CircleShape),
+            contentScale = ContentScale.Crop,
+        )
+    }
+}
+
 @DrawableRes
-private fun artworkFor(currency: String): Int? = ARTWORK[currency]
+/** Internal rather than private so the test can hold the two tables against each other. */
+internal fun artworkFor(currency: String): Int? = ARTWORK[currency]
 
 /**
  * The twenty currencies the MT5 feed quotes, and the four precious metals.
@@ -149,6 +190,20 @@ private val ARTWORK: Map<String, Int> = mapOf(
     "HUF" to R.drawable.asset_flag_hu,
     "CNH" to R.drawable.asset_flag_cn,
     "CNY" to R.drawable.asset_flag_cn,
+    // The country codes, for the indices. This table is keyed by *currency* everywhere above —
+    // USD, GBP, JPY — and an index has no currency, it has a country: DAX is «DE», not «EUR».
+    // Without these seven rows `artworkFor("US")` is null, which is how the index logo first
+    // shipped as an infinite recursion between itself and the coin logo rather than as a flag.
+    //
+    // Germany and France are authored rather than vendored, because TradingView's set has neither;
+    // see design/asset-logos/authored.
+    "US" to R.drawable.asset_flag_us,
+    "GB" to R.drawable.asset_flag_gb,
+    "JP" to R.drawable.asset_flag_jp,
+    "AU" to R.drawable.asset_flag_au,
+    "EU" to R.drawable.asset_flag_eu,
+    "DE" to R.drawable.asset_flag_de,
+    "FR" to R.drawable.asset_flag_fr,
     // The exotics an MT5 broker quotes beyond the majors. Added with their flags rather than ahead
     // of them: a currency in this map with no drawable is a crash, and one with a drawable and no
     // entry here is a lettered token where a flag was available.

@@ -12,6 +12,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.coinepro.core.symbols.SymbolArtwork
 import java.util.Locale
 
 /**
@@ -50,6 +51,13 @@ fun CoineProAssetLogo(
     // A forex or metal market is a pair and is drawn as one; only a coin is a single disc.
     if (isPairSymbol(symbol)) {
         CoineProPairLogo(symbol = symbol, modifier = modifier, size = size)
+        return
+    }
+    // An index is a country. It has no base to look up in the coin table, and before this it fell
+    // through to the lettered token — which is why US30, GER40, UK100 and JPN225 were kept out of
+    // the catalogue entirely rather than shown as grey discs with a «U» in them.
+    if (symbol.uppercase(Locale.US) in SymbolArtwork.INDEX_COUNTRY) {
+        CoineProIndexLogo(symbol = symbol, modifier = modifier, size = size)
         return
     }
     val logo = logoFor(symbol)

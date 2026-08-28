@@ -1,6 +1,8 @@
 package com.coinepro.core.designsystem
 
+import com.coinepro.core.symbols.SymbolArtwork
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -62,5 +64,21 @@ class PairLogoTest {
         // pair with a lettered stub rather than falling through to the coin table and finding
         // nothing at all.
         assertEquals("USD" to "RUB", pairOf("USDRUB"))
+    }
+
+    /**
+     * Every index the catalogue will list has a flag this module can actually draw.
+     *
+     * The two tables live in different modules and are edited for different reasons, and when they
+     * disagree the failure is not a missing picture: the index logo falls back, the fallback used
+     * to call the coin logo, and the coin logo routed straight back to the index logo. Every render
+     * touching an index died with a StackOverflowError. The fallback no longer recurses, but the
+     * disagreement is still a bug and this is what catches it.
+     */
+    @Test
+    fun `every index country has a flag`() {
+        SymbolArtwork.INDEX_COUNTRY.forEach { (index, country) ->
+            assertNotNull("$index is listed as $country and no flag is mapped", artworkFor(country))
+        }
     }
 }

@@ -31,4 +31,7 @@
     <string name="signals_column_direction">Direction</string>
     <string name="signals_column_levels">Live price</string>
     <string name="signals_count">%1$s signals</string>
+    <string name="signals_empty_active_hint">Open positions appear here as soon as the desk publishes one.</string>
+    <string name="signals_empty_recent_hint">The most recently published calls collect here.</string>
+    <string name="signals_empty_closed_hint">Every signal that reaches its target or its stop stays here with its result.</string>
 </resources>

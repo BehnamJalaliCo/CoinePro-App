@@ -15,6 +15,65 @@ it is for.
 
 ---
 
+## [1.33.0] — 2026-08-28 — The five that were still missing
+
+The list I gave the owner at the end of 1.32.0, worked through — plus one correction to it.
+
+### Corrected
+
+- **RSI was never drawn over the candles.** I said it was; it is not. `ChartCatalog` has placed it,
+  MACD and ATR in their own panes since the engine was built, and `73-chart-panes-fa` shows all
+  three. The line I mistook for an oscillator on the other render is SuperTrend, which belongs on
+  the price. Nothing to fix, and nothing was changed.
+
+### Added
+
+- **Indices are listable again, drawn as their country.** An index has no base to look up, so it
+  fell through to the lettered token — which is why `SymbolArtwork` refused every one of them and
+  US30, GER40, UK100 and JPN225 simply were not in the catalogue. They are drawn the way every
+  terminal draws them now: US30 an American flag, DAX a German one, Nikkei a Japanese one. Nine
+  indices, seven flags from the vendored set and two authored — TradingView publishes neither
+  Germany's nor France's, and both are three plain bands, so they are drawn here in the *vendor's*
+  palette rather than the flag's own, because one flag in true colours among twenty-seven softened
+  ones reads as the odd one out. `HK50` stays out: the bauhinia is not something to approximate.
+
+- **What each signal is worth right now.** `livePnlPercent` has been arriving on every signal since
+  the feed was first read, and no screen has ever drawn it — so a reader asking whether a call was
+  working had four prices and their own arithmetic. It is the same pill the market list uses. Where
+  the server sends none it is computed, signed by *direction* rather than by price, because a sell
+  that has fallen is winning and `(price − entry) / entry` paints it red. Tested, because that is
+  exactly the line somebody writes the wrong way round.
+
+- **An empty screen that reads as deliberate.** `CoineProEmptyState` — a mark, the fact, what would
+  fill the screen, and at most one action. The signals list, the news list and the calendar all
+  showed a single grey sentence on a black screen, which cannot be told apart from a screen that
+  failed to load. The signals hint is per tab, because «فعال», «اخیر» and «بسته‌شده» are empty for
+  three different reasons and one sentence would be wrong twice.
+
+- **The account's own curve under its balance.** A hero number says where the account is and nothing
+  about how it got there. The line comes from the portfolio's closed trades — the same history the
+  portfolio screen charts — and waits for five points, because two make a straight segment that
+  reads as a trend with none of a trend's evidence. Nothing is padded or interpolated: an invented
+  line under a balance is a claim about somebody's money.
+
+### Fixed
+
+- **The index logo shipped as an infinite recursion.** Its fallback called the coin logo, which
+  routed straight back to it, so an index with no flag was a `StackOverflowError` rather than a
+  token — and every index *did* lack one, because the flag table is keyed by currency (`USD`,
+  `GBP`) and an index has a country (`US`, `GB`). Both halves fixed: the seven country codes added,
+  and the fallback now draws the token directly instead of returning to the function that called
+  it. A test holds the two tables against each other.
+
+- **Three fixture signals disagreed with their own prices.** XAUUSD reported 0.61% where its entry
+  and quote make 0.18%, and the BTC *short* reported −0.42% where a fall from 92,100 to 91,248 is
+  +0.92% — a losing figure on a winning trade. Nobody had caught it because no screen drew the
+  number; the first render that did put it directly above a progress bar computed from the prices,
+  so the screen contradicted itself twice over. Fixture figures no screen reads are figures nobody
+  checks.
+
+---
+
 ## [1.32.0] — 2026-08-28 — The polish pass: touch, gesture, privacy and the chart's legend
 
 A line-by-line and pixel-by-pixel review of every screen against what a reader would compare this

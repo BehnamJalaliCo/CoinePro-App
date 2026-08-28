@@ -45,6 +45,9 @@ import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProPullToRefresh
 import com.coinepro.core.designsystem.CoineProRowDivider
+import com.coinepro.core.designsystem.CoineProEmptyState
+import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.CoineProPercentPill
 import com.coinepro.core.designsystem.CoineProSegmentTabs
 import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.CoineProSetupProgress
@@ -128,11 +131,16 @@ fun SignalsScreen(
             }
 
             state.items.isEmpty() -> Placeholder {
-                Text(
-                    text = stringResource(R.string.signals_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = CoineProColors.TextSecondary,
-                    textAlign = TextAlign.Center,
+                // Empty is a real state here and it is common: the «فعال» tab is empty whenever
+                // nothing is running, which is most of a quiet week. One grey sentence on a black
+                // screen cannot be told apart from a screen that failed to load, and a reader who
+                // reads it as a failure stops opening the tab.
+                CoineProEmptyState(
+                    icon = CoineProIcons.Signals,
+                    message = stringResource(R.string.signals_empty),
+                    hint = stringResource(state.status.emptyHintRes()),
+                    action = stringResource(R.string.signals_retry),
+                    onAction = controller::refresh,
                 )
             }
 
@@ -205,7 +213,10 @@ private fun SignalRow(signal: TradingSignal, onClick: () -> Unit) {
                 DirectionPill(signal.direction)
             }
             signal.currentQuote?.let { quote ->
-                Column(horizontalAlignment = Alignment.End) {
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
                     Text(
                         text = formatPrice(signal.symbol, quote.price),
                         style = MaterialTheme.typography.labelMedium.copy(textDirection = TextDirection.Ltr),
@@ -221,6 +232,13 @@ private fun SignalRow(signal: TradingSignal, onClick: () -> Unit) {
                             color = CoineProColors.Warning,
                             fontWeight = FontWeight.Normal,
                         )
+                    }
+                    // What the trade is worth right now, as the same pill the market list uses for
+                    // a move. The server has been sending this on every signal since the feed was
+                    // first read and no screen has ever drawn it — so a reader wanting to know
+                    // whether a call was working had four prices and their own arithmetic.
+                    livePnl(signal)?.let { percent ->
+                        CoineProPercentPill(percent = percent, background = CoineProColors.Stage)
                     }
                 }
             }
@@ -452,4 +470,43 @@ private fun SignalDirection.labelRes(): Int = when (this) {
     SignalDirection.BUY -> R.string.signals_direction_buy
     SignalDirection.SELL -> R.string.signals_direction_sell
     SignalDirection.NEUTRAL -> R.string.signals_direction_neutral
+}
+
+/**
+ * How far the trade is in front, as a percentage of the entry.
+ *
+ * The server's own figure where it sent one — it is the number the rest of the platform reports and
+ * the app has no business publishing a second, slightly different one. Computed here only when it
+ * did not, which is the case on a feed that quotes live prices without scoring them.
+ *
+ * Signed by *direction*, not by price: a sell that has fallen is winning, and a bare
+ * `(price − entry) / entry` would paint it red. Null where there is nothing honest to say —
+ * no entry, no quote, or an entry of zero.
+ */
+internal fun livePnl(signal: TradingSignal): Double? {
+    signal.livePnlPercent?.let { return it }
+    val entry = signal.entry?.takeIf { it != 0.0 } ?: return null
+    val price = signal.currentQuote?.price ?: return null
+    val move = (price - entry) / entry * 100.0
+    return when (signal.direction) {
+        SignalDirection.BUY -> move
+        SignalDirection.SELL -> -move
+        // A neutral call has no side, so it has no profit and loss — only a price that moved.
+        SignalDirection.NEUTRAL -> null
+    }
+}
+
+/**
+ * What would fill this tab, said per tab.
+ *
+ * The three views are empty for three different reasons and one sentence for all of them would be
+ * wrong twice: «فعال» is empty because nothing is running, «اخیر» because nothing has been
+ * published lately, «بسته‌شده» because nothing has finished yet. A reader who knows which comes
+ * back; one who does not concludes the feed is broken.
+ */
+@androidx.annotation.StringRes
+private fun SignalStatusFilter.emptyHintRes(): Int = when (this) {
+    SignalStatusFilter.ACTIVE -> R.string.signals_empty_active_hint
+    SignalStatusFilter.RECENT -> R.string.signals_empty_recent_hint
+    SignalStatusFilter.CLOSED -> R.string.signals_empty_closed_hint
 }

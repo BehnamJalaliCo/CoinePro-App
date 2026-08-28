@@ -1130,6 +1130,12 @@ private fun MainShell(
                     )
                     return@composable
                 }
+                // The account's own equity, from the same closed trades the portfolio screen
+                // charts. Started here because Home is where it is drawn and a controller nobody
+                // started has no history to hand over; `start()` is a no-op after the first call.
+                LaunchedEffect(portfolioController) { portfolioController.start() }
+                val equityState by portfolioController.state.collectAsStateWithLifecycle()
+
                 HomeScreen(
                     state = marketState,
                     // The reader's own name if they chose one, the server's otherwise. Without this
@@ -1141,7 +1147,9 @@ private fun MainShell(
                     onVisibleSymbols = onSubscribeSymbols,
                     onOpenSymbol = { navController.navigate(chartRoute(it)) },
                     briefing = briefing,
-                    portfolio = portfolio,
+                    portfolio = portfolio?.copy(
+                        equity = equityState.stats.equity.map { it.equity },
+                    ),
                     subscription = subscription,
                     onRetry = {
                         onMarketRetry()

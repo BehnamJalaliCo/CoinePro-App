@@ -32,4 +32,7 @@
     <string name="signals_column_direction">جهت</string>
     <string name="signals_column_levels">قیمت لحظه‌ای</string>
     <string name="signals_count">%1$s سیگنال</string>
+    <string name="signals_empty_active_hint">سیگنال باز اینجا می‌آید؛ همین که میز معاملات یکی منتشر کرد.</string>
+    <string name="signals_empty_recent_hint">تازه‌ترین سیگنال‌های منتشرشده اینجا جمع می‌شوند.</string>
+    <string name="signals_empty_closed_hint">هر سیگنالی که به هدف یا حد ضرر برسد، اینجا با نتیجه‌اش می‌ماند.</string>
 </resources>

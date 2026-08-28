@@ -44,6 +44,19 @@ data class HomePortfolio(
     val changeLabel: String,
     val isUp: Boolean,
     val holdings: List<HomeHolding> = emptyList(),
+    /**
+     * The account's equity, oldest first, for the line under the balance.
+     *
+     * A hero number says where the account *is* and nothing about how it got there, which is the
+     * question anybody looking at their own balance is actually asking. The curve answers it in the
+     * space the number already occupies.
+     *
+     * Empty is the ordinary case and draws nothing. It is deliberately not padded, interpolated or
+     * stubbed: a line invented under a balance is a claim about somebody's money, and the reader
+     * has no way to tell an invented one from a real one. It comes from the portfolio's own closed
+     * trades — see `PortfolioMath` — so it appears once there is a history to draw.
+     */
+    val equity: List<Double> = emptyList(),
 )
 
 /**

@@ -95,4 +95,27 @@ class SymbolArtworkTest {
         assertTrue(SymbolArtwork.CURRENCIES.size >= 24)
         assertTrue(SymbolArtwork.METALS.size >= 2)
     }
+
+    @Test
+    fun `an index is covered by its country's flag`() {
+        listOf("US30", "US100", "US500", "UK100", "GER40", "FRA40", "JPN225", "AUS200", "EU50")
+            .forEach { assertTrue(it, SymbolArtwork.covers(it)) }
+    }
+
+    @Test
+    fun `an index with no flag stays out rather than showing a lettered disc`() {
+        // Hong Kong's bauhinia is not in the flag set and is not something to approximate. The
+        // index is left uncovered, which keeps it out of the catalogue — the honest outcome, and
+        // the one the whole of SymbolArtwork exists to produce.
+        assertFalse(SymbolArtwork.covers("HK50"))
+    }
+
+    @Test
+    fun `every index in the country table has a name to show beside it`() {
+        // A flag with no name would list as a disc and a ticker. The two tables are edited in
+        // different files, so nothing but this stops them drifting apart.
+        SymbolArtwork.INDEX_COUNTRY.keys.forEach {
+            assertTrue("$it has a flag and no Persian name", it in SymbolNames.INDEX)
+        }
+    }
 }
