@@ -23,6 +23,8 @@ data class StoredDrawing(
     val colour: Long,
     val widthDp: Float,
     val text: String?,
+    /** Whether the drawing refuses to be moved, edited or deleted. See `Drawing.locked`. */
+    val locked: Boolean = false,
     val direction: String,
 )
 
@@ -119,12 +121,16 @@ class ChartDrawingStore(private val dataStore: DataStore<Preferences>) {
                 drawing.widthDp.toString(),
                 text,
                 drawing.direction,
+                if (drawing.locked) "1" else "0",
             ).joinToString(RECORD)
         }
 
         fun decode(record: String): StoredDrawing? {
             val parts = record.split(RECORD)
-            if (parts.size != 7) return null
+            // Seven or eight. Eight is this version; seven is every drawing saved before the lock
+            // existed, and those are read back unlocked rather than discarded — a reader who
+            // updates the app does not expect their chart to come back empty.
+            if (parts.size !in 7..8) return null
             val id = parts[0].toLongOrNull() ?: return null
             val toolId = parts[1].takeIf(String::isNotBlank) ?: return null
             val points = parts[2]
@@ -148,6 +154,7 @@ class ChartDrawingStore(private val dataStore: DataStore<Preferences>) {
                 widthDp = parts[4].toFloatOrNull() ?: DEFAULT_WIDTH_DP,
                 text = parts[5].takeIf(String::isNotBlank),
                 direction = parts[6].takeIf(String::isNotBlank) ?: "UP",
+                locked = parts.getOrNull(7) == "1",
             )
         }
 

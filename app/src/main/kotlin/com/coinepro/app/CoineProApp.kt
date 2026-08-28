@@ -68,6 +68,7 @@ import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
+import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.network.NetworkStatus
 import com.coinepro.core.datastore.MarketColorScheme
 import com.coinepro.core.datastore.ThemeMode
@@ -330,6 +331,8 @@ fun CoineProApp(
     userPreferencesStore: UserPreferencesStore,
     /** Whether the phone has a network. Drawn as one bar at the top of the shell. */
     networkStatus: NetworkStatus,
+    /** The bars already held, so a chart draws before it fetches. */
+    candleCache: CandleCache,
     notificationSettingsStore: NotificationSettingsStore,
     localAlertStore: LocalAlertStore,
     localAlertScheduler: LocalAlertScheduler,
@@ -693,6 +696,7 @@ fun CoineProApp(
                 marketState = marketState,
                 marketSearchController = marketSearchController,
                 candleGateway = candleGateways.getValue(activePlatform),
+                candleCache = candleCache,
                 chartDrawingStore = chartDrawingStore,
                 portfolioController = portfolioControllers.getValue(activePlatform),
                 academyController = academyController,
@@ -841,6 +845,7 @@ fun CoineProApp(
                         marketState = MarketDataState(),
                         marketSearchController = guestSearch,
                         candleGateway = guestCandles,
+                        candleCache = candleCache,
                         chartDrawingStore = chartDrawingStore,
                         portfolioController = portfolioControllers.getValue(activePlatform),
                         academyController = academyController,
@@ -994,6 +999,8 @@ private fun MainShell(
     marketSearchController: MarketSearchController,
     /** The candle source for the platform on screen. See the chart route below. */
     candleGateway: CandleGateway,
+    /** The bars already held, so a chart draws before it fetches. */
+    candleCache: CandleCache,
     chartDrawingStore: ChartDrawingStore,
     portfolioController: PortfolioController,
     academyController: AcademyController,
@@ -1074,6 +1081,9 @@ private fun MainShell(
     // question asked before a sign-out throws away both platforms' tokens.
     var appearanceOpen by rememberSaveable { mutableStateOf(false) }
     var appLockOpen by rememberSaveable { mutableStateOf(false) }
+    /** The symbol and price a reader asked to be alerted about, from the chart. */
+    var alertFromChart by remember { mutableStateOf<Pair<String, Double>?>(null) }
+    val shellScope = rememberCoroutineScope()
     // What this phone can do about proving who is holding it. Read once — it changes only when
     // somebody enrols a fingerprint, which happens outside this app.
     val lockCapability = rememberLockCapability()
@@ -1122,7 +1132,7 @@ private fun MainShell(
     val sparklineStore = remember(candleGateway) { SparklineStore(candleGateway, sparklineScope) }
     // The charts, held here rather than inside their own destinations. See `ChartControllers`:
     // one controller per destination is what made every drawing tool in the app inert.
-    val chartControllers = rememberChartControllers(candleGateway, sparklineScope, chartDrawingStore, appLog)
+    val chartControllers = rememberChartControllers(candleGateway, sparklineScope, chartDrawingStore, appLog, candleCache)
     val currentRoute = backStackEntry?.destination?.route
 
     // Every screen the reader reaches, in sequence. It is two lines and it is the single most
@@ -1868,6 +1878,9 @@ private fun MainShell(
                     onPaperTrade = { symbol, buy, entry, size ->
                         paperTradeController.open(symbol, buy, entry, size)
                     },
+                    // The chart says which price; the composer asks the rest. Opened here rather
+                    // than inside `feature:chart` so the sheet keeps one owner.
+                    onCreateAlert = { symbol, price -> alertFromChart = symbol to price },
                     onSelectSymbol = { symbol ->
                         // Replaces the chart rather than stacking one on top of another: flipping
                         // through six symbols must not build a six-deep back stack that takes six
@@ -2078,6 +2091,24 @@ private fun MainShell(
             onDismiss = { appearanceOpen = false },
             colours = marketColors,
             onSelectColours = onSetMarketColors,
+        )
+    }
+
+    alertFromChart?.let { (symbol, price) ->
+        val localAlerts by localAlertStore.alerts.collectAsStateWithLifecycle(initialValue = emptyList())
+        AlertComposerSheet(
+            symbol = symbol,
+            currentPrice = price,
+            full = localAlerts.size >= LocalPriceAlert.MAX_ALERTS,
+            onCreate = { alert ->
+                shellScope.launch {
+                    localAlertStore.add(alert)
+                    localAlertScheduler.sync(hasActiveAlerts = true)
+                }
+                alertFromChart = null
+                toaster.show(alertSavedMessage, ToastTone.SUCCESS)
+            },
+            onDismiss = { alertFromChart = null },
         )
     }
 

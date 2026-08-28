@@ -11,7 +11,9 @@ import com.coinepro.core.account.NetworkAccountGateway
 import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.UserPreferencesStore
+import com.coinepro.core.database.RoomCandleCache
 import com.coinepro.core.datastore.WidgetSnapshotStore
+import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.network.NetworkStatus
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
@@ -403,6 +405,17 @@ object AppModule {
     @Singleton
     fun widgetSnapshotStore(dataStore: DataStore<Preferences>): WidgetSnapshotStore =
         WidgetSnapshotStore(dataStore)
+
+    /**
+     * The bars already held, so a chart draws before it fetches.
+     *
+     * Not cleared on sign-out, deliberately: a candle is a public fact about a market. The price of
+     * gold at ten o'clock is not the reader's private data, and discarding it would slow the next
+     * chart open to protect nothing. See [CandleCache].
+     */
+    @Provides
+    @Singleton
+    fun candleCache(database: CoineProDatabase): CandleCache = RoomCandleCache(database.candleCacheDao())
 
     /**
      * Whether the phone has a network at all.

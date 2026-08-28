@@ -101,6 +101,13 @@ fun CoineProChart(
      */
     onLoadMore: (() -> Unit)? = null,
     /**
+     * Grow or shrink the indicator panes, as a factor. Null where the caller does not offer it.
+     *
+     * Driven by a drag on the boundary between the candles and the first pane — the line a reader
+     * reaches for without being told, and the same gesture every desktop terminal uses.
+     */
+    onScalePanes: ((Float) -> Unit)? = null,
+    /**
      * Whether the price axis is logarithmic. See [ChartViewport.logScale] for why it exists.
      *
      * Passed in rather than owned here, because it belongs with the timeframe and the chart type —
@@ -227,6 +234,16 @@ fun CoineProChart(
      * rescaling mid-drag, which is the sort of thing that feels like the chart having a seizure.
      */
     var gutterDrag by remember { mutableStateOf(false) }
+
+    /**
+     * Where the candles end and the first indicator pane begins, in pixels.
+     *
+     * A plain array rather than state, for the same reason [lastView] is one: it is written by the
+     * draw pass, which is the only thing that knows where the boundary landed, and the gesture
+     * needs to *read* it at the moment a finger lands rather than recompose when it changes. Zero
+     * means there is no pane and so no divider to drag.
+     */
+    val paneTop = remember { floatArrayOf(0f) }
     val armed = drawing?.tool
 
     val palette = ChartPalette(
@@ -388,6 +405,35 @@ fun CoineProChart(
                                     },
                                 )
                             }
+                            .pointerInput(display, onScalePanes) {
+                                // The divider between the candles and the first indicator pane:
+                                // drag it to give the pane more or less of the canvas.
+                                //
+                                // Confined to a band around the boundary so it cannot steal the
+                                // pan, and only when there is a pane to resize — on a chart with
+                                // no oscillator on it there is no divider and the band does not
+                                // exist. `paneTop` is written by the draw pass, which is the only
+                                // thing that knows where the boundary actually landed.
+                                if (onScalePanes == null) return@pointerInput
+                                var onDivider = false
+                                detectVerticalDragGestures(
+                                    onDragStart = { position ->
+                                        val boundary = paneTop[0]
+                                        onDivider = boundary > 0f &&
+                                            abs(position.y - boundary) <= DIVIDER_REACH_DP.toPx()
+                                    },
+                                    onDragEnd = { onDivider = false },
+                                    onDragCancel = { onDivider = false },
+                                ) { change, dragAmount ->
+                                    if (!onDivider) return@detectVerticalDragGestures
+                                    change.consume()
+                                    val boundary = paneTop[0]
+                                    if (boundary <= 0f) return@detectVerticalDragGestures
+                                    // Dragging *up* grows the panes, because the divider moves up
+                                    // and the space below it is theirs.
+                                    onScalePanes(1f - dragAmount / boundary * DIVIDER_SENSITIVITY)
+                                }
+                            }
                             .pointerInput(display, axisWidth) {
                                 // The price gutter: drag it to stretch or compress the scale.
                                 //
@@ -474,10 +520,20 @@ fun CoineProChart(
             // Panes eat into the price's height, never into each other or the axis. Clamped in
             // total, because four oscillators at 18% each would leave the candles a sliver — and
             // the candles are what the reader came for.
-            val paneRatio = min(PANE_BUDGET, decoration.panes.sumOf { it.heightRatio.toDouble() }.toFloat())
+            // The panes' own request, scaled by whatever the reader dragged, and still capped at
+            // `PANE_BUDGET`. The cap is what stops the candles — which are the subject — being
+            // squeezed out by three oscillators; the scale is what lets somebody reading
+            // divergence give the RSI real height without switching the others off.
+            val paneRatio = min(
+                PANE_BUDGET,
+                decoration.panes.sumOf { it.heightRatio.toDouble() }.toFloat() *
+                    decoration.paneScale.coerceIn(MIN_PANE_SCALE, MAX_PANE_SCALE),
+            )
             val available = max(0f, size.height - timeAxis)
             val paneHeight = if (decoration.panes.isEmpty()) 0f else available * paneRatio
             val plotHeight = max(0f, available - paneHeight)
+            // Published for the divider gesture. See `paneTop`.
+            paneTop[0] = if (paneHeight > 0f) plotHeight else 0f
 
             val view = viewport
                 .sized(plotWidth, plotHeight)
@@ -1743,6 +1799,36 @@ private val LOG_MULTIPLES = listOf(1.0, 2.0, 5.0)
 /** Below this many lines a log axis is not a grid, and the linear ladder is used instead. */
 private const val MIN_LOG_TICKS = 3
 
+/**
+ * How far the reader may shrink or grow the indicator panes.
+ *
+ * A third to three times. Below a third an oscillator is a coloured smear with no readable scale —
+ * worse than switching it off, because it still costs the candles height. Above three times the
+ * `PANE_BUDGET` cap is doing all the work anyway, so a larger number would be a control that
+ * stopped responding.
+ */
+/**
+ * How far either side of the pane divider still counts as grabbing it.
+ *
+ * Fourteen density-independent pixels each way, so the band is 28 — inside Material's 48dp minimum
+ * for a *target*, but this is a divider rather than a button and a taller band would start eating
+ * the pan gesture on the candles above it. It is also the one control here a reader discovers by
+ * trying, so it fails safely: a miss pans the chart, which is what a drag on candles should do.
+ */
+private val DIVIDER_REACH_DP = 14.dp
+
+/**
+ * How much of the plot's height a full drag is worth.
+ *
+ * One and a half: dragging the divider to the top of the candles roughly doubles the panes. Higher
+ * would make a small correction overshoot straight into the `PANE_BUDGET` cap, where the control
+ * appears to stop working.
+ */
+private const val DIVIDER_SENSITIVITY = 1.5f
+
+private const val MIN_PANE_SCALE = 0.33f
+private const val MAX_PANE_SCALE = 3f
+
 /** How solid the last-price rule is. Present, and never competing with the candles. */
 private const val LAST_PRICE_ALPHA = 0.75f
 
@@ -1806,7 +1892,18 @@ private val HAIRLINE_DP = 0.8.dp
 private val WICK_WIDTH_DP = 1.2.dp
 private val LINE_WIDTH_DP = 1.6.dp
 private val AXIS_PADDING_DP = 4.dp
-private val AXIS_TEXT_SIZE = 9.sp
+/**
+ * The axis labels' size.
+ *
+ * Eleven, not nine. It scales with the system font setting either way — it is `sp` — but nine
+ * starts below the point where a reader who has *not* changed that setting can read it at arm's
+ * length, and "the fonts on the chart are too small" is a repeated complaint in reviews of every
+ * app in this category, from readers who name their age when they make it.
+ *
+ * Eleven is the smallest size in this app's own type scale, so the chart's axis is now the same
+ * floor as its smallest label rather than two steps below it.
+ */
+private val AXIS_TEXT_SIZE = 11.sp
 
 private const val GRID_ALPHA = 0.35f
 private const val AREA_ALPHA = 0.16f

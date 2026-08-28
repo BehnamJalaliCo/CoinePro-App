@@ -157,11 +157,13 @@ abstract class CoineProCacheDao {
         JournalEntryEntity::class,
         PaperTradeEntity::class,
         SavedScriptEntity::class,
+        CachedCandleEntity::class,
     ],
-    // Bumped for saved scripts. `fallbackToDestructiveMigration` is deliberately *not* used: every
-    // cache table here can be refetched, and the three that cannot — the journal, the paper trades
-    // and the reader's own scripts — are the whole reason the migrations below are written out.
-    version = 4,
+    // Bumped for the candle cache. `fallbackToDestructiveMigration` is deliberately *not* used:
+    // every cache table here can be refetched, and the three that cannot — the journal, the paper
+    // trades and the reader's own scripts — are the whole reason the migrations below are written
+    // out.
+    version = 5,
     exportSchema = false,
 )
 abstract class CoineProDatabase : RoomDatabase() {
@@ -169,6 +171,7 @@ abstract class CoineProDatabase : RoomDatabase() {
     abstract fun journalDao(): JournalDao
     abstract fun paperTradeDao(): PaperTradeDao
     abstract fun savedScriptDao(): SavedScriptDao
+    abstract fun candleCacheDao(): CandleCacheDao
 }
 
 /**
@@ -245,6 +248,38 @@ val MIGRATION_3_4: Migration = object : Migration(3, 4) {
     }
 }
 
+/**
+ * Version 4 to 5: the candle cache.
+ *
+ * A pure cache table, so losing it would cost only a refetch — but the migration is written out
+ * anyway, because destroying the database to add it would take the journal, the paper trades and
+ * the reader's own scripts with it.
+ */
+val MIGRATION_4_5: Migration = object : Migration(4, 5) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS cached_candles (
+                symbol TEXT NOT NULL,
+                timeframe TEXT NOT NULL,
+                t INTEGER NOT NULL,
+                o REAL NOT NULL,
+                h REAL NOT NULL,
+                l REAL NOT NULL,
+                c REAL NOT NULL,
+                v REAL NOT NULL,
+                cachedAtEpochMillis INTEGER NOT NULL,
+                PRIMARY KEY (symbol, timeframe, t)
+            )
+            """.trimIndent(),
+        )
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_cached_candles_symbol_timeframe_t " +
+                "ON cached_candles (symbol, timeframe, t)",
+        )
+    }
+}
+
 object CoineProDatabaseFactory {
     fun create(context: Context): CoineProDatabase = Room.databaseBuilder(
         context.applicationContext,
@@ -253,7 +288,7 @@ object CoineProDatabaseFactory {
     )
         // The journal migration is registered rather than the database being allowed to fall back
         // to destructive recreation. Every other table here is a cache; the journal is not.
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
         .build()
 }
 

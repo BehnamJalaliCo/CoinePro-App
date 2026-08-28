@@ -61,6 +61,20 @@ data class Drawing(
     val widthDp: Float = 1.6f,
     /** Set while the reader is still tapping out the points. */
     val complete: Boolean = true,
+    /**
+     * Whether this drawing refuses to be moved, edited or deleted.
+     *
+     * A phone chart is a surface a reader pans, pinches and taps constantly, and every one of those
+     * gestures passes through the drawings on it. Reviews of every app in this category carry the
+     * same complaint — a trend line that took care to place, nudged out of position by a thumb that
+     * was trying to scroll — and the fix everyone converges on is a per-object lock rather than a
+     * global drawing mode.
+     *
+     * Locked affects *interaction only*, never rendering: a locked line is drawn exactly as it was
+     * and is still selectable, so a reader can find it and unlock it. A lock that also hid the
+     * handles would be a lock nobody could undo.
+     */
+    val locked: Boolean = false,
     /** What a text, callout, note or price label says. Null before the reader has typed anything. */
     val text: String? = null,
     /** Which way a standalone arrow marker points. Ignored by every other tool. */

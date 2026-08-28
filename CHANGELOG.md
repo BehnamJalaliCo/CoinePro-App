@@ -47,6 +47,105 @@ an average cannot place itself using prices the reader is not allowed to have se
 
 ---
 
+## [1.39.0] — 2026-08-28 — Seven chart gaps, from a corpus of 163,913 reviews
+
+A second research pass built an original corpus — 163,913 reviews across 20 apps, of which
+**17,662 are Persian / Iran-store**, and 2,803 are negative mentions of a chart. Seven gaps came out
+of it. All seven are closed here.
+
+### 1. The chart draws before it fetches
+
+"The chart won't come up" is **19.3% of negative chart mentions in Persian** — the largest single
+category by two and a half times — and combined with "slow/laggy" it is ~19% globally too. The
+review threshold is sharp: instant is the stated baseline, three seconds is *noticed*, five seconds
+reliably produces a one-star review.
+
+None of that is fixed by a faster request. It is fixed by having something true to draw while one
+is in flight. `cached_candles` is a Room table keyed by symbol **and** timeframe — the same
+instrument on two timeframes is two series, and caching them under one key is how a reader ends up
+looking at hourly bars labelled daily. Two thousand bars kept per series, trimmed inside the same
+transaction as the write, so the table cannot grow without bound.
+
+The cached bars are drawn immediately and replaced when the network answers. Three guards on the
+paint: only when the chart is empty (so a retry does not flash older bars mid-way), only while that
+load is still the current one (so switching timeframe twice quickly cannot land the wrong series),
+and silently on failure — **a cache that can fail a chart open turns a slow path into a broken one**,
+which is strictly worse than no cache. There is a test that feeds it a cache which throws on every
+call and asserts the chart still works.
+
+Not cleared on sign-out, deliberately: a candle is a public fact about a market.
+
+### 2. The controls moved below the chart
+
+The complaint about top-placed chart controls is explicit and repeated across this category —
+*"Please return the menu bar to the bottom. Our thumbs is not that long."* The timeframe strip and
+the tool bar now sit under the chart, timeframe first, because switching timeframe is the most
+frequent thing anybody does on a chart and it gets the position closest to the thumb.
+
+### 3. A price alert, from the chart
+
+6.2% of chart complaints, and the top one for the broker-app audience — *"price alerts could be
+added on the chart easily... now it can only be added out of the chart page"*. The chart is where a
+reader decides a level matters; making them leave it, find the alerts screen and type the number
+back in is asking them to do the app's arithmetic. The composer is hoisted to the app rather than
+opened inside `feature:chart`, so the sheet keeps one owner.
+
+### 4. Drawings can be locked
+
+*"lock drawings function in chart be upgraded to avoid accidental touch that causes drawings to
+move."* A phone chart is a surface a reader pans, pinches and taps constantly, and every one of
+those gestures passes through the drawings on it.
+
+Enforced in the **transforms** — `movePoint`, `moveBy`, `delete` all refuse a locked drawing —
+rather than at the buttons, so a call site added later cannot forget it. Locked affects interaction
+only, never rendering: a locked line is still drawn and still selectable, because a lock that hid
+the handles would be a lock nobody could undo. It persists, and drawings saved before this version
+read back unlocked rather than being discarded.
+
+### 5. The indicator panes resize
+
+*"نمیشه اندازه ی اندیکاتورها در پایین صفحه رو بزرگ و کوچک کرد، قبلاً با کشیدن میشد"* — and the same
+complaint in English at cTrader and TrendSpider. A pane's height ratio is a designer's guess at how
+much of the picture an oscillator deserves, and the right answer depends on what the reader is
+doing. Drag the divider between the candles and the first pane. A third to three times, still under
+the cap that stops three oscillators squeezing the candles out.
+
+### 6. A chart opens on 80 bars, not 120
+
+The dominant viewport in this app's market is **393dp wide** (Samsung and Xiaomi are 77% of Iranian
+devices; ~27% are still on Android 11–12). About 330dp of that is plot. At 120 bars each candle body
+was under 2dp — a grey haze with wicks in it, which a reader has to zoom *into* before they can use
+it, every single time. At 80 the body is just under 3dp: the narrowest that still shows its colour
+and its direction at arm's length.
+
+### 7. The axis labels are 11sp, not 9
+
+*"its fonts can't be enlarged. As I am around 45, my eyesight is getting weaker."* It scaled with
+the system setting either way, but nine started below what a reader who has not changed that setting
+can read. Eleven is the floor of this app's own type scale.
+
+### And one defect the audit turned up on its own
+
+`overlays`, `levels`, `markers` and `panes` were four plain getters, so reading them recomputed —
+and each structure study ran **three times per read**, because each getter called `structureFor`
+and threw away two thirds of the answer. Worse, a drawing drag emits a state per frame, and every
+one of those frames recomputed every switched-on indicator, none of whose inputs had moved.
+
+They are one value now, carried across states whose indicator inputs are unchanged, and it carries
+its own key so a stale carry is *discarded* rather than drawn — the failure that would otherwise put
+last timeframe's moving average over this timeframe's candles with nothing on screen to say so.
+
+### What the research says NOT to build
+
+**Zero requests for a Jalali time axis in 17,662 Persian reviews. Zero for a mirrored RTL chart.**
+Both regex hits for Jalali were false positives on surnames. This is a genuine null result from a
+large sample, not a gap in searching. The axis stays Gregorian and left-to-right — which is every
+trader's mental model from TradingView and MT5 — and only the surrounding chrome mirrors. Persian
+traders' actual ask, 409 times over, is a Persian **UI**, which this app has been since its first
+screen.
+
+---
+
 ## [1.38.0] — 2026-08-28 — The markets, on the home screen
 
 A home-screen widget: the prices a reader watches, without opening anything.

@@ -194,6 +194,20 @@ data class ChartDecoration(
      * nothing — and ignored on a series whose bars carry no timestamps.
      */
     val showCountdown: Boolean = false,
+    /**
+     * How much taller or shorter the reader has made the indicator panes, as a factor.
+     *
+     * One is what the panes ask for themselves. Above one they take more of the canvas and the
+     * candles take less; below one the reverse.
+     *
+     * It exists because a pane's own [ChartPane.heightRatio] is a designer's guess at how much of
+     * the picture an oscillator deserves, and the right answer depends entirely on what the reader
+     * is doing: somebody reading divergence wants the RSI half the screen, and somebody who left
+     * it switched on wants it out of the way. The complaint — "the indicator window can't be
+     * resized, it used to be draggable" — appears in reviews of every app in this category,
+     * Persian ones included.
+     */
+    val paneScale: Float = 1f,
 )
 
 /** Where the crosshair is, in chart space. Null when nobody is touching the chart. */

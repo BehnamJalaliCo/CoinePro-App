@@ -134,9 +134,24 @@ object DrawingActions {
     fun cancel(state: DrawingState): DrawingState =
         state.copy(tool = null, pending = emptyList())
 
-    fun delete(state: DrawingState, id: Long): DrawingState = state.copy(
-        drawings = state.drawings.filterNot { it.id == id },
-        selectedId = state.selectedId?.takeIf { it != id },
+    /**
+     * Delete one drawing, unless it is locked.
+     *
+     * The lock is enforced here rather than at the button, so every path to deletion honours it —
+     * the drawings list, a swipe, a keyboard shortcut, anything added later. A rule enforced only
+     * where somebody remembered to check is a rule with a hole in it.
+     */
+    fun delete(state: DrawingState, id: Long): DrawingState {
+        if (state.drawings.any { it.id == id && it.locked }) return state
+        return state.copy(
+            drawings = state.drawings.filterNot { it.id == id },
+            selectedId = state.selectedId?.takeIf { it != id },
+        )
+    }
+
+    /** Lock or unlock one drawing. See [Drawing.locked]. */
+    fun setLocked(state: DrawingState, id: Long, locked: Boolean): DrawingState = state.copy(
+        drawings = state.drawings.map { if (it.id == id) it.copy(locked = locked) else it },
     )
 
     fun clear(state: DrawingState): DrawingState =
@@ -197,7 +212,9 @@ object DrawingActions {
     fun movePoint(state: DrawingState, id: Long, index: Int, to: ChartPoint): DrawingState =
         state.copy(
             drawings = state.drawings.map { drawing ->
-                if (drawing.id != id || index !in drawing.points.indices) {
+                // `locked` is checked here, in the transform, rather than in the gesture — so a
+                // second call site added later cannot forget it.
+                if (drawing.id != id || drawing.locked || index !in drawing.points.indices) {
                     drawing
                 } else {
                     drawing.copy(points = drawing.points.toMutableList().also { it[index] = to })
@@ -209,7 +226,7 @@ object DrawingActions {
     fun moveBy(state: DrawingState, id: Long, deltaTime: Long, deltaPrice: Double): DrawingState =
         state.copy(
             drawings = state.drawings.map { drawing ->
-                if (drawing.id != id) {
+                if (drawing.id != id || drawing.locked) {
                     drawing
                 } else {
                     drawing.copy(

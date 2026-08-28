@@ -5,6 +5,7 @@ import androidx.compose.runtime.remember
 import com.coinepro.feature.chart.ChartController
 import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.diagnostics.AppLog
+import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.marketdata.CandleGateway
 import kotlinx.coroutines.CoroutineScope
 
@@ -54,6 +55,8 @@ class ChartControllers(
     private val drawings: ChartDrawingStore,
     /** The structured log, so every chart load is timed against its budget. */
     private val log: AppLog,
+    /** The bars already held, so a chart draws before it fetches. See [CandleCache]. */
+    private val cache: CandleCache,
 ) {
     private val controllers = LinkedHashMap<String, ChartController>()
 
@@ -71,6 +74,7 @@ class ChartControllers(
             scope = scope,
             drawings = drawings,
             log = log,
+            cache = cache,
         )
         controllers[key] = created
         while (controllers.size > MAX_CONTROLLERS) {
@@ -97,6 +101,7 @@ fun rememberChartControllers(
     scope: CoroutineScope,
     drawings: ChartDrawingStore,
     log: AppLog,
-): ChartControllers = remember(gateway, scope, drawings, log) {
-    ChartControllers(gateway, scope, drawings, log)
+    cache: CandleCache,
+): ChartControllers = remember(gateway, scope, drawings, log, cache) {
+    ChartControllers(gateway, scope, drawings, log, cache)
 }

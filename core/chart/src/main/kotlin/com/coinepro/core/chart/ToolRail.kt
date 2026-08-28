@@ -252,29 +252,43 @@ fun ActiveToolBar(
             }
         }
         if (onUndo != null && placed > 0) {
-            RailAction(DesignR.drawable.icon_arrows_clockwise, "واگرد", onUndo)
+            RailAction(DesignR.drawable.icon_arrows_clockwise, "واگرد", onClick = onUndo)
         }
         tool.helpId?.let { id ->
             onHelp?.let { RailAction(DesignR.drawable.tv_help_circle, "راهنما") { it(id) } }
         }
-        RailAction(DesignR.drawable.icon_x, "بستن", onCancel)
+        RailAction(DesignR.drawable.icon_x, "بستن", onClick = onCancel)
     }
 }
 
 @Composable
-private fun RailAction(icon: Int, label: String, onClick: () -> Unit) {
+private fun RailAction(
+    icon: Int,
+    label: String,
+    tint: Color? = null,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
     Box(
         modifier = Modifier
-            .size(32.dp)
+            // Forty-eight, which is Material's minimum and Android's own accessibility floor. The
+            // glyph stays eighteen; it is the *hit rect* that has to reach a thumb, and a row of
+            // 32dp targets beside each other is the shape that produces "I keep tapping the wrong
+            // one" in reviews of every app in this category.
+            .size(48.dp)
             .clip(CircleShape)
-            .clickable(onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = label,
             modifier = Modifier.size(18.dp),
-            tint = CoineProColors.TextMuted,
+            tint = when {
+                !enabled -> CoineProColors.TextDisabled
+                tint != null -> tint
+                else -> CoineProColors.TextMuted
+            },
         )
     }
 }
@@ -291,6 +305,14 @@ fun DrawingList(
     onSelect: (Drawing) -> Unit,
     onDelete: (Drawing) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Lock or unlock one drawing, or null where the caller does not offer it.
+     *
+     * The list is the right home for this rather than a long-press on the chart: a reader locking
+     * a line has *finished* with it, and reaching for it on a crowded chart is the gesture the
+     * lock exists to protect them from.
+     */
+    onSetLocked: ((Drawing, Boolean) -> Unit)? = null,
 ) {
     if (drawings.isEmpty()) {
         CoineProSheetEmpty("هنوز چیزی روی چارت نکشیده‌ای.", modifier)
@@ -330,7 +352,20 @@ fun DrawingList(
                     color = CoineProColors.TextSecondary,
                     modifier = Modifier.weight(1f),
                 )
-                RailAction(DesignR.drawable.tv_trash2, "حذف") { onDelete(drawing) }
+                onSetLocked?.let { setLocked ->
+                    RailAction(
+                        if (drawing.locked) DesignR.drawable.tv_lock else DesignR.drawable.tv_unlock,
+                        if (drawing.locked) "باز کردن قفل" else "قفل کردن",
+                        tint = if (drawing.locked) CoineProColors.Gold else null,
+                    ) { setLocked(drawing, !drawing.locked) }
+                }
+                // Delete is refused on a locked drawing by `DrawingActions.delete`; the button is
+                // dimmed here so the reader is told why rather than finding out by tapping.
+                RailAction(
+                    DesignR.drawable.tv_trash2,
+                    "حذف",
+                    enabled = !drawing.locked,
+                ) { onDelete(drawing) }
             }
         }
     }

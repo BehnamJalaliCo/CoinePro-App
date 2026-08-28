@@ -389,11 +389,21 @@ data class ChartViewport(
         /**
          * What a phone chart opens on.
          *
-         * A hundred and twenty bars is about four hours of five-minute candles or four months of
-         * daily ones — enough context to see the trend the last few bars belong to, and few enough
-         * that a body is still wide enough to read on a 400dp-wide screen.
+         * **Eighty**, and the number comes from the screen rather than from taste. The dominant
+         * viewport in this app's market is 393dp wide (Iran, ~19% of devices, with 384 and 412 next
+         * — Samsung and Xiaomi between them are 77% of the market). Subtract the price gutter and
+         * about 330dp of that is plot. At eighty bars each slot is ~4dp, of which the candle body
+         * is 72% — just under 3dp, which is the narrowest a body can be and still show its colour
+         * and its direction at arm's length.
+         *
+         * A hundred and twenty, which is what this used to be, put each body under 2dp on the same
+         * screen: a grey haze with wicks in it. That is a chart a reader zooms *in* on before they
+         * can use it, every time they open one, which is the wrong default to hand somebody.
+         *
+         * The reader can still see more — [MAX_BARS_PER_VIEW] is 600 — and their zoom is saved.
+         * This is only where a chart *starts*.
          */
-        const val DEFAULT_BARS_PER_VIEW = 120
+        const val DEFAULT_BARS_PER_VIEW = 80
 
         /** Below this the chart stops being a chart and becomes a few coloured rectangles. */
         const val MIN_BARS_PER_VIEW = 14

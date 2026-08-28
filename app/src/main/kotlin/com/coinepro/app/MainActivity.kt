@@ -44,6 +44,7 @@ import com.coinepro.core.datastore.ProfileStore
 import com.coinepro.core.datastore.UserPreferencesStore
 import com.coinepro.app.widget.MarketsWidget
 import com.coinepro.app.widget.WidgetRefreshEngine
+import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.network.NetworkStatus
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
@@ -88,6 +89,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var userPreferencesStore: UserPreferencesStore
     @Inject lateinit var networkStatus: NetworkStatus
     @Inject lateinit var widgetRefreshEngine: WidgetRefreshEngine
+    @Inject lateinit var candleCache: CandleCache
     @Inject lateinit var notificationSettingsStore: NotificationSettingsStore
     @Inject lateinit var localAlertStore: LocalAlertStore
     @Inject lateinit var localAlertScheduler: LocalAlertScheduler
@@ -175,6 +177,7 @@ class MainActivity : FragmentActivity() {
                 profileStore = profileStore,
                 userPreferencesStore = userPreferencesStore,
                 networkStatus = networkStatus,
+                candleCache = candleCache,
                 notificationSettingsStore = notificationSettingsStore,
                 localAlertStore = localAlertStore,
                 localAlertScheduler = localAlertScheduler,
