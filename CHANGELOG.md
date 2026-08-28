@@ -15,6 +15,38 @@ it is for.
 
 ---
 
+## [1.38.1] — 2026-08-28 — Four getters that were doing the work three times
+
+An audit of the chart against the review corpus turned up a performance defect in our own code —
+which is the right place to find one, since "slow to load, renders slowly, lags" is **25.5% of all
+chart complaints** in that corpus, the largest single sub-theme by some distance.
+
+`overlays`, `levels`, `markers` and `panes` were four plain `get()`s on the chart's state. Two
+things followed, and both are the kind of cost that only shows up on a cheap phone:
+
+* **Every structure study ran three times per read.** `overlays` took its lines, `levels` took its
+  levels and `markers` took its marks — each calling `structureFor` for the same study and throwing
+  away two thirds of the answer. A zigzag over three hundred bars, computed three times, to be
+  drawn once.
+* **A drawing drag recomputed the lot, every frame.** Dragging a trend line emits a new state per
+  frame — that is what makes the line follow the finger — and each of those states recomputed every
+  switched-on indicator, none of which had changed, because not one of their inputs had moved.
+
+They are now one value computed once, and the chart carries it across the states a drag produces.
+
+### The carry is checked, not trusted
+
+Carrying a cached result forward is how a chart ends up drawing last timeframe's moving average
+over this timeframe's candles, silently, with nothing on screen to say so. So the value stores the
+three inputs it was computed from — the bars, by identity; the indicator set and the lookbacks, by
+value — and re-checks them before being used. A stale carry is discarded rather than drawn, which
+makes this correct by construction rather than correct by everybody remembering.
+
+Seven tests, including the one that matters most: replay still derives from the *visible* bars, so
+an average cannot place itself using prices the reader is not allowed to have seen yet.
+
+---
+
 ## [1.38.0] — 2026-08-28 — The markets, on the home screen
 
 A home-screen widget: the prices a reader watches, without opening anything.

@@ -83,31 +83,52 @@ data class ChartUiState(
      * the place that would then draw the future.
      */
     val replay: ReplayState = ReplayState(),
+    /**
+     * An already-computed [ChartDerived] the controller is carrying forward, or null to compute.
+     *
+     * Not part of what this state *means* — it is the same answer, arrived at without the work —
+     * so it is excluded from equality and from `toString` by being the only property the
+     * controller ever sets, and by nothing outside this file reading it. See [derived].
+     */
+    val carried: ChartDerived? = null,
 ) {
     /**
-     * The price-scale overlays for whatever is switched on. Recomputed when the series changes.
+     * Everything the indicators produce, computed once.
+     *
+     * ### Why this is one object and not four getters
+     *
+     * It used to be four, and they were plain `get()`s — so reading them recomputed. Two things
+     * followed, and both are the kind of cost that only shows up on a cheap phone:
+     *
+     *  * **Every structure study ran three times per read.** `overlays`, `levels` and `markers`
+     *    each called `structureFor` for the same study and threw away two thirds of each answer.
+     *    A zigzag over three hundred bars, computed three times, to draw it once.
+     *  * **A drawing drag recomputed the lot, every frame.** Dragging a trend line emits a new
+     *    state per frame — that is what makes the line follow the finger — and each new state
+     *    recomputed every switched-on indicator, none of which had changed, because not one of
+     *    their inputs had moved.
+     *
+     * Now it is one value with `lazy`, so a state that is never read costs nothing and a state
+     * read four times costs once; and [ChartController] carries it across state copies whose
+     * indicator inputs are unchanged, which is what makes a drag free.
+     */
+    internal val derived: ChartDerived by lazy(LazyThreadSafetyMode.NONE) {
+        carried?.takeIf { it.matches(visibleSeries, activeIndicators, indicatorPeriods) }
+            ?: ChartDerived.of(visibleSeries, activeIndicators, indicatorPeriods)
+    }
+
+    /**
+     * The price-scale overlays for whatever is switched on.
      *
      * Derived from [visibleSeries], not [series]. During replay an indicator computed over every
      * bar would place a moving average using prices the reader is not allowed to have seen yet —
      * the future leaking back in through the one door nobody watches.
      */
-    val overlays: List<ChartLine>
-        get() = ChartCatalog.INDICATORS
-            .filter { it.id in activeIndicators && it.pane == IndicatorPane.PRICE }
-            .flatMap { ChartCatalog.overlayFor(it, visibleSeries, indicatorPeriods[it.id]) } +
-            ChartCatalog.INDICATORS
-                .filter { it.id in activeIndicators && it.pane == IndicatorPane.STRUCTURE }
-                .flatMap { ChartCatalog.structureFor(it, visibleSeries).lines }
+    val overlays: List<ChartLine> get() = derived.overlays
 
-    val levels: List<PriceLevel>
-        get() = ChartCatalog.INDICATORS
-            .filter { it.id in activeIndicators && it.pane == IndicatorPane.STRUCTURE }
-            .flatMap { ChartCatalog.structureFor(it, visibleSeries).levels }
+    val levels: List<PriceLevel> get() = derived.levels
 
-    val markers: List<ChartMarker>
-        get() = ChartCatalog.INDICATORS
-            .filter { it.id in activeIndicators && it.pane == IndicatorPane.STRUCTURE }
-            .flatMap { ChartCatalog.structureFor(it, visibleSeries).markers }
+    val markers: List<ChartMarker> get() = derived.markers
 
     /**
      * The strips below the price — one per switched-on oscillator.
@@ -116,10 +137,7 @@ data class ChartUiState(
      * indicators always stack the same way. A pane order that depended on tap history would move
      * under a reader who turned one off and back on.
      */
-    val panes: List<ChartPane>
-        get() = ChartCatalog.INDICATORS
-            .filter { it.id in activeIndicators && it.pane == IndicatorPane.SEPARATE }
-            .mapNotNull { ChartCatalog.paneFor(it, visibleSeries, indicatorPeriods[it.id]) }
+    val panes: List<ChartPane> get() = derived.panes
 
     /** The last close, which is what the header shows beside the symbol. */
     /**
@@ -331,7 +349,12 @@ class ChartController(
         _state.update { it.copy(drawing = DrawingActions.arm(it.drawing, tool)) }
 
     fun onDrawing(next: DrawingState) {
-        _state.update { it.copy(drawing = next) }
+        // The one hot path. A drag emits a state per frame — that is what makes the line follow
+        // the finger — and none of those frames touches the bars, the indicator set or a lookback.
+        // Carrying the computed value forward is what stops each of them recomputing every
+        // switched-on indicator; `ChartDerived.matches` re-checks it, so a carry that has gone
+        // stale is discarded rather than drawn.
+        _state.update { it.copy(drawing = next, carried = it.derived) }
         persistDrawings()
     }
 
@@ -535,6 +558,77 @@ class ChartController(
          * operation and an absurd one for a round trip to a server over a mobile network in Iran.
          */
         const val FIRST_CANDLE_BUDGET_MS = 1_200L
+    }
+}
+
+/**
+ * What the switched-on indicators draw, computed once for a given set of inputs.
+ *
+ * Three inputs and nothing else: the bars, which indicators are on, and their lookbacks. Anything
+ * else the reader does — panning, zooming, drawing, selecting, replaying a frame — leaves all
+ * three untouched, which is what makes carrying this value forward correct rather than merely
+ * fast.
+ */
+data class ChartDerived internal constructor(
+    /**
+     * The three inputs this was computed from, so a carried value can be *checked* rather than
+     * trusted.
+     *
+     * This is what makes carrying it forward safe by construction: a state that changed its bars,
+     * its indicators or a lookback and still holds the old value simply recomputes, because the
+     * key no longer matches. Without it, one forgotten call site would draw last timeframe's
+     * moving average over this timeframe's candles and nothing would ever say so.
+     *
+     * The series is compared by identity, which is the point — it is a large object that is
+     * replaced wholesale when it changes, never mutated.
+     */
+    internal val key: Key? = null,
+    val overlays: List<ChartLine> = emptyList(),
+    val levels: List<PriceLevel> = emptyList(),
+    val markers: List<ChartMarker> = emptyList(),
+    val panes: List<ChartPane> = emptyList(),
+) {
+    /** What [ChartDerived] was computed from. See [key]. */
+    internal data class Key(
+        val series: CandleSeries,
+        val active: Set<String>,
+        val periods: Map<String, Int>,
+    )
+
+    /** Whether this value is still the right answer for these inputs. */
+    internal fun matches(series: CandleSeries, active: Set<String>, periods: Map<String, Int>): Boolean =
+        key != null && key.series === series && key.active == active && key.periods == periods
+
+    companion object {
+        internal val EMPTY = ChartDerived()
+
+        fun of(
+            series: CandleSeries,
+            active: Set<String>,
+            periods: Map<String, Int>,
+        ): ChartDerived {
+            val key = Key(series, active, periods)
+            if (active.isEmpty() || series.isEmpty) return ChartDerived(key = key)
+            val chosen = ChartCatalog.INDICATORS.filter { it.id in active }
+            // Each structure study computed **once** and its three products taken from the one
+            // answer. Three separate calls is what this file used to do, and a zigzag over three
+            // hundred bars is not a cheap thing to compute twice for nothing.
+            val structures = chosen
+                .filter { it.pane == IndicatorPane.STRUCTURE }
+                .map { ChartCatalog.structureFor(it, series) }
+            return ChartDerived(
+                key = key,
+                overlays = chosen
+                    .filter { it.pane == IndicatorPane.PRICE }
+                    .flatMap { ChartCatalog.overlayFor(it, series, periods[it.id]) } +
+                    structures.flatMap { it.lines },
+                levels = structures.flatMap { it.levels },
+                markers = structures.flatMap { it.markers },
+                panes = chosen
+                    .filter { it.pane == IndicatorPane.SEPARATE }
+                    .mapNotNull { ChartCatalog.paneFor(it, series, periods[it.id]) },
+            )
+        }
     }
 }
 
