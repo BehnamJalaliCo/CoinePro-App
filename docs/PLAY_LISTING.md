@@ -236,11 +236,12 @@ SHA-256  96:12:AB:6C:BF:BB:4F:4F:FB:F1:51:D8:60:2C:12:9D:CC:E8:A9:77:1E:85:46:69
 
 **Still open**
 
-1. **Google sign-in: the Android half is done, the web half was deleted.**
+1. **Google sign-in — resolved 28 August 2026.** *(Kept here rather than deleted: it took six
+   downloads of one file to find, and the method is worth more than the conclusion.)*
 
-   Settled on 27 August by asking Google directly rather than by reading files. Google's authorize
-   endpoint answers differently for a client that exists, one that never existed, and one that was
-   removed, so the state of any client id can be established from a terminal in one line:
+   The failure was never in the app or in `google-services.json`. Google's authorize endpoint
+   answers differently for a client that exists, one that never existed and one that was removed,
+   which turns "is this client id real?" into a one-line question:
 
    ```
    curl -sL "https://accounts.google.com/o/oauth2/v2/auth?client_id=<ID>\
@@ -248,36 +249,23 @@ SHA-256  96:12:AB:6C:BF:BB:4F:4F:FB:F1:51:D8:60:2C:12:9D:CC:E8:A9:77:1E:85:46:69
      | grep -oE "deleted_client|invalid_client|redirect_uri_mismatch"
    ```
 
-   | Client | Answer | Means |
+   | Client id | Answer | State |
    | --- | --- | --- |
-   | `…-aji26kov4…` (Android) | `redirect_uri_mismatch` | **Exists and is valid.** The error is only about the redirect URI the probe supplied, which an Android client has no use for. |
-   | `…-nnr0l8q2…` (Web — the audience the app sends) | **`deleted_client`** | **This client has been deleted.** |
-   | a made-up id (control) | `invalid_client`, "OAuth client was not found" | A different answer, which is what makes the two above trustworthy. |
+   | `1033486124390-nnr0l8q2k8e5mqjhpf0o4spmigakovsp.apps.googleusercontent.com` | `deleted_client` | Deleted. This was the audience being served. |
+   | `1033486124390-07nqc4h9j1agsrcrpvq7cgsa5k6evced.apps.googleusercontent.com` | `redirect_uri_mismatch` | **Live.** The replacement, and what `auth/methods` serves now. |
+   | `1033486124390-aji26kov4lnmiolpq8rb00csajv51ij4.apps.googleusercontent.com` | `redirect_uri_mismatch` | Live. The Android client, carrying this repository's release fingerprint. |
+   | any made-up id, as a control | `invalid_client` | Never existed — the answer that makes the other three trustworthy. |
 
-   So the Android side is now correct — `google-services.json` of 27 August carries a
-   `client_type: 1` entry for `com.coinepro.app` with certificate hash
-   `5de87f4bb3e8356b4e981ed4da630ba7775f9aa8`, which is this repository's release key exactly — and
-   Google still refuses, because **the audience no longer exists**. The web client and the type-3
-   entry that used to name it both disappeared from the file on the same day the Android client
-   appeared, which is consistent with it having been deleted while the other was created.
+   `redirect_uri_mismatch` is the healthy answer: Google resolved the client and objected only to
+   the throwaway redirect URI the probe supplied.
 
-   **The replacement Web client was created the same day** and is live:
-   `1033486124390-07nqc4h9…` answers `redirect_uri_mismatch`. So all three Google-side pieces now
-   exist — the Android client, its fingerprint, and an audience.
-
-   **One step is left and it belongs to TradeYar, not to this app.** Their `auth/methods` still
-   returns the deleted `…-nnr0l8q2…`, and it has to return the new id — and verify ID tokens
-   against the same value in `auth/google`. `docs/REQUEST6_TRADEYAR_GOOGLE_CLIENT.md` is written to
-   be forwarded to them as it stands. There is no client-side workaround and it would be wrong to
-   build one: an audience the app chose for itself would produce a token their route then refuses,
-   which is the same failure one layer deeper.
-
-   Nothing changes in the app: the audience has always been read from the server at runtime, which
-   is what makes this fixable without a release.
+   All three pieces are now in place and were confirmed from this repository against the live route
+   rather than taken on report. **What is left is one thing and it is not code: tap the button on a
+   phone.** Everything up to the moment Credential Manager opens its sheet has been verified; that
+   last step has not, and nothing here substitutes for it.
 
    **If the SHA-1 ever needs checking against a specific install**, the app shows its own:
-   «ایمنی و نسخه» carries the running build's SHA-1 and SHA-256 with a copy button. Use that number
-   rather than this document if the two ever disagree.
+   «ایمنی و نسخه» carries the running build's SHA-1 and SHA-256 with a copy button.
 
 2. **Support e-mail and the developer's legal name and address.** Both legal documents carry a
    marked slot. The Telegram support channel is published; an e-mail address is the owner's to

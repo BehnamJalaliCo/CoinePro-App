@@ -1,5 +1,18 @@
 # TradeYar — the Google client id in `auth/methods` points at a deleted client
 
+> **Resolved 28 August 2026.** `auth/methods` now serves
+> `1033486124390-07nqc4h9j1agsrcrpvq7cgsa5k6evced.apps.googleusercontent.com`, and that id answers
+> `redirect_uri_mismatch` at Google — confirmed from this repository against the live route, not
+> taken on report.
+>
+> Their answer improved on the ask in a way worth recording: the two ends **cannot** diverge,
+> because both read one variable — `auth/methods` serves its first element and `auth/google` uses
+> the same list as the accepted `aud`. That makes the class of bug impossible rather than fixing an
+> instance of it, which is the better shape of the two.
+>
+> They were also right that the abbreviated ids in the table below were not reproducible. They are
+> written out in full now, so the probe can be run against any of them verbatim.
+
 **One field to change, on your side only. The app needs no release.**
 
 Google sign-in from the Android app has never worked. The cause is now established, and it is not
@@ -19,9 +32,9 @@ curl -sL "https://accounts.google.com/o/oauth2/v2/auth?client_id=<ID>\
 
 | Client id | Answer | State |
 | --- | --- | --- |
-| `1033486124390-nnr0l8q2…` — **what `auth/methods` returns today** | `deleted_client` | **Deleted.** |
-| `1033486124390-07nqc4h9…` — the replacement Web client | `redirect_uri_mismatch` | Live. |
-| `1033486124390-aji26kov4…` — the app's Android client | `redirect_uri_mismatch` | Live. |
+| `1033486124390-nnr0l8q2k8e5mqjhpf0o4spmigakovsp.apps.googleusercontent.com` — what `auth/methods` returned | `deleted_client` | **Deleted.** |
+| `1033486124390-07nqc4h9j1agsrcrpvq7cgsa5k6evced.apps.googleusercontent.com` — the replacement Web client | `redirect_uri_mismatch` | Live. |
+| `1033486124390-aji26kov4lnmiolpq8rb00csajv51ij4.apps.googleusercontent.com` — the app's Android client | `redirect_uri_mismatch` | Live. |
 | a made-up id, as a control | `invalid_client` | Never existed. |
 
 `redirect_uri_mismatch` is the *healthy* answer here: it means Google resolved the client and only

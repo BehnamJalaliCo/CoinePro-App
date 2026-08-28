@@ -15,6 +15,28 @@ it is for.
 
 ---
 
+## [1.29.4] — 2026-08-28 — The audience is live
+
+### Notes
+- **Google sign-in's server side is done, and it was confirmed rather than accepted.** TradeYar's
+  `auth/methods` now serves
+  `1033486124390-07nqc4h9j1agsrcrpvq7cgsa5k6evced.apps.googleusercontent.com`, and that id answers
+  `redirect_uri_mismatch` at Google — read from this repository against the live route, not taken on
+  report. With the Android client and the release fingerprint already verified, every piece up to
+  the moment Credential Manager opens its sheet is now known good.
+- **The one step left is not code: tap the button on a phone.** No release is needed; the audience
+  has always been read from the server at runtime, which is the whole reason this was fixable
+  without one.
+- **Their answer improved on the ask**, and it is worth recording why: the two ends *cannot*
+  diverge, because both read one variable — `auth/methods` serves its first element and
+  `auth/google` uses the same list as the accepted `aud`. That makes the class of bug impossible
+  instead of fixing one instance of it, which is the better of the two shapes.
+- **A fair correction taken.** The client ids in the request document were abbreviated with
+  ellipses, which made the probe unreproducible against two of the three rows. They are written out
+  in full now, in both documents.
+
+---
+
 ## [1.29.3] — 2026-08-28 — One field, on TradeYar's side
 
 ### Notes
