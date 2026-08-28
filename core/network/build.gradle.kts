@@ -18,5 +18,6 @@ dependencies {
     api(libs.retrofit.core)
     implementation(libs.retrofit.gson)
     implementation(libs.okhttp.logging)
+    implementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.junit)
 }

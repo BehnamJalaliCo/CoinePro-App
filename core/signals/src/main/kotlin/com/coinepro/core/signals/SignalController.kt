@@ -55,10 +55,13 @@ class SignalController(
         _state.update { it.copy(loading = true, error = null, membershipRequired = false) }
         listJob = scope.launch {
             try {
-                val page = gateway.list(market, status)
+                // The server's ceiling, not half of it. `limit` is coerced into 1..100 on the way
+                // out, so fifty was leaving fifty signals on the server for no reason — one
+                // request either way, and the shortfall is reported rather than hidden.
+                val page = gateway.list(market, status, limit = LIST_LIMIT)
                 _state.update { old ->
                     if (old.market == market && old.status == status) {
-                        old.copy(items = page.items, loading = false, error = null)
+                        old.copy(items = page.items, total = page.total, loading = false, error = null)
                     } else {
                         old
                     }
@@ -67,6 +70,7 @@ class SignalController(
                 _state.update {
                     it.copy(
                         items = emptyList(),
+                        total = 0,
                         loading = false,
                         membershipRequired = true,
                         membershipMessage = refusal.serverMessage,
@@ -168,5 +172,16 @@ class SignalController(
         _detailState.value = SignalDetailState()
         _historyState.value = SignalHistoryState()
         scope.launch { runCatching { historyCache.clear() } }
+    }
+
+    private companion object {
+        /**
+         * What the list asks for.
+         *
+         * A hundred, which is what both gateways coerce the request into anyway. There is no
+         * offset on either route, so this is the whole list the app can have in one go; anything
+         * beyond it is reported as a count and read in the history screen, which does page.
+         */
+        const val LIST_LIMIT = 100
     }
 }

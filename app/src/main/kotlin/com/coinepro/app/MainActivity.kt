@@ -41,6 +41,8 @@ import com.coinepro.app.alerts.LocalAlertScheduler
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
+import com.coinepro.core.datastore.UserPreferencesStore
+import com.coinepro.core.network.NetworkStatus
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.guest.GuestGateway
@@ -73,6 +75,8 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var emailAuthController: EmailAuthController
     @Inject lateinit var guestController: GuestController
     @Inject lateinit var profileStore: ProfileStore
+    @Inject lateinit var userPreferencesStore: UserPreferencesStore
+    @Inject lateinit var networkStatus: NetworkStatus
     @Inject lateinit var notificationSettingsStore: NotificationSettingsStore
     @Inject lateinit var localAlertStore: LocalAlertStore
     @Inject lateinit var localAlertScheduler: LocalAlertScheduler
@@ -149,6 +153,8 @@ class MainActivity : ComponentActivity() {
                 guestGateway = guestGateway,
                 membershipController = membershipController,
                 profileStore = profileStore,
+                userPreferencesStore = userPreferencesStore,
+                networkStatus = networkStatus,
                 notificationSettingsStore = notificationSettingsStore,
                 localAlertStore = localAlertStore,
                 localAlertScheduler = localAlertScheduler,

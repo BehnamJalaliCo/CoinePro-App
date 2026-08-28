@@ -15,6 +15,119 @@ it is for.
 
 ---
 
+## [1.35.0] — 2026-08-28 — The corpus, the questions, and the length of an average
+
+The research agent's report landed and its findings reorder what was left. It read 52,324 Apple RSS
+reviews, 11,391 English Play reviews and 5,594 Persian-script ones for the apps this product is
+judged against, and the ranking it produced is not the ranking that was queued.
+
+Three of its findings changed what got built here:
+
+* **An explicit dark/light control is the most-asked-for thing in the Persian corpus** — 11.9% of
+  requests, ahead of chart features (10.7%) and speed (6.5%). The app followed the system and had
+  no switch, on the reasonable argument that the phone already has one. That argument loses to the
+  data: a trading app is the one app somebody wants pinned dark while their phone stays light.
+* **Negative reviews split roughly 70/30 broken-versus-missing.** People are not starved of
+  features; they are worn down by things that do not answer. Every silent action in this app is on
+  that side of the split.
+* **Chart state surviving backgrounding and rotation is the second-largest chart complaint**,
+  after load speed and ahead of every feature request.
+
+### Nothing said anything back
+
+Before this version, **no successful action anywhere in the app produced any feedback at all.**
+A saved layout, a created alert, a copied fingerprint — each did its work in silence, which is
+indistinguishable from a tap that missed. `CoineProToast` is a host at the top of the tree that any
+composable reaches through a `CompositionLocal`, so a two-second sentence does not need a
+`Scaffold` and a `SnackbarHostState` threaded to seventeen screens. One message at a time and the
+newest wins: a queue would show a reader three messages about things they have already left.
+
+### Nothing asked anything either
+
+There was not one `AlertDialog` in the whole product, and the profile screen made that a hazard
+rather than a stylistic gap: «خروج از حساب» sat one row above «حذف حساب», both were a single tap,
+and the first silently discarded every session on both backends and cleared the stored name and
+face. `CoineProConfirmDialog` asks first, and the dismiss button is the wider of the two so a thumb
+aimed between them lands on the harmless one.
+
+The rule for when to use it is written into the file, and the half that gets forgotten is the
+second: **do not** ask when the action is reversible. A product that confirms everything has taught
+its readers to tap «تایید» without reading.
+
+### The theme
+
+Three values — follow the phone, always dark, always light — stored on the device rather than in
+the profile, because a reader who pinned the app dark did not ask for it to go light again because
+they signed out. The picker is a sheet with a swatch per option showing the stage colour that
+choice produces, and the swatches read the palettes themselves rather than `CoineProColors.Stage`,
+which would have drawn three identical discs in whatever theme is currently running.
+
+### The chart
+
+* **Zoom and pan both threw away what they could not spend.** Pan is quantised to whole bars and
+  zoom to a whole bar count, and each frame's remainder was discarded. That is invisible at three
+  pixels a bar and completely broken zoomed in: at thirty pixels a bar a fourteen-pixel drag
+  rounded to zero, so a slow drag moved the chart *not at all* while a fast one jumped. Same at the
+  zoom floor, where `14 / 1.02` rounds back to 14 and a pinch did nothing. Both now carry the
+  residue across frames.
+* **The viewport survives rotation and process death.** Two integers — how far zoomed, how far
+  panned — in saved state, applied on the same composition pass rather than in an effect, so the
+  chart does not draw once at the default and then jump.
+* **A bar-close countdown** under the live price, ticking on the second and only when the reader is
+  at the live edge of a live feed. The interval comes from the last two timestamps rather than from
+  the timeframe label, so a feed that disagrees with its own label still counts down correctly, and
+  a bar whose close is already past shows a dash rather than a negative number.
+* **`loadMore()` had no caller.** History paging was written, tested and never invoked: a reader
+  could pan back to the first bar of the first response and simply stop. The chart now asks when it
+  gets within ten bars of the oldest one loaded.
+* **Indicator periods were literals.** «EMA 20» was the only exponential average this app could
+  ever draw. Twenty-one indicators now carry an editable lookback, with a stepper whose step scales
+  — single bars to 20, fives to 50, tens to 100, twenties beyond — so 200 is eleven taps from 20
+  and every value on the way is one somebody uses. A test holds every label against the number the
+  maths actually used, because a fifty-bar average under a label saying twenty is a lie nobody
+  looking at the screen can catch.
+* **A note can hold a note.** `Drawing.text` had existed since the drawing engine was written with
+  no way to set it: `text`, `callout` and `pricelabel` rendered the literal «یادداشت» forever, and
+  `note` drew a bare circle. The sheet opens by itself the moment a text tool finishes placing.
+* **Full screen.** The chart lived in a 280dp card under a header, a symbol wheel, a timeframe
+  strip and a tool bar — about a third of the glass on a 411dp phone. It now takes the whole screen
+  on request, with the timeframe strip floating at the bottom where a thumb is, and back leaves
+  full screen before it leaves the chart. It does not force landscape: rotating is the reader's
+  decision and the phone already has that control.
+
+### Offline is a condition, not an error
+
+Every failure in the app arrived as the same thing and every screen said the same sentence about
+it. `NetworkStatus` reports whether the phone has a *validated* network — `INTERNET` alone is true
+for a café captive portal — tracked as a set of networks rather than a boolean, so a wifi-to-
+cellular handover does not flash an offline banner. It is drawn as one line at the top that takes
+its own row and leaves by itself when the network returns.
+
+### The text field
+
+It had a value, a label and a keyboard type, which is four ordinary things short of a form somebody
+can fill in on a phone: no reveal on a password, no error state, no supporting line, and no
+autofill hint — so every reader with a saved password was typing it by hand. All four now exist,
+and registration asks for a *new* password while sign-in asks for the saved one, which is the
+distinction Android's autofill actually acts on.
+
+### Notifications
+
+The fifteen categories stay; what changes is that each section carries a one-tap "all off". The
+corpus says the two loudest complaints are "too many" and "none at all", in that order, and almost
+never "I want finer control" — so the common case is now one tap instead of fifteen. And the
+promise the screen makes fifteen times is now tested exhaustively: every silenceable category,
+turned off, is off, and turning one off silences only that one.
+
+### The signals list
+
+It asked the server for fifty and said nothing about the rest. The route takes a `limit` capped at
+a hundred and no offset, so it genuinely cannot page — but it knows the total, and a reader who
+scrolls to the bottom of a truncated list and finds no mark reasonably concludes that is all there
+is. It now asks for the ceiling and names the shortfall.
+
+---
+
 ## [1.34.0] — 2026-08-28 — Four specialists read the app line by line
 
 The owner asked for it read end to end and the gaps extracted. Four ran in parallel — the chart

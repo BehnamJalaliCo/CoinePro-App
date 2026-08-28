@@ -25,4 +25,7 @@
     <string name="market_row_watch">افزودن به دیده‌بان</string>
     <string name="market_row_unwatch">حذف از دیده‌بان</string>
     <string name="message_ai_conversation_changed">گفت‌وگو به‌طور غیرمنتظره عوض شد. یک گفت‌وگوی تازه شروع کنید.</string>
+    <string name="offline_bar">اینترنت این گوشی قطع است. قیمت‌ها همان آخرین چیزی است که رسیده.</string>
+    <string name="field_reveal">نمایش</string>
+    <string name="field_hide">پنهان کردن</string>
 </resources>

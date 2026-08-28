@@ -35,4 +35,5 @@
     <string name="signals_empty_active_hint">سیگنال باز اینجا می‌آید؛ همین که میز معاملات یکی منتشر کرد.</string>
     <string name="signals_empty_recent_hint">تازه‌ترین سیگنال‌های منتشرشده اینجا جمع می‌شوند.</string>
     <string name="signals_empty_closed_hint">هر سیگنالی که به هدف یا حد ضرر برسد، اینجا با نتیجه‌اش می‌ماند.</string>
+    <string name="signals_not_shown">%1$s مورد دیگر روی سرور هست که این فهرست جا نداد. در تاریخچه ببینید.</string>
 </resources>

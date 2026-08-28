@@ -46,4 +46,12 @@
     <string name="avatar_mark_shield">Shield</string>
     <string name="avatar_mark_globe">Global</string>
     <string name="profile_identity_hint">A display name and one line about you, on this phone only.</string>
+    <string name="appearance_title">Appearance</string>
+    <string name="appearance_subtitle">This stays on this phone and survives signing out.</string>
+    <string name="appearance_system">Follow the phone</string>
+    <string name="appearance_system_note">Whatever the phone is — dark at night, light by day.</string>
+    <string name="appearance_dark">Always dark</string>
+    <string name="appearance_dark_note">Even when the phone is light.</string>
+    <string name="appearance_light">Always light</string>
+    <string name="appearance_light_note">Even when the phone is dark.</string>
 </resources>

@@ -31,6 +31,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
@@ -114,6 +116,12 @@ fun IndicatorPicker(
     onToggle: (IndicatorOption) -> Unit,
     modifier: Modifier = Modifier,
     onHelp: ((String) -> Unit)? = null,
+    /**
+     * The lookbacks the reader has changed, and how to change them. Both null means no stepper —
+     * which is what a picker used as a read-only list wants.
+     */
+    periods: Map<String, Int> = emptyMap(),
+    onSetPeriod: ((String, Int) -> Unit)? = null,
 ) {
     var pane by remember { mutableStateOf<IndicatorPane?>(null) }
     var query by remember { mutableStateOf("") }
@@ -182,6 +190,19 @@ fun IndicatorPicker(
                         // Nine of the fifty have no entry in the shipped catalogue. They get no
                         // «؟» rather than one that opens nothing.
                         onHelp = option.helpId?.let { id -> onHelp?.let { { it(id) } } },
+                        // Only on a switched-on indicator, and only where there is one lookback to
+                        // change. A stepper on fifty rows at once would be a wall of numbers on a
+                        // list whose job is choosing; a reader sets the length of the thing they
+                        // have already decided to use.
+                        period = ChartCatalog.periodOf(option.id)
+                            ?.takeIf { option.id in active && onSetPeriod != null }
+                            ?.let { bounds ->
+                                PeriodControl(
+                                    value = periods[option.id] ?: bounds.default,
+                                    bounds = bounds,
+                                    onChange = { next -> onSetPeriod?.invoke(option.id, next) },
+                                )
+                            },
                     )
                 }
             }
@@ -220,6 +241,7 @@ private fun PickerRow(
     accent: Color?,
     onClick: () -> Unit,
     onHelp: (() -> Unit)?,
+    period: PeriodControl? = null,
 ) {
     // A selected row is a filled, hairlined card rather than a tick alone at the far end. On a
     // fifty-row list the reader scans down the left of the labels, and a mark parked on the other
@@ -270,6 +292,7 @@ private fun PickerRow(
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
             modifier = Modifier.weight(1f),
         )
+        period?.let { PeriodStepper(it, accent ?: CoineProColors.Accent) }
         if (selected) {
             Icon(
                 painter = painterResource(DesignR.drawable.icon_check_circle),
@@ -280,6 +303,103 @@ private fun PickerRow(
         }
         if (onHelp != null) HelpDot(onClick = onHelp)
     }
+}
+
+/** One indicator's lookback, and how to move it. See [PeriodStepper]. */
+private data class PeriodControl(
+    val value: Int,
+    val bounds: IndicatorPeriod,
+    val onChange: (Int) -> Unit,
+)
+
+/**
+ * Minus, the number, plus.
+ *
+ * ### The step is not one
+ *
+ * Nobody moves an average from 20 to 21. The lengths people use are 9, 14, 20, 21, 50, 100, 200 —
+ * so the step scales with the value: single bars up to 20, fives to 50, tens to 100, twenties
+ * beyond. Reaching 200 from 20 is then eleven taps rather than a hundred and eighty, and every
+ * value on the way is one somebody actually uses.
+ *
+ * ### The digits are Latin
+ *
+ * A period is a market figure — it is drawn onto the chart's own legend as «EMA 50», beside
+ * prices — and this control has to read the same as the label it produces. The app's rule, and one
+ * of the few places in a Persian-first interface where Latin numerals are the correct answer.
+ */
+@Composable
+private fun PeriodStepper(control: PeriodControl, accent: Color) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        StepperButton(
+            glyph = DesignR.drawable.icon_caret_left,
+            enabled = control.value > control.bounds.min,
+            accent = accent,
+            // Left is *down* in both directions, because this is a number line and not a
+            // reading order: the minus sits where the smaller values are, mirrored with the
+            // layout by the drawable itself.
+            onClick = { control.onChange(step(control.value, up = false, bounds = control.bounds)) },
+        )
+        Text(
+            text = control.value.toString(),
+            style = MaterialTheme.typography.labelMedium,
+            color = CoineProColors.TextPrimary,
+            modifier = Modifier.widthIn(min = PERIOD_WIDTH),
+            textAlign = TextAlign.Center,
+        )
+        StepperButton(
+            glyph = DesignR.drawable.icon_caret_right,
+            enabled = control.value < control.bounds.max,
+            accent = accent,
+            onClick = { control.onChange(step(control.value, up = true, bounds = control.bounds)) },
+        )
+    }
+}
+
+@Composable
+private fun StepperButton(
+    @DrawableRes glyph: Int,
+    enabled: Boolean,
+    accent: Color,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(STEPPER_TAP)
+            .clip(CircleShape)
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(glyph),
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = if (enabled) accent else CoineProColors.TextDisabled,
+        )
+    }
+}
+
+/** The next value up or down, on the coarsening ladder described in [PeriodStepper]. */
+private fun step(value: Int, up: Boolean, bounds: IndicatorPeriod): Int {
+    val size = when {
+        value < 20 -> 1
+        value < 50 -> 5
+        value < 100 -> 10
+        else -> 20
+    }
+    // Going down from a boundary uses the *smaller* side's step, so the ladder is symmetric:
+    // 50 steps down to 45 rather than to 40, and back up to 50.
+    val downSize = when {
+        value <= 20 -> 1
+        value <= 50 -> 5
+        value <= 100 -> 10
+        else -> 20
+    }
+    val next = if (up) value + size else value - downSize
+    return next.coerceIn(bounds.min, bounds.max)
 }
 
 /**
@@ -330,3 +450,9 @@ private const val SELECTED_BORDER_ALPHA = 0.34f
 
 /** Between rows, so a selected card has air around it rather than touching its neighbours. */
 private val ROW_GAP = 3.dp
+
+/** Wide enough for three digits, so the row does not shuffle between 9 and 200. */
+private val PERIOD_WIDTH = 26.dp
+
+/** The stepper's tap target. Small for a control, but it sits inside a 48dp row. */
+private val STEPPER_TAP = 30.dp

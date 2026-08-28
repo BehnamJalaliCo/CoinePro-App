@@ -10,6 +10,8 @@ import com.coinepro.core.account.AccountGateway
 import com.coinepro.core.account.NetworkAccountGateway
 import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayoutStore
+import com.coinepro.core.datastore.UserPreferencesStore
+import com.coinepro.core.network.NetworkStatus
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
@@ -378,6 +380,28 @@ object AppModule {
     @Provides
     @Singleton
     fun watchlistStore(dataStore: DataStore<Preferences>): WatchlistStore = WatchlistStore(dataStore)
+
+    /**
+     * Device-wide preferences that belong to the phone rather than to whoever is signed in.
+     *
+     * Deliberately not folded into [ProfileStore], which is cleared on sign-out: a reader who
+     * pinned the app dark did not ask for it to go light again because they signed out.
+     */
+    @Provides
+    @Singleton
+    fun userPreferencesStore(dataStore: DataStore<Preferences>): UserPreferencesStore =
+        UserPreferencesStore(dataStore)
+
+    /**
+     * Whether the phone has a network at all.
+     *
+     * Application-scoped and stateless — it registers its listener per collector, so a singleton
+     * here holds nothing but a context. See [NetworkStatus] for why this is not "can we reach our
+     * servers".
+     */
+    @Provides
+    @Singleton
+    fun networkStatus(@ApplicationContext context: Context): NetworkStatus = NetworkStatus(context)
 
     @Provides
     @Singleton

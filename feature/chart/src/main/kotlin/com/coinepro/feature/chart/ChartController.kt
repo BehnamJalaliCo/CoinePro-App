@@ -52,6 +52,18 @@ data class ChartUiState(
     val loadingMore: Boolean = false,
     val error: ChartError? = null,
     val activeIndicators: Set<String> = emptySet(),
+    /**
+     * The lookbacks the reader has changed, by indicator id.
+     *
+     * Sparse: an indicator absent from this map is drawn at its own default, which is what nearly
+     * all of them will be. Storing the defaults too would mean a map that has to be migrated every
+     * time one of them changes.
+     *
+     * The reason this exists: every period in the app was a literal until now, so «EMA 20» was the
+     * only exponential average this chart could ever draw. A moving average whose length cannot be
+     * changed is not a moving average a trader can use — the length *is* the tool.
+     */
+    val indicatorPeriods: Map<String, Int> = emptyMap(),
     val drawing: DrawingState = DrawingState(),
     val hasMore: Boolean = false,
     /**
@@ -73,7 +85,7 @@ data class ChartUiState(
     val overlays: List<ChartLine>
         get() = ChartCatalog.INDICATORS
             .filter { it.id in activeIndicators && it.pane == IndicatorPane.PRICE }
-            .flatMap { ChartCatalog.overlayFor(it, visibleSeries) } +
+            .flatMap { ChartCatalog.overlayFor(it, visibleSeries, indicatorPeriods[it.id]) } +
             ChartCatalog.INDICATORS
                 .filter { it.id in activeIndicators && it.pane == IndicatorPane.STRUCTURE }
                 .flatMap { ChartCatalog.structureFor(it, visibleSeries).lines }
@@ -98,7 +110,7 @@ data class ChartUiState(
     val panes: List<ChartPane>
         get() = ChartCatalog.INDICATORS
             .filter { it.id in activeIndicators && it.pane == IndicatorPane.SEPARATE }
-            .mapNotNull { ChartCatalog.paneFor(it, visibleSeries) }
+            .mapNotNull { ChartCatalog.paneFor(it, visibleSeries, indicatorPeriods[it.id]) }
 
     /** The last close, which is what the header shows beside the symbol. */
     /**
@@ -265,6 +277,24 @@ class ChartController(
                 old.activeIndicators - id
             } else {
                 old.activeIndicators + id
+            },
+        )
+    }
+
+    /**
+     * Set one indicator's lookback, or clear it back to the default.
+     *
+     * Clamped by the catalogue, so a value from an older build's wider bounds cannot produce a
+     * chart of nulls. Clearing removes the key rather than writing the default in: the default is
+     * allowed to change, and a stored copy of it would pin the old one forever.
+     */
+    fun setIndicatorPeriod(id: String, period: Int?) = _state.update { old ->
+        val bounds = ChartCatalog.periodOf(id) ?: return@update old
+        old.copy(
+            indicatorPeriods = if (period == null || period == bounds.default) {
+                old.indicatorPeriods - id
+            } else {
+                old.indicatorPeriods + (id to period.coerceIn(bounds.min, bounds.max))
             },
         )
     }

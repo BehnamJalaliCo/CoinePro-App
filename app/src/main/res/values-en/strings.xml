@@ -126,4 +126,11 @@
     <string name="profile_action_notifications_note">Signals, targets, copies, price alerts and quiet hours</string>
     <string name="screen_membership">Membership and exchange UID</string>
     <string name="profile_action_membership_note">Enter your UID and see the verification status</string>
+    <string name="logout_confirm_title">Sign out?</string>
+    <string name="logout_confirm_body">Both platforms\' sessions close, and the name and picture stored on this phone are cleared. Your account stays where it is; you sign back in.</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="toast_copied">Copied</string>
+    <string name="toast_alert_saved">Alert created</string>
+    <string name="toast_deleted">Deleted</string>
+    <string name="toast_layout_saved">Layout saved</string>
 </resources>

@@ -162,6 +162,30 @@ fun SignalsScreen(
                             SignalRow(signal = signal, onClick = { onOpenSignal(signal.id) })
                             CoineProRowDivider()
                         }
+                        // The end of a truncated list, said out loud.
+                        //
+                        // Neither backend's list route takes an offset, so this screen genuinely
+                        // cannot fetch the rest — but it knows how many there are, and the
+                        // previous behaviour was to show a hundred and say nothing. A reader who
+                        // scrolls to the bottom of a truncated list and finds no mark reasonably
+                        // concludes that is all there is. Persian digits: this is a count of
+                        // things in prose, not a market figure.
+                        if (state.notShown > 0) {
+                            item {
+                                Text(
+                                    text = stringResource(
+                                        R.string.signals_not_shown,
+                                        state.notShown.toPersianDigits(),
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = CoineProColors.TextMuted,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(CoineProSpacing.Gutter),
+                                )
+                            }
+                        }
                     }
                 }
             }

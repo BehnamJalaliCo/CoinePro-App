@@ -102,6 +102,14 @@ import com.coinepro.core.symbols.SymbolClassifier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import com.coinepro.core.chart.DrawingActions
+import com.coinepro.core.designsystem.CoineProTextField
+import com.coinepro.core.designsystem.CoineProPrimaryButton
 
 /**
  * The chart screen.
@@ -150,6 +158,27 @@ fun ChartScreen(
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var sheet by remember { mutableStateOf<ChartSheet?>(null) }
+    /**
+     * The annotation whose text the reader is typing, or null.
+     *
+     * Opened automatically the moment a text tool finishes placing — see the effect below. The
+     * alternative, a reader placing a note and then having to find a "set text" command, is how a
+     * note tool ends up used once.
+     */
+    var labelling by remember { mutableStateOf<Long?>(null) }
+    /**
+     * Whether the chart has the whole screen.
+     *
+     * The chart lives in a card two hundred and eighty density-independent pixels tall, under a
+     * header, a symbol wheel, a timeframe strip and a tool bar, with statistics under it. That is
+     * a good page and a small chart: on a 411dp-wide phone it is about a third of the glass, and
+     * a reader trying to read structure across a hundred and twenty bars in that band is doing it
+     * through a letterbox.
+     *
+     * Saved, so the fullscreen chart survives a rotation — which is exactly when somebody wants
+     * it — rather than snapping back to the card the moment the phone turns.
+     */
+    var fullscreen by rememberSaveable { mutableStateOf(false) }
 
     // The «؟» dots on every picker raise an id; this is what answers them. Hosted here rather than
     // handed in by the app, because this screen is the only place in the product that *has* help
@@ -172,6 +201,58 @@ fun ChartScreen(
     // harmless where there is no keyboard: focus on a container changes nothing a finger sees.
     LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
 
+    // The chart itself, written once and placed in one of two frames.
+    //
+    // A lambda rather than two copies of the `when`: the loading, failure and drawing branches are
+    // the part most likely to drift, and a fullscreen chart that had quietly stopped calling
+    // `onLoadMore` would be a bug nobody found for months.
+    val canvas: @Composable (Modifier) -> Unit = { canvasModifier ->
+        Box(modifier = canvasModifier) {
+            when {
+                state.loading && state.series.isEmpty -> Loading()
+                state.error != null && state.series.isEmpty -> ChartFailure(state.error!!, controller::retry)
+                else -> CoineProChart(
+                    series = state.visibleSeries,
+                    modifier = Modifier.fillMaxSize(),
+                    type = state.chartType,
+                    decoration = ChartDecoration(
+                        overlays = state.overlays,
+                        signal = signal,
+                        levels = state.levels,
+                        markers = state.markers,
+                        panes = state.panes,
+                        // Only here. Every other chart in the app is a picture of history — a
+                        // signal's evidence, a script's backtest, a row's sparkline — and counting
+                        // down to a close on one of those would be counting down to something that
+                        // already happened. The replay is history too, so it turns the countdown
+                        // off with it.
+                        showCountdown = !state.replay.isOn,
+                    ),
+                    drawing = state.drawing,
+                    onDrawing = controller::onDrawing,
+                    // The controller guards against a second call while one is in flight and
+                    // against asking for history the server has already said does not exist, so
+                    // the chart can ask freely.
+                    onLoadMore = controller::loadMore,
+                )
+            }
+            if (state.loadingMore) {
+                Box(modifier = Modifier.align(Alignment.TopStart).padding(CoineProSpacing.One)) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                }
+            }
+        }
+    }
+
+    if (fullscreen) {
+        FullscreenChart(
+            state = state,
+            controller = controller,
+            canvas = canvas,
+            onOpenSheet = { sheet = it },
+            onExit = { fullscreen = false },
+        )
+    } else {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -205,6 +286,7 @@ fun ChartScreen(
             drawings = state.drawing.drawings.size,
             onOpen = { sheet = it },
             onOpenStudio = onOpenStudio,
+            onFullscreen = { fullscreen = true },
         )
 
         // The chart in a card with a gold hairline, rather than bled to the screen's edges. The
@@ -221,8 +303,8 @@ fun ChartScreen(
                 .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.OneHalf),
         ) {
             ChartCardHeading(state)
-            Box(
-                modifier = Modifier
+            canvas(
+                Modifier
                     .fillMaxWidth()
                     .height(CHART_HEIGHT)
                     // The chart alone, recorded into a layer. Sharing the whole screen would hand
@@ -231,31 +313,7 @@ fun ChartScreen(
                         chartLayer.record { this@drawWithContent.drawContent() }
                         drawLayer(chartLayer)
                     },
-            ) {
-                when {
-                    state.loading && state.series.isEmpty -> Loading()
-                    state.error != null && state.series.isEmpty -> ChartFailure(state.error!!, controller::retry)
-                    else -> CoineProChart(
-                        series = state.visibleSeries,
-                        modifier = Modifier.fillMaxSize(),
-                        type = state.chartType,
-                        decoration = ChartDecoration(
-                            overlays = state.overlays,
-                            signal = signal,
-                            levels = state.levels,
-                            markers = state.markers,
-                            panes = state.panes,
-                        ),
-                        drawing = state.drawing,
-                        onDrawing = controller::onDrawing,
-                    )
-                }
-                if (state.loadingMore) {
-                    Box(modifier = Modifier.align(Alignment.TopStart).padding(CoineProSpacing.One)) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    }
-                }
-            }
+            )
         }
 
         if (state.replay.isOn) {
@@ -292,6 +350,18 @@ fun ChartScreen(
         )
         Spacer(Modifier.height(CoineProSpacing.Three))
     }
+    }
+
+    // A text tool that has just been placed asks for its text at once.
+    //
+    // Keyed on the newest drawing's id, so it fires exactly once per placement and never reopens
+    // when the reader taps an existing note to select it — selecting is not editing, and a
+    // keyboard that appears every time you touch a label is a label you stop touching.
+    val newest = state.drawing.drawings.lastOrNull()
+    LaunchedEffect(newest?.id) {
+        val placed = newest ?: return@LaunchedEffect
+        if (placed.text == null && DrawingActions.holdsText(placed.toolId)) labelling = placed.id
+    }
 
     when (sheet) {
         ChartSheet.TYPE -> CoineProSheet(
@@ -320,6 +390,8 @@ fun ChartScreen(
                 active = state.activeIndicators,
                 onToggle = { controller.toggleIndicator(it.id) },
                 onHelp = onHelp,
+                periods = state.indicatorPeriods,
+                onSetPeriod = controller::setIndicatorPeriod,
             )
         }
 
@@ -410,8 +482,174 @@ fun ChartScreen(
         null -> Unit
     }
 
+    labelling?.let { id ->
+        val drawing = state.drawing.drawings.firstOrNull { it.id == id }
+        if (drawing == null) {
+            labelling = null
+        } else {
+            DrawingTextSheet(
+                initial = drawing.text.orEmpty(),
+                onSave = { text ->
+                    controller.onDrawing(DrawingActions.setText(state.drawing, id, text))
+                    labelling = null
+                },
+                onDismiss = { labelling = null },
+            )
+        }
+    }
+
     helpEntry?.let { entry ->
         CoineProHelpSheet(entry = entry, onDismiss = { helpId = null })
+    }
+}
+
+/**
+ * Where a note, a callout, a text mark or a price label gets its words.
+ *
+ * ### Why a sheet and not typing on the canvas
+ *
+ * An in-place editor on a chart means a caret positioned in chart space, a keyboard that covers
+ * the thing being labelled, and a text box that has to survive pan and zoom while it is open.
+ * Every terminal that offers in-place editing on a phone does it badly. A sheet is one field, the
+ * keyboard where the reader expects it, and the drawing still visible above it.
+ *
+ * ### Saving an empty box is a valid answer
+ *
+ * It clears the text and the drawing falls back to its placeholder, which is how a reader undoes a
+ * label without deleting the drawing under it.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DrawingTextSheet(
+    initial: String,
+    onSave: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var text by rememberSaveable { mutableStateOf(initial) }
+    CoineProSheet(
+        title = stringResource(R.string.chart_label_title),
+        subtitle = stringResource(R.string.chart_label_subtitle),
+        onDismiss = onDismiss,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        ) {
+            CoineProTextField(
+                value = text,
+                onValueChange = { text = it.take(DrawingActions.MAX_TEXT_LENGTH) },
+                label = stringResource(R.string.chart_label_field),
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            )
+            CoineProPrimaryButton(
+                text = stringResource(R.string.chart_label_save),
+                onClick = { onSave(text) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+/**
+ * The chart with the whole screen, and the four controls that still have to be reachable.
+ *
+ * ### What is kept and what goes
+ *
+ * Kept: the timeframe strip, the tool bar, the symbol and its price, and a way out. Everything
+ * else — the statistics, the setup card, the studio card, the symbol wheel — is a *page* around a
+ * chart, and the point of this mode is that there is no page.
+ *
+ * The controls float over the chart rather than taking rows from it: a fullscreen mode that spent
+ * a fifth of its height on chrome would be the card again with fewer features.
+ *
+ * ### It does not force landscape
+ *
+ * Rotating is the reader's decision and the phone already has a control for it. An app that
+ * flipped the screen on a reader holding it in bed would be doing something they did not ask for,
+ * and one that *locked* landscape would be worse. The chart fills whatever shape it is given —
+ * the viewport is measured, not assumed — so a phone turned sideways gets a genuinely wide chart
+ * and one held upright gets a tall one, both without this screen knowing which happened.
+ */
+@Composable
+private fun FullscreenChart(
+    state: ChartUiState,
+    controller: ChartController,
+    canvas: @Composable (Modifier) -> Unit,
+    onOpenSheet: (ChartSheet) -> Unit,
+    onExit: () -> Unit,
+) {
+    // Back leaves fullscreen before it leaves the chart. Without this the reader's first instinct
+    // — the gesture that means "out of this" — takes them off the screen entirely, losing the
+    // viewport, the armed tool and whatever they were reading.
+    BackHandler(onBack = onExit)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(CoineProColors.Terminal),
+    ) {
+        canvas(Modifier.fillMaxSize())
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(CoineProSpacing.One),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FloatingChartButton(
+                icon = CoineProIcons.Tools,
+                label = stringResource(R.string.chart_fullscreen_tools),
+                onClick = { onOpenSheet(ChartSheet.TOOLS) },
+            )
+            FloatingChartButton(
+                icon = CoineProIcons.Close,
+                label = stringResource(R.string.chart_fullscreen_exit),
+                onClick = onExit,
+            )
+        }
+
+        // The timeframe strip at the bottom, where a thumb already is on a phone held in one
+        // hand — and out of the top-left corner where the legend plate draws.
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(CoineProColors.Stage.copy(alpha = STRIP_ALPHA)),
+        ) {
+            TimeframeRow(state.timeframe, controller::setTimeframe)
+        }
+    }
+}
+
+/** A round control that floats over the chart rather than taking a row from it. */
+@Composable
+private fun FloatingChartButton(
+    @DrawableRes icon: Int,
+    label: String,
+    onClick: () -> Unit,
+) {
+    val haptics = rememberCoineProHaptics()
+    Box(
+        modifier = Modifier
+            .size(FLOATING_BUTTON)
+            .clip(CircleShape)
+            .background(CoineProColors.Stage.copy(alpha = FLOATING_ALPHA))
+            .clickable {
+                haptics.select()
+                onClick()
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = label,
+            tint = CoineProColors.TextSecondary,
+            modifier = Modifier.size(FLOATING_GLYPH),
+        )
     }
 }
 
@@ -901,6 +1139,7 @@ private fun ChartToolBar(
     drawings: Int,
     onOpen: (ChartSheet) -> Unit,
     onOpenStudio: (() -> Unit)?,
+    onFullscreen: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -939,10 +1178,18 @@ private fun ChartToolBar(
             label = "چیدمان‌ها",
             onClick = { onOpen(ChartSheet.LAYOUTS) },
         )
+        // The chart, with the whole screen. Placed here rather than as a corner control on the
+        // canvas, because a tap target floating over a chart is a tap target that steals a
+        // gesture from the drawing tools underneath it.
+        ToolBarButton(
+            icon = DesignR.drawable.tv_maximize2,
+            label = "تمام‌صفحه",
+            onClick = onFullscreen,
+        )
         Spacer(Modifier.weight(1f))
         onOpenStudio?.let {
             ToolBarButton(
-                icon = DesignR.drawable.tv_maximize2,
+                icon = DesignR.drawable.tv_layout_grid,
                 label = "استودیو",
                 onClick = it,
             )
@@ -998,3 +1245,13 @@ private fun ToolBarButton(
         }
     }
 }
+
+/** The fullscreen chart's floating controls. */
+private val FLOATING_BUTTON = 36.dp
+private val FLOATING_GLYPH = 18.dp
+
+/** How opaque a floating control's plate is over the chart. Enough to read, little enough to see through. */
+private const val FLOATING_ALPHA = 0.72f
+
+/** The same, for the timeframe strip along the bottom. */
+private const val STRIP_ALPHA = 0.82f

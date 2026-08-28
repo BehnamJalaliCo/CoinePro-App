@@ -24,4 +24,7 @@
     <string name="market_row_watch">Add to watchlist</string>
     <string name="market_row_unwatch">Remove from watchlist</string>
     <string name="message_ai_conversation_changed">The conversation changed unexpectedly. Start a new chat and try again.</string>
+    <string name="offline_bar">This phone has no internet. Prices are the last that arrived.</string>
+    <string name="field_reveal">Show</string>
+    <string name="field_hide">Hide</string>
 </resources>

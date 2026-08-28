@@ -134,4 +134,50 @@ class NotificationSettingsTest {
         assertFalse(settings.isOn(NotificationCategory.MARKETING))
         assertTrue(settings.isOn(NotificationCategory.SECURITY))
     }
+
+    @Test
+    fun `every silenceable category, turned off, is off — one by one`() {
+        // The exhaustive version, and the reason it is exhaustive rather than a sample: this is
+        // the promise the settings screen makes fifteen times, and a category added later that
+        // forgets to consult `isOn` would pass every other test in this file.
+        //
+        // "Not receiving what I asked for" and "receiving what I turned off" are the two loudest
+        // complaints readers of this category of app make. The first is a permission problem the
+        // screen surfaces; the second is this function, and it has to be true for all of them.
+        val silenceable = NotificationCategory.entries.filter { it.silenceable }
+        assertTrue("Nothing to prove means the enum lost its categories", silenceable.size >= 10)
+        silenceable.forEach { category ->
+            val off = settings.copy(categories = settings.categories + mapOf(category to false))
+            assertFalse(
+                "${category.id} was turned off and would still have been shown",
+                off.shouldShow(category, nowEpochMillis = 0L, minuteOfDay = noon),
+            )
+            // And turning one off silences *only* that one. A group switch that silenced its
+            // neighbours would be the "too many"/"none at all" failure in the other direction.
+            //
+            // Compared against the categories that were on *before* the change rather than against
+            // every category, because three of them — news, the calendar, marketing — start off by
+            // their own choice and staying off is them working.
+            silenceable.filter { it != category && settings.isOn(it) }.forEach { other ->
+                assertTrue(
+                    "Turning off ${category.id} also silenced ${other.id}",
+                    off.shouldShow(other, nowEpochMillis = 0L, minuteOfDay = noon),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `a category the reader never touched keeps its own default`() {
+        // The stored map holds only what was changed. A category absent from it must fall back to
+        // its own `defaultOn`, not to a blanket true — which is what would silently switch
+        // marketing on for every reader who ever opened this screen.
+        NotificationCategory.entries.forEach { category ->
+            assertEquals(
+                "${category.id} did not fall back to its own default",
+                category.defaultOn || !category.silenceable,
+                settings.isOn(category),
+            )
+        }
+    }
 }

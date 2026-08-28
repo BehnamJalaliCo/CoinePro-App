@@ -82,12 +82,28 @@ data class SignalsState(
     val market: SignalMarketFilter = SignalMarketFilter.FOREX,
     val status: SignalStatusFilter = SignalStatusFilter.ACTIVE,
     val items: List<TradingSignal> = emptyList(),
+    /**
+     * How many the server says exist under the current filter, which is not always how many are in
+     * [items].
+     *
+     * Neither backend's list route accepts an offset — there is a `limit`, capped server-side at a
+     * hundred, and nothing else. So this list genuinely cannot page, and the previous behaviour was
+     * to ask for fifty and say nothing: a reader with more than fifty saw fifty, with no mark
+     * anywhere that the rest existed. A silent truncation is the worst of the three options.
+     *
+     * The list now asks for the server's real ceiling and reports the shortfall, which is honest
+     * and is also the thing that would make a paging route worth asking for.
+     */
+    val total: Int = 0,
     val loading: Boolean = false,
     val membershipRequired: Boolean = false,
     /** The server's own explanation of how to subscribe, shown as written when it gave one. */
     val membershipMessage: String? = null,
     val error: UiMessage? = null,
-)
+) {
+    /** How many the server has that this screen is not showing. Zero whenever the list is whole. */
+    val notShown: Int get() = (total - items.size).coerceAtLeast(0)
+}
 
 data class SignalDetailState(
     val signalId: Long? = null,

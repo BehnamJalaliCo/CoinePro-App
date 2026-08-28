@@ -56,4 +56,6 @@
     <string name="alert_short_percent_down">Falls %</string>
     <string name="alert_short_24h_over">24h over</string>
     <string name="alert_short_24h_under">24h under</string>
+    <string name="notifications_section_all_off">All off</string>
+    <string name="notifications_section_all_on">All on</string>
 </resources>

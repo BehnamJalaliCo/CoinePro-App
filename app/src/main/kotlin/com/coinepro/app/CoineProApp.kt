@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -67,13 +68,28 @@ import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
+import com.coinepro.core.network.NetworkStatus
+import com.coinepro.core.datastore.ThemeMode
+import com.coinepro.core.datastore.UserPreferencesStore
 import com.coinepro.core.datastore.StoredProfile
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProReading
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import com.coinepro.core.designsystem.CoineProConfirmDialog
+import com.coinepro.core.designsystem.CoineProOfflineBar
+import com.coinepro.core.designsystem.LocalToaster
+import com.coinepro.core.designsystem.ToastTone
+import com.coinepro.core.designsystem.CoineProToastHost
+import com.coinepro.feature.profile.AppearanceSheet
+import com.coinepro.feature.profile.AppearanceTitle
+import com.coinepro.feature.profile.labelRes
 import com.coinepro.core.designsystem.CoineProTheme
+import com.coinepro.core.designsystem.ProvideToaster
 import com.coinepro.core.designsystem.PageAccent
 import com.coinepro.core.designsystem.ProvidePageAccent
 import com.coinepro.core.diagnostics.AdminController
@@ -304,6 +320,10 @@ fun CoineProApp(
     guestGateway: GuestGateway,
     membershipController: MembershipController,
     profileStore: ProfileStore,
+    /** Device-wide preferences — currently the theme. Survives sign-out; see the Hilt provider. */
+    userPreferencesStore: UserPreferencesStore,
+    /** Whether the phone has a network. Drawn as one bar at the top of the shell. */
+    networkStatus: NetworkStatus,
     notificationSettingsStore: NotificationSettingsStore,
     localAlertStore: LocalAlertStore,
     localAlertScheduler: LocalAlertScheduler,
@@ -609,7 +629,25 @@ fun CoineProApp(
         },
     )
 
-    CoineProTheme {
+    // Collected here rather than inside the theme so the whole tree — including the sign-in and
+    // guest branches below — reads one value. `SYSTEM` is the initial, which is also what an
+    // install predating this setting has, so nothing flickers on first frame.
+    val themeMode by userPreferencesStore.themeMode.collectAsStateWithLifecycle(ThemeMode.SYSTEM)
+    // `true` initially rather than false: the first frame arrives before the callback does, and an
+    // offline bar that flashes on every cold start would be the app crying wolf once per launch.
+    val online by networkStatus.online.collectAsStateWithLifecycle(initialValue = true)
+    val systemDark = isSystemInDarkTheme()
+    val darkTheme = when (themeMode) {
+        ThemeMode.SYSTEM -> systemDark
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+    }
+
+    CoineProTheme(darkTheme = darkTheme) {
+        // One toaster for the whole tree, so a composable anywhere below can report a finished
+        // action without a `Scaffold` and a `SnackbarHostState` being threaded to it. See
+        // `CoineProToast`.
+        ProvideToaster {
         when (val current = session) {
             is SessionState.SignedIn -> MainShell(
                 guest = false,
@@ -695,6 +733,9 @@ fun CoineProApp(
                         platformSessions.logoutAll()
                     }
                 },
+                themeMode = themeMode,
+                onSetThemeMode = { mode -> scope.launch { userPreferencesStore.setThemeMode(mode) } },
+                online = online,
             )
             // Signing in is the email flow's job now. The other two states are not sign-in at all —
             // one is a session being restored, the other a session that exists but could not be
@@ -823,8 +864,11 @@ fun CoineProApp(
                         activePlatform = MarketPlatform.TRADEYAR,
                         onSelectPlatform = {},
                         onLogout = { signingIn = true },
+                        themeMode = themeMode,
+                        onSetThemeMode = { mode -> scope.launch { userPreferencesStore.setThemeMode(mode) } },
+                        online = online,
                     )
-                    return@CoineProTheme
+                    return@ProvideToaster
                 }
 
                 EmailAuthScreen(
@@ -869,6 +913,7 @@ fun CoineProApp(
                 onRetry = { scope.launch { platformSessions.controller(activePlatform).restore() } },
                 onLogout = { scope.launch { platformSessions.logoutAll() } },
             )
+        }
         }
     }
 }
@@ -966,6 +1011,11 @@ private fun MainShell(
     /** Narrows the live price feed to what the markets list is showing. */
     onSubscribeSymbols: (Set<String>) -> Unit = {},
     onLogout: () -> Unit,
+    /** Which palette this reader pinned, and how to change it. See [ThemeMode]. */
+    themeMode: ThemeMode,
+    onSetThemeMode: (ThemeMode) -> Unit,
+    /** Whether the phone has a network at all. See [CoineProOfflineBar]. */
+    online: Boolean,
     platforms: List<MarketPlatform>,
     activePlatform: MarketPlatform,
     onSelectPlatform: (MarketPlatform) -> Unit,
@@ -973,6 +1023,33 @@ private fun MainShell(
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val sparklineScope = rememberCoroutineScope()
+    // Two overlays the whole shell owns, because both are reached from the profile list and
+    // neither belongs to a navigation destination: a sheet a reader picks a palette in, and the
+    // question asked before a sign-out throws away both platforms' tokens.
+    var appearanceOpen by rememberSaveable { mutableStateOf(false) }
+    var signOutAsked by rememberSaveable { mutableStateOf(false) }
+    // What a finished action says back. Before this, no successful action anywhere in the app gave
+    // any feedback at all — a saved layout, a created alert, a copied fingerprint all completed in
+    // silence, which is indistinguishable from a tap that missed. See `CoineProToast`.
+    val toaster = LocalToaster.current
+    // Resolved once, here, rather than at each call site: `stringResource` is a composable and the
+    // places these are used are lambdas that are not.
+    val copiedMessage = stringResource(R.string.toast_copied)
+    val alertSavedMessage = stringResource(R.string.toast_alert_saved)
+    val deletedMessage = stringResource(R.string.toast_deleted)
+    val layoutSavedMessage = stringResource(R.string.toast_layout_saved)
+
+    // The layout callbacks, with a sentence added. Wrapped once here rather than at the two
+    // screens that take them, so the chart and the studio cannot disagree about whether saving
+    // says anything.
+    val onSaveLayoutAnnounced: (ChartLayout) -> Unit = { layout ->
+        onSaveLayout(layout)
+        toaster.show(layoutSavedMessage, ToastTone.SUCCESS)
+    }
+    val onDeleteLayoutAnnounced: (String) -> Unit = { name ->
+        onDeleteLayout(name)
+        toaster.show(deletedMessage, ToastTone.NEUTRAL)
+    }
     // Keyed on the gateway, so switching platform builds a new store rather than drawing a
     // forex line beside a crypto price. The scope is the composition's: leaving the app cancels
     // whatever is in flight.
@@ -1148,6 +1225,13 @@ private fun MainShell(
             }
         },
     ) { innerPadding ->
+        // A box, so the toast host at the bottom of it can overlay whatever screen is up without
+        // that screen having to know it exists. See `CoineProToastHost`.
+        Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        // Above every screen and below the bar, because being offline changes what every one of
+        // them is showing. It takes its own row rather than floating, so it never covers a line.
+        CoineProOfflineBar(online = online)
         // The accent for whatever is on screen, set once here rather than by every screen.
         //
         // Wrapping the NavHost rather than each destination means a screen cannot forget: the
@@ -1158,7 +1242,7 @@ private fun MainShell(
         NavHost(
             navController = navController,
             startDestination = AppDestination.HOME.route,
-            modifier = Modifier.padding(innerPadding),
+            modifier = Modifier.weight(1f),
         ) {
             composable(AppDestination.HOME.route) {
                 // The same tab, two homes. A guest's is the public feed's — real prices, the real
@@ -1379,6 +1463,19 @@ private fun MainShell(
                                     onClick = { navController.navigate(ALERTS_ROUTE) },
                                 ),
                             )
+                            // Above the safety row rather than buried under it: in a corpus of
+                            // Persian-language reviews of this category of app, an explicit theme
+                            // control is the single most asked-for thing — ahead of chart
+                            // features, ahead of speed. A setting people go looking for belongs
+                            // where they will look.
+                            add(
+                                ProfileAction(
+                                    label = stringResource(AppearanceTitle),
+                                    icon = CoineProIcons.Visible,
+                                    value = stringResource(themeMode.labelRes()),
+                                    onClick = { appearanceOpen = true },
+                                ),
+                            )
                             add(
                                 ProfileAction(
                                     label = stringResource(R.string.profile_action_safety),
@@ -1387,11 +1484,15 @@ private fun MainShell(
                                     onClick = { navController.navigate(LAUNCH_READINESS_ROUTE) },
                                 ),
                             )
+                            // Asks first. Signing out throws away every token on both backends
+                            // and clears the stored name and face; there is no undo, and this row
+                            // sits one line above «حذف حساب» where a thumb that lands low on a
+                            // moving bus used to lose a session without being asked anything.
                             add(
                                 ProfileAction(
                                     label = stringResource(R.string.action_logout),
                                     icon = CoineProIcons.SignOut,
-                                    onClick = onLogout,
+                                    onClick = { signOutAsked = true },
                                 ),
                             )
                             // Last, and drawn in the refusal colour. It is the one row here that
@@ -1483,6 +1584,7 @@ private fun MainShell(
                             localAlertStore.remove(alert.id)
                             localAlertScheduler.sync(hasActiveAlerts = localAlerts.any { it.active && it.id != alert.id })
                         }
+                        toaster.show(deletedMessage, ToastTone.NEUTRAL)
                     },
                     labelFor = { category -> context.getString(category.channelNameRes()) },
                     noteFor = { category -> context.getString(category.channelDescriptionRes()) },
@@ -1503,6 +1605,11 @@ private fun MainShell(
                                 localAlertScheduler.sync(hasActiveAlerts = true)
                             }
                             composing = false
+                            // The sheet closes on create, so without this the reader watches the
+                            // screen they were on come back and has no way to tell whether the
+                            // alert was made. The list behind it is the proof, but it is below the
+                            // fold on a full list.
+                            toaster.show(alertSavedMessage, ToastTone.SUCCESS)
                         },
                         onDismiss = { composing = false },
                     )
@@ -1631,8 +1738,8 @@ private fun MainShell(
                 val chartController = chartControllers.controllerFor(symbol)
                 ChartScreen(
                     layouts = chartLayouts,
-                    onSaveLayout = onSaveLayout,
-                    onDeleteLayout = onDeleteLayout,
+                    onSaveLayout = onSaveLayoutAnnounced,
+                    onDeleteLayout = onDeleteLayoutAnnounced,
                     watchlist = watchlist,
                     onPaperTrade = { symbol, buy, entry, size ->
                         paperTradeController.open(symbol, buy, entry, size)
@@ -1691,8 +1798,8 @@ private fun MainShell(
                 ChartStudioScreen(
                     controller = studioController,
                     layouts = chartLayouts,
-                    onSaveLayout = onSaveLayout,
-                    onDeleteLayout = onDeleteLayout,
+                    onSaveLayout = onSaveLayoutAnnounced,
+                    onDeleteLayout = onDeleteLayoutAnnounced,
                     onOpenScript = { navController.navigate(scriptRoute(symbol)) },
                     onBackToChart = { navController.popBackStack() },
                 )
@@ -1820,11 +1927,45 @@ private fun MainShell(
                     onCopyFingerprint = { text ->
                         val clipboard = context.getSystemService(ClipboardManager::class.java)
                         clipboard?.setPrimaryClip(ClipData.newPlainText("CoinePro signature", text))
+                        // Android stopped showing its own "copied" toast in 13. Without one of our
+                        // own, a copy is completely invisible.
+                        toaster.show(copiedMessage, ToastTone.SUCCESS)
                     },
                 )
             }
         }
         }
+        }
+        // Above every screen and below nothing. Placed inside the scaffold's content rather than
+        // over the whole window so a message never covers the bottom bar a reader is aiming at.
+        CoineProToastHost(modifier = Modifier.padding(innerPadding))
+        }
+    }
+
+    if (appearanceOpen) {
+        AppearanceSheet(
+            selected = themeMode,
+            onSelect = { mode ->
+                onSetThemeMode(mode)
+                appearanceOpen = false
+            },
+            onDismiss = { appearanceOpen = false },
+        )
+    }
+
+    if (signOutAsked) {
+        CoineProConfirmDialog(
+            title = stringResource(R.string.logout_confirm_title),
+            message = stringResource(R.string.logout_confirm_body),
+            confirmLabel = stringResource(R.string.action_logout),
+            dismissLabel = stringResource(R.string.action_cancel),
+            icon = CoineProIcons.SignOut,
+            onConfirm = {
+                signOutAsked = false
+                onLogout()
+            },
+            onDismiss = { signOutAsked = false },
+        )
     }
 }
 

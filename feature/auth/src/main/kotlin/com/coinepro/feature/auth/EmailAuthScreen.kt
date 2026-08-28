@@ -34,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -246,7 +248,7 @@ private fun RegisterStep(
         modifier = Modifier.fillMaxWidth(),
     )
     EmailField(email) { email = it }
-    PasswordField(password, R.string.auth_password) { password = it }
+    PasswordField(password, R.string.auth_password, newPassword = true) { password = it }
     Hint(R.string.auth_password_hint)
 
     Spacer(Modifier.height(CoineProSpacing.OneHalf))
@@ -288,7 +290,13 @@ private fun VerifyStep(
         },
         label = stringResource(R.string.auth_code),
         modifier = Modifier.fillMaxWidth(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.NumberPassword,
+            imeAction = ImeAction.Done,
+        ),
+        // Android reads the code out of the SMS or the notification and offers it here. Without
+        // this the reader switches apps to read six digits and types them back by hand.
+        autofill = ContentType.SmsOtpCode,
     )
 
     Spacer(Modifier.height(CoineProSpacing.OneHalf))
@@ -359,7 +367,7 @@ private fun ResetStep(
         label = stringResource(R.string.auth_reset_token),
         modifier = Modifier.fillMaxWidth(),
     )
-    PasswordField(password, R.string.auth_new_password) { password = it }
+    PasswordField(password, R.string.auth_new_password, newPassword = true) { password = it }
     Hint(R.string.auth_password_hint)
 
     Spacer(Modifier.height(CoineProSpacing.OneHalf))
@@ -430,19 +438,42 @@ private fun EmailField(value: String, onChange: (String) -> Unit) {
         onValueChange = onChange,
         label = stringResource(R.string.auth_email),
         modifier = Modifier.fillMaxWidth(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Email,
+            // Next, not Done. Every screen this field appears on has a password under it, and a
+            // keyboard that closes after the address makes the reader reach for the field again.
+            imeAction = ImeAction.Next,
+        ),
+        autofill = ContentType.EmailAddress,
     )
 }
 
+/**
+ * A password, with a reveal and with the platform's password manager told what it is.
+ *
+ * [newPassword] is the distinction Android's autofill actually acts on: a *new* password gets
+ * offered a generated one and an offer to save, an existing one gets the saved credential filled.
+ * Naming them the same way makes registration offer the old password and sign-in offer to generate
+ * a new one, which are both exactly the wrong prompt.
+ */
 @Composable
-private fun PasswordField(value: String, @StringRes label: Int, onChange: (String) -> Unit) {
+private fun PasswordField(
+    value: String,
+    @StringRes label: Int,
+    newPassword: Boolean = false,
+    onChange: (String) -> Unit,
+) {
     CoineProTextField(
         value = value,
         onValueChange = onChange,
         label = stringResource(label),
         modifier = Modifier.fillMaxWidth(),
         secret = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Password,
+            imeAction = ImeAction.Done,
+        ),
+        autofill = if (newPassword) ContentType.NewPassword else ContentType.Password,
     )
 }
 

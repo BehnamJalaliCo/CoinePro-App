@@ -181,6 +181,19 @@ data class ChartDecoration(
      * so the price axis stays; the dates go.
      */
     val showTimeAxis: Boolean = true,
+    /**
+     * How long until the bar being drawn closes, tagged under the live price.
+     *
+     * Off by default and on wherever the chart is looking at a live feed. It is the smallest
+     * feature in this file and one of the most asked for: a trader reading a 15-minute chart is
+     * waiting for a *close*, not for a price, and without it the only way to know whether the
+     * candle in front of you has ten seconds or ten minutes left is to do the arithmetic yourself
+     * from the clock.
+     *
+     * Ignored while the reader has panned back — a countdown over history is a countdown to
+     * nothing — and ignored on a series whose bars carry no timestamps.
+     */
+    val showCountdown: Boolean = false,
 )
 
 /** Where the crosshair is, in chart space. Null when nobody is touching the chart. */

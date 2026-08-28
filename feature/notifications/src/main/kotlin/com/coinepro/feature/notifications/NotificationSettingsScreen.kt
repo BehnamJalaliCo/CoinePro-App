@@ -136,15 +136,11 @@ fun NotificationSettingsScreen(
 
         sections.forEach { section ->
             item {
-                Text(
-                    text = section.title,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = CoineProColors.TextDisabled,
-                    modifier = Modifier.padding(
-                        start = CoineProSpacing.Gutter,
-                        end = CoineProSpacing.Gutter,
-                        top = CoineProSpacing.One,
-                    ),
+                SectionHeading(
+                    title = section.title,
+                    section = section,
+                    settings = settings,
+                    onSetCategory = onSetCategory,
                 )
             }
             item {
@@ -174,6 +170,75 @@ fun NotificationSettingsScreen(
                 modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
             )
         }
+    }
+}
+
+/**
+ * A section's name, and one control that silences the whole section.
+ *
+ * ### Why a group switch on top of fifteen individual ones
+ *
+ * Reading a corpus of reviews of this category of app, the two loudest notification complaints are
+ * "I get too many" and "I get none" — in that order of volume, and almost never "I want finer
+ * control". Fifteen switches answer a question nobody asked while making the question everybody
+ * asks take fifteen taps. The individual switches stay, because somebody does want the stop-loss
+ * notice and not the news; what changes is that the common case is now one tap.
+ *
+ * ### Three states, and the third is the honest one
+ *
+ * All on, all off, and *some* — a section where the reader has made a choice per row. The control
+ * reports which, and tapping it does the thing that changes something: a section with anything on
+ * turns off, and a section entirely off turns on. Never a checkbox that pretends "some" is "off".
+ *
+ * Categories that cannot be silenced at all — security — are excluded from both the count and the
+ * action, so a "security" section reads «۱ روشن» and offers nothing, rather than offering a switch
+ * that would do nothing if tapped.
+ */
+@Composable
+private fun SectionHeading(
+    title: String,
+    section: NotificationSection,
+    settings: NotificationSettings,
+    onSetCategory: (NotificationCategory, Boolean) -> Unit,
+) {
+    val silenceable = section.categories.filter { it.silenceable }
+    val on = silenceable.count(settings::isOn)
+    val haptics = rememberCoineProHaptics()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start = CoineProSpacing.Gutter,
+                end = CoineProSpacing.Gutter,
+                top = CoineProSpacing.One,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextDisabled,
+            modifier = Modifier.weight(1f),
+        )
+        if (silenceable.isEmpty() || !settings.enabled) return@Row
+        val turningOn = on == 0
+        Text(
+            // A count in Persian digits: this is a prose count of rows on a settings screen, not a
+            // market figure. The app's rule, and it is the reason this reads «۲ از ۴» and the price
+            // beside it reads 92,140.
+            text = stringRes(
+                if (turningOn) R.string.notifications_section_all_on else R.string.notifications_section_all_off,
+            ),
+            style = MaterialTheme.typography.labelMedium,
+            color = CoineProColors.Gold,
+            modifier = Modifier
+                .clip(MaterialTheme.shapes.small)
+                .clickable {
+                    haptics.select()
+                    silenceable.forEach { onSetCategory(it, turningOn) }
+                }
+                .padding(horizontal = CoineProSpacing.Half, vertical = 4.dp),
+        )
     }
 }
 

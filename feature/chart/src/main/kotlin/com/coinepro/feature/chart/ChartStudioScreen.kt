@@ -123,6 +123,8 @@ fun ChartStudioScreen(
                         active = state.activeIndicators,
                         onToggle = { controller.toggleIndicator(it.id) },
                         onHelp = onHelp,
+                        periods = state.indicatorPeriods,
+                        onSetPeriod = controller::setIndicatorPeriod,
                     )
                 }
             }

@@ -2,4 +2,11 @@
 <resources>
     <string name="setup_paper_trade">Open as a paper trade</string>
     <string name="setup_paper_trade_note">Same entry and the size worked out above, with no money. No order is sent to any exchange or broker.</string>
+    <string name="chart_label_title">What this mark says</string>
+    <string name="chart_label_subtitle">Leave it empty to remove the text.</string>
+    <string name="chart_label_field">Text</string>
+    <string name="chart_label_save">Save</string>
+    <string name="chart_fullscreen_enter">Full screen</string>
+    <string name="chart_fullscreen_exit">Leave full screen</string>
+    <string name="chart_fullscreen_tools">Tools</string>
 </resources>

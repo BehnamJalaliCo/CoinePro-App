@@ -129,4 +129,11 @@
     <string name="profile_action_notifications_note">سیگنال، حد سود، کپی، هشدار قیمت و ساعات سکوت</string>
     <string name="screen_membership">عضویت و شناسه‌ی صرافی</string>
     <string name="profile_action_membership_note">وارد کردن UID و دیدن وضعیت تأیید</string>
+    <string name="logout_confirm_title">از حساب خارج شوید؟</string>
+    <string name="logout_confirm_body">نشست‌های هر دو پلتفرم بسته می‌شود و نام و تصویر ذخیره‌شده روی این گوشی پاک می‌گردد. حسابتان سر جایش می‌ماند؛ دوباره وارد می‌شوید.</string>
+    <string name="action_cancel">انصراف</string>
+    <string name="toast_copied">کپی شد</string>
+    <string name="toast_alert_saved">هشدار ساخته شد</string>
+    <string name="toast_deleted">حذف شد</string>
+    <string name="toast_layout_saved">چیدمان ذخیره شد</string>
 </resources>

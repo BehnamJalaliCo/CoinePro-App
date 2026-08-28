@@ -8,9 +8,13 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -33,6 +37,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import androidx.compose.ui.unit.sp
 import com.coinepro.core.designsystem.CoineProColors
 import java.time.Instant
@@ -81,6 +86,18 @@ fun CoineProChart(
      */
     drawing: DrawingState? = null,
     onDrawing: ((DrawingState) -> Unit)? = null,
+    /**
+     * Called when the reader pans within [LOAD_MORE_MARGIN] bars of the oldest one loaded.
+     *
+     * The chart is the only thing that knows where the reader is looking, so it is the only thing
+     * that can ask for more history. Before this the fetch existed and had no caller at all: a
+     * reader could pan back to the first bar of whatever the first request returned and simply
+     * stop, with nothing on screen to say the market had a past.
+     *
+     * Fired at most once per position — the guard is [LaunchedEffect] keyed on the bar index —
+     * and the caller is expected to ignore it while a load is already running.
+     */
+    onLoadMore: (() -> Unit)? = null,
 ) {
     val display = remember(series, type, typeConfig) { ChartTransforms.apply(series, type, typeConfig) }
     // Unkeyed, and that is the whole point. Keyed on `display`, this reset to the default 120 bars
@@ -92,9 +109,74 @@ fun CoineProChart(
     var viewport by remember { mutableStateOf(ChartViewport(display)) }
     var crosshair by remember { mutableStateOf<Crosshair?>(null) }
 
+    /**
+     * Where the reader was looking, in the two numbers that survive anything.
+     *
+     * A [ChartViewport] cannot be saved — it holds a whole [CandleSeries], which is megabytes and
+     * is refetched anyway. Its *state* is two integers: how far zoomed in, and how far panned back.
+     * Saved, those two rebuild the view over whatever series comes back.
+     *
+     * This is the second-most-complained-about thing about charts in this category of app, after
+     * load speed: a reader zooms into an hour of price action, the phone rotates or Android
+     * reclaims the process, and the chart comes back at the default hundred and twenty bars on the
+     * live edge with the work thrown away.
+     */
+    var savedZoom by rememberSaveable { mutableIntStateOf(ChartViewport.DEFAULT_BARS_PER_VIEW) }
+    var savedOffset by rememberSaveable { mutableIntStateOf(0) }
+
     // Follow the live edge as bars arrive, but never drag the view out from under a reader who has
     // panned back. ChartViewport.withSeries decides which of those applies.
-    remember(display) { viewport = viewport.withSeries(display) }
+    //
+    // The saved pair is applied on the same pass rather than in a separate effect: an effect runs
+    // after the first frame, so the chart would draw once at the default and then jump.
+    remember(display) {
+        viewport = viewport
+            .withSeries(display)
+            .copy(barsPerView = savedZoom)
+            .atOffset(savedOffset)
+    }
+
+    // Written back whenever the reader moves. Cheap — two ints into the saved-state bundle — and
+    // it has to be here rather than inside the gesture handlers, which do not all go through one
+    // place.
+    LaunchedEffect(viewport.barsPerView, viewport.offset) {
+        savedZoom = viewport.barsPerView
+        savedOffset = viewport.offset
+    }
+
+    // Ask for history when the reader gets near the edge of it. Keyed on the first visible bar, so
+    // the request goes out once per position rather than on every frame of a drag — and, because
+    // the index changes as bars are prepended, again once the reader keeps going past the new
+    // oldest bar.
+    if (onLoadMore != null) {
+        val nearStart = viewport.firstVisible <= LOAD_MORE_MARGIN
+        LaunchedEffect(nearStart, display) {
+            if (nearStart && !display.isEmpty) onLoadMore()
+        }
+    }
+
+    /**
+     * The wall clock, once a second, and only when something on screen reads it.
+     *
+     * Gated three ways so an idle or historical chart ticks nothing at all: the caller has to ask
+     * for a countdown, the reader has to be at the live edge, and the series has to be long enough
+     * to have a bar interval. A thumbnail in a list row passes none of those and never starts a
+     * coroutine.
+     *
+     * Not continuous motion in the sense the reduced-motion gate is about — it is a clock, and a
+     * clock that stops when animations are off is a broken clock.
+     */
+    val countdownLive = decoration.showCountdown && viewport.isAtLiveEdge && display.size >= 2
+    var nowSeconds by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(countdownLive) {
+        if (!countdownLive) return@LaunchedEffect
+        while (true) {
+            nowSeconds = System.currentTimeMillis() / 1_000
+            // Aligned to the next whole second rather than a flat one-second sleep, so the digits
+            // change on the second instead of drifting a few milliseconds later each minute.
+            delay(1_000 - System.currentTimeMillis() % 1_000)
+        }
+    }
 
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
@@ -137,9 +219,42 @@ fun CoineProChart(
                                 // under the finger at the same time places the point somewhere the
                                 // reader was not pointing.
                                 if (armed != null) return@pointerInput
+                                // Both gestures accumulate what they could not spend.
+                                //
+                                // Pan and zoom are both quantised — pan to whole bars, zoom to a
+                                // whole bar count — and both used to throw the remainder away on
+                                // every frame. That is fine at three pixels a bar and completely
+                                // broken zoomed in: at thirty pixels a bar a fourteen-pixel drag
+                                // rounds to zero bars, so a slow drag moved the chart *not at all*
+                                // while a fast one jumped. Same for zoom near the floor, where
+                                // `14 / 1.02` rounds back to 14 and a pinch did nothing.
+                                //
+                                // Keeping the residue across frames makes a slow drag and a fast
+                                // one cover the same ground, which is the whole of what "the pan
+                                // feels wrong" means.
+                                var panResidue = 0f
+                                var zoomResidue = 1f
                                 detectTransformGestures { _, pan, zoom, _ ->
-                                    if (abs(zoom - 1f) > ZOOM_DEADZONE) viewport = viewport.zoomedBy(zoom)
-                                    if (abs(pan.x) > 0f) viewport = viewport.pannedBy(pan.x)
+                                    if (abs(zoom - 1f) > ZOOM_DEADZONE) {
+                                        zoomResidue *= zoom
+                                        val before = viewport.barsPerView
+                                        val zoomed = viewport.zoomedBy(zoomResidue)
+                                        if (zoomed.barsPerView != before) {
+                                            viewport = zoomed
+                                            zoomResidue = 1f
+                                        }
+                                    }
+                                    if (abs(pan.x) > 0f) {
+                                        panResidue += pan.x
+                                        val width = viewport.barWidth
+                                        if (width > 0f) {
+                                            val bars = (panResidue / width).toInt()
+                                            if (bars != 0) {
+                                                viewport = viewport.atOffset(viewport.offset + bars)
+                                                panResidue -= bars * width
+                                            }
+                                        }
+                                    }
                                 }
                             }
                             .pointerInput(display, armed, drawing, onDrawing) {
@@ -357,6 +472,9 @@ fun CoineProChart(
             }
             if (decoration.showLastPrice) {
                 drawLastPrice(view, plotWidth, axisWidth, palette, measurer, decoration.showAxes)
+            }
+            if (countdownLive && decoration.showAxes && nowSeconds > 0L) {
+                drawCountdown(view, plotWidth, axisWidth, nowSeconds, palette, measurer)
             }
             if (decoration.showLegend) {
                 drawLegend(view, decoration, crosshair, palette, measurer)
@@ -862,6 +980,85 @@ private fun DrawScope.drawLastPrice(
 }
 
 /**
+ * How long the bar at the live edge has left, tagged under the live price.
+ *
+ * ### Where the number comes from
+ *
+ * The bar interval is the gap between the last two timestamps rather than a timeframe passed in.
+ * The chart already infers spacing that way for [ChartViewport.xOfTime], and taking it from the
+ * data means a feed that sends four-hour bars on a screen labelled 4h and a feed that quietly
+ * sends something else both count down correctly.
+ *
+ * The close is the newest bar's open plus one interval. A clock that has run past that means the
+ * feed has not delivered the new bar yet — network lag, a socket that dropped, a server behind —
+ * and the honest answer there is a dash rather than a negative number or a frozen zero.
+ *
+ * ### Why below the price tag and not in the legend
+ *
+ * It is a property of the bar the price tag names, and every terminal a reader of this app has
+ * used puts it in that exact place. Moving it to the corner would be an unforced difference.
+ */
+private fun DrawScope.drawCountdown(
+    view: ChartViewport,
+    plotWidth: Float,
+    axisWidth: Float,
+    nowSeconds: Long,
+    palette: ChartPalette,
+    measurer: TextMeasurer,
+) {
+    val times = view.series.time
+    if (times.size < 2) return
+    val interval = times[times.size - 1] - times[times.size - 2]
+    if (interval <= 0L) return
+    val bar = view.series.bars.getOrNull(view.lastVisible) ?: return
+    val priceY = view.yOf(bar.c)
+    if (priceY < 0f || priceY > view.plotHeight) return
+
+    val remaining = times[times.size - 1] + interval - nowSeconds
+    val text = if (remaining in 0..MAX_COUNTDOWN_SECONDS) formatCountdown(remaining) else COUNTDOWN_UNKNOWN
+    val label = measurer.measure(text, axisStyle(palette.text))
+    val height = label.size.height + TAG_PADDING_DP.toPx() * 2
+    // Directly under the price tag, which is centred on the price. One hairline of air between
+    // them, so they read as one stack rather than as two unrelated labels.
+    val priceTagHeight = measurer.measure("0", axisStyle(Color.White)).size.height + TAG_PADDING_DP.toPx() * 2
+    val top = (priceY + priceTagHeight / 2 + COUNTDOWN_GAP_DP.toPx())
+        .coerceIn(0f, max(0f, view.plotHeight - height))
+    drawRoundRect(
+        color = palette.stage,
+        topLeft = Offset(plotWidth + 1f, top),
+        size = Size(max(0f, axisWidth - 2f), height),
+        cornerRadius = CornerRadius(TAG_RADIUS_DP.toPx(), TAG_RADIUS_DP.toPx()),
+    )
+    drawText(
+        textLayoutResult = label,
+        topLeft = Offset(plotWidth + AXIS_PADDING_DP.toPx(), top + TAG_PADDING_DP.toPx()),
+    )
+}
+
+/**
+ * Seconds as `m:ss`, `h:mm:ss` or `Nd`, whichever the size calls for.
+ *
+ * Latin digits and a colon, deliberately, in a Persian-first app: this is a market figure — the
+ * same class of thing as a price — and the axis it sits on is already Latin. Persian digits here
+ * would make one label in a column of numbers read differently from the rest.
+ */
+internal fun formatCountdown(seconds: Long): String {
+    val days = seconds / 86_400
+    if (days >= 1) return "${days}d"
+    val hours = seconds / 3_600
+    val minutes = (seconds % 3_600) / 60
+    val rest = seconds % 60
+    // `Locale.US`, not the default. `String.format` follows the device locale, and this app's
+    // default locale is Persian — so without it the countdown reads «۱۴:۰۵» in a column of Latin
+    // prices. The price formatter above was fixed for the same reason and this is the same bug.
+    return if (hours > 0) {
+        String.format(Locale.US, "%d:%02d:%02d", hours, minutes, rest)
+    } else {
+        String.format(Locale.US, "%d:%02d", minutes, rest)
+    }
+}
+
+/**
  * A filled label in the price gutter.
  *
  * Shared by the last-price tag and the crosshair's, so the two are the same object in two colours
@@ -1337,6 +1534,31 @@ private const val PANE_BUDGET = 0.5f
 
 /** How far the last-price tag's rounded corner is cut. */
 private val TAG_RADIUS_DP = 3.dp
+
+/**
+ * How close to the oldest loaded bar a reader has to get before more history is fetched.
+ *
+ * Ten bars, not zero. At zero the reader hits the wall, waits for a round trip and watches the
+ * chart jump; ten bars ahead is roughly a flick of the thumb, which is enough for the request to
+ * land before they arrive. Larger would fetch history nobody asked for on a chart that opened and
+ * was never panned — the default view already reaches back a hundred and twenty bars.
+ */
+private const val LOAD_MORE_MARGIN = 10
+
+/** Air between the live-price tag and the countdown under it. */
+private val COUNTDOWN_GAP_DP = 2.dp
+
+/**
+ * Above this the countdown stops being a countdown.
+ *
+ * Two days: a weekly or monthly bar has days to run and "3d" tells a reader nothing they did not
+ * know. It is also the guard against a stale feed — a bar whose "close" is a week away means the
+ * series is old, not that the market is slow.
+ */
+private const val MAX_COUNTDOWN_SECONDS = 2L * 86_400
+
+/** What the countdown says when the new bar is late. A dash, never a negative number. */
+private const val COUNTDOWN_UNKNOWN = "—"
 
 /** How solid the last-price rule is. Present, and never competing with the candles. */
 private const val LAST_PRICE_ALPHA = 0.75f

@@ -56,4 +56,6 @@
     <string name="alert_short_percent_down">درصد پایین</string>
     <string name="alert_short_24h_over">۲۴ ساعته بالای</string>
     <string name="alert_short_24h_under">۲۴ ساعته زیر</string>
+    <string name="notifications_section_all_off">همه خاموش</string>
+    <string name="notifications_section_all_on">همه روشن</string>
 </resources>

@@ -66,6 +66,29 @@ data class IndicatorOption(
     @DrawableRes val icon: Int,
 )
 
+/**
+ * The one number a reader is allowed to change on an indicator, and the range it may take.
+ *
+ * ### Why only one
+ *
+ * Most indicators here have several parameters — MACD has three, Bollinger has a period and a
+ * multiplier, Ichimoku has three spans. Exposing all of them would mean a form per indicator and
+ * fifty forms to design, most of which nobody would ever open. Exposing *the lookback* covers what
+ * readers actually change: «EMA 20» is not the same tool as «EMA 200», and until this existed the
+ * app offered only the first, forever, with the number baked into the label as a literal.
+ *
+ * Indicators whose shape is not a single lookback — MACD, Ichimoku, VWAP, the structure studies —
+ * are absent from this table on purpose, and the picker shows them no stepper rather than a
+ * stepper that changes nothing.
+ *
+ * ### The bounds
+ *
+ * [min] is 2 almost everywhere, because a one-bar average is the price. [max] is 400, which is
+ * past the longest period anybody uses (the 200-day average) with room above it, and short enough
+ * that the result is not a line of nulls on a series of 500 bars.
+ */
+data class IndicatorPeriod(val default: Int, val min: Int = 2, val max: Int = 400)
+
 enum class IndicatorPane {
     /** Drawn over the candles, on the price axis. */
     PRICE,
@@ -230,8 +253,14 @@ object ChartCatalog {
      * The reference levels each pane declares — RSI's 30 and 70, the zero line under a momentum
      * oscillator — are part of the indicator, not decoration. An RSI without them is a wiggle.
      */
-    fun paneFor(option: IndicatorOption, series: CandleSeries): ChartPane? {
+    fun paneFor(
+        option: IndicatorOption,
+        series: CandleSeries,
+        /** The reader's lookback, or null for this indicator's own default. See [PERIODS]. */
+        period: Int? = null,
+    ): ChartPane? {
         if (option.pane != IndicatorPane.SEPARATE || series.isEmpty) return null
+        val n = periodFor(option.id, period)
         val open = series.open
         val high = series.high
         val low = series.low
@@ -248,8 +277,8 @@ object ChartCatalog {
 
         return when (option.id) {
             "rsi" -> pane(
-                "RSI 14",
-                ChartLine(Indicators.rsi(close, 14), colour, label = "RSI"),
+                "RSI $n",
+                ChartLine(Indicators.rsi(close, n), colour, label = "RSI"),
                 levels = listOf(band(70.0), band(50.0, faint = true), band(30.0)),
             )
             "macd" -> Indicators.macd(close).let { macd ->
@@ -270,19 +299,19 @@ object ChartCatalog {
                 )
             }
             "cci" -> pane(
-                "CCI 20",
-                ChartLine(Indicators.cci(high, low, close), colour),
+                "CCI $n",
+                ChartLine(Indicators.cci(high, low, close, n), colour),
                 levels = listOf(band(100.0), band(0.0, faint = true), band(-100.0)),
             )
             "williams" -> pane(
-                "Williams %R 14",
-                ChartLine(Indicators.williamsR(high, low, close), colour),
+                "Williams %R $n",
+                ChartLine(Indicators.williamsR(high, low, close, n), colour),
                 levels = listOf(band(-20.0), band(-80.0)),
             )
-            "atr" -> pane("ATR 14", ChartLine(Indicators.atr(high, low, close), colour))
-            "adx" -> Indicators.adx(high, low, close).let { adx ->
+            "atr" -> pane("ATR $n", ChartLine(Indicators.atr(high, low, close, n), colour))
+            "adx" -> Indicators.adx(high, low, close, n).let { adx ->
                 pane(
-                    "ADX 14",
+                    "ADX $n",
                     ChartLine(adx.adx, colour, label = "ADX"),
                     ChartLine(adx.plusDi, 0xFF00B15C, label = "+DI"),
                     ChartLine(adx.minusDi, 0xFFF6465D, label = "−DI"),
@@ -292,8 +321,8 @@ object ChartCatalog {
                 )
             }
             "choppiness" -> pane(
-                "Choppiness 14",
-                ChartLine(Indicators.choppiness(high, low, close), colour),
+                "Choppiness $n",
+                ChartLine(Indicators.choppiness(high, low, close, n), colour),
                 levels = listOf(band(61.8), band(38.2)),
             )
             "vortex" -> Indicators.vortex(high, low, close).let { vortex ->
@@ -445,6 +474,59 @@ object ChartCatalog {
     private const val LSMA_PERIOD = 25
 
     /**
+     * The default lookback for every indicator that has exactly one, keyed by id.
+     *
+     * These are the numbers that used to be literals inside [overlayFor] and [paneFor] — the same
+     * values, moved to one place so the picker can show them and a reader can change them. Anything
+     * absent has no single lookback and is not offered a stepper.
+     *
+     * `ChartCatalogTest` holds this table against the two builders, so an indicator that gains a
+     * period here and does not read it there is a failing test rather than a stepper that moves a
+     * number nothing looks at.
+     */
+    val PERIODS: Map<String, IndicatorPeriod> = mapOf(
+        // Price-scale averages and bands.
+        "sma" to IndicatorPeriod(20),
+        "ema" to IndicatorPeriod(20),
+        "wma" to IndicatorPeriod(20),
+        "hma" to IndicatorPeriod(20),
+        "smma" to IndicatorPeriod(14),
+        "zlema" to IndicatorPeriod(21),
+        "kama" to IndicatorPeriod(10),
+        "t3" to IndicatorPeriod(10),
+        "mcginley" to IndicatorPeriod(14),
+        // A hundred and twenty-five, the web terminal's, and the two are different tools to a
+        // reader rather than one tool at two settings — so each keeps its own default.
+        "linreg" to IndicatorPeriod(LINREG_PERIOD),
+        "lsma" to IndicatorPeriod(LSMA_PERIOD),
+        "bollinger" to IndicatorPeriod(20),
+        "donchian" to IndicatorPeriod(20),
+        "envelopes" to IndicatorPeriod(20),
+        // Own-pane oscillators.
+        "rsi" to IndicatorPeriod(14),
+        "cci" to IndicatorPeriod(20),
+        "williams" to IndicatorPeriod(14),
+        "atr" to IndicatorPeriod(14),
+        "adx" to IndicatorPeriod(14),
+        "choppiness" to IndicatorPeriod(14),
+    )
+
+    /** The lookback [id] can be given, or null where it has no single one. */
+    fun periodOf(id: String): IndicatorPeriod? = PERIODS[id]
+
+    /**
+     * The period an indicator should actually be computed with.
+     *
+     * [chosen] is the reader's, when they have moved the stepper. Null falls back to the default,
+     * and anything out of range is clamped rather than refused — a stored value from an older
+     * build with wider bounds must not produce an empty chart.
+     */
+    private fun periodFor(id: String, chosen: Int?): Int {
+        val bounds = PERIODS[id] ?: return chosen ?: 0
+        return (chosen ?: bounds.default).coerceIn(bounds.min, bounds.max)
+    }
+
+    /**
      * The indicators whose Persian name or ticker contains [query].
      *
      * Deliberately a plain substring rather than the ranked matcher `core:symbols` uses. That one
@@ -467,21 +549,30 @@ object ChartCatalog {
      * Only the [IndicatorPane.PRICE] ones, because those are the ones the chart draws over the
      * candles. A separate-pane indicator needs its own axis and is a different drawing problem.
      */
-    fun overlayFor(option: IndicatorOption, series: CandleSeries): List<ChartLine> {
+    fun overlayFor(
+        option: IndicatorOption,
+        series: CandleSeries,
+        /** The reader's lookback, or null for this indicator's own default. See [PERIODS]. */
+        period: Int? = null,
+    ): List<ChartLine> {
         if (option.pane != IndicatorPane.PRICE || series.isEmpty) return emptyList()
         val close = series.close
         val high = series.high
         val low = series.low
+        // Resolved once, and every label below is built from it rather than written as a literal.
+        // The label and the maths reading two different numbers is the one failure a period
+        // control can have that a reader cannot see.
+        val n = periodFor(option.id, period)
         return when (option.id) {
-            "sma" -> listOf(ChartLine(Indicators.sma(close, 20), option.colour, label = "SMA 20"))
-            "ema" -> listOf(ChartLine(Indicators.ema(close, 20), option.colour, label = "EMA 20"))
-            "wma" -> listOf(ChartLine(Indicators.wma(close, 20), option.colour, label = "WMA 20"))
-            "hma" -> listOf(ChartLine(Indicators.hma(close, 20), option.colour, label = "HMA 20"))
-            "bollinger" -> Indicators.bollinger(close).let { band ->
+            "sma" -> listOf(ChartLine(Indicators.sma(close, n), option.colour, label = "SMA $n"))
+            "ema" -> listOf(ChartLine(Indicators.ema(close, n), option.colour, label = "EMA $n"))
+            "wma" -> listOf(ChartLine(Indicators.wma(close, n), option.colour, label = "WMA $n"))
+            "hma" -> listOf(ChartLine(Indicators.hma(close, n), option.colour, label = "HMA $n"))
+            "bollinger" -> Indicators.bollinger(close, n).let { band ->
                 // The basis is drawn thinner than its edges: it is a reference, and at equal weight
                 // it competes with the two lines a reader is actually watching for a touch.
                 listOf(
-                    ChartLine(band.upper, option.colour, label = "BB"),
+                    ChartLine(band.upper, option.colour, label = "BB $n"),
                     ChartLine(band.basis, option.colour, widthDp = 0.9f),
                     ChartLine(band.lower, option.colour),
                 )
@@ -493,9 +584,9 @@ object ChartCatalog {
                     ChartLine(band.lower, option.colour),
                 )
             }
-            "donchian" -> Indicators.donchian(high, low).let { band ->
+            "donchian" -> Indicators.donchian(high, low, n).let { band ->
                 listOf(
-                    ChartLine(band.upper, option.colour, label = "DC"),
+                    ChartLine(band.upper, option.colour, label = "DC $n"),
                     ChartLine(band.basis, option.colour, widthDp = 0.9f),
                     ChartLine(band.lower, option.colour),
                 )
@@ -535,20 +626,20 @@ object ChartCatalog {
             )
 
             // ── The second thirty's price-scale entries ────────────────────────────────────
-            "smma" -> listOf(ChartLine(IndicatorsExt.smma(close, 14), option.colour, label = "SMMA 14"))
-            "zlema" -> listOf(ChartLine(IndicatorsExt.zlema(close, 21), option.colour, label = "ZLEMA 21"))
-            "kama" -> listOf(ChartLine(IndicatorsExt.kama(close), option.colour, label = "KAMA 10"))
-            "t3" -> listOf(ChartLine(IndicatorsExt.t3(close), option.colour, label = "T3 10"))
-            "mcginley" -> listOf(ChartLine(IndicatorsExt.mcginley(close), option.colour, label = "McGinley 14"))
+            "smma" -> listOf(ChartLine(IndicatorsExt.smma(close, n), option.colour, label = "SMMA $n"))
+            "zlema" -> listOf(ChartLine(IndicatorsExt.zlema(close, n), option.colour, label = "ZLEMA $n"))
+            "kama" -> listOf(ChartLine(IndicatorsExt.kama(close, n), option.colour, label = "KAMA $n"))
+            "t3" -> listOf(ChartLine(IndicatorsExt.t3(close, n), option.colour, label = "T3 $n"))
+            "mcginley" -> listOf(ChartLine(IndicatorsExt.mcginley(close, n), option.colour, label = "McGinley $n"))
             "linreg" -> listOf(
-                ChartLine(IndicatorsExt.linearRegression(close, LINREG_PERIOD), option.colour, label = "LinReg 100"),
+                ChartLine(IndicatorsExt.linearRegression(close, n), option.colour, label = "LinReg $n"),
             )
             "lsma" -> listOf(
-                ChartLine(IndicatorsExt.linearRegression(close, LSMA_PERIOD), option.colour, label = "LSMA 25"),
+                ChartLine(IndicatorsExt.linearRegression(close, n), option.colour, label = "LSMA $n"),
             )
-            "envelopes" -> IndicatorsExt.envelopes(close).let { band ->
+            "envelopes" -> IndicatorsExt.envelopes(close, n).let { band ->
                 listOf(
-                    ChartLine(band.upper, option.colour, label = "Env 1%"),
+                    ChartLine(band.upper, option.colour, label = "Env $n"),
                     ChartLine(band.basis, option.colour, widthDp = 0.9f),
                     ChartLine(band.lower, option.colour),
                 )

@@ -46,4 +46,12 @@
     <string name="avatar_mark_shield">سپر</string>
     <string name="avatar_mark_globe">جهانی</string>
     <string name="profile_identity_hint">نام نمایشی و یک خط معرفی، فقط روی همین گوشی.</string>
+    <string name="appearance_title">ظاهر برنامه</string>
+    <string name="appearance_subtitle">این انتخاب روی همین گوشی می‌ماند و با خروج از حساب پاک نمی‌شود.</string>
+    <string name="appearance_system">مثل گوشی</string>
+    <string name="appearance_system_note">هر چه گوشی باشد؛ شب تاریک، روز روشن.</string>
+    <string name="appearance_dark">همیشه تاریک</string>
+    <string name="appearance_dark_note">حتی وقتی گوشی روشن است.</string>
+    <string name="appearance_light">همیشه روشن</string>
+    <string name="appearance_light_note">حتی وقتی گوشی تاریک است.</string>
 </resources>

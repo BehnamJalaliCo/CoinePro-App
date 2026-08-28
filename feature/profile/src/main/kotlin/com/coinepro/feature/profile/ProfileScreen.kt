@@ -71,6 +71,14 @@ data class ProfileAction(
      * eight is worse than no icons at all, because it breaks the column the others formed.
      */
     @DrawableRes val icon: Int? = null,
+    /**
+     * The setting's current answer, drawn before the chevron.
+     *
+     * Only for rows that *hold* a value — a theme, a language, a currency. A row that merely opens
+     * a screen has no value and leaves this null, because a settings list where every row shows
+     * text on the right is a list where the right column means nothing.
+     */
+    val value: String? = null,
     val onClick: () -> Unit,
 )
 
@@ -448,6 +456,13 @@ private fun ActionRow(action: ProfileAction) {
                     color = CoineProColors.TextMuted,
                 )
             }
+        }
+        action.value?.let { current ->
+            Text(
+                text = current,
+                style = MaterialTheme.typography.labelMedium,
+                color = CoineProColors.TextSecondary,
+            )
         }
         Icon(
             // Forward in the reading direction, which the drawable mirrors for itself in RTL.

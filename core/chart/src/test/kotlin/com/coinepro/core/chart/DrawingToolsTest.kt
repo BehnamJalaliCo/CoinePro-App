@@ -152,6 +152,43 @@ class DrawingToolsTest {
     fun `a degenerate segment does not divide by zero`() {
         assertEquals(5f, DrawingHitTest.distanceToSegment(0f, 5f, 0f, 0f, 0f, 0f), 1e-4f)
     }
+
+    @Test
+    fun `a note can hold a note`() {
+        // `Drawing.text` existed from the first version of the drawing engine and nothing could
+        // write to it, so `text`, `callout` and `pricelabel` rendered the literal «یادداشت»
+        // forever and `note` drew a bare circle. This is the setter that closes that.
+        val placed = DrawingActions.tap(
+            DrawingActions.arm(DrawingState(), DrawingTools.ALL.first { it.id == "note" }),
+            ChartPoint(1_700_000_000L, 100.0),
+        )
+        val id = placed.drawings.single().id
+        val labelled = DrawingActions.setText(placed, id, "  مقاومت هفتگی  ")
+        assertEquals("مقاومت هفتگی", labelled.drawings.single().text)
+
+        // Emptying it clears rather than storing "", so the drawing falls back to its placeholder
+        // instead of becoming an invisible thing the reader cannot find to delete.
+        assertNull(DrawingActions.setText(labelled, id, "   ").drawings.single().text)
+        assertNull(DrawingActions.setText(labelled, id, null).drawings.single().text)
+    }
+
+    @Test
+    fun `only the four annotation tools are offered a keyboard`() {
+        val holds = DrawingTools.ALL.filter { DrawingActions.holdsText(it.id) }.map { it.id }.toSet()
+        assertEquals(setOf("text", "callout", "pricelabel", "note"), holds)
+    }
+
+    @Test
+    fun `a label longer than the chart can carry is cut, not refused`() {
+        val placed = DrawingActions.tap(
+            DrawingActions.arm(DrawingState(), DrawingTools.ALL.first { it.id == "text" }),
+            ChartPoint(1_700_000_000L, 100.0),
+        )
+        val id = placed.drawings.single().id
+        val long = "ب".repeat(DrawingActions.MAX_TEXT_LENGTH * 2)
+        val text = DrawingActions.setText(placed, id, long).drawings.single().text
+        assertEquals(DrawingActions.MAX_TEXT_LENGTH, text!!.length)
+    }
 }
 
 /** The shipped help ids, read from `core:help`'s asset without depending on that module. */

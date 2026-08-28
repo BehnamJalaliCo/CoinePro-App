@@ -2,4 +2,11 @@
 <resources>
     <string name="setup_paper_trade">باز کردن به‌صورت معاملهٔ آزمایشی</string>
     <string name="setup_paper_trade_note">با همان ورود و همان حجمی که بالا حساب شد، بدون پول. هیچ سفارشی به صرافی یا کارگزار فرستاده نمی‌شود.</string>
+    <string name="chart_label_title">متن این نشانه</string>
+    <string name="chart_label_subtitle">خالی بگذارید تا برداشته شود.</string>
+    <string name="chart_label_field">متن</string>
+    <string name="chart_label_save">ثبت</string>
+    <string name="chart_fullscreen_enter">تمام‌صفحه</string>
+    <string name="chart_fullscreen_exit">خروج از تمام‌صفحه</string>
+    <string name="chart_fullscreen_tools">ابزارها</string>
 </resources>

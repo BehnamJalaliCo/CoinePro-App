@@ -153,6 +153,42 @@ object DrawingActions {
     )
 
     /**
+     * Set what a text, callout, note or price label says.
+     *
+     * [Drawing.text] has existed since the drawing engine was written and had **no way to be
+     * set**: four of the annotation tools rendered the literal «یادداشت» forever, and a note
+     * rendered nothing at all beside its dot. A note tool that cannot hold a note is a tool that
+     * places a circle.
+     *
+     * Blank clears it rather than storing an empty string, so a reader who empties the box gets
+     * the placeholder back instead of an invisible drawing they cannot find to delete.
+     */
+    fun setText(state: DrawingState, id: Long, text: String?): DrawingState {
+        val cleaned = text?.trim()?.takeIf { it.isNotEmpty() }?.take(MAX_TEXT_LENGTH)
+        return state.copy(
+            drawings = state.drawings.map { if (it.id == id) it.copy(text = cleaned) else it },
+        )
+    }
+
+    /**
+     * Whether this tool holds text at all.
+     *
+     * Four of them do. Asking a trend line for a label would be offering a keyboard on a tool that
+     * has nowhere to draw the answer.
+     */
+    fun holdsText(toolId: String): Boolean = toolId in TEXT_TOOLS
+
+    private val TEXT_TOOLS = setOf("text", "callout", "pricelabel", "note")
+
+    /**
+     * As long as a label can be before it stops being a label.
+     *
+     * Eighty characters is about two lines at the chart's own text size on a phone. Past that a
+     * reader is writing a journal entry on top of their prices, and the app has a journal.
+     */
+    const val MAX_TEXT_LENGTH = 80
+
+    /**
      * Move one point of a placed drawing — the drag of a handle.
      *
      * Chart space in, chart space out. A handle dragged at one zoom and released at another lands
