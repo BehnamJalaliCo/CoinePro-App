@@ -369,9 +369,12 @@ fun CoineProApp(
     launchActivity: Boolean,
     /** Set when the recovery App Link opened the app; null on every other launch. */
     launchResetToken: String?,
+    /** A market to open, from a row of the home-screen widget. See `MarketsWidget`. */
+    launchSymbol: String?,
     notificationPermissionState: NotificationPermissionUiState,
     onSignalLaunchConsumed: () -> Unit,
     onActivityLaunchConsumed: () -> Unit,
+    onSymbolLaunchConsumed: () -> Unit,
     onResetTokenConsumed: () -> Unit,
     onRequestNotificationPermission: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
@@ -716,6 +719,8 @@ fun CoineProApp(
                 accountController = accountController,
                 launchSignalId = launchSignalId,
                 launchActivity = launchActivity,
+                launchSymbol = launchSymbol,
+                onSymbolLaunchConsumed = onSymbolLaunchConsumed,
                 notificationPermissionState = deliverablePermissionState,
                 chartVisionAvailable = chartVisionAvailable,
                 pushAvailable = pushAvailable,
@@ -896,6 +901,8 @@ fun CoineProApp(
                         marketColors = marketColors,
                         onSetMarketColors = { scheme -> scope.launch { userPreferencesStore.setMarketColors(scheme) } },
                         online = online,
+                        launchSymbol = launchSymbol,
+                        onSymbolLaunchConsumed = onSymbolLaunchConsumed,
                     )
                     return@BiometricGate
                 }
@@ -1017,6 +1024,9 @@ private fun MainShell(
     onRefreshAccount: () -> Unit,
     launchSignalId: Long?,
     launchActivity: Boolean,
+    /** A market to open, from a widget row. Consumed once so a rotation does not re-navigate. */
+    launchSymbol: String?,
+    onSymbolLaunchConsumed: () -> Unit,
     notificationPermissionState: NotificationPermissionUiState,
     /** What this deployment reports it can do. A feature it does not offer is not drawn. */
     chartVisionAvailable: Boolean,
@@ -1202,6 +1212,14 @@ private fun MainShell(
         launchSignalId?.let { signalId ->
             navController.navigate(signalDetailRoute(signalId)) { launchSingleTop = true }
             onSignalLaunchConsumed()
+        }
+    }
+    // A widget row. The symbol has already been shape-checked in `parseCoineProDeepLink` — this
+    // scheme is unverified, so what arrives is an arbitrary string from an untrusted sender.
+    LaunchedEffect(launchSymbol) {
+        launchSymbol?.let { symbol ->
+            navController.navigate(chartRoute(symbol)) { launchSingleTop = true }
+            onSymbolLaunchConsumed()
         }
     }
     LaunchedEffect(launchActivity) {

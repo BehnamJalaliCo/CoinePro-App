@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What the launcher is told about this widget.
+
+  `targetCellWidth`/`targetCellHeight` are the Android 12 way of asking for a size in *cells*, which
+  is what a reader actually chooses from; `minWidth`/`minHeight` are the older way and are kept
+  because they are what launchers below 12 read. Four cells by three is the size this widget is
+  designed at — wide enough for names beside prices, tall enough to earn its header.
+
+  `resizeMode` is both directions: the whole point of `WidgetLayout` is that the widget answers
+  honestly at every size, so refusing a resize would be refusing the feature.
+
+  `minResizeWidth`/`minResizeHeight` stop a reader shrinking it below one readable row. The floor
+  is stated here rather than defended in code, because a launcher will not let them past it — which
+  is a better experience than a widget that accepts the resize and then shows nothing.
+
+  `updatePeriodMillis` is deliberately **0**. Android clamps it to thirty minutes and wakes the
+  device to honour it; `WidgetRefreshWorker` does the same job through WorkManager, which batches
+  with other work and respects Doze. Two schedulers for one refresh would be two wake-ups.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:initialLayout="@layout/widget_markets"
+    android:previewLayout="@layout/widget_markets"
+    android:description="@string/widget_description"
+    android:minWidth="250dp"
+    android:minHeight="180dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="3"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="60dp"
+    android:maxResizeWidth="500dp"
+    android:maxResizeHeight="500dp"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:updatePeriodMillis="0" />

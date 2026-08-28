@@ -11,6 +11,7 @@ import com.coinepro.core.account.NetworkAccountGateway
 import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.UserPreferencesStore
+import com.coinepro.core.datastore.WidgetSnapshotStore
 import com.coinepro.core.network.NetworkStatus
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
@@ -391,6 +392,17 @@ object AppModule {
     @Singleton
     fun userPreferencesStore(dataStore: DataStore<Preferences>): UserPreferencesStore =
         UserPreferencesStore(dataStore)
+
+    /**
+     * What the home-screen widget last knew.
+     *
+     * In the same preferences file as everything else, so the widget's process and the app's read
+     * one store rather than two that can disagree. See [WidgetSnapshotStore].
+     */
+    @Provides
+    @Singleton
+    fun widgetSnapshotStore(dataStore: DataStore<Preferences>): WidgetSnapshotStore =
+        WidgetSnapshotStore(dataStore)
 
     /**
      * Whether the phone has a network at all.

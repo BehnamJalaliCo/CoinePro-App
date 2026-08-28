@@ -69,6 +69,12 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="coinepro" android:host="signal" />
                 <data android:scheme="coinepro" android:host="activity" />
+                <!--
+                    The home-screen widget's rows. A ticker is not a credential and not a private
+                    fact — it is the name of a market — so the custom scheme is the right carrier
+                    here in a way it would not be for a token.
+                -->
+                <data android:scheme="coinepro" android:host="market" />
             </intent-filter>
 
             <!--
@@ -115,6 +121,28 @@
                     android:pathPrefix="/reset-password" />
             </intent-filter>
         </activity>
+
+        <!--
+            The markets widget.
+
+            `exported="true"` is required and is not a choice: the system's own AppWidget host
+            sends the broadcasts, and a provider it cannot reach is a widget that never updates.
+            The receiver acts only on `APPWIDGET_UPDATE` and on its own refresh action, and neither
+            carries anything an untrusted caller could use — the worst a hostile broadcast achieves
+            is a price refresh.
+        -->
+        <receiver
+            android:name=".widget.MarketsWidget"
+            android:label="@string/app_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.coinepro.app.widget.REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_markets_info" />
+        </receiver>
 
         <service
             android:name=".notifications.CoineProFirebaseMessagingService"

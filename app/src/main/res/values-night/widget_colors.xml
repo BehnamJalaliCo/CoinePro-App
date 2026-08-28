@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The dark half of the widget's palette. See values/widget_colors.xml for why it is stated twice. -->
+<resources>
+    <color name="widget_stage">#FF0B0E11</color>
+    <color name="widget_surface">#FF161A21</color>
+    <color name="widget_border">#FF2B3139</color>
+    <color name="widget_text_primary">#FFF0F1F2</color>
+    <color name="widget_text_secondary">#FFB7BDC6</color>
+    <color name="widget_text_muted">#FF848E9C</color>
+    <color name="widget_gold">#FFD8A848</color>
+    <color name="widget_buy">#FF00B15C</color>
+    <color name="widget_sell">#FFF6465D</color>
+</resources>

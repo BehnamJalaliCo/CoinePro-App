@@ -15,6 +15,88 @@ it is for.
 
 ---
 
+## [1.38.0] — 2026-08-28 — The markets, on the home screen
+
+A home-screen widget: the prices a reader watches, without opening anything.
+
+It is worth building rather than being a nice extra for one reason — it is the only surface of this
+product somebody sees *without deciding to*. A widget that is right every time they unlock their
+phone earns more attention than a screen they visit weekly. No Persian-market trading app ships one.
+
+### It follows the watchlist. There is no configuration screen.
+
+Deliberately. A reader who has already starred the markets they care about has answered this
+question, and asking it again — in a different screen, with a second list that drifts out of step —
+is how a product ends up with two watchlists nobody trusts. Star a market in the app and it is on
+the home screen. Where nothing is starred it shows the crypto majors, because a widget that says
+"star something first" on the day it is placed is a widget removed the same day.
+
+### Every size answers honestly
+
+`WidgetLayout` is a pure function from the size the launcher reports to what fits, and it is the
+part most likely to be wrong invisibly: a row too many is a row clipped in half on somebody's home
+screen, on one launcher, at one font size, and it will never appear in a screenshot taken here. So
+it is seven unit tests, including a sweep asserting that every size a launcher can report produces
+a layout that fits inside it.
+
+The header — wordmark, freshness, refresh — has to *earn* three rows before it is drawn. On a
+two-cell-high widget it would cost a third of the glass, and somebody who put a price widget on
+their home screen did not ask for a title bar. That widget gets a compact strip carrying the
+freshness alone instead, because "when" is the one thing a price widget cannot honestly omit.
+
+### It always says how old it is
+
+A widget with no time on it shows yesterday's price exactly as confidently as this second's. Four
+coarse buckets — now, minutes, hours, older — each true for as long as it is shown; precision finer
+than that is precision a glance from arm's length cannot use, and it would be stale between draws
+anyway. A refresh that *failed* says «آفلاین» rather than letting the age keep climbing quietly:
+"an hour old" may be fine, "an hour old and we tried and could not" is a reason to open the app.
+
+Never fetched is never called "now", and a clock that appears to have moved backwards admits it
+does not know rather than giving a confident wrong answer.
+
+### Three processes, and why the work is split
+
+A widget is drawn by the *launcher's* process from a `RemoteViews` tree. The provider runs in a
+broadcast receiver with about five seconds and no scope worth the name — it cannot open a socket,
+wait for a quote and build a view. So `WidgetRefreshWorker` fetches and writes a snapshot, the
+provider renders whatever is there, and the launcher draws it.
+
+The fetch uses the **guest** price route, so the widget works signed out — a widget only members
+can see is one most people who install this app never see working — and it keeps working after a
+sign-out, which is correct: the price of gold is not the reader's private data.
+
+WorkManager rather than the manifest's own `updatePeriodMillis`, which Android clamps to thirty
+minutes and wakes the device to honour. Fifteen minutes while a widget is placed, cancelled
+entirely when the last one is removed, so a reader without one pays nothing for this feature. A
+failed fetch keeps the stored prices and marks them stale rather than blanking somebody's home
+screen because one request timed out.
+
+### The details that decide whether a widget feels made or generated
+
+* **Prices are formatted at write time**, by `MarketNumberFormatter` — the same code every other
+  surface uses. Re-implementing Latin digits, magnitude-aware decimals and a real minus sign inside
+  a `RemoteViews` builder is how a widget ends up spelling a number differently from the app.
+* **The direction is stored as a number, not a colour**, and resolved at draw time — so a reader on
+  the red-up convention sees their own colours without a refetch.
+* **Each row carries its own `data` URI.** `PendingIntent` compares intents by everything except
+  their extras, so rows differing only in an extra all collapse to one — the classic widget bug
+  where every row opens the first market.
+* **The plate matches the app's cards**: a hairline and a radius, no shadow, no gradient, the same
+  surface discipline the quality gate enforces everywhere else.
+* **Light and dark** through `values-night`, and the reader's *in-app* theme choice deliberately
+  does not reach it: a widget belongs to the home screen's light or dark, not to this app's.
+
+### The link the widget opens is treated as hostile
+
+`coinepro://` is unverified — any installed app may register it — so a ticker arriving from a
+widget row is an arbitrary string from an untrusted sender that is about to become a navigation
+argument and then a request path. It is shape-checked and refused rather than sanitised: a ticker
+that needed cleaning was not a ticker, and quietly opening a *different* market than the link named
+would be worse than opening none.
+
+---
+
 ## [1.37.0] — 2026-08-28 — Open it with a finger
 
 An app lock: a fingerprint, a face, or the phone's own passcode, asked for when the app opens.

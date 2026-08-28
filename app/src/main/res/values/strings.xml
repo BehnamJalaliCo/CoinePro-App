@@ -154,4 +154,13 @@
     <string name="lock_sheet_not_enrolled">روی این گوشی هنوز اثر انگشت یا چهره‌ای ثبت نشده.</string>
     <string name="lock_sheet_enrol">ثبت در تنظیمات گوشی</string>
     <string name="lock_sheet_credential_only">این گوشی حسگر ندارد؛ با رمز، الگو یا پین خودش باز می‌شود.</string>
+    <string name="widget_description">قیمت بازارهایی که دنبال می‌کنید، روی صفحه‌ی گوشی.</string>
+    <string name="widget_refresh">به‌روزرسانی</string>
+    <string name="widget_empty">هنوز قیمتی نرسیده. بازاری را در آپ ستاره کنید تا اینجا بیاید.</string>
+    <string name="widget_now">همین حالا</string>
+    <string name="widget_minutes">%1$s دقیقه پیش</string>
+    <string name="widget_hours">%1$s ساعت پیش</string>
+    <string name="widget_old">خیلی وقت پیش</string>
+    <string name="widget_never">هنوز به‌روز نشده</string>
+    <string name="widget_stale">%1$s · آفلاین</string>
 </resources>

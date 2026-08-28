@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One market: what it is on the left, what it costs on the right.
+
+  The same shape as `CoineProMarketRow` in the app, and deliberately so — the widget is the first
+  thing a reader taps and the list it opens should look like the thing they tapped.
+
+  Two things are carried over from that row and both are load-bearing in a right-to-left layout:
+
+  * The price column is a fixed width with `textAlignment="viewEnd"` on a `textDirection="ltr"`
+    view. A price is a left-to-right run of digits inside a right-to-left line, and without the
+    direction forced, one beginning with a minus reorders the whole row.
+  * The change sits under the price rather than beside it, so the decimal points line up down the
+    column whatever the magnitudes are.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="44dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/row_symbol"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:textDirection="ltr"
+            android:textColor="@color/widget_text_primary" />
+
+        <TextView
+            android:id="@+id/row_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="@color/widget_text_muted" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minWidth="92dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/row_price"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="13sp"
+            android:maxLines="1"
+            android:textDirection="ltr"
+            android:textAlignment="viewEnd"
+            android:textColor="@color/widget_text_primary" />
+
+        <TextView
+            android:id="@+id/row_change"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:maxLines="1"
+            android:textDirection="ltr"
+            android:textAlignment="viewEnd"
+            android:textColor="@color/widget_text_muted" />
+    </LinearLayout>
+</LinearLayout>

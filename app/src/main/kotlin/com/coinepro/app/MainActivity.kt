@@ -42,6 +42,8 @@ import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
 import com.coinepro.core.datastore.UserPreferencesStore
+import com.coinepro.app.widget.MarketsWidget
+import com.coinepro.app.widget.WidgetRefreshEngine
 import com.coinepro.core.network.NetworkStatus
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
@@ -85,6 +87,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var profileStore: ProfileStore
     @Inject lateinit var userPreferencesStore: UserPreferencesStore
     @Inject lateinit var networkStatus: NetworkStatus
+    @Inject lateinit var widgetRefreshEngine: WidgetRefreshEngine
     @Inject lateinit var notificationSettingsStore: NotificationSettingsStore
     @Inject lateinit var localAlertStore: LocalAlertStore
     @Inject lateinit var localAlertScheduler: LocalAlertScheduler
@@ -125,6 +128,15 @@ class MainActivity : FragmentActivity() {
     private var launchSignalId by mutableStateOf<Long?>(null)
     private var launchActivity by mutableStateOf(false)
     private var launchResetToken by mutableStateOf<String?>(null)
+
+    /**
+     * A market to open, from a row of the home-screen widget.
+     *
+     * Held here rather than passed straight down for the same reason the signal id is: the intent
+     * can arrive before the composition exists, and it has to survive until something is ready to
+     * act on it.
+     */
+    private var launchSymbol by mutableStateOf<String?>(null)
     private var notificationPermissionState by mutableStateOf(NotificationPermissionUiState.NOT_CONFIGURED)
 
     private val notificationPermission = registerForActivityResult(
@@ -199,10 +211,12 @@ class MainActivity : FragmentActivity() {
                 launchSignalId = launchSignalId,
                 launchActivity = launchActivity,
                 launchResetToken = launchResetToken,
+                launchSymbol = launchSymbol,
                 notificationPermissionState = notificationPermissionState,
                 onSignalLaunchConsumed = { launchSignalId = null },
                 onActivityLaunchConsumed = { launchActivity = false },
                 onResetTokenConsumed = { launchResetToken = null },
+                onSymbolLaunchConsumed = { launchSymbol = null },
                 onRequestNotificationPermission = ::requestNotificationPermission,
                 onOpenNotificationSettings = ::openNotificationSettings,
                 onSendFeedback = ::sendFeedback,
@@ -213,6 +227,7 @@ class MainActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         updateNotificationPermissionState()
+        refreshWidgets()
         if (sessionController.state.value !is SessionState.SignedIn) return
         // Only the platform on screen is refreshed; the other one is not running, and reading it
         // would spend requests on screens nobody is looking at.
@@ -227,6 +242,23 @@ class MainActivity : FragmentActivity() {
             notificationControllers[platform]?.refresh()
         }
         backgroundSyncScheduler.requestImmediate()
+    }
+
+    /**
+     * Bring the home-screen widget up to date with what this session knows.
+     *
+     * On resume rather than on every watchlist change: a reader dragging stars around would
+     * otherwise fire a fetch per tap. Coming back to the home screen is the moment the widget is
+     * about to be *looked at*, which is the only moment its freshness matters — and the app is in
+     * the foreground with a network already open, so this is the cheapest fetch of the day.
+     *
+     * Failures are the engine's to absorb; it keeps the old prices and labels them.
+     */
+    private fun refreshWidgets() {
+        lifecycleScope.launch {
+            runCatching { widgetRefreshEngine.refresh() }
+            MarketsWidget.refreshAll(this@MainActivity)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -244,6 +276,7 @@ class MainActivity : FragmentActivity() {
             is CoineProDeepLink.Signal -> launchSignalId = target.signalId
             CoineProDeepLink.Activity -> launchActivity = true
             is CoineProDeepLink.PasswordReset -> launchResetToken = target.token
+            is CoineProDeepLink.Market -> launchSymbol = target.symbol
             null -> Unit
         }
     }

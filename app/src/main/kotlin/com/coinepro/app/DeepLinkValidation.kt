@@ -4,6 +4,16 @@ internal sealed interface CoineProDeepLink {
     data class Signal(val signalId: Long) : CoineProDeepLink
     data object Activity : CoineProDeepLink
 
+    /**
+     * One market's chart, from a row of the home-screen widget.
+     *
+     * The ticker is validated rather than trusted. This scheme is unverified — any installed app
+     * may register it — so what arrives here is an arbitrary string from an untrusted sender, and
+     * it is about to become a navigation argument and a request path. Restricting it to the shape
+     * a ticker actually has is what stops that.
+     */
+    data class Market(val symbol: String) : CoineProDeepLink
+
     /** The password-recovery App Link, carrying the token the reset step must present. */
     data class PasswordReset(val token: String) : CoineProDeepLink
 }
@@ -41,6 +51,23 @@ private val RESET_TOKEN = Regex("^[A-Za-z0-9._~+/=-]{16,512}$")
 internal fun positiveSignalId(raw: String?): Long? =
     raw?.toLongOrNull()?.takeIf { it > 0L }
 
+/**
+ * A ticker as the app writes it, or null.
+ *
+ * Letters, digits and the slash a pair is written with — `BTC/USDT`, `XAU/USD`, `US500`. Upper-cased
+ * because every symbol in this app is, and bounded because an unbounded string from an unverified
+ * scheme becomes a navigation route and then a URL path.
+ *
+ * Rejecting rather than sanitising: a ticker that needed cleaning up was not a ticker, and quietly
+ * opening a *different* market than the link named would be worse than opening none.
+ */
+internal fun tickerOrNull(raw: String?): String? {
+    val candidate = raw?.trim()?.uppercase() ?: return null
+    return candidate.takeIf { TICKER.matches(it) }
+}
+
+private val TICKER = Regex("^[A-Z0-9]{2,12}(/[A-Z0-9]{2,12})?$")
+
 internal fun parseCoineProDeepLink(
     scheme: String?,
     host: String?,
@@ -60,6 +87,7 @@ internal fun parseCoineProDeepLink(
     return when (host) {
         "signal" -> positiveSignalId(pathSegments.singleOrNull())?.let(CoineProDeepLink::Signal)
         "activity" -> if (pathSegments.isEmpty()) CoineProDeepLink.Activity else null
+        "market" -> tickerOrNull(pathSegments.singleOrNull())?.let(CoineProDeepLink::Market)
         else -> null
     }
 }

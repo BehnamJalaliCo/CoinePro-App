@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The widget's own palette.
+
+  A widget cannot read `CoineProColors`: it is drawn by the launcher's process from a `RemoteViews`
+  tree, where there is no Compose, no CompositionLocal and no theme of ours. So the two palettes
+  have to be stated twice, and `WidgetPaletteTest` holds these values against the real ones so they
+  cannot drift apart unnoticed — a widget in last season's colours sitting next to the app's icon
+  is more conspicuous than anywhere else the palette appears.
+
+  These are the *light* values. `values-night` carries the dark ones, and the system swaps them,
+  which is the one piece of theming a widget gets for free.
+
+  The reader's in-app theme choice deliberately does **not** reach here. A widget lives on the home
+  screen among other widgets and belongs to that surface's light or dark, not to this app's — an
+  app pinned dark inside a light home screen would draw one black rectangle in a row of white ones.
+-->
+<resources>
+    <color name="widget_stage">#FFFFFFFF</color>
+    <color name="widget_surface">#FFF4F5F7</color>
+    <color name="widget_border">#FFE2E5EA</color>
+    <color name="widget_text_primary">#FF14181F</color>
+    <color name="widget_text_secondary">#FF5E6673</color>
+    <color name="widget_text_muted">#FF848E9C</color>
+    <color name="widget_gold">#FFD8A848</color>
+    <color name="widget_buy">#FF0E8A4C</color>
+    <color name="widget_sell">#FFC9203A</color>
+</resources>

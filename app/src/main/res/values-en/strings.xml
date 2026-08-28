@@ -151,4 +151,13 @@
     <string name="lock_sheet_not_enrolled">No fingerprint or face is enrolled on this phone yet.</string>
     <string name="lock_sheet_enrol">Enrol in phone settings</string>
     <string name="lock_sheet_credential_only">This phone has no sensor; it opens with its own passcode, pattern or PIN.</string>
+    <string name="widget_description">The markets you follow, on your home screen.</string>
+    <string name="widget_refresh">Refresh</string>
+    <string name="widget_empty">No prices yet. Star a market in the app and it appears here.</string>
+    <string name="widget_now">just now</string>
+    <string name="widget_minutes">%1$s min ago</string>
+    <string name="widget_hours">%1$s h ago</string>
+    <string name="widget_old">a long time ago</string>
+    <string name="widget_never">not updated yet</string>
+    <string name="widget_stale">%1$s · offline</string>
 </resources>

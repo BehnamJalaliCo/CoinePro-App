@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The markets widget.
+
+  Every row that could ever be drawn exists in this file and is hidden by default; the provider
+  shows the ones that fit. `RemoteViews` cannot inflate a view at runtime — it can only toggle and
+  fill what the layout already declares — so a fixed set of eight rows is not a shortcut, it is how
+  a list without a `RemoteViewsService` is built. Eight is `WidgetLayout.MAX_ROWS`, and
+  `WidgetLayoutTest` holds the two together.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="8dp">
+
+    <!-- The full strip. Wordmark, freshness, refresh. -->
+    <LinearLayout
+        android:id="@+id/widget_header"
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="8dp"
+        android:paddingEnd="4dp">
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="@color/widget_text_primary"
+            android:text="@string/app_name" />
+
+        <TextView
+            android:id="@+id/widget_freshness"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:maxLines="1"
+            android:textColor="@color/widget_text_muted" />
+
+        <ImageView
+            android:id="@+id/widget_refresh"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:padding="7dp"
+            android:src="@drawable/icon_arrows_clockwise"
+            android:contentDescription="@string/widget_refresh" />
+    </LinearLayout>
+
+    <!-- What the reader sees before the first fetch lands, or when there is nothing to show. -->
+    <TextView
+        android:id="@+id/widget_empty"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:padding="12dp"
+        android:textSize="12sp"
+        android:visibility="gone"
+        android:textColor="@color/widget_text_secondary" />
+
+    <LinearLayout
+        android:id="@+id/widget_rows"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <include android:id="@+id/widget_row_0" layout="@layout/widget_row" />
+        <include android:id="@+id/widget_row_1" layout="@layout/widget_row" />
+        <include android:id="@+id/widget_row_2" layout="@layout/widget_row" />
+        <include android:id="@+id/widget_row_3" layout="@layout/widget_row" />
+        <include android:id="@+id/widget_row_4" layout="@layout/widget_row" />
+        <include android:id="@+id/widget_row_5" layout="@layout/widget_row" />
+        <include android:id="@+id/widget_row_6" layout="@layout/widget_row" />
+        <include android:id="@+id/widget_row_7" layout="@layout/widget_row" />
+    </LinearLayout>
+
+    <!-- The compact strip, for widgets too short for a header. The freshness alone. -->
+    <TextView
+        android:id="@+id/widget_footer"
+        android:layout_width="match_parent"
+        android:layout_height="18dp"
+        android:gravity="center"
+        android:textSize="10sp"
+        android:maxLines="1"
+        android:visibility="gone"
+        android:textColor="@color/widget_text_muted" />
+</LinearLayout>
