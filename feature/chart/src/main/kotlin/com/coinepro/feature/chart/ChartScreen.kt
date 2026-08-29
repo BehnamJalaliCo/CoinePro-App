@@ -965,6 +965,7 @@ fun ChartScreen(
         reading?.let { values ->
             ChartReadingsPanel(
                 reading = values,
+                interval = state.interval,
                 modifier = Modifier.padding(
                     horizontal = CoineProSpacing.Gutter,
                     vertical = CoineProSpacing.OneHalf,

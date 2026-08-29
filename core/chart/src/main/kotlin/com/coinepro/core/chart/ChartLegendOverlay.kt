@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -164,13 +166,21 @@ internal fun legendRows(
     rows += ChartLegendRow(
         target = ChartLegendTarget.Series,
         label = seriesLabel.orEmpty(),
+        // Close first, then open, high, low.
+        //
+        // The conventional order is OHLC and this deliberately is not it. Whichever alternative
+        // gets picked, the row can still be ellipsised by a symbol whose name is long — and OHLC
+        // puts the close, the one number the reader actually came for, at the end where it is the
+        // first to be cut. Reading `O 2571.2  H 2575.7  L 2570.1  C 2…` was the exact complaint.
+        // Leading with the close means what survives a tight row is always the most useful part of
+        // it, and the labels are there so nobody has to infer the order.
         alternatives = listOf(
-            "O ${formatPrice(bar.o, decimals)}   H ${formatPrice(bar.h, decimals)}   " +
-                "L ${formatPrice(bar.l, decimals)}   C ${formatPrice(bar.c, decimals)}",
-            "O ${formatPrice(bar.o, decimals)} H ${formatPrice(bar.h, decimals)} " +
-                "L ${formatPrice(bar.l, decimals)} C ${formatPrice(bar.c, decimals)}",
-            "${formatPrice(bar.o, decimals)} ${formatPrice(bar.h, decimals)} " +
-                "${formatPrice(bar.l, decimals)} ${formatPrice(bar.c, decimals)}",
+            "C ${formatPrice(bar.c, decimals)}   O ${formatPrice(bar.o, decimals)}   " +
+                "H ${formatPrice(bar.h, decimals)}   L ${formatPrice(bar.l, decimals)}",
+            "C ${formatPrice(bar.c, decimals)} O ${formatPrice(bar.o, decimals)} " +
+                "H ${formatPrice(bar.h, decimals)} L ${formatPrice(bar.l, decimals)}",
+            "${formatPrice(bar.c, decimals)} ${formatPrice(bar.o, decimals)} " +
+                "${formatPrice(bar.h, decimals)} ${formatPrice(bar.l, decimals)}",
             "C ${formatPrice(bar.c, decimals)}",
         ),
         colour = null,
@@ -574,27 +584,14 @@ internal fun ChartLegendOverlay(
                 // The name carries the market's state, so a chart sitting on a Saturday price says
                 // so where the reader is already looking. See [legendSeriesName].
                 val head = rows.first().let { it.copy(label = legendSeriesName(it.label, marketStatus)) }
-                // What is left for the four prices once the name and the buttons have taken their
-                // share. Measuring against the whole plate is what used to push the eye off the
-                // right-hand edge on a narrow phone: the text fitted, and then the row it was in
-                // did not.
-                val naming = if (head.label.isBlank()) {
-                    0f
-                } else {
-                    measurer.measure(head.label, headStyle).size.width +
-                        with(density) { LEGEND_GAP_DP.toPx() }
-                }
-                val available = plate - actions - naming
-                // The same fitting the canvas did: the separator tightens, then the labels go, and
-                // only then does it fall back to the close alone — which is still true and still
-                // useful. Four prices at four decimals do not fit a narrow phone at any spacing.
-                val headText = head.alternatives.firstOrNull { text ->
-                    measurer.measure(text, headStyle).size.width <= available
-                } ?: head.alternatives.last()
+                // The head row hands its alternatives over whole. `LegendRow` picks against the
+                // width it is actually given, which is the only measurement that cannot be wrong —
+                // see the note there.
                 LegendRow(
-                    row = head.copy(alternatives = listOf(headText)),
+                    row = head,
                     colour = if (rising) palette.up else palette.down,
                     palette = palette,
+                    measurer = measurer,
                     fontSize = size,
                     dimmed = ChartLegendTarget.Series in hidden,
                     slots = slots,
@@ -612,6 +609,7 @@ internal fun ChartLegendOverlay(
                         // taking the colour from that bar would paint a rise red.
                         colour = if (movedUp) palette.up else palette.down,
                         palette = palette,
+                        measurer = measurer,
                         fontSize = size,
                         // It fades with the price it describes, because that is what it describes.
                         dimmed = ChartLegendTarget.Series in hidden,
@@ -626,6 +624,7 @@ internal fun ChartLegendOverlay(
                         row = row,
                         colour = row.colour?.let { Color(opaqueArgb(it)) } ?: palette.text,
                         palette = palette,
+                        measurer = measurer,
                         fontSize = size,
                         dimmed = row.target in hidden,
                         slots = slots,
@@ -674,6 +673,7 @@ private fun LegendRow(
     row: ChartLegendRow,
     colour: Color,
     palette: ChartPalette,
+    measurer: TextMeasurer,
     fontSize: TextUnit,
     dimmed: Boolean,
     slots: Int,
@@ -703,17 +703,32 @@ private fun LegendRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        val value = row.alternatives.firstOrNull().orEmpty()
-        if (value.isNotBlank()) {
-            Text(
-                text = value,
-                color = faded,
-                fontSize = fontSize,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Right,
-                modifier = Modifier.weight(1f, fill = false),
-            )
+        // The alternative is chosen **here**, against the width this text is actually handed.
+        //
+        // It used to be picked one level up, by measuring the label and the buttons and subtracting
+        // them from the plate. That arithmetic and the layout disagreed — the row was measured in
+        // one style and rendered in another, and the gaps and the swatch were not all in the sum —
+        // so the widest alternative was chosen and then ellipsised, which is the failure the
+        // alternatives exist to prevent. A `BoxWithConstraints` cannot disagree with itself: its
+        // `maxWidth` *is* the space left after every sibling has taken its share.
+        if (row.alternatives.any { it.isNotBlank() }) {
+            BoxWithConstraints(modifier = Modifier.weight(1f, fill = false)) {
+                val style = LocalTextStyle.current.copy(fontSize = fontSize)
+                val room = constraints.maxWidth
+                val value = remember(row.alternatives, room, fontSize) {
+                    row.alternatives.firstOrNull { text ->
+                        measurer.measure(text, style, maxLines = 1).size.width <= room
+                    } ?: row.alternatives.last()
+                }
+                Text(
+                    text = value,
+                    color = faded,
+                    fontSize = fontSize,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Right,
+                )
+            }
         }
         if (row.primary) {
             Spacer(modifier = Modifier.width(LEGEND_ACTIONS_GAP_DP))

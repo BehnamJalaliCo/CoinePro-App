@@ -1626,7 +1626,11 @@ class ScreenshotRenderTest {
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
     fun chartScreen() = capture("49-chart-screen-fa") {
-        ChartScreen(controller = ScreenshotFixtures.chartController(scope))
+        // `onOpenStudio` is passed because the app passes it. Without it the studio row at the foot
+        // is absent and the capture shows a page ending in a screenful of empty stage — a picture
+        // of a layout nobody ever sees, which is worse than no picture: it was read as dead space
+        // in the design and it was the fixture's.
+        ChartScreen(controller = ScreenshotFixtures.chartController(scope), onOpenStudio = {})
     }
 
     /** The same screen with four indicators on, which is what a real setup looks like. */
@@ -1635,7 +1639,7 @@ class ScreenshotRenderTest {
     fun chartScreenLoaded() = capture("50-chart-screen-loaded-fa") {
         val controller = ScreenshotFixtures.chartController(scope)
         listOf("ema", "bollinger", "supertrend", "pivots").forEach(controller::toggleIndicator)
-        ChartScreen(controller = controller)
+        ChartScreen(controller = controller, onOpenStudio = {})
     }
 
     /**

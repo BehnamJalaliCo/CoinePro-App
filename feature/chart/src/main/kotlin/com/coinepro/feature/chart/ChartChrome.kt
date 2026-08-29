@@ -1,6 +1,12 @@
 package com.coinepro.feature.chart
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,12 +50,14 @@ import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.CoineProMotionSpecs
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPress
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.R as DesignR
+import com.coinepro.core.designsystem.continuousMotionAllowed
 import com.coinepro.core.designsystem.onPageAccent
 import com.coinepro.core.designsystem.pageAccent
 import com.coinepro.core.designsystem.pageAccentInk
@@ -374,7 +383,12 @@ internal fun RangeChipRow(
  * bars on screen — so nothing here is a second opinion about the same series.
  */
 @Composable
-internal fun ChartReadingsPanel(reading: ChartReading, modifier: Modifier = Modifier) {
+internal fun ChartReadingsPanel(
+    reading: ChartReading,
+    /** The bar length this reading was taken on. It is half the answer — see the title below. */
+    interval: ChartInterval,
+    modifier: Modifier = Modifier,
+) {
     CoineProCard(
         modifier = modifier.fillMaxWidth(),
         shape = CoineProShapes.medium,
@@ -383,11 +397,43 @@ internal fun ChartReadingsPanel(reading: ChartReading, modifier: Modifier = Modi
             vertical = CoineProSpacing.OneHalf,
         ),
     ) {
-        Text(
-            text = stringResource(R.string.chart_reading_title),
-            style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.TextMuted,
-        )
+        // The question **and the bar it was asked on**, in one line.
+        //
+        // Every figure here is computed from `visibleSeries`, so switching timeframe already
+        // changed all three — and nothing on the panel said so. A reader who taps M15 and watches
+        // «قدرت روند» go from «متوسط» to «قوی» has no way to know whether that is the market or the
+        // app, and the honest reading of a trend strength is meaningless without the length of bar
+        // it was measured over. So the title carries it: «این بازار چه می‌کند · ۱ ساعت».
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.chart_reading_title),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+            )
+            Text(
+                text = "·",
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextDisabled,
+            )
+            // Crossfaded rather than replaced. The three readings below animate to their new
+            // values on a timeframe change; a label that snapped while they travelled would be the
+            // one part of the panel not taking part in the same movement.
+            AnimatedContent(
+                targetState = interval.label,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "reading-interval",
+            ) { name ->
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.pageAccentInk,
+                )
+            }
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -451,24 +497,37 @@ private fun ReadingColumn(
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
         )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleSmall,
-            color = tone,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        AnimatedContent(
+            targetState = value,
+            transitionSpec = { fadeIn() togetherWith fadeOut() },
+            label = "reading-value",
             modifier = Modifier.padding(top = 2.dp),
-        )
+        ) { word ->
+            Text(
+                text = word,
+                style = MaterialTheme.typography.titleSmall,
+                color = tone,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         ReadingMeter(
             fraction = fraction,
             tone = tone,
             modifier = Modifier.padding(top = CoineProSpacing.One),
         )
+        // Two lines, not one.
+        //
+        // «+0.09% فاصلهٔ میانگین‌ها» does not fit a third of a phone at any font this panel would
+        // use, so at one line it rendered as «+0.09% فاصلهٔ میانگ…» — the number survived and the
+        // thing it measures was cut off, which is the half that makes it mean anything. Two lines
+        // fit all three readings' reasons at every width, and the panel grows by one line of
+        // eleven-point text.
         Text(
             text = why,
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextDisabled,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 5.dp),
         )
@@ -476,15 +535,45 @@ private fun ReadingColumn(
 }
 
 /**
- * Where one reading sits on its own scale.
+ * Where one reading sits on its own scale, and it travels there.
  *
- * Four points tall and drawn, not animated: it is a fact about the bars on screen, and a fact that
- * slides into place every time a pan changes the window would be motion reporting nothing. It fills
- * from the start edge, which in this app's default locale is the right one — the same direction the
- * label above it is read in.
+ * ### Why this animates now, having deliberately not before
+ *
+ * The note that used to stand here said a fact about the bars on screen should not slide, because
+ * a pan changes the window continuously and a meter chasing it would be motion reporting nothing.
+ * That reasoning holds for a pan and does not hold for the case it was blocking: switching
+ * timeframe replaces the whole series at once, and all three readings jump together. Jumping is
+ * exactly when a reader cannot tell *which* of the three moved, or by how much — the one moment
+ * the movement is the information.
+ *
+ * So it travels, on the design system's own standard curve, and only there is any distance to
+ * cover. A pan produces a hundred tiny targets and the spring simply tracks them, which is
+ * indistinguishable from the old behaviour; a timeframe change produces one large one and the eye
+ * follows it.
+ *
+ * Under `continuousMotionAllowed()` the fill is placed rather than animated. The reduced-motion
+ * reader gets the same number with no travel, which is the whole point of the setting.
  */
 @Composable
 private fun ReadingMeter(fraction: Float, tone: Color, modifier: Modifier = Modifier) {
+    val target = fraction.coerceIn(0f, 1f).takeIf { it.isFinite() } ?: 0f
+    val filled = if (continuousMotionAllowed()) {
+        animateFloatAsState(
+            targetValue = target,
+            animationSpec = CoineProMotionSpecs.standard(),
+            label = "reading-meter",
+        ).value
+    } else {
+        target
+    }
+    // The ink travels with the fill. A reading that crosses from «کم» into «زیاد» changes both its
+    // word and its colour, and a colour that cut while the bar was still moving would put the new
+    // verdict on the old length for a fifth of a second.
+    val ink by animateColorAsState(
+        targetValue = tone,
+        animationSpec = CoineProMotionSpecs.standard(),
+        label = "reading-meter-ink",
+    )
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -495,9 +584,9 @@ private fun ReadingMeter(fraction: Float, tone: Color, modifier: Modifier = Modi
         Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .fillMaxWidth(fraction.coerceIn(0f, 1f))
+                .fillMaxWidth(filled)
                 .clip(CoineProPillShape)
-                .background(tone),
+                .background(ink),
         )
     }
 }
