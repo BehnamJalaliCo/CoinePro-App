@@ -107,7 +107,12 @@ interface CandleGateway {
 // ── crypto ───────────────────────────────────────────────────────────────────────────────────
 
 internal interface CryptoCandleApi {
-    @GET("market/candles")
+    // `api/mobile/v1/` is not decoration: TradeYar's mobile surface lives under it and the base URL
+    // is the bare host. Without the prefix this resolves to the web portal, which answers 307 to
+    // `/login` — verified live, against `401` for the prefixed path. It was wrong here for as long
+    // as this file has existed and nothing caught it, because the app had never been run against a
+    // live server and this was the one crypto gateway with no path test. There is one now.
+    @GET("api/mobile/v1/market/candles")
     suspend fun candles(
         @Query("symbol") symbol: String,
         @Query("tf") timeframe: String,
