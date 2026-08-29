@@ -16,7 +16,9 @@ android {
 
 dependencies {
     implementation(project(":core:marketdata"))
-    implementation(project(":core:model"))
+    // api rather than implementation: `SurfaceAccess` carries a `MarketPlatform`, and it is a
+    // parameter of `SearchScreen`, so whoever builds one needs the type.
+    api(project(":core:model"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:common"))
     // The watchlist panel reads and writes the reader's own lists. api rather than implementation:

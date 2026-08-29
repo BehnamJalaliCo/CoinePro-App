@@ -68,6 +68,7 @@ import com.coinepro.core.datastore.ActivePlatformStore
 import com.coinepro.core.datastore.ChartLayout
 import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayoutStore
+import com.coinepro.core.datastore.SymbolChartState
 import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.datastore.DrawingTemplateStore
 import com.coinepro.core.datastore.IndicatorTemplateStore
@@ -184,6 +185,9 @@ import com.coinepro.feature.chart.ChartWorkspaceStore
 import com.coinepro.feature.chart.WatchlistQuote
 import com.coinepro.feature.connections.ConnectionsScreen
 import com.coinepro.feature.copytrade.CopyTradeScreen
+import com.coinepro.feature.dom.DepthLadderPreference
+import com.coinepro.feature.dom.DepthLadderPreferences
+import com.coinepro.feature.dom.LadderFigure
 import com.coinepro.feature.dom.DepthOfMarketScreen
 import com.coinepro.feature.dom.R as DomR
 import com.coinepro.feature.execution.ExecutionScreen
@@ -222,12 +226,14 @@ import com.coinepro.feature.script.ScriptScreen
 import com.coinepro.feature.search.MarketsScreen
 import com.coinepro.feature.search.MarketsSignalStrip
 import com.coinepro.feature.search.SearchScreen
+import com.coinepro.feature.search.SurfaceAccess
 import com.coinepro.feature.signaldetail.SignalChartController
 import com.coinepro.feature.signaldetail.SignalDetailScreen
 import com.coinepro.feature.signals.SignalsScreen
 import com.coinepro.feature.terminal.TerminalController
 import com.coinepro.feature.terminal.TerminalScreen
 import com.coinepro.feature.tools.ToolsScreen
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 private const val SIGNAL_DETAIL_PATTERN = "signal/{signalId}"
@@ -340,6 +346,48 @@ private fun scriptRoute(symbol: String) = "script/" + Uri.encode(symbol)
 
 /** The chart's working surface, on a symbol. */
 private fun studioRoute(symbol: String) = "chart/" + Uri.encode(symbol) + "/studio"
+
+/**
+ * Where a search result for one of the app's own sections sends the reader.
+ *
+ * The catalogue in `feature:search` holds ids rather than routes on purpose. Three of these open a
+ * screen that needs a symbol in its path, and that module has no business knowing how this graph is
+ * spelled or which market to pick — that decision is the same one the chart tab and the toolkit
+ * already make, and it is made here, once.
+ *
+ * Exhaustive rather than a map with a fallback: an id with no case here would quietly navigate
+ * somewhere wrong, and a section added without a route should be found by whoever adds it.
+ */
+private fun surfaceRoute(id: String, platform: MarketPlatform, watchlist: List<String>): String =
+    when (id) {
+        "academy" -> ACADEMY_ROUTE
+        "journal" -> JOURNAL_ROUTE
+        "paper-trade" -> PAPER_TRADE_ROUTE
+        "backtest" -> scriptRoute(defaultScriptSymbol(platform, watchlist))
+        "screener" -> SCREENER_ROUTE
+        "heatmap" -> HEATMAP_ROUTE
+        "tools" -> TOOLS_ROUTE
+        "chart-studio" -> studioRoute(defaultScriptSymbol(platform, watchlist))
+        "alerts" -> ALERTS_ROUTE
+        // The watchlist is a segment inside the markets tab, not a destination of its own.
+        "watchlist" -> AppDestination.MARKETS.route
+        "news" -> NEWS_ROUTE
+        "free" -> FREE_ROUTE
+        "calendar" -> CALENDAR_ROUTE
+        "portfolio" -> PORTFOLIO_ROUTE
+        "signals" -> AppDestination.SIGNALS.route
+        "ai" -> AppDestination.AI.route
+        "ai-vision" -> AI_VISION_ROUTE
+        "ai-assistant" -> AI_ASSISTANT_ROUTE
+        "terminal" -> TERMINAL_ROUTE
+        "connections" -> CONNECTIONS_ROUTE
+        "activity" -> ACTIVITY_ROUTE
+        "membership" -> MEMBERSHIP_ROUTE
+        "verify" -> KYC_ROUTE
+        "notifications" -> NOTIFICATIONS_ROUTE
+        "profile" -> PROFILE_ROUTE
+        else -> PROFILE_ROUTE
+    }
 
 /** The two-chart screen, on the symbol its upper pane opens with. */
 private fun panesRoute(symbol: String) = "chart/" + Uri.encode(symbol) + "/panes"
@@ -2243,6 +2291,10 @@ private fun MainShell(
                     watchlistStore = watchlistStore,
                     onOpenSymbol = { symbol -> navController.navigate(chartRoute(symbol)) },
                     onOpenSearch = { navController.navigate(MARKET_SEARCH_ROUTE) },
+                    // The same hoisted composer the chart uses, at the price the preview showed —
+                    // the shell's live map carries only the subscribed handful, and looking the
+                    // price up again here would find nothing for most of the list.
+                    onCreateAlert = { symbol, price -> alertFromChart = symbol to price },
                     // Only when there is something to say. A strip reading «۰ سیگنال باز» is a row
                     // of chrome reporting the absence of news.
                     openSignals = signals.items.takeIf { it.isNotEmpty() }?.let { open ->
@@ -2274,6 +2326,28 @@ private fun MainShell(
                     onToggleWatch = onToggleWatch,
                     controller = marketSearchController,
                     onOpenSymbol = { navController.navigate(chartRoute(it)) },
+                    // What this reader can actually reach, so a section is never an invitation to
+                    // a wall. `absent` is the deployment's own answer rather than a guess: a
+                    // server that reports no chart vision has no vision screen to name, and a
+                    // terminal with no configured URL is a WebView pointed at nothing.
+                    access = SurfaceAccess(
+                        platform = activePlatform,
+                        signedIn = !guest,
+                        absent = buildSet {
+                            if (!chartVisionAvailable) add("ai-vision")
+                            if (!assistantAvailable) add("ai-assistant")
+                            if (!aiSignalsAvailable) add("ai")
+                            if (!terminalController.isConfigured) add("terminal")
+                        },
+                    ),
+                    onOpenSurface = { id ->
+                        navController.navigate(surfaceRoute(id, activePlatform, watchlist))
+                    },
+                    onSignIn = onSignIn,
+                    // Read, never requested: the preview draws whatever line the markets tab has
+                    // already fetched for a symbol and asks for nothing of its own.
+                    sparklines = sparklineStore,
+                    onCreateAlert = { symbol, price -> alertFromChart = symbol to price },
                 )
             }
             composable(
@@ -2475,9 +2549,13 @@ private fun MainShell(
                 val depthController = remember(orderBookGateway, depthScope) {
                     OrderBookController(gateway = orderBookGateway, scope = depthScope)
                 }
+                val depthPreferences = remember(symbolChartStateStore) {
+                    SymbolChartDepthPreferences(symbolChartStateStore)
+                }
                 DepthOfMarketScreen(
                     controller = depthController,
                     symbol = activeChartSymbol,
+                    preferences = depthPreferences,
                     // A tapped level goes to the alert composer, never to an order. We do not place
                     // orders against a ladder this app cannot fill into — and a level a reader
                     // stopped on is exactly the price they want to be told about later, which is
@@ -2830,4 +2908,46 @@ private fun ConnectionsState.forPlatform(platform: MarketPlatform): VenueStatus 
         configured = connection != null,
         connected = connection?.connected == true,
     )
+}
+
+/**
+ * The depth ladder's preference port, over the store that already holds per-symbol view state.
+ *
+ * `SymbolChartStateStore` is where "how this symbol was last being looked at" lives, and an
+ * aggregation step and a size column are that kind of fact. A second preferences key for the same
+ * reader on the same symbol would be a second thing to evict, migrate and keep in step with the
+ * first.
+ *
+ * [save] reads the row before writing it because `put` replaces rather than merges — that is its
+ * documented contract, and a fresh `SymbolChartState` written from here would silently throw away
+ * the symbol's timeframe, indicators and drawings the moment somebody touched the aggregation
+ * chips. `updatedAt` is bumped for the reason the chart bumps it: this symbol has just been looked
+ * at, and the store evicts by that.
+ */
+private class SymbolChartDepthPreferences(
+    private val store: SymbolChartStateStore,
+) : DepthLadderPreferences {
+
+    override suspend fun load(symbol: String): DepthLadderPreference? {
+        val row = store.state(symbol).first() ?: return null
+        val step = row.domStep?.toDoubleOrNull()
+        val figure = row.domFigure?.let { id -> LadderFigure.entries.firstOrNull { it.name == id } }
+        // Nothing stored for the ladder specifically. A default-valued preference here would be
+        // indistinguishable from a reader who had deliberately chosen the raw book, which matters
+        // the day the ladder's own default changes.
+        if (step == null && figure == null) return null
+        return DepthLadderPreference(step = step, figure = figure ?: LadderFigure.AMOUNT)
+    }
+
+    override suspend fun save(symbol: String, preference: DepthLadderPreference) {
+        val existing = store.state(symbol).first() ?: SymbolChartState(symbol = symbol)
+        store.put(
+            existing.copy(
+                symbol = symbol,
+                domStep = preference.step?.toString(),
+                domFigure = preference.figure.name,
+                updatedAt = System.currentTimeMillis(),
+            ),
+        )
+    }
 }

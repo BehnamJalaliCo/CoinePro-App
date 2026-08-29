@@ -3,8 +3,10 @@
     <string name="dom_title">Depth of market</string>
     <string name="dom_source">Source: %1$s</string>
     <string name="dom_column_bid">Bid size</string>
+    <string name="dom_column_bid_cumulative">Bid cumulative</string>
     <string name="dom_column_price">Price</string>
     <string name="dom_column_ask">Ask size</string>
+    <string name="dom_column_ask_cumulative">Ask cumulative</string>
     <string name="dom_spread">Spread</string>
     <string name="dom_mid">Mid</string>
     <string name="dom_imbalance">Bid share</string>
@@ -37,6 +39,15 @@
 
     <string name="dom_orders_note">The number on a bar is how many orders rest at that level, shown only from %1$s orders upwards; about nine levels in ten hold a single order.</string>
     <string name="dom_data_note">The book refreshes once a second while this screen is open — roughly 4 MB an hour. Leaving the screen stops it.</string>
+
+    <string name="dom_step_label">Price aggregation</string>
+    <string name="dom_step_raw">Raw</string>
+    <string name="dom_figure_amount">Amount</string>
+    <string name="dom_figure_cumulative">Cumulative</string>
+    <string name="dom_step_note">Aggregating folds neighbouring levels into one row and gives the price column the step\'s own decimal places. Bids round down onto their bucket and asks round up onto theirs, so the spread can only widen, never tighten.</string>
+
+    <string name="dom_curve_title">Depth curve</string>
+    <string name="dom_curve_description">Market depth curve. The deepest cumulative volume is %1$s, over the price band %2$s to %3$s.</string>
 
     <string name="dom_pick_price">Create an alert at %1$s</string>
     <string name="dom_pick_price_orders">Create an alert at %1$s, %2$s orders at this level</string>

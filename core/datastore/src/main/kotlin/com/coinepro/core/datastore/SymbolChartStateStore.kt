@@ -114,6 +114,27 @@ data class SymbolChartState(
      * [indicators] is on.
      */
     val chainSources: Map<String, String> = emptyMap(),
+    /**
+     * The order-book aggregation step this symbol's depth ladder was last read at, as the decimal
+     * text of a `Double`, or null for the raw book.
+     *
+     * A string like every other name in this row, and for the same reason — `core:datastore` must
+     * not know `feature:dom`'s types. Unlike the others it is a *number* written as text rather
+     * than an id, which is deliberate: the steps a ladder offers are derived from the instrument's
+     * own tick when the book arrives, so there is no fixed vocabulary to hold an id from.
+     *
+     * Null is a choice here rather than an absence. It is the raw book, which is both what the
+     * ladder opens on and what a reader deliberately goes back to.
+     */
+    val domStep: String? = null,
+    /**
+     * Which figure that ladder's size columns were printing — the name of a `LadderFigure`.
+     *
+     * An enum name rather than the enum, on the same boundary everything else in this row sits on.
+     * A value this build does not recognise resolves to null in the feature module and the ladder
+     * opens on its default, which is exactly what should happen to somebody who downgraded.
+     */
+    val domFigure: String? = null,
 )
 
 /**
@@ -258,6 +279,8 @@ class SymbolChartStateStore(private val dataStore: DataStore<Preferences>) {
                 state.toolFavourites.filterNot { hasSeparator(it) }.joinToString(UNIT),
                 state.patterns.filterNot { hasSeparator(it) }.joinToString(UNIT),
                 sources.joinToString(UNIT),
+                blankIfSeparated(state.domStep.orEmpty()),
+                blankIfSeparated(state.domFigure.orEmpty()),
             ).joinToString(RECORD)
         }
 
@@ -303,6 +326,11 @@ class SymbolChartStateStore(private val dataStore: DataStore<Preferences>) {
                     .chunked(2)
                     .mapNotNull { pair -> if (pair.size == 2) pair[0] to pair[1] else null }
                     .toMap(),
+                // Thirteen and fourteen continue the scheme: a record written by an older build is
+                // simply short here and both take their defaults, which is this format's whole
+                // migration story.
+                domStep = parts.getOrNull(13)?.takeIf(String::isNotBlank),
+                domFigure = parts.getOrNull(14)?.takeIf(String::isNotBlank),
             )
         }
 

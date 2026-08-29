@@ -20,6 +20,18 @@ import org.junit.Test
  */
 class DepthLadderRowsTest {
 
+    /** A bare rung, for the assertions that are about one field and not about a whole ladder. */
+    private fun rung(orders: Int?) = LadderRow(
+        price = 1.0,
+        quantity = 1.0,
+        total = 1.0,
+        side = BookSide.BID,
+        barFraction = 0f,
+        cumulativeBarFraction = 0f,
+        curveFraction = 0f,
+        orders = orders,
+    )
+
     private fun book(
         bids: List<Pair<Double, Double>>,
         asks: List<Pair<Double, Double>>,
@@ -237,10 +249,10 @@ class DepthLadderRowsTest {
         // Pinned as behaviour rather than as the literal 2: what must hold is that one is ordinary
         // and that the stacked levels TradeYar measured — their 2-to-4 bucket and the 27 at the top
         // of it — all clear the bar. A threshold above their bucket would mark almost nothing.
-        assertFalse(LadderRow(1.0, 1.0, BookSide.BID, 0f, 0f, orders = 1).stacked)
-        assertTrue(LadderRow(1.0, 1.0, BookSide.BID, 0f, 0f, orders = 4).stacked)
-        assertTrue(LadderRow(1.0, 1.0, BookSide.BID, 0f, 0f, orders = 27).stacked)
-        assertFalse(LadderRow(1.0, 1.0, BookSide.BID, 0f, 0f, orders = null).stacked)
+        assertFalse(rung(orders = 1).stacked)
+        assertTrue(rung(orders = 4).stacked)
+        assertTrue(rung(orders = 27).stacked)
+        assertFalse(rung(orders = null).stacked)
     }
 
     @Test
@@ -292,5 +304,107 @@ class DepthLadderRowsTest {
         assertEquals("62%", BidiText.strip(percentLabel(0.62)))
         assertEquals("100%", BidiText.strip(percentLabel(1.0)))
         assertEquals("0%", BidiText.strip(percentLabel(0.0)))
+    }
+    @Test
+    fun `the cumulative figure on a rung is the book's own running total`() {
+        val ladder = ladderRows(
+            book(
+                bids = listOf(100.0 to 1.0, 99.0 to 2.0, 98.0 to 3.0),
+                asks = listOf(101.0 to 4.0),
+            ),
+        )
+        assertEquals(listOf(1.0, 3.0, 6.0), ladder.bids.map { it.total })
+        assertEquals(listOf(4.0), ladder.asks.map { it.total })
+        assertEquals(1.0, ladderFigure(ladder.bids[0], LadderFigure.AMOUNT), 1e-9)
+        assertEquals(6.0, ladderFigure(ladder.bids[2], LadderFigure.CUMULATIVE), 1e-9)
+    }
+
+    @Test
+    fun `the cumulative bar is scaled to the visible window so the deepest rung fills its cell`() {
+        val ladder = ladderRows(
+            book(
+                bids = listOf(100.0 to 1.0, 99.0 to 2.0, 98.0 to 3.0),
+                asks = listOf(101.0 to 1.0),
+            ),
+        )
+        // Six on the buy side against one on the sell side, so six is the denominator both share.
+        assertEquals(1f / 6f, ladder.bids[0].cumulativeBarFraction, 1e-6f)
+        assertEquals(0.5f, ladder.bids[1].cumulativeBarFraction, 1e-6f)
+        assertEquals(1f, ladder.bids[2].cumulativeBarFraction, 1e-6f)
+        // Scaled across both sides, not per side: a one-lot sell side must not draw a full bar.
+        assertEquals(1f / 6f, ladder.asks[0].cumulativeBarFraction, 1e-6f)
+    }
+
+    @Test
+    fun `the cumulative bar and the curve wash are different numbers on the same rung`() {
+        // Eight rows of a book that is much deeper. The bar fills its cell against the window; the
+        // wash stays short against everything loaded. Collapsing them onto one denominator would
+        // lose whichever answer it kept.
+        val deep = book(
+            bids = (0 until 40).map { (100.0 - it) to 1.0 },
+            asks = (0 until 40).map { (101.0 + it) to 1.0 },
+        )
+        val ladder = ladderRows(deep, levels = 8)
+        val deepest = ladder.bids.last()
+        assertEquals(1f, deepest.cumulativeBarFraction, 1e-6f)
+        assertEquals(8f / 40f, deepest.curveFraction, 1e-6f)
+    }
+
+    @Test
+    fun `the figure, its bar and its decimals move together`() {
+        val ladder = ladderRows(
+            book(bids = listOf(100.0 to 1.0, 99.0 to 2.0), asks = listOf(101.0 to 1.0)),
+        )
+        val row = ladder.bids[1]
+        assertEquals(row.quantity, ladderFigure(row, LadderFigure.AMOUNT), 1e-9)
+        assertEquals(row.barFraction, ladderBarFraction(row, LadderFigure.AMOUNT))
+        assertEquals(ladder.quantityDecimals, ladderFigureDecimals(ladder, LadderFigure.AMOUNT))
+
+        assertEquals(row.total, ladderFigure(row, LadderFigure.CUMULATIVE), 1e-9)
+        assertEquals(row.cumulativeBarFraction, ladderBarFraction(row, LadderFigure.CUMULATIVE))
+        assertEquals(ladder.cumulativeDecimals, ladderFigureDecimals(ladder, LadderFigure.CUMULATIVE))
+    }
+
+    @Test
+    fun `sums get fewer decimals than the levels they are sums of`() {
+        // The largest level here is 40 and wants three decimals; the deepest total is 320 and wants
+        // one. Printed at the levels' precision the total needs more width than the cell has and
+        // truncates, which loses the leading digits — the ones that say how big the wall is.
+        val ladder = ladderRows(
+            book(
+                bids = (0 until 8).map { (100.0 - it) to 0.004 },
+                asks = (0 until 8).map { (101.0 + it) to 40.0 },
+            ),
+        )
+        assertEquals(3, ladder.quantityDecimals)
+        assertEquals(1, ladder.cumulativeDecimals)
+
+        val small = ladderRows(book(bids = listOf(100.0 to 0.004), asks = listOf(101.0 to 0.004)))
+        assertEquals(5, small.quantityDecimals)
+        assertEquals(5, small.cumulativeDecimals)
+    }
+
+    @Test
+    fun `an aggregated ladder takes its decimals from the step and not from the mid`() {
+        // The visible half of the aggregation feature: a step of 1 makes every price a whole number,
+        // so the two decimals the mid would have asked for are two printed zeroes.
+        val folded = ladderRows(book(bids = listOf(77_588.0 to 1.0), asks = listOf(77_589.0 to 1.0)), step = 1.0)
+        assertEquals(0, folded.priceDecimals)
+
+        val tenth = ladderRows(book(bids = listOf(77_588.0 to 1.0), asks = listOf(77_588.5 to 1.0)), step = 0.5)
+        assertEquals(1, tenth.priceDecimals)
+
+        // No step at all and the mid decides, exactly as it always did.
+        val raw = ladderRows(book(bids = listOf(0.5241 to 1.0), asks = listOf(0.5248 to 1.0)))
+        assertEquals(4, raw.priceDecimals)
+    }
+
+    @Test
+    fun `a step is printed to its own decimals and in Latin digits`() {
+        assertEquals("0.1", BidiText.strip(stepLabel(0.1)))
+        assertEquals("0.5", BidiText.strip(stepLabel(0.5)))
+        assertEquals("1", BidiText.strip(stepLabel(1.0)))
+        assertEquals("10", BidiText.strip(stepLabel(10.0)))
+        assertEquals("0.0005", BidiText.strip(stepLabel(0.0005)))
     }
 }

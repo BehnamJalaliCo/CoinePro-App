@@ -4,8 +4,10 @@
     <string name="dom_title">عمق بازار</string>
     <string name="dom_source">منبع: %1$s</string>
     <string name="dom_column_bid">حجم خرید</string>
+    <string name="dom_column_bid_cumulative">خرید تجمعی</string>
     <string name="dom_column_price">قیمت</string>
     <string name="dom_column_ask">حجم فروش</string>
+    <string name="dom_column_ask_cumulative">فروش تجمعی</string>
     <string name="dom_spread">اسپرد</string>
     <string name="dom_mid">میانه</string>
     <string name="dom_imbalance">سهم خرید</string>
@@ -48,6 +50,20 @@
     <!-- Said once, where the polling happens. Four megabytes an hour is real money on a metered
          Iranian connection, and dearer again through a VPN. -->
     <string name="dom_data_note">دفتر تا وقتی این صفحه باز است ثانیه‌ای یک‌بار به‌روز می‌شود؛ نزدیک ۴ مگابایت در ساعت. با بستن صفحه به‌روزرسانی می‌ایستد.</string>
+
+    <!-- The precision selector, and the switch between a level's own size and the running total.
+         Both change what every row on the ladder means, so both sit in the chrome above it. -->
+    <string name="dom_step_label">تجمیع قیمت</string>
+    <!-- The book exactly as the venue sent it: one row per tick, nothing folded together. -->
+    <string name="dom_step_raw">خام</string>
+    <string name="dom_figure_amount">اندازه</string>
+    <string name="dom_figure_cumulative">تجمعی</string>
+    <string name="dom_step_note">با تجمیع قیمت، چند سطح مجاور در یک ردیف جمع می‌شوند و ستون قیمت به همان اندازه رقم اعشار می‌گیرد. سمت خرید به پایینِ گام و سمت فروش به بالای آن گرد می‌شود، پس اسپرد فقط می‌تواند بازتر شود، هرگز تنگ‌تر.</string>
+
+    <!-- The depth curve under the ladder: the same running totals, drawn over the whole loaded book
+         instead of over the eight rows on screen. -->
+    <string name="dom_curve_title">منحنی عمق</string>
+    <string name="dom_curve_description">منحنی عمق بازار. بیشترین حجم تجمعی %1$s است، در بازهٔ قیمتی %2$s تا %3$s.</string>
 
     <string name="dom_pick_price">ساختن هشدار روی قیمت %1$s</string>
     <string name="dom_pick_price_orders">ساختن هشدار روی قیمت %1$s، %2$s سفارش در این سطح</string>

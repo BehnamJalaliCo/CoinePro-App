@@ -1,7 +1,9 @@
 package com.coinepro.core.designsystem
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -143,6 +145,7 @@ fun CoineProRangeBar(
  * gives it a third column it can scan without reading. Density is the point — a market list is
  * read by comparison, and comparison needs rows close enough to hold in one glance.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CoineProMarketRow(
     symbol: String,
@@ -177,6 +180,16 @@ fun CoineProMarketRow(
     starred: Boolean? = null,
     onToggleStar: (() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
+    /**
+     * The row's preview, opened by holding it. Null on a list that has nothing to preview.
+     *
+     * Attached only where [onClick] is, and that is the contract rather than an oversight: a long
+     * press is a second thing to do with a row that already does something, and a row whose only
+     * gesture is one nobody can see is a row nobody will find. It is also why the two share one
+     * interaction source — they are one target, and a press that turns into a hold must not stop
+     * looking pressed halfway through.
+     */
+    onLongClick: (() -> Unit)? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val haptics = rememberCoineProHaptics()
@@ -206,10 +219,24 @@ fun CoineProMarketRow(
                 onClick?.let { action ->
                     base
                         .pressScale(interaction, CoineProPress.ROW)
-                        .clickable(interaction, null) {
-                            haptics.select()
-                            action()
-                        }
+                        .combinedClickable(
+                            interactionSource = interaction,
+                            indication = null,
+                            onLongClick = onLongClick?.let { preview ->
+                                {
+                                    // The heavier tick, because a hold that opens something has to
+                                    // confirm itself under the thumb before the sheet arrives —
+                                    // otherwise the reader lifts their finger to check and cancels
+                                    // the gesture they were halfway through.
+                                    haptics.commit()
+                                    preview()
+                                }
+                            },
+                            onClick = {
+                                haptics.select()
+                                action()
+                            },
+                        )
                 } ?: base
             }
             .padding(horizontal = horizontalPadding, vertical = 10.dp),

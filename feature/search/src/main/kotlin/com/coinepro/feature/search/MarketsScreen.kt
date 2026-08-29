@@ -57,6 +57,7 @@ import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketSearchRow
 import com.coinepro.core.marketdata.SparklineStore
+import com.coinepro.core.symbols.MarketHours
 import com.coinepro.core.symbols.SymbolCategory
 
 /**
@@ -79,6 +80,12 @@ import com.coinepro.core.symbols.SymbolCategory
  * that is the one structural change here. A watchlist is not a category: it has its own order, its
  * own colour flags, its own columns and several of itself. It shares this screen's row so the two
  * cannot look like two apps — see [MarketListRow].
+ *
+ * **Holding a row opens [MarketPreviewSheet]** rather than the chart. The chart is a route, a
+ * candle request and a layout; the question a reader scanning this list is actually asking is what
+ * one row is doing, and the answer — price, move, the day's shape — is already in memory on this
+ * screen. On the connection this product is built for that is the difference between an answer and
+ * a four-second wait somebody abandons.
  */
 @Composable
 fun MarketsScreen(
@@ -108,11 +115,28 @@ fun MarketsScreen(
     watchlistStore: WatchlistStore? = null,
     /** The open signals strip at the foot. Null on a build with nothing to link to. */
     openSignals: MarketsSignalStrip? = null,
+    /**
+     * Arms an alert on a symbol at the price the preview is showing.
+     *
+     * The **price comes from here** rather than being looked up again by the caller. This screen's
+     * quote is the catalogue's where the live socket is not carrying the symbol, and the shell's
+     * live map is not — so a caller reading its own feed would find nothing for most of the list
+     * and the button would silently do nothing.
+     *
+     * Null drops the action rather than disabling it, for the reason every other nullable callback
+     * on this screen is nullable: a button that answers a press with nothing is worse than no
+     * button, and only the caller knows whether there is a composer to open.
+     */
+    onCreateAlert: ((String, Double) -> Unit)? = null,
 ) {
     LaunchedEffect(controller) { controller.start() }
     val state by controller.state.collectAsStateWithLifecycle()
     val lines by sparklines.lines.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(MarketsTab.ALL) }
+    // The symbol, not the row: the row is looked up again from the live results on every frame, so
+    // the price inside the sheet ticks with the one in the list behind it instead of freezing at
+    // whatever it was when the finger went down. Saveable, so a rotation does not close it.
+    var preview by rememberSaveable { mutableStateOf<String?>(null) }
 
     // The category chip and the watchlist tab are different filters over one list, so they are
     // applied here rather than pushed into the controller: the controller's category is what the
@@ -203,6 +227,7 @@ fun MarketsScreen(
                             onToggleStar = onToggleWatch?.let { toggle ->
                                 { toggle(row.meta.symbol) }
                             },
+                            onLongClick = { preview = row.meta.symbol },
                             trailing = {
                                 MarketFigures(row = row, line = lines[row.meta.symbol.uppercase()].orEmpty())
                             },
@@ -219,6 +244,42 @@ fun MarketsScreen(
 
         openSignals?.let { SignalStrip(it) }
     }
+
+    // Read from `rows` rather than from `state.results`, so a preview cannot outlive the tab it was
+    // opened from: switching to a filter that excludes the symbol closes the sheet instead of
+    // leaving a market on screen that the list behind it no longer holds.
+    preview
+        ?.let { symbol -> rows.firstOrNull { it.meta.symbol == symbol } }
+        ?.let { row ->
+            MarketPreviewSheet(
+                state = previewOf(
+                    row = row,
+                    // Whatever the store already has. Nothing here asks for a line — the rows
+                    // above did that as they scrolled past, which is the only reason this sheet
+                    // costs no network at all.
+                    line = lines[row.meta.symbol.uppercase()].orEmpty(),
+                    starred = row.meta.symbol.uppercase() in watched,
+                    status = MarketHours.statusOf(row.meta),
+                ),
+                onDismiss = { preview = null },
+                onOpenChart = {
+                    preview = null
+                    onOpenSymbol(row.meta.symbol)
+                },
+                onToggleStar = onToggleWatch?.let { toggle -> { toggle(row.meta.symbol) } },
+                // Two conditions, and the second is the row's own: an alert needs a level to fire
+                // at, and a market this feed has not quoted has none. The action is dropped rather
+                // than opened onto an empty field.
+                onCreateAlert = onCreateAlert?.let { arm ->
+                    row.quote?.price?.let { price ->
+                        {
+                            preview = null
+                            arm(row.meta.symbol, price)
+                        }
+                    }
+                },
+            )
+        }
 }
 
 /** The open-signal line at the foot of the list. */

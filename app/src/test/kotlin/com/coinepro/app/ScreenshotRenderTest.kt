@@ -909,7 +909,14 @@ class ScreenshotRenderTest {
 
     @Test
     fun tools() = capture("05-tools") {
-        ToolsScreen(onOpenConnections = {}, onOpenNews = {}, onOpenCalendar = {}, onOpenJournal = {}, onOpenPaperTrade = {})
+        ToolsScreen(
+            onOpenConnections = {},
+            onOpenNews = {},
+            onOpenFree = {},
+            onOpenCalendar = {},
+            onOpenJournal = {},
+            onOpenPaperTrade = {},
+        )
     }
 
     @Test
@@ -976,7 +983,14 @@ class ScreenshotRenderTest {
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
     fun toolsPersian() = capture("67-tools-fa") {
-        ToolsScreen(onOpenConnections = {}, onOpenNews = {}, onOpenCalendar = {}, onOpenJournal = {}, onOpenPaperTrade = {})
+        ToolsScreen(
+            onOpenConnections = {},
+            onOpenNews = {},
+            onOpenFree = {},
+            onOpenCalendar = {},
+            onOpenJournal = {},
+            onOpenPaperTrade = {},
+        )
     }
 
     @Test

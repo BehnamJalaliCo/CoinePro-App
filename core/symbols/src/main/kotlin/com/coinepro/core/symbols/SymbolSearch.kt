@@ -1,7 +1,5 @@
 package com.coinepro.core.symbols
 
-import java.util.Locale
-
 /** Which text a query matched, so the row can underline the part that hit. */
 enum class MatchField {
     /** The ticker, e.g. `BTCUSDT`. */
@@ -39,19 +37,13 @@ data class SymbolMatch(
  * footing, in whatever order the list happened to be in. And it searched the ticker only, so a
  * Persian speaker typing «بیت‌کوین» got nothing at all, in an app that is Persian by default.
  *
- * Four match kinds, scored well apart so a weaker kind can never overtake a stronger one on
- * tie-breaks alone:
+ * The four match kinds and their spacing live in [TextRanking], which is shared with the app-section
+ * catalogue so both halves of one search field rank the same way. What this object adds on top is
+ * everything that knows about markets: which three texts a market can be found by, and the two
+ * tie-breaks below.
  *
- * | Kind | Score | Example for `eur` |
- * | --- | --- | --- |
- * | exact | 10000 | `EUR` |
- * | prefix | ~8000 | `EURUSD` |
- * | contiguous substring | ~6000 | `XAUEUR` |
- * | scattered subsequence | ~3000 | `E`…`U`…`R` |
- *
- * Within a kind, shorter and earlier wins: `EURUSD` beats `EURNZD` on nothing, but `EUR` beats both,
- * and a substring near the front beats one near the back. A popular market gets a small boost —
- * enough to lift `EURUSD` over `EURNZD`, nowhere near enough to lift a substring over a prefix.
+ * A popular market gets a small boost — enough to lift `EURUSD` over `EURNZD`, nowhere near enough
+ * to lift a substring over a prefix.
  *
  * The final tie-break is liquidity, not the alphabet. Alphabetical order is what made the old list
  * feel random: `AAVEUSDT` first, always, whatever you were looking for.
@@ -92,9 +84,9 @@ object SymbolSearch {
         if (needle.isEmpty()) return SymbolMatch(meta, 0, MatchField.NONE, null)
 
         val candidates = listOfNotNull(
-            score(meta.symbol, needle)?.let { MatchField.SYMBOL to it },
-            meta.base?.let { base -> score(base, needle)?.let { MatchField.BASE to it } },
-            score(meta.description, needle)?.let { MatchField.DESCRIPTION to it },
+            TextRanking.score(meta.symbol, needle)?.let { MatchField.SYMBOL to it },
+            meta.base?.let { base -> TextRanking.score(base, needle)?.let { MatchField.BASE to it } },
+            TextRanking.score(meta.description, needle)?.let { MatchField.DESCRIPTION to it },
         )
         val (field, hit) = candidates.maxByOrNull { it.second.score } ?: return null
         return SymbolMatch(
@@ -105,64 +97,12 @@ object SymbolSearch {
         )
     }
 
-    private data class Hit(val score: Int, val range: IntRange?)
-
-    /**
-     * Score one text against the query.
-     *
-     * Case-folded with [Locale.ROOT] rather than the device locale, because the Turkish locale maps
-     * `I` to a dotless `ı` and would stop `BTC` from matching `btc` for a user whose phone is set to
-     * Turkish. Persian text is unaffected by case folding either way.
-     */
-    private fun score(text: String, query: String): Hit? {
-        val haystack = text.lowercase(Locale.ROOT)
-        val needle = query.lowercase(Locale.ROOT)
-        val slack = haystack.length - needle.length
-        if (slack < 0) return null
-
-        if (haystack == needle) return Hit(EXACT, haystack.indices)
-        if (haystack.startsWith(needle)) {
-            return Hit(PREFIX - slack * SLACK_PENALTY, 0 until needle.length)
-        }
-        val at = haystack.indexOf(needle)
-        if (at >= 0) {
-            return Hit(SUBSTRING - at * POSITION_PENALTY - slack * 2, at until at + needle.length)
-        }
-        return subsequence(haystack, needle)
-    }
-
-    /** Every letter of the query, in order, but not adjacent. Fewer gaps scores higher. */
-    private fun subsequence(haystack: String, needle: String): Hit? {
-        var matched = 0
-        var gaps = 0
-        var previous = -1
-        for (index in haystack.indices) {
-            if (matched == needle.length) break
-            if (haystack[index] != needle[matched]) continue
-            if (previous >= 0) gaps += index - previous - 1
-            previous = index
-            matched++
-        }
-        if (matched != needle.length) return null
-        return Hit(SUBSEQUENCE - gaps * SLACK_PENALTY, null)
-    }
-
-    // Scores are scaled by ten so the penalties can be whole numbers and the ordering stays exactly
-    // reproducible in tests. Nothing outside this file should depend on the absolute values.
-    private const val EXACT = 10_000
-    private const val PREFIX = 8_000
-    private const val SUBSTRING = 6_000
-    private const val SUBSEQUENCE = 3_000
-
-    private const val SLACK_PENALTY = 10
-    private const val POSITION_PENALTY = 10
-
     /**
      * Enough to order two equally good matches, not enough to reorder two different match kinds.
      *
-     * The gap between kinds is two thousand; this is 250. That ratio is the whole design: popularity
-     * is a tie-break, and a boost large enough to lift a scattered match over a prefix match would
-     * make the search feel like it was ignoring what was typed.
+     * The gap between kinds in [TextRanking] is two thousand; this is 250. That ratio is the whole
+     * design: popularity is a tie-break, and a boost large enough to lift a scattered match over a
+     * prefix match would make the search feel like it was ignoring what was typed.
      */
     private const val POPULAR_BOOST = 250
 }

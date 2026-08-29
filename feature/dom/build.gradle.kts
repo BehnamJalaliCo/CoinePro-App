@@ -19,6 +19,10 @@ dependencies {
     api(project(":core:orderbook"))
     implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
+    // The screen writes the reader's ladder preference from a `rememberCoroutineScope`, so the
+    // coroutine builders are used here directly rather than only reached through a transitive edge
+    // that a dependency change elsewhere could quietly remove.
+    implementation(libs.kotlinx.coroutines.core)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)

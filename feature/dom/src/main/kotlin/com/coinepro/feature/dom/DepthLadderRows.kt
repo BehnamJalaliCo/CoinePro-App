@@ -1,26 +1,67 @@
 package com.coinepro.feature.dom
 
 import com.coinepro.core.common.BidiText
+import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.orderbook.BookSide
 import com.coinepro.core.orderbook.OrderBook
 import com.coinepro.core.orderbook.OrderBookGateway
+import com.coinepro.core.orderbook.aggregationDecimals
 import java.util.Locale
+
+/**
+ * Which figure the size columns print, and which length their bars carry.
+ *
+ * Binance's own two-way switch, and the two are genuinely different readings of one book rather
+ * than a formatting preference. [AMOUNT] answers "how big is the wall at *this* price", which is
+ * what a scalper looking for a level to lean on is reading. [CUMULATIVE] answers "what would it
+ * cost me to get from the touch to here", which is what somebody sizing an order is reading, and
+ * on a raw ladder that is a sum the reader would otherwise be doing in their head down eight rows.
+ *
+ * The same rung means both things at once and can only print one of them, which is why this is a
+ * switch and not two columns: a ladder wide enough for two size figures a side has no room left for
+ * the price spine that makes it a ladder.
+ */
+enum class LadderFigure {
+    AMOUNT,
+    CUMULATIVE,
+}
 
 /**
  * One rung, with everything the renderer needs and nothing it has to work out for itself.
  *
- * [barFraction] and [curveFraction] are in `0f..1f` and are the only two numbers the drawing code
- * reads. Keeping the arithmetic here rather than inside the composable is what makes it testable
- * without a device — and the arithmetic is where a ladder lies, because the same rows scaled
- * against a different denominator draw a different market.
+ * [barFraction], [cumulativeBarFraction] and [curveFraction] are in `0f..1f` and are the only
+ * numbers the drawing code reads. Keeping the arithmetic here rather than inside the composable is
+ * what makes it testable without a device — and the arithmetic is where a ladder lies, because the
+ * same rows scaled against a different denominator draw a different market.
  */
 data class LadderRow(
     val price: Double,
     val quantity: Double,
+    /**
+     * Everything resting between this level and the touch, this level included.
+     *
+     * Taken straight from [com.coinepro.core.orderbook.CumulativeDepth.total] rather than summed
+     * again here. The book already walks each side outward from the touch and already carries the
+     * reasoning for doing so; a second running total in this module would be a second answer to a
+     * question that has one, and the two would part company the first time a level was dropped in
+     * one place and not the other.
+     */
+    val total: Double,
     /** Which colour it takes and which edge it grows from. */
     val side: BookSide,
     /** This level against the largest **visible** level on either side. */
     val barFraction: Float,
+    /**
+     * [total] against the deepest **visible** total on either side — the bar [LadderFigure.CUMULATIVE]
+     * draws.
+     *
+     * Scaled to the window and not to the loaded book, which makes it a different number from
+     * [curveFraction] even though both are built from the same running total. The reason is that
+     * this one is a bar in a row and has to fill its cell to be compared against the row above it;
+     * [curveFraction] is a wash behind the bars whose whole point is that eight rows are a small
+     * slice of a hundred. Collapsing the two onto one denominator loses whichever answer it keeps.
+     */
+    val cumulativeBarFraction: Float,
     /**
      * Everything between this level and the touch, against the heavier side of the **loaded** book.
      *
@@ -138,10 +179,27 @@ data class DepthLadder(
      * markets and wrong here: within one book the levels straddle a magnitude step often enough
      * that a per-row choice prints `0.5241` above `0.52`, the decimal points stop lining up, and a
      * column whose whole job is to be scanned vertically becomes ragged. See [priceDecimalsFor].
+     *
+     * On an aggregated ladder this comes from the step instead of from the mid, and that is the
+     * visible half of the aggregation feature: every price is an exact multiple of the step, so a
+     * digit past the step's last one is a zero printed to no purpose. It is what Binance's own help
+     * text promises — choosing `0.01` displays prices to two decimal places — and without it the
+     * column would fold eight rows onto one bucket and still print the four digits that made them
+     * look different.
      */
     val priceDecimals: Int,
-    /** The same decision for the two quantity columns. See [quantityDecimalsFor]. */
+    /** The same decision for the two size columns in [LadderFigure.AMOUNT]. See [quantityDecimalsFor]. */
     val quantityDecimals: Int,
+    /**
+     * And in [LadderFigure.CUMULATIVE], where the figures are sums and so an order of magnitude
+     * larger.
+     *
+     * A separate choice rather than reusing [quantityDecimals], because a book of hundredths whose
+     * levels need five decimals has totals in the tens that need one, and printing those totals to
+     * five decimals is a column of digits nobody reads that pushes the leading digits — the ones
+     * that matter — out of the cell.
+     */
+    val cumulativeDecimals: Int,
     /**
      * Whether any visible rung carries an order count at all, decided once for the whole table.
      *
@@ -184,12 +242,30 @@ data class DepthLadder(
  * under a pixel and draws as nothing. That is left alone rather than given a minimum width: the
  * quantity is printed beside every bar, and stretching a tiny level to a visible one is precisely
  * the lie the bar exists to avoid — it is how a ladder invents support that is not there.
+ *
+ * ### [book] arrives aggregated; [step] is read only for the decimals
+ *
+ * Nothing here folds prices into buckets. The screen aggregates once, above this call, and hands
+ * the result both to this function and to the depth curve beside it — because the two have to be
+ * looking at exactly the same book, and a step applied independently in two places is two places
+ * that can disagree about which step is in force. What [step] does here is name the aggregation
+ * that already happened so [priceDecimals] can be taken from it; null means the raw book, and the
+ * decimals then come from the mid as they always did.
  */
-fun ladderRows(book: OrderBook, levels: Int = OrderBookGateway.VISIBLE_LEVELS): DepthLadder {
+fun ladderRows(
+    book: OrderBook,
+    levels: Int = OrderBookGateway.VISIBLE_LEVELS,
+    step: Double? = null,
+): DepthLadder {
     val visible = book.top(levels)
     val largestQuantity = visible.largestQuantity
     // The loaded book, not the window. See the note above on the two denominators.
     val largestCumulative = book.largestCumulative
+    // The window again, and a third denominator rather than either of the two above: the cumulative
+    // bars have to fill their cells to be compared with one another. The running total is monotonic
+    // outward from the touch, so the deepest visible rung on each side is that side's largest and
+    // there is nothing to scan for.
+    val largestVisibleCumulative = maxOf(visible.bids.sumOf { it.quantity }, visible.asks.sumOf { it.quantity })
 
     // Zipped against the book's own levels rather than carried on `CumulativeDepth`: the curve is a
     // running total and an order count is not summable along it, so putting the count in that type
@@ -206,8 +282,10 @@ fun ladderRows(book: OrderBook, levels: Int = OrderBookGateway.VISIBLE_LEVELS): 
             LadderRow(
                 price = level.price,
                 quantity = level.quantity,
+                total = level.total,
                 side = side,
                 barFraction = fraction(level.quantity, largestQuantity),
+                cumulativeBarFraction = fraction(level.total, largestVisibleCumulative),
                 curveFraction = fraction(level.total, largestCumulative),
                 orders = sideLevels[index].orders,
             )
@@ -222,10 +300,14 @@ fun ladderRows(book: OrderBook, levels: Int = OrderBookGateway.VISIBLE_LEVELS): 
         asks = asks.reversed(),
         bids = bids,
         book = visible,
-        // From the mid rather than from any one level, so the choice does not change as the top of
-        // the book moves across a magnitude step and reformats the entire column mid-session.
-        priceDecimals = priceDecimalsFor(visible.midPrice ?: visible.bestBid ?: visible.bestAsk ?: 0.0),
+        // The step where there is one, because every aggregated price is an exact multiple of it and
+        // any further digit is a printed zero. Otherwise from the mid rather than from any one
+        // level, so the choice does not change as the top of the book moves across a magnitude step
+        // and reformats the entire column mid-session.
+        priceDecimals = step?.let { aggregationDecimals(it) }
+            ?: priceDecimalsFor(visible.midPrice ?: visible.bestBid ?: visible.bestAsk ?: 0.0),
         quantityDecimals = quantityDecimalsFor(largestQuantity),
+        cumulativeDecimals = quantityDecimalsFor(largestVisibleCumulative),
         hasOrders = asks.any { it.orders != null } || bids.any { it.orders != null },
     )
 }
@@ -267,6 +349,47 @@ fun quantityDecimalsFor(largest: Double): Int = when {
     largest >= 1.0 -> 3
     else -> 5
 }
+
+/**
+ * The size figure this rung prints under [mode].
+ *
+ * A function beside [ladderBarFraction] rather than a `when` inside the cell, and the pair is the
+ * point: the figure and the bar have to describe the same quantity or the row lies twice over — a
+ * bar drawn from the level's own size beside a printed running total says the deepest rung is the
+ * smallest, which is the exact inverse of what a cumulative ladder means. Kept together and named,
+ * so a change to one is a change a reader of this file sees next to the other.
+ */
+fun ladderFigure(row: LadderRow, mode: LadderFigure): Double = when (mode) {
+    LadderFigure.AMOUNT -> row.quantity
+    LadderFigure.CUMULATIVE -> row.total
+}
+
+/** The bar length that goes with [ladderFigure]. See there for why they are a pair. */
+fun ladderBarFraction(row: LadderRow, mode: LadderFigure): Float = when (mode) {
+    LadderFigure.AMOUNT -> row.barFraction
+    LadderFigure.CUMULATIVE -> row.cumulativeBarFraction
+}
+
+/** The decimals that go with [ladderFigure]. Same pairing, same reason. */
+fun ladderFigureDecimals(ladder: DepthLadder, mode: LadderFigure): Int = when (mode) {
+    LadderFigure.AMOUNT -> ladder.quantityDecimals
+    LadderFigure.CUMULATIVE -> ladder.cumulativeDecimals
+}
+
+/**
+ * An aggregation step as it appears on its chip — `0.1`, `10`.
+ *
+ * Printed to the step's own decimals and no more, by
+ * [com.coinepro.core.orderbook.aggregationDecimals], so the chip reads as the number the column
+ * will show rather than as a padded version of it — `10` and not `10.00`.
+ *
+ * Through `MarketNumberFormatter` rather than `String.format`, which is what isolates it: the chips
+ * sit in a right-to-left row, and a bare `0.1` there is at the mercy of the paragraph around it.
+ * The formatter also fixes [Locale.US], without which the device's Persian locale would render this
+ * market figure in Persian digits — the one number convention this app does not use.
+ */
+fun stepLabel(step: Double): String =
+    MarketNumberFormatter.price(step, aggregationDecimals(step))
 
 /**
  * A share of `0.0..1.0` as a whole-number percentage — `62%`.

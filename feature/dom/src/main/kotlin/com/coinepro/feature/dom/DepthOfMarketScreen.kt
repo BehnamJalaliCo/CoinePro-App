@@ -1,7 +1,10 @@
 package com.coinepro.feature.dom
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -16,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -24,12 +28,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -43,6 +56,8 @@ import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.CoineProPillShape
+import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.LtrDirection
@@ -53,6 +68,9 @@ import com.coinepro.core.orderbook.OrderBook
 import com.coinepro.core.orderbook.OrderBookController
 import com.coinepro.core.orderbook.OrderBookGateway
 import com.coinepro.core.orderbook.OrderBookState
+import com.coinepro.core.orderbook.aggregated
+import com.coinepro.core.orderbook.aggregationSteps
+import kotlinx.coroutines.launch
 import java.time.Instant
 
 /**
@@ -90,6 +108,11 @@ fun DepthOfMarketScreen(
     modifier: Modifier = Modifier,
     /** Rows per side. Eight is what a phone fits without the figures shrinking out of legibility. */
     levels: Int = OrderBookGateway.VISIBLE_LEVELS,
+    /**
+     * Where this symbol's aggregation and figure mode are kept between visits, or null for a screen
+     * that forgets them when it is left. See [DepthLadderPreferences] for why it is optional.
+     */
+    preferences: DepthLadderPreferences? = null,
 ) {
     LaunchedEffect(controller, symbol) { controller.start(symbol) }
     // Stopped when the screen leaves, so a ladder nobody is looking at is not polling a venue once
@@ -104,6 +127,7 @@ fun DepthOfMarketScreen(
         onRetry = controller::refresh,
         modifier = modifier,
         levels = levels,
+        preferences = preferences,
     )
 }
 
@@ -122,9 +146,39 @@ fun DepthOfMarketBody(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     levels: Int = OrderBookGateway.VISIBLE_LEVELS,
+    preferences: DepthLadderPreferences? = null,
 ) {
     val book = state.book
     val unavailable = state.unavailable
+
+    // Held here rather than in the controller, and keyed on the symbol so switching markets starts
+    // from that market's own answer instead of carrying a step that was chosen for a different
+    // price magnitude. `rememberSaveable` is the floor: with nothing wired to [preferences] the
+    // choice still survives a rotation, which is the failure a reader meets soonest.
+    var step by rememberSaveable(state.symbol) { mutableStateOf<Double?>(null) }
+    var figure by rememberSaveable(state.symbol) { mutableStateOf(LadderFigure.AMOUNT) }
+    val scope = rememberCoroutineScope()
+
+    // One read per symbol. It cannot fight the reader's own taps because every tap writes back
+    // immediately below, so what this restores is always the last thing that was chosen here.
+    LaunchedEffect(preferences, state.symbol) {
+        if (preferences == null || state.symbol.isBlank()) return@LaunchedEffect
+        preferences.load(state.symbol)?.let { stored ->
+            step = stored.step
+            figure = stored.figure
+        }
+    }
+
+    // Named for what it does rather than `remember`, which would shadow the composable of that name
+    // in a file that leans on it three lines further down.
+    fun choose(newStep: Double?, newFigure: LadderFigure) {
+        step = newStep
+        figure = newFigure
+        val store = preferences ?: return
+        if (state.symbol.isBlank()) return
+        scope.launch { store.save(state.symbol, DepthLadderPreference(newStep, newFigure)) }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -156,9 +210,26 @@ fun DepthOfMarketBody(
                 hint = stringResource(R.string.dom_empty_hint),
             )
             else -> {
-                val ladder = remember(book, levels) { ladderRows(book, levels) }
-                DepthLadderTable(ladder = ladder, onPickPrice = onPickPrice)
-                DepthFootnotes(showOrdersNote = ladder.hasOrders)
+                // Folded once, here, and handed to both the ladder and the curve. They have to be
+                // looking at the same book: a curve drawn from the raw levels under a ladder drawn
+                // from folded ones would put its walls at prices the rows above it do not have.
+                val shown = remember(book, step) { book.aggregated(step) }
+                val ladder = remember(shown, levels, step) { ladderRows(shown, levels, step) }
+                // From the raw book, because the tick the ladder is derived from is the venue's and
+                // not the reader's: measured on the folded book the offered steps would climb every
+                // time one was chosen, and the control would walk away under the finger.
+                val steps = remember(book, step) { aggregationSteps(book, keep = step) }
+                val curve = remember(shown) { depthCurve(shown) }
+                DepthLadderControls(
+                    steps = steps,
+                    step = step,
+                    figure = figure,
+                    onStep = { choose(it, figure) },
+                    onFigure = { choose(step, it) },
+                )
+                DepthLadderTable(ladder = ladder, figure = figure, onPickPrice = onPickPrice)
+                curve?.let { DepthCurvePanel(curve = it, ladder = ladder) }
+                DepthFootnotes(showOrdersNote = ladder.hasOrders, showStepNote = steps.isNotEmpty())
             }
         }
     }
@@ -400,6 +471,111 @@ private fun ImbalanceMeter(share: Double) {
 }
 
 /**
+ * The two controls over the ladder: how coarsely prices are bucketed, and which figure the sizes
+ * are.
+ *
+ * ### Why they are in the chrome and not behind a sheet
+ *
+ * Both change what every row on the ladder *means*, and both are things a reader changes while
+ * reading rather than once when setting the screen up — the step is turned coarser to find the
+ * walls and back to raw to work the touch, several times in a minute. A sheet would put two taps
+ * and a dismissal between the reader and a change they make constantly, and it would hide the
+ * current setting behind a button while the ladder underneath silently obeyed it.
+ *
+ * The step chips scroll horizontally rather than sharing the width equally. A step's label is its
+ * own number and those are not the same length — `0.0005` beside `10` — so an equal split sizes
+ * every chip to the longest and wastes most of the row on the shortest. Scrolling also means an
+ * instrument that earns five options is not squeezed into the space an instrument with two needed.
+ *
+ * The whole block is Persian-side prose and stays outside the ladder's [LtrDirection]: the chips
+ * carry Latin figures, which [stepLabel] isolates individually, and a left-to-right block here
+ * would put the label «تجمیع قیمت» on the wrong end of its own row.
+ */
+@Composable
+private fun DepthLadderControls(
+    steps: List<Double>,
+    step: Double?,
+    figure: LadderFigure,
+    onStep: (Double?) -> Unit,
+    onFigure: (LadderFigure) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.Half),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        // A book too thin to show a tick offers no steps, and the label for an empty row would be a
+        // heading over nothing. The figure switch below stays either way: it needs no tick.
+        if (steps.isNotEmpty()) {
+            Text(
+                text = stringResource(R.string.dom_step_label),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            ) {
+                // The raw book first and always. It is the ladder's opening state and the one a
+                // reader returns to in order to see the venue's own levels, so it is a chip in the
+                // same row rather than an absence of selection somewhere else.
+                StepChip(
+                    label = stringResource(R.string.dom_step_raw),
+                    selected = step == null,
+                    onClick = { onStep(null) },
+                )
+                steps.forEach { offered ->
+                    StepChip(
+                        label = stepLabel(offered),
+                        selected = step == offered,
+                        onClick = { onStep(offered) },
+                    )
+                }
+            }
+        }
+        CoineProSegmentedControl(
+            options = listOf(
+                LadderFigure.AMOUNT to stringResource(R.string.dom_figure_amount),
+                LadderFigure.CUMULATIVE to stringResource(R.string.dom_figure_cumulative),
+            ),
+            selected = figure,
+            onSelect = onFigure,
+        )
+    }
+}
+
+/**
+ * One aggregation step, as a chip.
+ *
+ * `selectable` with [Role.RadioButton] rather than `clickable`: the row is one exclusive choice out
+ * of several, and a screen reader that announces each chip as a button leaves the reader with no
+ * way to hear which one is currently in force. The label is the whole content, so no separate
+ * description is set — a second one would be read instead of the figure rather than beside it.
+ */
+@Composable
+private fun StepChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelMedium,
+        color = if (selected) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
+        fontWeight = if (selected) FontWeight.SemiBold else null,
+        modifier = Modifier
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .clip(CoineProPillShape)
+            .background(if (selected) CoineProColors.SurfaceRaised else CoineProColors.Surface)
+            .border(
+                1.dp,
+                if (selected) CoineProColors.BorderStrong else CoineProColors.BorderSubtle,
+                CoineProPillShape,
+            )
+            .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
+    )
+}
+
+/**
  * The ladder itself: sells above, the spread across the middle, buys below.
  *
  * Wrapped in [LtrDirection] so the size / price / size columns hold their places in a right-to-left
@@ -408,7 +584,12 @@ private fun ImbalanceMeter(share: Double) {
  * ladder cannot afford, since its entire content is which side is which.
  */
 @Composable
-private fun DepthLadderTable(ladder: DepthLadder, onPickPrice: (Double) -> Unit) {
+private fun DepthLadderTable(
+    ladder: DepthLadder,
+    figure: LadderFigure,
+    onPickPrice: (Double) -> Unit,
+) {
+    val decimals = ladderFigureDecimals(ladder, figure)
     LtrDirection {
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             // The mark is secondary and it is the first thing to go. Decided once here for the
@@ -421,13 +602,13 @@ private fun DepthLadderTable(ladder: DepthLadder, onPickPrice: (Double) -> Unit)
             // in every row's spoken description whatever this says. See `LadderRowView`.
             val showStackedMarks = maxWidth >= MinWidthForStackedMark
             Column(modifier = Modifier.fillMaxWidth()) {
-                LadderHeaderRow()
+                LadderHeaderRow(figure)
                 ladder.asks.forEach { row ->
-                    LadderRowView(row, ladder.priceDecimals, ladder.quantityDecimals, showStackedMarks, onPickPrice)
+                    LadderRowView(row, figure, ladder.priceDecimals, decimals, showStackedMarks, onPickPrice)
                 }
                 SpreadRow(ladder)
                 ladder.bids.forEach { row ->
-                    LadderRowView(row, ladder.priceDecimals, ladder.quantityDecimals, showStackedMarks, onPickPrice)
+                    LadderRowView(row, figure, ladder.priceDecimals, decimals, showStackedMarks, onPickPrice)
                 }
             }
         }
@@ -440,16 +621,29 @@ private fun DepthLadderTable(ladder: DepthLadder, onPickPrice: (Double) -> Unit)
  * There was a third label here naming an order-count column. Both are gone. The count is on about
  * one rung in eight now rather than on every one, so it has no column to head — what explains it is
  * the line under the ladder, which is prose and belongs outside this left-to-right block anyway.
+ *
+ * The two size labels name the [LadderFigure] in force. Without that the switch above the ladder
+ * would be the only thing on screen saying which quantity the columns hold, and a reader who has
+ * scrolled the switch off the top is left comparing sums against sizes with nothing to tell them
+ * apart — the two look identical and differ by an order of magnitude.
  */
 @Composable
-private fun LadderHeaderRow() {
+private fun LadderHeaderRow(figure: LadderFigure) {
+    val bid = when (figure) {
+        LadderFigure.AMOUNT -> R.string.dom_column_bid
+        LadderFigure.CUMULATIVE -> R.string.dom_column_bid_cumulative
+    }
+    val ask = when (figure) {
+        LadderFigure.AMOUNT -> R.string.dom_column_ask
+        LadderFigure.CUMULATIVE -> R.string.dom_column_ask_cumulative
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.Half),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ColumnLabel(stringResource(R.string.dom_column_bid), TextAlign.Left)
+        ColumnLabel(stringResource(bid), TextAlign.Left)
         Text(
             text = stringResource(R.string.dom_column_price),
             style = MaterialTheme.typography.labelSmall,
@@ -457,7 +651,7 @@ private fun LadderHeaderRow() {
             textAlign = TextAlign.Center,
             modifier = Modifier.width(PriceColumnWidth),
         )
-        ColumnLabel(stringResource(R.string.dom_column_ask), TextAlign.Right)
+        ColumnLabel(stringResource(ask), TextAlign.Right)
     }
 }
 
@@ -484,8 +678,9 @@ private fun RowScope.ColumnLabel(text: String, align: TextAlign) {
 @Composable
 private fun LadderRowView(
     row: LadderRow,
+    figure: LadderFigure,
     priceDecimals: Int,
-    quantityDecimals: Int,
+    figureDecimals: Int,
     showStackedMarks: Boolean,
     onPickPrice: (Double) -> Unit,
 ) {
@@ -528,10 +723,11 @@ private fun LadderRowView(
     ) {
         QuantityCell(
             row = row.takeIf { it.side == BookSide.BID },
+            figure = figure,
             colour = colour,
             barEdge = Alignment.CenterStart,
             figureEdge = Alignment.CenterEnd,
-            decimals = quantityDecimals,
+            decimals = figureDecimals,
             showStackedMarks = showStackedMarks,
         )
         Text(
@@ -543,10 +739,11 @@ private fun LadderRowView(
         )
         QuantityCell(
             row = row.takeIf { it.side == BookSide.ASK },
+            figure = figure,
             colour = colour,
             barEdge = Alignment.CenterEnd,
             figureEdge = Alignment.CenterStart,
-            decimals = quantityDecimals,
+            decimals = figureDecimals,
             showStackedMarks = showStackedMarks,
         )
     }
@@ -576,6 +773,7 @@ private fun LadderRowView(
 @Composable
 private fun RowScope.QuantityCell(
     row: LadderRow?,
+    figure: LadderFigure,
     colour: Color,
     barEdge: Alignment,
     figureEdge: Alignment,
@@ -584,8 +782,14 @@ private fun RowScope.QuantityCell(
 ) {
     Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
         if (row != null) {
-            DepthFill(row.curveFraction, colour.copy(alpha = CurveAlpha), barEdge)
-            DepthFill(row.barFraction, colour.copy(alpha = BarAlpha), barEdge)
+            // The wash is drawn only under a per-level bar. In [LadderFigure.CUMULATIVE] the bar is
+            // already the running total, so the wash would be the same quantity a second time at a
+            // second scale — two nested bars measuring one thing, which reads as a rendering fault
+            // rather than as two facts.
+            if (figure == LadderFigure.AMOUNT) {
+                DepthFill(row.curveFraction, colour.copy(alpha = CurveAlpha), barEdge)
+            }
+            DepthFill(ladderBarFraction(row, figure), colour.copy(alpha = BarAlpha), barEdge)
             val mark = drawnOrders(row)
             if (showStackedMarks && mark != null) {
                 StackedOrdersMark(
@@ -597,7 +801,7 @@ private fun RowScope.QuantityCell(
                 )
             }
             Text(
-                text = MarketNumberFormatter.price(row.quantity, decimals),
+                text = MarketNumberFormatter.price(ladderFigure(row, figure), decimals),
                 style = MaterialTheme.typography.labelSmall,
                 // A stacked rung is the exception this ladder now exists to surface, so its size
                 // steps up one level of ink and weight with the mark. Two quiet signals on the same
@@ -647,6 +851,132 @@ private fun StackedOrdersMark(orders: Int, colour: Color, modifier: Modifier = M
 }
 
 /**
+ * The depth curve: the same cumulative totals the ladder washes behind its bars, drawn as a shape.
+ *
+ * ### Why a picture of a number the ladder already carries
+ *
+ * The ladder's wash answers "how much is between this rung and the touch" one row at a time, over
+ * the eight rows on screen. The curve answers it over all hundred levels at once, and the answer it
+ * gives — *where the size actually sits* — is not readable from eight rows however carefully they
+ * are scaled. A wall four hundred ticks out is the reason a trader opens this screen and is off the
+ * bottom of the ladder in every snapshot; here it is a step in the outline.
+ *
+ * It is [OrderBook.cumulative] rendered and nothing else. See [depthCurve].
+ *
+ * ### A path, filled flat and stroked, and no gradient anywhere in it
+ *
+ * The fill is one flat colour at low alpha and the outline is the same colour at full strength. A
+ * vertical ramp — which is what a depth chart looks like everywhere else — would put the strongest
+ * ink at the baseline, where there is nothing to read, and fade out exactly at the outline, which
+ * is the only part of the shape carrying the data. The two sides are the ladder's own buy and sell
+ * colours, so a reader who has learned which half is which on the rows above does not have to learn
+ * it again twenty points lower.
+ *
+ * ### The reader who cannot see it gets the figures instead
+ *
+ * The canvas is one node with a description on it. A curve is a shape and there is no honest way to
+ * speak a shape, so what is spoken is the pair of totals it is drawn from and the price band it
+ * covers — which is the substance of it, and is otherwise nowhere on the screen.
+ */
+@Composable
+private fun DepthCurvePanel(curve: DepthCurve, ladder: DepthLadder) {
+    val buy = CoineProColors.Buy
+    val sell = CoineProColors.Sell
+    val axis = CoineProColors.BorderStrong
+    // From the curve's own peak and not from `ladder.cumulativeDecimals`. The ladder's totals are
+    // eight rows deep and this one is a hundred, so they are two magnitudes apart, and the ladder's
+    // choice would print the curve's figure with three decimal places of nothing on the end.
+    val totals = MarketNumberFormatter.price(curve.peakTotal, quantityDecimalsFor(curve.peakTotal))
+    val description = stringResource(
+        R.string.dom_curve_description,
+        totals,
+        MarketNumberFormatter.price(curve.lowPrice, ladder.priceDecimals),
+        MarketNumberFormatter.price(curve.highPrice, ladder.priceDecimals),
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        Text(
+            text = stringResource(R.string.dom_curve_title),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+        )
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(CurveHeight)
+                .semantics { contentDescription = description },
+        ) {
+            // The mid, so the two halves can be told apart without reading the axis under them. It
+            // is drawn first and under both fills: a rule over the outline would break the one line
+            // in the picture the eye follows.
+            drawLine(
+                color = axis,
+                start = Offset(size.width / 2f, 0f),
+                end = Offset(size.width / 2f, size.height),
+                strokeWidth = 1.dp.toPx(),
+            )
+            drawSide(curve.bids, buy)
+            drawSide(curve.asks, sell)
+        }
+        // The axis, left to right under a left-to-right plot, so it stays outside the Persian flow
+        // of everything else in this column.
+        LtrDirection {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                CurveAxisLabel(MarketNumberFormatter.price(curve.lowPrice, ladder.priceDecimals))
+                CurveAxisLabel(MarketNumberFormatter.price(curve.mid, ladder.priceDecimals))
+                CurveAxisLabel(MarketNumberFormatter.price(curve.highPrice, ladder.priceDecimals))
+            }
+        }
+    }
+}
+
+@Composable
+private fun CurveAxisLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = CoineProColors.TextMuted,
+        textAlign = TextAlign.Right,
+    )
+}
+
+/**
+ * One side of the curve: the area under it, then the outline over that.
+ *
+ * The area is closed down to the baseline at both ends — at the touch and at the far end — rather
+ * than back along the outline, so a side whose book stops short of the plot's edge ends in a
+ * vertical drop rather than in a diagonal running back to the spread. The diagonal would be a line
+ * the data does not contain, and it slopes the wrong way: it reads as liquidity thinning out where
+ * in truth the request simply stopped.
+ *
+ * Drawn as a polyline through the levels rather than as a staircase. The book really is a step
+ * function and at a hundred levels across a phone's width each tread is about three points wide,
+ * where the two are indistinguishable; the staircase would double the vertex count of a path
+ * rebuilt on every poll to draw a difference nobody can see.
+ */
+private fun DrawScope.drawSide(points: List<DepthCurvePoint>, colour: Color) {
+    if (points.size < 2) return
+    fun px(point: DepthCurvePoint) = Offset(point.x * size.width, (1f - point.y) * size.height)
+
+    val outline = Path().apply {
+        moveTo(px(points.first()).x, px(points.first()).y)
+        points.drop(1).forEach { lineTo(px(it).x, px(it).y) }
+    }
+    val area = Path().apply {
+        moveTo(px(points.first()).x, size.height)
+        points.forEach { lineTo(px(it).x, px(it).y) }
+        lineTo(px(points.last()).x, size.height)
+        close()
+    }
+    drawPath(area, colour.copy(alpha = CurveFillAlpha))
+    drawPath(outline, colour, style = Stroke(width = 1.5.dp.toPx()))
+}
+
+/**
  * The two lines under the ladder: what the marks mean, and what the screen costs to keep open.
  *
  * Persian prose, so it sits **outside** the ladder's [LtrDirection] block and reads right to left
@@ -662,13 +992,23 @@ private fun StackedOrdersMark(orders: Int, colour: Color, modifier: Modifier = M
  * it is left, which is the part that matters.
  */
 @Composable
-private fun DepthFootnotes(showOrdersNote: Boolean) {
+private fun DepthFootnotes(showOrdersNote: Boolean, showStepNote: Boolean) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
+        // Follows the control rather than the reader's current choice, for the reason
+        // [showOrdersNote] does: a line that appears only while a step is selected explains the
+        // feature exactly to the readers who have already found it.
+        if (showStepNote) {
+            Text(
+                text = stringResource(R.string.dom_step_note),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+            )
+        }
         if (showOrdersNote) {
             Text(
                 text = stringResource(
@@ -758,6 +1098,25 @@ private const val BarAlpha = 0.28f
 
 /** The depth curve behind it. A third of the bar, so the two never read as one shape. */
 private const val CurveAlpha = 0.09f
+
+/**
+ * How tall the depth-curve plot is.
+ *
+ * Eighty points, which is about three ladder rows. It has to be short: the ladder is what this
+ * screen is, the curve is the context around it, and a plot tall enough to be a chart in its own
+ * right would push the rungs under the fold on the phones this app is mostly read on. Eighty is
+ * enough for the outline's steps to be separable and not enough to compete with the rows above it.
+ */
+private val CurveHeight = 80.dp
+
+/**
+ * The ground under the curve's outline.
+ *
+ * Heavier than [CurveAlpha], because this fill has no bar over it and nothing printed on top — it
+ * is the whole of one side of the picture rather than a wash behind a figure. Still well short of
+ * solid, so where the two sides' bands sit either side of the mid neither one reads as a block.
+ */
+private const val CurveFillAlpha = 0.16f
 
 /**
  * The ground under a stacked mark's digits, over the bar they sit on.
