@@ -56,23 +56,27 @@ fun CoineProBrandButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    /** Gold, for the one of the two the platform can actually serve end to end. */
-    primary: Boolean = false,
     logoSize: androidx.compose.ui.unit.Dp = 22.dp,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val haptics = rememberCoineProHaptics()
-    val background = if (primary) CoineProColors.Accent else CoineProColors.SurfaceElevated
-    val ink = if (primary) CoineProColors.OnAccent else CoineProColors.TextPrimary
+    // One treatment, and no gold variant.
+    //
+    // There was a `primary` flag that filled the button with the accent, for "the one the platform
+    // can serve end to end". Both callers are exchange sign-ups, and a filled gold bar sitting
+    // above a plain outlined one reads as a paid placement rather than as a recommendation — so the
+    // flag was dropped rather than left as a variant nothing sets. What distinguishes two of these
+    // is the mark on each and the sentence above it, which is what the reader is actually choosing
+    // between.
+    val background = CoineProColors.SurfaceElevated
+    val ink = CoineProColors.TextPrimary
     Row(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             .clip(CoineProPillShape)
             .background(background)
-            .then(
-                if (primary) Modifier else Modifier.border(1.dp, CoineProColors.Border, CoineProPillShape),
-            )
+            .border(1.dp, CoineProColors.Border, CoineProPillShape)
             .pressScale(interaction, CoineProPress.CTA)
             .clickable(interaction, null) {
                 haptics.commit()

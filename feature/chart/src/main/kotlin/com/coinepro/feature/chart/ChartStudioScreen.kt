@@ -156,7 +156,20 @@ fun ChartStudioScreen(
     events: ChartEventController? = null,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
-    var section by rememberSaveable { mutableStateOf(StudioSection.INDICATORS) }
+    /**
+     * Which section is open. Everything closed on arrival, on the owner's call.
+     *
+     * It used to open on [StudioSection.INDICATORS], on the reading that indicators are what the
+     * studio is mostly for. In the app that costs the reader the one thing this screen is supposed
+     * to give them — the list of what is *here*. A long scroller of indicator rows opens over the
+     * headings, so the sections below it are off screen and somebody who came for the replay or
+     * the backtest has to scroll past a list they did not ask for and then collapse it.
+     *
+     * Closed, the whole menu fits and the first tap is the reader's own. `rememberSaveable`, so it
+     * survives a rotation but not a fresh visit: reopening the studio starts from the menu again,
+     * which is where the reader expects a menu to start.
+     */
+    var section by rememberSaveable { mutableStateOf(StudioSection.NONE) }
     val eventState by remember(events) { events?.state ?: MutableStateFlow(ChartEventState()) }
         .collectAsStateWithLifecycle()
     var helpId by rememberSaveable { mutableStateOf<String?>(null) }

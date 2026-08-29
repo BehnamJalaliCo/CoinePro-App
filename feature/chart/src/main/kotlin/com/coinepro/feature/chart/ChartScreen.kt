@@ -1662,7 +1662,11 @@ internal fun IntervalRow(
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = CoineProSpacing.OneHalf),
+            // Top as well as bottom. The row had only the bottom gap, so the first pill's edge sat
+            // hard against the chart card's border above it and the two read as one shape — the
+            // strip looked like part of the plot rather than a control under it. Twelve points on
+            // both sides is the page's own rhythm and is what separates every other block here.
+            .padding(top = CoineProSpacing.OneHalf, bottom = CoineProSpacing.OneHalf),
         // Tighter than the page's gutter, which is what lets the whole row sit on a phone without
         // having to be scrolled to reach the shortest frames.
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),

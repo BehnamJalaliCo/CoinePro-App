@@ -111,16 +111,18 @@ fun MembershipGate(
             // Two exchanges, two different products, and the difference is stated rather than
             // left for somebody to discover after they have funded an account.
             //
-            // LBank first and in gold, because it is the only one copy trading runs on: a reader
-            // who wants the service to trade for them has exactly one choice. Ourbit second and in
-            // the quieter treatment, because it is a real choice and not a lesser one — membership,
-            // every signal, the whole app — for the reader who wants to place their own orders. The
-            // server tells the app which exchanges do which; see `MembershipTerms.uidExchanges`,
-            // which is deliberately a superset of `copyTradeExchanges`.
+            // **Both in the same quiet treatment, on the owner's call.** LBank used to be gold on
+            // the reading that it is the only one copy trading runs on, so it should look like the
+            // recommendation. In the app that read as a paid placement — a filled gold bar against
+            // a plain outline is the shape an advertisement has — and neither exchange is being
+            // advertised here. What actually separates them is already on screen and is the honest
+            // separator: the sentence above each says which product it is for, and each button
+            // carries its own mark, so the choice is made by reading one line and recognising one
+            // logo rather than by inferring a ranking from a fill colour.
             //
-            // Each carries its own mark. A row of two identical gold buttons whose only difference
-            // is a word is a choice somebody makes by reading; with the marks it is a choice they
-            // make by recognising.
+            // The order still carries the meaning: copy trading first, signals-only second.
+            // The server tells the app which exchange does which; see `MembershipTerms.uidExchanges`,
+            // which is deliberately a superset of `copyTradeExchanges`.
             terms?.lbankReferralUrl?.let { url ->
                 Text(
                     text = stringResource(R.string.membership_lbank_note),
@@ -131,7 +133,6 @@ fun MembershipGate(
                     logo = CoineProIcons.Brand.LBank,
                     text = stringResource(R.string.membership_open_lbank),
                     onClick = { context.open(url) },
-                    primary = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
