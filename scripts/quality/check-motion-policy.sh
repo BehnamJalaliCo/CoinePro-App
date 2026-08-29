@@ -69,7 +69,11 @@ fi
 #
 # What is banned is the third kind: a gradient on a card, a header or a button, which is what makes
 # an interface look like a skin rather than a system.
-gradient_allow='CoineProBrand.kt|CoineProSurfaces.kt|CoineProThinking.kt|CoineProMotionEffects.kt|EquityCurve.kt|CoineProChart.kt'
+# `ChartSeriesTypes.kt` joins the list for the reason the error message names: a baseline chart's
+# two fills and an area chart's ramp are the chart's own fill, which is one of the three places a
+# gradient belongs. The ramp itself is 0.28 to 0.05 — TradingView's own, and much shallower than the
+# 0.4-to-0 most clones reach for.
+gradient_allow='CoineProBrand.kt|CoineProSurfaces.kt|CoineProThinking.kt|CoineProMotionEffects.kt|EquityCurve.kt|CoineProChart.kt|ChartSeriesTypes.kt'
 gradient_hits="$( { git grep -lE 'Brush\.(vertical|horizontal|linear|radial|sweep)Gradient' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' || true; } | grep -vE "$gradient_allow" || true)"
 if [[ -n "$gradient_hits" ]]; then
   echo "$gradient_hits"
