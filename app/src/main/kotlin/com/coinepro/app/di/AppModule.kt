@@ -11,7 +11,11 @@ import com.coinepro.core.account.AccountGateway
 import com.coinepro.core.account.NetworkAccountGateway
 import com.coinepro.core.datastore.AlertAuditStore
 import com.coinepro.core.datastore.ChartDrawingStore
+import com.coinepro.core.datastore.ChartEventPrefsStore
+import com.coinepro.core.datastore.DrawingSyncStore
 import com.coinepro.core.datastore.DrawingTemplateStore
+import com.coinepro.core.datastore.IndicatorTemplateStore
+import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.feature.chart.ChartWorkspaceStore
@@ -26,6 +30,7 @@ import com.coinepro.core.network.NetworkStatus
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
+import com.coinepro.core.datastore.TimeZonePrefStore
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.journal.JournalController
@@ -484,6 +489,53 @@ object AppModule {
     @Singleton
     fun drawingTemplateStore(dataStore: DataStore<Preferences>): DrawingTemplateStore =
         DrawingTemplateStore(dataStore)
+
+    /**
+     * Which intervals the reader keeps on the chart's own bar.
+     *
+     * Stored rather than hard-coded because the six the app shipped with are a guess, and a trader
+     * who works one instrument on two timeframes should not scroll past four they never open.
+     */
+    @Provides
+    @Singleton
+    fun intervalFavouritesStore(dataStore: DataStore<Preferences>): IntervalFavouritesStore =
+        IntervalFavouritesStore(dataStore)
+
+    /**
+     * A named set of indicators, applied without disturbing anything else.
+     *
+     * Distinct from a saved layout on purpose: applying a layout also replaces the timeframe, the
+     * chart type, the scale mode and the colours, which is right for "restore my workspace" and
+     * wrong for "put my four oscillators on whatever I am looking at now".
+     */
+    @Provides
+    @Singleton
+    fun indicatorTemplateStore(dataStore: DataStore<Preferences>): IndicatorTemplateStore =
+        IndicatorTemplateStore(dataStore)
+
+    /** Whether a drawing belongs to one chart, to the layout, or to every layout on that symbol. */
+    @Provides
+    @Singleton
+    fun drawingSyncStore(dataStore: DataStore<Preferences>): DrawingSyncStore =
+        DrawingSyncStore(dataStore)
+
+    /** Which kinds of event draw a glyph on the time axis. News on, the rest off. */
+    @Provides
+    @Singleton
+    fun chartEventPrefsStore(dataStore: DataStore<Preferences>): ChartEventPrefsStore =
+        ChartEventPrefsStore(dataStore)
+
+    /**
+     * The zone the chart's clock is read in.
+     *
+     * Tehran by default, and the reason is arithmetic rather than patriotism: UTC+3:30 is a
+     * half-hour offset, and code that cuts daily buckets from epoch seconds lands them half an hour
+     * out for every reader here.
+     */
+    @Provides
+    @Singleton
+    fun timeZonePrefStore(dataStore: DataStore<Preferences>): TimeZonePrefStore =
+        TimeZonePrefStore(dataStore)
 
     /**
      * How the reader has arranged the chart screen itself: where the split with the watchlist
