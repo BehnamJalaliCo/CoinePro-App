@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.chart.ChartEvent
+import com.coinepro.core.chart.importanceColour
 import com.coinepro.core.chart.EventMark
 import com.coinepro.core.chart.Importance
 import com.coinepro.core.common.PersianDateTime
@@ -158,11 +159,14 @@ private fun ChartEventRow(event: ChartEvent, zone: ZoneId) {
  * the axis to disagree about what colour a rate decision is.
  */
 @Composable
-fun Importance.colour(): Color = when (this) {
-    Importance.HIGH -> CoineProColors.Sell
-    Importance.MEDIUM -> CoineProColors.Warning
-    Importance.LOW -> CoineProColors.Buy
-}
+/**
+ * The glyph colour for an event's importance.
+ *
+ * Delegates rather than repeating the mapping. The canvas draws these marks on the time axis and
+ * this sheet lists the same events; two tables for one thing agree until somebody edits one of
+ * them, and then the axis and the sheet disagree about which event mattered.
+ */
+internal fun Importance.colour(): Color = importanceColour(this)
 
 @Composable
 private fun EventPill(text: String, colour: Color) {

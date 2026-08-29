@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -269,6 +270,14 @@ fun CoineProChart(
      * actually means.
      */
     viewportOverride: ChartViewport? = null,
+    /**
+     * A glyph on the time axis was tapped, with everything that landed in that bar.
+     *
+     * Null draws the marks and does not offer them, which is the honest state for a screen with
+     * nowhere to open one — a glyph that answers nothing is worse than no glyph. The tap is taken
+     * inside the axis strip only, so nothing on the plot changes meaning.
+     */
+    onEventMark: ((EventMark) -> Unit)? = null,
 ) {
     val display = remember(series, type, typeConfig) { ChartTransforms.apply(series, type, typeConfig) }
     // Unkeyed, and that is the whole point. Keyed on `display`, this reset to the default 120 bars
@@ -500,6 +509,8 @@ fun CoineProChart(
     // since replaced, or last frame's levels. Keying the block on them instead would restart the
     // gesture detector mid-drag every time the caller passed a new lambda, which on a chart that
     // recomposes with the price is every second. `rememberUpdatedState` is the way out of both.
+    val currentEvents = rememberUpdatedState(decoration.events)
+    val currentEventMark = rememberUpdatedState(onEventMark)
     val currentLevels = rememberUpdatedState(decoration.levels)
     val currentAlert = rememberUpdatedState(onRequestAlertAt)
     val currentAxisMenu = rememberUpdatedState(onPriceAxisMenu)
@@ -728,6 +739,18 @@ fun CoineProChart(
     } else {
         rebased.filterIndexed { index, _ -> ChartLegendTarget.Comparison(index) !in hidden }
     }
+
+    /**
+     * The three importances as colours, resolved once in composition.
+     *
+     * [CoineProColors] are composition locals and a draw pass is not composition, so they cannot be
+     * read per glyph. Three reads here, held for the frame.
+     */
+    val eventColours = EventMarkColours(
+        high = importanceColour(Importance.HIGH),
+        medium = importanceColour(Importance.MEDIUM),
+        low = importanceColour(Importance.LOW),
+    )
 
     /** Half a pixel, or nothing at all. See the `conflate` parameter. */
     val conflateGap = if (conflate) CONFLATION_GAP_PX else 0f
@@ -1299,6 +1322,27 @@ fun CoineProChart(
                                             invalidate(Invalidation.CURSOR)
                                             return@detectTapGestures
                                         }
+                                        // An event glyph, and only in the strip the glyphs are
+                                        // drawn in. Tested before anything else a tap can mean and
+                                        // confined to those few points of height, so a tap on the
+                                        // plot goes on meaning exactly what it meant.
+                                        val axisTop = timeAxisTop[0]
+                                        val onEvents = currentEventMark.value
+                                        if (axisTop > 0f && position.y >= axisTop && onEvents != null) {
+                                            val placed = lastView[0]
+                                            val hit = placed?.let { seen ->
+                                                ChartEvents.markAt(
+                                                    marks = currentEvents.value,
+                                                    xPixels = frameOf(size.width.toFloat()).toPlot(position).x,
+                                                    radiusPixels = EventGlyphs.TOUCH_RADIUS_DP.dp.toPx(),
+                                                    xOf = seen::xOf,
+                                                )
+                                            }
+                                            if (hit != null) {
+                                                onEvents(hit)
+                                                return@detectTapGestures
+                                            }
+                                        }
                                         val state = drawing ?: return@detectTapGestures
                                         val emit = onDrawing ?: return@detectTapGestures
                                         val view = lastView[0] ?: return@detectTapGestures
@@ -1473,14 +1517,20 @@ fun CoineProChart(
                 //
                 // Never under a footprint or a profile: those two already draw volume per price row
                 // inside the bar, and a second reading of the same number behind them is noise.
-                val volumeBand = decoration.showVolume && series.hasVolume &&
+                // And nothing at all when the reader has switched the price off from the legend.
+                // That row's eye has to mean what the others' mean — a toggle that dims its own
+                // label and leaves the candles standing is the defect, not the feature. The axes,
+                // the grid and the studies stay, which is the point of hiding it: reading two
+                // oscillators against each other without the bars in the way.
+                val priceShown = ChartLegendTarget.Series !in hidden
+                val volumeBand = priceShown && decoration.showVolume && series.hasVolume &&
                     drawnType != ChartType.FOOTPRINT && drawnType != ChartType.TPO
                 if (volumeBand) {
                     clipRect(0f, 0f, plotWidth, plotHeight) {
                         drawVolume(view, plotHeight, palette, metrics.body)
                     }
                 }
-                clipRect(0f, 0f, plotWidth, plotHeight) {
+                if (priceShown) clipRect(0f, 0f, plotWidth, plotHeight) {
                     when {
                         drawnType == ChartType.BASELINE -> drawBaseline(
                             view = view,
@@ -1586,7 +1636,8 @@ fun CoineProChart(
                 // The live edge, and its price against the axis. This is the one number on the chart
                 // a reader looks for without being asked, and before this it was only in the header —
                 // where it says nothing about *where* on the scale the market currently is.
-                val lastPriceY = if (decoration.showLastPrice) lastPriceTagY(view, measurer) else null
+                val lastPriceY =
+                    if (decoration.showLastPrice && priceShown) lastPriceTagY(view, measurer) else null
                 if (decoration.showAxes) {
                     // The ladder goes in every gutter the reader asked for; the tags go in one of
                     // them. Two live-price tags saying the same number is not two readings, and the
@@ -1617,9 +1668,10 @@ fun CoineProChart(
                     }
                     if (decoration.showTimeAxis) {
                         drawTimeAxis(view, plotHeight + paneHeight, plotWidth, type, palette, measurer, zone)
+                        drawEventMarks(view, decoration.events, plotHeight + paneHeight, eventColours)
                     }
                 }
-                if (decoration.showLastPrice) {
+                if (decoration.showLastPrice && priceShown) {
                     drawLastPrice(view, plotWidth, frame, palette, measurer, decoration.showAxes)
                 }
                 if (countdownLive && decoration.showAxes && nowSeconds > 0L) {
@@ -1770,6 +1822,97 @@ private fun chartColour(argb: Long): Color = Color(opaqueArgb(argb))
  */
 internal fun opaqueArgb(argb: Long): Long =
     if ((argb ushr ALPHA_SHIFT) == 0L) argb or ALPHA_MASK else argb
+
+/**
+ * One glyph per event, in the strip the dates live in.
+ *
+ * ### Where they are, and where they are not
+ *
+ * In the time-axis band and never on the price. An event is a fact about a *moment*, not about a
+ * price, and a marker floating over the candles at an invented height is a marker a reader tries to
+ * read a level off. The strip is also the only place on the chart with nothing else competing for
+ * the pixels, which is why every terminal puts them there.
+ *
+ * ### A mark outside the window is dropped, never pinned
+ *
+ * [ChartEvents.place] already drops what is out of range, and this refuses again rather than
+ * clamping. A glyph held against the edge of the axis claims something happened at a time it did
+ * not, and a reader who scrolls to it finds a bar with nothing to do with it — which is worse than
+ * an event they cannot see, because it is an event they can see and is wrong.
+ *
+ * A cluster is drawn as a stack: the same square with a second, offset outline behind it, so a
+ * reader can tell before tapping that it opens a list rather than a card.
+ */
+private fun DrawScope.drawEventMarks(
+    view: ChartViewport,
+    marks: List<EventMark>,
+    axisTop: Float,
+    colours: EventMarkColours,
+) {
+    if (marks.isEmpty()) return
+    val side = EventGlyphs.SIZE_DP.dp.toPx()
+    val centreY = axisTop + EventGlyphs.AXIS_GAP_DP.dp.toPx() + side / 2
+    val radius = CornerRadius(EVENT_RADIUS_DP.toPx(), EVENT_RADIUS_DP.toPx())
+    for (mark in marks) {
+        if (mark.barIndex < view.firstVisible || mark.barIndex > view.lastVisible) continue
+        val x = view.xOf(mark.barIndex)
+        if (x < 0f || x > view.plotWidth) continue
+        val colour = colours.of(mark.importance)
+        if (mark.isCluster) {
+            drawRoundRect(
+                color = colour,
+                topLeft = Offset(x - side / 2 + EVENT_STACK_PX, centreY - side / 2 - EVENT_STACK_PX),
+                size = Size(side, side),
+                cornerRadius = radius,
+                style = Stroke(width = HAIRLINE_DP.toPx()),
+            )
+        }
+        drawRoundRect(
+            color = colour,
+            topLeft = Offset(x - side / 2, centreY - side / 2),
+            size = Size(side, side),
+            cornerRadius = radius,
+        )
+    }
+}
+
+/** How far the cluster's outline sits behind the glyph in front of it. */
+private const val EVENT_STACK_PX = 2f
+
+/** An event glyph's corner. Eased rather than round, like every other chip on this canvas. */
+private val EVENT_RADIUS_DP = 2.dp
+
+/**
+ * The importance colours, read out of the theme once and carried into the draw pass.
+ *
+ * A holder rather than three parameters because they travel together and always will: an importance
+ * that gained a fourth level would otherwise be a change at every call site.
+ */
+internal data class EventMarkColours(val high: Color, val medium: Color, val low: Color) {
+    /** The colour for one importance. */
+    fun of(importance: Importance): Color = when (importance) {
+        Importance.HIGH -> high
+        Importance.MEDIUM -> medium
+        Importance.LOW -> low
+    }
+}
+
+/**
+ * What an importance looks like, in one place.
+ *
+ * Red for a release that moves the market, amber for one that might, green for one that is on the
+ * calendar and rarely does — the same three colours the rest of the app already uses for risk, so a
+ * reader does not have to learn a second key. It lives in `core:chart` rather than beside the event
+ * sheet because the sheet's module depends on this one and not the other way round, and two tables
+ * of three colours is one table that will be changed alone.
+ */
+@Composable
+@ReadOnlyComposable
+fun importanceColour(importance: Importance): Color = when (importance) {
+    Importance.HIGH -> CoineProColors.Sell
+    Importance.MEDIUM -> CoineProColors.Warning
+    Importance.LOW -> CoineProColors.Buy
+}
 
 /**
  * The zone this chart reads times in unless the caller says otherwise.
@@ -3582,11 +3725,18 @@ private const val ZOOM_DEADZONE = 0.01f
  * ### What this is not
  *
  * On a canvas-per-layer renderer the answer to "the crosshair moved" is to repaint one transparent
- * canvas and leave the bars alone, and that is where this vocabulary comes from. **Compose does not
- * offer that.** A `Canvas` composable is one draw lambda over one surface; there is no second
- * surface to keep the bars on while the crosshair is redrawn over it, and stacking two `Canvas`
- * composables would not help — the platform would still rasterise both. Every frame here repaints
- * everything, and no amount of bookkeeping changes that.
+ * canvas and leave the bars alone, and that is where this vocabulary comes from. Compose has no
+ * second *surface* to keep the bars on: a `Canvas` is one draw lambda, and the platform rasterises
+ * whatever is stacked over it either way.
+ *
+ * What it does have is a second *draw lambda*, and that turns out to be the half that mattered. The
+ * bars, the axes and the panes are one lambda that reads none of the crosshair's state; the
+ * crosshair and its tags are a second one that reads it, and the legend is a composable overlay
+ * that reads it too. A pointer moving therefore re-runs the small lambda alone — the several
+ * hundred rectangles underneath are not re-issued, and the composable that owns them is not even
+ * recomposed, because every read of the crosshair outside the draw phase is deferred behind a
+ * lambda or a `snapshotFlow`. The pixels are still rasterised; the work in front of them is not
+ * done twice.
  *
  * ### What it is
  *

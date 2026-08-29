@@ -66,13 +66,30 @@ class PositionToolTest {
     fun `every other tool keeps exactly the points it was tapped`() {
         // The guard against `withTarget` leaking into tools it has nothing to do with. A trend
         // line that grew a third point would draw a triangle.
+        //
+        // `arrowdir` is excluded for the opposite reason, and deliberately: its second tap is a
+        // *direction* rather than an anchor, so it commits back down to one point. That is the
+        // whole change that stopped every directed arrow from pointing up forever, and a test
+        // asserting it kept two would be asserting the bug.
         DrawingTools.ALL
-            .filter { it.points == 2 && it.id != "longshort" }
+            .filter { it.points == 2 && it.id != "longshort" && it.id != "arrowdir" }
             .forEach { tool ->
                 var state = DrawingActions.arm(DrawingState(), tool)
                 state = DrawingActions.tap(state, ChartPoint(1_700_000_000L, 100.0))
                 state = DrawingActions.tap(state, ChartPoint(1_700_003_600L, 90.0))
                 assertEquals("${tool.id} changed shape", 2, state.drawings.single().points.size)
             }
+    }
+
+    /** The one two-tap tool whose second tap is a direction, not an anchor. */
+    @Test
+    fun `a directed arrow commits one point and a direction`() {
+        val tool = DrawingTools["arrowdir"]!!
+        var state = DrawingActions.arm(DrawingState(), tool)
+        state = DrawingActions.tap(state, ChartPoint(1_700_000_000L, 100.0))
+        state = DrawingActions.tap(state, ChartPoint(1_700_003_600L, 90.0))
+        val drawn = state.drawings.single()
+        assertEquals("the anchor is kept and the direction tap is not", 1, drawn.points.size)
+        assertEquals(1_700_000_000L, drawn.points.single().time)
     }
 }

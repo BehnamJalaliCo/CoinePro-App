@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.PersianDateTime
+import com.coinepro.core.designsystem.BidiText
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
@@ -209,11 +210,28 @@ private fun DepthHeader(state: OrderBookState) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = stringResource(R.string.dom_title),
-                style = MaterialTheme.typography.titleSmall,
-                color = CoineProColors.TextPrimary,
-            )
+            // The screen is self-titled, so the app bar above it is bare — which means this row is
+            // the only place the ladder says which market it is a ladder of. A depth screen that
+            // names no instrument is one screenshot away from being read against the wrong one.
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.dom_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = CoineProColors.TextPrimary,
+                )
+                if (state.symbol.isNotBlank()) {
+                    Text(
+                        // A ticker is an identifier, not prose: Latin, isolated so an RTL row
+                        // cannot reorder it.
+                        text = BidiText.isolateLtr(state.symbol),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = CoineProColors.TextMuted,
+                    )
+                }
+            }
             if (state.sourceName.isNotBlank()) {
                 Text(
                     text = stringResource(R.string.dom_source, state.sourceName),

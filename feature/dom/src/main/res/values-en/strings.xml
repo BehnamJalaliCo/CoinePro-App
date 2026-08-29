@@ -24,5 +24,5 @@
     <string name="dom_empty">There are no resting orders right now.</string>
     <string name="dom_empty_hint">The market is closed or halted.</string>
 
-    <string name="dom_pick_price">Put %1$s into the order form</string>
+    <string name="dom_pick_price">Create an alert at %1$s</string>
 </resources>

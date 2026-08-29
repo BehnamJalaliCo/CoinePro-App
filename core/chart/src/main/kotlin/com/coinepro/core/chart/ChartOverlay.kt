@@ -204,6 +204,16 @@ data class ChartDecoration(
     /** Per-bar marks: swing points, fractals, zigzag turns. */
     val markers: List<ChartMarker> = emptyList(),
     /**
+     * What happened, on the time axis: releases, earnings, headlines.
+     *
+     * Already placed by [ChartEvents.place] rather than raw events, and that is the boundary: bar
+     * bucketing needs the series and the reader's own kind filter, both of which the caller has and
+     * the renderer does not. The renderer draws one glyph per mark in the time-axis strip — never
+     * over the candles — and drops any mark outside the visible window rather than pinning it to
+     * the edge, because a glyph at the edge claims something happened at a time it did not.
+     */
+    val events: List<EventMark> = emptyList(),
+    /**
      * Strips below the price, each on its own scale — oscillators, and a script's own-pane plots.
      *
      * Order is top to bottom. Empty is the common case and costs nothing.

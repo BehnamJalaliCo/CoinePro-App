@@ -26,5 +26,5 @@
     <string name="dom_empty">در این لحظه سفارشی در دفتر نیست.</string>
     <string name="dom_empty_hint">بازار بسته یا متوقف است.</string>
 
-    <string name="dom_pick_price">گذاشتن قیمت %1$s در فرم سفارش</string>
+    <string name="dom_pick_price">ساختن هشدار روی قیمت %1$s</string>
 </resources>
