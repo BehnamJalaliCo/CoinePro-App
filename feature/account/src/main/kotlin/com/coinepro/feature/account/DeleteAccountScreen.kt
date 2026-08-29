@@ -131,6 +131,25 @@ fun DeleteAccountScreen(
             title = stringResource(R.string.delete_account_not_removed_title),
             lines = listOf(R.string.delete_account_not_removed_exchange),
         )
+        // The fourth card, and the one this screen was missing.
+        //
+        // Deleting the account deletes what is on a server. A reader's journal, their watchlists,
+        // their chart layouts, their templates and their on-device price alerts have never been on
+        // one — neither backend has a route for any of them — so a DELETE cannot touch them, and
+        // they are still sitting on the phone afterwards. Both readings of that are wrong to leave
+        // to guesswork: somebody asking to be forgotten deserves to know a year of their trading
+        // diary is still on the handset, and somebody who has kept that diary deserves to know it
+        // is not about to be thrown away. Saying which is which is the difference between a
+        // consent screen and a confirmation.
+        Bullets(
+            title = stringResource(R.string.delete_account_local_title),
+            lines = listOf(
+                R.string.delete_account_local_journal,
+                R.string.delete_account_local_workspace,
+                R.string.delete_account_local_alerts,
+            ),
+            note = stringResource(R.string.delete_account_local_note),
+        )
 
         if (supported) {
             CoineProCard(modifier = Modifier.fillMaxWidth()) {

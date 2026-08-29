@@ -57,4 +57,51 @@
     <string name="appearance_colours">Rise and fall</string>
     <string name="appearance_green_up">Green up, red down</string>
     <string name="appearance_red_up">Red up, green down</string>
+
+    <string name="profile_standing_section">Where you stand</string>
+    <string name="profile_record_section">Your record</string>
+    <string name="profile_library_section">What you have built here</string>
+    <string name="profile_app_section">The app</string>
+    <string name="profile_session_section">Signing out and deleting</string>
+
+    <string name="profile_fact_unknown">Not known</string>
+    <string name="profile_library_note">All of this is kept on this phone and is never sent to a server. Uninstalling the app loses it, and it is not on your other devices.</string>
+
+    <string name="profile_standing_membership">Membership</string>
+    <string name="profile_standing_verification">Verification</string>
+    <string name="profile_standing_verification_submitted">Submitted %1$s</string>
+    <string name="profile_standing_verification_level">Level %1$s</string>
+    <string name="profile_standing_plan">Plan</string>
+    <string name="profile_standing_plan_vip">VIP plan</string>
+    <string name="profile_standing_plan_expires">Until %1$s</string>
+    <string name="profile_standing_plan_expires_in">Until %1$s, %2$s days left</string>
+    <string name="profile_standing_email">Email</string>
+
+    <string name="profile_membership_awaiting_uid">Waiting for your UID</string>
+    <string name="profile_membership_verifying">Being checked</string>
+    <string name="profile_membership_approved">Approved</string>
+    <string name="profile_membership_pending_deposit">Waiting for funding</string>
+    <string name="profile_membership_rejected_referral">Account not linked</string>
+    <string name="profile_membership_error">The check did not finish</string>
+    <string name="profile_membership_pending">Pending</string>
+
+    <string name="profile_verify_not_started">Not started</string>
+    <string name="profile_verify_pending">Under review</string>
+    <string name="profile_verify_approved">Approved</string>
+    <string name="profile_verify_rejected">Rejected</string>
+
+    <string name="profile_record_journal">Trading journal</string>
+    <string name="profile_record_paper">Paper trading</string>
+    <string name="profile_record_closed">Closed trades</string>
+    <string name="profile_record_academy">Academy</string>
+    <string name="profile_record_win_rate">Win rate %1$s</string>
+    <string name="profile_record_academy_detail">%1$s-day study streak</string>
+
+    <string name="profile_library_watchlists">Watchlists</string>
+    <string name="profile_library_layouts">Chart layouts</string>
+    <string name="profile_library_indicators">Indicator templates</string>
+    <string name="profile_library_drawings">Drawing-tool templates</string>
+    <string name="profile_library_intervals">Starred timeframes</string>
+    <string name="profile_library_alerts">Price alerts</string>
+    <string name="profile_library_scripts">Saved scripts</string>
 </resources>

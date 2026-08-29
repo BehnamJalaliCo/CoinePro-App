@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -79,8 +80,45 @@ data class ProfileAction(
      * text on the right is a list where the right column means nothing.
      */
     val value: String? = null,
+    /**
+     * Which titled block of the list this row belongs to.
+     *
+     * The list was flat and ten rows long, which is the shape a settings screen reaches just before
+     * people stop reading it: «حذف حساب» and «ظاهر برنامه» were the same kind of line, one above the
+     * other, distinguished only by their words. Grouping is not decoration here — it is what lets a
+     * reader skip eight rows they did not come for.
+     *
+     * Defaulted so that a caller who has not been updated still produces exactly the list it
+     * produced before, under the account heading, in the order it passed.
+     */
+    val group: ProfileGroup = ProfileGroup.ACCOUNT,
     val onClick: () -> Unit,
 )
+
+/**
+ * The three blocks of the account list, in the order they are always drawn.
+ *
+ * Declaration order *is* the layout order, and that is deliberate: a reader who has learned that
+ * signing out is at the bottom of this page should not have to learn again because a row was added
+ * to the middle. [SESSION] is last for the same reason the deletion row is last within it — the two
+ * rows that end something are the two rows a thumb must not reach by accident.
+ */
+enum class ProfileGroup {
+    /** What the account *is*: the membership, the verification behind it. */
+    ACCOUNT,
+
+    /** How the app behaves for this reader: notifications, lock, palette, help. */
+    APP,
+
+    /** Ending things — signing out, and deleting. */
+    SESSION,
+}
+
+private fun ProfileGroup.titleRes(): Int = when (this) {
+    ProfileGroup.ACCOUNT -> R.string.profile_account_section
+    ProfileGroup.APP -> R.string.profile_app_section
+    ProfileGroup.SESSION -> R.string.profile_session_section
+}
 
 /**
  * The reader's own page.
@@ -111,6 +149,28 @@ fun ProfileScreen(
     platformLabel: String? = null,
     /** Three figures about the reader — never about the market. Empty hides the row. */
     readings: List<CoineProReading> = emptyList(),
+    /**
+     * Who this reader is, as the **server** said it: plan, membership standing, verification.
+     *
+     * Nothing in this list is computed here. Every entry whose answer the server did not give
+     * arrives with a null value and is drawn as unknown — see [ProfileFact], which is where that
+     * rule is enforced rather than trusted.
+     */
+    standing: List<ProfileFact> = emptyList(),
+    /**
+     * What the reader has actually done: the journal, the practice account, the closed trades,
+     * the lessons. Read from their own records, and each row goes to the screen that owns it.
+     */
+    record: List<ProfileFact> = emptyList(),
+    /**
+     * What the reader has built up inside this app — lists, layouts, templates, alerts, scripts.
+     *
+     * A year of somebody's work lives in a dozen separate stores and, until this card, was visible
+     * only by opening the twelve screens that hold it. Some of these rows have nowhere to go
+     * (a drawing template belongs to the chart's tool rail and has no page of its own); they still
+     * earn their place, because the count itself is the thing worth knowing.
+     */
+    library: List<ProfileFact> = emptyList(),
     onEditAvatar: () -> Unit = {},
     onSetDisplayName: (String?) -> Unit = {},
     onSetTagline: (String?) -> Unit = {},
@@ -157,6 +217,41 @@ fun ProfileScreen(
             item { SignInInvitation(onSignIn = onSignIn) }
         }
 
+        // Standing before record before library, and that order is the answer to the question
+        // «پروفایل کاربر رو جامع بکن» rather than an arrangement of it. What the server says about
+        // this account can stop them using the app today; what they have done is history; what they
+        // own is inventory. A screen that opens on inventory buries the one card that might be
+        // telling somebody why their signals are locked.
+        if (standing.anyDrawable()) {
+            item {
+                ProfileFactList(
+                    title = stringResource(R.string.profile_standing_section),
+                    facts = standing,
+                )
+            }
+        }
+        if (record.anyDrawable()) {
+            item {
+                ProfileFactList(
+                    title = stringResource(R.string.profile_record_section),
+                    facts = record,
+                )
+            }
+        }
+        if (library.anyDrawable()) {
+            item {
+                ProfileFactList(
+                    title = stringResource(R.string.profile_library_section),
+                    facts = library,
+                    // Said once, under the card, rather than on seven rows. None of this is on a
+                    // server — there is no route for a watchlist or a chart layout on either
+                    // backend — so a reader about to reinstall is entitled to know that before
+                    // they do, and not afterwards.
+                    note = stringResource(R.string.profile_library_note),
+                )
+            }
+        }
+
         item {
             IdentityCard(
                 displayName = profile.displayName,
@@ -166,10 +261,15 @@ fun ProfileScreen(
             )
         }
 
-        if (actions.isNotEmpty()) {
-            item {
+        // Grouped by the enum's own order, not by the caller's. The caller decides which block a
+        // row belongs to and the order of rows *within* a block; where the blocks sit on the page
+        // is fixed here, so no future edit to the call site can move «خروج» up the screen.
+        ProfileGroup.entries.forEach { group ->
+            val rows = actions.filter { it.group == group }
+            if (rows.isEmpty()) return@forEach
+            item(key = "group-" + group.name) {
                 Text(
-                    text = stringResource(R.string.profile_account_section),
+                    text = stringResource(group.titleRes()),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextDisabled,
                     modifier = Modifier.padding(
@@ -179,14 +279,14 @@ fun ProfileScreen(
                     ),
                 )
             }
-            item {
+            item(key = "rows-" + group.name) {
                 CoineProCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = CoineProSpacing.Gutter),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
                 ) {
-                    actions.forEachIndexed { index, action ->
+                    rows.forEachIndexed { index, action ->
                         if (index > 0) CoineProRowDivider()
                         ActionRow(action)
                     }
@@ -429,6 +529,9 @@ private fun ActionRow(action: ProfileAction) {
                 haptics.select()
                 action.onClick()
             }
+            // The floor for anything a thumb has to hit. The padding alone reached it for a
+            // one-line row and fell under it for a row whose label wrapped to a shorter style.
+            .heightIn(min = 44.dp)
             .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.OneHalf),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.CenterVertically,

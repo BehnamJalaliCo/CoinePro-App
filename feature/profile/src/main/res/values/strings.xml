@@ -57,4 +57,54 @@
     <string name="appearance_colours">رنگ صعود و نزول</string>
     <string name="appearance_green_up">صعود سبز، نزول قرمز</string>
     <string name="appearance_red_up">صعود قرمز، نزول سبز</string>
+
+    <!-- The four blocks a comprehensive profile divides into: who they are, what they have done,
+         what they own, and how the app behaves for them. -->
+    <string name="profile_standing_section">جایگاه شما</string>
+    <string name="profile_record_section">کارنامهٔ شما</string>
+    <string name="profile_library_section">کارهای شما در برنامه</string>
+    <string name="profile_app_section">برنامه</string>
+    <string name="profile_session_section">خروج و حذف</string>
+
+    <string name="profile_fact_unknown">نامشخص</string>
+    <string name="profile_library_note">این‌ها روی همین گوشی ذخیره می‌شوند و به هیچ سروری فرستاده نمی‌شوند؛ با حذف برنامه از بین می‌روند و روی گوشی دیگر نیستند.</string>
+
+    <string name="profile_standing_membership">عضویت</string>
+    <string name="profile_standing_verification">احراز هویت</string>
+    <string name="profile_standing_verification_submitted">ارسال‌شده در %1$s</string>
+    <string name="profile_standing_verification_level">سطح %1$s</string>
+    <string name="profile_standing_plan">اشتراک</string>
+    <string name="profile_standing_plan_vip">اشتراک ویژه</string>
+    <string name="profile_standing_plan_expires">تا %1$s</string>
+    <string name="profile_standing_plan_expires_in">تا %1$s، %2$s روز مانده</string>
+    <string name="profile_standing_email">ایمیل</string>
+
+    <!-- The membership words are the ones feature:membership prints. They must not drift. -->
+    <string name="profile_membership_awaiting_uid">در انتظار شناسهٔ کاربری</string>
+    <string name="profile_membership_verifying">در حال بررسی</string>
+    <string name="profile_membership_approved">تأیید شده</string>
+    <string name="profile_membership_pending_deposit">در انتظار واریز</string>
+    <string name="profile_membership_rejected_referral">حساب متصل نیست</string>
+    <string name="profile_membership_error">بررسی ناتمام ماند</string>
+    <string name="profile_membership_pending">در انتظار</string>
+
+    <string name="profile_verify_not_started">انجام نشده</string>
+    <string name="profile_verify_pending">در انتظار بررسی</string>
+    <string name="profile_verify_approved">تأیید شد</string>
+    <string name="profile_verify_rejected">رد شد</string>
+
+    <string name="profile_record_journal">دفترچهٔ معاملات</string>
+    <string name="profile_record_paper">معاملهٔ آزمایشی</string>
+    <string name="profile_record_closed">معامله‌های بسته‌شده</string>
+    <string name="profile_record_academy">آکادمی</string>
+    <string name="profile_record_win_rate">نرخ برد %1$s</string>
+    <string name="profile_record_academy_detail">%1$s روز پیاپی مطالعه</string>
+
+    <string name="profile_library_watchlists">فهرست‌های دیده‌بانی</string>
+    <string name="profile_library_layouts">چیدمان‌های نمودار</string>
+    <string name="profile_library_indicators">قالب‌های اندیکاتور</string>
+    <string name="profile_library_drawings">قالب‌های ابزار ترسیم</string>
+    <string name="profile_library_intervals">تایم‌فریم‌های ستاره‌دار</string>
+    <string name="profile_library_alerts">هشدارهای قیمت</string>
+    <string name="profile_library_scripts">اسکریپت‌های ذخیره‌شده</string>
 </resources>

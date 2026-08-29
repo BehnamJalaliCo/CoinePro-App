@@ -30,4 +30,10 @@
 
     <string name="delete_account_policy_link">Retention and deletion are set out in full in the privacy policy, section 5.</string>
     <string name="delete_account_open_policy">Privacy policy</string>
+
+    <string name="delete_account_local_title">What stays on this phone</string>
+    <string name="delete_account_local_journal">Your trading journal and your paper trades</string>
+    <string name="delete_account_local_workspace">Watchlists, chart layouts, templates and the drawings on your charts</string>
+    <string name="delete_account_local_alerts">Price alerts that run on this phone itself</string>
+    <string name="delete_account_local_note">None of this has ever been on a server, so deleting the account does not remove it. Your name, picture and description are cleared by the sign-out that follows deletion. To remove the rest, uninstall the app or clear its data from Android settings.</string>
 </resources>

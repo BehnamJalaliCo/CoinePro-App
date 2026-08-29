@@ -30,4 +30,11 @@
 
     <string name="delete_account_policy_link">شرح کامل نگهداری و حذف داده در سیاست حریم خصوصی، بند ۵ آمده است.</string>
     <string name="delete_account_open_policy">سیاست حریم خصوصی</string>
+
+    <!-- What a server-side deletion cannot reach, because it was never on a server. -->
+    <string name="delete_account_local_title">چه چیزی روی این گوشی می‌ماند</string>
+    <string name="delete_account_local_journal">دفترچهٔ معاملات و معامله‌های آزمایشی شما</string>
+    <string name="delete_account_local_workspace">فهرست‌های دیده‌بانی، چیدمان‌های نمودار، قالب‌ها و ترسیم‌های روی چارت</string>
+    <string name="delete_account_local_alerts">هشدارهای قیمتی که روی خودِ همین گوشی اجرا می‌شوند</string>
+    <string name="delete_account_local_note">این‌ها هیچ‌وقت روی سرور نبوده‌اند، پس حذف حساب آن‌ها را برنمی‌دارد. نام، تصویر و توضیح شما با خروجی که بلافاصله بعد از حذف انجام می‌شود پاک می‌شود. برای پاک‌کردن بقیه، برنامه را حذف کنید یا از تنظیمات اندروید دادهٔ برنامه را پاک کنید.</string>
 </resources>

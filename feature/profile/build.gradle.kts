@@ -16,6 +16,12 @@ android {
 
 dependencies {
     implementation(project(":core:model"))
+    // The two modules that hold a *server's* answer about this reader — membership standing and
+    // verification. They are depended on here rather than mapped at the navigation graph so that
+    // the rule this screen turns on — an answer the server did not give is drawn as unknown, never
+    // as a verdict — lives in a function with a test beside it instead of in a wiring snippet.
+    implementation(project(":core:account"))
+    implementation(project(":core:membership"))
     implementation(project(":core:datastore"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:common"))
