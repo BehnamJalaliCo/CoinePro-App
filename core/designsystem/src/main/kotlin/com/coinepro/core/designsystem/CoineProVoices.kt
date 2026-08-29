@@ -1,7 +1,10 @@
 package com.coinepro.core.designsystem
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +20,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -71,8 +76,13 @@ fun CoineProPageHeading(
                 eyebrow?.let {
                     Text(
                         text = it,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = CoineProColors.Gold,
+                        // Its own type role, not a re-coloured caption — see
+                        // [CoineProTextStyles.Eyebrow]. And the *ink* accent, following the page,
+                        // because the brand mid-tone on a white stage measures 2.1:1: this line
+                        // was unreadable in the light theme on every screen that used it.
+                        style = CoineProTextStyles.Eyebrow,
+                        color = CoineProColors.pageAccentInk,
+                        modifier = Modifier.padding(bottom = 2.dp),
                     )
                 }
                 Text(
@@ -169,7 +179,10 @@ fun CoineProReadingRow(
                 )
                 Text(
                     text = reading.value,
-                    style = MaterialTheme.typography.titleSmall,
+                    // Eighteen against an eleven-point label. It was fifteen, and a tile whose
+                    // answer is four points from its own caption is a tile you have to read
+                    // rather than one you can glance at.
+                    style = CoineProTextStyles.TileFigure,
                     color = reading.tone ?: CoineProColors.TextPrimary,
                     modifier = Modifier.padding(top = 2.dp),
                     maxLines = 1,
@@ -226,18 +239,30 @@ fun CoineProListHeader(
     }
 }
 
-/** A 34dp square icon action for [CoineProListHeader]. */
+/**
+ * A 34dp square icon action for [CoineProListHeader].
+ *
+ * It is the refresh button at the head of every list in the app and it did nothing under a thumb —
+ * no scale, no tick, and no edge to tell it apart from the surface behind it. All three now.
+ */
 @Composable
 fun CoineProHeaderAction(icon: Int, label: String, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberCoineProHaptics()
     Box(
         modifier = Modifier
             // Drawn at 34 and touchable at 48. This is the refresh button at the head of every
             // list in the app, so it is the target a reader misses most often.
             .minimumInteractiveComponentSize()
             .size(34.dp)
+            .pressScale(interaction, CoineProPress.CONTROL)
             .clip(CoineProShapes.small)
             .background(CoineProColors.SurfaceElevated)
-            .clickable(onClick = onClick),
+            .border(1.dp, CoineProColors.BorderSubtle, CoineProShapes.small)
+            .clickable(interaction, null) {
+                haptics.select()
+                onClick()
+            },
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -270,20 +295,47 @@ fun <T> CoineProSegmentTabs(
             .fillMaxWidth()
             .clip(CoineProShapes.small)
             .background(CoineProColors.Surface)
+            .border(1.dp, CoineProColors.BorderSubtle, CoineProShapes.small)
             .padding(3.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         options.forEach { (value, label) ->
             val active = value == selected
+            val interaction = remember { MutableInteractionSource() }
+            // The same inversion [CoineProSegmentedControl] had: `SurfaceElevated` is *darker* than
+            // its own tray in the light theme, so the selected tab was a dent rather than a raised
+            // block. `SurfaceRaised` means lifted in both themes.
+            val fill by animateColorAsState(
+                targetValue = if (active) CoineProColors.SurfaceRaised else Color.Transparent,
+                animationSpec = CoineProMotionSpecs.standard(),
+                label = "tabFill",
+            )
+            val ink by animateColorAsState(
+                targetValue = if (active) CoineProColors.TextPrimary else CoineProColors.TextMuted,
+                animationSpec = CoineProMotionSpecs.standard(),
+                label = "tabInk",
+            )
             Box(
                 modifier = Modifier
                     .weight(1f)
+                    .pressScale(interaction, CoineProPress.CHIP)
                     .clip(CoineProShapes.extraSmall)
-                    .background(if (active) CoineProColors.SurfaceElevated else CoineProColors.Surface)
+                    .background(fill)
+                    .then(
+                        if (active) {
+                            Modifier.border(
+                                1.dp,
+                                CoineProColors.BorderSubtle,
+                                CoineProShapes.extraSmall,
+                            )
+                        } else {
+                            Modifier
+                        },
+                    )
                     // Only a change is worth a tick. Pressing the tab you are already on has
                     // changed nothing, and a buzz that says otherwise teaches the reader to
                     // distrust the ones that do mean something.
-                    .clickable {
+                    .clickable(interaction, null) {
                         if (!active) haptics.select()
                         onSelect(value)
                     }
@@ -293,7 +345,7 @@ fun <T> CoineProSegmentTabs(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (active) CoineProColors.TextPrimary else CoineProColors.TextMuted,
+                    color = ink,
                     fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                     maxLines = 1,
                     softWrap = false,
@@ -353,10 +405,21 @@ fun CoineProDenseRow(
     /** Draws the note as a filled pill, the way a change percentage reads in a market list. */
     notePill: Boolean = false,
 ) {
+    val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberCoineProHaptics()
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .let { if (onClick != null) it.clickable(onClick = onClick) else it }
+            .let { plain ->
+                onClick?.let { action ->
+                    plain
+                        .pressScale(interaction, CoineProPress.ROW)
+                        .clickable(interaction, null) {
+                            haptics.select()
+                            action()
+                        }
+                } ?: plain
+            }
             .padding(horizontal = CoineProSpacing.Two, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
@@ -389,7 +452,10 @@ fun CoineProDenseRow(
                 LtrDirection {
                     Text(
                         text = it,
-                        style = MaterialTheme.typography.labelMedium,
+                        // The figure is the answer this row exists to give, so it does not share a
+                        // style with the row's own title. It was `labelMedium`, which is what the
+                        // title beside it uses.
+                        style = CoineProTextStyles.RowFigure,
                         color = CoineProColors.TextPrimary,
                     )
                 }

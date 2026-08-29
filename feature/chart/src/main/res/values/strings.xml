@@ -10,4 +10,42 @@
     <string name="chart_fullscreen_exit">خروج از تمام‌صفحه</string>
     <string name="chart_fullscreen_tools">ابزارها</string>
     <string name="chart_source">منبع قیمت: %1$s</string>
+
+    <string name="chart_interval_other">بازهٔ دیگر</string>
+
+    <!-- The one control band under the plot. Short labels: six of them share a phone's width. -->
+    <string name="chart_band_draw">ترسیم</string>
+    <string name="chart_band_studies">اندیکاتور</string>
+    <string name="chart_band_type">نوع</string>
+    <string name="chart_band_objects">شیءها</string>
+    <string name="chart_band_fullscreen">تمام‌صفحه</string>
+    <string name="chart_band_more">بیشتر</string>
+
+    <!-- Everything a reader reaches for about once a month, behind the band's «بیشتر». -->
+    <string name="chart_more_title">بیشتر</string>
+    <string name="chart_more_subtitle">بازه، تاریخ، مقایسه، محور و چیدمان</string>
+    <string name="chart_more_span">بازهٔ نمایش</string>
+    <string name="chart_more_span_note">چقدر تاریخچه جلوی چشم باشد. هر بازه، طول کندل مناسب خودش را هم انتخاب می‌کند.</string>
+    <string name="chart_more_goto">رفتن به تاریخ</string>
+    <string name="chart_more_compare">مقایسه با نماد دیگر</string>
+    <string name="chart_more_compare_note">یک نماد دیده‌بان را روی همین نمودار بیندازید.</string>
+    <string name="chart_more_scale">مقیاس قیمت</string>
+    <string name="chart_more_layouts">چیدمان‌ها</string>
+    <string name="chart_more_layouts_note">این نمودار را با اندیکاتورها و رنگ‌هایش ذخیره کنید.</string>
+    <string name="chart_more_alert">هشدار قیمت</string>
+    <string name="chart_more_alert_note">روی آخرین قیمت همین نماد.</string>
+    <string name="chart_more_backtest">بک‌تست</string>
+    <string name="chart_more_backtest_note">گزارش روی همین کندل‌هایی که بارگیری شده.</string>
+    <string name="chart_more_share">اشتراک تصویر</string>
+    <string name="chart_more_share_note">فقط خود نمودار، بدون بقیهٔ صفحه.</string>
+    <string name="chart_more_studio">استودیوی چارت</string>
+    <string name="chart_more_studio_note">اندیکاتور، ابزار، بازپخش و اسکریپت.</string>
+
+    <!-- The three readings, and the figure each one comes from. -->
+    <string name="chart_reading_title">این بازار چه می‌کند</string>
+    <string name="chart_reading_strength">قدرت روند</string>
+    <string name="chart_reading_volatility">نوسان</string>
+    <string name="chart_reading_bias">سوگیری</string>
+    <string name="chart_reading_volatility_why">%1$s دامنهٔ اخیر</string>
+    <string name="chart_reading_bias_why">%1$s فاصلهٔ میانگین‌ها</string>
 </resources>

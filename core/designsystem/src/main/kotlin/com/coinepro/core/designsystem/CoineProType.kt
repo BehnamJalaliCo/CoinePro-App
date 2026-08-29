@@ -113,6 +113,34 @@ object CoineProTextStyles {
     /**
      * A figure that is the subject of its row rather than an annotation on it — a price in a market
      * list, a position's value. One step above the row's own title so the number leads.
+     *
+     * It was fifteen, which is what [Typography.titleSmall] is, which is what the row's *title* is
+     * — so the price and the name of the thing it prices were the same size and the same weight,
+     * and the row had no subject. "One step above" was the stated intention and the number did not
+     * implement it. Sixteen does, and it is one point rather than three because the row still has
+     * to stay a row.
      */
-    val RowFigure: TextStyle = coineProTextStyle(15, 20, FontWeight.Bold, -0.2)
+    val RowFigure: TextStyle = coineProTextStyle(16, 21, FontWeight.Bold, -0.3)
+
+    /**
+     * The figure inside a small tile — a reading under a hero, a stat in a card.
+     *
+     * A tile is a label and an answer, and the two were 11sp and 15sp: close enough that the eye
+     * read the pair as one block of text and had to *read* it to find the number. At eighteen the
+     * answer is found before it is read, which is the whole point of putting it in a tile.
+     */
+    val TileFigure: TextStyle = coineProTextStyle(18, 24, FontWeight.Bold, -0.3)
+
+    /**
+     * The small line that names a category above a title — «سیگنال» over «BTCUSDT خرید».
+     *
+     * Its own role rather than a re-coloured [Typography.labelSmall], because an eyebrow is doing a
+     * different job from a caption: a caption is quiet text you may read, an eyebrow is a label you
+     * are meant to notice and then look past. Bold and slightly tracked at eleven points is what
+     * separates the two at a size where nothing else can.
+     *
+     * The tracking is 0.5 — a fraction above the caption's 0.4 and well short of anything that
+     * would open the joins in a Persian word.
+     */
+    val Eyebrow: TextStyle = coineProTextStyle(11, 15, FontWeight.Bold, 0.5)
 }

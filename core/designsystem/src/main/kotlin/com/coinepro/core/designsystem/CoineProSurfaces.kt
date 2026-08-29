@@ -1,9 +1,11 @@
 package com.coinepro.core.designsystem
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -44,10 +48,24 @@ import androidx.compose.ui.unit.dp
  *
  * Two rules hold the whole direction together, and both are easy to break by accident:
  *
- * 1. A card is a plain opaque block with a large radius — no border, no shadow, no gradient. What
- *    separates it from its neighbour is the gap between them, not a line.
+ * 1. A card is an opaque block with a large radius and **one hairline**. No shadow in the dark
+ *    theme, no gradient, ever. What separates it from its neighbour is still the gap; what says it
+ *    is a surface at all is the edge.
  * 2. Gold appears **once** per screen, on [CoineProPrimaryButton]. Every other control is neutral.
  *    A second gold object on the same screen is a design bug, not a variation.
+ *
+ * ### The hairline, and why rule 1 used to say the opposite
+ *
+ * It said "no border", and the argument was that gap is enough to separate two cards. That is true
+ * and it answers the wrong question. Two cards are separated by the gap; a card is separated from
+ * the *page* by nothing at all, and in the light theme "nothing at all" was a three-percent
+ * difference in value — #F7F8FA on #FFFFFF. So a screen was a white sheet with slightly-less-white
+ * regions printed on it, which is precisely the reading the owner gave it: dry, dead, nothing
+ * sitting on anything.
+ *
+ * A hairline costs one device pixel and it is the cheapest thing in interface design: it converts a
+ * region into an object. It is `borderSubtle`, which is the weight that closes a shape rather than
+ * the weight that divides a list — the direction's discipline is intact, it just has an edge now.
  */
 
 /** A block of content on the stage. */
@@ -69,24 +87,80 @@ fun CoineProCard(
      * them being *coloured*. See [CoineProTint] for why those two numbers and not alpha.
      */
     accent: Color? = null,
+    /**
+     * Whether the card carries its hairline.
+     *
+     * On by default, which is the change: every card in the app gains an edge at once. Pass false
+     * for a card drawn *inside* another card, where a second concentric outline reads as a mistake
+     * rather than as depth.
+     */
+    outlined: Boolean = true,
+    /**
+     * Lifted out of the page rather than resting on it — the one card on a screen that is the
+     * subject, or a panel floating over content.
+     *
+     * Takes `surfaceRaised` and, in the light theme only, a single very soft shadow. Only in the
+     * light theme because a black shadow on a near-black stage is invisible and still costs a
+     * render pass every frame; in the dark theme the fill and the hairline do the work, which is
+     * the same reason dark interfaces everywhere signal elevation with value rather than with
+     * shadow.
+     */
+    raised: Boolean = false,
+    /**
+     * Makes the whole card the target.
+     *
+     * Null keeps the card inert, which is right for most of them. Where a card *is* the button —
+     * a signal that opens, a lesson that starts — it should compress under a thumb like every
+     * other control in the app instead of being the one surface that does not move.
+     */
+    onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val base = if (elevated) CoineProColors.SurfaceElevated else CoineProColors.Surface
+    val base = when {
+        raised -> CoineProColors.SurfaceRaised
+        elevated -> CoineProColors.SurfaceElevated
+        else -> CoineProColors.Surface
+    }
     val fill = if (accent == null) base else CoineProTint.fill(accent, base)
+    val edge = when {
+        accent != null -> CoineProTint.edge(accent)
+        raised -> CoineProColors.Border
+        else -> CoineProColors.BorderSubtle
+    }
+    val lightTheme = !LocalCoineProPalette.current.isDark
+    val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberCoineProHaptics()
     Column(
         modifier = modifier
+            .let { if (raised && lightTheme) it.shadow(RAISED_SHADOW, shape) else it }
+            .let { base2 ->
+                onClick?.let { action ->
+                    base2
+                        .pressScale(interaction, CoineProPress.CARD)
+                        .clip(shape)
+                        .clickable(interaction, null) {
+                            haptics.select()
+                            action()
+                        }
+                } ?: base2
+            }
             .background(fill, shape)
             .let { plain ->
-                if (accent == null) {
-                    plain
-                } else {
-                    plain.border(1.dp, CoineProTint.edge(accent), shape)
-                }
+                if (accent == null && !outlined) plain else plain.border(1.dp, edge, shape)
             }
             .padding(contentPadding),
         content = content,
     )
 }
+
+/**
+ * How far a raised card lifts, in the light theme.
+ *
+ * Three points, which is barely a shadow at all — the point is that the card's bottom edge stops
+ * being a hairline and starts being a soft transition, not that anybody notices a drop shadow.
+ * Anything deeper and this stops being a flat system.
+ */
+private val RAISED_SHADOW = 3.dp
 
 /**
  * The one gold object on the screen.
@@ -144,7 +218,14 @@ fun CoineProPrimaryButton(
     }
 }
 
-/** A neutral pill, for the actions beside the primary one. */
+/**
+ * A neutral pill, for the actions beside the primary one.
+ *
+ * It carries a hairline and the primary does not, and the asymmetry is the point: a filled gold
+ * pill defines its own edge, while a grey pill on a grey card is a shape only if something draws
+ * one. Without it the row of secondary actions under a balance read as three smudges — which is
+ * what it looked like, because that is what it was.
+ */
 @Composable
 fun CoineProSecondaryButton(
     text: String,
@@ -163,6 +244,7 @@ fun CoineProSecondaryButton(
         modifier = modifier.pressScale(interaction, CoineProPress.CONTROL),
         shape = CoineProPillShape,
         color = CoineProColors.SurfaceElevated,
+        border = BorderStroke(1.dp, CoineProColors.BorderSubtle),
         interactionSource = interaction,
     ) {
         ButtonContent(
@@ -228,7 +310,10 @@ fun CoineProAssetToken(
     Box(
         modifier = modifier
             .size(size)
-            .background(tint.copy(alpha = 0.14f), CoineProPillShape),
+            .background(tint.copy(alpha = 0.14f), CoineProPillShape)
+            // The same ring an instrument logo gets, and for the same reason: a 14% disc on a
+            // surface one step below it is a shape whose edge the panel has to guess at.
+            .border(1.dp, CoineProColors.assetRing, CoineProPillShape),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -271,12 +356,18 @@ fun CoineProAgentOrb(
 private const val DISABLED_ALPHA = 0.45f
 
 /**
- * A hairline that starts gold and fades out.
+ * A hairline that starts at the screen's accent and fades out.
  *
  * The one rule in the «طلایی» direction that carries meaning rather than decoration: it closes the
  * header and says the page below it is the same subject. Solid on the reading edge and gone by the
  * far edge, so it reads as an underline for the heading rather than as a divider across the page —
- * a full-width gold line at this weight would be the loudest thing on screen.
+ * a full-width accent line at this weight would be the loudest thing on screen.
+ *
+ * The default was a fixed [CoineProColors.Gold], and that is what made gold look decorative rather
+ * than meaningful: an analysis screen drew a blue button under a gold rule, so the reader was shown
+ * two accents on one page and no rule for which was which. It follows [PageAccent] now, like every
+ * other accented object, and it takes the *ink* variant because a 1dp line has to survive being
+ * read on white — the brand mid-tone at 55% alpha on a white stage is not a line, it is a hint.
  *
  * The gradient is deliberate and allow-listed: it is a rule, not a card, a header or a button, and
  * the fade *is* the shape. See `scripts/quality/check-motion-policy.sh`.
@@ -284,7 +375,7 @@ private const val DISABLED_ALPHA = 0.45f
 @Composable
 fun CoineProGoldRule(
     modifier: Modifier = Modifier,
-    colour: Color = CoineProColors.Gold,
+    colour: Color = CoineProColors.pageAccentInk,
 ) {
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val stops = listOf(colour.copy(alpha = 0.55f), colour.copy(alpha = 0.04f))

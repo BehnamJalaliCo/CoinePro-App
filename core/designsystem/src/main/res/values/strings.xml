@@ -28,4 +28,8 @@
     <string name="offline_bar">اینترنت این گوشی قطع است. قیمت‌ها همان آخرین چیزی است که رسیده.</string>
     <string name="field_reveal">نمایش</string>
     <string name="field_hide">پنهان کردن</string>
+    <string name="field_clear">پاک کردن</string>
+    <string name="message_session_not_revalidated">نشست ذخیره‌شده هست ولی سرور تأییدش نکرد. تا وقتی سرور در دسترس نباشد، بخش‌های نیازمند حساب قفل می‌مانند.</string>
+    <string name="message_telegram_sign_in_not_configured">ورود با تلگرام روی این سرور تنظیم نشده است.</string>
+    <string name="message_telegram_sign_in_config_unavailable">تنظیمات ورود با تلگرام خوانده نشد. اتصال را بررسی کن و دوباره بگیر.</string>
 </resources>

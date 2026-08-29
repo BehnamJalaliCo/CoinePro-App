@@ -154,6 +154,9 @@ def check_learned_surfaces() -> None:
         "INTERVAL",
         "SCALE",
         "COMPARE",
+        # Added when the chart's six control bands became one: everything a reader touches monthly
+        # rather than every session moved behind this one entry. See `ChartMoreSheetBody`.
+        "MORE",
     ]
     require(
         entries == expected_sheets,

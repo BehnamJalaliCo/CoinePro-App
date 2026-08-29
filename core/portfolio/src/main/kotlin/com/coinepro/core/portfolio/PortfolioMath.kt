@@ -115,10 +115,18 @@ object PortfolioMath {
      */
     fun byMonth(trades: List<ClosedTrade>, zone: ZoneId = ZoneId.systemDefault()): List<MonthlyPerformance> {
         if (trades.isEmpty()) return emptyList()
-        val keyed = trades.groupBy { trade ->
-            val date = JalaliDate.fromInstant(Instant.ofEpochSecond(trade.closedAt), zone)
-            date.year to date.month
-        }
+        // A trade whose close date this calendar cannot represent is dropped from the breakdown
+        // rather than throwing. `closedAt` is a server value, and the throwing conversion here ran
+        // inside `PortfolioController`'s `onSuccess` — outside its `runCatching`, on the app's one
+        // shared scope, which has no exception handler — so a single hostile timestamp in a page
+        // of trades killed the process rather than losing one bar. See `JalaliDate.fromInstantOrNull`.
+        val keyed = trades
+            .mapNotNull { trade ->
+                JalaliDate.fromInstantOrNull(Instant.ofEpochSecond(trade.closedAt), zone)
+                    ?.let { date -> trade to (date.year to date.month) }
+            }
+            .groupBy({ it.second }, { it.first })
+        if (keyed.isEmpty()) return emptyList()
         val first = keyed.keys.minWith(compareBy({ it.first }, { it.second }))
         val last = keyed.keys.maxWith(compareBy({ it.first }, { it.second }))
 

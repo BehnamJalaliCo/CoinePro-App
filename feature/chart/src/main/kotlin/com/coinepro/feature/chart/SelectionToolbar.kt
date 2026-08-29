@@ -37,6 +37,7 @@ import com.coinepro.core.chart.LineStyleKind
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.datastore.DrawingTemplate
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.pageAccentInk
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -77,6 +78,15 @@ import com.coinepro.core.designsystem.R as DesignR
  * The text target appears only on the tools that hold words and the fill target only on the tools
  * that paint a wash — `DrawingActions.holdsText` and `DrawingActions.washes`. A target that set a
  * value nothing rendered would be precisely the failure this whole wave is about.
+ *
+ * ### Why the lit states are the page's accent and not gold
+ *
+ * They were gold — the armed panel, the multi-select toggle, the lock, the chosen swatch — and so
+ * was every selected pill on the page below. `CoineProPageAccent` names a gold selection on an
+ * analysis screen as exactly the bug it exists to prevent, and the chart route has declared
+ * `PageAccent.ANALYSIS` since that file was written. Reading the accent off the page rather than
+ * naming a colour also means this strip lights up in the same hue as the band under the plot, so
+ * "this control is on" is one visual fact on the whole screen rather than two that happen to agree.
  */
 @Composable
 internal fun DrawingSelectionToolbar(
@@ -129,7 +139,7 @@ internal fun DrawingSelectionToolbar(
                 Text(
                     text = count.toPersianDigits() + " انتخاب",
                     style = MaterialTheme.typography.labelSmall,
-                    color = CoineProColors.Gold,
+                    color = CoineProColors.pageAccentInk,
                     fontWeight = FontWeight.Normal,
                     modifier = Modifier.padding(horizontal = CoineProSpacing.Half),
                 )
@@ -137,19 +147,19 @@ internal fun DrawingSelectionToolbar(
             SelectionAction(
                 icon = DesignR.drawable.tv_tool_select,
                 label = if (multiSelect) "پایان انتخاب چندتایی" else "انتخاب چندتایی",
-                tint = if (multiSelect) CoineProColors.Accent else null,
+                tint = if (multiSelect) CoineProColors.pageAccentInk else null,
             ) { onSetMultiSelect(!multiSelect) }
             SelectionAction(
                 icon = DesignR.drawable.tv_pencil,
                 label = "رنگ و ضخامت",
-                tint = if (panel == SelectionPanel.STYLE) CoineProColors.Accent else null,
+                tint = if (panel == SelectionPanel.STYLE) CoineProColors.pageAccentInk else null,
                 enabled = !locked,
             ) { panel = if (panel == SelectionPanel.STYLE) SelectionPanel.NONE else SelectionPanel.STYLE }
             if (templates.isNotEmpty()) {
                 SelectionAction(
                     icon = DesignR.drawable.tv_tool_template,
                     label = "قالب‌ها",
-                    tint = if (panel == SelectionPanel.TEMPLATES) CoineProColors.Accent else null,
+                    tint = if (panel == SelectionPanel.TEMPLATES) CoineProColors.pageAccentInk else null,
                     enabled = !locked,
                 ) {
                     panel = if (panel == SelectionPanel.TEMPLATES) SelectionPanel.NONE else SelectionPanel.TEMPLATES
@@ -168,7 +178,7 @@ internal fun DrawingSelectionToolbar(
             SelectionAction(
                 icon = if (locked) DesignR.drawable.tv_lock else DesignR.drawable.tv_unlock,
                 label = if (locked) "باز کردن قفل" else "قفل کردن",
-                tint = if (locked) CoineProColors.Gold else null,
+                tint = if (locked) CoineProColors.pageAccentInk else null,
             ) { onSetLocked(primary.id, !locked) }
             SelectionAction(
                 icon = DesignR.drawable.tv_trash2,
@@ -271,7 +281,7 @@ internal fun DrawingClipboardRow(
 private fun ClipboardChip(
     text: String,
     enabled: Boolean,
-    tone: Color = CoineProColors.Gold,
+    tone: Color = CoineProColors.pageAccentInk,
     onClick: () -> Unit,
 ) {
     Box(
@@ -373,7 +383,7 @@ private fun StylePanel(
                     .background(Color(value.toULong() shl SELECTION_COLOUR_SHIFT))
                     .border(
                         width = if (value == chosen) 2.dp else 1.dp,
-                        color = if (value == chosen) CoineProColors.Gold else CoineProColors.Border,
+                        color = if (value == chosen) CoineProColors.pageAccentInk else CoineProColors.Border,
                         shape = CircleShape,
                     )
                     .clickable {
@@ -392,14 +402,14 @@ private fun StylePanel(
                     .clip(CoineProPillShape)
                     .background(
                         if (active) {
-                            CoineProTint.fill(CoineProColors.Gold, CoineProColors.SurfaceElevated)
+                            CoineProTint.fill(CoineProColors.pageAccentInk, CoineProColors.SurfaceElevated)
                         } else {
                             Color.Transparent
                         },
                     )
                     .border(
                         width = 1.dp,
-                        color = if (active) CoineProTint.edge(CoineProColors.Gold) else CoineProColors.Border,
+                        color = if (active) CoineProTint.edge(CoineProColors.pageAccentInk) else CoineProColors.Border,
                         shape = CoineProPillShape,
                     )
                     .clickable { onSetWidth(width) }
@@ -408,7 +418,7 @@ private fun StylePanel(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (active) CoineProColors.Gold else CoineProColors.TextMuted,
+                    color = if (active) CoineProColors.pageAccentInk else CoineProColors.TextMuted,
                 )
             }
         }
@@ -441,14 +451,14 @@ private fun StyleChip(label: String, active: Boolean, onClick: () -> Unit) {
             .clip(CoineProPillShape)
             .background(
                 if (active) {
-                    CoineProTint.fill(CoineProColors.Gold, CoineProColors.SurfaceElevated)
+                    CoineProTint.fill(CoineProColors.pageAccentInk, CoineProColors.SurfaceElevated)
                 } else {
                     Color.Transparent
                 },
             )
             .border(
                 width = 1.dp,
-                color = if (active) CoineProTint.edge(CoineProColors.Gold) else CoineProColors.Border,
+                color = if (active) CoineProTint.edge(CoineProColors.pageAccentInk) else CoineProColors.Border,
                 shape = CoineProPillShape,
             )
             .clickable(onClick = onClick)
@@ -457,7 +467,7 @@ private fun StyleChip(label: String, active: Boolean, onClick: () -> Unit) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = if (active) CoineProColors.Gold else CoineProColors.TextMuted,
+            color = if (active) CoineProColors.pageAccentInk else CoineProColors.TextMuted,
         )
     }
 }

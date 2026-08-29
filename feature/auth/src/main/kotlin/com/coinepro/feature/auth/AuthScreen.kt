@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.ProChartLockup
+import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -99,9 +100,10 @@ fun AuthScreen(
                     )
                 }
                 is LoginConfigState.Error -> {
-                    // Server wording, verbatim.
+                    // Owned copy, resolved in the reader's language — see `UiMessage`. It used to
+                    // be an English sentence written in the controller and shown as it stood.
                     Text(
-                        text = loginConfigState.message,
+                        text = loginConfigState.message.resolve(),
                         style = MaterialTheme.typography.bodyMedium,
                         color = CoineProColors.Sell,
                         textAlign = TextAlign.Center,
@@ -117,7 +119,7 @@ fun AuthScreen(
             }
             is SessionState.RevalidationRequired -> {
                 Text(
-                    text = state.message,
+                    text = state.message.resolve(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = CoineProColors.TextSecondary,
                     textAlign = TextAlign.Center,

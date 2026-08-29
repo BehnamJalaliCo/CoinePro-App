@@ -217,6 +217,7 @@ fun CoineProMarketRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (starred != null && onToggleStar != null) {
+            val starInteraction = remember { MutableInteractionSource() }
             // Leading, on the reading edge. The star is a state the reader scans down the list as
             // much as a control they press, and putting it beside the price would make it compete
             // with the number that has to be read first.
@@ -239,8 +240,12 @@ fun CoineProMarketRow(
                     // app look tighter and feel worse.
                     .minimumInteractiveComponentSize()
                     .semantics { role = Role.Checkbox }
+                    // Its own interaction source, not the row's: the star and the row it sits in
+                    // are two targets, and sharing one would compress the whole row whenever a
+                    // thumb landed on the star.
+                    .pressScale(starInteraction, CoineProPress.CONTROL)
                     .clip(CoineProShapes.small)
-                    .clickable {
+                    .clickable(starInteraction, null) {
                         // Starring is a change the reader made to their own list, not navigation,
                         // so it gets the weight of a committed action rather than a selection.
                         haptics.commit()
@@ -255,7 +260,11 @@ fun CoineProMarketRow(
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(
                 text = title,
+                // The instrument's name is the row's *label*; the price is its answer. Both were
+                // bold at fifteen, which is a row with two subjects and therefore none. The name
+                // keeps its size and gives up the weight — the figure beside it carries both.
                 style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Normal,
                 color = CoineProColors.TextPrimary,
                 maxLines = 1,
             )
@@ -336,5 +345,8 @@ private val ROW_MIN_HEIGHT = 56.dp
  * Wide enough for `105,432.10` at the row figure's size, which is the longest price either backend
  * quotes, and narrow enough to leave the instrument its name. Fixed rather than measured, because
  * a column that resizes with its contents is a column that does not align.
+ *
+ * It grew from 92 with the figure, which went from 15sp to 16 so that the price stops being the
+ * same size as the name of the thing it prices. Six points is the width that point bought.
  */
-private val FIGURE_COLUMN = 92.dp
+private val FIGURE_COLUMN = 98.dp

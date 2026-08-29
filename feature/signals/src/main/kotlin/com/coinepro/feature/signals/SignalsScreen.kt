@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -55,6 +57,10 @@ import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.resolve
+import com.coinepro.core.guest.GuestController
+import com.coinepro.core.guest.GuestMembershipState
+import com.coinepro.core.guest.GuestTrackRecordState
+import com.coinepro.core.membership.MembershipController
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.SignalDirection
@@ -62,6 +68,7 @@ import com.coinepro.core.signals.SignalController
 import com.coinepro.core.signals.SignalMarketFilter
 import com.coinepro.core.signals.SignalStatusFilter
 import com.coinepro.core.signals.TradingSignal
+import com.coinepro.feature.membership.MembershipJourneyPanel
 
 /**
  * The signals list, in the "آرام" direction.
@@ -71,12 +78,34 @@ import com.coinepro.core.signals.TradingSignal
  * screen into a state the rest of the app is not in — a crypto session listing forex setups.
  *
  * [platform] therefore drives the controller rather than the reader driving it.
+ *
+ * ### The locked state
+ *
+ * A reader without membership used to get one card here that named the Telegram bot and the web
+ * panel and stopped. Somebody who installed this app from Google Play has never heard of either,
+ * does not know which of two channels they would be joining, and — since §۶ of the published terms
+ * says Pro-Chart sells nothing — could not have bought what that card offered them anyway. It was
+ * a dead end, and a dead end is where an app gets uninstalled.
+ *
+ * So the refusal now renders [MembershipJourneyPanel]: the closed-signal track record first, then
+ * the arrangement, then where the server says this reader stands in it, with the next action inside
+ * the step it belongs to. [membershipController] and [guestController] are what it needs, and both
+ * are optional so that a caller which has not wired them yet still gets the old card rather than a
+ * screen that fails to compile.
  */
 @Composable
 fun SignalsScreen(
     controller: SignalController,
     onOpenSignal: (Long) -> Unit,
     platform: MarketPlatform = MarketPlatform.TRADEYAR,
+    /**
+     * The membership check, which is TradeYar's and only TradeYar's.
+     *
+     * Null on a caller that has none, and the screen then falls back to the server's own sentence.
+     */
+    membershipController: MembershipController? = null,
+    /** The public terms and the track record. Null costs the links and the evidence, not the steps. */
+    guestController: GuestController? = null,
 ) {
     LaunchedEffect(controller) { controller.start() }
     LaunchedEffect(controller, platform) { controller.selectMarket(platform.toFilter()) }
@@ -109,9 +138,13 @@ fun SignalsScreen(
                 CircularProgressIndicator(color = CoineProColors.Gold, strokeWidth = 2.dp)
             }
 
-            state.membershipRequired -> Placeholder {
-                MembershipRequired(state.membershipMessage, onRetry = controller::refresh)
-            }
+            state.membershipRequired -> MembershipLocked(
+                platform = platform,
+                membershipController = membershipController,
+                guestController = guestController,
+                serverMessage = state.membershipMessage,
+                onRetry = controller::refresh,
+            )
 
             state.error != null && state.items.isEmpty() -> Placeholder {
                 CoineProCard(modifier = Modifier.fillMaxWidth()) {
@@ -334,8 +367,96 @@ private fun ColumnScope.Placeholder(content: @Composable () -> Unit) {
     ) { content() }
 }
 
+/**
+ * What a reader without access is shown instead of the list.
+ *
+ * The whole journey where it applies, and the server's sentence where it does not. The split is by
+ * platform and it is not a hedge: membership as an unpaid, referral-verified arrangement is
+ * **TradeYar's**, and the routes behind it — the status, the UID submission, the public terms —
+ * are bound to the crypto host alone. CoinePro-FX gates the same screen on its own paid plan, so
+ * drawing the UID journey there would put a form in front of somebody whose server has no route to
+ * receive it, and would describe an arrangement they are not party to.
+ *
+ * That fallback is still not a dead end: it prints the deployment's own explanation, and the button
+ * re-asks the list route, which is the thing that changes when a plan is activated elsewhere.
+ */
 @Composable
-private fun MembershipRequired(serverMessage: String?, onRetry: () -> Unit) {
+private fun ColumnScope.MembershipLocked(
+    platform: MarketPlatform,
+    membershipController: MembershipController?,
+    guestController: GuestController?,
+    serverMessage: String?,
+    onRetry: () -> Unit,
+) {
+    if (membershipController == null || platform != MarketPlatform.TRADEYAR) {
+        Placeholder { MembershipRequiredCard(serverMessage, onRetry) }
+        return
+    }
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(CoineProSpacing.Gutter),
+    ) {
+        MembershipJourney(
+            membershipController = membershipController,
+            guestController = guestController,
+            onAccessGranted = onRetry,
+        )
+    }
+}
+
+/**
+ * The journey, with the two public reads it wants where a caller supplied them.
+ *
+ * Split in two by whether [guestController] exists rather than reached for through a safe call,
+ * because what is being collected here are two state flows: a composable read inside `?.` is a
+ * subscription that appears and disappears with a parameter, which is exactly the shape that
+ * produces a recomposition loop nobody can reproduce.
+ *
+ * Both reads are asked for on arrival. The terms and the track record come from public routes that
+ * only the guest home polls, and a signed-in reader never renders that screen — so without this the
+ * referral buttons would be missing for precisely the people who need them.
+ */
+@Composable
+private fun MembershipJourney(
+    membershipController: MembershipController,
+    guestController: GuestController?,
+    onAccessGranted: () -> Unit,
+) {
+    // Not «سیگنال‌های ویژه». That title belongs to the fallback card and to a platform that
+    // genuinely sells a plan; over a screen whose first sentence is that membership is free, the
+    // word «ویژه» reads as the paywall this panel exists to stop implying.
+    val headline = stringResource(R.string.signals_locked_title)
+    if (guestController == null) {
+        MembershipJourneyPanel(
+            controller = membershipController,
+            modifier = Modifier.fillMaxWidth(),
+            onAccessGranted = onAccessGranted,
+            headline = headline,
+        )
+        return
+    }
+    val terms by guestController.membership.collectAsStateWithLifecycle()
+    val record by guestController.trackRecord.collectAsStateWithLifecycle()
+    LaunchedEffect(guestController) {
+        guestController.refreshMembership()
+        guestController.refreshTrackRecord()
+    }
+    MembershipJourneyPanel(
+        controller = membershipController,
+        modifier = Modifier.fillMaxWidth(),
+        terms = (terms as? GuestMembershipState.Ready)?.terms,
+        trackRecord = (record as? GuestTrackRecordState.Ready)?.record,
+        onAccessGranted = onAccessGranted,
+        headline = headline,
+    )
+}
+
+/** The pre-journey card, kept for CoinePro-FX and for a caller with no membership controller. */
+@Composable
+private fun MembershipRequiredCard(serverMessage: String?, onRetry: () -> Unit) {
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = stringResource(R.string.signals_membership_title),

@@ -63,6 +63,15 @@ object CoineProColors {
      */
     val Terminal: Color @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.terminal
 
+    /**
+     * Something lifted out of the container it sits in — a selected segment, a raised card.
+     *
+     * Not a rung on the same ladder as [SurfaceElevated]: in the dark theme raised means lighter,
+     * in the light theme it means white. See [CoineProPalette.surfaceRaised].
+     */
+    val SurfaceRaised: Color
+        @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.surfaceRaised
+
     /** One step above [SurfaceElevated] — for a sheet over a card, or a popover over a sheet. */
     val SurfaceOverlay: Color
         @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.surfaceOverlay

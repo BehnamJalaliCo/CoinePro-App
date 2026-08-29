@@ -2,6 +2,8 @@ package com.coinepro.core.auth
 
 import com.coinepro.core.common.AppResult
 import com.coinepro.core.common.ErrorKind
+import com.coinepro.core.common.MessageKey
+import com.coinepro.core.common.UiMessage
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -18,13 +20,21 @@ sealed interface SessionState {
         val profile: UserProfile,
         val entitlement: EntitlementSnapshot,
     ) : SessionState
-    data class RevalidationRequired(val message: String) : SessionState
+    /**
+     * A stored session the server would not confirm.
+     *
+     * [message] is a [UiMessage] and not a `String`: it used to hold an English sentence written
+     * here in the controller and shown verbatim to a Persian reader. A controller cannot reach
+     * `stringResource`, which is precisely why `UiMessage` exists — it names the message and the
+     * screen resolves it in the reader's own language.
+     */
+    data class RevalidationRequired(val message: UiMessage) : SessionState
 }
 
 sealed interface LoginConfigState {
     data object Loading : LoginConfigState
     data class Ready(val botUsername: String) : LoginConfigState
-    data class Error(val message: String) : LoginConfigState
+    data class Error(val message: UiMessage) : LoginConfigState
 }
 
 class SessionController(
@@ -74,7 +84,7 @@ class SessionController(
                     expireSession()
                 } else {
                     stateMutable.value = SessionState.RevalidationRequired(
-                        "Session exists but could not be revalidated. Protected features stay locked until the server is reachable.",
+                        UiMessage.of(MessageKey.SESSION_NOT_REVALIDATED),
                     )
                 }
             }
@@ -90,12 +100,12 @@ class SessionController(
                 loginConfigStateMutable.value = if (botUsername.isNotEmpty()) {
                     LoginConfigState.Ready(botUsername)
                 } else {
-                    LoginConfigState.Error("Telegram sign-in is not configured by the server.")
+                    LoginConfigState.Error(UiMessage.of(MessageKey.TELEGRAM_SIGN_IN_NOT_CONFIGURED))
                 }
             }
             is AppResult.Failure -> {
                 loginConfigStateMutable.value = LoginConfigState.Error(
-                    "Could not load Telegram sign-in configuration. Check the server connection and retry.",
+                    UiMessage.of(MessageKey.TELEGRAM_SIGN_IN_CONFIG_UNAVAILABLE),
                 )
             }
         }

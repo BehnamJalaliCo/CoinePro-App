@@ -90,11 +90,17 @@ class AiSignalContractTest {
     }
 
     @Test
-    fun `product symbol normalization stays inside CoinePro scope`() {
+    fun `symbol normalization cleans a ticker and refuses what is not one`() {
+        // This test used to assert that `EURUSD` and `BTCUSD` normalize to null, which pinned the
+        // bug rather than the behaviour: the client refused most of both platforms' universes
+        // before the request left the phone. The server owns its product scope and refuses what it
+        // does not serve, with a reason; this only has to reject text that is not a ticker at all.
         assertEquals("XAUUSD", AiSignalProductScope.normalizeSymbol("xau/usd"))
         assertEquals("BTCUSDT", AiSignalProductScope.normalizeSymbol("btc-usdt"))
-        assertNull(AiSignalProductScope.normalizeSymbol("EURUSD"))
-        assertNull(AiSignalProductScope.normalizeSymbol("BTCUSD"))
+        assertEquals("EURUSD", AiSignalProductScope.normalizeSymbol("EURUSD"))
+        assertEquals("BTCUSD", AiSignalProductScope.normalizeSymbol("BTCUSD"))
+        assertNull(AiSignalProductScope.normalizeSymbol(""))
+        assertNull(AiSignalProductScope.normalizeSymbol("1234"))
     }
 
     private fun validResult() = AiGeneratedSignalDto(

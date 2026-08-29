@@ -14,6 +14,12 @@ import androidx.compose.ui.graphics.Color
  * simulated with alpha; and three border weights, so a hairline that closes a shape and a rule
  * that divides a list are not the same colour.
  *
+ * A sixth step, [surfaceRaised], is this app's own and not the web terminal's — see its own note
+ * for the light-theme inversion it exists to fix. And every border weight moved up: the ladder was
+ * being asked to carry the whole structure on fill alone, which is what a reader means when they
+ * say a flat interface looks printed rather than built. Fill says which rung; the hairline says
+ * there is an edge at all.
+ *
  * **The brand gold is not adopted.** `foundation-v2` uses Binance yellow `#F0B90B` for brand and
  * execution; this app's gold is `#D8A848`, sampled from the CoinePro mark. Taking the web
  * terminal's yellow would change the brand to another company's, which is the one thing in that
@@ -42,6 +48,21 @@ data class CoineProPalette(
     val terminal: Color,
     val surface: Color,
     val surfaceElevated: Color,
+    /**
+     * Something lifted *out of* the container it sits in, rather than one rung further down the
+     * page's own ladder.
+     *
+     * The distinction sounds pedantic and it is the reason the light theme's segmented control was
+     * drawn upside down. A selected segment is supposed to read as raised out of its tray; the tray
+     * is [surface] and the segment took [surfaceElevated], which in the light theme is *darker*
+     * than the tray. So the selected tab was a hole, and the two unselected ones were the surface —
+     * which is exactly backwards, and it is why nothing in those screenshots looked like it sat on
+     * anything.
+     *
+     * In the dark theme "raised" means lighter and in the light theme it means white. That cannot
+     * be expressed by a rung on a single monotonic ladder, which is why it is its own token.
+     */
+    val surfaceRaised: Color,
     /** One step above elevated — for a sheet over a card, or a popover over a sheet. */
     val surfaceOverlay: Color,
     /** Under a pointer, where there is one. */
@@ -105,13 +126,17 @@ val CoineProDarkPalette = CoineProPalette(
     stage = Color(0xFF0B0E11),
     terminal = Color(0xFF070A0F),
     surface = Color(0xFF10141B),
-    surfaceElevated = Color(0xFF161A21),
+    surfaceElevated = Color(0xFF171C24),
+    surfaceRaised = Color(0xFF222831),
     surfaceOverlay = Color(0xFF1E2329),
     surfaceHover = Color(0xFF252A31),
     surfacePressed = Color(0xFF2B3139),
-    borderSubtle = Color(0x0EFFFFFF),
-    border = Color(0x16FFFFFF),
-    borderStrong = Color(0x24FFFFFF),
+    // Raised from 5% to 8% white. At 5% a hairline on a #10141B card over a #0B0E11 stage is below
+    // the threshold an OLED panel resolves at all, so the card had no edge and the whole ladder
+    // depended on a two-level fill difference nobody could see.
+    borderSubtle = Color(0x14FFFFFF),
+    border = Color(0x1EFFFFFF),
+    borderStrong = Color(0x2EFFFFFF),
     textPrimary = Color(0xFFF0F1F2),
     textSecondary = Color(0xFFB7BDC6),
     textMuted = Color(0xFF848E9C),
@@ -141,15 +166,22 @@ val CoineProDarkPalette = CoineProPalette(
  */
 val CoineProLightPalette = CoineProPalette(
     stage = Color(0xFFFFFFFF),
-    terminal = Color(0xFFF7F8FA),
-    surface = Color(0xFFF7F8FA),
-    surfaceElevated = Color(0xFFF0F2F5),
+    // Pulled off the surface it used to share a value with. A chart ground identical to a card is
+    // a chart with no ground.
+    terminal = Color(0xFFF1F3F7),
+    surface = Color(0xFFF6F7FA),
+    surfaceElevated = Color(0xFFEBEEF3),
+    // White, because in a light theme the thing that is lifted is the thing that is brightest.
+    surfaceRaised = Color(0xFFFFFFFF),
     surfaceOverlay = Color(0xFFE8EBEF),
     surfaceHover = Color(0xFFE9EDF2),
     surfacePressed = Color(0xFFE1E6EC),
-    borderSubtle = Color(0x120D121C),
-    border = Color(0x1C0D121C),
-    borderStrong = Color(0x2E0D121C),
+    // Seven percent black on white is #EEEFF1, which is a line you can measure and not one you can
+    // see. Ten is where a card edge reads as drawn; the strong step goes to twenty percent so a
+    // selected border is unmistakably a choice.
+    borderSubtle = Color(0x1A0D121C),
+    border = Color(0x240D121C),
+    borderStrong = Color(0x330D121C),
     textPrimary = Color(0xFF111318),
     textSecondary = Color(0xFF4E5661),
     textMuted = Color(0xFF707A88),

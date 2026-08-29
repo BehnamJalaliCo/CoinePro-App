@@ -87,6 +87,7 @@ import com.coinepro.core.datastore.StoredProfile
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProReading
 import androidx.compose.foundation.layout.Box
@@ -699,7 +700,21 @@ fun CoineProApp(
     // So: if the platform on screen has no session and exactly one platform does, follow it. Only
     // when it is unambiguous — somebody signed in to both has made a real choice and this must not
     // overrule it.
+    // ...and it must not overrule a **tap**, which is the half that was missing.
+    //
+    // The effect above was written for a stored preference left over from an older build, and for
+    // that it is right. But it re-ran on every change to `activePlatform`, including the reader's
+    // own — so tapping «فارکس» while signed in only to TradeYar set the platform, tore the shell
+    // down to the guest branch for one frame, and the effect immediately set it back and rebuilt
+    // the signed-in shell. What the reader saw was a tab that flashed the whole app and did
+    // nothing, which is how it was reported: «روی فارکس میزنم کرش میکنه».
+    //
+    // A deliberate choice is respected for the rest of the session. The reader still cannot see a
+    // platform they have no token for — there is nothing to show them — but they now land on its
+    // sign-in and are told why, instead of being bounced back with no explanation.
+    var platformChosen by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(sessionStates, activePlatform) {
+        if (platformChosen) return@LaunchedEffect
         if (sessionStates[activePlatform] is SessionState.SignedIn) return@LaunchedEffect
         activePlatformStore.available
             .filter { sessionStates[it] is SessionState.SignedIn }
@@ -717,7 +732,7 @@ fun CoineProApp(
             SessionRow(
                 platform = platform,
                 signedIn = sessionStates[platform] is SessionState.SignedIn,
-                detail = (sessionStates[platform] as? SessionState.RevalidationRequired)?.message,
+                detail = (sessionStates[platform] as? SessionState.RevalidationRequired)?.message?.resolve(),
             )
         },
         feed = FeedStatus(
@@ -754,6 +769,7 @@ fun CoineProApp(
     val hubActions = HubActions(
         onSelectPlatform = { platform ->
             adminController.select(platform)
+            platformChosen = true
             scope.launch { activePlatformStore.setActive(platform) }
         },
         onSignOut = { platform -> scope.launch { platformSessions.logout(platform) } },
@@ -911,6 +927,9 @@ fun CoineProApp(
                 platforms = activePlatformStore.available,
                 activePlatform = activePlatform,
                 onSelectPlatform = { platform ->
+                    // Recorded before the switch, so the follow-the-session effect above sees the
+                    // choice on the same frame it sees the new platform.
+                    platformChosen = true
                     scope.launch { activePlatformStore.setActive(platform) }
                 },
                 onLogout = {
@@ -1773,6 +1792,12 @@ private fun MainShell(
                     controller = signalController,
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
                     platform = activePlatform,
+                    // The locked state is the membership journey now, not a card naming a Telegram
+                    // channel. Somebody who installed this from Google Play has never heard of that
+                    // channel; being sent to it is where they leave. Both controllers are read only
+                    // when the server refuses the list.
+                    membershipController = membershipController,
+                    guestController = guestController,
                 )
             }
             composable(

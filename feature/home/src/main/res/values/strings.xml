@@ -38,7 +38,7 @@
     <string name="home_status_live">لحظه‌ای</string>
     <string name="home_status_connecting">در حال اتصال…</string>
     <string name="home_status_idle">جریان بازار بی‌کار</string>
-    <string name="home_status_degraded">اتصال لحظه‌ای در حال بازیابی · تصویر HTTP فعال است</string>
+    <string name="home_status_degraded">اتصال لحظه‌ای در حال بازیابی · قیمت‌ها هر چند ثانیه تازه می‌شوند</string>
     <string name="home_status_offline">داده‌های بازار آفلاین است</string>
     <string name="home_status_cached">تصویر ذخیره‌شده · آفلاین</string>
     <string name="home_status_cached_refreshing">تصویر ذخیره‌شده · در حال به‌روزرسانی</string>
@@ -71,4 +71,5 @@
     <string name="home_market_more">%1$s بازار دیگر</string>
     <string name="home_holdings_count">%1$s دارایی · پرتفوی</string>
     <string name="home_shortcut_news">اخبار</string>
+    <string name="home_value_missing_note">هنوز موجودی‌ای از سرور نرسیده است.</string>
 </resources>

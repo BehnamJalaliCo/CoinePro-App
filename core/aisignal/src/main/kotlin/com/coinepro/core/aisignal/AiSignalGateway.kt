@@ -2,6 +2,7 @@ package com.coinepro.core.aisignal
 
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.SignalDirection
+import com.coinepro.core.network.ApiErrors
 import com.google.gson.annotations.SerializedName
 import retrofit2.HttpException
 import retrofit2.Retrofit
@@ -25,10 +26,46 @@ interface AiSignalGateway {
     suspend fun job(jobId: String, request: AiSignalRequest): AiSignalJob
 }
 
-class AiSignalEntitlementRequiredException : Exception("AI Signal entitlement required")
-class AiSignalQuotaExhaustedException : Exception("AI Signal quota exhausted")
-class AiSignalJobExpiredException : Exception("AI Signal job expired")
-class AiSignalRequestRejectedException(message: String) : Exception(message)
+/**
+ * The four refusals this endpoint family has a status code for.
+ *
+ * Each carries the server's own reader-facing sentence and machine code where the body had them,
+ * rather than an authored English message. The message these used to carry — "AI Signal request was
+ * rejected by server validation" — was going straight onto a Persian reader's screen, because the
+ * controller could not tell an authored string from a server one and rendered both verbatim.
+ *
+ * [serverMessage] is null unless the server wrote something a reader can act on; `ApiErrors` has
+ * already separated that from FastAPI's English defaults. Null is the honest answer, and the screen
+ * has its own Persian sentence for it.
+ */
+sealed class AiSignalException(
+    val serverMessage: String?,
+    val serverCode: String?,
+) : Exception(serverCode ?: "ai_signal_error")
+
+class AiSignalEntitlementRequiredException(
+    serverMessage: String? = null,
+    serverCode: String? = null,
+) : AiSignalException(serverMessage, serverCode)
+
+class AiSignalQuotaExhaustedException(
+    serverMessage: String? = null,
+    serverCode: String? = null,
+    /** From the body's `retry_after`, in seconds, where the server sent one. */
+    val retryAfterSeconds: Int? = null,
+) : AiSignalException(serverMessage, serverCode)
+
+class AiSignalJobExpiredException(
+    serverMessage: String? = null,
+    serverCode: String? = null,
+) : AiSignalException(serverMessage, serverCode)
+
+class AiSignalRequestRejectedException(
+    serverMessage: String? = null,
+    serverCode: String? = null,
+    /** The request field the server blamed, when it named one. */
+    val field: String? = null,
+) : AiSignalException(serverMessage, serverCode)
 
 internal interface AiSignalApi {
     @GET
@@ -60,18 +97,56 @@ internal class AiSignalPaths(private val prefix: String) {
     }
 }
 
+/**
+ * The generate request, spelled the way both contracts spell it.
+ *
+ * ### The bug this class was
+ *
+ * Pressing «ساخت ستاپ» answered `422` every single time, and the screen showed the reader the
+ * English exception text. Two causes, both here:
+ *
+ * * **`risk` was always sent, and neither contract has the field.** TradeYar's part 11 lists
+ *   `symbol, timeframe, trade_style?, risk_appetite?, direction_bias?, min_rr?, risk_percent?,
+ *   balance?`; CoinePro-FX's takes the same set plus `lot`. An always-present field a strict
+ *   pydantic model was never told about is exactly an unprocessable-entity, and `risk` is a
+ *   vestige of the Phase 7 contract that `risk_appetite` replaced.
+ * * **`riskPct` serialised as `risk_pct`.** Both contracts say `risk_percent`.
+ *
+ * ### Why the names are written out rather than left to the naming policy
+ *
+ * `NetworkFactory` configures Gson with `LOWER_CASE_WITH_UNDERSCORES`, so `tradeStyle` did already
+ * reach the wire as `trade_style`. That is convenient and it is also invisible: the field that was
+ * wrong, `riskPct`, was wrong in a way no reader of this file could see, because the file never
+ * says what any of these are called. Naming them here makes the contract legible at the point it is
+ * declared and makes `AiSignalWireTest` able to pin it — the alternative is a JSON key that changes
+ * when somebody renames a Kotlin property.
+ *
+ * Gson's `alternate` is read-only: it is consulted when parsing and ignored when writing, so it
+ * cannot make one request satisfy two spellings. Where the two backends genuinely disagreed there
+ * would be nothing for it but a per-platform body; they do not disagree, and this is the set both
+ * documented.
+ */
 internal data class AiSignalCreateJobDto(
+    @SerializedName("symbol")
     val symbol: String,
+    @SerializedName("timeframe")
     val timeframe: String,
-    val risk: String,
     // Null means the user left the control alone. Gson omits nulls by default, so an untouched
     // control never reaches the model as a value it would then act on.
+    @SerializedName("trade_style")
     val tradeStyle: String? = null,
+    @SerializedName("risk_appetite")
     val riskAppetite: String? = null,
+    @SerializedName("direction_bias")
     val directionBias: String? = null,
+    @SerializedName("min_rr")
     val minRr: Double? = null,
+    /** CoinePro-FX only. TradeYar's contract has no lot, and ignores one rather than refusing it. */
+    @SerializedName("lot")
     val lot: Double? = null,
-    val riskPct: Double? = null,
+    @SerializedName("risk_percent")
+    val riskPercent: Double? = null,
+    @SerializedName("balance")
     val balance: Double? = null,
 )
 
@@ -81,13 +156,26 @@ internal data class AiSignalCreateJobDto(
  * Neither server wraps it. CoinePro-FX also sends `used` rather than `remaining` alongside the
  * limit, so the remainder is worked out here when it is missing rather than treated as absent —
  * a quota of "unknown" would grey out a button that works.
+ *
+ * Only ever parsed, never written, so the alternates cost nothing and each buys a real spelling one
+ * of the two backends has been seen to use: CoinePro-FX's assistant endpoint calls the ceiling
+ * `quota` rather than `limit`, and its job envelope writes the refill as `reset_at` while the panel
+ * routes it grew out of write `resets_at`.
  */
 internal data class AiSignalQuotaDto(
     val remaining: Int? = null,
     val used: Int? = null,
+    @SerializedName(value = "limit", alternate = ["daily_limit", "quota"])
     val limit: Int? = null,
+    @SerializedName(value = "reset_at", alternate = ["resets_at", "reset"])
     val resetAt: String? = null,
-    /** CoinePro-FX lists what may be asked for here; TradeYar does not send them. */
+    /**
+     * What the server says it will accept.
+     *
+     * CoinePro-FX lists both here; TradeYar sends neither. **Where a server states its own list,
+     * that list wins** over anything the client believes — a picker offering something the server
+     * will refuse is the 422 this whole change exists to stop.
+     */
     val symbols: List<String> = emptyList(),
     val timeframes: List<String> = emptyList(),
 )
@@ -158,20 +246,91 @@ internal data class AiGeneratedSignalDto(
     val strategy: String? = null,
     /** A single string on CoinePro-FX and a list on TradeYar; [warningLines] reads either. */
     val warnings: Any? = null,
-    @SerializedName(value = "price_now", alternate = ["priceNow"])
+    @SerializedName(value = "price_now", alternate = ["priceNow", "current_price", "price"])
     val priceNow: Double? = null,
+    /**
+     * TradeYar nests the indicator block; CoinePro-FX writes the same readings flat beside the
+     * levels. Both are read, and [mergedSnapshot] prefers the flat one where a server sent both.
+     */
+    val snapshot: AiSnapshotDto? = null,
+    @SerializedName(value = "ema20", alternate = ["ema_20"])
     val ema20: Double? = null,
+    @SerializedName(value = "ema50", alternate = ["ema_50"])
     val ema50: Double? = null,
+    @SerializedName(value = "ema200", alternate = ["ema_200"])
     val ema200: Double? = null,
+    @SerializedName(value = "rsi14", alternate = ["rsi_14", "rsi"])
     val rsi14: Double? = null,
+    @SerializedName(value = "atr14", alternate = ["atr_14", "atr"])
     val atr14: Double? = null,
     val macd: Double? = null,
+    @SerializedName(value = "bb_upper", alternate = ["bollinger_upper", "bbUpper"])
     val bbUpper: Double? = null,
+    @SerializedName(value = "bb_lower", alternate = ["bollinger_lower", "bbLower"])
     val bbLower: Double? = null,
+    @SerializedName(value = "swing_high_20", alternate = ["swing_high20", "swing_high", "swingHigh20"])
     val swingHigh20: Double? = null,
+    @SerializedName(value = "swing_low_20", alternate = ["swing_low20", "swing_low", "swingLow20"])
     val swingLow20: Double? = null,
+    @SerializedName(value = "change_pct_20", alternate = ["change_pct20", "change_pct", "change_percent_20"])
     val changePct20: Double? = null,
+    /**
+     * TradeYar's part 11 calls this `candles`; CoinePro-FX's evidence block is `recent_candles`.
+     * Read under both names, because this is the series the levels are drawn across and a chart
+     * that silently never appears is indistinguishable from a server that sent no evidence.
+     */
+    @SerializedName(value = "recent_candles", alternate = ["candles"])
     val recentCandles: List<AiCandleDto> = emptyList(),
+) {
+    /** The flat reading where there is one, else the nested one. Neither invents a zero. */
+    val mergedSnapshot: AiTechnicalSnapshot
+        get() = AiTechnicalSnapshot(
+            ema20 = ema20.finiteOrNull() ?: snapshot?.ema20.finiteOrNull(),
+            ema50 = ema50.finiteOrNull() ?: snapshot?.ema50.finiteOrNull(),
+            ema200 = ema200.finiteOrNull() ?: snapshot?.ema200.finiteOrNull(),
+            rsi14 = rsi14.finiteOrNull() ?: snapshot?.rsi14.finiteOrNull(),
+            atr14 = atr14.finiteOrNull() ?: snapshot?.atr14.finiteOrNull(),
+            macd = macd.finiteOrNull() ?: snapshot?.macd.finiteOrNull(),
+            bollingerUpper = bbUpper.finiteOrNull() ?: snapshot?.bbUpper.finiteOrNull(),
+            bollingerLower = bbLower.finiteOrNull() ?: snapshot?.bbLower.finiteOrNull(),
+            swingHigh20 = swingHigh20.finiteOrNull() ?: snapshot?.swingHigh20.finiteOrNull(),
+            swingLow20 = swingLow20.finiteOrNull() ?: snapshot?.swingLow20.finiteOrNull(),
+            changePercent20 = changePct20.finiteOrNull() ?: snapshot?.changePct20.finiteOrNull(),
+            priceNow = priceNow.finiteOrNull() ?: snapshot?.priceNow.finiteOrNull(),
+        )
+}
+
+/**
+ * The nested indicator block, as TradeYar's part 11 sends it.
+ *
+ * Its documented six are `rsi_14`, `atr_14`, `macd`, `ema_20`, `ema_50`, `ema_200`. The other five
+ * are here because CoinePro-FX computes them and a server that later nests what it currently sends
+ * flat should not silently lose them — a snapshot is the whole reason the verdict is checkable.
+ */
+internal data class AiSnapshotDto(
+    @SerializedName(value = "ema_20", alternate = ["ema20"])
+    val ema20: Double? = null,
+    @SerializedName(value = "ema_50", alternate = ["ema50"])
+    val ema50: Double? = null,
+    @SerializedName(value = "ema_200", alternate = ["ema200"])
+    val ema200: Double? = null,
+    @SerializedName(value = "rsi_14", alternate = ["rsi14", "rsi"])
+    val rsi14: Double? = null,
+    @SerializedName(value = "atr_14", alternate = ["atr14", "atr"])
+    val atr14: Double? = null,
+    val macd: Double? = null,
+    @SerializedName(value = "bb_upper", alternate = ["bollinger_upper"])
+    val bbUpper: Double? = null,
+    @SerializedName(value = "bb_lower", alternate = ["bollinger_lower"])
+    val bbLower: Double? = null,
+    @SerializedName(value = "swing_high_20", alternate = ["swing_high20", "swing_high"])
+    val swingHigh20: Double? = null,
+    @SerializedName(value = "swing_low_20", alternate = ["swing_low20", "swing_low"])
+    val swingLow20: Double? = null,
+    @SerializedName(value = "change_pct_20", alternate = ["change_pct20", "change_pct"])
+    val changePct20: Double? = null,
+    @SerializedName(value = "price_now", alternate = ["current_price", "price"])
+    val priceNow: Double? = null,
 )
 
 internal data class AiSignalJobDto(
@@ -204,21 +363,7 @@ class NetworkAiSignalGateway private constructor(
         val safeSymbol = requireNotNull(AiSignalProductScope.normalizeSymbol(request.symbol)) {
             "Unsupported AI Signal symbol"
         }
-        val response = api.createJob(
-            paths.generate,
-            AiSignalCreateJobDto(
-                symbol = safeSymbol,
-                timeframe = request.timeframe.wireValue,
-                risk = request.risk.wireValue,
-                tradeStyle = request.tradeStyle?.wireValue,
-                riskAppetite = request.riskAppetite?.wireValue,
-                directionBias = request.directionBias?.wireValue,
-                minRr = request.minRiskReward?.takeIf { it.isFinite() && it > 0.0 },
-                lot = request.lot?.takeIf { it.isFinite() && it > 0.0 },
-                riskPct = request.riskPercent?.takeIf { it.isFinite() && it > 0.0 },
-                balance = request.balance?.takeIf { it.isFinite() && it >= 0.0 },
-            ),
-        )
+        val response = api.createJob(paths.generate, request.toWire(safeSymbol))
         requireNotNull(response.toDomain(request, fallbackId = null)) {
             "Invalid AI Signal job response"
         }
@@ -233,14 +378,24 @@ class NetworkAiSignalGateway private constructor(
         }
     }
 
+    /**
+     * Turns a status code into a refusal the screen can explain, carrying the server's own words.
+     *
+     * The body is read once, here, rather than left on the exception for a controller to dig out.
+     * `ApiErrors` knows all four envelope shapes the two backends use and, crucially, tells a
+     * Persian sentence written for a reader apart from pydantic's English `"Field required"` — so
+     * what reaches [AiSignalException.serverMessage] is either something worth showing verbatim or
+     * nothing at all.
+     */
     private suspend fun <T> translate(block: suspend () -> T): T = try {
         block()
     } catch (error: HttpException) {
+        val body = ApiErrors.from(error)
         when (error.code()) {
-            403 -> throw AiSignalEntitlementRequiredException()
-            410 -> throw AiSignalJobExpiredException()
-            422 -> throw AiSignalRequestRejectedException("AI Signal request was rejected by server validation")
-            429 -> throw AiSignalQuotaExhaustedException()
+            403 -> throw AiSignalEntitlementRequiredException(body.message, body.code)
+            410 -> throw AiSignalJobExpiredException(body.message, body.code)
+            422, 400 -> throw AiSignalRequestRejectedException(body.message, body.code, body.field)
+            429 -> throw AiSignalQuotaExhaustedException(body.message, body.code, body.retryAfterSeconds)
             else -> throw error
         }
     }
@@ -254,27 +409,67 @@ class NetworkAiSignalGateway private constructor(
     }
 }
 
+/**
+ * The request as it goes on the wire.
+ *
+ * Separate from [NetworkAiSignalGateway.createJob] so that `AiSignalWireTest` can serialise exactly
+ * what the app would send, through exactly the Gson `NetworkFactory` configures, and assert the key
+ * names. The bug this replaces was invisible to every test in the module because no test ever
+ * looked at the JSON — they all went from domain object to domain object.
+ *
+ * Zero and negative are dropped rather than sent: a lot of zero is not a smaller position, it is a
+ * field the reader left alone, and a balance of zero would have the model size every trade at
+ * nothing. A balance is allowed to be any positive figure; the rest must be positive to mean
+ * anything at all.
+ */
+internal fun AiSignalRequest.toWire(safeSymbol: String): AiSignalCreateJobDto = AiSignalCreateJobDto(
+    symbol = safeSymbol,
+    timeframe = timeframe.wireValue,
+    tradeStyle = tradeStyle?.wireValue,
+    riskAppetite = riskAppetite?.wireValue,
+    directionBias = directionBias?.wireValue,
+    minRr = minRiskReward?.takeIf { it.isFinite() && it > 0.0 },
+    lot = lot?.takeIf { it.isFinite() && it > 0.0 },
+    riskPercent = riskPercent?.takeIf { it.isFinite() && it > 0.0 },
+    balance = balance?.takeIf { it.isFinite() && it > 0.0 },
+)
+
 internal fun AiSignalQuotaDto.toDomain(): AiSignalQuota? {
     val safeLimit = limit?.takeIf { it >= 0 } ?: return null
     // CoinePro-FX reports what has been spent, TradeYar what is left. Either answers the question.
     val safeRemaining = remaining?.takeIf { it >= 0 }
         ?: used?.takeIf { it >= 0 }?.let { (safeLimit - it).coerceAtLeast(0) }
         ?: return null
+    // A bar length this build cannot resolve is kept as text rather than dropped, so the screen can
+    // say that the server offers one it does not — silence there reads as the app being complete.
+    val known = timeframes.mapNotNull(AiSignalTimeframe::ofWire).distinct()
+    val unknown = timeframes
+        .filter { AiSignalTimeframe.ofWire(it) == null }
+        .mapNotNull { it.trim().takeIf(String::isNotEmpty) }
+        .distinct()
     return AiSignalQuota(
         remaining = safeRemaining.coerceAtMost(safeLimit),
         limit = safeLimit,
-        resetAt = resetAt,
+        resetAt = resetAt?.trim()?.takeIf(String::isNotEmpty),
+        symbols = symbols.mapNotNull(AiSignalProductScope::normalizeSymbol).distinct(),
+        timeframes = known,
+        unknownTimeframes = unknown,
     )
 }
 
+/**
+ * A request echoed back by a server, where one ever is.
+ *
+ * [AiSignalRequestDto.risk] is read but no longer required: it is not part of either live contract,
+ * and refusing an echo that omits it would discard a perfectly good job description over a field the
+ * app has stopped sending.
+ */
 internal fun AiSignalRequestDto.toDomain(): AiSignalRequest? {
     val safeSymbol = AiSignalProductScope.normalizeSymbol(symbol.orEmpty()) ?: return null
-    val safeTimeframe = AiSignalTimeframe.entries.firstOrNull {
-        it.wireValue.equals(timeframe, ignoreCase = true)
-    } ?: return null
+    val safeTimeframe = AiSignalTimeframe.ofWire(timeframe) ?: return null
     val safeRisk = AiSignalRisk.entries.firstOrNull {
         it.wireValue.equals(risk, ignoreCase = true)
-    } ?: return null
+    } ?: AiSignalRisk.MEDIUM
     return AiSignalRequest(safeSymbol, safeTimeframe, safeRisk)
 }
 
@@ -346,20 +541,7 @@ internal fun AiGeneratedSignalDto.toDomain(expected: AiSignalRequest): AiGenerat
 
     // Indicators are reported as-is. A value the server could not compute stays null rather than
     // being coerced to zero, which would read on screen as a real reading of zero.
-    val snapshot = AiTechnicalSnapshot(
-        ema20 = ema20.finiteOrNull(),
-        ema50 = ema50.finiteOrNull(),
-        ema200 = ema200.finiteOrNull(),
-        rsi14 = rsi14.finiteOrNull(),
-        atr14 = atr14.finiteOrNull(),
-        macd = macd.finiteOrNull(),
-        bollingerUpper = bbUpper.finiteOrNull(),
-        bollingerLower = bbLower.finiteOrNull(),
-        swingHigh20 = swingHigh20.finiteOrNull(),
-        swingLow20 = swingLow20.finiteOrNull(),
-        changePercent20 = changePct20.finiteOrNull(),
-        priceNow = priceNow.finiteOrNull(),
-    )
+    val snapshot = mergedSnapshot
     val candles = recentCandles.mapNotNull { it.toDomain() }
 
     return AiGeneratedSignal(

@@ -2,16 +2,50 @@
 <resources>
     <string name="ai_eyebrow">AI</string>
     <string name="ai_headline">Build a trading setup</string>
-    <string name="ai_quota">%1$d of %2$d requests left today</string>
+    <string name="ai_quota">%1$s of %2$s requests left today</string>
     <string name="ai_quota_unknown">Today\'s quota is unavailable</string>
+    <string name="ai_quota_reset">Refills %1$s</string>
+    <string name="ai_quota_empty">Today\'s quota is spent</string>
 
-    <string name="ai_setup_title">Request parameters</string>
+    <string name="ai_group_what">What is being asked</string>
+    <string name="ai_group_how">How the setup should be shaped</string>
+    <string name="ai_group_size">Position sizing</string>
+    <string name="ai_group_how_hint">Anything you leave unset is the model\'s to decide. Tap an active chip again to clear it.</string>
+    <string name="ai_group_size_hint">All three are optional. Give a balance and a risk percentage and the server sizes the position; leave them and no lot is suggested.</string>
+
     <string name="ai_symbol">Symbol</string>
+    <string name="ai_symbol_change">Change symbol</string>
+    <string name="ai_symbol_picker_title">Choose a symbol</string>
+    <string name="ai_symbol_search">Search a ticker or a name</string>
+    <string name="ai_symbol_none">No market matched that search</string>
+    <string name="ai_symbol_category">Category</string>
+    <string name="ai_symbol_source_server">%1$s symbols — the list the server accepts</string>
+    <string name="ai_symbol_source_catalogue">%1$s symbols — everything this platform quotes</string>
+    <string name="ai_symbol_source_fallback">%1$s symbols — the market list has not arrived yet, so these are what is available</string>
+    <string name="ai_symbol_loading">Loading the market list…</string>
+
+    <string name="ai_category_forex">Forex</string>
+    <string name="ai_category_crypto">Crypto</string>
+    <string name="ai_category_metal">Metals</string>
+    <string name="ai_category_index">Indices</string>
+    <string name="ai_category_energy">Energy</string>
+    <string name="ai_category_other">Other</string>
+
     <string name="ai_timeframe">Timeframe</string>
+    <string name="ai_timeframe_server_note">These are the bar lengths the server said it accepts.</string>
+    <string name="ai_timeframe_scope_note">The chart offers more, because it folds them from a finer bar itself. This request is run by the server, which knows only these.</string>
+    <string name="ai_timeframe_unknown">The server also offers %1$s, which this build does not recognise.</string>
+
     <string name="ai_trade_style">Trade style</string>
     <string name="ai_risk_appetite">Risk appetite</string>
     <string name="ai_direction_bias">Direction bias</string>
-    <string name="ai_unset_means_server_decides">An unset control leaves the choice to the model. Tap an active chip again to clear it.</string>
+    <string name="ai_min_rr">Minimum reward-to-risk</string>
+
+    <string name="ai_lot">Lot size</string>
+    <string name="ai_risk_percent">Risk percent</string>
+    <string name="ai_balance">Account balance</string>
+    <string name="ai_number_optional">Optional</string>
+    <string name="ai_number_invalid">Enter a positive number</string>
 
     <string name="ai_style_scalp">Scalp</string>
     <string name="ai_style_intraday">Intraday</string>
@@ -26,18 +60,49 @@
     <string name="ai_generate">Generate setup</string>
     <string name="ai_analysing">Analysing…</string>
     <string name="ai_working_body">The request is being processed on the server. Its duration is not known in advance, so no progress percentage is shown.</string>
+    <string name="ai_unavailable">Setup generation is not enabled on this account.</string>
 
     <string name="ai_entry">Entry</string>
+    <string name="ai_entry_zone">Entry zone</string>
     <string name="ai_stop">Stop loss</string>
     <string name="ai_suggested_lot">Suggested lot</string>
+    <string name="ai_risk_reward">Reward-to-risk at TP1</string>
+    <string name="ai_confidence">Model confidence</string>
+    <string name="ai_strategy">Strategy</string>
+    <string name="ai_generated_at">Analysed at</string>
     <string name="ai_open_signal">Open signal</string>
     <string name="ai_buy">BUY</string>
     <string name="ai_sell">SELL</string>
     <string name="ai_neutral">NEUTRAL</string>
+    <string name="ai_retry">Send again</string>
+    <string name="ai_dismiss">Dismiss result</string>
 
     <string name="ai_evidence_title">Technical evidence</string>
+    <string name="ai_evidence_price">Price at analysis</string>
+    <string name="ai_evidence_trend">Moving averages</string>
+    <string name="ai_evidence_momentum">Momentum and volatility</string>
+    <string name="ai_evidence_range">Twenty-bar range</string>
+    <string name="ai_evidence_bb_upper">Bollinger upper</string>
+    <string name="ai_evidence_bb_lower">Bollinger lower</string>
+    <string name="ai_evidence_swing_high">Twenty-bar high</string>
+    <string name="ai_evidence_swing_low">Twenty-bar low</string>
+    <string name="ai_evidence_change">Twenty-bar change</string>
+    <string name="ai_evidence_swing_position">Where price sits in that range</string>
     <string name="ai_evidence_footnote">These are the readings the model was given. A value the server could not compute shows as “—”, not zero.</string>
     <string name="ai_reading_missing">—</string>
+
+    <string name="ai_error_rejected">The server would not accept this request. Change one of the parameters and send it again.</string>
+    <string name="ai_error_rejected_field">The server would not accept this request and named “%1$s”.</string>
+    <string name="ai_error_entitlement">This section needs an active subscription.</string>
+    <string name="ai_error_quota">Today\'s quota is spent.</string>
+    <string name="ai_error_quota_reset">Today\'s quota is spent. It refills %1$s.</string>
+    <string name="ai_error_expired">This request expired on the server. Send it again.</string>
+    <string name="ai_error_failed">The model could not produce a setup. Send it again or change the parameters.</string>
+    <string name="ai_error_unusable">The server returned a result without the levels a setup needs, so it cannot be read.</string>
+    <string name="ai_error_symbol">That symbol is not valid. Pick one from the list.</string>
+    <string name="ai_error_quota_unknown">Today\'s quota could not be read. Check your connection and try again.</string>
+    <string name="ai_error_network">No answer came back from the server. Check your connection and try again.</string>
+    <string name="ai_error_code">Error code: %1$s</string>
 
     <string name="ai_chart_analysis_title">Chart image analysis</string>
     <string name="ai_chart_analysis_body">Send a screenshot of your chart to have entry, stop and targets analysed against that image.</string>

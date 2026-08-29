@@ -10,4 +10,39 @@
     <string name="chart_fullscreen_exit">Leave full screen</string>
     <string name="chart_fullscreen_tools">Tools</string>
     <string name="chart_source">Prices from %1$s</string>
+
+    <string name="chart_interval_other">Other</string>
+
+    <string name="chart_band_draw">Draw</string>
+    <string name="chart_band_studies">Studies</string>
+    <string name="chart_band_type">Type</string>
+    <string name="chart_band_objects">Objects</string>
+    <string name="chart_band_fullscreen">Full screen</string>
+    <string name="chart_band_more">More</string>
+
+    <string name="chart_more_title">More</string>
+    <string name="chart_more_subtitle">Span, date, comparison, axis and layouts</string>
+    <string name="chart_more_span">History shown</string>
+    <string name="chart_more_span_note">How much history is in front of you. Each span also picks the bar length that fits it.</string>
+    <string name="chart_more_goto">Go to a date</string>
+    <string name="chart_more_compare">Compare with another symbol</string>
+    <string name="chart_more_compare_note">Draw a watchlist symbol over this one.</string>
+    <string name="chart_more_scale">Price scale</string>
+    <string name="chart_more_layouts">Layouts</string>
+    <string name="chart_more_layouts_note">Save this chart with its studies and its colours.</string>
+    <string name="chart_more_alert">Price alert</string>
+    <string name="chart_more_alert_note">On this symbol\'s last price.</string>
+    <string name="chart_more_backtest">Backtest</string>
+    <string name="chart_more_backtest_note">A report over the bars already loaded.</string>
+    <string name="chart_more_share">Share the picture</string>
+    <string name="chart_more_share_note">The chart alone, without the rest of the page.</string>
+    <string name="chart_more_studio">Chart studio</string>
+    <string name="chart_more_studio_note">Studies, tools, replay and scripts.</string>
+
+    <string name="chart_reading_title">What this market is doing</string>
+    <string name="chart_reading_strength">Trend strength</string>
+    <string name="chart_reading_volatility">Volatility</string>
+    <string name="chart_reading_bias">Bias</string>
+    <string name="chart_reading_volatility_why">%1$s of its recent range</string>
+    <string name="chart_reading_bias_why">%1$s between the averages</string>
 </resources>

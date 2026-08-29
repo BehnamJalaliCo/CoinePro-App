@@ -54,6 +54,23 @@ enum class MessageKey {
     ALERT_NOT_UPDATED,
     ALERT_NOT_DELETED,
 
+    /**
+     * A stored session the server could not confirm — the network is down, or it answered
+     * something other than an auth failure.
+     *
+     * Owned copy and not the exception's text. This was three hard-coded English sentences written
+     * straight into `SessionState` and rendered verbatim to a Persian reader, which is exactly what
+     * this whole type exists to stop: a controller cannot reach `stringResource`, so it names the
+     * message and the UI resolves it in the reader's language.
+     */
+    SESSION_NOT_REVALIDATED,
+
+    /** The server did not name a Telegram bot, so there is nothing to sign in against. */
+    TELEGRAM_SIGN_IN_NOT_CONFIGURED,
+
+    /** The sign-in configuration could not be fetched at all. Retrying is the right suggestion. */
+    TELEGRAM_SIGN_IN_CONFIG_UNAVAILABLE,
+
     /** The market catalogue failed to load. */
     MARKETS_UNAVAILABLE,
 

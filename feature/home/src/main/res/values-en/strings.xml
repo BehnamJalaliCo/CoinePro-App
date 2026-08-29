@@ -37,7 +37,7 @@
     <string name="home_status_live">Realtime connected</string>
     <string name="home_status_connecting">Connecting…</string>
     <string name="home_status_idle">Market stream idle</string>
-    <string name="home_status_degraded">Realtime reconnecting · HTTP snapshot active</string>
+    <string name="home_status_degraded">Realtime reconnecting · prices refresh every few seconds</string>
     <string name="home_status_offline">Market data offline</string>
     <string name="home_status_cached">Cached snapshot · offline</string>
     <string name="home_status_cached_refreshing">Cached snapshot · network refresh in progress</string>
@@ -70,4 +70,5 @@
     <string name="home_market_more">%1$s more markets</string>
     <string name="home_holdings_count">%1$s holdings · portfolio</string>
     <string name="home_shortcut_news">News</string>
+    <string name="home_value_missing_note">No balance has arrived from the server yet.</string>
 </resources>

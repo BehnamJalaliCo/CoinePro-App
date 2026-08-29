@@ -169,7 +169,10 @@ fun CoineProConfirmDialogBody(
             }
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleSmall,
+                // The question is the dialog. It was `titleSmall` over `bodySmall` — two points
+                // apart — so the thing the reader has to decide read as the same weight as the
+                // sentence explaining it.
+                style = MaterialTheme.typography.titleMedium,
                 color = CoineProColors.TextPrimary,
                 textAlign = TextAlign.Center,
             )

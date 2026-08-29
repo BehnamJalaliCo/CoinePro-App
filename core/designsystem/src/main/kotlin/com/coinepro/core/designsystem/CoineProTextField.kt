@@ -142,14 +142,17 @@ fun CoineProTextField(
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = CoineProColors.TextPrimary,
             unfocusedTextColor = CoineProColors.TextPrimary,
-            focusedBorderColor = CoineProColors.Gold,
+            // The screen's accent, not a fixed gold. A form on an analysis screen focusing in
+            // gold under a blue submit button is the second accent this app kept putting on one
+            // page — and the whole reason gold reads as decoration rather than as meaning.
+            focusedBorderColor = CoineProColors.pageAccent,
             unfocusedBorderColor = CoineProColors.Border,
             errorBorderColor = CoineProColors.Sell,
             errorLabelColor = CoineProColors.Sell,
             errorCursorColor = CoineProColors.Sell,
-            focusedLabelColor = CoineProColors.Accent,
+            focusedLabelColor = CoineProColors.pageAccentInk,
             unfocusedLabelColor = CoineProColors.TextMuted,
-            cursorColor = CoineProColors.Gold,
+            cursorColor = CoineProColors.pageAccent,
             focusedContainerColor = CoineProColors.Surface,
             unfocusedContainerColor = CoineProColors.Surface,
             errorContainerColor = CoineProColors.Surface,

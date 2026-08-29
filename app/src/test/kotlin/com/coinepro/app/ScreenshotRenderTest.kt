@@ -58,6 +58,8 @@ import com.coinepro.core.auth.EmailAuthStep
 import com.coinepro.core.auth.EmailAuthUiState
 import com.coinepro.core.auth.LoginConfigState
 import com.coinepro.core.auth.SessionState
+import com.coinepro.core.common.UiMessage
+import com.coinepro.core.common.MessageKey
 import com.coinepro.core.chart.ActiveToolBar
 import com.coinepro.core.chart.Candle
 import com.coinepro.core.chart.CandleSeries
@@ -1236,7 +1238,7 @@ class ScreenshotRenderTest {
     @Test
     fun auth() = capture("11-auth") {
         AuthScreen(
-            state = SessionState.RevalidationRequired("نشست شما دیگر معتبر نیست."),
+            state = SessionState.RevalidationRequired(UiMessage.of(MessageKey.SESSION_NOT_REVALIDATED)),
             loginConfigState = LoginConfigState.Ready("CoineProBot"),
             onRetryLoginConfig = {},
             onRetry = {},

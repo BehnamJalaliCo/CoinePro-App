@@ -28,20 +28,42 @@ import java.time.format.DateTimeFormatter
  */
 object PersianDateTime {
 
+    /**
+     * What every function here answers for a date it cannot represent.
+     *
+     * ### Why these do not throw
+     *
+     * `JalaliDate.calculate` refuses a year outside its break table, deliberately: outside the table
+     * there is no answer, and a plausible one is worse than an exception. That is right for a date
+     * this app computed. **Every caller of this object is formatting a date it was *sent*** — a
+     * plan expiry, a trade close, a headline, a firing — and a backend writes `9999-12-31` for
+     * "never expires" and `0001-01-01` for "unset". Both are outside the table.
+     *
+     * So the throw happened inside a composable, on the main thread, with nothing catching it, and
+     * switching to the platform whose account carried such a date killed the app. Twenty call sites
+     * were each one hostile timestamp away from the same crash and not one of them was written to
+     * expect an exception from a date formatter.
+     *
+     * An em dash is what this app already renders for a figure it does not have, so it is what a
+     * date it cannot read renders as too. `JalaliDate.fromGregorian` still throws for anybody who
+     * wants that — this is the boundary where a network value stops being trusted.
+     */
+    const val UNREPRESENTABLE = "—"
+
     /** Clock time only, Latin, in the reader's own zone — `14:30`. */
     private val CLOCK: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
     /** «۵ شهریور» — a day, without the year, for a list where every row is within a few weeks. */
     fun day(instant: Instant, zone: ZoneId = ZoneId.systemDefault()): String =
-        JalaliDate.fromInstant(instant, zone).formatShort()
+        JalaliDate.fromInstantOrNull(instant, zone)?.formatShort() ?: UNREPRESENTABLE
 
     /** «۵ شهریور ۱۴۰۵» — a day that could be any year, so it says which. */
     fun dayWithYear(instant: Instant, zone: ZoneId = ZoneId.systemDefault()): String =
-        JalaliDate.fromInstant(instant, zone).format()
+        JalaliDate.fromInstantOrNull(instant, zone)?.format() ?: UNREPRESENTABLE
 
     /** «۱۴۰۵/۰۶/۰۵» — the numeric form, for a field where a name would not fit. */
     fun numericDay(date: LocalDate): String {
-        val jalali = JalaliDate.fromGregorian(date)
+        val jalali = JalaliDate.fromGregorianOrNull(date) ?: return UNREPRESENTABLE
         return "${jalali.year.toPersianDigits()}/${pad(jalali.month)}/${pad(jalali.day)}"
     }
 
@@ -51,8 +73,8 @@ object PersianDateTime {
     /** «پنجشنبه ۵ شهریور» — for a calendar, where the weekday is half of what a reader is after. */
     fun weekdayAndDay(instant: Instant, zone: ZoneId = ZoneId.systemDefault()): String {
         val zoned = instant.atZone(zone)
-        return JalaliDate.weekdayName(zoned.toLocalDate()) + " " +
-            JalaliDate.fromGregorian(zoned.toLocalDate()).formatShort()
+        val day = JalaliDate.fromGregorianOrNull(zoned.toLocalDate()) ?: return UNREPRESENTABLE
+        return JalaliDate.weekdayName(zoned.toLocalDate()) + " " + day.formatShort()
     }
 
     /**
@@ -63,8 +85,8 @@ object PersianDateTime {
      */
     fun moment(instant: Instant, zone: ZoneId = ZoneId.systemDefault()): String {
         val zoned = instant.atZone(zone)
-        return JalaliDate.fromGregorian(zoned.toLocalDate()).formatShort() + " · " +
-            BidiText.isolateLtr(zoned.format(CLOCK))
+        val day = JalaliDate.fromGregorianOrNull(zoned.toLocalDate()) ?: return UNREPRESENTABLE
+        return day.formatShort() + " · " + BidiText.isolateLtr(zoned.format(CLOCK))
     }
 
     /** Just the clock, isolated so a Latin `14:30` does not reorder inside a Persian line. */
@@ -72,8 +94,10 @@ object PersianDateTime {
         BidiText.isolateLtr(instant.atZone(zone).format(CLOCK))
 
     /** «شهریور» — a month on its own, for an axis label or a monthly breakdown. */
-    fun monthName(date: LocalDate): String = JalaliDate.fromGregorian(date).monthName
+    fun monthName(date: LocalDate): String =
+        JalaliDate.fromGregorianOrNull(date)?.monthName ?: UNREPRESENTABLE
 
     private fun pad(value: Int): String =
         if (value < 10) "۰" + value.toPersianDigits() else value.toPersianDigits()
+
 }

@@ -26,5 +26,50 @@
     <string name="membership_uid_refused">The UID was not accepted.</string>
     <string name="membership_uid_retry_after">Too many attempts. Try again in %1$s seconds.</string>
     <string name="membership_uid_on_file">UID on file: %1$s</string>
+    <string name="membership_exchange_on_file">Exchange on file: %1$s</string>
     <string name="membership_eyebrow">Membership</string>
+
+    <!-- The locked-access panel: the whole arrangement, said in the app. -->
+    <string name="membership_access_title">Access to signals</string>
+    <string name="membership_access_free">Membership is free — no monthly subscription, no in-app purchase, no activation fee. The one requirement is a funded exchange account opened through Pro-Chart\'s dedicated link.</string>
+    <string name="membership_access_where">Where you are:</string>
+
+    <string name="membership_journey_sign_in">Sign in to Pro-Chart</string>
+    <string name="membership_journey_sign_in_detail">This is the account access opens on.</string>
+    <string name="membership_journey_exchange">Register at an exchange through Pro-Chart\'s link</string>
+    <string name="membership_journey_exchange_detail">This step is not optional and cannot be fixed later: an account opened through any other link is not tied to Pro-Chart in the exchange\'s own system, and cannot be verified.</string>
+    <string name="membership_journey_funding">Fund the account to the threshold</string>
+    <string name="membership_journey_funding_amount">Fund your exchange account to at least %1$s USDT. The money stays yours, at the exchange; Pro-Chart never takes or holds it.</string>
+    <string name="membership_journey_funding_plain">Fund your exchange account to the threshold the exchange and the server state. The money stays yours, at the exchange; Pro-Chart never takes or holds it.</string>
+    <string name="membership_journey_uid">Submit your exchange UID</string>
+    <string name="membership_journey_uid_detail">Copy the UID from your exchange account profile and enter it here, in the app.</string>
+    <string name="membership_journey_verification">Automatic verification</string>
+    <string name="membership_journey_verification_detail">Pro-Chart asks the exchange\'s own API. Nothing is needed from you, and the answer appears on this screen.</string>
+
+    <string name="membership_step_done">Done</string>
+    <string name="membership_step_current">Current step</string>
+    <string name="membership_step_ahead">After the current step</string>
+    <string name="membership_step_unknown">The server has not said</string>
+    <string name="membership_step_blocked">This step did not pass</string>
+
+    <string name="membership_access_open">Your access is open.</string>
+    <string name="membership_access_reload">Show the signals</string>
+    <string name="membership_access_recheck">Check access again</string>
+    <string name="membership_access_waiting">The check is running on the server. There is nothing for you to do; ask again here whenever you like.</string>
+    <string name="membership_access_unreadable">Your membership status could not be read just now, so this screen claims nothing about your steps. The conditions below still stand.</string>
+    <string name="membership_access_terms">Full membership terms</string>
+    <string name="membership_access_fund_note">Your account is confirmed as a Pro-Chart sub-account and only the balance is short. Top it up and verification runs again by itself.</string>
+    <string name="membership_access_open_exchange">Open another account, this time through the link below. The UID on file cannot be accepted.</string>
+    <string name="membership_access_exchange_uid_note">If you have another account that was opened through Pro-Chart\'s link, send that UID instead.</string>
+
+    <!-- The evidence a locked reader is owed before anything is asked of them. -->
+    <string name="membership_record_title">Closed-signal track record</string>
+    <string name="membership_record_summary">%1$s of the last %2$s closed signals finished in profit — a %3$s%% win rate.</string>
+    <string name="membership_record_note">These are real published signals that have closed, not samples. Past performance is not a guarantee of future results, and none of this is financial advice.</string>
+
+    <string name="membership_lbank_note">If you want the service to trade for you (copy trading), this is the only one:</string>
+    <string name="membership_ourbit_note">If you only want the signals and will place your own orders:</string>
+    <string name="membership_open_lbank">Register on LBank</string>
+    <string name="membership_open_ourbit">Register on Ourbit</string>
+    <string name="membership_links_unavailable">The registration link did not arrive from the server. Try again shortly — the referral link is never compiled into the app, because a stale one silently costs you your membership.</string>
 </resources>

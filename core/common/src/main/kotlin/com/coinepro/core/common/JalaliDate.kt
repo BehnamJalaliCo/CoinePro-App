@@ -107,6 +107,29 @@ data class JalaliDate(val year: Int, val month: Int, val day: Int) {
         fun fromInstant(instant: Instant, zone: ZoneId = ZoneId.systemDefault()): JalaliDate =
             fromGregorian(instant.atZone(zone).toLocalDate())
 
+        /**
+         * The same conversion, answering null instead of throwing — and the one every caller
+         * holding a date **from a server** must use.
+         *
+         * [calculate] refuses a year outside its table, deliberately and correctly: outside the
+         * break table there is no answer, and a plausible one is worse than an exception. That is
+         * right for a date this app computed. It is wrong for a date this app was *sent*.
+         *
+         * A backend's "never expires" is routinely `9999-12-31` and its "unset" is routinely
+         * `0001-01-01`. Both are outside the table, so both threw — and the throw happened inside a
+         * composable, on the main thread, with nothing catching it. Switching to the platform whose
+         * account carried such a date took the whole app down. A screen that cannot render a date
+         * should show a dash; it should not be able to kill the process.
+         *
+         * So: this exists, and nothing that formats a value which crossed the network may call the
+         * throwing pair.
+         */
+        fun fromGregorianOrNull(date: LocalDate): JalaliDate? =
+            runCatching { fromGregorian(date) }.getOrNull()
+
+        fun fromInstantOrNull(instant: Instant, zone: ZoneId = ZoneId.systemDefault()): JalaliDate? =
+            runCatching { fromInstant(instant, zone) }.getOrNull()
+
         /** «چهارشنبه» for the given Gregorian date. */
         fun weekdayName(date: LocalDate): String = WEEKDAY_NAMES[date.dayOfWeek.value - 1]
 

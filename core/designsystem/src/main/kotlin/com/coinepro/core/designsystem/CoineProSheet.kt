@@ -1,7 +1,10 @@
 package com.coinepro.core.designsystem
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,15 +23,19 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.toPersianDigits
@@ -181,6 +188,24 @@ fun CoineProChipRow(
 /** One chip: an id, what it says, and optionally how many things are behind it. */
 data class CoineProChip(val id: String, val label: String, val count: Int? = null)
 
+/**
+ * One chip.
+ *
+ * ### Two things were wrong with it
+ *
+ * A selected chip filled with `CoineProColors.Accent` and lettered in `OnAccent`. Both of those are
+ * theme-dependent and they move in the *same* direction: in the light theme the accent darkens to
+ * `#8A6318` so it can be read as ink, and `OnAccent` is near-black in both themes — so the light
+ * theme's selected chip was near-black text on dark brown, about 2.6:1, which is a chip whose label
+ * cannot be read. The fill/ink split exists exactly to prevent this and the chip was on the wrong
+ * side of it: a *fill* takes [CoineProColors.pageAccent], never the ink gold. Following the page
+ * accent also means a filter on an analysis screen selects in blue rather than putting a second
+ * gold object next to the screen's one gold action.
+ *
+ * And it did not move. A chip is the most-pressed control in this app — every timeframe, every
+ * filter, every symbol — and it was the one with no press state, no haptic and no transition
+ * between selected and not. That is most of what "nothing responds" means.
+ */
 @Composable
 private fun Chip(
     label: String,
@@ -189,11 +214,39 @@ private fun Chip(
     compact: Boolean = false,
     onClick: () -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberCoineProHaptics()
+    // Animated rather than swapped. A chip row is a set of exclusive states, and a fill that
+    // crosses over its neighbour's in 160ms is what tells the reader the selection *moved* instead
+    // of two unrelated chips independently changing colour.
+    val fill by animateColorAsState(
+        targetValue = if (selected) CoineProColors.pageAccent else CoineProColors.SurfaceElevated,
+        animationSpec = CoineProMotionSpecs.standard(),
+        label = "chipFill",
+    )
+    val ink by animateColorAsState(
+        targetValue = if (selected) CoineProColors.onPageAccent else CoineProColors.TextSecondary,
+        animationSpec = CoineProMotionSpecs.standard(),
+        label = "chipInk",
+    )
     Row(
         modifier = Modifier
+            .pressScale(interaction, CoineProPress.CHIP)
             .clip(CoineProPillShape)
-            .background(if (selected) CoineProColors.Accent else CoineProColors.SurfaceElevated)
-            .clickable(onClick = onClick)
+            .background(fill)
+            // The hairline is only on the unselected chip: a filled chip already has an edge, and
+            // an outline over a fill reads as a chip that is both selected and not.
+            .then(
+                if (selected) {
+                    Modifier
+                } else {
+                    Modifier.border(1.dp, CoineProColors.BorderSubtle, CoineProPillShape)
+                },
+            )
+            .clickable(interaction, null) {
+                if (!selected) haptics.select()
+                onClick()
+            }
             .padding(
                 horizontal = if (compact) CoineProSpacing.One else CoineProSpacing.OneHalf,
                 vertical = if (compact) CoineProSpacing.Half else CoineProSpacing.One,
@@ -208,7 +261,7 @@ private fun Chip(
             } else {
                 MaterialTheme.typography.labelMedium
             },
-            color = if (selected) CoineProColors.OnAccent else CoineProColors.TextSecondary,
+            color = ink,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
         )
         if (count != null) {
@@ -217,11 +270,7 @@ private fun Chip(
                 // said «9» beside a subtitle that said «۵۲» until this line existed.
                 text = count.toPersianDigits(),
                 style = MaterialTheme.typography.labelSmall,
-                color = if (selected) {
-                    CoineProColors.OnAccent.copy(alpha = 0.7f)
-                } else {
-                    CoineProColors.TextMuted
-                },
+                color = if (selected) ink.copy(alpha = 0.7f) else CoineProColors.TextMuted,
             )
         }
     }
@@ -246,6 +295,10 @@ fun CoineProSheetSearch(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(CoineProColors.SurfaceElevated)
+            // The same hairline every other control gained. A filled field inside a sheet whose
+            // own surface is one step below it is otherwise a slightly different grey, and a
+            // reader has to guess that it is a field at all.
+            .border(1.dp, CoineProColors.BorderSubtle, RoundedCornerShape(12.dp))
             .padding(horizontal = CoineProSpacing.OneHalf, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
@@ -275,13 +328,20 @@ fun CoineProSheetSearch(
             },
         )
         if (value.isNotEmpty()) {
+            val clearInteraction = remember { MutableInteractionSource() }
             Icon(
                 painter = painterResource(R.drawable.icon_x),
-                contentDescription = null,
+                contentDescription = stringResource(R.string.field_clear),
                 modifier = Modifier
+                    // Sixteen points of glyph was also sixteen points of *target*, which is a
+                    // third of the minimum and sits inside a field a thumb is already near. It is
+                    // drawn at sixteen and touchable at forty-eight, like every other small
+                    // control in the app.
+                    .minimumInteractiveComponentSize()
+                    .pressScale(clearInteraction, CoineProPress.CONTROL)
                     .size(16.dp)
                     .clip(CircleShape)
-                    .clickable { onValueChange("") },
+                    .clickable(clearInteraction, null) { onValueChange("") },
                 tint = CoineProColors.TextMuted,
             )
         }

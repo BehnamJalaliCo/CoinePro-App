@@ -26,5 +26,50 @@
     <string name="membership_uid_refused">شناسه ثبت نشد.</string>
     <string name="membership_uid_retry_after">تعداد تلاش‌ها زیاد بود. %1$s ثانیه دیگر دوباره تلاش کنید.</string>
     <string name="membership_uid_on_file">شناسهٔ ثبت‌شده: %1$s</string>
+    <string name="membership_exchange_on_file">صرافی ثبت‌شده: %1$s</string>
     <string name="membership_eyebrow">عضویت</string>
+
+    <!-- The locked-access panel: the whole arrangement, said in the app. -->
+    <string name="membership_access_title">دسترسی به سیگنال‌ها</string>
+    <string name="membership_access_free">عضویت رایگان است — نه اشتراک ماهانه، نه خرید درون‌برنامه‌ای، نه هزینهٔ فعال‌سازی. تنها شرط، یک حساب فعالِ صرافی است که از طریق لینک اختصاصی پرو چارت باز شده باشد.</string>
+    <string name="membership_access_where">جایگاه شما در این مسیر:</string>
+
+    <string name="membership_journey_sign_in">ورود به پرو چارت</string>
+    <string name="membership_journey_sign_in_detail">همین حساب است که دسترسی روی آن فعال می‌شود.</string>
+    <string name="membership_journey_exchange">ثبت‌نام در صرافی با لینک پرو چارت</string>
+    <string name="membership_journey_exchange_detail">این گام اختیاری نیست و بعداً جبران نمی‌شود: حسابی که با لینک دیگری ساخته شود، در سامانهٔ خودِ صرافی به پرو چارت متصل نیست و قابل احراز نخواهد بود.</string>
+    <string name="membership_journey_funding">رساندن موجودی به حد لازم</string>
+    <string name="membership_journey_funding_amount">موجودی حساب صرافی را حداقل به %1$s تتر برسانید. این پول نزد خودِ شما در صرافی می‌ماند؛ پرو چارت آن را نمی‌گیرد و نگه نمی‌دارد.</string>
+    <string name="membership_journey_funding_plain">موجودی حساب صرافی را به حدی که صرافی و سرور اعلام می‌کنند برسانید. این پول نزد خودِ شما در صرافی می‌ماند؛ پرو چارت آن را نمی‌گیرد و نگه نمی‌دارد.</string>
+    <string name="membership_journey_uid">ثبت شناسهٔ کاربری (UID)</string>
+    <string name="membership_journey_uid_detail">شناسه را از پروفایل حسابتان در صرافی بردارید و همین‌جا، داخل اپ، وارد کنید.</string>
+    <string name="membership_journey_verification">احراز خودکار</string>
+    <string name="membership_journey_verification_detail">پرو چارت از API خودِ صرافی می‌پرسد. کاری از شما لازم نیست و نتیجه در همین صفحه می‌آید.</string>
+
+    <string name="membership_step_done">انجام شد</string>
+    <string name="membership_step_current">گام فعلی</string>
+    <string name="membership_step_ahead">بعد از گام فعلی</string>
+    <string name="membership_step_unknown">سرور دربارهٔ این گام چیزی نگفته</string>
+    <string name="membership_step_blocked">این گام نتیجه نداد</string>
+
+    <string name="membership_access_open">دسترسی شما باز است.</string>
+    <string name="membership_access_reload">نمایش سیگنال‌ها</string>
+    <string name="membership_access_recheck">بررسی دوبارهٔ دسترسی</string>
+    <string name="membership_access_waiting">بررسی روی سرور در جریان است. لازم نیست کاری بکنید؛ هر وقت خواستید همین‌جا دوباره بپرسید.</string>
+    <string name="membership_access_unreadable">وضعیت عضویت شما الان از سرور خوانده نشد، پس این صفحه دربارهٔ گام‌های شما ادعایی نمی‌کند. شرایط پایین همان است که هست.</string>
+    <string name="membership_access_terms">شرایط کامل عضویت</string>
+    <string name="membership_access_fund_note">حساب شما به‌عنوان زیرمجموعهٔ پرو چارت تأیید شده و فقط موجودی کم است. با شارژِ حساب، احراز خودش دوباره اجرا می‌شود.</string>
+    <string name="membership_access_open_exchange">حساب دیگری، این‌بار از طریق لینک زیر باز کنید. شناسهٔ حساب فعلی پذیرفته نمی‌شود.</string>
+    <string name="membership_access_exchange_uid_note">اگر حساب دیگری دارید که با لینک پرو چارت باز شده، شناسهٔ همان را بفرستید.</string>
+
+    <!-- The evidence a locked reader is owed before anything is asked of them. -->
+    <string name="membership_record_title">کارنامهٔ سیگنال‌های بسته‌شده</string>
+    <string name="membership_record_summary">از %2$s سیگنالِ بسته‌شدهٔ اخیر، %1$s تا با سود بسته شد — نرخ برد %3$s٪.</string>
+    <string name="membership_record_note">این‌ها سیگنال‌های واقعیِ منتشرشده‌اند که بسته شده‌اند، نه نمونهٔ ساختگی. عملکرد گذشته تضمینی برای آینده نیست و هیچ‌کدام از این‌ها توصیهٔ مالی نیست.</string>
+
+    <string name="membership_lbank_note">اگر می‌خواهید سرویس به‌جای شما معامله کند (کپی‌تریدینگ)، فقط این یکی:</string>
+    <string name="membership_ourbit_note">اگر فقط سیگنال‌ها را می‌خواهید و خودتان سفارش می‌گذارید:</string>
+    <string name="membership_open_lbank">ثبت‌نام در ال‌بانک</string>
+    <string name="membership_open_ourbit">ثبت‌نام در اوربیت</string>
+    <string name="membership_links_unavailable">لینک ثبت‌نام از سرور نیامد. چند لحظه بعد دوباره تلاش کنید؛ لینک اختصاصی هرگز داخل اپ نوشته نمی‌شود، چون لینکِ قدیمی بی‌سروصدا عضویت شما را از بین می‌برد.</string>
 </resources>

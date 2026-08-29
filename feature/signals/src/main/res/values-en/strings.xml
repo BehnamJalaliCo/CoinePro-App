@@ -15,6 +15,7 @@
     <string name="signals_membership_title">VIP Signals</string>
     <string name="signals_membership_body">Active trade levels are available with an active subscription.</string>
     <string name="signals_membership_action">Check access again</string>
+    <string name="signals_locked_title">Access to signals</string>
 
     <string name="signals_direction_buy">BUY</string>
     <string name="signals_direction_sell">SELL</string>

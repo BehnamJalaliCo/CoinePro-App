@@ -19,6 +19,7 @@ import com.coinepro.core.aiassistant.AiAssistantGateway
 import com.coinepro.core.aiassistant.NetworkAiAssistantGateway
 import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.aisignal.AiSignalGateway
+import com.coinepro.core.aisignal.MarketCatalogAiSymbolCatalog
 import com.coinepro.core.aisignal.NetworkAiSignalGateway
 import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.aivision.AiVisionGateway
@@ -68,6 +69,7 @@ import com.coinepro.core.diagnostics.AdminBuildInfo
 import com.coinepro.core.diagnostics.AdminController
 import com.coinepro.core.diagnostics.AppLog
 import com.coinepro.core.diagnostics.EndpointProber
+import com.coinepro.core.diagnostics.LogTag
 import com.coinepro.core.diagnostics.PlatformBuildInfo
 import com.coinepro.core.diagnostics.RequestLog
 import com.coinepro.core.diagnostics.RequestLogInterceptor
@@ -134,6 +136,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import java.io.File
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -998,9 +1002,38 @@ object AppModule {
     fun cryptoMarketIntelGateway(@CryptoPlatform retrofit: Retrofit): MarketIntelGateway =
         NetworkMarketIntelGateway.create(retrofit, MarketPlatform.TRADEYAR)
 
+    /**
+     * The one scope every controller in this app launches into — and the seatbelt on it.
+     *
+     * `SupervisorJob` stops one controller's failure cancelling its siblings, which is why it was
+     * here. It does **not** stop a failure taking the process down: an uncaught exception in a
+     * `launch` body reaches the thread's default handler, and on Android that is a crash.
+     *
+     * That was one `runCatching` away from happening all over the app. Nearly every controller
+     * wraps its gateway call, then does real work in `.onSuccess { }` — which is *outside* the
+     * `runCatching` — over data the server just sent. `PortfolioController` doing Jalali arithmetic
+     * on a server timestamp is the case that was found; it will not be the last, because the shape
+     * is "parse defensively, then compute trustingly" and that shape is everywhere.
+     *
+     * So the handler is here rather than at each call site. It is the last line, not the first: a
+     * controller that can fail should still say so in its own state, and this exists for the ones
+     * that forgot. It records the failure where the diagnostics screen can show it and lets the app
+     * keep running — a screen that stays on a stale value is recoverable, and a dead process is not.
+     */
     @Provides
     @Singleton
-    fun appScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    fun appScope(log: AppLog): CoroutineScope = CoroutineScope(
+        SupervisorJob() +
+            Dispatchers.Main.immediate +
+            CoroutineExceptionHandler { context, failure ->
+                log.error(
+                    tag = LogTag.LIFECYCLE,
+                    message = "Uncaught failure on the shared app scope",
+                    error = failure,
+                    fields = mapOf("coroutine" to context[CoroutineName]?.name.orEmpty()),
+                )
+            },
+    )
 
     @Provides
     @Singleton
@@ -1533,16 +1566,31 @@ object AppModule {
     @ForexPlatform
     fun forexAiSignalController(
         @ForexPlatform gateway: AiSignalGateway,
+        @ForexPlatform catalog: MarketCatalogGateway,
         scope: CoroutineScope,
-    ): AiSignalController = AiSignalController(gateway, scope)
+    ): AiSignalController = AiSignalController(
+        gateway = gateway,
+        scope = scope,
+        // The whole universe this platform serves, not the nine tickers the screen used to hold.
+        // Precedence is the catalogue's own: a list the server states wins over it, and the
+        // hand-written fallback is reached only when neither has answered yet.
+        catalog = MarketCatalogAiSymbolCatalog(catalog),
+        platform = MarketPlatform.COINEPRO_FX,
+    )
 
     @Provides
     @Singleton
     @CryptoPlatform
     fun cryptoAiSignalController(
         @CryptoPlatform gateway: AiSignalGateway,
+        @CryptoPlatform catalog: MarketCatalogGateway,
         scope: CoroutineScope,
-    ): AiSignalController = AiSignalController(gateway, scope)
+    ): AiSignalController = AiSignalController(
+        gateway = gateway,
+        scope = scope,
+        catalog = MarketCatalogAiSymbolCatalog(catalog),
+        platform = MarketPlatform.TRADEYAR,
+    )
 
     @Provides
     @Singleton

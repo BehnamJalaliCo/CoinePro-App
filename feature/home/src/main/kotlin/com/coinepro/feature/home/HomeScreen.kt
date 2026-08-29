@@ -159,10 +159,28 @@ fun HomeScreen(
         compareBy<MarketQuote>({ marketRank(it) }, { it.instrument.symbol }),
     )
 
-    val visible = quotes.map { it.instrument.symbol }.toSet()
+    // The rows this screen actually draws, and only those.
+    //
+    // It used to be every symbol in `state.quotes`, which on TradeYar is over four hundred markets
+    // — precisely the flood this parameter's own note says it exists to prevent. The card renders
+    // six. Taken in the same order the card takes them, so the set matches what is on screen rather
+    // than a different six.
+    //
+    // Empty is left alone rather than sent. `MarketDataController.webSocketUrl` reads an empty
+    // subscription as "the whole universe", so narrowing to nothing is the widest possible request
+    // — and nothing is exactly what this list holds on the first frame after a platform switch,
+    // which is the one moment the narrowing matters most.
+    val watched = quotes.filter { it.instrument.symbol in watchlist }
+        .sortedBy { watchlist.indexOf(it.instrument.symbol) }
+    val visible = (watched + quotes.filterNot { it.instrument.symbol in watchlist })
+        .take(HOME_MARKET_ROWS)
+        .map { it.instrument.symbol }
+        .toSet()
     // Keyed on the set, so this fires when the list of markets changes and not on every price tick.
     // Subscribing is a socket reconnect; doing it per tick would leave the feed permanently down.
-    androidx.compose.runtime.LaunchedEffect(visible) { onVisibleSymbols(visible) }
+    androidx.compose.runtime.LaunchedEffect(visible) {
+        if (visible.isNotEmpty()) onVisibleSymbols(visible)
+    }
 
     // The gesture calls the same function the error card's retry button does. Home is the screen a
     // reader opens and stares at, so it is the one where the reflex to tug is strongest — and it
@@ -264,8 +282,6 @@ fun HomeScreen(
                 // Capped, and the cap is the point: eight rows at eighty points each was the
                 // largest thing on the page, and the markets screen holds all of them, denser,
                 // with a filter and a search. The footer says so and goes there.
-                val watched = quotes.filter { it.instrument.symbol in watchlist }
-                    .sortedBy { watchlist.indexOf(it.instrument.symbol) }
                 val rest = quotes.filterNot { it.instrument.symbol in watchlist }
                 item {
                     MarketCard(
@@ -423,11 +439,24 @@ private fun BalanceBlock(
                 },
             )
         } else {
-            // An account with no balance yet gets an em dash at hero size rather than a zero. A
-            // rendered 0.00 is a claim about the account; the dash is a claim about the data.
+            // An account with no balance yet gets a dash rather than a zero, because a rendered
+            // `0.00` is a claim about the account and the dash is a claim about the data. What it
+            // does **not** get is the hero style.
+            //
+            // At `Balance` the em dash sat on the baseline of a 46-point line box, so what a reader
+            // actually saw was a heading, a gap the height of a line, and a stray dash floating
+            // below it with nothing between the two — a rendering fault, not an answer. It is now
+            // set at the size of the figure it stands in for, with a sentence saying why it is
+            // empty. A missing number is worth one line of explanation; it is not worth the largest
+            // type on the screen.
             Text(
                 text = stringResource(R.string.home_value_missing),
-                style = CoineProTextStyles.Balance,
+                style = MaterialTheme.typography.titleLarge,
+                color = CoineProColors.TextMuted,
+            )
+            Text(
+                text = stringResource(R.string.home_value_missing_note),
+                style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextMuted,
             )
         }

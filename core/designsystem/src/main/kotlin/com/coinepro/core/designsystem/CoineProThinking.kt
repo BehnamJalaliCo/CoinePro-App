@@ -62,8 +62,12 @@ fun CoineProThinkingDots(
                 val offset = index * (1f / 3f)
                 0.35f + 0.65f * ((sin((phase - offset) * 2f * Math.PI.toFloat()) + 1f) / 2f)
             }
+            // The screen's accent rather than a fixed gold: the dots appear on the AI screen,
+            // whose accent is the analysis blue, so a gold indicator there was a second accent on
+            // a page that had already spent its one.
+            val ink = CoineProColors.pageAccentInk
             Canvas(Modifier.size(dotSize)) {
-                drawCircle(color = CoineProColors.Gold.copy(alpha = alpha))
+                drawCircle(color = ink.copy(alpha = alpha))
             }
         }
     }
@@ -93,8 +97,10 @@ fun CoineProStreamingBar(
     )
 
     // Read before the Canvas: the draw lambda is a DrawScope, not a composable, so a theme colour
-    // has to be resolved out here.
+    // has to be resolved out here. The band follows the page accent for the same reason the dots
+    // do — a bar that reports work on an analysis screen is that screen's work, not the brand's.
     val trackColour = CoineProColors.Border
+    val band = CoineProColors.pageAccentInk
 
     Canvas(modifier.height(thickness)) {
         val width = size.width
@@ -105,11 +111,7 @@ fun CoineProStreamingBar(
         val start = if (animate) head * (width + bandWidth) - bandWidth else width * 0.32f
         drawRect(
             brush = Brush.horizontalGradient(
-                colors = listOf(
-                    CoineProColors.Gold.copy(alpha = 0f),
-                    CoineProColors.GoldBright,
-                    CoineProColors.Gold.copy(alpha = 0f),
-                ),
+                colors = listOf(band.copy(alpha = 0f), band, band.copy(alpha = 0f)),
                 startX = start,
                 endX = start + bandWidth,
             ),

@@ -16,6 +16,10 @@ android {
 
 dependencies {
     implementation(project(":core:membership"))
+    // The public terms — referral links, the deposit threshold, which exchanges take a UID — and
+    // the closed-signal track record. Both are the server's answers, and both belong on this
+    // screen: one tells the reader what to do, the other is why they would.
+    implementation(project(":core:guest"))
     implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
     implementation(libs.androidx.lifecycle.runtime.compose)

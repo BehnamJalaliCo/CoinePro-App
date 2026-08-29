@@ -27,4 +27,7 @@
     <string name="offline_bar">This phone has no internet. Prices are the last that arrived.</string>
     <string name="field_reveal">Show</string>
     <string name="field_hide">Hide</string>
+    <string name="message_session_not_revalidated">A stored session could not be revalidated. Anything that needs an account stays locked until the server is reachable.</string>
+    <string name="message_telegram_sign_in_not_configured">Telegram sign-in is not configured on this server.</string>
+    <string name="message_telegram_sign_in_config_unavailable">The Telegram sign-in configuration could not be loaded. Check the connection and retry.</string>
 </resources>

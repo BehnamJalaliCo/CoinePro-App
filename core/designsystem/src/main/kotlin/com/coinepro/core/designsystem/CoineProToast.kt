@@ -8,6 +8,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -215,13 +216,18 @@ private fun ToastBar(toast: CoineProToast, onDismiss: () -> Unit) {
             val action = toast.onAction
             if (label != null && action != null) {
                 val haptics = rememberCoineProHaptics()
+                val interaction = remember { MutableInteractionSource() }
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelMedium,
                     color = accent,
                     modifier = Modifier
+                        // The only control on a bar that is itself about to disappear, and it did
+                        // not move under a thumb. A reader pressing an undo they cannot feel taps
+                        // it twice.
+                        .pressScale(interaction, CoineProPress.CONTROL)
                         .clip(MaterialTheme.shapes.small)
-                        .clickable {
+                        .clickable(interaction, null) {
                             haptics.select()
                             action()
                             onDismiss()
@@ -237,7 +243,11 @@ private fun ToastBar(toast: CoineProToast, onDismiss: () -> Unit) {
 private fun ToastTone.color(): Color = when (this) {
     ToastTone.SUCCESS -> CoineProColors.Buy
     ToastTone.FAILURE -> CoineProColors.Sell
-    ToastTone.NEUTRAL -> CoineProColors.Gold
+    // The ink gold, not the brand mid-tone. This colour is both the bar's tint and the *label* on
+    // it, and the mid-tone as a label measures 2.1:1 on the light theme's near-white bar — so an
+    // ordinary toast was unreadable in the light theme, which is the one place a toast has to be
+    // read in under four seconds.
+    ToastTone.NEUTRAL -> CoineProColors.Accent
 }
 
 private fun ToastTone.icon(): Int = when (this) {
