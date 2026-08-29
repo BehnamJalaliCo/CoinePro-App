@@ -530,6 +530,10 @@ fun ChartScreen(
                         // choosing the dark built-in — see `ColourTemplateSection`.
                         colours = state.chartColours,
                     ),
+                    // The bar «رفتن به تاریخ» resolved, or null. The canvas pans to it and the
+                    // controller clears it, so a reader who then pans away is not dragged back on
+                    // the next recomposition. See `ChartController.focusBar`.
+                    focusIndex = state.focusIndex,
                     // The hidden drawings are filtered out here and merged back by the controller
                     // on the way in. See `ChartUiState.canvasDrawing`: passing the raw list would
                     // make the object tree's eye do nothing, and passing a permanently filtered
@@ -601,6 +605,9 @@ fun ChartScreen(
                 onSetWidth = { width ->
                     controller.restyleSelection(state.drawing.colour, width)
                 },
+                onSetTextColour = controller::setSelectionTextColour,
+                onSetFillColour = controller::setSelectionFillColour,
+                onSetLineStyle = controller::setSelectionLineStyle,
                 onApplyTemplate = { template ->
                     controller.restyleSelection(template.colour, template.widthDp)
                 },
@@ -732,16 +739,13 @@ fun ChartScreen(
             starred = starredWires,
         )
         RangeRow(selected = state.range, onSelect = controller::setRange)
-        // «رفتن به تاریخ» off replay — backlog 105 — is deliberately **not** drawn here yet, and
-        // this comment is the note that says why rather than a silent omission.
-        //
-        // `GoToDateField` is extracted and callable, and `ChartController.focusBar` holds the bar
-        // it resolves. What is missing is the last hop: the viewport is private to `CoineProChart`
-        // and has no `focusIndex` parameter, so the field would take a date, resolve it correctly,
-        // and move nothing. A control that does nothing is worse than an absent one — it is the
-        // failure this whole wave is about. The moment the canvas takes a focus index, this becomes
-        // a `GoToDateField(state.visibleSeries.bars, controller::focusBar)` here and a
-        // `focusIndex = state.focusIndex` on the chart, and nothing else changes.
+        // «رفتن به تاریخ» off replay — backlog 105. The canvas now takes a focus index, so the
+        // field moves the chart instead of resolving a date and doing nothing; it is drawn only
+        // when the replay bar is not, because that bar carries its own copy of this field and two
+        // date boxes one above the other is the clutter the owner asked to be kept out.
+        if (!state.replay.isOn && state.visibleSeries.bars.isNotEmpty()) {
+            GoToDateField(bars = state.visibleSeries.bars, onGoTo = controller::focusBar)
+        }
 
         // The bar that makes the chart a chart, and it sits **below** the chart rather than above
         // it.

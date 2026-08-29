@@ -229,7 +229,10 @@ internal object ChartDrawingCodec {
             drawing.colour.toString(),
             drawing.widthDp.toString(),
             text,
-            drawing.direction,
+            // Guarded like every other free field, though it only ever holds an enum name: this
+            // record now also goes inside a layout's, where one stray separator would take the
+            // whole layout with it rather than one drawing.
+            usable(drawing.direction) ?: "UP",
             if (drawing.locked) "1" else "0",
             usable(drawing.timeframe).orEmpty(),
             usable(drawing.sync).orEmpty(),

@@ -34,10 +34,85 @@ data class LadderRow(
      * Carried straight through from [com.coinepro.core.orderbook.DepthLevel.orders] with no
      * arithmetic on it, because there is none to do: it is a count, not a share, and scaling it
      * against anything would answer a question nobody asked. Null on a venue that does not publish
-     * it — MT5 never will — and the renderer draws nothing at all rather than a zero.
+     * it — MT5 never will — and null again on a level whose count this venue did not know, since
+     * TradeYar omit the figure rather than sending a zero. The renderer draws nothing at all for a
+     * null, and the row's spoken description says nothing about orders either: a level whose count
+     * is unknown must never read as a level with one order on it.
      */
     val orders: Int? = null,
-)
+) {
+    /**
+     * Whether this rung is worth marking as more than one participant's order.
+     *
+     * The row-level answer to [STACKED_ORDERS_THRESHOLD]; see there for where the number comes
+     * from. Null is false, and deliberately so — an unknown count is not evidence of a single
+     * order, so it earns no mark, exactly as it earns no figure.
+     */
+    val stacked: Boolean get() = orders != null && orders >= STACKED_ORDERS_THRESHOLD
+}
+
+/**
+ * The count at which a level stops being ordinary and gets marked — **2** on this exchange.
+ *
+ * ### Where the number comes from
+ *
+ * TradeYar measured the distribution over 400 levels per symbol (`depth=200`, both sides) on
+ * 2026-08-29:
+ *
+ * | symbol | `orders = 1` | 2–4 | highest seen |
+ * |---|---|---|---|
+ * | BTCUSDT | 351 | 39 | 27 |
+ * | ETHUSDT | 348 | 47 | 22 |
+ * | DOGEUSDT | 346 | 51 | 9 |
+ *
+ * About **88% of levels are a single order**. That killed the first design, which printed the count
+ * on every row that had width for it: a column reading `1` nine times out of ten is not information,
+ * it is furniture, and it buries the rare stacked level it was added to reveal. So the column is
+ * gone and only the exceptions are marked.
+ *
+ * Two is the first count that is not the dominant case, and it is a boundary their own buckets
+ * draw rather than one invented here. It marks roughly one row in eight — about two rungs of a
+ * sixteen-row ladder — which is often enough that a reader learns what the mark means and rare
+ * enough that it still reads as an exception. Five was the alternative, taking only the tail above
+ * their `2–4` bucket, and it was rejected for the opposite failure: at about one row in forty most
+ * ladders would carry no mark at all, and a mark nobody ever sees is a mark nobody ever learns.
+ *
+ * ### It is an observation about LBank's futures book, not a law
+ *
+ * This is the shape of *this* venue at *this* time. A venue whose levels are usually stacked — a
+ * retail-heavy book, or an exchange that does not aggregate by participant — would invert the
+ * distribution, and then two would mark nearly every row and the column this replaced would have
+ * been the better design after all. Anyone porting this ladder to another feed should re-measure
+ * before trusting the number, and anyone who notices the marks have become the majority on this one
+ * should treat that as the venue having changed rather than as the ladder being right.
+ */
+const val STACKED_ORDERS_THRESHOLD = 2
+
+/**
+ * The count this rung **draws**, or null where it draws none.
+ *
+ * Null on nine rungs in ten, and that is the design rather than a gap: see
+ * [STACKED_ORDERS_THRESHOLD]. Paired deliberately with [spokenOrders], which answers the same
+ * question for a reader who cannot see the ladder and answers it differently. The two exist as a
+ * pair so that the difference between them is a decision with a name on it, rather than a `takeIf`
+ * buried in a composable that the next quiet layout change silently applies to both.
+ */
+fun drawnOrders(row: LadderRow): Int? = row.orders.takeIf { row.stacked }
+
+/**
+ * The count this rung **says**, which is every count it has.
+ *
+ * A screen reader user must not lose information because a sighted layout got quieter. Dropping the
+ * order column was a decision about ink — a figure reading `1` on nine rows out of ten crowds the
+ * ladder and hides the tenth — and none of that reasoning applies to a description read out one row
+ * at a time, where there is no column to crowd and no scan to interrupt.
+ *
+ * Null stays null and must never become `1`. A level whose count the venue did not publish and a
+ * level with a single order on it are different facts about a market, and the second is the more
+ * dangerous to invent: it says one participant is holding that whole wall and could pull it in a
+ * single message.
+ */
+fun spokenOrders(row: LadderRow): Int? = row.orders
 
 /**
  * The ladder as it is drawn: sells stacked above the spread, buys below it.
@@ -68,13 +143,14 @@ data class DepthLadder(
     /** The same decision for the two quantity columns. See [quantityDecimalsFor]. */
     val quantityDecimals: Int,
     /**
-     * Whether any visible rung carries an order count, decided once for the whole table.
+     * Whether any visible rung carries an order count at all, decided once for the whole table.
      *
-     * Per row it would be worse than useless: the count is a secondary figure, and a column that
-     * appears on four rows and not on the other twelve is a column of holes that a reader stops
-     * trusting. So the header labels it and the cells draw it only when the ladder as a whole has
-     * it — and, separately, only when the table is wide enough to hold it without crowding the
-     * sizes, which is a measurement the renderer makes and this value knows nothing about.
+     * It no longer gates a column — there is no column — it gates the one line of copy that tells a
+     * reader what the marks on the stacked rows are. That line is shown whenever this venue counts,
+     * not whenever a mark happens to be on screen: with roughly one rung in eight marked, a legend
+     * keyed to the marks themselves would appear and vanish between polls, and a caption that blinks
+     * is worse than one that sits still. Where the venue counts nothing there is nothing to explain
+     * and the line is not drawn.
      */
     val hasOrders: Boolean,
 )
@@ -209,6 +285,10 @@ fun percentLabel(share: Double): String =
  * default locale emits `۱۲` silently. A count of orders at a price is a market figure and takes the
  * app's market-figure convention, not the Persian digits prose counts use. Isolated so it cannot be
  * reordered against the size beside it when the row is laid out.
+ *
+ * Used in two places that must not drift apart: the mark on a stacked rung, and the spoken
+ * description of **every** rung that has a count, marked or not. A screen reader user is not to lose
+ * a figure because the sighted layout got quieter.
  */
 fun ordersLabel(orders: Int): String =
     BidiText.isolateLtr(String.format(Locale.US, "%d", orders))

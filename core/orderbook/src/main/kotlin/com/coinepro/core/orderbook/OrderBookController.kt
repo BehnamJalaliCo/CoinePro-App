@@ -78,6 +78,20 @@ data class OrderBookState(
  * poll at once and the ladder alternates between two markets at the poll cadence — every row
  * changing, nothing obviously wrong, and the price a tap hands back belonging to whichever book
  * arrived last.
+ *
+ * ### What this costs the reader, which is the reason [stop] exists
+ *
+ * At [OrderBookGateway.DEFAULT_DEPTH] the relay's response is 3.4 KiB and about **1.1 KiB gzipped**
+ * — an order book compresses unusually well because neighbouring prices share a prefix. Once a
+ * second, that is roughly **4 MB per hour of the reader's mobile data**. This app's readers are
+ * largely in Iran, often on metered data and often through a VPN that makes it dearer still, so
+ * four megabytes an hour is a real number to them and not a rounding error.
+ *
+ * That is why the screen calls [stop] the moment it leaves and why this class holds no polling of
+ * its own. **Nothing here may be moved into a background service, a prefetch or a "keep the book
+ * warm" cache without someone deciding, out loud, that a reader who is not looking at the ladder
+ * should still pay for it.** The current answer is no: the ladder polls while a reader is watching
+ * it and stops when they are not.
  */
 class OrderBookController(
     private val gateway: OrderBookGateway,
@@ -131,7 +145,12 @@ class OrderBookController(
         job = scope.launch { open(symbol) }
     }
 
-    /** Closes the stream. The last book stays on screen, which is what a paused ladder should show. */
+    /**
+     * Closes the stream. The last book stays on screen, which is what a paused ladder should show.
+     *
+     * Also the only thing standing between a reader and a poll they are not watching — see the note
+     * on the class for what an hour of it costs them.
+     */
     fun stop() {
         job?.cancel()
         job = null

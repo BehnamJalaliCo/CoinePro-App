@@ -6,9 +6,6 @@
     <string name="dom_column_bid">حجم خرید</string>
     <string name="dom_column_price">قیمت</string>
     <string name="dom_column_ask">حجم فروش</string>
-    <!-- Shown only when the venue counts orders per level and the table is wide enough to draw them. -->
-    <string name="dom_column_bid_orders">حجم خرید · سفارش</string>
-    <string name="dom_column_ask_orders">حجم فروش · سفارش</string>
     <string name="dom_spread">اسپرد</string>
     <string name="dom_mid">میانه</string>
     <string name="dom_imbalance">سهم خرید</string>
@@ -43,6 +40,14 @@
     <!-- A successful call whose answer is an empty queue. Not a failure and not a closed market. -->
     <string name="dom_empty">در این لحظه سفارشی در دفتر نیست.</string>
     <string name="dom_empty_hint">صرافی دفتر را فرستاد و خالی بود: بازاری که هیچ سفارش منتظری روی آن نمانده. این خطا نیست و تلاش دوباره چیزی را عوض نمی‌کند.</string>
+
+    <!-- The legend for the stacked-level mark. Shown whenever the venue counts orders at all, not
+         only when a mark happens to be on screen, so the caption does not blink between snapshots.
+         %1$s is the threshold, in Persian digits: it is a prose count, not a market figure. -->
+    <string name="dom_orders_note">عددی که روی میله می‌آید تعداد سفارش‌های آن سطح است و فقط از %1$s سفارش به بالا نشان داده می‌شود؛ نزدیک نُه سطح از هر ده سطح یک سفارش بیشتر ندارند.</string>
+    <!-- Said once, where the polling happens. Four megabytes an hour is real money on a metered
+         Iranian connection, and dearer again through a VPN. -->
+    <string name="dom_data_note">دفتر تا وقتی این صفحه باز است ثانیه‌ای یک‌بار به‌روز می‌شود؛ نزدیک ۴ مگابایت در ساعت. با بستن صفحه به‌روزرسانی می‌ایستد.</string>
 
     <string name="dom_pick_price">ساختن هشدار روی قیمت %1$s</string>
     <string name="dom_pick_price_orders">ساختن هشدار روی قیمت %1$s، %2$s سفارش در این سطح</string>

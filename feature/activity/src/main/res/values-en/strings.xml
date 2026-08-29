@@ -84,19 +84,9 @@
     <string name="activity_new_signals">New signals</string>
     <string name="activity_entry_tp_sl">Entry / target / stop</string>
     <string name="activity_price_alerts">Price alerts</string>
-    <string name="activity_new_alert">New price alert</string>
-    <string name="activity_symbol">Symbol</string>
-    <string name="activity_price">Price</string>
-    <string name="activity_create_alert">Create alert</string>
-    <string name="activity_delete">Delete</string>
     <string name="activity_no_evidence">no evidence</string>
     <string name="activity_value_missing">—</string>
 
-    <string name="activity_alert_above">Above %1$s</string>
-    <string name="activity_alert_below">Below %1$s</string>
-    <string name="activity_alert_cross_up">Crosses up through %1$s</string>
-    <string name="activity_alert_cross_down">Crosses down through %1$s</string>
-    <string name="activity_alert_cross">Crosses %1$s</string>
     <string name="activity_metric_executions">executions</string>
     <string name="activity_sample_size">n=%1$s</string>
     <string name="activity_alerts_body">Create, mute and delete an alert on any symbol.</string>

@@ -6,6 +6,7 @@ import com.coinepro.core.orderbook.DepthLevel
 import com.coinepro.core.orderbook.OrderBook
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -117,7 +118,7 @@ class DepthLadderRowsTest {
         assertTrue(ladder.asks.isEmpty())
         assertTrue(ladder.bids.isEmpty())
         assertEquals(2, ladder.priceDecimals)
-        assertFalse("a book with no rungs has no counts to label", ladder.hasOrders)
+        assertFalse("a book with no rungs has nothing to explain", ladder.hasOrders)
     }
 
     @Test
@@ -139,7 +140,7 @@ class DepthLadderRowsTest {
     }
 
     @Test
-    fun `a venue that counts nothing produces no counts and no column to hold them`() {
+    fun `a venue that counts nothing produces no counts and no note explaining them`() {
         val ladder = ladderRows(book(bids = listOf(100.0 to 1.0), asks = listOf(101.0 to 1.0)))
         assertFalse(ladder.hasOrders)
         assertTrue(ladder.bids.all { it.orders == null })
@@ -147,7 +148,7 @@ class DepthLadderRowsTest {
     }
 
     @Test
-    fun `one side counting is enough to label the column, so a half-counted book is not silent`() {
+    fun `one side counting is enough for the note, so a half-counted book is not silent`() {
         val half = OrderBook.of(
             symbol = "BTCUSDT",
             bids = listOf(DepthLevel(100.0, 1.0, orders = 2)),
@@ -155,6 +156,91 @@ class DepthLadderRowsTest {
             at = 1L,
         )
         assertTrue(ladderRows(half).hasOrders)
+    }
+
+    @Test
+    fun `a stacked level is marked and an ordinary single-order one is not`() {
+        // Roughly 88% of this venue's levels hold exactly one order, so a count drawn on every row
+        // is a column of ones that buries the rare stacked one. Only the exceptions are marked.
+        val counted = OrderBook.of(
+            symbol = "BTCUSDT",
+            bids = listOf(
+                DepthLevel(100.0, 1.0, orders = 1),
+                DepthLevel(99.0, 1.0, orders = STACKED_ORDERS_THRESHOLD),
+                DepthLevel(98.0, 1.0, orders = 27),
+            ),
+            asks = listOf(DepthLevel(101.0, 1.0, orders = 1)),
+            at = 1L,
+        )
+        val ladder = ladderRows(counted)
+
+        assertFalse("a single order is the ordinary case and takes no mark", ladder.bids[0].stacked)
+        assertTrue("the threshold itself is stacked, not one above it", ladder.bids[1].stacked)
+        assertTrue(ladder.bids[2].stacked)
+        assertFalse(ladder.asks[0].stacked)
+
+        // And what is drawn follows the mark exactly: nothing on the ones, the real count on the
+        // rest. A mark that read "many" rather than "27" would lose the difference between a wall
+        // two participants are holding and one that twenty-seven are.
+        assertNull(drawnOrders(ladder.bids[0]))
+        assertEquals(STACKED_ORDERS_THRESHOLD, drawnOrders(ladder.bids[1]))
+        assertEquals(27, drawnOrders(ladder.bids[2]))
+    }
+
+    @Test
+    fun `every rung that has a count speaks it, including the ones that draw nothing`() {
+        // The column went away because a figure reading 1 nine times out of ten crowds a sighted
+        // ladder. None of that reasoning applies to a description read one row at a time, and a
+        // reader who cannot see the ladder must not lose seven counts in eight to a layout choice.
+        val counted = OrderBook.of(
+            symbol = "BTCUSDT",
+            bids = listOf(DepthLevel(100.0, 1.0, orders = 1), DepthLevel(99.0, 1.0, orders = 6)),
+            asks = listOf(DepthLevel(101.0, 1.0, orders = 1)),
+            at = 1L,
+        )
+        val ladder = ladderRows(counted)
+
+        assertEquals(1, spokenOrders(ladder.bids[0]))
+        assertEquals(6, spokenOrders(ladder.bids[1]))
+        assertEquals(1, spokenOrders(ladder.asks[0]))
+        // The two answers diverge on exactly the rows they are supposed to: drawn is quiet, spoken
+        // is complete.
+        assertNull(drawnOrders(ladder.bids[0]))
+        assertEquals(6, drawnOrders(ladder.bids[1]))
+    }
+
+    @Test
+    fun `an unknown count is never a mark and never spoken as a single order`() {
+        // TradeYar omit the third element when they do not know the count rather than sending 0, so
+        // null here means "not known". Absent and one are different facts about a price: one order
+        // of forty is a single participant who can withdraw the wall in one message, and a level
+        // nobody counted says nothing at all about that.
+        val partly = OrderBook.of(
+            symbol = "BTCUSDT",
+            bids = listOf(DepthLevel(100.0, 1.0), DepthLevel(99.0, 1.0, orders = 5)),
+            asks = listOf(DepthLevel(101.0, 1.0)),
+            at = 1L,
+        )
+        val ladder = ladderRows(partly)
+
+        assertFalse("an unknown count is not evidence of a single order", ladder.bids[0].stacked)
+        assertNull(drawnOrders(ladder.bids[0]))
+        assertNull("silence, not the number one", spokenOrders(ladder.bids[0]))
+        assertNull(spokenOrders(ladder.asks[0]))
+        // The counted rung beside it is unaffected: this is per level, not per side.
+        assertEquals(5, spokenOrders(ladder.bids[1]))
+        assertTrue(ladder.bids[1].stacked)
+    }
+
+    @Test
+    fun `the threshold sits above the single-order case and inside the range this venue actually shows`() {
+        // Pinned as behaviour rather than as the literal 2: what must hold is that one is ordinary
+        // and that the stacked levels TradeYar measured — their 2-to-4 bucket and the 27 at the top
+        // of it — all clear the bar. A threshold above their bucket would mark almost nothing.
+        assertFalse(LadderRow(1.0, 1.0, BookSide.BID, 0f, 0f, orders = 1).stacked)
+        assertTrue(LadderRow(1.0, 1.0, BookSide.BID, 0f, 0f, orders = 4).stacked)
+        assertTrue(LadderRow(1.0, 1.0, BookSide.BID, 0f, 0f, orders = 27).stacked)
+        assertFalse(LadderRow(1.0, 1.0, BookSide.BID, 0f, 0f, orders = null).stacked)
     }
 
     @Test

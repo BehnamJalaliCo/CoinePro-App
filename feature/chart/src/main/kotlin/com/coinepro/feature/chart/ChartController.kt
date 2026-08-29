@@ -25,9 +25,12 @@ import com.coinepro.core.chart.DrawingLayer
 import com.coinepro.core.chart.DrawingState
 import com.coinepro.core.chart.DrawingSync
 import com.coinepro.core.chart.DrawingTool
+import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.chart.IndicatorChain
 import com.coinepro.core.chart.IndicatorPane
 import com.coinepro.core.chart.IndicatorSource
+import com.coinepro.core.chart.LineStyleKind
+import com.coinepro.core.chart.MagnetMode
 import com.coinepro.core.chart.MAX_COMPARISONS
 import com.coinepro.core.chart.ObjectTree
 import com.coinepro.core.chart.PriceChannel
@@ -468,7 +471,13 @@ data class ChartUiState(
      * bar would place a moving average using prices the reader is not allowed to have seen yet —
      * the future leaking back in through the one door nobody watches.
      */
-    val overlays: List<ChartLine> get() = derived.overlays + chainPlot.priceLines
+    val overlays: List<ChartLine>
+        // The empty case returns the memoised list *itself* rather than a copy of it. `a + b`
+        // allocates a new list even when `b` is empty, so this getter used to hand back a fresh
+        // list on every read — which is exactly what `ChartDerived` exists to stop, and which the
+        // memoisation test caught by identity. Chained indicators are the rare case; an ordinary
+        // chart reads this on every frame of a drag.
+        get() = chainPlot.priceLines.ifEmpty { return derived.overlays }.let { derived.overlays + it }
 
     val levels: List<PriceLevel> get() = derived.levels
 
@@ -480,7 +489,9 @@ data class ChartUiState(
      * switched on, so a chart without them allocates one empty list.
      */
     val markers: List<ChartMarker>
-        get() = derived.markers + CandlePatterns.markersFor(visibleSeries, patterns)
+        get() = CandlePatterns.markersFor(visibleSeries, patterns)
+            .ifEmpty { return derived.markers }
+            .let { derived.markers + it }
 
     /**
      * The strips below the price — one per switched-on oscillator.
@@ -489,7 +500,9 @@ data class ChartUiState(
      * indicators always stack the same way. A pane order that depended on tap history would move
      * under a reader who turned one off and back on.
      */
-    val panes: List<ChartPane> get() = derived.panes + chainPlot.panes
+    val panes: List<ChartPane>
+        /** The same identity-preserving empty case as [overlays], for the same reason. */
+        get() = chainPlot.panes.ifEmpty { return derived.panes }.let { derived.panes + it }
 
     /**
      * What the chart may draw.
@@ -633,6 +646,13 @@ internal fun ChartUiState.toLayout(
     // dark built-in: a reader who never opened the colour picker should get whatever the theme
     // does today, including after they switch the app to light.
     colourTemplate = colourTemplate?.id,
+    // The marks that travel with the apparatus, chosen against the layout on screen *now* — that
+    // is the set the reader can see — and re-stamped with this layout's id so applying it later
+    // brings them back. Without the re-stamp a layout saved off the working chart would store
+    // marks whose `layoutId` is null and show none of them, which is the shape of bug that reads
+    // as "the drawings were lost".
+    drawings = DrawingActions.savedWithLayout(drawing.drawings, drawing.layoutId)
+        .map { it.copy(layoutId = id).toStored(drawing) },
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
@@ -741,6 +761,9 @@ class ChartController(
      */
     private var symbolStateRestored = false
 
+    /** The interval a deep link asked for, until the restore is done with it. See [openAt]. */
+    private var requestedInterval: ChartInterval? = null
+
     /**
      * Hands the controller the two stores it persists through, where the caller could not.
      *
@@ -831,9 +854,36 @@ class ChartController(
                 // always wins over it, which is why this is the else branch and not a preamble.
                 restoreLastOpenedLayout()
             }
+            // After the restore, not before: the stored row carries an interval too, and a
+            // request that landed first would be silently overwritten by it. This is the one
+            // ordering that makes «open this alert's chart on the bar it fired on» true.
+            consumeRequestedInterval()
             loadJob = null
             reload()
         }
+    }
+
+    /**
+     * The bar a deep link asked for — `coinepro://market/XAUUSD?tf=H1`.
+     *
+     * Recorded rather than applied, because [start] restores this symbol's stored interval
+     * asynchronously and whichever of the two ran last would win. An alert fired on the four-hour
+     * close and the reader left that symbol on the daily are both true, and the link is the more
+     * specific of the two: it names the bar the alert was actually decided on.
+     *
+     * An unreadable or absent value is not an error and not a reason to change anything — the
+     * stored interval is already the right answer for a link that says nothing.
+     */
+    fun openAt(wire: String?) {
+        requestedInterval = ChartInterval.of(wire) ?: return
+        if (symbolStateRestored && loadJob == null) consumeRequestedInterval()
+    }
+
+    private fun consumeRequestedInterval() {
+        val wanted = requestedInterval ?: return
+        requestedInterval = null
+        if (wanted == _state.value.interval) return
+        setInterval(wanted)
     }
 
     /**
@@ -904,6 +954,26 @@ class ChartController(
                     .toSet(),
                 indicatorPeriods = saved.indicatorPeriods.filterKeys { ChartCatalog.periodOf(it) != null },
                 scaleMode = mode ?: current.scaleMode,
+                // Sparse on the way out and sparse on the way back: an indicator whose source no
+                // longer decodes reads the candles, which is what every indicator does until
+                // somebody redirects it. Dropping the entry is therefore the correct repair and
+                // not a loss.
+                chainSources = saved.chainSources
+                    .mapNotNull { (id, encoded) -> decodeChainSource(encoded)?.let { id to it } }
+                    .toMap(),
+                patterns = saved.patterns.filter { id -> CandlePatterns.OPTIONS.any { it.id == id } }.toSet(),
+                drawing = current.drawing.copy(
+                    // A row written before the magnet was stored has a null here, and null is not
+                    // `OFF`: it means nothing was said, so the chart keeps whatever it has. An
+                    // unrecognised name is the same situation from a newer build.
+                    magnetMode = saved.magnetMode
+                        ?.let { name -> MagnetMode.entries.firstOrNull { it.name == name } }
+                        ?: current.drawing.magnetMode,
+                    keepDrawing = saved.keepDrawing,
+                    favourites = saved.toolFavourites
+                        .filter { id -> DrawingTools.ALL.any { it.id == id } }
+                        .toSet(),
+                ),
             )
         }
     }
@@ -954,6 +1024,11 @@ class ChartController(
             scaleMode = current.scaleMode.name,
             logScale = current.logScale,
             updatedAt = System.currentTimeMillis(),
+            magnetMode = current.drawing.magnetMode.name,
+            keepDrawing = current.drawing.keepDrawing,
+            toolFavourites = current.drawing.favourites.toList(),
+            patterns = current.patterns.toList(),
+            chainSources = current.chainSources.mapValues { (_, source) -> encodeChainSource(source) },
         )
         scope.launch { runCatching { store.put(row) } }
     }
@@ -1145,6 +1220,36 @@ class ChartController(
      */
     fun recolourSelection(colour: Long) {
         _state.update { it.copy(drawing = DrawingActions.recolourSelection(it.drawing, colour)) }
+        persistDrawings()
+    }
+
+    /**
+     * The words' colour, the wash's colour and the dash, each across the whole selection.
+     *
+     * Folded over `DrawingState.selection` rather than applied to the primary, because that is what
+     * every other control on the floating toolbar does and a panel where two swatch rows act on one
+     * drawing and a third acts on eight would be the worse kind of surprise. The per-id setters in
+     * `DrawingActions` each skip a locked drawing, so a mixed selection restyles the loose ones and
+     * leaves the protected ones — the same reading [recolourSelection] takes.
+     *
+     * Null on either colour is a real argument: it puts that part back to following the line.
+     */
+    fun setSelectionTextColour(colour: Long?) = restyleEachSelected { state, id ->
+        DrawingActions.setTextColour(state, id, colour)
+    }
+
+    fun setSelectionFillColour(colour: Long?) = restyleEachSelected { state, id ->
+        DrawingActions.setFillColour(state, id, colour)
+    }
+
+    fun setSelectionLineStyle(style: LineStyleKind) = restyleEachSelected { state, id ->
+        DrawingActions.setLineStyle(state, id, style)
+    }
+
+    private fun restyleEachSelected(transform: (DrawingState, Long) -> DrawingState) {
+        _state.update { current ->
+            current.copy(drawing = current.drawing.selection.fold(current.drawing, transform))
+        }
         persistDrawings()
     }
 
@@ -1765,9 +1870,12 @@ class ChartController(
                 scaleMode = mode ?: current.scaleMode,
                 // The layout the next drawing belongs to, and the one `syncedInto` filters against.
                 // Without it every mark carries a null layout and «فقط این چیدمان» means nothing.
-                drawing = DrawingActions.setLayout(
-                    DrawingActions.setTimeframe(current.drawing, (interval ?: current.interval).wire),
-                    layout.id,
+                drawing = withLayoutDrawings(
+                    DrawingActions.setLayout(
+                        DrawingActions.setTimeframe(current.drawing, (interval ?: current.interval).wire),
+                        layout.id,
+                    ),
+                    layout.drawings,
                 ),
             )
         }
@@ -1783,6 +1891,22 @@ class ChartController(
      * that no longer resolves leaves the palette alone rather than clearing it, because a layout
      * that lost its template should not also take away the colours the reader is looking at.
      */
+    /**
+     * Put a layout's saved marks back on the chart.
+     *
+     * Merged by id rather than appended, because applying the same layout twice must not double
+     * every line on it — and matched by id rather than by geometry, because two marks at the same
+     * price drawn at different times are two marks. Anything already on the chart that the layout
+     * does not carry is left alone: a `GLOBAL` level is a fact about the symbol and does not
+     * belong to whatever apparatus happens to be on.
+     */
+    private fun withLayoutDrawings(state: DrawingState, stored: List<StoredDrawing>): DrawingState {
+        if (stored.isEmpty()) return state
+        val restored = stored.map { it.toDrawing() }
+        val ids = restored.map { it.id }.toSet()
+        return state.copy(drawings = state.drawings.filterNot { it.id in ids } + restored)
+    }
+
     private fun applyColourTemplate(id: String?) {
         if (id == null) {
             _state.update { it.copy(colourTemplate = null) }
@@ -2101,6 +2225,17 @@ private fun Drawing.toStored(state: DrawingState): StoredDrawing = StoredDrawing
     // reader chose at a snapped point is «the low of that bar», not a number — see
     // `DrawingActions.channelsOf` and the note on [ChartController.persistDrawings].
     channels = DrawingActions.channelsOf(state, this).map { it?.name },
+    timeframe = timeframe,
+    sync = sync.name,
+    layoutId = layoutId,
+    deviations = deviations,
+    textColour = textColour,
+    fillColour = fillColour,
+    lineStyle = lineStyle.name,
+    // Carried, not dropped, precisely so the codec can refuse it: a mark made to fade while
+    // talking must not be written, and the one place that decision belongs is the codec both
+    // stores pass through. Dropping it here would hide the refusal from the layout blob.
+    fadesAtMillis = fadesAtMillis,
 )
 
 private fun StoredDrawing.toDrawing(): Drawing = Drawing(
@@ -2115,6 +2250,16 @@ private fun StoredDrawing.toDrawing(): Drawing = Drawing(
     text = text,
     direction = runCatching { ArrowDirection.valueOf(direction) }.getOrDefault(ArrowDirection.UP),
     locked = locked,
+    timeframe = timeframe,
+    // `valueOf` and not a `when`, with the ordinary case as the fallback: a value this build does
+    // not know belongs to a newer app on the same account, and reading it as `LAYOUT` shows the
+    // mark on the chart it was drawn on rather than throwing away somebody's work.
+    sync = runCatching { DrawingSync.valueOf(sync) }.getOrDefault(DrawingSync.LAYOUT),
+    layoutId = layoutId,
+    deviations = deviations,
+    textColour = textColour,
+    fillColour = fillColour,
+    lineStyle = runCatching { LineStyleKind.valueOf(lineStyle) }.getOrDefault(LineStyleKind.SOLID),
 )
 
 /**

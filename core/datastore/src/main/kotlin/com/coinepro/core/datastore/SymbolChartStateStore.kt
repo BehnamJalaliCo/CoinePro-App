@@ -21,10 +21,12 @@ import kotlinx.coroutines.flow.map
  * behave that way, and readers say so. Keying the state by symbol is the fix, and it is cheap: one
  * row per instrument the reader has actually opened.
  *
- * ### Everything here is a plain String
+ * ### Every name here is a plain String
  *
- * [timeframe], [chartType] and [scaleMode] are ids, not enums, and [indicators] is a list of ids
- * rather than of indicator objects. That is deliberate and it is not laziness: `core:datastore`
+ * [timeframe], [chartType], [scaleMode] and [magnetMode] are ids, not enums, and [indicators],
+ * [toolFavourites], [patterns] and the values of [chainSources] are lists and maps of ids rather
+ * than of the objects they name. The two switches, [logScale] and [keepDrawing], are Booleans:
+ * they name nothing in another module and there is no id for them to be. That is deliberate and it is not laziness: `core:datastore`
  * must not depend on `core:chart` or `core:marketdata`. A preferences module that knows the chart
  * engine's types cannot be read by anything that does not also drag the engine in — the widget
  * process, a worker, a plain unit test — and every one of those enums is a thing whose *set of
@@ -129,9 +131,9 @@ data class SymbolChartState(
  *
  * The delimited-string scheme [ChartDrawingStore] and [ChartLayoutStore] use, for the same reason:
  * the alternative is a serialisation library in a preferences module. ASCII's group separator
- * between symbols, its record separator between one symbol's fields, its unit separator inside the
- * indicator list and the period map. All three are control characters, so no id the app generates
- * can contain one.
+ * between symbols, its record separator between one symbol's fields, its unit separator inside
+ * every list and every map — the indicators, the periods, the tool favourites, the patterns and the
+ * indicator sources. All three are control characters, so no id the app generates can contain one.
  *
  * ### Decoding never throws, and that rule has a shape
  *

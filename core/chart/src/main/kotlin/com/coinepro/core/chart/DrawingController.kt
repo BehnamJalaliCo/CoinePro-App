@@ -713,6 +713,49 @@ object DrawingActions {
      */
     fun holdsText(toolId: String): Boolean = toolId in TEXT_TOOLS
 
+    /**
+     * Whether this tool paints a wash the reader could recolour — see [Drawing.fillColour].
+     *
+     * Read off `DrawingRenderer`'s own branches rather than guessed from the tool's shape: a
+     * rectangle obviously fills and so does a price range, but an angle fills its arc and a pin
+     * fills its head, and neither is something a list written from the tool names would contain.
+     *
+     * **Deliberately conservative.** A tool that fills only through a shared label or arrow helper
+     * is not in here, so it offers no fill swatch. That is a control the reader does not see,
+     * which is recoverable; the alternative — offering the swatch everywhere — is a control that
+     * does nothing on half the tools, which is the failure this whole surface exists to avoid.
+     */
+    fun washes(toolId: String): Boolean = toolId in FILL_TOOLS
+
+    private val FILL_TOOLS = setOf(
+        "angle",
+        "avolumeprofile",
+        "callout",
+        "channel",
+        "circle",
+        "comment",
+        "daterange",
+        "dprange",
+        "ellipse",
+        "fibfan",
+        "forecast",
+        "gannbox",
+        ICON_TOOL,
+        IMAGE_TOOL,
+        "infoline",
+        "longshort",
+        "note",
+        "pin",
+        "pricelabel",
+        "pricerange",
+        "rect",
+        "rotrect",
+        "ruler",
+        "signpost",
+        "triangle",
+        "tripattern",
+    )
+
     private val TEXT_TOOLS = setOf(
         "text",
         "callout",

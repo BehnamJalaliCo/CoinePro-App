@@ -11,8 +11,13 @@ internal sealed interface CoineProDeepLink {
      * may register it — so what arrives here is an arbitrary string from an untrusted sender, and
      * it is about to become a navigation argument and a request path. Restricting it to the shape
      * a ticker actually has is what stops that.
+     *
+     * [timeframe] is the bar the link asks for — `?tf=H1`, which `AlertDeepLink` writes so a fired
+     * alert opens on the interval it was actually decided on. Optional, and shape-checked on the
+     * same reading as the ticker: null when it is absent *and* when it is not a timeframe, because
+     * a chart on the wrong bar is worse than a chart on the stored one.
      */
-    data class Market(val symbol: String) : CoineProDeepLink
+    data class Market(val symbol: String, val timeframe: String? = null) : CoineProDeepLink
 
     /** The password-recovery App Link, carrying the token the reset step must present. */
     data class PasswordReset(val token: String) : CoineProDeepLink
@@ -68,11 +73,30 @@ internal fun tickerOrNull(raw: String?): String? {
 
 private val TICKER = Regex("^[A-Z0-9]{2,12}(/[A-Z0-9]{2,12})?$")
 
+/**
+ * A timeframe as this app spells it — `M15`, `H4`, `D1` — or null.
+ *
+ * Not resolved against `ChartInterval` here, which would put a `core:marketdata` type in the one
+ * file whose job is to refuse rubbish before it becomes a route. The shape check is enough for
+ * that job and the controller resolves the value properly; an unresolvable one leaves the chart on
+ * its stored interval, which is the same outcome as an absent query.
+ */
+internal fun timeframeOrNull(raw: String?): String? {
+    val candidate = raw?.trim()?.uppercase() ?: return null
+    return candidate.takeIf { TIMEFRAME.matches(it) }
+}
+
+// Loose on purpose, and bounded: `M15`, the alternate `15M` that `Timeframe.of` also accepts, and
+// a custom interval's bare minute count `205` are all timeframes this app writes. The narrow job
+// here is to keep an unbounded string from an unverified scheme out of a navigation argument.
+private val TIMEFRAME = Regex("^[A-Z]{0,2}[0-9]{1,4}[A-Z]{0,2}$")
+
 internal fun parseCoineProDeepLink(
     scheme: String?,
     host: String?,
     pathSegments: List<String>,
     resetToken: String? = null,
+    timeframe: String? = null,
 ): CoineProDeepLink? {
     // The recovery link is https rather than coinepro://, and only from the verified host: a token
     // is a credential, and a custom scheme any installed app may register is not somewhere to put
@@ -87,7 +111,8 @@ internal fun parseCoineProDeepLink(
     return when (host) {
         "signal" -> positiveSignalId(pathSegments.singleOrNull())?.let(CoineProDeepLink::Signal)
         "activity" -> if (pathSegments.isEmpty()) CoineProDeepLink.Activity else null
-        "market" -> tickerOrNull(pathSegments.singleOrNull())?.let(CoineProDeepLink::Market)
+        "market" -> tickerOrNull(pathSegments.singleOrNull())
+            ?.let { CoineProDeepLink.Market(it, timeframeOrNull(timeframe)) }
         else -> null
     }
 }

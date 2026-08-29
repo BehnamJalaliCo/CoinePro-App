@@ -740,14 +740,34 @@ private fun ExportCard(report: BacktestReport, symbol: String) {
             outcome = write(context, uri, bytes)
         }
     }
+    // The second writer, and not a duplicate of the first. `BacktestExport.toXlsx` declares which
+    // columns are numbers; a CSV cannot, and the spreadsheet that opens one has to guess — the
+    // guess that goes wrong on a Persian machine and returns zero for every sum over the net-profit
+    // column. It had no call site until now, which meant the whole workbook writer was unreachable.
+    val xlsx = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(XLSX_MIME)) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val bytes = withContext(Dispatchers.Default) {
+                BacktestExport.toXlsx(current, symbol, CHART_TIME_ZONE)
+            }
+            outcome = write(context, uri, bytes)
+        }
+    }
 
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
-            CoineProSecondaryButton(
-                text = "خروجی CSV",
-                onClick = { csv.launch(exportFileName(symbol)) },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+                CoineProSecondaryButton(
+                    text = "خروجی CSV",
+                    onClick = { csv.launch(exportFileName(symbol, "csv")) },
+                    modifier = Modifier.weight(1f),
+                )
+                CoineProSecondaryButton(
+                    text = "خروجی Excel",
+                    onClick = { xlsx.launch(exportFileName(symbol, "xlsx")) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
             MutedNote(
                 "همهٔ معاملات، همهٔ سنجه‌ها و بازهٔ اجرا در یک فایل. رایگان — تریدینگ‌ویو برای همین خروجی اشتراک می‌گیرد.",
             )
@@ -788,8 +808,8 @@ private suspend fun write(context: Context, uri: Uri, bytes: ByteArray): String 
  * Latin and hyphenated, because this is a name that will be typed into a search box and sorted in a
  * file list, and Persian digits sort into neither. The reader can rename it.
  */
-private fun exportFileName(symbol: String): String =
-    "coinepro-backtest-" + symbol.lowercase().filter { it.isLetterOrDigit() } + ".csv"
+private fun exportFileName(symbol: String, extension: String): String =
+    "coinepro-backtest-" + symbol.lowercase().filter { it.isLetterOrDigit() } + "." + extension
 
 /**
  * The sample-size sentence, under every tab that states a ratio.
@@ -885,6 +905,10 @@ private const val MAX_LISTED_TRADES = 200
 private const val CONFIDENT_TRADES = 30
 
 private const val CSV_MIME = "text/csv"
+
+/** The full OOXML type. A picker handed `application/vnd.ms-excel` offers to save a 1997 file. */
+private const val XLSX_MIME =
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 private val DIRECTION_WIDTH = 44.dp
 private val PRICE_WIDTH = 84.dp

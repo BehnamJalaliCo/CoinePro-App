@@ -61,7 +61,15 @@ internal data class CryptoDepthDto(
      * rather than the "is the page full" inference this app used before it.
      */
     val truncated: Boolean? = null,
-    /** `[price, quantity]`, or `[price, quantity, orders]` where the venue counted. */
+    /**
+     * `[price, quantity]`, or `[price, quantity, orders]` where the venue counted.
+     *
+     * The third element is **omitted** when the count is unknown; it is never sent as `0`. That is
+     * TradeYar's rule and it is the right one: `orders: 0` beside a positive quantity would claim
+     * liquidity nobody placed, which is a contradiction, and a two-element row is the only honest
+     * way to say "not known". So a short row means *absent*, not *none* — see [toDepthLevels],
+     * which keeps it null rather than filling a zero in.
+     */
     val bids: List<List<Double>> = emptyList(),
     val asks: List<List<Double>> = emptyList(),
     /**
@@ -140,8 +148,8 @@ class TradeYarOrderBookGateway(
                 // gateway does: a saved layout can carry an alternate spelling, and the venue's own
                 // answer is the one to believe about which market these levels belong to.
                 symbol = response.symbol ?: symbol,
-                bids = response.bids.toLevels(),
-                asks = response.asks.toLevels(),
+                bids = response.bids.toDepthLevels(),
+                asks = response.asks.toDepthLevels(),
                 at = NO_VENUE_TIME,
                 // Claimed by the server, which measures it. The old inference is kept behind it for
                 // a server that predates the flag, and it errs toward saying "there is more" —
@@ -233,7 +241,15 @@ class TradeYarOrderBookGateway(
     }.distinctUntilChanged()
 
     private companion object {
-        /** TradeYar's own ceiling for the `depth` parameter. Larger is rejected there, so it is clamped here. */
+        /**
+         * TradeYar's own ceiling for the `depth` parameter: above it they answer `422`.
+         *
+         * Clamped here rather than sent and rejected, so a caller that asks for more gets the
+         * deepest book on offer instead of an error screen. LBank itself serves up to a thousand
+         * and TradeYar say lifting their cap is a one-line change on their side — but the cap is
+         * the contract as it stands today, and a client that sends 500 on the strength of a
+         * sentence in a chat log is a client that breaks on the deploy that enforces it.
+         */
         const val MAX_DEPTH = 200
 
         /** One second between snapshots. See [stream]. */
@@ -253,31 +269,43 @@ class TradeYarOrderBookGateway(
          * screen can honestly show comes from `cache_ttl_ms` instead — see [CryptoDepthDto].
          */
         const val NO_VENUE_TIME = 0L
+    }
+}
 
-        /**
-         * `[price, quantity]` or `[price, quantity, orders]` to levels, dropping anything shorter
-         * than a pair.
-         *
-         * A one-element row is not a level at quantity zero — it is a row that arrived malformed,
-         * and reading its missing half as zero would put a rung on the ladder with nothing behind
-         * it. [OrderBook.of] drops the zeroes that get through; this drops the rows that never had
-         * two numbers to begin with.
-         *
-         * The third element is the resting-order count and is optional in both directions: absent
-         * on a server that predates it, and absent forever on any venue that does not count. A
-         * count that is not a positive whole number is treated as absent rather than shown, because
-         * "0 orders" printed beside a quantity that is plainly there is worse than no figure at all.
-         */
-        fun List<List<Double>>.toLevels(): List<DepthLevel> = mapNotNull { row ->
-            if (row.size < 2) {
-                null
-            } else {
-                DepthLevel(
-                    price = row[0],
-                    quantity = row[1],
-                    orders = row.getOrNull(2)?.takeIf { it.isFinite() && it >= 1.0 }?.toInt(),
-                )
-            }
-        }
+/**
+ * `[price, quantity]` or `[price, quantity, orders]` to levels, dropping anything shorter than a
+ * pair.
+ *
+ * A one-element row is not a level at quantity zero — it is a row that arrived malformed, and
+ * reading its missing half as zero would put a rung on the ladder with nothing behind it.
+ * [OrderBook.of] drops the zeroes that get through; this drops the rows that never had two numbers
+ * to begin with.
+ *
+ * ### The third element, and the difference between absent and one
+ *
+ * It is the resting-order count, live since 2026-08-29 and present on every level of every
+ * non-empty symbol TradeYar sampled. It is still optional in both directions: absent on a server
+ * older than that date, and absent forever on any venue that does not count — MT5 never will.
+ *
+ * When the relay does not know the count it **omits** the element rather than sending `0`, so a
+ * two-element row means "not known" and this returns null for it. Null and one are different facts
+ * about a price and nothing downstream may flatten one into the other: a level of forty with one
+ * order behind it is a single participant who can withdraw the whole wall in one message, and a
+ * level whose count nobody published says nothing about that at all. A non-positive or non-finite
+ * third element is read the same way — as absent — because "0 orders" printed beside a quantity
+ * that is plainly there is worse than no figure at all.
+ *
+ * Internal rather than private so the wire shape can be pinned by a test against the relay's own
+ * payload. The gateway is the only caller.
+ */
+internal fun List<List<Double>>.toDepthLevels(): List<DepthLevel> = mapNotNull { row ->
+    if (row.size < 2) {
+        null
+    } else {
+        DepthLevel(
+            price = row[0],
+            quantity = row[1],
+            orders = row.getOrNull(2)?.takeIf { it.isFinite() && it >= 1.0 }?.toInt(),
+        )
     }
 }

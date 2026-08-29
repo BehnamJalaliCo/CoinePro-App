@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -196,6 +197,91 @@ class ChartDrawingStoreTest {
         val restored = store.drawings("XAUUSD").first()
         assertEquals(120, restored.size)
         assertEquals(listOf("LOW", "HIGH"), restored.last().channels)
+    }
+
+    // ── the seven fields the fourth wave added ────────────────────────────────────────
+
+    @Test
+    fun `a row written by the shipped build decodes with every added field at its default`() = runTest {
+        val backing = FakeDrawingPreferences()
+        backing.data.value = mutablePreferencesOf(
+            stringPreferencesKey("chart_drawings_XAUUSD") to legacyRecord(),
+        )
+        val restored = ChartDrawingStore(backing).drawings("XAUUSD").first().single()
+
+        // Every one of these is a field the shipped record does not carry, and the whole tolerance
+        // rule is that its absence has a meaning rather than emptying somebody's chart.
+        assertNull(restored.timeframe)
+        assertEquals(StoredDrawing.DEFAULT_SYNC, restored.sync)
+        assertNull(restored.layoutId)
+        assertEquals(StoredDrawing.DEFAULT_DEVIATIONS, restored.deviations, 1e-9)
+        assertNull(restored.textColour)
+        assertNull(restored.fillColour)
+        assertEquals(StoredDrawing.DEFAULT_LINE_STYLE, restored.lineStyle)
+    }
+
+    @Test
+    fun `a drawing carrying every stored field comes back exactly as it went in`() = runTest {
+        val store = ChartDrawingStore(FakeDrawingPreferences())
+        val decorated = line(id = 7, text = "سقف").copy(
+            locked = true,
+            channels = listOf("HIGH", "LOW"),
+            timeframe = "H4",
+            sync = "GLOBAL",
+            layoutId = "layout-1",
+            deviations = 1.25,
+            textColour = 0xFFFFFFFF,
+            fillColour = 0x330E8A4C,
+            lineStyle = "DASHED",
+        )
+        store.save("XAUUSD", listOf(decorated))
+
+        // Whole-object equality on purpose: a field added to the encoder and forgotten in the
+        // decoder is exactly the failure that keeps happening here, and it survives any assertion
+        // that names the fields one at a time.
+        assertEquals(decorated, store.drawings("XAUUSD").first().single())
+    }
+
+    @Test
+    fun `a text colour of transparent black is kept apart from having chosen no colour`() = runTest {
+        val store = ChartDrawingStore(FakeDrawingPreferences())
+        store.save(
+            "XAUUSD",
+            listOf(
+                line(id = 1).copy(textColour = 0L, fillColour = 0L),
+                line(id = 2).copy(textColour = null, fillColour = null),
+            ),
+        )
+
+        val restored = store.drawings("XAUUSD").first()
+        // Zero is a real colour — transparent black — and null means "follow the line". A codec
+        // that wrote null as a number would turn every unstyled drawing into a black-lettered one.
+        assertEquals(0L, restored.first { it.id == 1L }.textColour)
+        assertEquals(0L, restored.first { it.id == 1L }.fillColour)
+        assertNull(restored.first { it.id == 2L }.textColour)
+        assertNull(restored.first { it.id == 2L }.fillColour)
+    }
+
+    @Test
+    fun `a demonstration mark is never written, and its neighbours still are`() = runTest {
+        val backing = FakeDrawingPreferences()
+        val store = ChartDrawingStore(backing)
+        store.save(
+            "XAUUSD",
+            listOf(line(id = 1), line(id = 2).copy(fadesAtMillis = 1_700_000_008_000L)),
+        )
+
+        // A mark made to point at something while talking is meant to die. Persisted, it would come
+        // back already expired and be dropped on the next open — a chart that quietly loses rows.
+        assertEquals(listOf(1L), store.drawings("XAUUSD").first().map(StoredDrawing::id))
+    }
+
+    @Test
+    fun `a chart of nothing but demonstration marks leaves no record behind`() = runTest {
+        val backing = FakeDrawingPreferences()
+        ChartDrawingStore(backing).save("XAUUSD", listOf(line(id = 1).copy(fadesAtMillis = 1L)))
+
+        assertTrue(backing.data.value.asMap().isEmpty())
     }
 }
 

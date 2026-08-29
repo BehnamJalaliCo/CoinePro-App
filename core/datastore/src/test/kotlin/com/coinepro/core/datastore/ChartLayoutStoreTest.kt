@@ -282,6 +282,61 @@ class ChartLayoutStoreTest {
 
         assertEquals(emptyList<ChartLayout>(), ChartLayoutStore(backing).layouts().first())
     }
+
+    // ── the marks a layout is saved with ──────────────────────────────────────────────
+
+    @Test
+    fun `a layout keeps the drawings it was saved with, nested inside its own record`() = runTest {
+        val store = ChartLayoutStore(FakeLayoutPreferences())
+        val marks = listOf(
+            mark(id = 1L, text = "سقف قبلی").copy(timeframe = "H4", sync = "GLOBAL", lineStyle = "DOTTED"),
+            mark(id = 2L).copy(channels = listOf("LOW", "HIGH"), textColour = 0xFFFFFFFF),
+        )
+        store.save(layout().copy(drawings = marks))
+
+        // Whole-object equality: the layout record and the drawing record use different separators
+        // precisely so that neither can eat the other, and this is what says so.
+        assertEquals(marks, store.layouts().first().single().drawings)
+    }
+
+    @Test
+    fun `a layout saved with no drawings comes back with none rather than with a blank one`() = runTest {
+        val store = ChartLayoutStore(FakeLayoutPreferences())
+        store.save(layout())
+
+        assertEquals(emptyList<StoredDrawing>(), store.layouts().first().single().drawings)
+    }
+
+    @Test
+    fun `a layout's own fields survive beside the drawings nested in the same record`() = runTest {
+        val store = ChartLayoutStore(FakeLayoutPreferences())
+        val saved = layout().copy(drawings = listOf(mark(id = 1L, text = "ورود")))
+        store.save(saved)
+
+        assertEquals(saved, store.layouts().first().single())
+    }
+
+    @Test
+    fun `a demonstration mark is not filed with a layout either`() = runTest {
+        val store = ChartLayoutStore(FakeLayoutPreferences())
+        store.save(
+            layout().copy(
+                drawings = listOf(mark(id = 1L), mark(id = 2L).copy(fadesAtMillis = 1_700_000_008_000L)),
+            ),
+        )
+
+        assertEquals(listOf(1L), store.layouts().first().single().drawings.map(StoredDrawing::id))
+    }
+
+    private fun mark(id: Long, text: String? = null) = StoredDrawing(
+        id = id,
+        toolId = "trend",
+        points = listOf(1_700_000_000L to 2_643.18, 1_700_003_600L to 2_651.40),
+        colour = 0xFFD8A848,
+        widthDp = 1.6f,
+        text = text,
+        direction = "UP",
+    )
 }
 
 private class FakeLayoutPreferences(initial: Preferences = emptyPreferences()) : DataStore<Preferences> {

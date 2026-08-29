@@ -225,17 +225,27 @@ interface OrderBookGateway {
          * A hundred levels a side, because the wide fetch turned out to be free.
          *
          * This was twenty, chosen to be modest about a route that did not exist yet. TradeYar then
-         * measured the route that does, from their host, one moment:
+         * measured the route that does, from their host, ten serial samples each:
          *
-         * | depth | LBank latency | gzipped body |
-         * |---|---|---|
-         * | 20 | 249 ms | 0.4 KiB |
-         * | 100 | 255 ms | 1.1 KiB |
-         * | 200 | 260 ms | 2.1 KiB |
+         * | depth | LBank median | p90 | body | gzipped at the edge |
+         * |---|---|---|---|---|
+         * | 20 | 249 ms | 251 ms | 0.8 KiB | 0.4 KiB |
+         * | 100 | 255 ms | 260 ms | 3.4 KiB | 1.1 KiB |
+         * | 200 | 260 ms | 265 ms | 6.7 KiB | 2.1 KiB |
+         * | 1000 | 295 ms | 302 ms | — | — |
          *
          * A hundred levels cost **six milliseconds** more than twenty, and two requests a second at
-         * a hundred held for fifteen seconds gave thirty successes at a 253 ms median. LBank honours
-         * the requested depth exactly, so a hundred is a hundred.
+         * a hundred held for fifteen seconds gave thirty successes at a 253 ms median with no `429`
+         * and no degradation. Depth on this endpoint is nearly free because the cost is the network
+         * round trip and not the number of levels. LBank honours the requested depth exactly, so a
+         * hundred is a hundred, and TradeYar have confirmed two hundred is fine too — going deeper
+         * for the curve needs no further permission, only a reason.
+         *
+         * The one figure worth watching is not latency, it is the reader's data. nginx gzips the
+         * response at `comp_level 6` and an order book compresses unusually well, since neighbouring
+         * prices share a prefix — 3.4 KiB becomes 1.1 KiB. At one-second polling that is roughly
+         * **4 MB per hour of mobile data**, which is why the screen polls only while it is open. See
+         * `OrderBookController`.
          *
          * What that buys is the depth curve. Twenty levels describes the shape immediately around
          * the touch and says nothing about where the size actually sits; a wall four hundred ticks

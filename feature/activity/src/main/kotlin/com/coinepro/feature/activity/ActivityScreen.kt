@@ -66,9 +66,6 @@ import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.SignalDirection
 import com.coinepro.core.notifications.NotificationController
-import com.coinepro.core.notifications.PriceAlert
-import com.coinepro.core.notifications.PriceAlertCondition
-import com.coinepro.core.notifications.PriceAlertTrigger
 import com.coinepro.core.notifications.PushPreferences
 import com.coinepro.core.signals.PerformanceResultFilter
 import com.coinepro.core.signals.SignalController
@@ -106,9 +103,6 @@ fun ActivityScreen(
     val marketFilter: MarketType = platform.marketType
     var resultFilter by remember { mutableStateOf(PerformanceResultFilter.ALL) }
     var symbolFilter by remember { mutableStateOf("") }
-    var alertSymbol by remember(platform) { mutableStateOf(platform.defaultAlertSymbol()) }
-    var alertValue by remember { mutableStateOf("") }
-    var alertCondition by remember { mutableStateOf(PriceAlertCondition.CROSS) }
 
     LaunchedEffect(controller, executionController, signalController) {
         controller.refresh()
@@ -299,43 +293,21 @@ fun ActivityScreen(
             }
             }
 
+            // Delivery preferences, and no longer a second way to make an alert.
+            //
+            // This screen used to carry its own creation form — a symbol typed by hand, a price, and
+            // three conditions — beside a list with a switch and a delete. The alert centre does all
+            // of that and the rest: the crossing conditions, percent moves, the once/every-time/
+            // per-bar-close frequencies, expiry, a whole watchlist as the target, webhooks, and the
+            // audit of what actually fired. Two creation surfaces meant a reader could make an alert
+            // here that they could not then edit, on a screen that could not show why it had not
+            // fired. The card above opens the one that can.
             item { SectionHeader(stringResource(R.string.activity_alerts_title), stringResource(R.string.activity_alerts_subtitle)) }
             item {
                 PreferenceCard(
                     value = notificationState.preferences,
                     onChange = controller::updatePreferences,
                 )
-            }
-            item {
-                NewAlertCard(
-                    symbol = alertSymbol,
-                    value = alertValue,
-                    condition = alertCondition,
-                    onSymbol = { alertSymbol = it.uppercase().filter { ch -> ch.isLetterOrDigit() }.take(18) },
-                    onValue = { alertValue = it.filter { ch -> ch.isDigit() || ch == '.' } },
-                    onCondition = { alertCondition = it },
-                    onCreate = {
-                        val target = alertValue.toDoubleOrNull()
-                        if (alertSymbol.isNotBlank() && target != null && target.isFinite() && target > 0.0) {
-                            controller.createAlert(
-                                symbol = alertSymbol,
-                                condition = alertCondition,
-                                value = target,
-                                trigger = PriceAlertTrigger.ONCE,
-                            )
-                            alertValue = ""
-                        }
-                    },
-                )
-            }
-            if (notificationState.alerts.isNotEmpty()) {
-                items(notificationState.alerts, key = { "alert-${it.id}" }) { alert ->
-                    AlertRow(
-                        alert = alert,
-                        onToggle = { controller.setAlertActive(alert, it) },
-                        onDelete = { controller.deleteAlert(alert.id) },
-                    )
-                }
             }
 
             item { SectionHeader(stringResource(R.string.activity_notifications_title), stringResource(R.string.activity_notifications_subtitle)) }
@@ -780,56 +752,6 @@ private fun PreferenceRow(label: String, checked: Boolean, onChecked: (Boolean) 
 }
 
 @Composable
-private fun NewAlertCard(
-    symbol: String,
-    value: String,
-    condition: PriceAlertCondition,
-    onSymbol: (String) -> Unit,
-    onValue: (String) -> Unit,
-    onCondition: (PriceAlertCondition) -> Unit,
-    onCreate: () -> Unit,
-) {
-    PremiumCard {
-        Text(stringResource(R.string.activity_new_alert), fontWeight = FontWeight.Bold)
-        OutlinedTextField(value = symbol, onValueChange = onSymbol, label = { Text(stringResource(R.string.activity_symbol)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = value, onValueChange = onValue, label = { Text(stringResource(R.string.activity_price)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            listOf(PriceAlertCondition.ABOVE, PriceAlertCondition.BELOW, PriceAlertCondition.CROSS).forEach { item ->
-                FilterPill(item.name.replace('_', ' '), condition == item) { onCondition(item) }
-            }
-        }
-        Button(
-            onClick = onCreate,
-            enabled = symbol.isNotBlank() && value.toDoubleOrNull()?.let { it.isFinite() && it > 0.0 } == true,
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text(stringResource(R.string.activity_create_alert)) }
-    }
-}
-
-@Composable
-private fun AlertRow(alert: PriceAlert, onToggle: (Boolean) -> Unit, onDelete: () -> Unit) {
-    PremiumCard {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column {
-                Text(alert.symbol, fontWeight = FontWeight.Bold)
-                FinancialText(
-                    value = stringResource(
-                        alert.condition.labelRes(),
-                        MarketNumberFormatter.price(alert.value, 2),
-                    ),
-                    color = CoineProColors.TextSecondary,
-                )
-            }
-            Switch(checked = alert.active, onCheckedChange = onToggle)
-        }
-        TextButton(onClick = onDelete) { Text(stringResource(R.string.activity_delete)) }
-    }
-}
-
-@Composable
 private fun FinancialText(
     value: String,
     color: Color = CoineProColors.TextPrimary,
@@ -881,17 +803,3 @@ private fun formatTimestamp(raw: String?): String {
     return runCatching { PersianDateTime.moment(moment) }.getOrDefault("—")
 }
 
-@androidx.annotation.StringRes
-private fun PriceAlertCondition.labelRes(): Int = when (this) {
-    PriceAlertCondition.ABOVE -> R.string.activity_alert_above
-    PriceAlertCondition.BELOW -> R.string.activity_alert_below
-    PriceAlertCondition.CROSS_UP -> R.string.activity_alert_cross_up
-    PriceAlertCondition.CROSS_DOWN -> R.string.activity_alert_cross_down
-    PriceAlertCondition.CROSS -> R.string.activity_alert_cross
-}
-
-/** The instrument the alert form opens on, which must belong to the platform being shown. */
-private fun MarketPlatform.defaultAlertSymbol(): String = when (this) {
-    MarketPlatform.COINEPRO_FX -> "XAUUSD"
-    MarketPlatform.TRADEYAR -> "BTCUSDT"
-}

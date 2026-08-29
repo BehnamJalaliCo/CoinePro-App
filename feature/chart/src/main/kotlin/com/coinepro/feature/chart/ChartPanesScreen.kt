@@ -315,6 +315,7 @@ private fun ChartPane(
                         colours = state.chartColours,
                         showCountdown = !state.replay.isOn,
                     ),
+                    focusIndex = state.focusIndex,
                     drawing = state.canvasDrawing,
                     onDrawing = controller::onDrawing,
                     eraser = state.drawing.eraser,

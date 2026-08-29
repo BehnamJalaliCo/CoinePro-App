@@ -85,19 +85,9 @@
     <string name="activity_new_signals">سیگنال‌های تازه</string>
     <string name="activity_entry_tp_sl">ورود / هدف / حد ضرر</string>
     <string name="activity_price_alerts">هشدار قیمت</string>
-    <string name="activity_new_alert">هشدار قیمت تازه</string>
-    <string name="activity_symbol">نماد</string>
-    <string name="activity_price">قیمت</string>
-    <string name="activity_create_alert">ساخت هشدار</string>
-    <string name="activity_delete">حذف</string>
     <string name="activity_no_evidence">بدون شواهد</string>
     <string name="activity_value_missing">—</string>
 
-    <string name="activity_alert_above">بالای %1$s</string>
-    <string name="activity_alert_below">زیر %1$s</string>
-    <string name="activity_alert_cross_up">عبور رو به بالا از %1$s</string>
-    <string name="activity_alert_cross_down">عبور رو به پایین از %1$s</string>
-    <string name="activity_alert_cross">عبور از %1$s</string>
     <string name="activity_metric_executions">اجرا</string>
     <string name="activity_sample_size">%1$s نمونه</string>
     <string name="activity_alerts_body">ساختن، خاموش کردن و حذف هشدار روی هر نمادی.</string>

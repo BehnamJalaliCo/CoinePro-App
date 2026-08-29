@@ -10,7 +10,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.coinepro.core.designsystem.CoineProTheme
@@ -58,6 +60,17 @@ class ActualAppMenuScreenshotTest {
         }
 
         composeRule.waitForIdle()
+
+        // A capture with no assertion passes on a blank screen, which is the one outcome it exists
+        // to catch: this test's whole job is to prove the real navigation bar renders on a real
+        // device, and a PNG nobody looks at proves nothing. Every destination's label is checked by
+        // the string the app actually shows, so a destination added without a translation fails
+        // here rather than shipping as an empty tab.
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        AppDestination.entries.forEach { destination ->
+            composeRule.onNodeWithText(context.getString(destination.labelRes)).assertIsDisplayed()
+        }
+
         Thread.sleep(500)
         InstrumentationRegistry.getInstrumentation().uiAutomation
             .executeShellCommand("screencap -p /sdcard/coinepro-menu-render.png")

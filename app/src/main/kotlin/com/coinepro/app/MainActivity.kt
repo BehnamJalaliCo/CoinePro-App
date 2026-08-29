@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
+import com.coinepro.app.alerts.AlertDeepLink
 import com.coinepro.app.notifications.PushCoordinator
 import com.coinepro.app.sync.BackgroundSyncScheduler
 import com.coinepro.core.academy.AcademyController
@@ -161,6 +162,9 @@ class MainActivity : FragmentActivity() {
      * act on it.
      */
     private var launchSymbol by mutableStateOf<String?>(null)
+
+    /** The bar `?tf=` asked for, alongside [launchSymbol] and consumed with it. */
+    private var launchTimeframe by mutableStateOf<String?>(null)
     private var notificationPermissionState by mutableStateOf(NotificationPermissionUiState.NOT_CONFIGURED)
 
     private val notificationPermission = registerForActivityResult(
@@ -248,11 +252,15 @@ class MainActivity : FragmentActivity() {
                 launchActivity = launchActivity,
                 launchResetToken = launchResetToken,
                 launchSymbol = launchSymbol,
+                launchTimeframe = launchTimeframe,
                 notificationPermissionState = notificationPermissionState,
                 onSignalLaunchConsumed = { launchSignalId = null },
                 onActivityLaunchConsumed = { launchActivity = false },
                 onResetTokenConsumed = { launchResetToken = null },
-                onSymbolLaunchConsumed = { launchSymbol = null },
+                onSymbolLaunchConsumed = {
+                    launchSymbol = null
+                    launchTimeframe = null
+                },
                 onRequestNotificationPermission = ::requestNotificationPermission,
                 onOpenNotificationSettings = ::openNotificationSettings,
                 onSendFeedback = ::sendFeedback,
@@ -308,11 +316,19 @@ class MainActivity : FragmentActivity() {
         // A malformed query throws rather than returning null, and a link the app cannot read is
         // not a reason to fail to open.
         val resetToken = runCatching { uri.getQueryParameter("token") }.getOrNull()
-        when (val target = parseCoineProDeepLink(uri.scheme, uri.host, uri.pathSegments, resetToken)) {
+        val timeframe = runCatching { uri.getQueryParameter(AlertDeepLink.TIMEFRAME_QUERY) }.getOrNull()
+        val target = parseCoineProDeepLink(uri.scheme, uri.host, uri.pathSegments, resetToken, timeframe)
+        when (target) {
             is CoineProDeepLink.Signal -> launchSignalId = target.signalId
             CoineProDeepLink.Activity -> launchActivity = true
             is CoineProDeepLink.PasswordReset -> launchResetToken = target.token
-            is CoineProDeepLink.Market -> launchSymbol = target.symbol
+            is CoineProDeepLink.Market -> {
+                // Set before the symbol, and both in the same frame. The chart's launch effect is
+                // keyed on the symbol, so a timeframe written after it would arrive one
+                // recomposition too late and be read on the *next* deep link instead of this one.
+                launchTimeframe = target.timeframe
+                launchSymbol = target.symbol
+            }
             null -> Unit
         }
     }

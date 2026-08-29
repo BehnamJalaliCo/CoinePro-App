@@ -53,6 +53,12 @@ class ChartDerivedTest {
         assertSame(first, state.derived)
         assertSame(first.overlays, state.overlays)
         assertSame(first.panes, state.panes)
+        // Markers too, and by identity for the same reason: with no pattern switched on and no
+        // chain, all three getters must hand back the memoised list rather than a copy of it.
+        // `a + b` allocates even when `b` is empty, which is how a drag ended up rebuilding three
+        // lists a frame while the computation behind them was correctly cached.
+        assertSame(first.markers, state.markers)
+        assertSame(first.levels, state.levels)
     }
 
     @Test

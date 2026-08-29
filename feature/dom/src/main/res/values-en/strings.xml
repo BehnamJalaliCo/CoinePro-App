@@ -5,8 +5,6 @@
     <string name="dom_column_bid">Bid size</string>
     <string name="dom_column_price">Price</string>
     <string name="dom_column_ask">Ask size</string>
-    <string name="dom_column_bid_orders">Bid size · orders</string>
-    <string name="dom_column_ask_orders">Ask size · orders</string>
     <string name="dom_spread">Spread</string>
     <string name="dom_mid">Mid</string>
     <string name="dom_imbalance">Bid share</string>
@@ -36,6 +34,9 @@
 
     <string name="dom_empty">There are no resting orders right now.</string>
     <string name="dom_empty_hint">The exchange returned the book and it was empty: a market with nothing waiting on it. This is not an error, and trying again will not change it.</string>
+
+    <string name="dom_orders_note">The number on a bar is how many orders rest at that level, shown only from %1$s orders upwards; about nine levels in ten hold a single order.</string>
+    <string name="dom_data_note">The book refreshes once a second while this screen is open — roughly 4 MB an hour. Leaving the screen stops it.</string>
 
     <string name="dom_pick_price">Create an alert at %1$s</string>
     <string name="dom_pick_price_orders">Create an alert at %1$s, %2$s orders at this level</string>

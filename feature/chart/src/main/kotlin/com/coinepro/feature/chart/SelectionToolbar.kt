@@ -33,6 +33,7 @@ import com.coinepro.core.chart.Drawing
 import com.coinepro.core.chart.DrawingActions
 import com.coinepro.core.chart.DrawingState
 import com.coinepro.core.chart.DrawingTools
+import com.coinepro.core.chart.LineStyleKind
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.datastore.DrawingTemplate
 import com.coinepro.core.designsystem.CoineProColors
@@ -66,11 +67,16 @@ import com.coinepro.core.designsystem.R as DesignR
  * lock, delete, and the way into the full settings sheet. Multi-select is armed from here too,
  * because this is the first surface that exists once there is something to collect.
  *
- * It does **not** carry a separate text colour, a fill colour or a line style, and that is not an
- * omission of taste. `core:chart`'s `Drawing` has one colour and one width and the renderer reads
- * exactly those; there is nowhere for a second colour or a dash pattern to be stored or drawn. A
- * control that set a value nothing rendered would be precisely the failure this whole wave is
- * about, so the three are recorded as wiring needed rather than mocked up here.
+ * It also carries the text colour, the fill colour and the line style, now that `Drawing` holds all
+ * three and `DrawingRenderer` reads them. They share the one swatch row rather than adding two more:
+ * a target selector — «خط ‌| متن | پُرشدگی» — says which of the three the next swatch paints. Three
+ * rows of identical circles is the clutter the owner asked to be kept out, and the selector also
+ * gives text and fill the one thing a third row cannot, which is «مثل خط»: the way back to
+ * following the line, which is a state and not a shade.
+ *
+ * The text target appears only on the tools that hold words and the fill target only on the tools
+ * that paint a wash — `DrawingActions.holdsText` and `DrawingActions.washes`. A target that set a
+ * value nothing rendered would be precisely the failure this whole wave is about.
  */
 @Composable
 internal fun DrawingSelectionToolbar(
@@ -83,6 +89,11 @@ internal fun DrawingSelectionToolbar(
     /** Applies to everything selected, not only the primary. See `DrawingActions.recolourSelection`. */
     onRecolour: (Long) -> Unit,
     onSetWidth: (Float) -> Unit,
+    /** Null puts the words back on [Drawing.colour]. See `DrawingActions.setTextColour`. */
+    onSetTextColour: (Long?) -> Unit,
+    /** Null puts the wash back on [Drawing.colour]. See `DrawingActions.setFillColour`. */
+    onSetFillColour: (Long?) -> Unit,
+    onSetLineStyle: (LineStyleKind) -> Unit,
     onApplyTemplate: (DrawingTemplate) -> Unit,
     /** Opens the keyboard for a text, callout, note or price label. */
     onEditText: (Long) -> Unit,
@@ -178,6 +189,9 @@ internal fun DrawingSelectionToolbar(
                 drawing = primary,
                 onRecolour = onRecolour,
                 onSetWidth = onSetWidth,
+                onSetTextColour = onSetTextColour,
+                onSetFillColour = onSetFillColour,
+                onSetLineStyle = onSetLineStyle,
             )
             SelectionPanel.TEMPLATES -> TemplatePanel(templates = templates, onApply = onApplyTemplate)
         }
@@ -294,7 +308,55 @@ private fun StylePanel(
     drawing: Drawing,
     onRecolour: (Long) -> Unit,
     onSetWidth: (Float) -> Unit,
+    onSetTextColour: (Long?) -> Unit,
+    onSetFillColour: (Long?) -> Unit,
+    onSetLineStyle: (LineStyleKind) -> Unit,
 ) {
+    val holdsText = DrawingActions.holdsText(drawing.toolId)
+    val washes = DrawingActions.washes(drawing.toolId)
+    // Reset to the line whenever the selection changes, so a reader who painted a fill on one
+    // rectangle and then selects a trend line is not silently still aiming at a target that tool
+    // does not have.
+    var target by remember(drawing.id) { mutableStateOf(ColourTarget.LINE) }
+    // Guarded rather than trusted: `remember` is keyed on the id, and two drawings can be selected
+    // one after the other without the panel closing.
+    val aimed = when {
+        target == ColourTarget.TEXT && !holdsText -> ColourTarget.LINE
+        target == ColourTarget.FILL && !washes -> ColourTarget.LINE
+        else -> target
+    }
+    val chosen = when (aimed) {
+        ColourTarget.LINE -> drawing.colour
+        ColourTarget.TEXT -> drawing.textColour
+        ColourTarget.FILL -> drawing.fillColour
+    }
+
+    if (holdsText || washes) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(top = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            StyleChip(label = "خط", active = aimed == ColourTarget.LINE) { target = ColourTarget.LINE }
+            if (holdsText) {
+                StyleChip(label = "متن", active = aimed == ColourTarget.TEXT) { target = ColourTarget.TEXT }
+            }
+            if (washes) {
+                StyleChip(label = "پُرشدگی", active = aimed == ColourTarget.FILL) { target = ColourTarget.FILL }
+            }
+            // Only on the two that can be absent. The line always has a colour, so «مثل خط» on it
+            // would be a button that says "be yourself".
+            if (aimed != ColourTarget.LINE) {
+                StyleChip(label = "مثل خط", active = chosen == null) {
+                    if (aimed == ColourTarget.TEXT) onSetTextColour(null) else onSetFillColour(null)
+                }
+            }
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -310,11 +372,17 @@ private fun StylePanel(
                     .clip(CircleShape)
                     .background(Color(value.toULong() shl SELECTION_COLOUR_SHIFT))
                     .border(
-                        width = if (value == drawing.colour) 2.dp else 1.dp,
-                        color = if (value == drawing.colour) CoineProColors.Gold else CoineProColors.Border,
+                        width = if (value == chosen) 2.dp else 1.dp,
+                        color = if (value == chosen) CoineProColors.Gold else CoineProColors.Border,
                         shape = CircleShape,
                     )
-                    .clickable { onRecolour(value) },
+                    .clickable {
+                        when (aimed) {
+                            ColourTarget.LINE -> onRecolour(value)
+                            ColourTarget.TEXT -> onSetTextColour(value)
+                            ColourTarget.FILL -> onSetFillColour(value)
+                        }
+                    },
             )
         }
         DRAWING_WIDTHS.forEach { (label, width) ->
@@ -345,7 +413,69 @@ private fun StylePanel(
             }
         }
     }
+
+    // Every tool that draws a line reads the dash — the renderer resolves it once and every stroke
+    // primitive carries it — so this row has no tool condition on it.
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(bottom = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        LINE_STYLES.forEach { (label, style) ->
+            StyleChip(label = label, active = drawing.lineStyle == style) { onSetLineStyle(style) }
+        }
+    }
 }
+
+/** Which of a drawing's three colours the swatch row paints. See [StylePanel]. */
+private enum class ColourTarget { LINE, TEXT, FILL }
+
+/** The pill this panel is built from: a label, an on state, and nothing else. */
+@Composable
+private fun StyleChip(label: String, active: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(CoineProPillShape)
+            .background(
+                if (active) {
+                    CoineProTint.fill(CoineProColors.Gold, CoineProColors.SurfaceElevated)
+                } else {
+                    Color.Transparent
+                },
+            )
+            .border(
+                width = 1.dp,
+                color = if (active) CoineProTint.edge(CoineProColors.Gold) else CoineProColors.Border,
+                shape = CoineProPillShape,
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (active) CoineProColors.Gold else CoineProColors.TextMuted,
+        )
+    }
+}
+
+/**
+ * The five dashes, named for what a reader sees rather than for the enum.
+ *
+ * «پیش‌فرض» and not «ممتد» for [LineStyleKind.SOLID], because it does not force a solid line: it
+ * restores the tool's own drawing, and the tools that are dashed by construction stay dashed at
+ * this setting. Calling it "solid" would be a label that lies on a Fibonacci fan.
+ */
+private val LINE_STYLES: List<Pair<String, LineStyleKind>> = listOf(
+    "پیش‌فرض" to LineStyleKind.SOLID,
+    "نقطه‌چین" to LineStyleKind.DOTTED,
+    "خط‌چین" to LineStyleKind.DASHED,
+    "خط‌چین درشت" to LineStyleKind.LARGE_DASHED,
+    "نقطه‌چین تنک" to LineStyleKind.SPARSE_DOTTED,
+)
 
 /**
  * The saved styles for this tool, one tap each.

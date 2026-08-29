@@ -177,6 +177,53 @@ class SymbolChartStateStoreTest {
         assertEquals(listOf("ema"), stored?.indicators)
         assertEquals("H4", stored?.timeframe)
     }
+
+    // ── the drawing-side settings the fourth wave added ───────────────────────────────
+
+    @Test
+    fun `the drawing settings a reader chose on one symbol come back on that symbol`() = runTest {
+        val store = SymbolChartStateStore(FakeStatePreferences())
+        val marked = gold().copy(
+            magnetMode = "STRONG",
+            keepDrawing = true,
+            toolFavourites = listOf("trend", "fib"),
+            patterns = listOf("engulfing", "hammer"),
+            chainSources = mapOf("rsi" to "ema", "macd" to "close"),
+        )
+        store.put(marked)
+
+        assertEquals(marked, store.state("XAUUSD").first())
+    }
+
+    @Test
+    fun `a row written before the drawing settings existed reads back with them unset`() = runTest {
+        // Eight fields: the shape this store wrote before the magnet, the sticky tool, the
+        // favourites, the patterns and the indicator sources were kept per symbol.
+        val record = listOf("XAUUSD", "H1", "CANDLES", "ema", "ema\u001F21", "", "1", "9")
+            .joinToString("\u001E")
+        val backing = FakeStatePreferences(mutablePreferencesOf(SymbolChartStateStore.STATES to record))
+
+        val stored = SymbolChartStateStore(backing).state("XAUUSD").first()
+
+        assertNull(stored?.magnetMode)
+        assertEquals(false, stored?.keepDrawing)
+        assertEquals(emptyList<String>(), stored?.toolFavourites)
+        assertEquals(emptyList<String>(), stored?.patterns)
+        assertEquals(emptyMap<String, String>(), stored?.chainSources)
+        // And the fields that were there are still read from where they were.
+        assertEquals("H1", stored?.timeframe)
+        assertEquals(true, stored?.logScale)
+    }
+
+    @Test
+    fun `an indicator source whose id carries a separator is dropped and the rest of the map stands`() = runTest {
+        val store = SymbolChartStateStore(FakeStatePreferences())
+        // A key carrying a separator would shift every pair after it by one, which is the failure
+        // the alternating layout is most exposed to.
+        store.put(gold().copy(chainSources = mapOf("rsi" to "ema", "bad\u001Eid" to "close")))
+
+        assertEquals(mapOf("rsi" to "ema"), store.state("XAUUSD").first()?.chainSources)
+    }
 }
 
 private class FakeStatePreferences(initial: Preferences = emptyPreferences()) : DataStore<Preferences> {

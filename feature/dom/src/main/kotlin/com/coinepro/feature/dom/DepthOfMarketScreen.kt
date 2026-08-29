@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -154,10 +155,11 @@ fun DepthOfMarketBody(
                 icon = CoineProIcons.Markets,
                 hint = stringResource(R.string.dom_empty_hint),
             )
-            else -> DepthLadderTable(
-                ladder = remember(book, levels) { ladderRows(book, levels) },
-                onPickPrice = onPickPrice,
-            )
+            else -> {
+                val ladder = remember(book, levels) { ladderRows(book, levels) }
+                DepthLadderTable(ladder = ladder, onPickPrice = onPickPrice)
+                DepthFootnotes(showOrdersNote = ladder.hasOrders)
+            }
         }
     }
 }
@@ -409,21 +411,23 @@ private fun ImbalanceMeter(share: Double) {
 private fun DepthLadderTable(ladder: DepthLadder, onPickPrice: (Double) -> Unit) {
     LtrDirection {
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            // The order count is secondary and it is the first thing to go. Decided once here for
-            // the whole table rather than per cell, so the header can never label a column the
-            // rows below it dropped — the two rows share this layout exactly, so one measurement
-            // answers for both. Below the threshold the sizes need every point they have, and a
-            // size that wraps or truncates loses leading digits, which is a far worse loss than a
-            // count nobody has yet learned to look for.
-            val showOrders = ladder.hasOrders && maxWidth >= MinWidthForOrders
+            // The mark is secondary and it is the first thing to go. Decided once here for the
+            // whole table rather than per cell, so a ladder cannot mark a wall at the top and drop
+            // the mark from an identical one lower down — every row shares this layout exactly, so
+            // one measurement answers for all of them. Below the threshold the sizes need every
+            // point they have, and a size figure with a count sitting on top of it loses leading
+            // digits, which is a far worse loss than a mark. Dropping it here costs a sighted
+            // reader on a very narrow screen the mark and costs nobody the figure: the count stays
+            // in every row's spoken description whatever this says. See `LadderRowView`.
+            val showStackedMarks = maxWidth >= MinWidthForStackedMark
             Column(modifier = Modifier.fillMaxWidth()) {
-                LadderHeaderRow(showOrders)
+                LadderHeaderRow()
                 ladder.asks.forEach { row ->
-                    LadderRowView(row, ladder.priceDecimals, ladder.quantityDecimals, showOrders, onPickPrice)
+                    LadderRowView(row, ladder.priceDecimals, ladder.quantityDecimals, showStackedMarks, onPickPrice)
                 }
                 SpreadRow(ladder)
                 ladder.bids.forEach { row ->
-                    LadderRowView(row, ladder.priceDecimals, ladder.quantityDecimals, showOrders, onPickPrice)
+                    LadderRowView(row, ladder.priceDecimals, ladder.quantityDecimals, showStackedMarks, onPickPrice)
                 }
             }
         }
@@ -431,24 +435,21 @@ private fun DepthLadderTable(ladder: DepthLadder, onPickPrice: (Double) -> Unit)
 }
 
 /**
- * The column heads, which name the order count only when the rows below are drawing it.
+ * The column heads: two sizes and the price spine, and nothing else.
  *
- * A bare second number beside every size is a figure a reader has to guess at, and guessing wrong
- * about a ladder is expensive. Naming it here costs nothing — the label is already there — and it
- * is the difference between a count and an unexplained digit.
+ * There was a third label here naming an order-count column. Both are gone. The count is on about
+ * one rung in eight now rather than on every one, so it has no column to head — what explains it is
+ * the line under the ladder, which is prose and belongs outside this left-to-right block anyway.
  */
 @Composable
-private fun LadderHeaderRow(showOrders: Boolean) {
+private fun LadderHeaderRow() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.Half),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ColumnLabel(
-            stringResource(if (showOrders) R.string.dom_column_bid_orders else R.string.dom_column_bid),
-            TextAlign.Left,
-        )
+        ColumnLabel(stringResource(R.string.dom_column_bid), TextAlign.Left)
         Text(
             text = stringResource(R.string.dom_column_price),
             style = MaterialTheme.typography.labelSmall,
@@ -456,10 +457,7 @@ private fun LadderHeaderRow(showOrders: Boolean) {
             textAlign = TextAlign.Center,
             modifier = Modifier.width(PriceColumnWidth),
         )
-        ColumnLabel(
-            stringResource(if (showOrders) R.string.dom_column_ask_orders else R.string.dom_column_ask),
-            TextAlign.Right,
-        )
+        ColumnLabel(stringResource(R.string.dom_column_ask), TextAlign.Right)
     }
 }
 
@@ -488,7 +486,7 @@ private fun LadderRowView(
     row: LadderRow,
     priceDecimals: Int,
     quantityDecimals: Int,
-    showOrders: Boolean,
+    showStackedMarks: Boolean,
     onPickPrice: (Double) -> Unit,
 ) {
     val colour = when (row.side) {
@@ -499,11 +497,20 @@ private fun LadderRowView(
         BookSide.ASK -> CoineProColors.Sell
     }
     val price = MarketNumberFormatter.price(row.price, priceDecimals)
-    val orders = row.orders?.takeIf { showOrders }
     // `clickable` merges this row's semantics, so the count has to be part of the row's own
     // description or a reader who cannot see it never hears it. It is spoken with the price rather
-    // than on its own for the same reason it is printed beside the size: a count without a price is
-    // a number about nothing.
+    // than on its own for the same reason the mark sits on the bar: a count without a price is a
+    // number about nothing.
+    //
+    // Built from [spokenOrders] and never from [drawnOrders]. The sighted ladder now marks only
+    // about one rung in eight, because a figure that reads `1` on nine rows out of ten is furniture
+    // — but that is a decision about ink, not about facts, and a reader who cannot see the ladder
+    // must not lose the other seven counts to it. Every rung that has a count says it.
+    //
+    // A rung whose count is unknown falls to the plain sentence and says nothing about orders at
+    // all. Absent and one are different facts, and "1 order" spoken over a level nobody counted
+    // would be the ladder inventing the very figure this contract exists to keep honest.
+    val orders = spokenOrders(row)
     val pickDescription = if (orders == null) {
         stringResource(R.string.dom_pick_price, price)
     } else {
@@ -525,7 +532,7 @@ private fun LadderRowView(
             barEdge = Alignment.CenterStart,
             figureEdge = Alignment.CenterEnd,
             decimals = quantityDecimals,
-            showOrders = showOrders,
+            showStackedMarks = showStackedMarks,
         )
         Text(
             text = price,
@@ -540,7 +547,7 @@ private fun LadderRowView(
             barEdge = Alignment.CenterEnd,
             figureEdge = Alignment.CenterStart,
             decimals = quantityDecimals,
-            showOrders = showOrders,
+            showStackedMarks = showStackedMarks,
         )
     }
 }
@@ -556,6 +563,15 @@ private fun LadderRowView(
  *
  * [row] is null on the side this rung does not belong to, and the cell then draws nothing at all —
  * an empty half is what makes the ladder read as two columns of liquidity meeting at the spread.
+ *
+ * ### Why the mark is an overlay and not a column
+ *
+ * The stacked mark is placed at the cell's **outboard** edge, over the far end of the bar, and the
+ * size figure keeps the exact position it would have without it. That is the whole point of putting
+ * it in the same [Box] rather than in a [Row] beside the size: a mark that appears on about one rung
+ * in eight and pushes the size along when it does would make the size column jitter horizontally
+ * from row to row, and a column that jitters cannot be scanned vertically — which is the only way
+ * this table is ever read. Laid over the bar it also lands on the thing it is describing.
  */
 @Composable
 private fun RowScope.QuantityCell(
@@ -564,53 +580,111 @@ private fun RowScope.QuantityCell(
     barEdge: Alignment,
     figureEdge: Alignment,
     decimals: Int,
-    showOrders: Boolean,
+    showStackedMarks: Boolean,
 ) {
     Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
         if (row != null) {
             DepthFill(row.curveFraction, colour.copy(alpha = CurveAlpha), barEdge)
             DepthFill(row.barFraction, colour.copy(alpha = BarAlpha), barEdge)
-            val orders = row.orders?.takeIf { showOrders }
-            Row(
+            val mark = drawnOrders(row)
+            if (showStackedMarks && mark != null) {
+                StackedOrdersMark(
+                    orders = mark,
+                    colour = colour,
+                    modifier = Modifier
+                        .align(barEdge)
+                        .padding(horizontal = CoineProSpacing.Half),
+                )
+            }
+            Text(
+                text = MarketNumberFormatter.price(row.quantity, decimals),
+                style = MaterialTheme.typography.labelSmall,
+                // A stacked rung is the exception this ladder now exists to surface, so its size
+                // steps up one level of ink and weight with the mark. Two quiet signals on the same
+                // row rather than one loud one: the reader finds the row from across the table by
+                // its weight and reads what it is from the mark.
+                color = if (row.stacked) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
+                fontWeight = if (row.stacked) FontWeight.SemiBold else null,
+                textAlign = TextAlign.Right,
                 modifier = Modifier
                     .align(figureEdge)
                     .padding(horizontal = CoineProSpacing.Half),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
-            ) {
-                // The count sits *outboard* of the size — further from the price spine on both
-                // sides — so the two size columns stay the pair a reader compares across the
-                // ladder. Put inboard it would push the sizes apart by a varying amount and the
-                // one comparison this table exists for would stop being a straight vertical scan.
-                if (orders != null && row.side == BookSide.BID) OrdersFigure(orders)
-                Text(
-                    text = MarketNumberFormatter.price(row.quantity, decimals),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = CoineProColors.TextSecondary,
-                    textAlign = TextAlign.Right,
-                )
-                if (orders != null && row.side == BookSide.ASK) OrdersFigure(orders)
-            }
+            )
         }
     }
 }
 
 /**
- * How many orders make up the size beside it — `12`.
+ * The mark on a level that more than one order is resting on — `27`.
  *
- * Deliberately the quietest thing on the row: the disabled ink, no bar, no colour of its own. It
- * answers a second question ("one wall or fifty bids?") and must never compete with the first one
- * the ladder is drawn to answer, which is where the size is. Latin digits by [ordersLabel], because
- * it is a market figure and the device locale would otherwise render it in Persian ones.
+ * Drawn only where [STACKED_ORDERS_THRESHOLD] is met, which on this venue is about one rung in
+ * eight. The number itself is the mark rather than a dot or an asterisk beside one: a reader who has
+ * spotted the row wants to know whether it is two orders or twenty-seven, and those are very
+ * different walls — twenty-seven is a crowd that has to be lifted one order at a time, two is very
+ * nearly the single participant every other rung is.
+ *
+ * The ground is a flat wash of the terminal colour and there is no border: the row already carries
+ * two flat fills in the side's colour, and a third weight of edge would read as a fourth element
+ * rather than as a badge. That wash is only there to lift the digits off the bar beneath them. The
+ * ink is the side's own colour, so the mark stays legibly part of its half of the ladder — but it is
+ * set against the ground rather than filled with it, so it cannot be mistaken for a size figure.
+ * Latin digits by [ordersLabel] — it is a market figure, and the device locale would otherwise
+ * render it in Persian ones.
  */
 @Composable
-private fun OrdersFigure(orders: Int) {
+private fun StackedOrdersMark(orders: Int, colour: Color, modifier: Modifier = Modifier) {
     Text(
         text = ordersLabel(orders),
         style = MaterialTheme.typography.labelSmall,
-        color = CoineProColors.TextDisabled,
+        color = colour,
+        fontWeight = FontWeight.SemiBold,
         textAlign = TextAlign.Right,
+        modifier = modifier
+            .clip(CoineProShapes.extraSmall)
+            .background(CoineProColors.Terminal.copy(alpha = MarkGroundAlpha))
+            .padding(horizontal = CoineProSpacing.Half),
     )
+}
+
+/**
+ * The two lines under the ladder: what the marks mean, and what the screen costs to keep open.
+ *
+ * Persian prose, so it sits **outside** the ladder's [LtrDirection] block and reads right to left
+ * with the rest of the app. Both lines are muted and neither moves: [showOrdersNote] follows the
+ * venue rather than the current snapshot, so the caption cannot blink on and off as walls come and
+ * go, and the data line is true of every book this screen draws.
+ *
+ * The data figure is here rather than buried in a settings screen because it is the reader's money.
+ * At `depth=100`, gzipped, once a second, the ladder costs about four megabytes an hour — real
+ * money on a metered Iranian connection, and more again through a VPN. Saying it plainly, once,
+ * where the polling actually happens is the honest place for it; a switch would be a second thing to
+ * get wrong and a settings row would be read by nobody. The screen already stops polling the moment
+ * it is left, which is the part that matters.
+ */
+@Composable
+private fun DepthFootnotes(showOrdersNote: Boolean) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        if (showOrdersNote) {
+            Text(
+                text = stringResource(
+                    R.string.dom_orders_note,
+                    STACKED_ORDERS_THRESHOLD.toPersianDigits(),
+                ),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+            )
+        }
+        Text(
+            text = stringResource(R.string.dom_data_note),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+        )
+    }
 }
 
 @Composable
@@ -667,21 +741,31 @@ private val PriceColumnWidth = 96.dp
 private val RowHeight = 28.dp
 
 /**
- * The narrowest ladder that still has room for an order count beside each size.
+ * The narrowest ladder that still has room for the stacked mark and the size in one cell.
  *
  * The price spine takes a fixed 96 points and the two gutters another 32, which leaves the two size
- * cells about 96 points each at this width — enough for a five-figure size and a two-figure count
- * without either shortening. Below it the count is dropped rather than squeezed: a truncated size
- * loses its leading digits, and a leading digit is the difference between a wall and a rounding
- * error. Split-screen and the smallest phones land under this; ordinary handsets do not.
+ * cells about 96 points each at this width — enough for a five-figure size at one end and a
+ * two-figure mark at the other without the two meeting. Below it the mark is dropped rather than
+ * allowed to overlap: a size figure with digits sitting on it loses its leading digits, and a
+ * leading digit is the difference between a wall and a rounding error. Split-screen and the
+ * smallest phones land under this; ordinary handsets do not. The count is still spoken on every
+ * rung that has one at any width — see `LadderRowView`.
  */
-private val MinWidthForOrders = 320.dp
+private val MinWidthForStackedMark = 320.dp
 
 /** The level's own bar: present enough to compare lengths, faint enough to read the figure over. */
 private const val BarAlpha = 0.28f
 
 /** The depth curve behind it. A third of the bar, so the two never read as one shape. */
 private const val CurveAlpha = 0.09f
+
+/**
+ * The ground under a stacked mark's digits, over the bar they sit on.
+ *
+ * The terminal colour at a low alpha rather than an opaque chip: the bar has to stay visible through
+ * it, because the bar is the figure the reader came for and the mark is an annotation on it.
+ */
+private const val MarkGroundAlpha = 0.55f
 
 /** An em dash, for a figure that is genuinely absent rather than zero. */
 private const val NoFigure = "—"

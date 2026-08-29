@@ -225,7 +225,14 @@ private const val CONNECTIONS_ROUTE = "connections"
 private const val AI_VISION_ROUTE = "ai/vision"
 private const val AI_ASSISTANT_ROUTE = "ai/assistant"
 private const val MARKET_SEARCH_ROUTE = "market/search"
-private const val CHART_PATTERN = "chart/{symbol}"
+/**
+ * The chart, with the bar as an optional query rather than a second path segment.
+ *
+ * A query and not a segment because `chart/{symbol}/{timeframe}` would collide with the three
+ * routes that already spend the second segment — the studio, the two-pane screen and depth — and
+ * because a chart opened without one is the ordinary case, which a required argument cannot say.
+ */
+private const val CHART_PATTERN = "chart/{symbol}?timeframe={timeframe}"
 private const val PORTFOLIO_ROUTE = "portfolio"
 private const val ACADEMY_ROUTE = "academy"
 private const val TERMINAL_ROUTE = "terminal"
@@ -304,7 +311,11 @@ private fun executionRoute(signalId: Long) = "execution/$signalId"
  * A ticker is safe in a path segment — both feeds spell them in ASCII letters and digits — but
  * encoding it costs nothing and a symbol that ever grows a slash would otherwise route nowhere.
  */
-private fun chartRoute(symbol: String) = "chart/" + Uri.encode(symbol)
+private fun chartRoute(symbol: String, timeframe: String? = null): String {
+    val base = "chart/" + Uri.encode(symbol)
+    val bar = timeframe?.trim()?.takeIf(String::isNotEmpty) ?: return base
+    return base + "?timeframe=" + Uri.encode(bar)
+}
 
 /**
  * The script studio, on a symbol.
@@ -494,6 +505,8 @@ fun CoineProApp(
     launchResetToken: String?,
     /** A market to open, from a row of the home-screen widget. See `MarketsWidget`. */
     launchSymbol: String?,
+    /** The bar a deep link asked for, or null. Consumed with [launchSymbol]. See `AlertDeepLink`. */
+    launchTimeframe: String?,
     notificationPermissionState: NotificationPermissionUiState,
     onSignalLaunchConsumed: () -> Unit,
     onActivityLaunchConsumed: () -> Unit,
@@ -857,6 +870,7 @@ fun CoineProApp(
                 launchSignalId = launchSignalId,
                 launchActivity = launchActivity,
                 launchSymbol = launchSymbol,
+                launchTimeframe = launchTimeframe,
                 onSymbolLaunchConsumed = onSymbolLaunchConsumed,
                 notificationPermissionState = deliverablePermissionState,
                 chartVisionAvailable = chartVisionAvailable,
@@ -1070,6 +1084,7 @@ fun CoineProApp(
                         onSetMarketColors = { scheme -> scope.launch { userPreferencesStore.setMarketColors(scheme) } },
                         online = online,
                         launchSymbol = launchSymbol,
+                        launchTimeframe = launchTimeframe,
                         onSymbolLaunchConsumed = onSymbolLaunchConsumed,
                     )
                     return@BiometricGate
@@ -1225,6 +1240,8 @@ private fun MainShell(
     launchActivity: Boolean,
     /** A market to open, from a widget row. Consumed once so a rotation does not re-navigate. */
     launchSymbol: String?,
+    /** The bar a deep link asked for, or null. Consumed with [launchSymbol]. See `AlertDeepLink`. */
+    launchTimeframe: String?,
     onSymbolLaunchConsumed: () -> Unit,
     notificationPermissionState: NotificationPermissionUiState,
     /** What this deployment reports it can do. A feature it does not offer is not drawn. */
@@ -1464,7 +1481,7 @@ private fun MainShell(
     // scheme is unverified, so what arrives is an arbitrary string from an untrusted sender.
     LaunchedEffect(launchSymbol) {
         launchSymbol?.let { symbol ->
-            navController.navigate(chartRoute(symbol)) { launchSingleTop = true }
+            navController.navigate(chartRoute(symbol, launchTimeframe)) { launchSingleTop = true }
             onSymbolLaunchConsumed()
         }
     }
@@ -2155,9 +2172,20 @@ private fun MainShell(
             }
             composable(
                 route = CHART_PATTERN,
-                arguments = listOf(navArgument("symbol") { type = NavType.StringType }),
+                arguments = listOf(
+                    navArgument("symbol") { type = NavType.StringType },
+                    // Nullable *and* defaulted. Without the default, navigating to the bare
+                    // `chart/{symbol}` — which every other entry point in the app does — fails to
+                    // match this destination at all.
+                    navArgument("timeframe") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                ),
             ) { entry ->
                 val routeSymbol = entry.arguments?.getString("symbol").orEmpty()
+                val routeTimeframe = entry.arguments?.getString("timeframe")
                 /**
                  * The instrument actually in front of the reader.
                  *
@@ -2178,6 +2206,10 @@ private fun MainShell(
                 // opens a chart and presses depth straight away has never changed anything.
                 LaunchedEffect(activeChartSymbol) { chartSymbolOnScreen = activeChartSymbol }
                 val chartController = chartControllers.controllerFor(routeSymbol)
+                // The bar a fired alert was decided on. Recorded rather than applied, because the
+                // controller's own restore reads a stored interval for this symbol and whichever
+                // ran last would win — see `ChartController.openAt`.
+                LaunchedEffect(chartController, routeTimeframe) { chartController.openAt(routeTimeframe) }
                 ChartScreen(
                     layouts = chartLayouts,
                     onSaveLayout = onSaveLayoutAnnounced,

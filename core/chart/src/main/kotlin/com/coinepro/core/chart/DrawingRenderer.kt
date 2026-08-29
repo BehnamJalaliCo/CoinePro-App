@@ -269,10 +269,12 @@ fun DrawScope.drawDrawing(
         } != null
         "fibfan" -> b?.let { end ->
             drawRect(
-                color = paint.wash(colour.copy(alpha = 0.25f)),
+                color = colour.copy(alpha = 0.25f),
                 topLeft = Offset(min(a.x, end.x), min(a.y, end.y)),
                 size = Size(abs(end.x - a.x), abs(end.y - a.y)),
-                style = Stroke(width),
+                // The fan's bounding box is a construction line rather than a fill, so it takes the
+                // line colour and the reader's dash — not the wash.
+                style = Stroke(width, pathEffect = paint.dash),
             )
             for (level in FIB_FAN) {
                 val y = a.y + (end.y - a.y) * level.toFloat()
