@@ -2,7 +2,7 @@
 <resources>
     <string name="profile_guest_name">Guest</string>
     <string name="profile_guest_tagline">Every market and every chart, with no account.</string>
-    <string name="profile_member_tagline">CoinePro member</string>
+    <string name="profile_member_tagline">Pro-Chart member</string>
     <string name="profile_avatar_description">Your profile picture</string>
     <string name="profile_edit_avatar">Change picture</string>
     <string name="profile_account_section">Account</string>

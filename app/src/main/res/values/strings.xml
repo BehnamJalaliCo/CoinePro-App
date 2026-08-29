@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Default language: Persian. app_name is the brand and is not translated. -->
 <resources>
-    <string name="app_name" translatable="false">CoinePro</string>
+    <string name="app_name" translatable="false">Pro-Chart</string>
 
     <string name="action_back">بازگشت</string>
     <string name="action_safety">ایمنی</string>
@@ -30,22 +30,22 @@
     <string name="screen_launch_readiness">ایمنی و انتشار</string>
 
     <string name="safety_title">ایمنی و انتشار</string>
-    <string name="safety_subtitle">پیش از استفاده از قابلیت‌های پرریسک، ببین کوین‌پرو با سیگنال، دسترسی‌ها، ارائه‌دهنده‌های بیرونی و پشتیبانی چطور رفتار می‌کند.</string>
-    <string name="safety_how_title">کوین‌پرو چطور کار می‌کند</string>
+    <string name="safety_subtitle">پیش از استفاده از قابلیت‌های پرریسک، ببین پرو چارت با سیگنال، دسترسی‌ها، ارائه‌دهنده‌های بیرونی و پشتیبانی چطور رفتار می‌کند.</string>
+    <string name="safety_how_title">پرو چارت چطور کار می‌کند</string>
     <string name="safety_how_body">سیگنال ← تحلیل ← ورود / حد ضرر / اهداف ← اجرا ← پایش ← بستن یا خوردن هدف ← نتیجه. اجرا همیشه مسیر تأیید صریح دارد و آپ هرگز نتیجهٔ کارگزار یا صرافی را از خودش نمی‌سازد.</string>
     <string name="safety_permissions_title">دسترسی‌ها</string>
     <string name="safety_camera_body">دسترسی دوربین فقط وقتی خواسته می‌شود که در تحلیل چارت «دوربین» را انتخاب کنی. انتخاب از گالری بدون آن در دسترس می‌ماند.</string>
     <string name="safety_push_not_configured">اعلان‌ها برای این نسخه پیکربندی نشده‌اند، پس آپ دسترسی اعلان نمی‌خواهد.</string>
     <string name="safety_push_not_required">این نسخهٔ اندروید به دسترسی اعلانِ زمان‌اجرا نیاز ندارد.</string>
     <string name="safety_push_available">اعلان‌ها می‌توانند به‌روزرسانی سیگنال و فعالیت را که سرور می‌فرستد به تو خبر دهند. این دسترسی اختیاری است و فقط بعد از زدن دکمهٔ زیر خواسته می‌شود.</string>
-    <string name="safety_push_denied">دسترسی اعلان رد شد. کوین‌پرو بدون آن هم کار می‌کند. هر وقت خواستی می‌توانی از تنظیمات اندروید عوضش کنی.</string>
+    <string name="safety_push_denied">دسترسی اعلان رد شد. پرو چارت بدون آن هم کار می‌کند. هر وقت خواستی می‌توانی از تنظیمات اندروید عوضش کنی.</string>
     <string name="safety_push_granted">دسترسی اعلان داده شده است. رسیدن اعلان همچنان به سرویس پوش و وضعیت سرور بستگی دارد.</string>
     <string name="safety_enable_notifications">فعال‌کردن اعلان‌ها</string>
     <string name="safety_open_settings">باز کردن تنظیمات اعلان</string>
     <string name="safety_risk_title">ریسک معامله و هوش مصنوعی</string>
     <string name="safety_risk_body">معامله و سرمایه‌گذاری ریسکِ زیان دارد. سیگنال، تحلیل و خروجی هوش مصنوعی تضمینِ نتیجه نیستند. اجرا به ارائه‌دهندهٔ بیرونی، دسترسی‌های حساب، شرایط بازار و تأیید سرور بستگی دارد. نتایج گذشته یا نمایش‌داده‌شده تضمینی برای آینده نیست. هر سفارش را پیش از تأیید بازبینی کن.</string>
     <string name="safety_provider_title">حقیقتِ ارائه‌دهنده</string>
-    <string name="safety_provider_body">اتصالی که روی دستگاه تنظیم شده با اتصال تأییدشدهٔ زنده یکی نیست. کوین‌پرو کارهای وابسته به ارائه‌دهنده را فقط با شواهد صریحِ سرور فعال می‌کند؛ حالت‌های ناموجود، کهنه یا ناموفق در معرض دید می‌مانند.</string>
+    <string name="safety_provider_body">اتصالی که روی دستگاه تنظیم شده با اتصال تأییدشدهٔ زنده یکی نیست. پرو چارت کارهای وابسته به ارائه‌دهنده را فقط با شواهد صریحِ سرور فعال می‌کند؛ حالت‌های ناموجود، کهنه یا ناموفق در معرض دید می‌مانند.</string>
     <string name="safety_privacy_title">حریم خصوصی</string>
     <string name="safety_privacy_body">این آپ هیچ SDK تحلیلی، تبلیغاتی یا ردیابی ندارد و موقعیت مکانی، دفترچه تلفن و شناسهٔ تبلیغاتی را نمی‌خواند. توکن ورودت با کلیدی که از دستگاه بیرون نمی‌آید رمز می‌شود و روی همین دستگاه می‌ماند؛ خروج از حساب، هم توکن نشست و هم توکن تازه‌سازی را پاک می‌کند. نام و کد ملی فقط اگر خودت فرم احراز هویت را پر کنی فرستاده می‌شوند، و تصویر چارت فقط وقتی خودت بفرستی. یک شناسهٔ تصادفیِ نصب همراه هر درخواست می‌رود تا محدودکنندهٔ نرخ سرور دو نصب پشت یک IP مشترک را از هم تشخیص دهد؛ به حساب یا دستگاه تو وصل نیست و با پاک‌کردن دادهٔ آپ عوض می‌شود.</string>
     <string name="safety_support_title">پشتیبانی و بازخورد</string>
@@ -74,8 +74,8 @@
     <string name="profile_action_safety_note">اعلان‌ها، گزارش خطا و شماره‌ی نسخه</string>
     <string name="profile_action_delete">حذف حساب</string>
     <string name="auth_google_not_registered">ورود با گوگل انجام نشد. یا گواهی امضای این نسخه در کنسول گوگل ثبت نشده، یا روی این گوشی حساب گوگلی وجود ندارد. با ایمیل وارد شوید.</string>
-    <string name="tampered_title">این نسخه‌ی اصلی کوین‌پرو نیست</string>
-    <string name="tampered_body">این فایل دستکاری و با کلید دیگری امضا شده است. ما آن را نساخته‌ایم و نمی‌دانیم داخلش چه تغییری داده شده. لطفاً همین حالا پاکش کنید و نسخه را فقط از کانال رسمی کوین‌پرو بگیرید.</string>
+    <string name="tampered_title">این نسخه‌ی اصلی پرو چارت نیست</string>
+    <string name="tampered_body">این فایل دستکاری و با کلید دیگری امضا شده است. ما آن را نساخته‌ایم و نمی‌دانیم داخلش چه تغییری داده شده. لطفاً همین حالا پاکش کنید و نسخه را فقط از کانال رسمی پرو چارت بگیرید.</string>
     <string name="tampered_fingerprint">اثر انگشت امضای این فایل</string>
     <string name="tampered_source">در این نسخه وارد حساب نشوید و هیچ رمز، کد یا کلید صرافی وارد نکنید.</string>
     <string name="safety_signature_title">اثر انگشت امضای این نسخه</string>
@@ -143,7 +143,7 @@
     <string name="action_undo">برگردان</string>
     <string name="profile_action_support">پشتیبانی و بازخورد</string>
     <string name="profile_action_support_note">مستقیم به یک آدم می‌رسد، نه به یک ربات.</string>
-    <string name="lock_prompt_title">کوین‌پرو قفل است</string>
+    <string name="lock_prompt_title">پرو چارت قفل است</string>
     <string name="lock_prompt_subtitle">با اثر انگشت، چهره یا رمز گوشی باز کنید.</string>
     <string name="lock_screen_title">قفل است</string>
     <string name="lock_screen_body">این گوشی می‌پرسد شما هستید یا نه. حسابتان باز است؛ فقط این پنجره بسته است.</string>
@@ -152,7 +152,7 @@
     <string name="profile_action_lock_on">روشن</string>
     <string name="profile_action_lock_off">خاموش</string>
     <string name="lock_sheet_title">قفل برنامه</string>
-    <string name="lock_sheet_subtitle">کوین‌پرو با اثر انگشت، چهره یا رمز همین گوشی باز می‌شود.</string>
+    <string name="lock_sheet_subtitle">پرو چارت با اثر انگشت، چهره یا رمز همین گوشی باز می‌شود.</string>
     <string name="lock_sheet_switch">پرسیدن هنگام باز کردن آپ</string>
     <string name="lock_sheet_note">رمز تازه‌ای نمی‌سازیم؛ همان قفل خود گوشی است. تا ۳۰ ثانیه بعد از بیرون رفتن از آپ دوباره نمی‌پرسد، تا کپی‌کردن یک کد از آپ دیگر هر بار به یک قفل نخورد.</string>
     <string name="lock_sheet_not_enrolled">روی این گوشی هنوز اثر انگشت یا چهره‌ای ثبت نشده.</string>

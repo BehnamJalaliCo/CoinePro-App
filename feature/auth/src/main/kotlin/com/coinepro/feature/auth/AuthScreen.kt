@@ -31,7 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.coinepro.core.designsystem.CoineProColors
-import com.coinepro.core.designsystem.CoineProLockup
+import com.coinepro.core.designsystem.ProChartLockup
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -57,9 +57,8 @@ fun AuthScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        CoineProLockup(
-            markSize = 112.dp,
-            wordmarkWidth = 190.dp,
+        ProChartLockup(
+            wordmarkWidth = 260.dp,
             contentDescription = stringResource(R.string.auth_wordmark_description),
         )
         Spacer(Modifier.height(12.dp))

@@ -1,4 +1,4 @@
-# سیاست حریم خصوصی — کوین‌پرو
+# سیاست حریم خصوصی — پرو چارت
 
 **آخرین بازنگری:** ۱۴۰۵/۰۶/۰۴ · **نسخهٔ اپ:** ۱.۰
 
@@ -10,7 +10,7 @@
 
 ## ۱) این اپ چه کاری می‌کند
 
-کوین‌پرو یک اپلیکیشن **تحلیل و سیگنالِ بازار** است که به دو سرویس مستقل وصل می‌شود:
+پرو چارت یک اپلیکیشن **تحلیل و سیگنالِ بازار** است که به دو سرویس مستقل وصل می‌شود:
 
 * **کوین‌پرو اف‌ایکس** — فارکس و فلزات؛ سیگنال، کپی‌تریدینگ، آکادمی و نمودار.
 * **تریدیار** — رمزارز؛ سیگنال، اجرای سفارش روی صرافی، نمودار.
@@ -19,7 +19,7 @@
 بی‌معناست. اپ هر داده‌ای را به‌ازای هر پلتفرم جدا نگه می‌دارد و خروج از یکی، شما را از دیگری خارج
 نمی‌کند.
 
-کوین‌پرو **کارگزار نیست**، پول شما را نگه نمی‌دارد و مشاورهٔ مالی نمی‌دهد.
+پرو چارت **کارگزار نیست**، پول شما را نگه نمی‌دارد و مشاورهٔ مالی نمی‌دهد.
 
 ---
 
@@ -51,10 +51,10 @@
 | تصویر نمودار | فقط وقتی خودتان عکس را برای تحلیل می‌فرستید | همان پلتفرم |
 | نمادهایی که روی صفحه‌اند | هنگام اتصال به فید قیمت | همان پلتفرم |
 
-**UID صرافی چرا فرستاده می‌شود.** عضویت کوین‌پرو رایگان است و شرطش داشتن حساب فعال در یکی از
+**UID صرافی چرا فرستاده می‌شود.** عضویت پرو چارت رایگان است و شرطش داشتن حساب فعال در یکی از
 صرافی‌های همکار است (شرایط استفاده، بند ۶). برای احراز این موضوع، UID شما به صرافی داده می‌شود تا
-صرافی تأیید کند این حساب به کوین‌پرو متصل است و موجودی لازم را دارد. آنچه برمی‌گردد یک پاسخ
-آری/نه و وضعیت موجودی است؛ کوین‌پرو با UID شما نه به حساب صرافی دسترسی دارد و نه می‌تواند معامله یا
+صرافی تأیید کند این حساب به پرو چارت متصل است و موجودی لازم را دارد. آنچه برمی‌گردد یک پاسخ
+آری/نه و وضعیت موجودی است؛ پرو چارت با UID شما نه به حساب صرافی دسترسی دارد و نه می‌تواند معامله یا
 برداشتی انجام دهد.
 
 **شناسهٔ نصب چیست و چرا هست.** یک رشتهٔ تصادفی است که هنگام اولین اجرا ساخته می‌شود، به هیچ حساب،
@@ -123,7 +123,7 @@
 
 **چقدر طول می‌کشد:** حذف بلافاصله ثبت می‌شود و ظرف حداکثر ۳۰ روز از پشتیبان‌ها هم پاک می‌شود.
 
-**آنچه حذف نمی‌کند:** حساب شما نزد صرافی. آن حساب مال خودتان است و کوین‌پرو نه آن را ساخته و نه
+**آنچه حذف نمی‌کند:** حساب شما نزد صرافی. آن حساب مال خودتان است و پرو چارت نه آن را ساخته و نه
 می‌تواند حذفش کند؛ برای بستنش به خودِ صرافی مراجعه کنید.
 
 ---
@@ -153,7 +153,7 @@
 ---
 ---
 
-# Privacy Policy — CoinePro
+# Privacy Policy — Pro-Chart
 
 **Last reviewed:** 2026-08-26 · **App version:** 1.0
 
@@ -162,9 +162,9 @@ behaviour changes, this file changes with it.
 
 ## 1) What this app is
 
-CoinePro is a **market analysis and signals** app talking to two independent services — CoinePro-FX
+Pro-Chart is a **market analysis and signals** app talking to two independent services — CoinePro-FX
 (forex and metals) and TradeYar (crypto). They are separate systems with separate user tables; an
-account on one is not an account on the other, and the app keeps everything per platform. CoinePro
+account on one is not an account on the other, and the app keeps everything per platform. Pro-Chart
 is **not a broker**, does not hold your money, and does not give financial advice.
 
 ## 2) What is collected
@@ -204,7 +204,7 @@ Your data is **not sold**. It is shared only with Google (Firebase Cloud Messagi
 notification tokens and payloads — inherent to Android notifications); the LBank or Ourbit exchange
 and an MT5 broker if *you* connect those accounts or submit a UID for membership verification; and
 where the law requires it. A UID check asks the exchange one question — is this account linked to
-CoinePro, and is it funded — and gets back a yes/no and a balance state. It grants no access to your
+Pro-Chart, and is it funded — and gets back a yes/no and a balance state. It grants no access to your
 exchange account.
 
 ## 5) Retention and deletion
@@ -228,7 +228,7 @@ months. They are no longer attributable to you.
 
 **How long:** the deletion is recorded immediately and is gone from backups within 30 days.
 
-**What it does not delete:** your account at the exchange. That account is yours; CoinePro neither
+**What it does not delete:** your account at the exchange. That account is yours; Pro-Chart neither
 created it nor can close it. Ask the exchange.
 
 ## 6) Children

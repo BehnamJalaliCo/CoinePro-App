@@ -25,8 +25,7 @@ import tempfile
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 OUT = REPO / "design" / "play" / "feature-graphic-1024x500.png"
-MARK = REPO / "core" / "designsystem" / "src" / "main" / "res" / "drawable-xxxhdpi" / "coinepro_mark.png"
-WORDMARK = REPO / "core" / "designsystem" / "src" / "main" / "res" / "drawable-xxxhdpi" / "coinepro_wordmark.png"
+WORDMARK = REPO / "core" / "designsystem" / "src" / "main" / "res" / "drawable-xxxhdpi" / "prochart_wordmark.png"
 FONT = REPO / "core" / "designsystem" / "src" / "main" / "res" / "font" / "iranyekanx_bold.ttf"
 
 WIDTH = 1024
@@ -66,10 +65,20 @@ def page() -> str:
   }}
   /* Everything stays inside the middle 80%. Play crops this asset differently on different
      surfaces, and a mark that touches an edge is a mark that loses a limb on one of them. */
-  .lockup {{ display: flex; align-items: center; gap: 56px; max-width: {int(WIDTH * 0.8)}px; }}
-  .mark {{ width: 212px; height: auto; display: block; }}
-  .text {{ display: flex; flex-direction: column; align-items: flex-start; gap: 22px; }}
-  .wordmark {{ width: 340px; height: auto; display: block; }}
+  /* Stacked, and no separate mark beside it.
+     The supplied wordmark already carries the mark to the left of the name, so a second copy of it
+     on this banner is the same drawing twice — which is how a logo stops reading as a logo. The
+     tagline goes underneath rather than beside, so the whole lockup is centred instead of leaning
+     into one half of a 1024x500 crop Play may cut differently on each of its surfaces. */
+  .lockup {{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 34px;
+    max-width: {int(WIDTH * 0.8)}px;
+  }}
+  .text {{ display: flex; flex-direction: column; align-items: center; gap: 22px; }}
+  .wordmark {{ width: 520px; height: auto; display: block; }}
   .tagline {{
     color: #DBDBDB;              /* the palette's silver — the metal the mark is made of */
     font-size: 40px;
@@ -80,7 +89,6 @@ def page() -> str:
 </style></head>
 <body>
   <div class="lockup">
-    <img class="mark" src="{data_uri(MARK, "image/png")}" alt="">
     <div class="text">
       <img class="wordmark" src="{data_uri(WORDMARK, "image/png")}" alt="">
       <div class="tagline">{TAGLINE}</div>

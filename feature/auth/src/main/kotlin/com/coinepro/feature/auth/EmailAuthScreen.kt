@@ -48,7 +48,7 @@ import com.coinepro.core.auth.EmailAuthUiState
 import com.coinepro.core.auth.TelegramAuthPayload
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
-import com.coinepro.core.designsystem.CoineProLockup
+import com.coinepro.core.designsystem.ProChartLockup
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -90,9 +90,8 @@ fun EmailAuthScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        CoineProLockup(
-            markSize = 88.dp,
-            wordmarkWidth = 156.dp,
+        ProChartLockup(
+            wordmarkWidth = 220.dp,
             contentDescription = stringResource(R.string.auth_wordmark_description),
         )
         Spacer(Modifier.height(CoineProSpacing.Three))

@@ -27,22 +27,22 @@
     <string name="screen_launch_readiness">Launch &amp; safety</string>
 
     <string name="safety_title">Safety and launch</string>
-    <string name="safety_subtitle">Before using anything with consequences, see how CoinePro handles signals, permissions, external providers and support.</string>
-    <string name="safety_how_title">How CoinePro works</string>
+    <string name="safety_subtitle">Before using anything with consequences, see how Pro-Chart handles signals, permissions, external providers and support.</string>
+    <string name="safety_how_title">How Pro-Chart works</string>
     <string name="safety_how_body">Signal → analysis → entry / stop / targets → execute → monitor → close or target hit → result. Execution always requires an explicit confirmation path, and the app never invents a broker or exchange outcome.</string>
     <string name="safety_permissions_title">Permissions</string>
     <string name="safety_camera_body">Camera access is requested only when you choose Camera in chart analysis. Gallery selection stays available without it.</string>
     <string name="safety_push_not_configured">Push is not configured for this build, so the app will not request notification permission.</string>
     <string name="safety_push_not_required">This Android version does not require the runtime notification permission.</string>
     <string name="safety_push_available">Notifications can alert you to the signal and activity updates the server sends. Permission is optional and is requested only after you tap the button below.</string>
-    <string name="safety_push_denied">Notification permission was denied. CoinePro still works without it, and you can change this in Android settings at any time.</string>
+    <string name="safety_push_denied">Notification permission was denied. Pro-Chart still works without it, and you can change this in Android settings at any time.</string>
     <string name="safety_push_granted">Notification permission is granted. Delivery still depends on the push service and server state.</string>
     <string name="safety_enable_notifications">Enable notifications</string>
     <string name="safety_open_settings">Open notification settings</string>
     <string name="safety_risk_title">Trading and AI risk</string>
     <string name="safety_risk_body">Trading and investment carry the risk of loss. Signals, analysis and AI output are not guaranteed outcomes. Execution depends on the external provider, account permissions, market conditions and server confirmation. Past or displayed results do not guarantee future performance. Review every order before confirming it.</string>
     <string name="safety_provider_title">Provider truth</string>
-    <string name="safety_provider_body">A connection configured on the device is not the same as a verified live one. CoinePro enables provider-dependent actions only from explicit server evidence; missing, stale or failed states stay visible.</string>
+    <string name="safety_provider_body">A connection configured on the device is not the same as a verified live one. Pro-Chart enables provider-dependent actions only from explicit server evidence; missing, stale or failed states stay visible.</string>
     <string name="safety_privacy_title">Privacy</string>
     <string name="safety_privacy_body">This app ships no analytics, advertising or tracking SDK, and reads no location, contacts or advertising id. Your sign-in token is encrypted with a key that never leaves the device and stays on it; signing out clears both the session and the refresh token. Your name and national id are sent only if you complete the identity form, and a chart image only when you send one. A random install id travels with each request so the server’s rate limiter can tell two installs behind one shared IP apart — it is not tied to your account or your device, and clearing app data replaces it.</string>
     <string name="safety_support_title">Support and feedback</string>
@@ -71,8 +71,8 @@
     <string name="profile_action_safety_note">Notifications, the crash report and the version</string>
     <string name="profile_action_delete">Delete account</string>
     <string name="auth_google_not_registered">Google sign-in did not complete. Either this build\'s signing certificate is not registered in the Google console, or there is no Google account on this phone. Sign in with e-mail instead.</string>
-    <string name="tampered_title">This is not the real CoinePro</string>
-    <string name="tampered_body">This file has been modified and re-signed with a different key. We did not build it and we do not know what was changed inside it. Please delete it now and install CoinePro only from its official channel.</string>
+    <string name="tampered_title">This is not the real Pro-Chart</string>
+    <string name="tampered_body">This file has been modified and re-signed with a different key. We did not build it and we do not know what was changed inside it. Please delete it now and install Pro-Chart only from its official channel.</string>
     <string name="tampered_fingerprint">This file\'s signing fingerprint</string>
     <string name="tampered_source">Do not sign in on this copy, and do not enter any password, code or exchange key.</string>
     <string name="safety_signature_title">This build\'s signing fingerprint</string>
@@ -140,7 +140,7 @@
     <string name="action_undo">Undo</string>
     <string name="profile_action_support">Support and feedback</string>
     <string name="profile_action_support_note">Reaches a person, not a bot.</string>
-    <string name="lock_prompt_title">CoinePro is locked</string>
+    <string name="lock_prompt_title">Pro-Chart is locked</string>
     <string name="lock_prompt_subtitle">Unlock with your fingerprint, face or phone passcode.</string>
     <string name="lock_screen_title">Locked</string>
     <string name="lock_screen_body">This phone is asking whether it is you. Your account is fine; only this window is shut.</string>
@@ -149,7 +149,7 @@
     <string name="profile_action_lock_on">On</string>
     <string name="profile_action_lock_off">Off</string>
     <string name="lock_sheet_title">App lock</string>
-    <string name="lock_sheet_subtitle">CoinePro opens with this phone\'s own fingerprint, face or passcode.</string>
+    <string name="lock_sheet_subtitle">Pro-Chart opens with this phone\'s own fingerprint, face or passcode.</string>
     <string name="lock_sheet_switch">Ask when the app opens</string>
     <string name="lock_sheet_note">No new passcode — it is the phone\'s own lock. It does not ask again for 30 seconds after you leave, so copying a code from another app is not a locked door every time.</string>
     <string name="lock_sheet_not_enrolled">No fingerprint or face is enrolled on this phone yet.</string>

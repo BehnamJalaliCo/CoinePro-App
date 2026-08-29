@@ -5,10 +5,10 @@
     <string name="notifications_subtitle">دقیقاً همان چیزهایی که می‌خواهید، و نه بیشتر</string>
 
     <string name="notifications_permission_title">اجازه‌ی اعلان داده نشده</string>
-    <string name="notifications_permission_body">اندروید هنوز اجازه‌ی نمایش اعلان به کوین‌پرو نداده است. تا وقتی این اجازه داده نشود، هیچ‌کدام از تنظیم‌های زیر کاری نمی‌کند.</string>
+    <string name="notifications_permission_body">اندروید هنوز اجازه‌ی نمایش اعلان به پرو چارت نداده است. تا وقتی این اجازه داده نشود، هیچ‌کدام از تنظیم‌های زیر کاری نمی‌کند.</string>
     <string name="notifications_permission_open">باز کردن تنظیمات اندروید</string>
 
-    <string name="notifications_master">اعلان‌های کوین‌پرو</string>
+    <string name="notifications_master">اعلان‌های پرو چارت</string>
     <string name="notifications_master_note">کلید اصلی. خاموش که باشد، فقط اعلان‌های امنیتی می‌آیند.</string>
 
     <string name="notifications_quiet">ساعات سکوت</string>

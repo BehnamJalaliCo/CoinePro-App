@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="design/readme/banner.svg" alt="CoinePro" width="100%">
+<img src="design/readme/banner.svg" alt="Pro-Chart" width="100%">
 
 <br>
 
@@ -20,7 +20,7 @@
 
 ## What this is
 
-CoinePro is a native Android client for two independent trading backends — **CoinePro-FX** (gold,
+Pro-Chart is a native Android client for two independent trading backends — **CoinePro-FX** (gold,
 silver and forex, with MT5 copy trading) and **TradeYar** (crypto, on LBank). One app, one account
 per platform, one switch at the top of the home screen.
 
@@ -232,7 +232,7 @@ advertisement, and this is the product.
 The membership card underneath states the four conditions in full and carries the **real referral
 links, from the server**. That last part is the load-bearing one: a link compiled into the app is
 wrong the day it changes, and a wrong one does not fail visibly — the exchange simply never records
-the account as CoinePro's, so the reader funds it, submits a UID, and is refused for a reason
+the account as Pro-Chart's, so the reader funds it, submits a UID, and is refused for a reason
 nothing on screen can explain.
 
 ---

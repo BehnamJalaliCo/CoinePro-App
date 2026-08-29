@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
@@ -36,6 +38,7 @@ import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProMarketRow
+import com.coinepro.core.designsystem.ProChartWordmark
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
@@ -114,6 +117,22 @@ fun GuestScreen(
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
     ) {
         item { ProfileHeader(avatar = avatar, onOpenProfile = onOpenProfile) }
+
+        // The brand, on the one screen where a person may not yet know whose app this is.
+        //
+        // `guest_wordmark_description` has existed since this screen was written and nothing drew
+        // anything for it to describe. It does now: the front door for somebody with no account is
+        // exactly where a name belongs, and the mark is small enough that the prices below it are
+        // still the first thing on screen.
+        item {
+            ProChartWordmark(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentWidth(Alignment.CenterHorizontally)
+                    .width(GUEST_WORDMARK_WIDTH),
+                contentDescription = stringResource(R.string.guest_wordmark_description),
+            )
+        }
 
         if (onOpenMarket != null || onOpenTools != null) {
             item {
@@ -447,3 +466,12 @@ private fun NewsTeaser(newest: GuestHeadline, total: Int, onOpenNews: (() -> Uni
  * screen holds the rest — denser, filtered and searchable.
  */
 private const val HOME_PRICE_ROWS = 6
+
+/**
+ * How wide the wordmark sits at the head of the guest screen.
+ *
+ * Half a phone, roughly. Wide enough that the name is legible at arm's length and narrow enough
+ * that it is a header rather than a splash: the reason somebody opens this screen is the prices
+ * under it, and a brand that fills the first fold delays them for nothing.
+ */
+private val GUEST_WORDMARK_WIDTH = 176.dp

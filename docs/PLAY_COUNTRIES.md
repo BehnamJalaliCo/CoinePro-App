@@ -48,7 +48,7 @@
 اندونزی، فیلیپین، آفریقای جنوبی، تایلند، و ۲۷ کشور اتحادیهٔ اروپا (آلمان، فرانسه، هلند، سوئد،
 اسپانیا، ایتالیا و بقیه) که مجوز **MiCA CASP** می‌خواهند.
 
-### آیا کوین‌پرو «صرافی رمزارز» است؟
+### آیا پرو چارت «صرافی رمزارز» است؟
 
 استدلالِ «نه» قوی است:
 
@@ -123,9 +123,9 @@
 * صرافی رمزارز **نه**، کیف پول **نه**، وام **نه**، پرداخت **نه**، بانک **نه**.
 * اگر جای توضیح بود:
 
-> CoinePro provides market data, charts and trading signals. It does not custody, exchange or
+> Pro-Chart provides market data, charts and trading signals. It does not custody, exchange or
 > convert any asset. Where a user connects their own exchange or broker account, orders are placed
-> on that account using credentials the user supplies, and CoinePro never holds funds or private
+> on that account using credentials the user supplies, and Pro-Chart never holds funds or private
 > keys at any point.
 
 ---

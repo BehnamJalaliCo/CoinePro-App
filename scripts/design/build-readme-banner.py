@@ -24,7 +24,7 @@ import pathlib
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
-MARK = REPO / "core" / "designsystem" / "src" / "main" / "res" / "drawable-xxxhdpi" / "coinepro_mark.png"
+MARK = REPO / "core" / "designsystem" / "src" / "main" / "res" / "drawable-xxxhdpi" / "prochart_mark.png"
 OUT = REPO / "design" / "readme" / "banner.svg"
 
 WIDTH, HEIGHT = 1200, 300

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="auth_secure_sign_in">ورود امن</string>
-    <string name="auth_wordmark_description">کوین‌پرو</string>
+    <string name="auth_wordmark_description">پرو چارت</string>
 
     <string name="auth_flow">سیگنال ← تحلیل ← ورود / حد ضرر / اهداف ← تأیید صریح اجرا ← پایش ← نتیجه</string>
     <string name="auth_risk">معامله ریسکِ زیان دارد. سیگنال و تحلیل هوش مصنوعی تضمینِ نتیجه نیستند، و آپ هرگز موفقیت اجرا را از خودش نمی‌سازد.</string>

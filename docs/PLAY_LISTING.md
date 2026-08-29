@@ -1,4 +1,4 @@
-# Google Play listing — CoinePro
+# Google Play listing — Pro-Chart
 
 Everything Play asks for, filled in where this repository knows the answer and marked
 **[OWNER]** where only the owner does. The Data safety answers in §4 are derived from the code, not
@@ -13,9 +13,9 @@ from a template — `docs/legal/PRIVACY_POLICY.md` records where each one comes 
 **App name** (30 characters max)
 
 ```
-کوین‌پرو | سیگنال و تحلیل بازار
+پرو چارت | سیگنال و تحلیل بازار
 ```
-*۳۰ کاراکتر. اگر بلند بود: «کوین‌پرو — سیگنال بازار» (۲۲).*
+*۳۰ کاراکتر. اگر بلند بود: «پرو چارت — سیگنال بازار» (۲۲).*
 
 **Short description** (80 characters max)
 
@@ -26,7 +26,7 @@ from a template — `docs/legal/PRIVACY_POLICY.md` records where each one comes 
 **Full description** (4000 characters max)
 
 ```
-کوین‌پرو دو بازار را در یک اپ می‌آورد: فارکس و فلزات از کوین‌پرو اف‌ایکس، و رمزارز از تریدیار.
+پرو چارت دو بازار را در یک اپ می‌آورد: فارکس و فلزات از کوین‌پرو اف‌ایکس، و رمزارز از تریدیار.
 
 ■ سیگنال با جزئیات کامل
 هر سیگنال با نقطهٔ ورود، حد ضرر، اهداف و نسبت ریسک به ریوارد می‌آید — و کندل‌های همان نماد پشت
@@ -62,7 +62,7 @@ from a template — `docs/legal/PRIVACY_POLICY.md` records where each one comes 
 ━━━━━━━━━━━━━━━━━━━━
 
 ⚠ هشدار ریسک
-کوین‌پرو کارگزار نیست و مشاورهٔ مالی نمی‌دهد. معامله در بازارهای مالی ریسک بالایی دارد و ممکن است به
+پرو چارت کارگزار نیست و مشاورهٔ مالی نمی‌دهد. معامله در بازارهای مالی ریسک بالایی دارد و ممکن است به
 از دست رفتن تمام سرمایهٔ شما بینجامد. عملکرد گذشته تضمین آینده نیست. تصمیم معاملاتی با خود شماست.
 
 🔒 حریم خصوصی
@@ -73,7 +73,7 @@ from a template — `docs/legal/PRIVACY_POLICY.md` records where each one comes 
 
 ## 2) Store listing (English)
 
-**App name:** `CoinePro — Market Signals`
+**App name:** `Pro-Chart — Market Signals`
 **Short description:** `Forex and crypto signals, a pro chart, AI analysis and an academy.`
 **Full description:** translate §1 rather than writing a second one, so the two listings cannot
 drift into describing different apps.
@@ -134,7 +134,7 @@ The web page requires no sign-in, which is what Play checks for.
 | Other personal info (national id, date of birth) | Yes | No | Yes — identity form only | Account management |
 | Photos | Yes | No | Yes — image analysis only | App functionality |
 | Other financial info (exchange API key) | Yes | No | Yes — only if you connect an exchange | App functionality |
-| Purchase history | No | | | CoinePro sells nothing in the app: no subscription, no in-app purchase, no activation fee. Membership is an account check, not a transaction. |
+| Purchase history | No | | | Pro-Chart sells nothing in the app: no subscription, no in-app purchase, no activation fee. Membership is an account check, not a transaction. |
 
 **Not collected**, and each is a deliberate absence rather than an oversight: location, contacts,
 calendar, messages, audio, files, health, app activity, search history, installed apps, device or
@@ -224,8 +224,8 @@ the release APK verifies as signed, and the Firebase file names a real project.
 
 | Item | State |
 | --- | --- |
-| Release signing | Configured. `app-release.apk` verifies with `CN=CoinePro, OU=Mobile, O=CoinePro, L=Tehran, C=IR`. Both the keystore and `local.properties` are gitignored and stay out of the repository. |
-| `google-services.json` | Present, project `coinepro-app`, package `com.coinepro.app`. Push notifications will work. |
+| Release signing | Configured. `app-release.apk` verifies with `CN=Pro-Chart, OU=Mobile, O=Pro-Chart, L=Tehran, C=IR`. Both the keystore and `local.properties` are gitignored and stay out of the repository. |
+| `google-services.json` | Present, project `prochart-app`, package `com.coinepro.app`. Push notifications will work. |
 
 **The release key's fingerprint** — needed for the next item:
 

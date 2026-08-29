@@ -2,7 +2,7 @@
 <resources>
     <string name="profile_guest_name">مهمان</string>
     <string name="profile_guest_tagline">بدون حساب، همه‌ی بازارها و نمودارها در دسترس شماست.</string>
-    <string name="profile_member_tagline">عضو کوین‌پرو</string>
+    <string name="profile_member_tagline">عضو پرو چارت</string>
     <string name="profile_avatar_description">تصویر نیمرخ شما</string>
     <string name="profile_edit_avatar">تغییر تصویر</string>
     <string name="profile_account_section">حساب</string>

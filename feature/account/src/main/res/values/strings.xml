@@ -16,7 +16,7 @@
     <string name="delete_account_kept_note">هر دو بی‌نام نگه داشته می‌شوند — بدون ایمیل، نام یا UID — و دیگر به شما قابل انتساب نیستند.</string>
 
     <string name="delete_account_not_removed_title">چه چیزی حذف نمی‌شود</string>
-    <string name="delete_account_not_removed_exchange">حساب شما نزد صرافی. آن حساب مال خودتان است؛ کوین‌پرو نه آن را ساخته و نه می‌تواند ببندد.</string>
+    <string name="delete_account_not_removed_exchange">حساب شما نزد صرافی. آن حساب مال خودتان است؛ پرو چارت نه آن را ساخته و نه می‌تواند ببندد.</string>
 
     <string name="delete_account_confirm_word">حذف</string>
     <string name="delete_account_type_to_confirm">برای تأیید، واژهٔ «%1$s» را تایپ کنید.</string>

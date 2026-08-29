@@ -5,10 +5,10 @@
     <string name="notifications_subtitle">Exactly what you want, and nothing else</string>
 
     <string name="notifications_permission_title">Notification permission not granted</string>
-    <string name="notifications_permission_body">Android has not yet allowed CoinePro to show notifications. Until it does, none of the settings below can do anything.</string>
+    <string name="notifications_permission_body">Android has not yet allowed Pro-Chart to show notifications. Until it does, none of the settings below can do anything.</string>
     <string name="notifications_permission_open">Open Android settings</string>
 
-    <string name="notifications_master">CoinePro notifications</string>
+    <string name="notifications_master">Pro-Chart notifications</string>
     <string name="notifications_master_note">The master switch. Off, only security notifications arrive.</string>
 
     <string name="notifications_quiet">Quiet hours</string>
