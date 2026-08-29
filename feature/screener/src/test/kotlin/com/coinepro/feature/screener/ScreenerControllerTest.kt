@@ -182,6 +182,10 @@ class ScreenerControllerTest {
             gateway = catalogueWithoutPrices,
             scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
             barSource = { symbol -> if (symbol == "BTCUSDT") rising else flat },
+            // The readings are reduced off the caller's thread in production. Pointed at the
+            // test scheduler here, so `advanceUntilIdle` actually waits for that work instead of
+            // racing a background dispatcher it knows nothing about.
+            computeDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
         controller.refresh()
         advanceUntilIdle()

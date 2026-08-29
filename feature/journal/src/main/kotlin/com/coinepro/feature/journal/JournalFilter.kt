@@ -23,6 +23,23 @@ enum class JournalOutcome {
 }
 
 /**
+ * Whether an entry has a chart attached to it.
+ *
+ * A dimension of the filter rather than a badge on the row, and that is the point of it. The
+ * screenshot slot has existed since the journal did, and until now nothing could *ask* about it:
+ * a reader who wanted «معامله‌هایی که عکسشان را دارم» had to scroll and look, and the statistics
+ * above the list could not be computed over that set at all because no filter could express it.
+ *
+ * [WITHOUT] is the more useful half in practice. It is the list of entries that are still missing
+ * the one thing that makes a note readable six weeks later, which is the chart it is about.
+ */
+enum class JournalShot {
+    ANY,
+    WITH,
+    WITHOUT,
+}
+
+/**
  * What the reader is currently looking at.
  *
  * ### Why this is not in the controller
@@ -55,10 +72,13 @@ data class JournalFilter(
     /** Free text over the symbol, the note, the lesson, the mood and the tags. */
     val query: String = "",
     val outcome: JournalOutcome = JournalOutcome.ANY,
+    /** Whether the list is narrowed to the entries that do — or do not — carry a screenshot. */
+    val shot: JournalShot = JournalShot.ANY,
 ) {
     /** True when nothing is being filtered, so the screen can say "everything" rather than "0 of 0". */
     val isEverything: Boolean
-        get() = tags.isEmpty() && query.isBlank() && outcome == JournalOutcome.ANY
+        get() = tags.isEmpty() && query.isBlank() &&
+            outcome == JournalOutcome.ANY && shot == JournalShot.ANY
 
     /** Tapping a chip that is already on turns it off. There is no other way back to everything. */
     fun toggling(tag: String): JournalFilter =
@@ -69,12 +89,24 @@ data class JournalFilter(
      *
      * Order is preserved — the DAO already hands them over newest first, and re-sorting a filtered
      * journal would move rows the reader was looking at.
+     *
+     * @param withShot the ids of the entries that have a screenshot attached. It is a parameter
+     *   rather than something read off the entry because the picture is *not* stored on the row —
+     *   [JournalScreenshots] explains why at length — and it is required rather than defaulted
+     *   because a default of "nobody has one" is a wrong answer that looks like a working filter:
+     *   «فقط با تصویر» would come back empty and nothing would say why.
      */
-    fun apply(entries: List<JournalEntryEntity>): List<JournalEntryEntity> {
+    fun apply(
+        entries: List<JournalEntryEntity>,
+        withShot: Set<Long>,
+    ): List<JournalEntryEntity> {
         if (isEverything) return entries
         val needle = normalise(query)
         return entries.filter { entry ->
-            matchesOutcome(entry) && tags.all { it in tagsOf(entry) } && matchesQuery(entry, needle)
+            matchesOutcome(entry) &&
+                matchesShot(entry, withShot) &&
+                tags.all { it in tagsOf(entry) } &&
+                matchesQuery(entry, needle)
         }
     }
 
@@ -84,8 +116,21 @@ data class JournalFilter(
      * Delegated to `Journal.stats` rather than reimplemented, so the filtered figures and the
      * journal-wide ones are the same arithmetic — including its rule that an entry with no recorded
      * P&L counts towards nothing rather than being averaged in as a zero.
+     *
+     * It takes the same [withShot] set as [apply] for one reason, and it is the reason this class
+     * exists: the figures and the list have to be computed from the same call, over the same
+     * arguments. A `statsOf` that could be called with a different screenshot set from the one the
+     * list was built with is a win rate over a set the reader is not looking at.
      */
-    fun statsOf(entries: List<JournalEntryEntity>): JournalStats = Journal.stats(apply(entries))
+    fun statsOf(entries: List<JournalEntryEntity>, withShot: Set<Long>): JournalStats =
+        Journal.stats(apply(entries, withShot))
+
+    private fun matchesShot(entry: JournalEntryEntity, withShot: Set<Long>): Boolean =
+        when (shot) {
+            JournalShot.ANY -> true
+            JournalShot.WITH -> entry.id in withShot
+            JournalShot.WITHOUT -> entry.id !in withShot
+        }
 
     private fun matchesOutcome(entry: JournalEntryEntity): Boolean {
         val pnl = entry.pnl?.takeIf { it.isFinite() }

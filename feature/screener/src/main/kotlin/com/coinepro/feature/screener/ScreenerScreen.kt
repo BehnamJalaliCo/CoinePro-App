@@ -61,6 +61,7 @@ import com.coinepro.core.symbols.SymbolCategory
 import com.coinepro.feature.screener.model.ScreenerField
 import com.coinepro.feature.screener.model.ScreenerFilter
 import com.coinepro.feature.screener.model.ScreenerRow
+import com.coinepro.feature.screener.model.ScreenerSort
 import com.coinepro.feature.screener.model.ScreenerUnit
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -125,10 +126,11 @@ fun ScreenerScreen(
         ResultCount(state)
         ColumnHeadings(
             columns = state.columns,
-            sortField = state.sort.field,
-            descending = state.sort.descending,
+            indicatorColumns = state.indicatorColumns,
+            sort = state.sort,
             scroll = valuesScroll,
             onSort = controller::toggleSort,
+            onSortIndicator = controller::toggleIndicatorSort,
         )
 
         when {
@@ -171,6 +173,7 @@ fun ScreenerScreen(
                     ScreenerTableRow(
                         row = row,
                         columns = state.columns,
+                        indicatorColumns = state.indicatorColumns,
                         scroll = valuesScroll,
                         onClick = { onOpenSymbol(row.symbol) },
                     )
@@ -303,10 +306,11 @@ private fun ResultCount(state: ScreenerState) {
 @Composable
 private fun ColumnHeadings(
     columns: List<ScreenerField>,
-    sortField: ScreenerField,
-    descending: Boolean,
+    indicatorColumns: List<ScreenerIndicatorColumn>,
+    sort: ScreenerSort,
     scroll: ScrollState,
     onSort: (ScreenerField) -> Unit,
+    onSortIndicator: (String) -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -325,36 +329,63 @@ private fun ColumnHeadings(
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         ) {
             columns.forEach { column ->
-                val sorted = column == sortField
-                Row(
-                    modifier = Modifier
-                        .width(FIGURE_COLUMN)
-                        .clip(CoineProShapes.extraSmall)
-                        .clickable { onSort(column) }
-                        .padding(vertical = CoineProSpacing.Half),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (sorted) {
-                        Icon(
-                            painter = painterResource(
-                                if (descending) CoineProIcons.TrendDown else CoineProIcons.TrendUp,
-                            ),
-                            contentDescription = null,
-                            tint = CoineProColors.Accent,
-                            modifier = Modifier.size(11.dp).padding(end = 2.dp),
-                        )
-                    }
-                    Text(
-                        text = column.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (sorted) CoineProColors.Accent else CoineProColors.TextDisabled,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                Heading(
+                    label = column.label,
+                    // An indicator sort parks itself on a field it is not using, so a field
+                    // heading is only the sorted one when no indicator key is set. Without that
+                    // check two headings would carry the arrow at once.
+                    sorted = sort.indicatorKey == null && column == sort.field,
+                    descending = sort.descending,
+                    onClick = { onSort(column) },
+                )
+            }
+            indicatorColumns.forEach { column ->
+                Heading(
+                    label = column.label,
+                    sorted = sort.indicatorKey == column.key,
+                    descending = sort.descending,
+                    onClick = { onSortIndicator(column.key) },
+                )
             }
         }
+    }
+}
+
+/**
+ * One column heading: a tap target, marked with an arrow when the table is ordered by it.
+ *
+ * Shared by the chosen columns and by the indicator columns a condition adds, because they are the
+ * same control to a reader and two copies of it would eventually differ in a detail — the arrow's
+ * size, the accent, the tap area — that makes one of them look disabled.
+ */
+@Composable
+private fun Heading(label: String, sorted: Boolean, descending: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .width(FIGURE_COLUMN)
+            .clip(CoineProShapes.extraSmall)
+            .clickable(onClick = onClick)
+            .padding(vertical = CoineProSpacing.Half),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (sorted) {
+            Icon(
+                painter = painterResource(
+                    if (descending) CoineProIcons.TrendDown else CoineProIcons.TrendUp,
+                ),
+                contentDescription = null,
+                tint = CoineProColors.Accent,
+                modifier = Modifier.size(11.dp).padding(end = 2.dp),
+            )
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (sorted) CoineProColors.Accent else CoineProColors.TextDisabled,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -369,6 +400,7 @@ private fun ColumnHeadings(
 private fun ScreenerTableRow(
     row: ScreenerRow,
     columns: List<ScreenerField>,
+    indicatorColumns: List<ScreenerIndicatorColumn>,
     scroll: ScrollState,
     onClick: () -> Unit,
 ) {
@@ -410,26 +442,49 @@ private fun ScreenerTableRow(
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         ) {
             columns.forEach { column ->
-                val ink = when {
-                    column.unit != ScreenerUnit.PERCENT -> CoineProColors.TextPrimary
-                    (row.valueOf(column) ?: 0.0) > 0.0 -> CoineProColors.Buy
-                    (row.valueOf(column) ?: 0.0) < 0.0 -> CoineProColors.Sell
-                    else -> CoineProColors.TextMuted
-                }
-                Text(
+                Figure(
                     text = row.textOf(column) ?: ScreenerFormat.cell(row.valueOf(column), column.unit),
-                    style = MaterialTheme.typography.labelMedium.copy(textDirection = TextDirection.Ltr),
-                    color = ink,
-                    modifier = Modifier.width(FIGURE_COLUMN),
-                    // Right, not End. End would mirror with the layout direction and put the
-                    // decimal points of a Persian screen on the wrong side of the column, which is
-                    // the one thing a table of figures cannot survive.
-                    textAlign = TextAlign.Right,
-                    maxLines = 1,
+                    unit = column.unit,
+                    value = row.valueOf(column),
+                )
+            }
+            indicatorColumns.forEach { column ->
+                val value = column.valueOf(row)
+                Figure(
+                    text = ScreenerFormat.cell(value, column.unit),
+                    unit = column.unit,
+                    value = value,
                 )
             }
         }
     }
+}
+
+/**
+ * One figure in the value strip.
+ *
+ * A percentage is tinted by its sign and nothing else is, which is the rule the markets list
+ * follows: colour on a price column would say something about a number that has no direction.
+ */
+@Composable
+private fun Figure(text: String, unit: ScreenerUnit, value: Double?) {
+    val ink = when {
+        unit != ScreenerUnit.PERCENT -> CoineProColors.TextPrimary
+        (value ?: 0.0) > 0.0 -> CoineProColors.Buy
+        (value ?: 0.0) < 0.0 -> CoineProColors.Sell
+        else -> CoineProColors.TextMuted
+    }
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium.copy(textDirection = TextDirection.Ltr),
+        color = ink,
+        modifier = Modifier.width(FIGURE_COLUMN),
+        // Right, not End. End would mirror with the layout direction and put the decimal points of
+        // a Persian screen on the wrong side of the column, which is the one thing a table of
+        // figures cannot survive.
+        textAlign = TextAlign.Right,
+        maxLines = 1,
+    )
 }
 
 @Composable

@@ -166,42 +166,40 @@ private fun CurveCard(metrics: TradeMetrics, zone: ZoneId) {
         EquityReportCurve(
             points = metrics.equity,
             drawdown = metrics.drawdown,
+            runUp = metrics.runUp,
             isBalance = metrics.equityIsBalance,
         )
+        val climb = metrics.runUp
+        if (climb != null) {
+            Spacer(Modifier.height(CoineProSpacing.One))
+            // Above the fall, because it happens first in the reading: how far the account got,
+            // and then how much of it was given back. The two lines share a shape on purpose.
+            SpanLegend(
+                swatch = CoineProColors.Buy,
+                title = stringResource(R.string.portfolio_report_runup_span),
+                span = stringResource(
+                    R.string.portfolio_report_drawdown_between,
+                    jalaliShort(climb.troughAt, zone),
+                    jalaliShort(climb.peakAt, zone),
+                ),
+                figure = runUpFigure(climb),
+                tint = CoineProColors.Buy,
+            )
+        }
         val fall = metrics.drawdown
         if (fall != null) {
             Spacer(Modifier.height(CoineProSpacing.One))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .background(CoineProColors.Sell.copy(alpha = 0.5f), CoineProShapes.extraSmall),
-                )
-                Spacer(Modifier.width(CoineProSpacing.One))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.portfolio_report_drawdown_span),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = CoineProColors.TextSecondary,
-                    )
-                    Text(
-                        text = stringResource(
-                            R.string.portfolio_report_drawdown_between,
-                            jalaliShort(fall.peakAt, zone),
-                            jalaliShort(fall.troughAt, zone),
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = CoineProColors.TextMuted,
-                        fontWeight = FontWeight.Normal,
-                    )
-                }
-                Text(
-                    text = drawdownFigure(fall),
-                    style = CoineProTextStyles.RowFigure,
-                    color = CoineProColors.Sell,
-                    textAlign = TextAlign.Right,
-                )
-            }
+            SpanLegend(
+                swatch = CoineProColors.Sell,
+                title = stringResource(R.string.portfolio_report_drawdown_span),
+                span = stringResource(
+                    R.string.portfolio_report_drawdown_between,
+                    jalaliShort(fall.peakAt, zone),
+                    jalaliShort(fall.troughAt, zone),
+                ),
+                figure = drawdownFigure(fall),
+                tint = CoineProColors.Sell,
+            )
         }
         Spacer(Modifier.height(CoineProSpacing.One))
         Text(
@@ -248,6 +246,15 @@ private fun MetricsCard(metrics: TradeMetrics) {
         }, tint = -1.0)
 
         Divider()
+        MetricRow(
+            label = stringResource(R.string.portfolio_report_runup_span),
+            value = metrics.runUp?.let { runUpFigure(it) },
+            tint = 1.0,
+        )
+        // Beside the fall and before it, because a report that prints only the fall makes a
+        // steady account and a wild one look identical. `core/chart`'s backtest engine has walked
+        // both in one pass since it was written; this is the same pair over a real history.
+        MetricNote(stringResource(R.string.portfolio_report_runup_note))
         MetricRow(
             label = stringResource(R.string.portfolio_max_drawdown),
             value = metrics.drawdown?.let { drawdownFigure(it) },
@@ -622,6 +629,64 @@ private fun Centre(content: @Composable ColumnScope.() -> Unit) {
         verticalArrangement = Arrangement.Center,
         content = content,
     )
+}
+
+/**
+ * The run-up as one isolated run — the amount, and the percentage where there is one.
+ *
+ * The same shape as [drawdownFigure], down to the separator, because the two sit one above the
+ * other and a difference in punctuation between them would read as a difference in kind.
+ */
+private fun runUpFigure(span: RunUpSpan): String {
+    val amount = compactMoney(span.height)
+    val percent = span.heightPercent ?: return amount
+    return BidiText.isolateLtr(
+        BidiText.strip(amount) + " · " + BidiText.strip(MarketNumberFormatter.price(percent, 1)) + "%",
+    )
+}
+
+/**
+ * One marked stretch of the curve, written out under it: a swatch, what it is, when, and how much.
+ *
+ * Shared by the rise and the fall so the two read as one grammar. Two copies would drift — a
+ * different weight on the date line, a different alignment on the figure — and the pair would stop
+ * looking like two answers to the same question.
+ */
+@Composable
+private fun SpanLegend(
+    swatch: Color,
+    title: String,
+    span: String,
+    figure: String,
+    tint: Color,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .background(swatch.copy(alpha = 0.5f), CoineProShapes.extraSmall),
+        )
+        Spacer(Modifier.width(CoineProSpacing.One))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodySmall,
+                color = CoineProColors.TextSecondary,
+            )
+            Text(
+                text = span,
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+                fontWeight = FontWeight.Normal,
+            )
+        }
+        Text(
+            text = figure,
+            style = CoineProTextStyles.RowFigure,
+            color = tint,
+            textAlign = TextAlign.Right,
+        )
+    }
 }
 
 /**

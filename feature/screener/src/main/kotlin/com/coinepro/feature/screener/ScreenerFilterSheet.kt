@@ -43,6 +43,7 @@ import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.feature.screener.model.NumericOp
 import com.coinepro.feature.screener.model.ScreenerField
 import com.coinepro.feature.screener.model.ScreenerFilter
+import com.coinepro.feature.screener.model.ScreenerIndicatorId
 import com.coinepro.feature.screener.model.ScreenerPresets
 import com.coinepro.feature.screener.model.ScreenerScreen as SavedScreen
 
@@ -102,6 +103,11 @@ internal fun ScreenerFilterSheet(
             )
 
             ConditionBuilder(onAdd = { filter -> onSetFilters(state.filters + filter) })
+
+            IndicatorBuilder(
+                hasVolume = state.feedHasVolume,
+                onAdd = { filter -> onSetFilters(state.filters + filter) },
+            )
 
             SectionLabel(stringResource(R.string.screener_presets))
             CoineProChipRow(
@@ -207,7 +213,12 @@ private fun ConditionBuilder(onAdd: (ScreenerFilter) -> Unit) {
 
     SectionLabel(stringResource(R.string.screener_field))
     CoineProChipRow(
-        options = ScreenerField.NUMERIC.map { CoineProChip(it.name, it.label) },
+        // The day's own figures only. The indicator-derived fields moved to [IndicatorBuilder],
+        // which offers all eighty-three rather than the eight that happen to have a column —
+        // see [115]. They are still columns, still sortable and still saved; they are simply no
+        // longer two routes to writing the same condition.
+        options = ScreenerField.NUMERIC.filterNot(ScreenerField::isDerived)
+            .map { CoineProChip(it.name, it.label) },
         selectedId = field.name,
         onSelect = { id -> ScreenerField.entries.firstOrNull { it.name == id }?.let { field = it } },
         compact = true,
@@ -269,6 +280,155 @@ private fun ConditionBuilder(onAdd: (ScreenerFilter) -> Unit) {
         icon = CoineProIcons.Add,
         modifier = Modifier.fillMaxWidth(),
     )
+}
+
+/**
+ * The indicator condition builder — [115], and the whole of what the competition sells.
+ *
+ * ### Why this is a search box and not another chip row
+ *
+ * Because there are eighty-three of them. A chip row is the right control for six asset classes and
+ * the wrong one for a catalogue: the reader who wants «استوکاستیک RSI» would have to scroll a strip
+ * past sixty chips they do not want, twice, once to find it and once to check they had not passed
+ * it. The chart's own indicator picker grew a search field for the same reason and at the same
+ * size, and the two now behave the same way — a plain substring over the Persian name and the Latin
+ * id, so «rsi» and «قدرت» find the same row.
+ *
+ * ### What is not offered says why
+ *
+ * Under the picker is the list of indicators this screener will not filter on, grouped by reason —
+ * structure studies that draw levels rather than a value, the correlation coefficient that needs a
+ * second symbol, and on a feed with no volume column, the volume studies. Printing them is the
+ * point: a reader who looks for «پیووت» and does not find it should learn that it has no single
+ * number per market, not conclude that the app forgot it. And an indicator that *is* listed always
+ * produces a real reading — nothing here is offered that would silently score every market as zero,
+ * which is the failure `ChartCatalog.VOLUME_ONLY_INDICATORS` exists to prevent.
+ *
+ * ### The period is the indicator's own
+ *
+ * Each indicator carries its own default and its own bounds, so the box under «EMA» suggests 20 and
+ * the one under «همبستگی» would start at 5. An indicator whose shape is a fixed set of periods —
+ * MACD's 12/26/9, the Awesome Oscillator's 5/34 — is shown no period box at all rather than one
+ * that changes nothing, which is the rule `ChartCatalog.PERIODS` states for the chart.
+ */
+@Composable
+private fun IndicatorBuilder(hasVolume: Boolean, onAdd: (ScreenerFilter) -> Unit) {
+    var query by remember { mutableStateOf("") }
+    var indicatorId by remember { mutableStateOf(ScreenerIndicatorId.RSI) }
+    var op by remember { mutableStateOf(NumericOp.LT) }
+    var value by remember { mutableStateOf("") }
+    var bound by remember { mutableStateOf("") }
+    var period by remember { mutableStateOf("") }
+
+    val offered = ScreenerIndicatorCatalog.matching(query, hasVolume)
+    val selected = offered.firstOrNull { it.id == indicatorId }
+        ?: ScreenerIndicatorCatalog.optionOf(indicatorId)
+
+    SectionLabel(stringResource(R.string.screener_indicator))
+    CoineProSheetSearch(
+        value = query,
+        onValueChange = { query = it },
+        placeholder = stringResource(R.string.screener_indicator_search),
+    )
+    if (offered.isEmpty()) {
+        Text(
+            text = stringResource(R.string.screener_indicator_none),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+        )
+    } else {
+        CoineProChipRow(
+            options = offered.map { CoineProChip(it.id, it.label) },
+            selectedId = selected?.id,
+            onSelect = { id -> id?.let { indicatorId = it } },
+            compact = true,
+        )
+    }
+
+    SectionLabel(stringResource(R.string.screener_operator))
+    CoineProChipRow(
+        options = NumericOp.entries.map { CoineProChip(it.name, it.label) },
+        selectedId = op.name,
+        onSelect = { id -> NumericOp.entries.firstOrNull { it.name == id }?.let { op = it } },
+        compact = true,
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+    ) {
+        CoineProTextField(
+            value = value,
+            // Folded on the way in, as everywhere else on this sheet: a Persian keyboard produces
+            // ۰-۹ and `toDoubleOrNull` refuses them, so the box would look filled and the condition
+            // would never be added.
+            onValueChange = { value = it.foldDigitsToLatin() },
+            label = stringResource(R.string.screener_value),
+            modifier = Modifier.weight(1f),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        )
+        if (op.takesSecondValue) {
+            CoineProTextField(
+                value = bound,
+                onValueChange = { bound = it.foldDigitsToLatin() },
+                label = stringResource(R.string.screener_second_value),
+                modifier = Modifier.weight(1f),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            )
+        }
+        if (selected?.takesPeriod == true) {
+            CoineProTextField(
+                value = period,
+                onValueChange = { period = it.foldDigitsToLatin() },
+                label = stringResource(R.string.screener_period),
+                modifier = Modifier.weight(1f),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                supporting = selected.defaultPeriod?.toString(),
+            )
+        }
+    }
+
+    CoineProSecondaryButton(
+        text = stringResource(R.string.screener_add_indicator),
+        onClick = {
+            val option = selected ?: return@CoineProSecondaryButton
+            buildIndicatorFilter(option, op, value, bound, period)?.let { filter ->
+                onAdd(filter)
+                value = ""
+                bound = ""
+                period = ""
+            }
+        },
+        icon = CoineProIcons.Add,
+        modifier = Modifier.fillMaxWidth(),
+    )
+
+    WithheldIndicators(hasVolume)
+}
+
+/**
+ * The indicators the screener does not offer, each under the reason it does not.
+ *
+ * Grouped by reason rather than listed flat, so the three sentences are said once each instead of
+ * twenty-three times. Prose, so no digits appear in it at all — the names are the content and a
+ * count would only invite the reader to check it.
+ */
+@Composable
+private fun WithheldIndicators(hasVolume: Boolean) {
+    val withheld = ScreenerIndicatorCatalog.withheld(hasVolume)
+    if (withheld.isEmpty()) return
+    SectionLabel(stringResource(R.string.screener_indicator_absent))
+    withheld.groupBy { it.why }.forEach { (why, rows) ->
+        Text(
+            text = stringResource(
+                R.string.screener_indicator_absent_line,
+                why.reason,
+                rows.joinToString("، ") { it.label },
+            ),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+        )
+    }
 }
 
 /** The reader's own screens, with the row that saves the current one beside them. */
@@ -378,6 +538,36 @@ internal fun buildFilter(
     }
 }
 
+/**
+ * One indicator condition, or null when the sheet is not holding one yet.
+ *
+ * Pure and internal for the same reason [buildFilter] is: the judgement in it — that a blank period
+ * box means the indicator's own default rather than no lookback at all — is a unit test rather than
+ * something only a person tapping the screen can check. The period is clamped into the indicator's
+ * own bounds, which are not the same for every one of them, so a reader who types 1 into an EMA
+ * gets the two-bar minimum the engine will actually compute rather than a condition that answers
+ * null for every market.
+ */
+internal fun buildIndicatorFilter(
+    option: ScreenerIndicatorCatalog.Option,
+    op: NumericOp,
+    value: String,
+    bound: String,
+    period: String,
+): ScreenerFilter? {
+    val number = value.trim().toDoubleOrNull() ?: return null
+    val second = bound.trim().toDoubleOrNull()
+    if (op.takesSecondValue && second == null) return null
+    val chosen = period.trim().toIntOrNull()?.coerceIn(option.minPeriod, option.maxPeriod)
+    return ScreenerFilter.IndicatorFilter(
+        indicatorId = option.id,
+        period = if (option.takesPeriod) chosen ?: option.defaultPeriod else null,
+        op = op,
+        value = number,
+        bound = second,
+    )
+}
+
 /** The text condition currently in [filters], or an empty string when there is none. */
 internal fun textQuery(filters: List<ScreenerFilter>): String =
     filters.filterIsInstance<ScreenerFilter.TextMatch>().firstOrNull()?.query.orEmpty()
@@ -435,6 +625,11 @@ internal fun describe(filter: ScreenerFilter): String = when (filter) {
     is ScreenerFilter.TextMatch -> filter.query
 }
 
-/** The Persian name of an indicator, or its id where a later build wrote one this one lacks. */
-private fun labelOf(indicatorId: String): String =
-    ScreenerField.entries.firstOrNull { it.indicatorId == indicatorId }?.label ?: indicatorId
+/**
+ * The Persian name of an indicator, wherever it comes from.
+ *
+ * The chart's catalogue first, the eight legacy fields second, the raw id last. Before [115] this
+ * knew only the eight, so a condition on any of the other seventy-five would have printed a bare
+ * id in the middle of a Persian sentence.
+ */
+private fun labelOf(indicatorId: String): String = ScreenerIndicatorCatalog.labelOf(indicatorId)

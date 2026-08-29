@@ -35,4 +35,9 @@
     <string name="screener_failed">The market list is unavailable.</string>
     <string name="screener_retry">Try again</string>
     <string name="screener_free_note">Every condition and every indicator is free, and saved screens are unlimited.</string>
+    <string name="screener_indicator_search">Search indicators</string>
+    <string name="screener_indicator_none">No indicator by that name.</string>
+    <string name="screener_indicator_absent">Indicators this screener cannot filter on</string>
+    <string name="screener_indicator_absent_line">%1$s: %2$s</string>
+    <string name="screener_add_indicator">Add indicator condition</string>
 </resources>

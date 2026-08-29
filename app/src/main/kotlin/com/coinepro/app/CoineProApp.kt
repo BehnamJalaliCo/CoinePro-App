@@ -13,6 +13,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -144,6 +145,8 @@ import com.coinepro.core.notifications.LocalPriceAlert
 import com.coinepro.core.notifications.NotificationCategory
 import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.notifications.NotificationSettings
+import com.coinepro.core.orderbook.OrderBookController
+import com.coinepro.core.orderbook.OrderBookGateway
 import com.coinepro.core.papertrade.PaperTradeController
 import com.coinepro.core.portfolio.PortfolioController
 import com.coinepro.core.script.ScriptController
@@ -169,6 +172,8 @@ import com.coinepro.feature.chart.ChartWorkspaceStore
 import com.coinepro.feature.chart.WatchlistQuote
 import com.coinepro.feature.connections.ConnectionsScreen
 import com.coinepro.feature.copytrade.CopyTradeScreen
+import com.coinepro.feature.dom.DepthOfMarketScreen
+import com.coinepro.feature.dom.R as DomR
 import com.coinepro.feature.execution.ExecutionScreen
 import com.coinepro.feature.guest.GuestGate
 import com.coinepro.feature.guest.GuestGateScreen
@@ -274,6 +279,21 @@ private const val STUDIO_PATTERN = "chart/{symbol}/studio"
  * "close the app" for anyone who arrived here first.
  */
 private const val PANES_PATTERN = "chart/{symbol}/panes"
+
+/**
+ * The order-book ladder for the symbol the reader is charting.
+ *
+ * A sibling of the studio's and the two-pane screen's routes rather than a sheet over the chart,
+ * and for the reason those two are routes: leaving it must put the reader back on the bars they
+ * came from, and the ladder polls a venue — a destination stops when it leaves the back stack,
+ * where a sheet dismissed behind a recomposition can keep asking.
+ *
+ * The symbol is in the path even though neither backend serves depth today, because the route is
+ * what makes the screen answerable at all: `docs/SERVER_ASKS_DOM.md` is the ask, and the honest
+ * state on crypto until it lands is «هنوز سرو نمی‌شود», which is a thing this screen says about a
+ * named market rather than a spinner about nothing.
+ */
+private const val DOM_PATTERN = "chart/{symbol}/dom"
 private fun signalDetailRoute(signalId: Long) = "signal/$signalId"
 private fun executionRoute(signalId: Long) = "execution/$signalId"
 
@@ -297,6 +317,9 @@ private fun studioRoute(symbol: String) = "chart/" + Uri.encode(symbol) + "/stud
 
 /** The two-chart screen, on the symbol its upper pane opens with. */
 private fun panesRoute(symbol: String) = "chart/" + Uri.encode(symbol) + "/panes"
+
+/** The depth ladder, on the symbol the chart had in front of the reader when they pressed it. */
+private fun domRoute(symbol: String) = "chart/" + Uri.encode(symbol) + "/dom"
 
 /**
  * Which symbol the studio opens on when it was not reached from a chart.
@@ -332,6 +355,7 @@ private val SELF_TITLED: Set<String> = setOf(
     CHART_PATTERN,
     STUDIO_PATTERN,
     PANES_PATTERN,
+    DOM_PATTERN,
     SCRIPT_PATTERN,
     SIGNAL_DETAIL_PATTERN,
     PORTFOLIO_ROUTE,
@@ -356,6 +380,7 @@ private fun accentFor(route: String?): PageAccent = when (route) {
     SCRIPT_PATTERN,
     STUDIO_PATTERN,
     PANES_PATTERN,
+    DOM_PATTERN,
     HEATMAP_ROUTE,
     SCREENER_ROUTE,
     AppDestination.MARKETS.route,
@@ -415,6 +440,14 @@ fun CoineProApp(
     marketSearchControllers: Map<MarketPlatform, MarketSearchController>,
     screenerControllers: Map<MarketPlatform, ScreenerController>,
     candleGateways: Map<MarketPlatform, CandleGateway>,
+    /**
+     * Depth, per platform, and the two entries are not the same kind of thing.
+     *
+     * Crypto is a real relay of LBank's book; forex is a documented refusal, because MetaTrader 5
+     * publishes Level II only where the broker has switched it on and most have not. Threaded as a
+     * map for the same reason the candles are: the ladder has to follow the platform on screen.
+     */
+    orderBookGateways: Map<MarketPlatform, OrderBookGateway>,
     portfolioControllers: Map<MarketPlatform, PortfolioController>,
     academyController: AcademyController,
     terminalController: TerminalController,
@@ -779,6 +812,7 @@ fun CoineProApp(
                 marketSearchController = marketSearchController,
                 screenerController = screenerController,
                 candleGateway = candleGateways.getValue(activePlatform),
+                orderBookGateway = orderBookGateways.getValue(activePlatform),
                 candleCache = candleCache,
                 chartDrawingStore = chartDrawingStore,
                 chartLayoutStore = chartLayoutStore,
@@ -950,6 +984,11 @@ fun CoineProApp(
                         marketSearchController = guestSearch,
                         screenerController = guestScreener,
                         candleGateway = guestCandles,
+                        // The signed-in gateway, not a guest one, because there is no guest depth
+                        // route to build one against. On crypto it answers 404 today and the
+                        // ladder says «هنوز سرو نمی‌شود» — the same sentence a member gets, which
+                        // is the truth for both of them.
+                        orderBookGateway = orderBookGateways.getValue(activePlatform),
                         candleCache = candleCache,
                         chartDrawingStore = chartDrawingStore,
                         chartLayoutStore = chartLayoutStore,
@@ -1113,6 +1152,8 @@ private fun MainShell(
     screenerController: ScreenerController,
     /** The candle source for the platform on screen. See the chart route below. */
     candleGateway: CandleGateway,
+    /** The order book for the platform on screen. See [DOM_PATTERN]. */
+    orderBookGateway: OrderBookGateway,
     /** The bars already held, so a chart draws before it fetches. */
     candleCache: CandleCache,
     chartDrawingStore: ChartDrawingStore,
@@ -1227,6 +1268,19 @@ private fun MainShell(
     var appLockOpen by rememberSaveable { mutableStateOf(false) }
     /** The symbol and price a reader asked to be alerted about, from the chart. */
     var alertFromChart by remember { mutableStateOf<Pair<String, Double>?>(null) }
+
+    /**
+     * The instrument the chart destination currently has in front of the reader, hoisted here.
+     *
+     * The bar needs it and the bar is outside the destination. It cannot be taken from the route
+     * argument: the watchlist strip under the chart swaps the symbol *in place* without
+     * navigating, so `chart/{symbol}` keeps naming the market the reader started from. The chart
+     * route below reports its live symbol into this, which is what lets the depth entry open the
+     * ladder on the market actually on screen rather than on one several taps ago.
+     *
+     * Saveable, so a rotation on the chart does not empty the bar.
+     */
+    var chartSymbolOnScreen by rememberSaveable { mutableStateOf("") }
     val shellScope = rememberCoroutineScope()
     // What this phone can do about proving who is holding it. Read once — it changes only when
     // somebody enrols a fingerprint, which happens outside this app.
@@ -1331,6 +1385,7 @@ private fun MainShell(
         SCRIPT_PATTERN,
         STUDIO_PATTERN,
         PANES_PATTERN,
+        DOM_PATTERN,
         // Tools, Activity, News and the calendar are **not** sub-screens and used to be listed
         // here. A sub-screen loses the bottom bar, which is right for a chart or a lesson — a
         // place you are inside and leave by going back. These four are places a reader *goes*,
@@ -1457,6 +1512,34 @@ private fun MainShell(
                         }
                     },
                     actions = {
+                        // The way into the depth ladder, and today the only one.
+                        //
+                        // It belongs on the chart's own surface, beside the studio and the panes
+                        // entries — but those live inside `feature:chart`, which this file does
+                        // not own, and a route nothing opens is a screen nobody reaches. So it
+                        // sits in the corner of the chart's bar, which is otherwise empty: the
+                        // chart is self-titled, so there is no heading here to crowd, and the
+                        // control appears on that one route and nowhere else.
+                        //
+                        // Worded rather than drawn, because the icon set has no ladder in it and
+                        // the nearest shape — the table glyph — is already the chart's own «جدول»
+                        // drawing tool two taps away on the same screen.
+                        //
+                        // The route argument is the fallback rather than the answer: it is right
+                        // until the watchlist strip swaps the symbol in place, and it is what the
+                        // bar has on the first frame of a chart, before that destination has
+                        // reported its live symbol up.
+                        val depthSymbol = chartSymbolOnScreen.ifBlank {
+                            backStackEntry?.arguments?.getString("symbol").orEmpty()
+                        }
+                        if (currentRoute == CHART_PATTERN && depthSymbol.isNotBlank()) {
+                            TextButton(onClick = { navController.navigate(domRoute(depthSymbol)) }) {
+                                Text(
+                                    text = stringResource(DomR.string.dom_title),
+                                    color = CoineProColors.TextPrimary,
+                                )
+                            }
+                        }
                         // One control where there were two text buttons.
                         //
                         // «ایمنی» and «خروج» were a pair of words in the corner of every screen,
@@ -2075,6 +2158,10 @@ private fun MainShell(
                  * Saved rather than remembered, so a rotation does not undo the switch.
                  */
                 var activeChartSymbol by rememberSaveable { mutableStateOf(routeSymbol) }
+                // What the bar's depth entry opens on. Keyed on the symbol rather than set inside
+                // `onSymbolChanged`, because that callback only fires on a *change* — a reader who
+                // opens a chart and presses depth straight away has never changed anything.
+                LaunchedEffect(activeChartSymbol) { chartSymbolOnScreen = activeChartSymbol }
                 val chartController = chartControllers.controllerFor(routeSymbol)
                 ChartScreen(
                     layouts = chartLayouts,
@@ -2107,6 +2194,8 @@ private fun MainShell(
                     drawingTemplates = drawingTemplateStore,
                     symbolChartStates = symbolChartStateStore,
                     chartLayoutStore = chartLayoutStore,
+                    intervalFavourites = intervalFavouritesStore,
+                    drawingSync = drawingSyncStore,
                     onOpenStudio = { navController.navigate(studioRoute(activeChartSymbol)) },
                     onOpenTerminal = if (terminalController.isConfigured) {
                         { navController.navigate(TERMINAL_ROUTE) }
@@ -2154,6 +2243,8 @@ private fun MainShell(
                     // settings before the first fetch rather than after it.
                     symbolChartStates = symbolChartStateStore,
                     chartLayoutStore = chartLayoutStore,
+                    indicatorTemplates = indicatorTemplateStore,
+                    drawingSync = drawingSyncStore,
                     layouts = chartLayouts,
                     onSaveLayout = onSaveLayoutAnnounced,
                     onDeleteLayout = onDeleteLayoutAnnounced,
@@ -2185,6 +2276,36 @@ private fun MainShell(
                     symbolChartStates = symbolChartStateStore,
                     chartLayoutStore = chartLayoutStore,
                     onBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = DOM_PATTERN,
+                arguments = listOf(navArgument("symbol") { type = NavType.StringType }),
+            ) { entry ->
+                // The market this ladder belongs to. The entry that reaches here is built from the
+                // chart's *live* symbol rather than its route argument — see `chartSymbolOnScreen`
+                // — so this is the instrument that was in front of the reader when they pressed it.
+                val activeChartSymbol = entry.arguments?.getString("symbol").orEmpty()
+                val depthScope = rememberCoroutineScope()
+                // One controller per visit, on the gateway of the platform on screen. Not held for
+                // the shell's life like the chart controllers are: those exist to keep a symbol's
+                // drawings and timeframe across navigations, and a book has nothing worth keeping
+                // — a snapshot from the last time this screen was open is a stale ladder, which is
+                // the one thing a depth reader must never be shown.
+                //
+                // The screen starts it and stops it; the scope here is only what outlives the
+                // in-flight request when the destination leaves.
+                val depthController = remember(orderBookGateway, depthScope) {
+                    OrderBookController(gateway = orderBookGateway, scope = depthScope)
+                }
+                DepthOfMarketScreen(
+                    controller = depthController,
+                    symbol = activeChartSymbol,
+                    // A tapped level goes to the alert composer, never to an order. We do not place
+                    // orders against a ladder this app cannot fill into — and a level a reader
+                    // stopped on is exactly the price they want to be told about later, which is
+                    // what the composer already does with a price picked off the chart.
+                    onPickPrice = { price -> alertFromChart = activeChartSymbol to price },
                 )
             }
             composable(NEWS_ROUTE) {

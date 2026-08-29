@@ -107,6 +107,26 @@ class ScreenerCodecTest {
     }
 
     @Test
+    fun `a sort on an indicator reading survives a round trip`() {
+        val onIndicator = screen.copy(
+            sort = ScreenerSort(ScreenerField.LAST_PRICE, descending = false, indicatorKey = "tsi:25"),
+        )
+        val restored = ScreenerCodec.decode(ScreenerCodec.encode(onIndicator)!!)!!
+        assertEquals("tsi:25", restored.sort.indicatorKey)
+        assertEquals(false, restored.sort.descending)
+    }
+
+    @Test
+    fun `a screen saved before indicator sorts existed still decodes onto its field`() {
+        // Two parts where there are now three. The third reads as absent rather than as a key, so
+        // the order comes back exactly as it was saved instead of the screen being dropped.
+        val restored = ScreenerCodec.decode("screen_7\u001Dدیده‌بان\u001DVOLUME\u001F0")!!
+        assertEquals(ScreenerField.VOLUME, restored.sort.field)
+        assertNull(restored.sort.indicatorKey)
+        assertEquals(false, restored.sort.descending)
+    }
+
+    @Test
     fun `a column this build does not have is dropped without emptying the column list`() {
         val encoded = ScreenerCodec.encode(
             screen.copy(columns = listOf(ScreenerField.LAST_PRICE, ScreenerField.VOLUME)),

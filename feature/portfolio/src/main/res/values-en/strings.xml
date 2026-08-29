@@ -51,6 +51,10 @@
     <string name="portfolio_report_peak_note">The dashed line is the high so far; the shaded area is how far equity sat below it.</string>
     <string name="portfolio_report_drawdown_span">Max drawdown</string>
     <string name="portfolio_report_drawdown_between">%1$s to %2$s</string>
+    <string name="portfolio_report_runup_span">Largest run-up</string>
+    <string name="portfolio_report_runup_note">Trough to peak on the equity curve: the highest the account reached, not where it stayed. The gap between that and today is what was handed back.</string>
+    <string name="portfolio_trade_in_runup">In the largest run-up</string>
+    <string name="portfolio_trade_in_drawdown">In the deepest drawdown</string>
     <string name="portfolio_report_drawdown_note">This is peak to trough on the equity curve, not the largest losing trade — several losses in a row make a fall larger than any one of them.</string>
     <string name="portfolio_report_drawdown_recovered">It took %1$s trades to make a new high.</string>
     <string name="portfolio_report_drawdown_open">You have been below the previous high for %1$s trades.</string>

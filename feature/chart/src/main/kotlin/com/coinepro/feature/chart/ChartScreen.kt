@@ -3,7 +3,9 @@ package com.coinepro.feature.chart
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -60,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.backtest.Backtest
 import com.coinepro.core.chart.ActiveToolBar
+import com.coinepro.core.chart.BarWindow
 import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.chart.ChartDecoration
 import com.coinepro.core.chart.ChartOrder
@@ -87,13 +90,16 @@ import com.coinepro.core.datastore.ChartColourTemplate
 import com.coinepro.core.datastore.ChartLayout
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.DrawingTemplate
+import com.coinepro.core.datastore.DrawingSyncStore
 import com.coinepro.core.datastore.DrawingTemplateStore
+import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProConfirmDialog
 import com.coinepro.core.designsystem.CoineProGoldRule
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPillShape
@@ -114,6 +120,7 @@ import com.coinepro.core.marketdata.Timeframe
 import com.coinepro.core.marketdata.customOf
 import com.coinepro.core.symbols.SymbolClassifier
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -123,9 +130,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import com.coinepro.core.chart.DrawingActions
+import com.coinepro.core.chart.DrawingIconPicker
 import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.CoineProPrimaryButton
-import com.coinepro.core.chart.CandleSeries
 import com.coinepro.core.common.BidiText
 
 /**
@@ -243,6 +250,27 @@ fun ChartScreen(
      * two the shell says something about.
      */
     chartLayoutStore: ChartLayoutStore? = null,
+    /**
+     * Which bar lengths the reader has pinned to the strip, and which they have struck out of the
+     * picker.
+     *
+     * Passed as the store rather than as a list and two lambdas, the way [chartLayoutStore] is: the
+     * strip reads the starred list and the sheet reads the hidden set, which are two queries that
+     * change as the reader works, and hoisting both would put this screen's own state in the shell.
+     *
+     * Null is the preview and the tests, and the screen then keeps the set for its own lifetime —
+     * starring works and the strip changes, and a cold start comes back on
+     * [TimeframeFavourites.DEFAULT]. That is correct for a fixture and would be a small daily
+     * annoyance in the app, which is why the app passes one.
+     */
+    intervalFavourites: IntervalFavouritesStore? = null,
+    /**
+     * How far a newly placed drawing travels between layouts — items 51 and 188.
+     *
+     * Bound to the controller here as well as in the studio, because either screen may be the first
+     * one a deep link opens and a default that depended on which was is not a default.
+     */
+    drawingSync: DrawingSyncStore? = null,
 ) {
     /**
      * The instrument the reader switched to from the strip, or null while they are on the one this
@@ -296,6 +324,13 @@ fun ChartScreen(
      */
     var labelling by remember { mutableStateOf<Long?>(null) }
     /**
+     * Whether the reader is being asked before every drawing comes off the chart.
+     *
+     * A confirmation, and it is one of the cases `CoineProConfirmDialog` names by hand: an hour of
+     * marking up cannot be rebuilt, and the store is written the moment the transform runs.
+     */
+    var confirmClear by remember { mutableStateOf(false) }
+    /**
      * Whether the chart has the whole screen.
      *
      * The chart lives in a card two hundred and eighty density-independent pixels tall, under a
@@ -309,6 +344,63 @@ fun ChartScreen(
      */
     var fullscreen by rememberSaveable { mutableStateOf(false) }
 
+    /**
+     * The starred bar lengths, when there is no store to keep them.
+     *
+     * One comma-joined string so `rememberSaveable` can put it in a `Bundle` without a custom
+     * saver. Unused the moment a store is supplied — the two are never merged, because merging them
+     * is how the store's deliberately-empty sentinel would get quietly refilled from a stale local
+     * copy.
+     */
+    var ownFavourites by rememberSaveable { mutableStateOf(TimeframeFavourites.DEFAULT.joinToString(",")) }
+    val storedFavourites by remember(intervalFavourites) {
+        intervalFavourites?.favourites() ?: flowOf(emptyList<String>())
+    }.collectAsStateWithLifecycle(TimeframeFavourites.DEFAULT)
+    val hiddenIntervals by remember(intervalFavourites) {
+        intervalFavourites?.hidden() ?: flowOf(emptySet<String>())
+    }.collectAsStateWithLifecycle(emptySet())
+    val starredWires = if (intervalFavourites != null) {
+        storedFavourites
+    } else {
+        ownFavourites.split(',').filter { it.isNotBlank() }
+    }
+    val favouriteScope = rememberCoroutineScope()
+    /**
+     * Star or unstar one length.
+     *
+     * The cap is enforced here rather than in the store, which is a storage layer with no idea how
+     * wide a phone is. Both refusals are silent: the star simply does not move, which says "not
+     * that one" at the moment and in the place the reader looked.
+     */
+    val onStarWire: (String) -> Unit = { wire ->
+        val pinned = wire in starredWires
+        val allowed = if (pinned) {
+            TimeframeFavourites.canUnstar(starredWires)
+        } else {
+            TimeframeFavourites.canStar(starredWires)
+        }
+        if (allowed) {
+            if (intervalFavourites != null) {
+                favouriteScope.launch {
+                    runCatching {
+                        if (pinned) intervalFavourites.unstar(wire) else intervalFavourites.star(wire)
+                    }
+                }
+            } else {
+                val next = if (pinned) starredWires - wire else starredWires + wire
+                ownFavourites = next.joinToString(",")
+            }
+        }
+    }
+    /** Strike one length out of the picker, or put it back. Null where there is nothing to store in. */
+    val onHideWire: ((String) -> Unit)? = intervalFavourites?.let { store ->
+        { wire ->
+            favouriteScope.launch {
+                runCatching { if (wire in hiddenIntervals) store.unhide(wire) else store.hide(wire) }
+            }
+        }
+    }
+
     // The «؟» dots on every picker raise an id; this is what answers them. Hosted here rather than
     // handed in by the app, because this screen is the only place in the product that *has* help
     // ids — the catalogue is 186 entries and 179 of them are chart tools and indicators. Passing
@@ -319,7 +411,22 @@ fun ChartScreen(
     val helpEntry = helpId?.let { help?.get(it) }
     val onHelp: (String) -> Unit = { helpId = it }
 
-    LaunchedStart(controller, symbolChartStates, chartLayoutStore)
+    LaunchedStart(controller, symbolChartStates, chartLayoutStore, drawingSync)
+
+    // The demonstration marks' reaper — item 41.
+    //
+    // A ticker rather than an animation: `DrawingActions.expire` returns the same state when nothing
+    // has expired, so a tick that removed nothing costs a comparison and writes nothing to disk. It
+    // runs only while the reader is in demonstration mode, so an ordinary chart has no timer at all
+    // — which is the difference between a feature and a wakelock.
+    if (state.drawing.demonstrating) {
+        LaunchedEffect(controller) {
+            while (true) {
+                delay(DEMONSTRATION_TICK_MS)
+                controller.expireDemonstrationMarks()
+            }
+        }
+    }
 
     // The tree, rebuilt only when the drawings or what is hidden actually change. `treeOf` does a
     // catalogue lookup and formats a label per drawing, and on a chart with forty objects that is
@@ -342,6 +449,18 @@ fun ChartScreen(
             flowOf(emptyList<DrawingTemplate>())
         } else {
             drawingTemplates.templates(armedToolId)
+        }
+    }.collectAsStateWithLifecycle(emptyList())
+    // The saved styles for whatever is *selected*, which is a different question from the one
+    // above: that one asks about the tool being armed to draw with, this one about a drawing that
+    // already exists. Both change as the reader works and neither can be hoisted without putting
+    // this screen's own state in the shell.
+    val selectedToolId = state.drawing.drawings.firstOrNull { it.id == state.drawing.selectedId }?.toolId
+    val selectedTemplates by remember(selectedToolId, drawingTemplates) {
+        if (selectedToolId == null || drawingTemplates == null) {
+            flowOf(emptyList<DrawingTemplate>())
+        } else {
+            drawingTemplates.templates(selectedToolId)
         }
     }.collectAsStateWithLifecycle(emptyList())
     val armedDefault by remember(armedToolId, drawingTemplates) {
@@ -417,9 +536,10 @@ fun ChartScreen(
                     // one would persist a hide as a delete.
                     drawing = state.canvasDrawing,
                     onDrawing = controller::onDrawing,
-                    // The eraser arms as a mode rather than as a tool, so it cannot be read off
-                    // the drawing state and travels as its own flag. See [ChartController.arm].
-                    eraser = state.eraser,
+                    // Read off the drawing state itself. It used to travel as a second boolean
+                    // on the ui state, which is two sources for one fact and the way a rail ends up
+                    // showing a trend line armed while the canvas erases. See `DrawingState.mode`.
+                    eraser = state.drawing.eraser,
                     // The controller guards against a second call while one is in flight and
                     // against asking for history the server has already said does not exist, so
                     // the chart can ask freely.
@@ -450,6 +570,13 @@ fun ChartScreen(
                     // every terminal puts them and the one gesture on this chart a reader is
                     // likely to try by accident and be pleased to find.
                     onPriceAxisMenu = { sheet = ChartSheet.SCALE },
+                    // The bars on screen, back to the controller. One study reads it — the
+                    // visible-range volume profile — and until this existed it was computed once
+                    // against the whole series and never followed a pan, which is a "visible range"
+                    // study that ignores the visible range.
+                    onViewportChange = { view ->
+                        controller.setVisibleWindow(BarWindow.visible(view.firstVisible, view.lastVisible))
+                    },
                 )
             }
             if (state.loadingMore) {
@@ -457,6 +584,41 @@ fun ChartScreen(
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                 }
             }
+            // The floating toolbar, inside the canvas box so that it follows the chart into
+            // fullscreen without being wired twice. Top-centre rather than bottom: the price and
+            // time axes are along the bottom and right, the fullscreen mode's own strip is along
+            // the bottom too, and the legend plate is top-*start* — so the top middle is the one
+            // band of this canvas nothing else claims.
+            //
+            // It draws only when something is selected; `DrawingSelectionToolbar` returns without
+            // composing anything otherwise, so an ordinary chart pays nothing for it.
+            DrawingSelectionToolbar(
+                state = state.drawing,
+                multiSelect = state.multiSelect,
+                templates = selectedTemplates,
+                onSetMultiSelect = controller::setMultiSelect,
+                onRecolour = controller::recolourSelection,
+                onSetWidth = { width ->
+                    controller.restyleSelection(state.drawing.colour, width)
+                },
+                onApplyTemplate = { template ->
+                    controller.restyleSelection(template.colour, template.widthDp)
+                },
+                onEditText = { id -> labelling = id },
+                onDuplicate = controller::cloneDrawing,
+                onSetLocked = controller::setDrawingLocked,
+                onDelete = {
+                    // Every selected drawing, not only the primary. `DrawingActions.delete` refuses
+                    // a locked one, so a mixed selection loses the loose drawings and keeps the
+                    // protected ones — which is what the lock is for.
+                    state.drawing.selection.forEach(controller::deleteDrawing)
+                },
+                onOpenSettings = { id -> styling = id },
+                onDismiss = controller::clearSelection,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(CoineProSpacing.Half),
+            )
         }
     }
 
@@ -465,6 +627,7 @@ fun ChartScreen(
             state = state,
             controller = controller,
             canvas = canvas,
+            starred = starredWires,
             onOpenSheet = { sheet = it },
             onExit = { fullscreen = false },
         )
@@ -529,22 +692,7 @@ fun ChartScreen(
                         drawLayer(chartLayer)
                     },
             )
-            ProvenanceLine(source = controller.sourceName, series = state.series)
-            // Only for the intervals the feed does not serve, where the fold makes one page of
-            // bars genuinely short. Saying so is the difference between a limitation and a defect.
-            if (state.historyTruncated) {
-                Text(
-                    text = "این بازه روی دستگاه از کندل‌های کوتاه‌تر ساخته می‌شود، پس هر بار تعداد کمتری کندل می‌آید. برای دیدن گذشتهٔ بیشتر، نمودار را به عقب بکشید.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = CoineProColors.TextMuted,
-                    fontWeight = FontWeight.Normal,
-                    modifier = Modifier.padding(
-                        start = CoineProSpacing.Half,
-                        end = CoineProSpacing.Half,
-                        top = CoineProSpacing.Half,
-                    ),
-                )
-            }
+            ProvenanceLine(source = controller.sourceName, state = state, signalOnChart = signal != null)
         }
 
         // Only when something is being compared, so a chart with one instrument on it pays
@@ -581,7 +729,19 @@ fun ChartScreen(
             selected = state.interval,
             onSelect = controller::setInterval,
             onMore = { sheet = ChartSheet.INTERVAL },
+            starred = starredWires,
         )
+        RangeRow(selected = state.range, onSelect = controller::setRange)
+        // «رفتن به تاریخ» off replay — backlog 105 — is deliberately **not** drawn here yet, and
+        // this comment is the note that says why rather than a silent omission.
+        //
+        // `GoToDateField` is extracted and callable, and `ChartController.focusBar` holds the bar
+        // it resolves. What is missing is the last hop: the viewport is private to `CoineProChart`
+        // and has no `focusIndex` parameter, so the field would take a date, resolve it correctly,
+        // and move nothing. A control that does nothing is worse than an absent one — it is the
+        // failure this whole wave is about. The moment the canvas takes a focus index, this becomes
+        // a `GoToDateField(state.visibleSeries.bars, controller::focusBar)` here and a
+        // `focusIndex = state.focusIndex` on the chart, and nothing else changes.
 
         // The bar that makes the chart a chart, and it sits **below** the chart rather than above
         // it.
@@ -624,6 +784,15 @@ fun ChartScreen(
             indicators = state.activeIndicators.size,
             drawings = state.drawing.drawings.size,
             onOpen = onOpenStudio,
+            // The backtest report, reachable from the chart at last. `ChartSheet.BACKTEST` has been
+            // declared and rendered since this screen was written and **nothing ever assigned it**:
+            // the report was reachable only from the studio, and the twenty-five-metric engine
+            // behind it was reachable from nowhere at all. It goes here rather than on the toolbar,
+            // which is full and must not grow — this card is an existing affordance with room.
+            //
+            // Offered only with bars to run over. A report over an empty series is five tabs of
+            // dashes.
+            onBacktest = { sheet = ChartSheet.BACKTEST }.takeIf { state.series.bars.isNotEmpty() },
             onShare = {
                 shareScope.launch {
                     ChartShare.share(context, chartLayer.toImageBitmap(), state.symbol)
@@ -712,6 +881,30 @@ fun ChartScreen(
                     sheet = null
                 },
                 onHelp = onHelp,
+                // Every parameter the rail takes, and each one was previously a feature that
+                // existed and could not be reached. The rail's own action row — magnet, keep
+                // drawing, lock all, hide layers — renders only when a caller offers at least one
+                // of these callbacks, and neither call site offered any: the whole row had never
+                // been on a screen. The magnet in particular was `OFF` for the life of the app,
+                // which also made the OHLC channel bindings dead code, since one is written only
+                // by a tap the magnet moved.
+                //
+                // `hasVolume` is the one that was actively wrong rather than merely absent. On the
+                // MT5 forex feed a reader could arm a volume-profile tool and watch it draw
+                // nothing, because the rail was offering three tools the renderer has no column
+                // for.
+                hasVolume = state.series.hasVolume,
+                favourites = state.drawing.favourites,
+                onToggleFavourite = { controller.toggleToolFavourite(it.id) },
+                magnet = state.drawing.magnetMode,
+                onCycleMagnet = controller::cycleMagnet,
+                keepDrawing = state.drawing.keepDrawing,
+                onKeepDrawing = controller::setKeepDrawing,
+                lockedAll = state.drawing.lockedAll,
+                onLockAll = controller::setLockAllDrawings,
+                hidden = state.drawing.hidden,
+                onHide = controller::setLayerHidden,
+                onHideAll = controller::setAllLayersHidden,
             )
         }
 
@@ -758,6 +951,12 @@ fun ChartScreen(
                     controller.setInterval(it)
                     sheet = null
                 },
+                starred = starredWires,
+                hidden = hiddenIntervals,
+                // No dismiss on star: pinning four lengths is four taps, and a sheet that closed
+                // after each one would turn that into eight.
+                onStar = onStarWire,
+                onHide = onHideWire,
             )
         }
 
@@ -790,7 +989,17 @@ fun ChartScreen(
             subtitle = state.symbol,
             onDismiss = { sheet = null },
         ) {
-            BacktestSheetBody(bars = state.series.bars, symbol = state.symbol)
+            // The scroll is the *host's* decision and this host is a sheet, so it scrolls. The
+            // studio renders the same body inside a `LazyColumn` item and must pass nothing —
+            // a vertically scrollable child under an infinite height constraint throws.
+            BacktestSheetBody(
+                bars = state.series.bars,
+                symbol = state.symbol,
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                hasMoreHistory = state.hasMore,
+                loadingHistory = state.loadingMore,
+                onLoadMoreHistory = controller::loadMore,
+            )
         }
 
         ChartSheet.SETUP -> state.setup?.let { order ->
@@ -818,6 +1027,19 @@ fun ChartScreen(
             subtitle = state.drawing.drawings.size.toPersianDigits() + " ترسیم",
             onDismiss = { sheet = null },
         ) {
+            // The clipboard and the way to an empty chart, above the tree. See
+            // `DrawingClipboardRow` for why the words live here rather than on the floating strip.
+            DrawingClipboardRow(
+                state = state.drawing,
+                onCopy = controller::copySelection,
+                onPaste = {
+                    controller.pasteClipboard()
+                    // Closed, because the copies land on the chart and the reader has to be able
+                    // to see where. Every other action in this sheet leaves it open.
+                    sheet = null
+                },
+                onClear = { confirmClear = true },
+            )
             ObjectTreeSheetBody(
                 groups = objectTree,
                 drawings = state.drawing.drawings,
@@ -863,6 +1085,7 @@ fun ChartScreen(
                     controller.applyTemplateToDrawing(drawing.id, drawing.colour, width)
                     controller.setDrawingStyle(drawing.colour, width)
                 },
+                onSetDeviations = { value -> controller.setDrawingDeviations(drawing.id, value) },
                 onApplyTemplate = { template ->
                     controller.applyTemplateToDrawing(drawing.id, template.colour, template.widthDp)
                     controller.setDrawingStyle(template.colour, template.widthDp)
@@ -884,6 +1107,10 @@ fun ChartScreen(
         } else {
             DrawingTextSheet(
                 initial = drawing.text.orEmpty(),
+                // The icon tool keeps its glyph in the same field a note keeps its words, so the
+                // row of marks is offered *above* the keyboard rather than instead of it — a reader
+                // who wants a mark the row does not carry can still type one.
+                icons = DrawingActions.holdsIcon(drawing.toolId),
                 onSave = { text ->
                     controller.onDrawing(DrawingActions.setText(state.drawing, id, text))
                     labelling = null
@@ -891,6 +1118,22 @@ fun ChartScreen(
                 onDismiss = { labelling = null },
             )
         }
+    }
+
+    if (confirmClear) {
+        CoineProConfirmDialog(
+            title = "پاک کردن همهٔ ترسیم‌ها",
+            message = "هر ${state.drawing.drawings.size.toPersianDigits()} ترسیم این نماد برداشته می‌شود و برنمی‌گردد. اندیکاتورها و تنظیمات نمودار دست‌نخورده می‌مانند.",
+            confirmLabel = "پاک کن",
+            dismissLabel = "بماند",
+            destructive = true,
+            onConfirm = {
+                controller.clearDrawings()
+                confirmClear = false
+                sheet = null
+            },
+            onDismiss = { confirmClear = false },
+        )
     }
 
     helpEntry?.let { entry ->
@@ -917,6 +1160,15 @@ fun ChartScreen(
 @Composable
 private fun DrawingTextSheet(
     initial: String,
+    /**
+     * Whether this drawing is the icon tool, whose «text» is one glyph.
+     *
+     * The tool stores its mark in `Drawing.text` — one field and one codec rather than a parallel
+     * pair — so the picker is a row of ten answers above the same box. A free keyboard alone is the
+     * wrong shape for it: a sentence typed into an icon tool is drawn at label size inside a diamond
+     * built for a single glyph, and the reader has no way to find that out before they type it.
+     */
+    icons: Boolean,
     onSave: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -932,6 +1184,18 @@ private fun DrawingTextSheet(
                 .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
             verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         ) {
+            if (icons) {
+                DrawingIconPicker(
+                    selected = text.takeIf { it.isNotEmpty() },
+                    // Picked and saved in one gesture. An icon is one mark, so a picker that only
+                    // filled the box and left the reader to press «ثبت» would be two taps for a
+                    // decision that has exactly one.
+                    onPick = { glyph ->
+                        text = glyph
+                        onSave(glyph)
+                    },
+                )
+            }
             CoineProTextField(
                 value = text,
                 onValueChange = { text = it.take(DrawingActions.MAX_TEXT_LENGTH) },
@@ -973,6 +1237,8 @@ private fun FullscreenChart(
     state: ChartUiState,
     controller: ChartController,
     canvas: @Composable (Modifier) -> Unit,
+    /** The reader's pinned bar lengths, so the strip is the same one they see on the page. */
+    starred: List<String>,
     onOpenSheet: (ChartSheet) -> Unit,
     onExit: () -> Unit,
 ) {
@@ -1008,8 +1274,9 @@ private fun FullscreenChart(
         }
 
         // The timeframe strip at the bottom, where a thumb already is on a phone held in one
-        // hand — and out of the top-left corner where the legend plate draws.
-        Box(
+        // hand — and out of the top-left corner where the legend plate draws. The quick ranges go
+        // under it, for the same reason and in the same order as on the page.
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
@@ -1019,7 +1286,9 @@ private fun FullscreenChart(
                 selected = state.interval,
                 onSelect = controller::setInterval,
                 onMore = { onOpenSheet(ChartSheet.INTERVAL) },
+                starred = starred,
             )
+            RangeRow(selected = state.range, onSelect = controller::setRange)
         }
     }
 }
@@ -1090,9 +1359,10 @@ private fun LaunchedStart(
     controller: ChartController,
     symbolChartStates: SymbolChartStateStore?,
     chartLayoutStore: ChartLayoutStore?,
+    drawingSync: DrawingSyncStore?,
 ) {
     LaunchedEffect(controller) {
-        controller.bindStores(symbolChartStates, chartLayoutStore)
+        controller.bindStores(symbolChartStates, chartLayoutStore, drawingSync)
         controller.start()
     }
 }
@@ -1178,19 +1448,23 @@ private fun Header(state: ChartUiState, onOpenTerminal: (() -> Unit)?) {
 /**
  * The interval strip: outlined pills, gold on the one in force.
  *
- * ### Why six and not fifteen
+ * ### Why not fifteen
  *
  * It used to draw every preset, reversed, and that was right when there were eight. There are now
  * fifteen plus whatever minute count a reader types, and fifteen pills is not a strip — it is a
  * scrolling wall directly under the chart, in which the frame somebody actually wants is somewhere
  * off the edge. The row would have grown into the thing this screen is built to avoid.
  *
- * So the six that carry almost all of the traffic stay one tap away — one minute, five, fifteen,
- * the hour, four hours and the day, which is also exactly the set the keyboard shortcuts bind and
- * the set chart vision reads — and the other nine, plus the custom field, live behind «بیشتر».
- * Nothing is unreachable and nothing common costs two taps.
+ * ### Why the set is now the reader's
  *
- * Whatever is in force is always drawn, even when it is not one of the six. A strip that showed no
+ * It was a constant of six — the set the keyboard binds and the set chart vision reads — and those
+ * are a defensible six that are still somebody else's. A reader who works the two-hour and the
+ * weekly had M1 and M5 permanently under their thumb and their own two lengths behind «بیشتر»
+ * forever, with nothing suggesting that could change. [starred] is that set, they fill it
+ * themselves in the sheet behind «بیشتر», and [TimeframeFavourites.DEFAULT] is what it starts as —
+ * so nobody who never opens the sheet notices any difference.
+ *
+ * Whatever is in force is always drawn, even when it is not starred. A strip that showed no
  * selection because the reader had chosen H2 would leave them unable to see what they were looking
  * at from the control that sets it.
  */
@@ -1199,13 +1473,12 @@ internal fun IntervalRow(
     selected: ChartInterval,
     onSelect: (ChartInterval) -> Unit,
     onMore: () -> Unit,
+    /** The lengths pinned to the strip, in wire spellings. See [TimeframeFavourites]. */
+    starred: List<String> = TimeframeFavourites.DEFAULT,
 ) {
-    // Rebuilt only when the selection moves off the common six, which is the one thing that
-    // changes the row's contents.
-    val shown = remember(selected) {
-        val common = COMMON_INTERVALS.map { ChartInterval.Preset(it) }
-        if (common.any { it == selected }) common else common + selected
-    }
+    // Rebuilt only when the starred list or the selection changes, which are the two things that
+    // change the row's contents.
+    val shown = remember(selected, starred) { TimeframeFavourites.resolve(starred, selected) }
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
@@ -1224,6 +1497,46 @@ internal fun IntervalRow(
         }
         item(key = "more") {
             IntervalPill(text = "بیشتر", active = false, latin = false, onClick = onMore)
+        }
+    }
+}
+
+/**
+ * The quick ranges: «همه · ۵ سال · ۱ سال · ۶ ماه · ۳ ماه · ۱ ماه · ۵ روز · ۱ روز».
+ *
+ * ### Where it is, and why not on the toolbar
+ *
+ * Directly under the interval strip, which is under the chart — where a thumb holding the phone
+ * already is. The toolbar is full and must not grow, and a range control belongs beside the other
+ * control that answers "how much time am I looking at" rather than in a row of sheet-openers.
+ *
+ * ### Why it is a second row rather than more pills in the first
+ *
+ * They answer different questions. «H4» is how long one candle is; «۱ سال» is how much history is
+ * in front of you. Mixing them into one strip would make «۱ ماه» and «M15» look like alternatives
+ * of the same kind, which is exactly the confusion that makes a reader tap one and be surprised.
+ * The range row is always drawn rather than revealed by a gesture — a control nobody can see is a
+ * control nobody finds — and it carries no «بیشتر», because eight ranges is the whole set.
+ *
+ * See [ChartRange] for why tapping one changes the bar length.
+ */
+@Composable
+private fun RangeRow(selected: ChartRange?, onSelect: (ChartRange) -> Unit) {
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = CoineProSpacing.OneHalf),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        contentPadding = PaddingValues(horizontal = CoineProSpacing.Two),
+    ) {
+        items(ChartRange.OFFERED, key = { it.name }) { range ->
+            IntervalPill(
+                text = range.label,
+                active = range == selected,
+                // Persian prose durations, not wire spellings, so they must not be forced Latin.
+                latin = false,
+                onClick = { onSelect(range) },
+            )
         }
     }
 }
@@ -1283,6 +1596,13 @@ private fun IntervalPill(
 internal fun IntervalSheetBody(
     selected: ChartInterval,
     onSelect: (ChartInterval) -> Unit,
+    /** The lengths pinned to the strip under the chart, or null where the caller offers no starring. */
+    starred: List<String>? = null,
+    /** The presets the reader has struck out of this sheet. See [TimeframeFavourites.offered]. */
+    hidden: Set<String> = emptySet(),
+    onStar: ((String) -> Unit)? = null,
+    /** Strike one preset out of this sheet, or put it back. Null hides the second gesture entirely. */
+    onHide: ((String) -> Unit)? = null,
 ) {
     var typed by rememberSaveable { mutableStateOf("") }
     val custom = customOf(typed)
@@ -1293,6 +1613,10 @@ internal fun IntervalSheetBody(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
+        if (starred != null && onStar != null) {
+            StarredIntervalSection(starred = starred, hidden = hidden, onStar = onStar, onHide = onHide)
+            HorizontalDivider(color = CoineProColors.Border)
+        }
         INTERVAL_GROUPS.forEach { (title, frames) ->
             Text(
                 text = title,
@@ -1306,10 +1630,15 @@ internal fun IntervalSheetBody(
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
             ) {
-                frames.forEach { frame ->
-                    val interval = ChartInterval.Preset(frame)
+                // Struck-out presets are absent rather than dimmed. A row that cannot be tapped is
+                // a row that costs a tap to discover, and the reader is the one who struck it out.
+                TimeframeFavourites.offered(
+                    frames.map { ChartInterval.Preset(it) },
+                    hidden,
+                    selected,
+                ).forEach { interval ->
                     IntervalPill(
-                        text = frame.wire,
+                        text = interval.wire,
                         active = interval == selected,
                         onClick = { onSelect(interval) },
                     )
@@ -1348,6 +1677,118 @@ internal fun IntervalSheetBody(
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
         )
+    }
+}
+
+/**
+ * Which lengths the reader wants under their thumb.
+ *
+ * ### Why it is a separate section and not a long press on the pills above
+ *
+ * Because a long press on a pill is invisible. The pills in the groups below *select* a length —
+ * that is the obvious meaning of tapping one and it must stay the only meaning — so the second job
+ * gets its own row, its own heading and its own glyph. A reader who never wants to change the
+ * strip reads one line and scrolls past; a reader who does can see, in one place, exactly which of
+ * the fifteen are pinned.
+ *
+ * The star is filled and gold when pinned, hollow and muted when not, which is the one convention
+ * this app already uses for a personal shortlist — the tool rail's favourites row does the same.
+ *
+ * ### The two refusals, and why they are silent
+ *
+ * [TimeframeFavourites.toggle] will not unpin the last length and will not pin past
+ * [TimeframeFavourites.MAX]. Neither raises a message: the star simply does not move, which says
+ * "not that one" at the moment and in the place the reader looked, where a snackbar over the sheet
+ * would say it somewhere else a second later. The count under the heading is what makes the second
+ * refusal legible before it happens.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun StarredIntervalSection(
+    starred: List<String>,
+    hidden: Set<String>,
+    onStar: (String) -> Unit,
+    onHide: ((String) -> Unit)?,
+) {
+    SheetLabel("کدام بازه‌ها روی نوار زیر نمودار باشند")
+    Text(
+        // A prose count of a shortlist, so Persian digits — unlike the wire spellings on the pills.
+        text = starred.size.toPersianDigits() + " از " + TimeframeFavourites.MAX.toPersianDigits() +
+            " بازه سنجاق شده" +
+            if (onHide != null) ". نگه‌داشتن یک بازه، آن را از همین صفحه هم برمی‌دارد." else ".",
+        style = MaterialTheme.typography.bodySmall,
+        color = CoineProColors.TextMuted,
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        Timeframe.entries.forEach { frame ->
+            val wire = frame.wire
+            val pinned = wire in starred
+            val struck = wire in hidden
+            Row(
+                modifier = Modifier
+                    .clip(CoineProPillShape)
+                    .background(
+                        if (pinned) {
+                            CoineProTint.fill(CoineProColors.Gold, CoineProColors.Surface)
+                        } else {
+                            Color.Transparent
+                        },
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = if (pinned) CoineProTint.edge(CoineProColors.Gold) else CoineProColors.Border,
+                        shape = CoineProPillShape,
+                    )
+                    .combinedClickable(
+                        onClick = { onStar(wire) },
+                        // The second gesture, and it is a long press because it is the rarer of the
+                        // two and because a second target on a pill this size is a target nobody
+                        // hits. The sentence above says the gesture exists, which is what a long
+                        // press needs to be a feature rather than a secret.
+                        onLongClick = onHide?.let { hide -> { hide(wire) } },
+                    )
+                    .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Icon(
+                    painter = painterResource(
+                        when {
+                            struck -> DesignR.drawable.icon_eye_slash
+                            pinned -> DesignR.drawable.icon_filled_star
+                            else -> DesignR.drawable.icon_star
+                        },
+                    ),
+                    contentDescription = when {
+                        struck -> "برگرداندن به فهرست"
+                        pinned -> "برداشتن از نوار"
+                        else -> "سنجاق روی نوار"
+                    },
+                    tint = when {
+                        struck -> CoineProColors.TextDisabled
+                        pinned -> CoineProColors.Gold
+                        else -> CoineProColors.TextMuted
+                    },
+                    modifier = Modifier.size(13.dp),
+                )
+                LtrDirection {
+                    Text(
+                        text = wire,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = when {
+                            struck -> CoineProColors.TextDisabled
+                            pinned -> CoineProColors.Gold
+                            else -> CoineProColors.TextMuted
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -1680,22 +2121,6 @@ private fun newLayout(state: ChartUiState, name: String): ChartLayout {
     return state.toLayout(id = "layout_" + now.toString(RADIX_36), name = name, createdAt = now, updatedAt = now)
 }
 
-/**
- * The six intervals that stay one tap from the chart.
- *
- * Not a guess: they are the set the keyboard already binds to the number keys, and the set chart
- * vision was trained on. Three controls agreeing on which six matter is worth more than each of
- * them picking its own.
- */
-private val COMMON_INTERVALS = listOf(
-    Timeframe.M1,
-    Timeframe.M5,
-    Timeframe.M15,
-    Timeframe.H1,
-    Timeframe.H4,
-    Timeframe.D1,
-)
-
 /** The fifteen presets as a reader groups them, for the sheet behind «بیشتر». */
 private val INTERVAL_GROUPS: List<Pair<String, List<Timeframe>>> = listOf(
     "دقیقه" to listOf(
@@ -1815,37 +2240,99 @@ private val ComparisonRefusal.persianMessage: String
  * A successful request that returns the same bars is not new data. Printing when the app last
  * asked would be reassuring and false — which is exactly the kind of thing the accusation is
  * about.
+ *
+ * ### And what the chart is *not* showing
+ *
+ * The venue and the clock answer "where did this come from". They do not answer the question that
+ * actually produces the accusation, which is why the picture differs from the venue's own when
+ * both are correct. TradingView's users left over exactly that — their volume did not match the
+ * exchange's, nothing on the chart said why, and the conclusion drawn was that the data was
+ * invented. A folded interval, a truncated page and a feed with no volume column are three honest
+ * reasons for a difference and all three used to be silent. See [chartExclusions].
+ *
+ * The repaint mark sits in the same strip because it is the same kind of claim: this is the row
+ * where the chart says what it knows and what it does not.
  */
 @Composable
-private fun ProvenanceLine(source: String, series: CandleSeries) {
+private fun ProvenanceLine(source: String, state: ChartUiState, signalOnChart: Boolean) {
+    val series = state.series
     if (source.isEmpty() && series.isEmpty) return
     val lastBar = series.time.lastOrNull()
-    Row(
+    val exclusions = remember(state.interval, state.series, state.replay.isOn, state.activeIndicators) {
+        chartExclusions(state)
+    }
+    val mark = remember(state.activeIndicators, signalOnChart) { repaintMark(state, signalOnChart) }
+    val subjects = remember(state.activeIndicators, signalOnChart) { repaintSubjects(state, signalOnChart) }
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = CoineProSpacing.Half, end = CoineProSpacing.Half, top = CoineProSpacing.Half),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (source.isNotEmpty()) {
-            // The venue name is a proper noun in Latin script inside a right-to-left line, so it
-            // is isolated: without it a name ending in a digit reorders the whole row.
-            Text(
-                text = stringResource(R.string.chart_source, BidiText.isolateLtr(source)),
-                style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextDisabled,
-                fontWeight = FontWeight.Normal,
-            )
-        }
-        lastBar?.let { time ->
-            LtrDirection {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (source.isNotEmpty()) {
+                // The venue name is a proper noun in Latin script inside a right-to-left line, so
+                // it is isolated: without it a name ending in a digit reorders the whole row.
                 Text(
-                    text = barClock(time),
+                    text = stringResource(R.string.chart_source, BidiText.isolateLtr(source)),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextDisabled,
                     fontWeight = FontWeight.Normal,
                 )
             }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            ) {
+                if (!series.isEmpty) {
+                    Text(
+                        text = barCountLine(series.size),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CoineProColors.TextDisabled,
+                        fontWeight = FontWeight.Normal,
+                    )
+                }
+                lastBar?.let { time ->
+                    LtrDirection {
+                        Text(
+                            text = barClock(time),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = CoineProColors.TextDisabled,
+                            fontWeight = FontWeight.Normal,
+                        )
+                    }
+                }
+            }
+        }
+        // The mark, and only where something on this chart has earned it. `repaintMark` returns
+        // null the moment a study that rewrites its own past is switched on, so the reader can
+        // never read this line and apply it to the zigzag beside it.
+        mark?.let { claim ->
+            Text(
+                text = claim.label + " — " + subjects.joinToString("، "),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.Buy,
+                fontWeight = FontWeight.Normal,
+                modifier = Modifier.padding(top = CoineProSpacing.Half),
+            )
+            Text(
+                text = claim.note,
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextDisabled,
+                fontWeight = FontWeight.Normal,
+            )
+        }
+        if (exclusions.isNotEmpty()) {
+            Text(
+                text = exclusionsLine(exclusions),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+                fontWeight = FontWeight.Normal,
+                modifier = Modifier.padding(top = CoineProSpacing.Half),
+            )
         }
     }
 }
@@ -2004,6 +2491,8 @@ private fun StudioCard(
     indicators: Int,
     drawings: Int,
     onOpen: (() -> Unit)?,
+    /** Opens the backtest report over the bars on screen, or null with nothing to run over. */
+    onBacktest: (() -> Unit)?,
     onShare: () -> Unit,
 ) {
     Row(
@@ -2050,6 +2539,24 @@ private fun StudioCard(
                     contentDescription = null,
                     tint = CoineProColors.TextMuted,
                     modifier = Modifier.size(14.dp),
+                )
+            }
+        }
+        onBacktest?.let { open ->
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CoineProShapes.small)
+                    .background(CoineProColors.SurfaceElevated)
+                    .clickable(onClick = open)
+                    .semantics { contentDescription = "بک‌تست" },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(DesignR.drawable.tv_play),
+                    contentDescription = null,
+                    tint = CoineProColors.TextSecondary,
+                    modifier = Modifier.size(18.dp),
                 )
             }
         }
@@ -2321,6 +2828,15 @@ private fun ToolBarButton(
         }
     }
 }
+
+/**
+ * How often the demonstration marks are swept, in milliseconds.
+ *
+ * A second. The marks live eight seconds of which the last three are a fade — see
+ * `DrawingActions.DEMONSTRATION_FADE_MS` — so a second is fine enough that a mark leaves the object
+ * tree at about the moment it leaves the canvas, and coarse enough to be free.
+ */
+private const val DEMONSTRATION_TICK_MS = 1_000L
 
 /** The fullscreen chart's floating controls. */
 private val FLOATING_BUTTON = 36.dp

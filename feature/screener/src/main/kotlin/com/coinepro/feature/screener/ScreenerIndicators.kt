@@ -1,5 +1,9 @@
 package com.coinepro.feature.screener
 
+import com.coinepro.core.chart.Candle
+import com.coinepro.core.chart.CandleSeries
+import com.coinepro.core.chart.ChartCatalog
+import com.coinepro.core.chart.IndicatorPane
 import com.coinepro.core.chart.Indicators
 import com.coinepro.core.chart.IndicatorsExt
 import com.coinepro.core.chart.Line
@@ -7,7 +11,7 @@ import com.coinepro.core.marketdata.OhlcBar
 import com.coinepro.feature.screener.model.ScreenerIndicatorId
 
 /**
- * One indicator, reduced to the single number a screener can put a threshold on — [109].
+ * One indicator, reduced to the single number a screener can put a threshold on — [109], [115].
  *
  * ### Why a screener needs its own reading of an indicator
  *
@@ -16,66 +20,57 @@ import com.coinepro.feature.screener.model.ScreenerIndicatorId
  * — the chart's answer is one symbol and several hundred values, the screener's is one value and
  * several hundred symbols — and the difference is why the reduction happens here rather than in
  * `core:chart`. What does not differ, and must not, is the arithmetic: every reading below comes
- * out of `core:chart`'s library unchanged, so the RSI this screen filters on is the number the
+ * out of `core:chart`'s own catalogue unchanged, so the RSI this screen filters on is the number the
  * chart would have drawn for the same market. A screener that disagreed with its own chart would be
  * worse than no screener.
  *
+ * ### The catalogue is asked, not copied
+ *
+ * This used to hold a `when` over eight hard-coded ids while `ChartCatalog` carried eighty-three,
+ * which meant seventy-five indicators the app can compute could not be filtered on and nobody could
+ * see why. Now anything [ScreenerIndicatorCatalog] offers is answered here, through the very
+ * builders the chart draws with — `ChartCatalog.overlayFor` for a price-scale indicator and
+ * `ChartCatalog.paneFor` for an own-pane one — and the *primary* line of what comes back is the
+ * reading. Primary means the first line the pane declares, falling back to its histogram for the
+ * four indicators that are drawn only as columns; that is the line a reader watches, and the order
+ * in the catalogue is already that order.
+ *
  * ### Some readings are normalised and some are not
  *
- * RSI, ADX, the stochastic and Bollinger %B are already comparable across markets — they are bounded
- * or scale-free by construction, so a threshold of thirty means the same thing on gold as on a
- * satoshi-priced coin. ATR and the moving-average distances are **not**: an ATR of 12 is enormous on
- * a currency pair and negligible on Bitcoin. Those three are therefore published as a percentage of
- * price rather than in the instrument's own units, which is the only form in which a single number
- * typed into a filter can mean anything across a mixed catalogue. The MACD histogram is left in the
- * instrument's units on purpose: it is a sign-and-direction reading, and a reader filtering it is
- * almost always asking for "above zero", which normalising would not help.
+ * [ScreenerIndicatorCatalog.Reading] decides, and it is the whole of the judgement — see its own
+ * documentation. In one sentence: a bounded oscillator is comparable across a mixed catalogue as it
+ * stands, a reading in the instrument's currency is not and is published as a percentage of price,
+ * and a price-scale indicator is published as the signed distance from it. An ATR of twelve is
+ * enormous on a currency pair and negligible on Bitcoin, and a single number typed into a filter
+ * has to mean one thing on both.
  *
  * ### Warm-up is a null, never a substitute
  *
  * A fifty-bar average genuinely does not exist on a market with forty bars of history, and every
  * answer other than null is a lie a filter would act on. `core:chart`'s `Line` already carries that
- * distinction; this preserves it rather than flattening it to zero.
+ * distinction; this preserves it rather than flattening it to zero. The same rule covers a volume
+ * study on a feed that reports no volume: `ChartCatalog` returns nothing at all there, and nothing
+ * is what this hands back — never the zero that would rank four hundred markets as perfectly
+ * balanced.
  */
 object ScreenerIndicators {
 
     /**
      * The last reading of [indicatorId] over [bars], or null when it cannot be computed.
      *
-     * Null covers three different situations on purpose, because a caller can do nothing different
-     * about any of them: an id this build does not know, a series too short to warm the indicator
-     * up, and a reading that came out non-finite because the market's own numbers divided badly.
+     * Null covers four situations on purpose, because a caller can do nothing different about any
+     * of them: an id this build does not know, a series too short to warm the indicator up, a
+     * reading that came out non-finite because the market's own numbers divided badly, and an
+     * indicator the feed cannot answer — a volume study on bars with no volume column.
      *
-     * @param period the lookback, or null for the indicator's own default. Clamped into
-     *   [MIN_PERIOD]..[MAX_PERIOD] rather than refused, because the bound comes from a saved screen
+     * @param period the lookback, or null for the indicator's own default. Clamped into the
+     *   indicator's own bounds rather than refused, because the bound comes from a saved screen
      *   that a later build may have written with a wider range, and dropping a reader's filter is a
      *   worse answer than answering it with the nearest period this build supports.
      */
     fun compute(indicatorId: String, period: Int?, bars: List<OhlcBar>): Double? {
         if (bars.size < MIN_BARS) return null
-        val length = (period ?: ScreenerIndicatorId.defaultPeriodOf(indicatorId) ?: DEFAULT_PERIOD)
-            .coerceIn(MIN_PERIOD, MAX_PERIOD)
-        val close = DoubleArray(bars.size) { bars[it].c }
-        val high = DoubleArray(bars.size) { bars[it].h }
-        val low = DoubleArray(bars.size) { bars[it].l }
-        val last = close.last()
-
-        val reading = when (indicatorId) {
-            ScreenerIndicatorId.RSI -> Indicators.rsi(close, length).lastValue()
-            ScreenerIndicatorId.ADX -> Indicators.adx(high, low, close, length).adx.lastValue()
-            ScreenerIndicatorId.STOCHASTIC_K -> Indicators.stochastic(high, low, close, length).k.lastValue()
-            ScreenerIndicatorId.MACD_HISTOGRAM -> Indicators.macd(close).histogram.lastValue()
-            ScreenerIndicatorId.ATR_PERCENT ->
-                Indicators.atr(high, low, close, length).lastValue()?.asPercentOf(last)
-            ScreenerIndicatorId.SMA_DISTANCE ->
-                Indicators.sma(close, length).lastValue()?.let { distance(last, it) }
-            ScreenerIndicatorId.EMA_DISTANCE ->
-                Indicators.ema(close, length).lastValue()?.let { distance(last, it) }
-            ScreenerIndicatorId.BOLLINGER_PERCENT ->
-                IndicatorsExt.bollingerPercent(close, length, BOLLINGER_MULTIPLIER).lastValue()
-            else -> null
-        }
-        return reading?.takeIf(Double::isFinite)
+        return reading(indicatorId, period, seriesOf(bars))
     }
 
     /**
@@ -86,13 +81,104 @@ object ScreenerIndicators {
      * period back out of the key rather than taking it as a parameter keeps the round trip in one
      * place: a key that this function cannot take apart is a key nothing can answer, and it is
      * dropped rather than guessed at.
+     *
+     * The series is built once for the whole set. That is not a micro-optimisation: a
+     * [CandleSeries] extracts six parallel arrays from the bar list, and building it per key would
+     * repeat that work for every condition on the screen, for every market in the scan.
      */
-    fun computeAll(keys: Set<String>, bars: List<OhlcBar>): Map<String, Double> = buildMap {
-        keys.forEach { key ->
-            val separator = key.lastIndexOf(':')
-            val id = if (separator < 0) key else key.substring(0, separator)
-            val period = if (separator < 0) null else key.substring(separator + 1).toIntOrNull()
-            compute(id, period, bars)?.let { put(key, it) }
+    fun computeAll(keys: Set<String>, bars: List<OhlcBar>): Map<String, Double> {
+        if (keys.isEmpty() || bars.size < MIN_BARS) return emptyMap()
+        val series = seriesOf(bars)
+        return buildMap {
+            keys.forEach { key ->
+                val separator = key.lastIndexOf(':')
+                val id = if (separator < 0) key else key.substring(0, separator)
+                val period = if (separator < 0) null else key.substring(separator + 1).toIntOrNull()
+                reading(id, period, series)?.let { put(key, it) }
+            }
+        }
+    }
+
+    /**
+     * The bars as the chart's own series type.
+     *
+     * The volume translation is the line that matters. `OhlcBar.v` is a non-null zero on the MT5
+     * feed, which reports no volume at all, while `Candle.v` is nullable precisely so that "no
+     * volume column" and "a bar in which nothing traded" stay different facts. Passing the zero
+     * through would make [CandleSeries.hasVolume] true on the whole forex catalogue and every
+     * volume study would answer with arithmetic on zeros — which is the exact failure
+     * `ChartCatalog.VOLUME_ONLY_INDICATORS` exists to prevent.
+     */
+    private fun seriesOf(bars: List<OhlcBar>): CandleSeries = CandleSeries(
+        bars.map { bar -> Candle(bar.t, bar.o, bar.h, bar.l, bar.c, bar.v.takeIf { it > 0.0 }) },
+    )
+
+    /**
+     * One reading over a series that has already been built.
+     *
+     * The legacy ids are answered first and directly. They are the eight this feature shipped with
+     * — they are written into saved screens, into [ScreenerIndicatorId] and into the presets — and
+     * three of them (`stoch_k`, `macd_hist`, `bb_percent`) are not spellings the chart catalogue
+     * knows at all. Routing them through the catalogue would change the number under a reader's
+     * existing filter, which is the one thing a stored condition must never do.
+     */
+    private fun reading(indicatorId: String, period: Int?, series: CandleSeries): Double? {
+        if (series.size < MIN_BARS) return null
+        val close = series.close
+        val high = series.high
+        val low = series.low
+        val last = close.last()
+        val legacyLength = (period ?: ScreenerIndicatorId.defaultPeriodOf(indicatorId) ?: DEFAULT_PERIOD)
+            .coerceIn(MIN_PERIOD, MAX_PERIOD)
+
+        val value = when (indicatorId) {
+            ScreenerIndicatorId.STOCHASTIC_K ->
+                Indicators.stochastic(high, low, close, legacyLength).k.lastValue()
+            ScreenerIndicatorId.MACD_HISTOGRAM -> Indicators.macd(close).histogram.lastValue()
+            ScreenerIndicatorId.ATR_PERCENT ->
+                Indicators.atr(high, low, close, legacyLength).lastValue()?.asPercentOf(last)
+            ScreenerIndicatorId.SMA_DISTANCE ->
+                Indicators.sma(close, legacyLength).lastValue()?.let { distance(last, it) }
+            ScreenerIndicatorId.EMA_DISTANCE ->
+                Indicators.ema(close, legacyLength).lastValue()?.let { distance(last, it) }
+            ScreenerIndicatorId.BOLLINGER_PERCENT ->
+                IndicatorsExt.bollingerPercent(close, legacyLength, BOLLINGER_MULTIPLIER).lastValue()
+            else -> catalogueReading(indicatorId, period, series)
+        }
+        return value?.takeIf(Double::isFinite)
+    }
+
+    /**
+     * Any of the eighty-three, through the builders the chart itself draws with.
+     *
+     * The period is clamped into this indicator's own bounds rather than the module's, because they
+     * are not the same range for every indicator — the correlation coefficient starts at five, not
+     * at two — and `ChartCatalog` clamps again on the way in, so the two agree by construction.
+     */
+    private fun catalogueReading(indicatorId: String, period: Int?, series: CandleSeries): Double? {
+        val offered = ScreenerIndicatorCatalog.optionOf(indicatorId) ?: return null
+        val option = ChartCatalog.INDICATORS.firstOrNull { it.id == indicatorId } ?: return null
+        val length = period?.coerceIn(offered.minPeriod, offered.maxPeriod)
+        val line = when (option.pane) {
+            IndicatorPane.PRICE -> ChartCatalog.overlayFor(option, series, length).firstOrNull()
+            // The pane's first line, or its histogram for the four that are drawn only as columns
+            // — the Accelerator, Balance of Power, the Chaikin oscillator and the Awesome
+            // oscillator. `paneFor` returns null on a volume study with no volume column, and that
+            // null is carried through rather than turned into a zero.
+            IndicatorPane.SEPARATE -> ChartCatalog.paneFor(option, series, length)
+                ?.let { pane -> pane.lines.firstOrNull() ?: pane.histogram }
+            // A structure study has no value per bar. It is not offered, and this is the second
+            // place that says so rather than the first place that forgets.
+            IndicatorPane.STRUCTURE -> null
+        } ?: return null
+
+        val value = line.values.lastValue() ?: return null
+        val price = series.close.last()
+        return when (offered.reading) {
+            ScreenerIndicatorCatalog.Reading.RATIO -> value
+            ScreenerIndicatorCatalog.Reading.TURNOVER -> value
+            ScreenerIndicatorCatalog.Reading.PRICE_PERCENT -> value.asPercentOf(price)
+            ScreenerIndicatorCatalog.Reading.LEVEL_DISTANCE -> distance(price, value)
         }
     }
 

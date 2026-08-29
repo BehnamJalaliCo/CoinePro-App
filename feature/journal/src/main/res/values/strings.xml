@@ -31,6 +31,8 @@
     <string name="journal_filter_wins">بردها</string>
     <string name="journal_filter_losses">باخت‌ها</string>
     <string name="journal_filter_ungraded">بدون عدد</string>
+    <string name="journal_filter_with_shot">با تصویر</string>
+    <string name="journal_filter_without_shot">بدون تصویر</string>
     <string name="journal_search">جست‌وجو در نماد، یادداشت و درس</string>
     <string name="journal_clear_filter">برداشتن فیلتر</string>
 

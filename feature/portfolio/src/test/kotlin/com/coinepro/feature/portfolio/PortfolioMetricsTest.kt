@@ -54,6 +54,56 @@ class PortfolioMetricsTest {
     )
 
     @Test
+    fun `the run-up is trough to peak and is not the largest winning trade`() {
+        // The walk is 100, 60, 30, 40, -10. Its lowest point before a rise is -10 at the end, so
+        // the largest completed rise is from 30 up to 40 — ten — while the largest single winning
+        // trade is a hundred. A report that confused the two would flatter every history.
+        val metrics = PortfolioMetrics.of(walk)
+        val climb = metrics.runUp!!
+        assertEquals(10.0, climb.height, 1e-9)
+        assertEquals(100.0, metrics.largestWin!!, 1e-9)
+        assertEquals(30.0, climb.troughEquity, 1e-9)
+        assertEquals(40.0, climb.peakEquity, 1e-9)
+        assertTrue("it is a stretch, not a point", climb.peakIndex > climb.troughIndex)
+        // A profit-from-zero curve gets no percentage: the trough it would divide by is arbitrary.
+        assertNull(climb.heightPercent)
+    }
+
+    @Test
+    fun `the run-up covers the trades inside it and none outside it`() {
+        val climb = PortfolioMetrics.of(walk).runUp!!
+        assertTrue(climb.covers(base + 3 * day))
+        assertTrue(climb.covers(base + 4 * day))
+        assertFalse(climb.covers(base + day))
+        assertFalse(climb.covers(base + 5 * day))
+    }
+
+    @Test
+    fun `a run-up on a real balance curve is also reported as a percentage of the low it rose from`() {
+        val balances = listOf(
+            trade("1", -200.0, base + day, balanceAfter = 800.0),
+            trade("2", 100.0, base + 2 * day, balanceAfter = 900.0),
+            trade("3", 300.0, base + 3 * day, balanceAfter = 1_200.0),
+        )
+        val metrics = PortfolioMetrics.of(balances)
+        assertTrue(metrics.equityIsBalance)
+        val climb = metrics.runUp!!
+        assertEquals(400.0, climb.height, 1e-9)
+        assertEquals(50.0, climb.heightPercent!!, 1e-9)
+        assertEquals(400.0, metrics.maxRunUp, 1e-9)
+    }
+
+    @Test
+    fun `a history that only ever fell reports no run-up rather than a run-up of zero`() {
+        val falling = listOf(
+            trade("1", -100.0, base + day),
+            trade("2", -50.0, base + 2 * day),
+        )
+        assertNull(PortfolioMetrics.of(falling).runUp)
+        assertEquals(0.0, PortfolioMetrics.of(falling).maxRunUp, 1e-9)
+    }
+
+    @Test
     fun `an empty history reports nothing rather than a set of zeros`() {
         val metrics = PortfolioMetrics.of(emptyList())
         assertEquals(0, metrics.trades)

@@ -99,16 +99,23 @@ fun JournalScreen(controller: JournalController) {
     var selectedTags by rememberSaveable { mutableStateOf(listOf<String>()) }
     var query by rememberSaveable { mutableStateOf("") }
     var outcome by rememberSaveable { mutableStateOf(JournalOutcome.ANY.name) }
+    var shot by rememberSaveable { mutableStateOf(JournalShot.ANY.name) }
 
-    val filter = remember(selectedTags, query, outcome) {
+    val filter = remember(selectedTags, query, outcome, shot) {
         JournalFilter(
             tags = selectedTags.toSet(),
             query = query,
             outcome = JournalOutcome.valueOf(outcome),
+            shot = JournalShot.valueOf(shot),
         )
     }
-    val shown = remember(state.entries, filter) { filter.apply(state.entries) }
-    val stats = remember(state.entries, filter) { filter.statsOf(state.entries) }
+    // Read once, here, and passed to all three: the list, the figures above it and the export
+    // under it. That is the whole of the agreement this screen has to keep — the statistics, the
+    // CSV and the screenshot filter are three views of one subset, and computing the subset once
+    // is the only way they cannot drift apart.
+    val attached = screenshots.attached
+    val shown = remember(state.entries, filter, attached) { filter.apply(state.entries, attached) }
+    val stats = remember(state.entries, filter, attached) { filter.statsOf(state.entries, attached) }
 
     // One picker for the whole screen rather than one per row. A launcher created inside a lazy
     // item is disposed when that row scrolls off, and the result then arrives with nowhere to go.
@@ -137,6 +144,8 @@ fun JournalScreen(controller: JournalController) {
                 },
                 onQuery = { query = it },
                 onOutcome = { outcome = it.name },
+                shot = JournalShot.valueOf(shot),
+                onShot = { shot = it.name },
             )
         }
 
@@ -224,7 +233,10 @@ fun JournalScreen(controller: JournalController) {
                         // and the app keeps no copy of a document it has no business keeping.
                         val send = Intent(Intent.ACTION_SEND).apply {
                             type = "text/csv"
-                            putExtra(Intent.EXTRA_TEXT, Journal.toCsv(shown))
+                            // The same list and the same screenshot set the figures were computed
+                            // from. See JournalExport: the file has to be reconcilable with the
+                            // screen it came from, including which entries carry a chart.
+                            putExtra(Intent.EXTRA_TEXT, JournalExport.csv(shown, attached))
                         }
                         context.startActivity(
                             Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
@@ -251,6 +263,7 @@ fun JournalScreen(controller: JournalController) {
                         selectedTags = emptyList()
                         query = ""
                         outcome = JournalOutcome.ANY.name
+                        shot = JournalShot.ANY.name
                     },
                 )
             }
@@ -348,6 +361,8 @@ private fun FilterCard(
     onToggleTag: (String) -> Unit,
     onQuery: (String) -> Unit,
     onOutcome: (JournalOutcome) -> Unit,
+    shot: JournalShot,
+    onShot: (JournalShot) -> Unit,
 ) {
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
@@ -361,6 +376,12 @@ private fun FilterCard(
                 OutcomeChip(stringResource(R.string.journal_filter_wins), outcome, JournalOutcome.WINS, onOutcome)
                 OutcomeChip(stringResource(R.string.journal_filter_losses), outcome, JournalOutcome.LOSSES, onOutcome)
                 OutcomeChip(stringResource(R.string.journal_filter_ungraded), outcome, JournalOutcome.UNGRADED, onOutcome)
+            }
+            // A second row rather than more chips in the first: «برد» and «با تصویر» narrow
+            // different things, and a reader scanning one strip would read them as alternatives.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+                ShotChip(stringResource(R.string.journal_filter_with_shot), shot, JournalShot.WITH, onShot)
+                ShotChip(stringResource(R.string.journal_filter_without_shot), shot, JournalShot.WITHOUT, onShot)
             }
             if (allTags.isNotEmpty()) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
@@ -403,6 +424,27 @@ private fun OutcomeChip(
         // Pressing the selected one again goes back to everything, which is the same gesture the
         // tag chips use. One rule for every chip on the screen.
         onClick = { onSelect(if (current == value) JournalOutcome.ANY else value) },
+    )
+}
+
+/**
+ * The screenshot chips.
+ *
+ * Two rather than three: «همه» is the state you get by pressing the selected one again, which is
+ * the rule every other chip on this screen already follows, and a third chip for "no filter" would
+ * be a control whose only job is to undo a control beside it.
+ */
+@Composable
+private fun ShotChip(
+    label: String,
+    current: JournalShot,
+    value: JournalShot,
+    onSelect: (JournalShot) -> Unit,
+) {
+    Chip(
+        label = label,
+        selected = current == value,
+        onClick = { onSelect(if (current == value) JournalShot.ANY else value) },
     )
 }
 

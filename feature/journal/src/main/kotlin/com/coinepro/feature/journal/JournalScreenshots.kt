@@ -70,6 +70,16 @@ internal class JournalScreenshots(private val context: Context) {
     fun uriFor(entryId: Long): Uri? = attachments[entryId]?.let(Uri::parse)
 
     /**
+     * The ids of every entry that has a picture.
+     *
+     * What [JournalFilter] filters on and what [JournalExport] writes its column from. Read from
+     * the same snapshot map the rows read, so attaching a picture re-filters the list and re-runs
+     * the statistics in the same frame it redraws the row — a filter that only caught up on the
+     * next launch would be a filter the reader could not trust.
+     */
+    val attached: Set<Long> get() = attachments.keys.toSet()
+
+    /**
      * Attach a picture, keeping read access to it across reboots.
      *
      * The grant is requested rather than assumed. A picker can hand back a URI it will not grant

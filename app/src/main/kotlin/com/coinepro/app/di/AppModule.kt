@@ -32,6 +32,8 @@ import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
 import com.coinepro.core.datastore.TimeZonePrefStore
 import com.coinepro.core.datastore.WatchlistStore
+import com.coinepro.core.webhook.WebhookDispatcher
+import com.coinepro.core.webhook.WebhookStore
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.journal.JournalController
 import com.coinepro.core.papertrade.PaperTradeController
@@ -85,6 +87,10 @@ import com.coinepro.core.marketdata.CoineProFxCandleGateway
 import com.coinepro.core.marketdata.MarketDataCache
 import com.coinepro.core.marketdata.NetworkAcademyTokenStore
 import com.coinepro.core.marketdata.TradeYarCandleGateway
+import com.coinepro.core.orderbook.DepthUnavailableReason
+import com.coinepro.core.orderbook.NoDepthGateway
+import com.coinepro.core.orderbook.OrderBookGateway
+import com.coinepro.core.orderbook.TradeYarOrderBookGateway
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.marketdata.MarketCatalogGateway
 import com.coinepro.core.marketdata.MarketDataController
@@ -536,6 +542,22 @@ object AppModule {
     @Singleton
     fun timeZonePrefStore(dataStore: DataStore<Preferences>): TimeZonePrefStore =
         TimeZonePrefStore(dataStore)
+
+    /**
+     * Where an alert can be sent besides this phone, and what happened when it was.
+     *
+     * The store keeps the targets and the delivery log together on purpose: a webhook that fails
+     * silently is the same failure as an alert that fails silently, and the log is the only thing
+     * that tells the difference between "the market never got there" and "we could not reach you".
+     */
+    @Provides
+    @Singleton
+    fun webhookStore(dataStore: DataStore<Preferences>): WebhookStore = WebhookStore(dataStore)
+
+    /** Fans one fired alert out to every enabled target, recording each attempt. */
+    @Provides
+    @Singleton
+    fun webhookDispatcher(store: WebhookStore): WebhookDispatcher = WebhookDispatcher(store)
 
     /**
      * How the reader has arranged the chart screen itself: where the split with the watchlist
@@ -1162,6 +1184,58 @@ object AppModule {
         @ForexPlatform forex: CandleGateway,
         @CryptoPlatform crypto: CandleGateway,
     ): Map<MarketPlatform, CandleGateway> = platformMap(forex, crypto)
+
+    /**
+     * Order-book depth, per platform, where the two answers are not the same *kind* of answer.
+     *
+     * TradeYar relays LBank, which publishes a public book, so crypto gets a real network gateway
+     * pointed at the depth route asked for in `docs/SERVER_ASKS_DOM.md`. Until that route is
+     * relayed it answers 404, which [TradeYarOrderBookGateway] reads as
+     * [DepthUnavailableReason.ENDPOINT_NOT_SERVED] — «هنوز سرو نمی‌شود», not «در حال دریافت».
+     *
+     * The default poll cadence is taken rather than tuned here: the ladder's refresh rate is a
+     * property of the feed, and a number chosen in the injector is a number nobody reading the
+     * gateway would think to look for.
+     */
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoOrderBookGateway(@CryptoPlatform retrofit: Retrofit): OrderBookGateway =
+        TradeYarOrderBookGateway(retrofit)
+
+    /**
+     * CoinePro-FX has no order book, and that is the finished answer rather than a gap to fill.
+     *
+     * MetaTrader 5 exposes depth only through `MarketBookAdd`/`MarketBookGet`, and those return
+     * nothing unless the broker has switched Level II publication on for the symbol; most retail
+     * forex brokers have not. So this is not a placeholder awaiting a real gateway — no backend
+     * work downstream can produce depth the venue never publishes. [NoDepthGateway] says so and
+     * completes, and the screen renders it as one short Persian sentence naming the broker.
+     *
+     * The source name is the terminal's own spelling, so the sentence names something the reader
+     * can go and check rather than an internal label for a refusal.
+     */
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexOrderBookGateway(): OrderBookGateway = NoDepthGateway(
+        reason = DepthUnavailableReason.FEED_PUBLISHES_NO_DEPTH,
+        sourceName = "MetaTrader 5",
+    )
+
+    /**
+     * Both, keyed by platform, so the shell can follow whichever one is on screen.
+     *
+     * Same shape as [candleGateways] deliberately: the depth ladder must switch platform with the
+     * chart it was opened from, and a single gateway behind a flag is how the crypto book ends up
+     * drawn under a forex heading.
+     */
+    @Provides
+    @Singleton
+    fun orderBookGateways(
+        @ForexPlatform forex: OrderBookGateway,
+        @CryptoPlatform crypto: OrderBookGateway,
+    ): Map<MarketPlatform, OrderBookGateway> = platformMap(forex, crypto)
 
     @Provides
     @Singleton

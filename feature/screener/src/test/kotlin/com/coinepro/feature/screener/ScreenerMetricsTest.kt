@@ -128,16 +128,21 @@ class ScreenerMetricsTest {
     }
 
     @Test
-    fun `only the indicator readings a screen asked for are computed`() {
+    fun `a row carries the readings it was handed and computes none of its own`() {
+        // The readings arrive already computed — the controller reduces them on a background
+        // dispatcher and caches them per (symbol, indicator, period). A row that computed its own
+        // would do several hundred bars of arithmetic per market on whichever thread rebuilt the
+        // table, which on this screen is the one drawing it.
         val bars = List(40) { index ->
             val close = 100.0 + index
             bar(close, close + 1.0, close - 1.0, close)
         }
         val none = ScreenerMetrics.rowOf(bitcoin, null, bars)
-        assertTrue("nothing asked for, nothing computed", none.indicators.isEmpty())
+        assertTrue("nothing handed in, nothing claimed", none.indicators.isEmpty())
 
-        val one = ScreenerMetrics.rowOf(bitcoin, null, bars, indicatorKeys = setOf("rsi:14"))
+        val one = ScreenerMetrics.rowOf(bitcoin, null, bars, indicators = mapOf("rsi:14" to 71.5))
         assertEquals(setOf("rsi:14"), one.indicators.keys)
+        assertEquals(71.5, one.indicators.getValue("rsi:14"), 1e-9)
     }
 
     @Test

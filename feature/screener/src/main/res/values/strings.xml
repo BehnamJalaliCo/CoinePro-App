@@ -36,4 +36,9 @@
     <string name="screener_failed">فهرست بازارها در دسترس نیست.</string>
     <string name="screener_retry">تلاش دوباره</string>
     <string name="screener_free_note">همه شرط‌ها و همه اندیکاتورها رایگان‌اند و تعداد صفحه‌های ذخیره‌شده محدود نیست.</string>
+    <string name="screener_indicator_search">جست‌وجوی اندیکاتور</string>
+    <string name="screener_indicator_none">اندیکاتوری با این نام نیست.</string>
+    <string name="screener_indicator_absent">اندیکاتورهایی که در فیلتر نیستند</string>
+    <string name="screener_indicator_absent_line">%1$s: %2$s</string>
+    <string name="screener_add_indicator">افزودن شرط اندیکاتور</string>
 </resources>

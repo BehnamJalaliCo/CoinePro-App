@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -128,6 +129,11 @@ private fun Content(
     onOpenReport: (() -> Unit)?,
     zone: ZoneId,
 ) {
+    // The best rise and the deepest fall over exactly the trades this screen is showing — the same
+    // window the summary above the list is computed over, so a row marked «در بیشترین رشد» is
+    // marked against the figures the reader can see rather than against a history they cannot.
+    val spans = remember(state.trades) { PortfolioMetrics.of(state.trades) }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -167,7 +173,16 @@ private fun Content(
         }
         item { CardLabel(stringResource(R.string.portfolio_recent)) }
         // Keyed, so paging in older trades does not re-compose every row already on screen.
-        items(state.trades, key = { it.id }) { trade -> TradeRow(trade, zone) }
+        items(state.trades, key = { it.id }) { trade ->
+            TradeRow(
+                trade = trade,
+                // Which stretch of the curve this trade fell in. Computed once for the whole list
+                // above and passed down as two booleans, so a row costs nothing to decide.
+                inRunUp = spans.runUp?.covers(trade.closedAt) == true,
+                inDrawdown = spans.drawdown?.let { trade.closedAt in it.peakAt..it.troughAt } == true,
+                zone = zone,
+            )
+        }
         if (state.hasMore) {
             item {
                 CoineProSecondaryButton(
@@ -345,8 +360,24 @@ private fun SymbolsCard(rows: List<SymbolPerformance>) {
     }
 }
 
+/**
+ * One closed trade, and where it sat in the account's own story.
+ *
+ * ### Why a trade is marked rather than given a run-up of its own
+ *
+ * `core/chart`'s backtest engine computes a run-up **per trade**, from the bar extremes while the
+ * position was open — the best that trade ever looked. Neither broker sends that: a `ClosedTrade`
+ * carries an entry, an exit and a result, and nothing about what happened in between. Printing a
+ * per-trade run-up here would mean inventing one from two prices, which would be a confident number
+ * that is simply not true.
+ *
+ * What is true, and is what a reader actually wants from a list, is *where this trade sits*: inside
+ * the stretch where the account made its largest continuous gain, or inside the one where it gave
+ * the most back. That is arithmetic on the equity curve, which this app does have, and it turns a
+ * list of results into a list a reader can find the bad fortnight in.
+ */
 @Composable
-private fun TradeRow(trade: ClosedTrade, zone: ZoneId) {
+private fun TradeRow(trade: ClosedTrade, inRunUp: Boolean, inDrawdown: Boolean, zone: ZoneId) {
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
@@ -387,6 +418,21 @@ private fun TradeRow(trade: ClosedTrade, zone: ZoneId) {
                     color = CoineProColors.TextMuted,
                     fontWeight = FontWeight.Normal,
                 )
+                // At most one of the two. Where the spans overlap — which they can, at the turn —
+                // the fall is the one shown, because it is the one a reader is looking for.
+                val span = when {
+                    inDrawdown -> R.string.portfolio_trade_in_drawdown to CoineProColors.Sell
+                    inRunUp -> R.string.portfolio_trade_in_runup to CoineProColors.Buy
+                    else -> null
+                }
+                span?.let { (label, tint) ->
+                    Text(
+                        text = stringResource(label),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = tint,
+                        fontWeight = FontWeight.Normal,
+                    )
+                }
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(

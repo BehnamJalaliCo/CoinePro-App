@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -29,8 +30,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.coinepro.core.backtest.BacktestFormat
+import com.coinepro.core.backtest.ReplayLedger
+import com.coinepro.core.backtest.ReplayPosition
+import com.coinepro.core.backtest.ReplaySession
 import com.coinepro.core.chart.Candle
 import com.coinepro.core.chart.ReplaySpeed
 import com.coinepro.core.chart.ReplayState
@@ -38,11 +46,13 @@ import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.JalaliDate
 import com.coinepro.core.common.foldDigitsToLatin
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextField
+import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.marketdata.CHART_TIME_ZONE
 import java.time.LocalDate
@@ -73,9 +83,6 @@ internal fun ReplayBar(
     onGoTo: (Int) -> Unit,
     onExit: () -> Unit,
 ) {
-    var typedDate by rememberSaveable { mutableStateOf("") }
-    val target = remember(typedDate, state.bars) { indexOfTypedDate(typedDate, state.bars) }
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -157,41 +164,322 @@ internal fun ReplayBar(
             }
         }
 
-        // Going to a date, which is the one thing the scrub cannot do.
-        //
-        // Dragging a slider across two thousand bars to reach a particular Tuesday is a hunt: the
-        // handle moves eight bars a pixel and the reader overshoots repeatedly. A date is what
-        // they actually have in mind — the day of the announcement, the day the level broke — so
-        // it is what the control takes.
+        GoToDateField(bars = state.bars, onGoTo = onGoTo)
+
+        ReplayLedgerPanel(state)
+    }
+}
+
+/**
+ * Going to a date, which is the one thing the scrub cannot do.
+ *
+ * Dragging a slider across two thousand bars to reach a particular Tuesday is a hunt: the handle
+ * moves eight bars a pixel and the reader overshoots repeatedly. A date is what they actually have
+ * in mind — the day of the announcement, the day the level broke — so it is what the control takes.
+ *
+ * Lifted out of the replay bar so an ordinary chart can carry it too. It is the same need on both:
+ * a reader looking at a live chart who wants to see what happened in Mordad is doing exactly the
+ * same hunt with a pan gesture. What it needs from the caller is a way to bring a bar index into
+ * view, which is why [onGoTo] is an index rather than a scroll — the caller owns the viewport, and
+ * on a live chart that is not this composable. See the report's WIRING NEEDED for what `ChartScreen`
+ * has to pass.
+ */
+@Composable
+internal fun GoToDateField(
+    bars: List<Candle>,
+    onGoTo: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var typedDate by rememberSaveable { mutableStateOf("") }
+    val target = remember(typedDate, bars) { indexOfTypedDate(typedDate, bars) }
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CoineProTextField(
+            value = typedDate,
+            onValueChange = { typedDate = it },
+            label = "رفتن به تاریخ ۱۴۰۳/۰۵/۱۲",
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = "برو",
+            style = MaterialTheme.typography.labelSmall,
+            color = if (target == null) CoineProColors.TextDisabled else CoineProColors.OnAccent,
+            modifier = Modifier
+                .clip(CoineProShapes.small)
+                .background(if (target == null) Color.Transparent else CoineProColors.Accent)
+                .clickable(enabled = target != null) {
+                    target?.let {
+                        onGoTo(it)
+                        typedDate = ""
+                    }
+                }
+                .padding(horizontal = CoineProSpacing.OneHalf, vertical = 6.dp),
+        )
+    }
+}
+
+/**
+ * The rehearsal ledger: trades taken during this replay session, and how they went.
+ *
+ * A paper trade could already be taken during a replay, because the setup card reads whatever price
+ * the chart is showing and during replay that is the replay bar. Everything after the entry was
+ * missing — no position, no running result, no ledger — so a reader could open a trade in a
+ * rehearsal and had nowhere to see what happened to it.
+ *
+ * ### Kept out of the paper-trading book, deliberately
+ *
+ * A replay session is a rehearsal over history the reader can scrub, step backwards through and
+ * start again. The paper book is a record of decisions taken without knowing what came next. Mixing
+ * a rehearsal into a record is how a journal stops being trusted, so nothing here is written
+ * anywhere: the session lives for as long as replay is on, and leaving replay discards it. That is
+ * the honest shape of a rehearsal — worth reading, not worth keeping — and it is why the result is
+ * shown here, while the session is still running, rather than in a summary afterwards.
+ *
+ * Collapsed until asked for. The transport above it is what a reader came to the bar for, and a
+ * trading panel permanently open under the chart would push the chart itself off a phone.
+ */
+@Composable
+private fun ReplayLedgerPanel(state: ReplayState) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    var sizeText by rememberSaveable { mutableStateOf("1") }
+    // A new snapshot is a new session. Keyed on the first bar and the length, which together change
+    // on every fresh entry into replay and on nothing else.
+    var session by remember(state.bars.firstOrNull()?.t, state.bars.size) {
+        mutableStateOf(ReplaySession())
+    }
+
+    // Marked rather than accumulated: stepping backwards un-reveals the bars that set an envelope,
+    // and a run-up that survived the step back would be a number the reader cannot see on the
+    // chart any more. See `ReplayLedger.mark`.
+    val marked = remember(session, state.cursor, state.bars) {
+        ReplayLedger.mark(session, state.bars, state.cursor)
+    }
+    val price = state.bars.getOrNull(state.cursor)?.c
+    val size = sizeText.foldDigitsToLatin().trim().toDoubleOrNull() ?: 0.0
+    val tradable = price != null && size > 0
+
+    Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CoineProTextField(
-                value = typedDate,
-                onValueChange = { typedDate = it },
-                label = "رفتن به تاریخ ۱۴۰۳/۰۵/۱۲",
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                modifier = Modifier.weight(1f),
-            )
             Text(
-                text = "برو",
+                text = if (expanded) "بستن دفتر تمرین" else "معاملهٔ تمرینی",
                 style = MaterialTheme.typography.labelSmall,
-                color = if (target == null) CoineProColors.TextDisabled else CoineProColors.OnAccent,
+                color = if (expanded) CoineProColors.OnAccent else CoineProColors.TextSecondary,
                 modifier = Modifier
                     .clip(CoineProShapes.small)
-                    .background(if (target == null) Color.Transparent else CoineProColors.Accent)
-                    .clickable(enabled = target != null) {
-                        target?.let {
-                            onGoTo(it)
-                            typedDate = ""
-                        }
-                    }
-                    .padding(horizontal = CoineProSpacing.OneHalf, vertical = 6.dp),
+                    .background(if (expanded) CoineProColors.Accent else Color.Transparent)
+                    .clickable { expanded = !expanded }
+                    .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
             )
+            if (!marked.isEmpty) {
+                val running = ReplayLedger.realised(marked) +
+                    ReplayLedger.unrealised(marked, state.bars, state.cursor)
+                Text(
+                    text = BacktestFormat.money(running, signed = true),
+                    style = CoineProTextStyles.RowFigure,
+                    color = resultInk(running),
+                    textAlign = TextAlign.Right,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+
+        if (!expanded) return@Column
+
+        CoineProCard(modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CoineProTextField(
+                        value = sizeText,
+                        onValueChange = { sizeText = it },
+                        label = "حجم",
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal,
+                            imeAction = ImeAction.Done,
+                        ),
+                        modifier = Modifier.weight(1f),
+                    )
+                    ActionChip("خرید", CoineProColors.Buy, tradable) {
+                        session = ReplayLedger.open(marked, state.bars, state.cursor, true, size)
+                    }
+                    ActionChip("فروش", CoineProColors.Sell, tradable) {
+                        session = ReplayLedger.open(marked, state.bars, state.cursor, false, size)
+                    }
+                }
+
+                if (price != null) {
+                    LedgerRow("قیمت این کندل", BacktestFormat.money(price))
+                }
+
+                marked.open.forEach { position ->
+                    OpenPositionRow(position, price) {
+                        session = ReplayLedger.close(marked, state.bars, state.cursor, position.id)
+                    }
+                }
+
+                if (marked.closed.isNotEmpty()) {
+                    val summary = ReplayLedger.summary(marked, state.bars, state.cursor)
+                    LedgerRow(
+                        "نتیجهٔ بسته‌شده",
+                        BacktestFormat.money(summary.netProfit, signed = true),
+                        resultInk(summary.netProfit),
+                    )
+                    LedgerRow("تعداد معاملهٔ بسته", BacktestFormat.count(summary.totalTrades))
+                    LedgerRow("درصد برد", BacktestFormat.percent(summary.percentProfitable, 1))
+                    // A rehearsal of three winning trades has an infinite profit factor. A dash,
+                    // never a number — see `BacktestFormat`.
+                    LedgerRow("ضریب سود", BacktestFormat.ratio(summary.profitFactor))
+                }
+
+                if (marked.open.isNotEmpty()) {
+                    Text(
+                        text = "پایان جلسه و بستن همه",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CoineProColors.OnAccent,
+                        modifier = Modifier
+                            .clip(CoineProShapes.small)
+                            .background(CoineProColors.Accent)
+                            .clickable {
+                                session = ReplayLedger.closeAll(marked, state.bars, state.cursor)
+                            }
+                            .padding(horizontal = CoineProSpacing.OneHalf, vertical = 6.dp),
+                    )
+                }
+
+                Text(
+                    text = "این دفتر فقط برای همین جلسهٔ بازپخش است و در دفتر معاملهٔ آزمایشی ثبت نمی‌شود. با خروج از بازپخش پاک می‌شود. کارمزد هر طرف پنج صدم درصد حساب می‌شود، همان که بک‌تست حساب می‌کند.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextMuted,
+                    fontWeight = FontWeight.Normal,
+                )
+            }
         }
     }
+}
+
+/**
+ * One open rehearsal position, marked against the replay bar.
+ *
+ * Run-up is on the row beside the profit, because on an open position the two together are the
+ * whole decision: a position up ten that was up ninety is a position whose reader is already late,
+ * and the profit alone does not say so.
+ */
+@Composable
+private fun OpenPositionRow(position: ReplayPosition, price: Double?, onClose: () -> Unit) {
+    val profit = price?.let(position::profit) ?: 0.0
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = if (position.isLong) "خرید" else "فروش",
+            style = MaterialTheme.typography.labelSmall,
+            color = if (position.isLong) CoineProColors.Buy else CoineProColors.Sell,
+            modifier = Modifier.width(40.dp),
+        )
+        Text(
+            text = BacktestFormat.money(position.entryPrice),
+            style = CoineProTextStyles.RowFigure,
+            color = CoineProColors.TextSecondary,
+            textAlign = TextAlign.Right,
+            maxLines = 1,
+            modifier = Modifier.weight(1f),
+        )
+        // The amount and the percentage in one cell, stacked. Two columns would not fit beside the
+        // run-up on a phone, and dropping the percentage would leave a reader comparing a rehearsal
+        // on a two-hundred-dollar instrument against one on a forty-thousand-dollar instrument by
+        // the absolute number, which says nothing about which decision was better.
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = BacktestFormat.money(profit, signed = true),
+                style = CoineProTextStyles.RowFigure,
+                color = resultInk(profit),
+                textAlign = TextAlign.Right,
+                maxLines = 1,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                text = BacktestFormat.signedPercent(price?.let(position::profitPercent) ?: 0.0),
+                style = MaterialTheme.typography.labelSmall,
+                color = resultInk(profit),
+                textAlign = TextAlign.Right,
+                maxLines = 1,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        Text(
+            text = BacktestFormat.money(position.runUp),
+            style = CoineProTextStyles.RowFigure,
+            color = CoineProColors.Buy,
+            textAlign = TextAlign.Right,
+            maxLines = 1,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = "بستن",
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.OnAccent,
+            modifier = Modifier
+                .clip(CoineProShapes.small)
+                .background(CoineProColors.Accent)
+                .clickable(onClick = onClose)
+                .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun LedgerRow(label: String, value: String, colour: Color = CoineProColors.TextPrimary) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = CoineProColors.TextMuted)
+        Text(value, style = CoineProTextStyles.RowFigure, color = colour, textAlign = TextAlign.Right)
+    }
+}
+
+/**
+ * A buy or sell chip, dimmed rather than removed when it cannot fire.
+ *
+ * Dimmed because a control that vanishes while a field is incomplete leaves the reader looking for
+ * what they did wrong; one that is visibly present and dim says the same thing without the search.
+ */
+@Composable
+private fun ActionChip(label: String, colour: Color, enabled: Boolean, onClick: () -> Unit) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        color = if (enabled) CoineProColors.OnAccent else CoineProColors.TextDisabled,
+        modifier = Modifier
+            .clip(CoineProShapes.small)
+            .background(if (enabled) colour else Color.Transparent)
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = CoineProSpacing.OneHalf, vertical = 6.dp),
+    )
+}
+
+/** Green above zero, red below, ordinary ink at a scratch. */
+@Composable
+private fun resultInk(value: Double): Color = when {
+    !value.isFinite() -> CoineProColors.TextMuted
+    value > 0 -> CoineProColors.Buy
+    value < 0 -> CoineProColors.Sell
+    else -> CoineProColors.TextPrimary
 }
 
 /**
@@ -213,8 +501,12 @@ internal fun ReplayBar(
  *
  * Null means the text is not yet a date — the normal state while somebody is still typing, and not
  * an error worth saying anything about.
+ *
+ * Internal rather than private so it can be asserted directly: the off-by-one that matters here is
+ * a calendar conversion, and a calendar conversion is far easier to be certain about as a test than
+ * as a field somebody types into.
  */
-private fun indexOfTypedDate(typed: String, bars: List<Candle>): Int? {
+internal fun indexOfTypedDate(typed: String, bars: List<Candle>): Int? {
     if (bars.isEmpty()) return null
     val parts = typed.trim().foldDigitsToLatin().split('/', '-')
     if (parts.size != 3) return null

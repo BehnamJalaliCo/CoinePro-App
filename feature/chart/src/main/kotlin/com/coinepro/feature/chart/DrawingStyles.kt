@@ -25,9 +25,6 @@ const val MIN_DRAWING_WIDTH_DP = 0.5f
 /** See [MIN_DRAWING_WIDTH_DP]. */
 const val MAX_DRAWING_WIDTH_DP = 8f
 
-/** The rail's eraser, which arms as a mode rather than as a tool. See [ChartController.arm]. */
-internal const val ERASER_TOOL = "eraser"
-
 /**
  * A width brought inside the bounds, with anything nonsensical sent back to the default.
  *

@@ -317,7 +317,7 @@ private fun ChartPane(
                     ),
                     drawing = state.canvasDrawing,
                     onDrawing = controller::onDrawing,
-                    eraser = state.eraser,
+                    eraser = state.drawing.eraser,
                     onLoadMore = controller::loadMore,
                     logScale = state.logScale,
                     scaleMode = state.scaleMode,

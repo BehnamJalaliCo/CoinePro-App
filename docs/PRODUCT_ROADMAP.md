@@ -286,6 +286,7 @@ core:auth
 core:security
 core:marketdata
 core:orderbook
+core:webhook
 core:membership
 core:chart
 core:chartevents

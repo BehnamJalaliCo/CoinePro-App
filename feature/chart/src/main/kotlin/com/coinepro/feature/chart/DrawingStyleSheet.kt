@@ -73,6 +73,8 @@ internal fun DrawingStyleSheet(
     onDismiss: () -> Unit,
     onSetColour: (Long) -> Unit,
     onSetWidth: (Float) -> Unit,
+    /** How wide a regression channel's rails sit, in standard deviations. See `Drawing.deviations`. */
+    onSetDeviations: (Double) -> Unit,
     onApplyTemplate: (DrawingTemplate) -> Unit,
     onBringToFront: () -> Unit,
     onSendToBack: () -> Unit,
@@ -97,6 +99,7 @@ internal fun DrawingStyleSheet(
             defaultTemplateId = default?.id,
             onSetColour = onSetColour,
             onSetWidth = onSetWidth,
+            onSetDeviations = onSetDeviations,
             onApplyTemplate = onApplyTemplate,
             onSaveTemplate = { name ->
                 store?.let { target ->
@@ -153,6 +156,8 @@ internal fun DrawingStyleSheetBody(
     defaultTemplateId: String?,
     onSetColour: (Long) -> Unit,
     onSetWidth: (Float) -> Unit,
+    /** See the same parameter on [DrawingStyleSheet]. Drawn only for the tools that have rails. */
+    onSetDeviations: (Double) -> Unit,
     onApplyTemplate: (DrawingTemplate) -> Unit,
     onSaveTemplate: (name: String) -> Unit,
     onDeleteTemplate: (String) -> Unit,
@@ -208,6 +213,37 @@ internal fun DrawingStyleSheetBody(
                     enabled = editable,
                     onClick = { onSetWidth(width) },
                 )
+            }
+        }
+
+        // The regression channel's own number, and the only tool on this chart that has one.
+        //
+        // It was frozen at 2.0 since the geometry was written — a literal default in
+        // `DrawingGeometryA.regressionChannel` that no call site ever overrode — so every regression
+        // channel anybody has ever drawn in this app has had the same rails. Two standard deviations
+        // is the common convention and it is not the only one: a reader working a quiet range wants
+        // one, and somebody marking the extremes of a volatile session wants three.
+        //
+        // Discrete steps rather than a slider, for the same reason [DRAWING_WIDTHS] is: a slider on
+        // a phone is a drag that has to be repeated to land on a round number, and «۲» is the value
+        // people talk about. The range is `DrawingActions.MIN_DEVIATIONS`..`MAX_DEVIATIONS`, and the
+        // transform clamps anyway, so a stored value from outside it cannot draw an unusable channel.
+        if (drawing.toolId == DEVIATION_TOOL) {
+            HorizontalDivider(color = CoineProColors.Border)
+            StyleLabel("پهنای کانال، بر حسب انحراف معیار")
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            ) {
+                DEVIATION_CHOICES.forEach { value ->
+                    StylePill(
+                        // A market figure — it is read against the chart, not spoken — so Latin.
+                        text = formatDeviations(value),
+                        active = kotlin.math.abs(drawing.deviations - value) < DEVIATION_EPSILON,
+                        enabled = editable,
+                        onClick = { onSetDeviations(value) },
+                    )
+                }
             }
         }
 
@@ -506,6 +542,42 @@ internal val DRAWING_WIDTHS: List<Pair<String, Float>> = listOf(
     "ضخیم" to 2.5f,
     "خیلی ضخیم" to 4f,
 )
+
+/**
+ * The one tool whose rails are a number the reader may set.
+ *
+ * Named rather than tested against `DrawingActions` because the check is «does this sheet draw the
+ * control», which is a question about this screen. Every other tool renders nothing for it, and a
+ * width row on a tool with no rails would be a control that does nothing.
+ */
+private const val DEVIATION_TOOL = "regression"
+
+/**
+ * The widths offered, in standard deviations.
+ *
+ * Two is the convention and sits in the middle. One is a channel that hugs the fit, which is what a
+ * reader marking a quiet range wants; three reaches the extremes of a volatile session. The ends are
+ * `DrawingActions.MIN_DEVIATIONS` and half of `MAX_DEVIATIONS` — five is offered by the transform
+ * and is not offered here, because a five-sigma rail is off the plot on nearly every chart and a
+ * choice that looks like it did nothing is worse than one that is absent.
+ */
+private val DEVIATION_CHOICES: List<Double> = listOf(0.5, 1.0, 1.5, 2.0, 2.5, 3.0)
+
+/**
+ * A deviation as the pill prints it: `2` rather than `2.0`, `1.5` as it is.
+ *
+ * `Locale.US` because this is a market figure in a Persian sheet, and an unqualified format on this
+ * app's default locale prints «۲٫۵» into a row of Latin numerals.
+ */
+private fun formatDeviations(value: Double): String =
+    if (value == value.toInt().toDouble()) {
+        value.toInt().toString()
+    } else {
+        String.format(java.util.Locale.US, "%.1f", value)
+    }
+
+/** How close two deviations have to be to be the same choice. A pill either lights or it does not. */
+private const val DEVIATION_EPSILON = 0.01
 
 /** See the same constant in `ChartScreen`: a packed ARGB long sits in the high half of a word. */
 private const val COLOUR_SHIFT = 32

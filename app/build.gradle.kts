@@ -420,6 +420,7 @@ dependencies {
     implementation(project(":feature:auth"))
     implementation(project(":feature:home"))
     implementation(project(":core:orderbook"))
+    implementation(project(":core:webhook"))
     implementation(project(":feature:dom"))
     implementation(project(":feature:heatmap"))
     implementation(project(":feature:search"))

@@ -44,23 +44,29 @@ object ScreenerMetrics {
      * threshold on those figures declines it. See [ScreenerRow] for why null rather than zero.
      *
      * @param bars oldest first, as every gateway in this app returns them.
-     * @param indicatorKeys the readings this screen's filters actually need. Computing anything
-     *   else would be arithmetic over several hundred bars per market that nothing will read —
-     *   which on a catalogue of a thousand is the difference between a screener and a stalled
-     *   phone.
+     * @param indicators readings already computed for this market, keyed by
+     *   [com.coinepro.feature.screener.model.ScreenerIndicatorId.normalisedKey].
+     *
+     * The readings are passed **in** rather than computed here, and that is not a style preference.
+     * Reducing one indicator is arithmetic over several hundred bars; a scan is four hundred markets
+     * times however many conditions the screen carries, and this function is called from the
+     * controller on every rebuild — a filter chip, a quote tick, a scroll. Computing inside it put
+     * that work on whichever thread the caller happened to be on, which on this screen is the one
+     * drawing the table. [ScreenerController] now computes them on a background dispatcher, once
+     * per (symbol, indicator, period) for the life of a scan, and hands the answers here.
      */
     fun rowOf(
         meta: SymbolMeta,
         quote: MarketQuote?,
         bars: List<OhlcBar> = emptyList(),
-        indicatorKeys: Set<String> = emptySet(),
+        indicators: Map<String, Double> = emptyMap(),
     ): ScreenerRow {
         val last = bars.lastOrNull()
         val price = quote?.price?.takeIf { it.isFinite() && it > 0.0 } ?: last?.c
         val market = quote?.instrument?.marketType?.name ?: marketOf(meta)
 
         if (last == null) {
-            return ScreenerRow(meta = meta, price = price, market = market)
+            return ScreenerRow(meta = meta, price = price, market = market, indicators = indicators)
         }
 
         val high = price?.let { max(last.h, it) } ?: last.h
@@ -89,11 +95,7 @@ object ScreenerMetrics {
             quoteVolume = quoteVolume,
             high = high,
             low = low,
-            indicators = if (indicatorKeys.isEmpty()) {
-                emptyMap()
-            } else {
-                ScreenerIndicators.computeAll(indicatorKeys, bars)
-            },
+            indicators = indicators,
             market = market,
         )
     }

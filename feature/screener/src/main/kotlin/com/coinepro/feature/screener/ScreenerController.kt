@@ -16,7 +16,9 @@ import com.coinepro.feature.screener.model.ScreenerFilter
 import com.coinepro.feature.screener.model.ScreenerRow
 import com.coinepro.feature.screener.model.ScreenerScreen
 import com.coinepro.feature.screener.model.ScreenerSort
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -28,6 +30,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withContext
 
 /**
  * Where a market's recent bars come from.
@@ -104,9 +107,30 @@ data class ScreenerState(
     val resolvedCount: Int = 0,
     /** True while bars are still being fetched, so the count on screen can say it is not final. */
     val resolving: Boolean = false,
+    /**
+     * Whether anything resolved so far reports a volume column.
+     *
+     * Decides which indicators the filter sheet may offer — see [ScreenerIndicatorCatalog]. It is
+     * a fact about the *feed* rather than about one market, and it starts false: before any bar has
+     * been read the honest answer is that we have not seen volume, and offering a money-flow filter
+     * that every row would then decline is worse than offering it a second later. The MT5 forex
+     * side reports none at all, and there the fourteen volume studies stay withheld with a reason
+     * printed under the picker rather than silently scoring every market as zero.
+     */
+    val feedHasVolume: Boolean = false,
 ) {
     /** How many markets passed. The number the screen prints in Persian digits. */
     val matchCount: Int get() = rows.size
+
+    /**
+     * The extra columns this screen's indicator conditions put on the table — [115].
+     *
+     * Derived rather than stored, so it cannot drift from the conditions it describes. See
+     * [ScreenerIndicatorColumn] for why a condition earns a column at all: a filter on an indicator
+     * the table does not show is a filter a reader cannot check, correct, or sort by.
+     */
+    val indicatorColumns: List<ScreenerIndicatorColumn>
+        get() = ScreenerIndicatorColumn.of(filters, columns)
 
     /** True where the screen has finished, has not failed, and still has nothing to show. */
     val empty: Boolean get() = rows.isEmpty() && !loading && error == null
@@ -171,6 +195,16 @@ class ScreenerController(
     private val barSource: ScreenerBarSource? = null,
     /** Saved screens. Null on a surface with no persistence, such as a preview. */
     private val store: ScreenerStore? = null,
+    /**
+     * Where indicator arithmetic runs.
+     *
+     * Not the caller's thread, and this is the whole of the cost decision the class note promises.
+     * One reading is a pass over up to two hundred and sixty bars; a scan is four hundred markets
+     * times the conditions on the screen, and it is redone whenever the reader adds a filter. On
+     * the main dispatcher that is a table that stops scrolling while it filters. Injected rather
+     * than hard-coded so a test can pass an unconfined dispatcher and stay deterministic.
+     */
+    private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     private val _state = MutableStateFlow(ScreenerState())
     val state: StateFlow<ScreenerState> = _state.asStateFlow()
@@ -184,6 +218,17 @@ class ScreenerController(
 
     /** Symbols whose bars have been asked for, whether or not an answer came. See the class note. */
     private val asked = mutableSetOf<String>()
+
+    /**
+     * Indicator readings, by symbol and then by normalised key — so, per (symbol, indicator, period).
+     *
+     * The cache the class note's third bound is made of. A market's daily bars do not change during
+     * a scan, so neither does its fourteen-bar RSI, and recomputing it on every rebuild would mean
+     * four hundred markets re-reduced each time a chip is tapped or a quote ticks. Cleared only by
+     * [refresh], which is also when the bars behind it are thrown away — a cache outliving its
+     * inputs is the one way this could report a stale number, and the two are dropped together.
+     */
+    private val readings = mutableMapOf<String, MutableMap<String, Double?>>()
 
     /** The window the list is showing, as symbols. Empty before the first layout pass. */
     private var visible: List<String> = emptyList()
@@ -224,6 +269,9 @@ class ScreenerController(
                     // "resolve the most important markets first" means, and it does not change.
                     universe = catalog.markets.sortedBy { SymbolRanking.rank(it) }
                     quoteBySymbol.putAll(catalog.quotes)
+                    // The readings are answers about bars, and a fresh catalogue is a fresh scan.
+                    // Dropped together so a cached number can never outlive the series it came from.
+                    readings.clear()
                     rebuild(universe.map(SymbolMeta::symbol))
                     _state.update {
                         it.copy(loading = false, error = null, universeSize = universe.size)
@@ -271,6 +319,17 @@ class ScreenerController(
     /** Moves the sort, or flips it when the reader taps the column it is already on. */
     fun toggleSort(field: ScreenerField) {
         _state.update { it.copy(sort = it.sort.toggled(field)) }
+        recompute()
+    }
+
+    /**
+     * The same, for one of the indicator columns a condition put on the table.
+     *
+     * Sorting reads what is already in each row and asks for nothing new, so this is as cheap as
+     * the field version — the readings were computed when the condition was added.
+     */
+    fun toggleIndicatorSort(key: String) {
+        _state.update { it.copy(sort = it.sort.toggledIndicator(key)) }
         recompute()
     }
 
@@ -381,25 +440,88 @@ class ScreenerController(
      * rows that have bars keeps that bounded to what has actually been resolved.
      */
     private fun onRequirementsChanged() {
-        rebuild(barsBySymbol.keys.toList())
+        val symbols = barsBySymbol.keys.toList()
+        // The rows are rebuilt from what is already cached first, so the table reacts to the chip
+        // in the same frame it was tapped. Anything the new condition needs and nobody has computed
+        // yet lands a moment later, off the main thread. The alternative — waiting for the whole
+        // reduction before showing anything — is a filter control that feels broken on a catalogue
+        // of four hundred markets.
+        rebuild(symbols)
         recompute()
-        scheduleResolution()
+        scope.launch {
+            if (warm(symbols)) {
+                rebuild(symbols)
+                recompute()
+            }
+            scheduleResolution()
+        }
     }
 
-    /** Rebuilds the given rows from whatever is currently known about them. */
+    /**
+     * Rebuilds the given rows from whatever is currently known about them.
+     *
+     * Cheap on purpose, and safe to call from the main thread: it reads the [readings] cache and
+     * never computes an indicator. [warm] is the half that costs something, and it runs elsewhere.
+     */
     private fun rebuild(symbols: Collection<String>) {
         if (symbols.isEmpty()) return
         val keys = requiredIndicatorKeys()
         val known = universe.associateBy(SymbolMeta::symbol)
         symbols.forEach { symbol ->
             val meta = known[symbol] ?: return@forEach
+            val cached = readings[symbol]
             rowBySymbol[symbol] = ScreenerMetrics.rowOf(
                 meta = meta,
                 quote = quoteBySymbol[symbol],
                 bars = barsBySymbol[symbol].orEmpty(),
-                indicatorKeys = keys,
+                indicators = if (cached == null || keys.isEmpty()) {
+                    emptyMap()
+                } else {
+                    // Only the keys this screen names. A cache entry left over from a condition the
+                    // reader has since removed must not reach the row, or a column removed from the
+                    // screen would go on being sortable by a value nothing shows.
+                    keys.mapNotNull { key -> cached[key]?.let { key to it } }.toMap()
+                },
             )
         }
+    }
+
+    /**
+     * Computes whatever [symbols] are missing for the screen's current conditions, off the caller's
+     * thread, and files it in [readings].
+     *
+     * @return true when anything new was computed, so the caller can skip a rebuild that would
+     *   produce exactly the rows it already published.
+     *
+     * The work is bounded twice over before it starts: by the key set, which is only what the
+     * filters and columns actually name, and by the cache, which means a market is reduced once per
+     * (symbol, indicator, period) for the life of a scan however many times the table is rebuilt.
+     * What is left is genuinely expensive — four hundred markets over two hundred and sixty bars —
+     * and that is why it is inside [withContext] rather than beside the call that publishes state.
+     */
+    private suspend fun warm(symbols: Collection<String>): Boolean {
+        val keys = requiredIndicatorKeys()
+        if (keys.isEmpty() || symbols.isEmpty()) return false
+        val outstanding = symbols.mapNotNull { symbol ->
+            val bars = barsBySymbol[symbol] ?: return@mapNotNull null
+            val cached = readings[symbol]
+            val missing = if (cached == null) keys else keys.filterNot(cached::containsKey).toSet()
+            if (missing.isEmpty()) null else Triple(symbol, bars, missing)
+        }
+        if (outstanding.isEmpty()) return false
+        val computed = withContext(computeDispatcher) {
+            outstanding.map { (symbol, bars, missing) ->
+                symbol to ScreenerIndicators.computeAll(missing, bars)
+            }
+        }
+        val requested = outstanding.associate { (symbol, _, missing) -> symbol to missing }
+        computed.forEach { (symbol, values) ->
+            val into = readings.getOrPut(symbol) { mutableMapOf() }
+            // Every key that was asked for is written, including the ones that came back with no
+            // answer. See the note on [readings] for why recording the absence matters.
+            requested[symbol].orEmpty().forEach { key -> into[key] = values[key] }
+        }
+        return true
     }
 
     /** Filters, sorts, publishes, and asks for whatever the next pass needs. */
@@ -411,6 +533,10 @@ class ScreenerController(
             it.copy(
                 rows = it.sort.apply(matched),
                 resolvedCount = all.count(ScreenerRow::resolved),
+                // One market with a volume figure proves the feed carries the column. `any` and
+                // not `all`: the catalogue is mixed, and one crypto pair reporting volume is enough
+                // to make a money-flow filter worth offering.
+                feedHasVolume = it.feedHasVolume || all.any { row -> row.volume != null },
             )
         }
     }
@@ -457,6 +583,7 @@ class ScreenerController(
                     }
                 }
             }
+            warm(wanted)
             rebuild(wanted)
             _state.update { it.copy(resolving = false) }
             recompute()

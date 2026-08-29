@@ -67,6 +67,15 @@ internal fun EquityReportCurve(
      */
     drawdown: DrawdownSpan?,
     /**
+     * The best trough-to-peak stretch, marked in the same way as [drawdown] and in the rising
+     * colour.
+     *
+     * Drawn beside the fall rather than instead of it, because the two together are the shape of
+     * the account and either alone flatters or frightens. Null on a curve that never rose, for the
+     * same reason [drawdown] is null on one that never fell: a marker over nothing invents one.
+     */
+    runUp: RunUpSpan?,
+    /**
      * True when [points] is real account balance rather than cumulative profit from zero.
      *
      * It decides whether zero belongs on the chart. On a profit-from-zero curve it is break-even
@@ -90,6 +99,9 @@ internal fun EquityReportCurve(
         val hairline = 1.dp.toPx()
         val padding = size.height * 0.08f
         val plot = size.height - padding * 2
+        // The extremes come from the equity and its running peak, and the run-up marker is drawn
+        // between two points that are both on the curve — so nothing added here can fall outside
+        // the range already computed, and the scale does not move when a run-up is marked.
         var low = equity.min()
         var high = peaks.max()
         if (!isBalance) {
@@ -107,6 +119,18 @@ internal fun EquityReportCurve(
                 end = Offset(size.width, y(0.0)),
                 strokeWidth = hairline,
                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f)),
+            )
+        }
+
+        // The band behind the best rise goes down before the fall's, so that where the two spans
+        // overlap the fall — the thing a reader is checking for — is the one on top.
+        if (runUp != null && runUp.peakIndex > runUp.troughIndex) {
+            val left = x(runUp.troughIndex)
+            val right = x(runUp.peakIndex)
+            drawRect(
+                color = rise.copy(alpha = 0.08f),
+                topLeft = Offset(left, 0f),
+                size = Size(right - left, size.height),
             )
         }
 
@@ -149,6 +173,26 @@ internal fun EquityReportCurve(
             if (index == 0) curve.moveTo(x(index), y(value)) else curve.lineTo(x(index), y(value))
         }
         drawPath(path = curve, color = line, style = Stroke(width = 1.6.dp.toPx()))
+
+        if (runUp != null && runUp.peakIndex > runUp.troughIndex) {
+            // The rise, drawn as a distance exactly as the fall is: a rule from the low it started
+            // at to the high it reached, ticked at both ends. Same grammar, opposite colour, so a
+            // reader learns one mark and reads both.
+            val peakX = x(runUp.peakIndex)
+            val bottom = y(runUp.troughEquity)
+            val top = y(runUp.peakEquity)
+            drawLine(rise, Offset(peakX, top), Offset(peakX, bottom), hairline * 1.5f)
+            val tick = 5.dp.toPx()
+            drawLine(rise, Offset(peakX - tick, top), Offset(peakX + tick, top), hairline)
+            drawLine(rise, Offset(peakX - tick, bottom), Offset(peakX + tick, bottom), hairline)
+            drawLine(
+                color = rise.copy(alpha = 0.6f),
+                start = Offset(x(runUp.troughIndex), bottom),
+                end = Offset(peakX, bottom),
+                strokeWidth = hairline,
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(3f, 4f)),
+            )
+        }
 
         if (drawdown != null && drawdown.troughIndex > drawdown.peakIndex) {
             val troughX = x(drawdown.troughIndex)

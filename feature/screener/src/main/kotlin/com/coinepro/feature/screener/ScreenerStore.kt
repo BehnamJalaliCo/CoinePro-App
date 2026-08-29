@@ -160,13 +160,28 @@ internal object ScreenerCodec {
         )
     }
 
-    private fun encodeSort(sort: ScreenerSort): String =
-        sort.field.name + UNIT + if (sort.descending) "1" else "0"
+    /**
+     * The sort as three fields: the column, the direction, and an indicator key where the order is
+     * on a reading rather than on a field.
+     *
+     * The third part is appended rather than woven in, so a screen written before indicator sorts
+     * existed still decodes: it has two parts, the third reads as absent, and the sort comes back
+     * on its field exactly as it was saved.
+     */
+    private fun encodeSort(sort: ScreenerSort): String = listOf(
+        sort.field.name,
+        if (sort.descending) "1" else "0",
+        sort.indicatorKey.orEmpty(),
+    ).joinToString(UNIT)
 
     private fun decodeSort(encoded: String): ScreenerSort? {
         val parts = encoded.split(UNIT)
         val field = ScreenerField.entries.firstOrNull { it.name == parts.getOrNull(0) } ?: return null
-        return ScreenerSort(field, descending = parts.getOrNull(1) != "0")
+        return ScreenerSort(
+            field = field,
+            descending = parts.getOrNull(1) != "0",
+            indicatorKey = parts.getOrNull(2)?.takeIf(String::isNotBlank),
+        )
     }
 
     private fun encodeFilter(filter: ScreenerFilter): String? = when (filter) {

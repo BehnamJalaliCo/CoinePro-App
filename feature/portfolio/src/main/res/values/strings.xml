@@ -53,6 +53,10 @@
     <string name="portfolio_report_drawdown_span">بیشترین افت</string>
     <!-- %1$s تاریخ سقف و %2$s تاریخ کف است -->
     <string name="portfolio_report_drawdown_between">از %1$s تا %2$s</string>
+    <string name="portfolio_report_runup_span">بیشترین رشد پیوسته</string>
+    <string name="portfolio_report_runup_note">از کف تا سقف منحنی سرمایه؛ بالاترین جایی که حساب رسید، نه جایی که ماند. فاصلهٔ آن تا امروز همان چیزی است که پس داده شده.</string>
+    <string name="portfolio_trade_in_runup">در بیشترین رشد</string>
+    <string name="portfolio_trade_in_drawdown">در بیشترین افت</string>
     <string name="portfolio_report_drawdown_note">این عدد از سقف تا کف منحنی سرمایه است، نه بزرگ‌ترین معاملهٔ زیان‌ده؛ چند زیان پشت‌سرهم افتی بزرگ‌تر از هر کدامشان می‌سازد.</string>
     <!-- %1$s تعداد معاملات آن دوره است -->
     <string name="portfolio_report_drawdown_recovered">%1$s معامله طول کشید تا سقف قبلی دوباره زده شود.</string>

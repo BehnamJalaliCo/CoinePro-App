@@ -1,5 +1,7 @@
 package com.coinepro.feature.screener.model
 
+import com.coinepro.core.chart.ChartCatalog
+
 /**
  * What kind of number a [ScreenerField] carries, and therefore how a row draws it.
  *
@@ -166,7 +168,16 @@ object ScreenerIndicatorId {
     const val EMA_DISTANCE = "ema_distance"
     const val BOLLINGER_PERCENT = "bb_percent"
 
-    /** Every id this build can compute, in the order the filter sheet offers them. */
+    /**
+     * The eight ids that have a [ScreenerField] column of their own, in the order it declares them.
+     *
+     * **Not** the list of what can be filtered on — that is [ScreenerIndicatorCatalog], which
+     * offers every indicator in the chart's catalogue that reduces to a single comparable number.
+     * These eight are the ones that also exist as a *column*: a field a table can print, sort by
+     * and save into a screen's column list. Three of them (`stoch_k`, `macd_hist`, `bb_percent`)
+     * are spellings the chart catalogue does not use, which is why they cannot simply be looked up
+     * there and why nothing may quietly renumber them.
+     */
     val ALL: List<String> = listOf(
         RSI, ADX, STOCHASTIC_K, MACD_HISTOGRAM, ATR_PERCENT, SMA_DISTANCE, EMA_DISTANCE, BOLLINGER_PERCENT,
     )
@@ -185,9 +196,22 @@ object ScreenerIndicatorId {
     fun keyOf(indicatorId: String, period: Int?): String =
         if (period == null) indicatorId else "$indicatorId:$period"
 
-    /** The lookback [ScreenerField] declares for an indicator, or null where it takes none. */
+    /**
+     * The lookback an indicator is read with when a filter names none.
+     *
+     * The eight legacy fields answer first, because their defaults are the ones written into saved
+     * screens and presets. Everything else falls through to `ChartCatalog`'s own table, which is
+     * what makes [115] work at all: a reader who adds a «TSI» condition without touching the period
+     * box is asking for the twenty-five-bar TSI the chart draws, and without this fallback the
+     * filter would be filed under the key `tsi` while the resolver answered under `tsi:25` — a
+     * condition that matches nothing, silently, because a missing reading is not an error.
+     *
+     * Null only where the indicator genuinely has no single lookback — MACD, the Awesome
+     * Oscillator, the fixed-period sets — and there the key carries no period either.
+     */
     fun defaultPeriodOf(indicatorId: String): Int? =
         ScreenerField.entries.firstOrNull { it.indicatorId == indicatorId }?.defaultPeriod
+            ?: ChartCatalog.periodOf(indicatorId)?.default
 
     /**
      * [keyOf] with a null period filled in from the indicator's own default.

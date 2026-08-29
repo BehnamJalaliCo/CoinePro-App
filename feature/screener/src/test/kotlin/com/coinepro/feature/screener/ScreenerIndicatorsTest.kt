@@ -1,8 +1,14 @@
 package com.coinepro.feature.screener
 
 import com.coinepro.core.marketdata.OhlcBar
+import com.coinepro.core.symbols.SymbolClassifier
+import com.coinepro.feature.screener.model.NumericOp
+import com.coinepro.feature.screener.model.ScreenerFilter
 import com.coinepro.feature.screener.model.ScreenerIndicatorId
+import com.coinepro.feature.screener.model.ScreenerRow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -27,6 +33,11 @@ class ScreenerIndicatorsTest {
         OhlcBar(t = index * 86_400L, o = price, h = price + 1.0, l = price - 1.0, c = price, v = 1.0)
     }
 
+    private fun falling(count: Int) = List(count) { index ->
+        val close = 180.0 - index
+        OhlcBar(t = index * 86_400L, o = close, h = close + 1.0, l = close - 1.0, c = close, v = 1.0)
+    }
+
     @Test
     fun `a series that has only risen reads at the top of the RSI scale`() {
         val value = ScreenerIndicators.compute(ScreenerIndicatorId.RSI, 14, rising(40))
@@ -48,8 +59,73 @@ class ScreenerIndicatorsTest {
 
     @Test
     fun `an indicator this build does not know answers null`() {
-        assertNull(ScreenerIndicators.compute("supertrend", 10, rising(40)))
+        assertNull(ScreenerIndicators.compute("no_such_indicator", 10, rising(40)))
     }
+
+    @Test
+    fun `an indicator that only the chart used to know is now a filter too`() {
+        // The whole of [115]: SuperTrend, the Stochastic RSI and the Aroon are in the chart's
+        // catalogue and were unreachable from the screener, which offered eight ids written by
+        // hand. Each of them reduces to a real number on a fixture that can be reasoned about.
+        val bars = rising(120)
+        val trend = ScreenerIndicators.compute("supertrend", null, bars)
+        assertNotNull("a price-scale indicator reduces to a distance", trend)
+        // A series that has only risen sits above a trailing stop that follows it up.
+        assertTrue(trend!! > 0.0)
+
+        val stochRsi = ScreenerIndicators.compute("stochrsi", 14, bars)
+        assertNotNull(stochRsi)
+        assertTrue("a stochastic reading is bounded", stochRsi!! in 0.0..100.0)
+
+        val aroon = ScreenerIndicators.compute("aroon", 14, bars)
+        assertEquals("a market making new highs every bar reads Aroon Up at a hundred", 100.0, aroon!!, 0.01)
+    }
+
+    @Test
+    fun `an indicator filter scores a known fixture and bites at the threshold`() {
+        // The end-to-end shape of [109]: a fixture, a reading, and a condition that admits one
+        // market and refuses the other. Nothing here is mocked — this is the arithmetic the screen
+        // runs, through the key the filter addresses it by.
+        val climbing = ScreenerRow(meta = bitcoin, price = 139.0, indicators = readingsFor(rising(120)))
+        val stalled = ScreenerRow(meta = bitcoin, price = 100.0, indicators = readingsFor(flat(120)))
+        val sliding = ScreenerRow(meta = bitcoin, price = 61.0, indicators = readingsFor(falling(120)))
+        val overbought = ScreenerFilter.IndicatorFilter(
+            indicatorId = ScreenerIndicatorId.RSI,
+            period = 14,
+            op = NumericOp.GT,
+            value = 70.0,
+        )
+        assertTrue(overbought.matches(climbing))
+        assertFalse(overbought.matches(stalled))
+        // And a catalogue-only indicator, which is what [115] added. Aroon Up counts bars since
+        // the window's high: a market making new highs reads a hundred, one that has been falling
+        // for a fortnight reads zero, and the condition separates them.
+        val trending = ScreenerFilter.IndicatorFilter("aroon", period = 14, op = NumericOp.GTE, value = 90.0)
+        assertTrue(trending.matches(climbing))
+        assertFalse(trending.matches(sliding))
+    }
+
+    @Test
+    fun `a volume study is withheld on a feed that reports no volume`() {
+        // The `hasVolume` convention `ChartCatalog` states: zero is not the same claim as absent. A
+        // money-flow index over a column nobody sent is not «no money flowing», and on a screener
+        // it would rank four hundred markets by a number that was never reported.
+        val withVolume = rising(120)
+        val withoutVolume = withVolume.map { it.copy(v = 0.0) }
+
+        assertNotNull(ScreenerIndicators.compute("mfi", 14, withVolume))
+        assertNull(ScreenerIndicators.compute("mfi", 14, withoutVolume))
+        assertNull(ScreenerIndicators.compute("obv", null, withoutVolume))
+        // And the reading that needs no volume is unaffected on the same bars.
+        assertNotNull(ScreenerIndicators.compute(ScreenerIndicatorId.RSI, 14, withoutVolume))
+    }
+
+    /** Classified rather than hand-built, so the fixture is a market the app would really produce. */
+    private val bitcoin = SymbolClassifier.classify("BTCUSDT")
+
+    /** Every reading a test asks about, computed the way the controller computes them. */
+    private fun readingsFor(bars: List<OhlcBar>): Map<String, Double> =
+        ScreenerIndicators.computeAll(setOf("rsi:14", "aroon:14"), bars)
 
     @Test
     fun `the average distance is a signed percentage of the average, not of the price`() {
@@ -108,6 +184,12 @@ class ScreenerIndicatorsTest {
         val bars = rising(120)
         ScreenerIndicatorId.ALL.forEach { id ->
             assertTrue(id, ScreenerIndicators.compute(id, null, bars) != null)
+        }
+        // And the same promise for the catalogue the sheet now offers: everything it advertises on
+        // a feed with volume must produce a reading on a series long enough to warm it up. A row
+        // offered and never answered is the failure this whole item is about.
+        ScreenerIndicatorCatalog.offered(hasVolume = true).forEach { option ->
+            assertNotNull(option.id, ScreenerIndicators.compute(option.id, option.defaultPeriod, bars))
         }
     }
 }

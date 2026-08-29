@@ -30,6 +30,8 @@
     <string name="journal_filter_wins">Wins</string>
     <string name="journal_filter_losses">Losses</string>
     <string name="journal_filter_ungraded">No P&amp;L</string>
+    <string name="journal_filter_with_shot">With screenshot</string>
+    <string name="journal_filter_without_shot">Without screenshot</string>
     <string name="journal_search">Search symbol, note and lesson</string>
     <string name="journal_clear_filter">Clear the filter</string>
 

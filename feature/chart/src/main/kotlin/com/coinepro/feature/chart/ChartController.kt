@@ -1,6 +1,12 @@
 package com.coinepro.feature.chart
 
 import com.coinepro.core.chart.ArrowDirection
+import com.coinepro.core.chart.BarField
+import com.coinepro.core.chart.BarWindow
+import com.coinepro.core.chart.CandlePatterns
+import com.coinepro.core.chart.ChainOutcome
+import com.coinepro.core.chart.ChainPlot
+import com.coinepro.core.chart.ChainedIndicator
 import com.coinepro.core.chart.Candle
 import com.coinepro.core.chart.CandleSeries
 import com.coinepro.core.chart.ChartCatalog
@@ -15,9 +21,13 @@ import com.coinepro.core.chart.ComparisonBasis
 import com.coinepro.core.chart.ComparisonSeries
 import com.coinepro.core.chart.Drawing
 import com.coinepro.core.chart.DrawingActions
+import com.coinepro.core.chart.DrawingLayer
 import com.coinepro.core.chart.DrawingState
+import com.coinepro.core.chart.DrawingSync
 import com.coinepro.core.chart.DrawingTool
+import com.coinepro.core.chart.IndicatorChain
 import com.coinepro.core.chart.IndicatorPane
+import com.coinepro.core.chart.IndicatorSource
 import com.coinepro.core.chart.MAX_COMPARISONS
 import com.coinepro.core.chart.ObjectTree
 import com.coinepro.core.chart.PriceChannel
@@ -34,6 +44,9 @@ import com.coinepro.core.datastore.ChartColourTemplate
 import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayout
 import com.coinepro.core.datastore.ChartLayoutStore
+import com.coinepro.core.datastore.DrawingSyncMode
+import com.coinepro.core.datastore.DrawingSyncStore
+import com.coinepro.core.datastore.IndicatorTemplate
 import com.coinepro.core.datastore.StoredDrawing
 import com.coinepro.core.datastore.SymbolChartState
 import com.coinepro.core.datastore.SymbolChartStateStore
@@ -123,18 +136,6 @@ data class ChartUiState(
     val indicatorPeriods: Map<String, Int> = emptyMap(),
     val drawing: DrawingState = DrawingState(),
     /**
-     * Whether the eraser is the mode the reader picked.
-     *
-     * Held here rather than read off [DrawingState.tool], because it cannot be read off there:
-     * `DrawingActions.arm` refuses to arm anything in `ToolGroup.MODES` — a mode places no points,
-     * so putting one in `tool` would leave the chart waiting for taps that never commit. The rail
-     * knows which mode was chosen and this is that one bit, carried to the canvas.
-     *
-     * Until this existed the eraser was a rail entry that did nothing at all: it was selected, the
-     * arm refused it, and the reader was left with a tool they could pick and not use.
-     */
-    val eraser: Boolean = false,
-    /**
      * The drawings the reader has switched off in the object tree.
      *
      * Ids rather than a flag on [Drawing], and that is deliberate: hiding is a property of *this
@@ -184,6 +185,76 @@ data class ChartUiState(
     /** How a comparison is expressed against this chart. See `ComparisonBasis`. */
     val comparisonBasis: ComparisonBasis = ComparisonBasis.PERCENT,
     /**
+     * The quick range the reader last tapped, or null when they chose a bar length directly.
+     *
+     * Held so the range row can light the pill that is in force. It cannot be derived from
+     * [interval], because three ranges resolve to the daily bar — «۳ ماه», «۶ ماه» and «۱ سال» are
+     * all drawn on D1 — and a row that lit all three, or guessed one of them, would be telling the
+     * reader something they did not choose. Cleared by [ChartController.setInterval], because a
+     * reader who has just picked H1 by hand is no longer looking at a range.
+     */
+    val range: ChartRange? = null,
+    /**
+     * Whether the next tap on the canvas *adds* to the selection instead of replacing it.
+     *
+     * A latch rather than a modifier key, because a phone has no modifier key and the alternative
+     * — long-press-then-tap — collides with the long press that already offers an alert on a level
+     * and the one that erases a whole object. It is armed from the floating toolbar that appears
+     * on the first selection, so it is only ever reachable once there is something to add to, and
+     * it turns itself off with the selection.
+     *
+     * Held here rather than in `DrawingState` because `DrawingActions.select` already takes an
+     * `additive` flag and the canvas cannot pass one — the canvas calls `tapSnapped`, which
+     * selects with `additive = false` by design. This is the bit that lets [ChartController.onDrawing]
+     * re-apply the reader's intent on the way back in.
+     */
+    val multiSelect: Boolean = false,
+    /**
+     * The bars on screen, as the renderer last reported them.
+     *
+     * One study reads it — the visible-range volume profile — and reads nothing else, which is why
+     * it is a whole field rather than a flag: its answer is a function of where the reader has
+     * panned to, and until the viewport crossed back over this boundary the profile was computed
+     * once against the whole series and never followed a pan. It is part of [ChartDerived]'s key
+     * for the same reason, or the first answer would be cached forever.
+     */
+    val window: BarWindow = BarWindow.WHOLE_SERIES,
+    /**
+     * What each indicator is computed on, where the reader has said something other than the close.
+     *
+     * Sparse on purpose. An entry here is an *override*; every switched-on indicator with no entry
+     * reads the candles, and [chainNodes] materialises the full list on demand. Storing the whole
+     * list instead would mean keeping it in step with [activeIndicators] at four call sites, and the
+     * one that was forgotten would leave a node for an indicator the reader had switched off — which
+     * `IndicatorChain.evaluate` refuses as a missing source, taking the whole chain down with it.
+     */
+    val chainSources: Map<String, IndicatorSource> = emptyMap(),
+    /**
+     * The candlestick patterns the reader wants marked.
+     *
+     * Ids from `CandlePatterns.OPTIONS`, deliberately outside [activeIndicators]: a pattern has no
+     * value per bar, no lookback and no pane, and putting one in the indicator set would hand every
+     * consumer of that set — the period stepper, the layout store, the chain — a row that answers
+     * none of their questions.
+     */
+    val patterns: Set<String> = emptySet(),
+    /**
+     * How far a newly placed drawing travels between layouts.
+     *
+     * The reader's stored default, read back from `DrawingSyncStore` and stamped onto
+     * `DrawingState.sync`. Held here as well so a screen can show which of the three is in force
+     * without collecting the store a second time.
+     */
+    val syncMode: DrawingSyncMode = DrawingSyncMode.NONE,
+    /**
+     * The bar the chart has been asked to scroll to, or null.
+     *
+     * Set by «رفتن به تاریخ» — backlog 105 — and consumed by the canvas. It is an index rather than
+     * a moment because the viewport counts in bars, and the field that produces it has already
+     * resolved a Jalali date against the loaded series.
+     */
+    val focusIndex: Int? = null,
+    /**
      * An already-computed [ChartDerived] the controller is carrying forward, or null to compute.
      *
      * Not part of what this state *means* — it is the same answer, arrived at without the work —
@@ -215,10 +286,18 @@ data class ChartUiState(
      * drawings allocates nothing and compares equal frame to frame.
      */
     val canvasDrawing: DrawingState
-        get() = if (hiddenDrawingIds.isEmpty()) {
-            drawing
-        } else {
-            drawing.copy(drawings = drawing.drawings.filterNot { it.id in hiddenDrawingIds })
+        get() {
+            // The layout filter first: a mark set to `DrawingSync.GLOBAL` is a fact about the
+            // instrument and shows under every layout, and the other two show under the layout they
+            // were made on. `syncedInto` is the one place that rule lives, so the canvas and the
+            // object tree cannot disagree about which marks exist.
+            val onThisLayout = DrawingActions.syncedInto(drawing.drawings, drawing.layoutId)
+            val shown = if (hiddenDrawingIds.isEmpty()) {
+                onThisLayout
+            } else {
+                onThisLayout.filterNot { it.id in hiddenDrawingIds }
+            }
+            return if (shown.size == drawing.drawings.size) drawing else drawing.copy(drawings = shown)
         }
 
     /**
@@ -306,9 +385,81 @@ data class ChartUiState(
         // they meant when they switched a correlation on. The rest are drawn as overlays and take
         // no part in it.
         val partner = comparisons.firstOrNull()
-        carried?.takeIf { it.matches(visibleSeries, activeIndicators, indicatorPeriods, partner) }
-            ?: ChartDerived.of(visibleSeries, activeIndicators, indicatorPeriods, partner)
+        carried?.takeIf { it.matches(visibleSeries, activeIndicators, indicatorPeriods, partner, window, chained) }
+            ?: ChartDerived.of(visibleSeries, activeIndicators, indicatorPeriods, partner, window, chained)
     }
+
+    /**
+     * Every switched-on indicator as a chain node, with the reader's own sources folded in.
+     *
+     * Materialised from [activeIndicators] rather than stored, so it cannot drift out of step with
+     * what is switched on — see [chainSources]. The node id is the indicator id, which is what makes
+     * "point the RSI at the EMA" expressible without the reader ever meeting an id: an indicator can
+     * appear once on a chart, so one node per indicator is the whole graph.
+     */
+    val chainNodes: List<ChainedIndicator>
+        get() = ChartCatalog.INDICATORS
+            .filter { it.id in activeIndicators }
+            .map { option ->
+                ChainedIndicator(
+                    nodeId = option.id,
+                    indicatorId = option.id,
+                    period = indicatorPeriods[option.id],
+                    source = chainSources[option.id] ?: IndicatorSource.CANDLES,
+                )
+            }
+
+    /**
+     * The chain, evaluated — or null when the reader has not pointed anything at anything.
+     *
+     * The guard is what keeps an ordinary chart free: with every node reading the candles there is
+     * no chain to walk, [ChartDerived] draws all of it exactly as it always has, and this whole
+     * pipeline costs one `any`. It also means a chart with no chain can never be taken down by a
+     * refusal, which is the failure mode a always-on evaluator would have.
+     */
+    internal val chain: ChainOutcome?
+        get() = if (chainSources.values.any { it is IndicatorSource.Output }) {
+            IndicatorChain.evaluate(visibleSeries, chainNodes)
+        } else {
+            null
+        }
+
+    /**
+     * What the chain drew, or nothing.
+     *
+     * `by lazy` rather than a getter, because both [overlays] and [panes] read it and evaluating a
+     * ten-link chain twice per frame is the cost this is worth avoiding. It is safe to cache on the
+     * state because a state is immutable: a new chain is a new state.
+     */
+    private val chainPlot: ChainPlot by lazy(LazyThreadSafetyMode.NONE) {
+        when (val outcome = chain) {
+            is ChainOutcome.Ready -> IndicatorChain.plot(outcome, chainNodes)
+            else -> ChainPlot()
+        }
+    }
+
+    /**
+     * The indicators the chain is drawing, so [ChartDerived] does not draw them a second time.
+     *
+     * The one thing that has to be right about this arrangement. A chained EMA drawn by both paths
+     * is two lines a pixel apart, in the same colour, on a chart the reader cannot debug — and it
+     * would look like a rendering fault rather than like double work.
+     */
+    internal val chained: Set<String>
+        get() = when (val outcome = chain) {
+            is ChainOutcome.Ready -> outcome.order.toSet()
+            else -> emptySet()
+        }
+
+    /**
+     * Why the chain will not draw, in a sentence the reader can act on, or null.
+     *
+     * Surfaced beside the indicator list rather than swallowed. A chain with a loop in it has no
+     * answer at all, and a picker that silently drew the unchained half would be telling the reader
+     * their chain works.
+     */
+    val chainRefusal: String?
+        get() = (chain as? ChainOutcome.Refused)?.message
 
     /**
      * The price-scale overlays for whatever is switched on.
@@ -317,11 +468,19 @@ data class ChartUiState(
      * bar would place a moving average using prices the reader is not allowed to have seen yet —
      * the future leaking back in through the one door nobody watches.
      */
-    val overlays: List<ChartLine> get() = derived.overlays
+    val overlays: List<ChartLine> get() = derived.overlays + chainPlot.priceLines
 
     val levels: List<PriceLevel> get() = derived.levels
 
-    val markers: List<ChartMarker> get() = derived.markers
+    /**
+     * The arrows over and under the bars: the structure studies', plus the candlestick patterns.
+     *
+     * Patterns are appended rather than merged into [ChartDerived], because they are not indicators
+     * — see [patterns] — and `CandlePatterns.markersFor` already answers with nothing when none is
+     * switched on, so a chart without them allocates one empty list.
+     */
+    val markers: List<ChartMarker>
+        get() = derived.markers + CandlePatterns.markersFor(visibleSeries, patterns)
 
     /**
      * The strips below the price — one per switched-on oscillator.
@@ -330,7 +489,7 @@ data class ChartUiState(
      * indicators always stack the same way. A pane order that depended on tap history would move
      * under a reader who turned one off and back on.
      */
-    val panes: List<ChartPane> get() = derived.panes
+    val panes: List<ChartPane> get() = derived.panes + chainPlot.panes
 
     /**
      * What the chart may draw.
@@ -559,6 +718,9 @@ class ChartController(
     private var symbolStates: SymbolChartStateStore? = symbolStates
     private var layouts: ChartLayoutStore? = layoutStore
 
+    /** The drawing-sync default. Bound once; see [bindStores] for why a second bind is ignored. */
+    private var syncStore: DrawingSyncStore? = null
+
     /**
      * The raw bars of each compared instrument, by uppercase symbol, in the order they were added.
      *
@@ -588,9 +750,40 @@ class ChartController(
      * A null argument leaves whatever was already bound, so the studio re-entering the same
      * controller cannot unbind the chart's stores.
      */
-    fun bindStores(symbolStates: SymbolChartStateStore?, layouts: ChartLayoutStore?) {
+    fun bindStores(
+        symbolStates: SymbolChartStateStore?,
+        layouts: ChartLayoutStore?,
+        /**
+         * Where the drawing-sync default lives.
+         *
+         * A third store rather than a field on the per-symbol row, because how far a mark travels
+         * is a property of how the reader works and not of the instrument: somebody who keeps
+         * permanent levels keeps them on everything.
+         */
+        drawingSync: DrawingSyncStore? = null,
+    ) {
         symbolStates?.let { this.symbolStates = it }
         layouts?.let { this.layouts = it }
+        drawingSync?.let { store ->
+            if (syncStore == null) {
+                syncStore = store
+                // Collected rather than read once: the setting is global and the studio may change
+                // it while the chart screen behind it is alive, and a chart that kept the old
+                // default until it was reopened would be a setting that appears not to work.
+                scope.launch {
+                    runCatching {
+                        store.mode().collect { mode ->
+                            _state.update {
+                                it.copy(
+                                    syncMode = mode,
+                                    drawing = DrawingActions.setSyncDefault(it.drawing, mode.toDrawingSync()),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -774,9 +967,24 @@ class ChartController(
      * every interval, which is the whole reason they are stored that way.
      */
     fun setInterval(interval: ChartInterval) {
+        // Cleared before the guard, not inside the update below. A reader on the daily bar who
+        // taps «D1» in the strip has chosen a length rather than a range, and the range row must
+        // stop claiming «۶ ماه» even though nothing about the chart is going to reload.
+        // [setRange] records its own range after calling this, so it is unaffected.
+        _state.update { it.copy(range = null) }
         if (interval == _state.value.interval) return
         _state.update {
-            it.copy(interval = interval, series = CandleSeries.EMPTY, hasMore = false)
+            it.copy(
+                interval = interval,
+                series = CandleSeries.EMPTY,
+                hasMore = false,
+                // The tag the next drawing records. Stamped on the state rather than passed to each
+                // of the six calls that can commit a drawing, so the one that was forgotten cannot
+                // write an unlabelled mark. See `Drawing.timeframe`.
+                drawing = DrawingActions.setTimeframe(it.drawing, interval.wire),
+                // A jump the reader asked for on the old series means nothing on the new one.
+                focusIndex = null,
+            )
         }
         persistSymbolState()
         reload()
@@ -856,19 +1064,16 @@ class ChartController(
     }
 
     /**
-     * Arm a tool, or a mode.
+     * Arm a tool, or one of the rail's modes.
      *
-     * The eraser is the one rail entry that arms nothing and still has to change what a tap does.
-     * `DrawingActions.arm` refuses every `ToolGroup.MODES` entry by design — a mode places no
-     * points — so it is recorded separately in [ChartUiState.eraser] and handed to the canvas as
-     * its own flag. Without that the eraser was a button a reader could press and then find had
-     * done nothing, which is the worst of the three possible behaviours.
+     * `DrawingActions.arm` now owns both halves: a `ToolGroup.MODES` entry sets `DrawingState.mode`
+     * and a magnet entry advances the magnet, so there is nothing left for this controller to
+     * record on the side. There used to be — an `eraser` boolean lived on [ChartUiState] and was
+     * handed to the canvas by hand, which meant two sources for one fact and a rail that could show
+     * a trend line armed while the canvas was erasing. `DrawingState.eraser` is the single read now.
      */
     fun arm(tool: DrawingTool?) = _state.update {
-        it.copy(
-            drawing = DrawingActions.arm(it.drawing, tool),
-            eraser = tool?.id == ERASER_TOOL,
-        )
+        it.copy(drawing = DrawingActions.arm(it.drawing, tool))
     }
 
     /**
@@ -881,7 +1086,6 @@ class ChartController(
     fun armWithStyle(tool: DrawingTool?, colour: Long, widthDp: Float) = _state.update {
         it.copy(
             drawing = DrawingActions.arm(it.drawing, tool).copy(colour = colour),
-            eraser = tool?.id == ERASER_TOOL,
             drawingWidthDp = usableWidth(widthDp),
         )
     }
@@ -901,8 +1105,295 @@ class ChartController(
             val restored = next.copy(
                 drawings = mergeHidden(stamped, current.drawing.drawings, current.hiddenDrawingIds),
             )
-            current.copy(drawing = restored, carried = current.derived)
+            // The multi-select latch, re-applied. The canvas selects with `additive = false`
+            // because it has no way to know the reader is collecting things; this is where that
+            // intention is put back. See `widenSelection` for the four states it refuses to touch.
+            val widened = widenSelection(current.drawing, restored, current.multiSelect)
+            current.copy(
+                drawing = widened,
+                // The latch drops with the selection. A reader who tapped empty space has finished
+                // collecting, and a mode still armed after its subject is gone is a mode that
+                // surprises them on the next tap.
+                multiSelect = current.multiSelect && widened.selection.isNotEmpty(),
+                carried = current.derived,
+            )
         }
+        persistDrawings()
+    }
+
+    /**
+     * Arm or disarm the multi-select latch.
+     *
+     * Offered only from the toolbar that appears once something is selected, so it can never be on
+     * with nothing to add to. See [ChartUiState.multiSelect] for why a latch rather than a gesture.
+     */
+    fun setMultiSelect(on: Boolean) = _state.update { it.copy(multiSelect = on) }
+
+    /** Drop the selection without touching anything in it, and leave the latch behind. */
+    fun clearSelection() = _state.update {
+        it.copy(drawing = DrawingActions.clearSelection(it.drawing), multiSelect = false)
+    }
+
+    /**
+     * Recolour everything selected in one go.
+     *
+     * The reason multi-select is worth having: eight levels placed in the default gold become eight
+     * in the reader's own colour in one gesture rather than eight round trips through a sheet. A
+     * locked drawing is skipped by `DrawingActions.recolourSelection` — colour is an edit — and the
+     * chosen colour is adopted for the next drawing, because a reader who has just recoloured their
+     * whole selection has said what they want their drawings to look like.
+     */
+    fun recolourSelection(colour: Long) {
+        _state.update { it.copy(drawing = DrawingActions.recolourSelection(it.drawing, colour)) }
+        persistDrawings()
+    }
+
+    /** The same for colour and width together — a template dropped onto the whole selection. */
+    fun restyleSelection(colour: Long, widthDp: Float) {
+        val width = usableWidth(widthDp)
+        _state.update {
+            it.copy(
+                drawing = DrawingActions.restyleSelection(it.drawing, colour, width),
+                drawingWidthDp = width,
+            )
+        }
+        persistDrawings()
+    }
+
+    /**
+     * Put the selection on the clipboard.
+     *
+     * Not persisted, and that is the right lifetime: a clipboard is a thing you are in the middle
+     * of using. One that survived a restart would offer to paste a trend line the reader copied
+     * last Tuesday onto a chart they have since redrawn.
+     */
+    fun copySelection() = _state.update { it.copy(drawing = DrawingActions.copySelection(it.drawing)) }
+
+    /**
+     * Paste the clipboard, offset so the copies are not hidden underneath their originals.
+     *
+     * The offset is computed here rather than passed in because only the controller holds both
+     * halves of it — the bar length and the visible price span. See [pasteOffset].
+     */
+    fun pasteClipboard() {
+        _state.update { current ->
+            val (time, price) = pasteOffset(current.visibleSeries, current.interval.seconds)
+            current.copy(drawing = DrawingActions.paste(current.drawing, time, price))
+        }
+        persistDrawings()
+    }
+
+    /** Copy one drawing and paste it in one step, leaving the clipboard as it was. */
+    fun cloneDrawing(id: Long) {
+        _state.update { current ->
+            val (time, price) = pasteOffset(current.visibleSeries, current.interval.seconds)
+            current.copy(drawing = DrawingActions.clone(current.drawing, id, time, price))
+        }
+        persistDrawings()
+    }
+
+    /**
+     * Take everything off the chart.
+     *
+     * Persisted immediately, like every other change to the drawing set. The confirmation belongs
+     * to the screen — this is the transform, and a transform that asked a question would be a
+     * transform that cannot be called from a test.
+     */
+    fun clearDrawings() {
+        _state.update { it.copy(drawing = DrawingActions.clear(it.drawing), hiddenDrawingIds = emptySet()) }
+        persistDrawings()
+    }
+
+    // ── the rail's modes ─────────────────────────────────────────────────────────────
+
+    /**
+     * Advance the magnet one step: off, weak, strong, off.
+     *
+     * The whole magnet — the mode enum, the snap arithmetic, the channel bindings, the resnap after
+     * a data revision — existed and was unreachable, because no call site passed the rail a way to
+     * cycle it. It was `OFF` for the life of the app, which also made the OHLC channel bindings
+     * inert: a binding is written only by a tap the magnet moved.
+     */
+    fun cycleMagnet() = _state.update { it.copy(drawing = DrawingActions.cycleMagnet(it.drawing)) }
+
+    /** Keep the armed tool after a drawing completes, or let it fall back to the cursor. */
+    fun setKeepDrawing(keep: Boolean) = _state.update {
+        it.copy(drawing = DrawingActions.setKeepDrawing(it.drawing, keep))
+    }
+
+    /**
+     * Lock or unlock every drawing at once, and remember which way the switch is.
+     *
+     * Persisted, because the lock is written onto each drawing and a chart that came back unlocked
+     * would be a chart where the reader's protection quietly expired overnight.
+     */
+    fun setLockAllDrawings(locked: Boolean) {
+        _state.update { it.copy(drawing = DrawingActions.setLockAll(it.drawing, locked)) }
+        persistDrawings()
+    }
+
+    /** Hide or show one layer of the chart. See `DrawingLayer`. */
+    fun setLayerHidden(layer: DrawingLayer, hidden: Boolean) = _state.update {
+        it.copy(drawing = DrawingActions.setHidden(it.drawing, layer, hidden))
+    }
+
+    /** Hide or show every layer at once — the «همه» entry beside the three. */
+    fun setAllLayersHidden(hidden: Boolean) = _state.update {
+        it.copy(drawing = DrawingActions.setAllHidden(it.drawing, hidden))
+    }
+
+    /**
+     * Pin a tool to the rail's favourites row, or take it back out.
+     *
+     * Not persisted yet — see the note on `ChartScreen`'s tool sheet. The set lives as long as the
+     * controller, which is as long as the reader stays in this symbol's chart, and comes back empty
+     * on a cold open. That is the one half of this feature that is not finished, and it is recorded
+     * rather than hidden.
+     */
+    fun toggleToolFavourite(toolId: String) = _state.update {
+        it.copy(drawing = DrawingActions.toggleFavourite(it.drawing, toolId))
+    }
+
+    /**
+     * Put the chart on a quick range — «۱ ماه», «۵ سال», «همه».
+     *
+     * A range is a bar length plus the memory of why it was chosen. The length change goes through
+     * [setInterval] so nothing about a reload has to be repeated here, and the range is recorded
+     * *after* it, because `setInterval` clears it — a reader who picks a length by hand is no
+     * longer on a range, and this is the one caller for which that is not true.
+     */
+    fun setRange(range: ChartRange) {
+        setInterval(range.interval)
+        _state.update { it.copy(range = range) }
+    }
+
+    // ── what the reader is looking at, and what is computed on what ──────────────────
+
+    /**
+     * The bars on screen, reported by the renderer.
+     *
+     * The one input to [ChartDerived] that no other part of this controller can know. Guarded
+     * against a no-op because the canvas reports it on every frame of a pan and each distinct value
+     * invalidates the derived cache — publishing an equal window would rebuild every indicator for
+     * nothing, which is the opposite of what the window is for.
+     */
+    fun setVisibleWindow(window: BarWindow) = _state.update {
+        if (it.window == window) it else it.copy(window = window)
+    }
+
+    /**
+     * What one indicator is computed on: the candles, or another indicator's output.
+     *
+     * A null source clears the override and puts the indicator back on the close, which is what
+     * every published formula assumes and what a reader who has changed their mind wants. The map
+     * is sparse — see [ChartUiState.chainSources] — so clearing removes the entry rather than
+     * storing a default that would then have to be kept in step with the catalogue.
+     */
+    fun setChainSource(indicatorId: String, source: IndicatorSource?) {
+        _state.update { current ->
+            val next = if (source == null || source == IndicatorSource.CANDLES) {
+                current.chainSources - indicatorId
+            } else {
+                current.chainSources + (indicatorId to source)
+            }
+            if (next == current.chainSources) current else current.copy(chainSources = next, carried = null)
+        }
+    }
+
+    /**
+     * Mark or stop marking one candlestick pattern.
+     *
+     * Switching an indicator off leaves its chain source behind on purpose; switching a pattern off
+     * simply removes it, because a pattern has no configuration to preserve.
+     */
+    fun togglePattern(id: String) = _state.update { current ->
+        val next = if (id in current.patterns) current.patterns - id else current.patterns + id
+        current.copy(patterns = next)
+    }
+
+    /**
+     * Apply a saved indicator set — and **only** the indicators, their periods and their sources.
+     *
+     * That restraint is the entire difference between this and a saved layout, and it is the reason
+     * both exist. A layout is the apparatus: the timeframe, the chart type, the price scale and the
+     * palette. A template is the *measurements*, and a reader who keeps one called «واگرایی» wants
+     * those four studies on whatever they are currently looking at — not to be moved to the four-hour
+     * chart of whatever instrument they were on when they saved it. Reading a timeframe out of this
+     * would make the two objects the same object with two names.
+     *
+     * Ids this build no longer has are skipped rather than failing the apply, the same rule
+     * [putLayoutOn] follows: losing one study is better than losing the template.
+     */
+    fun applyIndicatorTemplate(template: IndicatorTemplate) {
+        _state.update { current ->
+            val known = template.indicators.filter { id -> ChartCatalog.INDICATORS.any { it.id == id } }
+            current.copy(
+                activeIndicators = known.toSet(),
+                indicatorPeriods = template.periods.filterKeys { ChartCatalog.periodOf(it) != null },
+                chainSources = template.sources
+                    .filterKeys { it in known }
+                    .mapNotNull { (id, encoded) -> decodeChainSource(encoded)?.let { id to it } }
+                    .toMap(),
+                carried = null,
+            )
+        }
+        persistSymbolState()
+    }
+
+    /** This chart's studies, ready to be saved under [name]. See [applyIndicatorTemplate]. */
+    fun indicatorTemplateOf(id: String, name: String, now: Long): IndicatorTemplate {
+        val current = _state.value
+        return IndicatorTemplate(
+            id = id,
+            name = name.trim(),
+            // Catalogue order rather than set order, so a template applied tomorrow stacks its
+            // panes the way the chart stacks them today.
+            indicators = ChartCatalog.INDICATORS.map { it.id }.filter { it in current.activeIndicators },
+            periods = current.indicatorPeriods,
+            sources = current.chainSources.mapValues { (_, source) -> encodeChainSource(source) },
+            createdAt = now,
+        )
+    }
+
+    /**
+     * How far a newly placed drawing travels between layouts.
+     *
+     * Written through to `DrawingState.sync`, which is what actually gets stamped onto a mark, and
+     * kept on the ui state so a screen can show which of the three is in force. Existing drawings
+     * are left alone: a reader changing the default has said what they want *next*, and silently
+     * widening a year of marks is the one move here that cannot be taken back.
+     */
+    fun setSyncMode(mode: DrawingSyncMode) {
+        _state.update {
+            it.copy(syncMode = mode, drawing = DrawingActions.setSyncDefault(it.drawing, mode.toDrawingSync()))
+        }
+        syncStore?.let { store -> scope.launch { runCatching { store.setMode(mode) } } }
+    }
+
+    /**
+     * Scroll the chart to one bar — backlog 105, «رفتن به تاریخ».
+     *
+     * An index rather than a moment, because the viewport counts in bars and the field that produces
+     * this has already resolved a Jalali date against the loaded series. Null clears it, which is
+     * what the canvas needs after it has honoured one: a focus that stayed set would drag the view
+     * back every time anything else recomposed.
+     */
+    fun focusBar(index: Int?) = _state.update {
+        if (it.focusIndex == index) it else it.copy(focusIndex = index)
+    }
+
+    /**
+     * Drop the demonstration marks whose time is up — item 41.
+     *
+     * Called on a timer by the screen while `DrawingState.demonstrating` is on. `DrawingActions.expire`
+     * returns the same state when nothing expired, and the guard here is what stops a tick that
+     * removed nothing writing the whole drawing set back to disk once a second.
+     */
+    fun expireDemonstrationMarks(nowMillis: Long = System.currentTimeMillis()) {
+        val before = _state.value.drawing
+        val after = DrawingActions.expire(before, nowMillis)
+        if (after === before) return
+        _state.update { it.copy(drawing = after) }
         persistDrawings()
     }
 
@@ -1013,6 +1504,18 @@ class ChartController(
     /** Lock or unlock one drawing, and remember it. See [com.coinepro.core.chart.Drawing.locked]. */
     fun setDrawingLocked(id: Long, locked: Boolean) {
         _state.update { it.copy(drawing = DrawingActions.setLocked(it.drawing, id, locked)) }
+        persistDrawings()
+    }
+
+    /**
+     * How wide one regression channel's rails sit — item 8.
+     *
+     * Persisted like every other edit to a placed drawing. The transform clamps to
+     * `DrawingActions.MIN_DEVIATIONS`..`MAX_DEVIATIONS` and refuses a locked drawing, so this is a
+     * plain forward and the sheet's own dimming is the visible half of the same rule.
+     */
+    fun setDrawingDeviations(id: Long, deviations: Double) {
+        _state.update { it.copy(drawing = DrawingActions.setDeviations(it.drawing, id, deviations)) }
         persistDrawings()
     }
 
@@ -1260,6 +1763,12 @@ class ChartController(
                 indicatorPeriods = layout.indicatorPeriods
                     .filterKeys { ChartCatalog.periodOf(it) != null },
                 scaleMode = mode ?: current.scaleMode,
+                // The layout the next drawing belongs to, and the one `syncedInto` filters against.
+                // Without it every mark carries a null layout and «فقط این چیدمان» means nothing.
+                drawing = DrawingActions.setLayout(
+                    DrawingActions.setTimeframe(current.drawing, (interval ?: current.interval).wire),
+                    layout.id,
+                ),
             )
         }
         applyColourTemplate(layout.colourTemplate)
@@ -1467,6 +1976,17 @@ data class ChartDerived internal constructor(
         val periods: Map<String, Int>,
         /** The correlation partner, which changes what one pane draws. See [ChartUiState.derived]. */
         val comparison: ComparisonSeries? = null,
+        /**
+         * The bars on screen.
+         *
+         * In the key because one study reads it — the visible-range volume profile — and a key
+         * without it is a profile computed on the first frame and then carried across every pan
+         * the reader makes. That is exactly the failure the key exists to prevent, arriving through
+         * the one input nobody had thought of as an input.
+         */
+        val window: BarWindow = BarWindow.WHOLE_SERIES,
+        /** The indicators a chain is drawing instead, which changes what this must skip. */
+        val chained: Set<String> = emptySet(),
     )
 
     /** Whether this value is still the right answer for these inputs. */
@@ -1475,11 +1995,15 @@ data class ChartDerived internal constructor(
         active: Set<String>,
         periods: Map<String, Int>,
         comparison: ComparisonSeries? = null,
+        window: BarWindow = BarWindow.WHOLE_SERIES,
+        chained: Set<String> = emptySet(),
     ): Boolean = key != null &&
         key.series === series &&
         key.active == active &&
         key.periods == periods &&
-        key.comparison == comparison
+        key.comparison == comparison &&
+        key.window == window &&
+        key.chained == chained
 
     companion object {
         internal val EMPTY = ChartDerived()
@@ -1490,10 +2014,21 @@ data class ChartDerived internal constructor(
             periods: Map<String, Int>,
             /** The second instrument, for the one study that measures two series against each other. */
             comparison: ComparisonSeries? = null,
+            /** The bars on screen, for the one study whose answer depends on them. */
+            window: BarWindow = BarWindow.WHOLE_SERIES,
+            /**
+             * Indicators a chain is already drawing, and which this must therefore not draw.
+             *
+             * Skipped rather than deduplicated afterwards: the chain draws a chained EMA in the pane
+             * of the thing it is measuring, and this path would draw the same EMA over the candles.
+             * Two lines in one colour a pixel apart is a rendering fault as far as a reader is
+             * concerned, and there is nothing on screen that would let them tell it from one.
+             */
+            chained: Set<String> = emptySet(),
         ): ChartDerived {
-            val key = Key(series, active, periods, comparison)
+            val key = Key(series, active, periods, comparison, window, chained)
             if (active.isEmpty() || series.isEmpty) return ChartDerived(key = key)
-            val chosen = ChartCatalog.INDICATORS.filter { it.id in active }
+            val chosen = ChartCatalog.INDICATORS.filter { it.id in active && it.id !in chained }
             // Each structure study computed **once** and its three products taken from the one
             // answer. Three separate calls is what this file used to do, and a zigzag over three
             // hundred bars is not a cheap thing to compute twice for nothing.
@@ -1504,7 +2039,7 @@ data class ChartDerived internal constructor(
                 key = key,
                 overlays = chosen
                     .filter { it.pane == IndicatorPane.PRICE }
-                    .flatMap { ChartCatalog.overlayFor(it, series, periods[it.id]) } +
+                    .flatMap { ChartCatalog.overlayFor(it, series, periods[it.id], window) } +
                     structures.flatMap { it.lines },
                 levels = structures.flatMap { it.levels },
                 markers = structures.flatMap { it.markers },
@@ -1581,3 +2116,62 @@ private fun StoredDrawing.toDrawing(): Drawing = Drawing(
     direction = runCatching { ArrowDirection.valueOf(direction) }.getOrDefault(ArrowDirection.UP),
     locked = locked,
 )
+
+/**
+ * `DrawingSyncMode` as the drawing layer's own reach.
+ *
+ * Two enums for one idea, and they are in modules that may not see each other: `core:datastore`
+ * must not depend on `core:chart`, so the stored setting and the field on a `Drawing` are declared
+ * on opposite sides of a boundary and this feature module is the only place both are on the
+ * classpath — the same arrangement `ChartUiState.chartColours` uses for the palette.
+ *
+ * The three cases line up one for one, which is why this is a `when` and not a lookup: if a fourth
+ * mode is ever added to either side, this stops compiling rather than silently mapping it to
+ * something plausible.
+ */
+private fun DrawingSyncMode.toDrawingSync(): DrawingSync = when (this) {
+    DrawingSyncMode.NONE -> DrawingSync.NONE
+    DrawingSyncMode.LAYOUT -> DrawingSync.LAYOUT
+    DrawingSyncMode.GLOBAL -> DrawingSync.GLOBAL
+}
+
+/**
+ * An indicator's source as the template store keeps it: an opaque string.
+ *
+ * `IndicatorTemplateStore` deliberately does not understand chaining — it stores what it is given
+ * and hands it back untouched — so the spelling is this module's, and it has to survive a round
+ * trip through a build that has never heard of it. Two forms and nothing else:
+ *
+ * * `bars:CLOSE` — a column of the candles, named by [BarField].
+ * * `out:rsi` / `out:macd:signal` — another node's output, with the output named only when it is
+ *   not that indicator's main line.
+ *
+ * A node id is an indicator id here — one chart draws an indicator once — and an indicator id is
+ * letters, digits and underscores, so the colon can never appear inside one and the split is
+ * unambiguous.
+ */
+internal fun encodeChainSource(source: IndicatorSource): String = when (source) {
+    is IndicatorSource.Bars -> "bars:" + source.field.name
+    is IndicatorSource.Output ->
+        if (source.output == null) "out:" + source.nodeId else "out:" + source.nodeId + ":" + source.output
+}
+
+/**
+ * The reverse, answering null for anything this build cannot read.
+ *
+ * Null rather than a default, and the caller drops the entry: a source it cannot parse is a source
+ * it must not guess at. Silently substituting the close would draw an indicator that looks computed
+ * and is not the one the reader saved — the exact failure `IndicatorChain`'s own KDoc refuses for
+ * the multi-column indicators.
+ */
+internal fun decodeChainSource(encoded: String): IndicatorSource? {
+    val parts = encoded.split(':')
+    return when {
+        parts.size == 2 && parts[0] == "bars" ->
+            BarField.entries.firstOrNull { it.name == parts[1] }?.let(IndicatorSource::Bars)
+        parts.size == 2 && parts[0] == "out" && parts[1].isNotBlank() -> IndicatorSource.Output(parts[1])
+        parts.size == 3 && parts[0] == "out" && parts[1].isNotBlank() ->
+            IndicatorSource.Output(parts[1], parts[2].takeIf { it.isNotBlank() })
+        else -> null
+    }
+}

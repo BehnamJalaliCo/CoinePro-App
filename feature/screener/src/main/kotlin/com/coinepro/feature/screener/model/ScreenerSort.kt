@@ -25,11 +25,29 @@ data class ScreenerSort(
     val field: ScreenerField,
     /** Descending by default: a screener is nearly always read from the biggest number down. */
     val descending: Boolean = true,
+    /**
+     * The indicator reading this sort orders by, or null to order by [field] — [115].
+     *
+     * A second addressing mode rather than a second sort type, because a sort is one thing to a
+     * reader: the column with the arrow on it. Since the sheet began offering every indicator in
+     * the chart's catalogue, the table can show a column that has no [ScreenerField] at all —
+     * «TSI 25», «Aroon 14» — and a sort that could only name a field would leave exactly those
+     * columns unsortable, which is the one thing a table column is for.
+     *
+     * When it is set, [field] is left at whatever it was and ignored. It is kept rather than made
+     * nullable so that clearing an indicator sort has somewhere to fall back to, and so that a
+     * screen saved by a later build always decodes into a usable order.
+     */
+    val indicatorKey: String? = null,
 ) {
 
     /** The order this sort imposes, with unresolved rows pinned to the end. */
     val comparator: Comparator<ScreenerRow> = Comparator { first, second ->
-        if (field.isNumeric) compareNumeric(first, second) else compareText(first, second)
+        when {
+            indicatorKey != null -> compareIndicator(first, second)
+            field.isNumeric -> compareNumeric(first, second)
+            else -> compareText(first, second)
+        }
     }
 
     /** [rows] in this order. Stable: rows that compare equal keep the order they arrived in. */
@@ -43,8 +61,43 @@ data class ScreenerSort(
      * means. Starting a new column ascending would make the first tap on «حجم» show the markets
      * that barely traded.
      */
-    fun toggled(next: ScreenerField): ScreenerSort =
-        if (next == field) copy(descending = !descending) else ScreenerSort(next, descending = true)
+    fun toggled(next: ScreenerField): ScreenerSort = when {
+        // Moving off an indicator column onto a field is a new column even when the field happens
+        // to be the one this sort was parked on, so it starts descending like any other.
+        indicatorKey != null -> ScreenerSort(next, descending = true)
+        next == field -> copy(descending = !descending)
+        else -> ScreenerSort(next, descending = true)
+    }
+
+    /**
+     * The same gesture on an indicator column: tap to sort by it, tap again to flip.
+     *
+     * A separate entry point rather than an overload taking a nullable key, because the two are
+     * different acts at the call site — a heading knows which kind of column it is — and a nullable
+     * parameter would make "sort by nothing" expressible, which is not a state the table has.
+     */
+    fun toggledIndicator(key: String): ScreenerSort =
+        if (key == indicatorKey) copy(descending = !descending) else copy(indicatorKey = key, descending = true)
+
+    /**
+     * The same rule as [compareNumeric], over a reading rather than a field.
+     *
+     * A market whose reading has not been computed yet — or whose history is too short for the
+     * lookback — sorts last in both directions, exactly as an unresolved figure does. Ascending on
+     * «RSI» must not become a list of everything the app has not reduced yet.
+     */
+    private fun compareIndicator(first: ScreenerRow, second: ScreenerRow): Int {
+        val key = indicatorKey ?: return 0
+        val a = first.indicators[key]?.takeIf(Double::isFinite)
+        val b = second.indicators[key]?.takeIf(Double::isFinite)
+        return when {
+            a == null && b == null -> 0
+            a == null -> 1
+            b == null -> -1
+            descending -> b.compareTo(a)
+            else -> a.compareTo(b)
+        }
+    }
 
     private fun compareNumeric(first: ScreenerRow, second: ScreenerRow): Int {
         val a = first.valueOf(field)?.takeIf(Double::isFinite)

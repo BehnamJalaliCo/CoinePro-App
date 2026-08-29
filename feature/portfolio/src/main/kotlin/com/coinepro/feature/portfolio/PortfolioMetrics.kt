@@ -124,6 +124,7 @@ object PortfolioMetrics {
             equity = curve,
             equityIsBalance = balanced,
             drawdown = deepestDrawdown(curve, balanced),
+            runUp = highestRunUp(curve, balanced),
             longestDrawdown = longestDrawdown(curve),
         )
     }
@@ -268,6 +269,59 @@ object PortfolioMetrics {
     }
 
     /**
+     * The largest trough-to-peak rise, with the span that produced it — the mirror of
+     * [deepestDrawdown].
+     *
+     * ### Why a report needs both, and why the run-up is the one that is usually missing
+     *
+     * `core:chart`'s backtest engine has computed `maxEquityRunUp` beside `maxEquityDrawdown` since
+     * it was written, and walks both in one pass because they share a peak. This is the same figure
+     * over a real account's trades, computed the same way, so the two reports cannot disagree about
+     * what the words mean.
+     *
+     * The pair answers a question neither half answers alone: how much of the good stretch is
+     * *this* strategy and how much is the market. An account that rose four thousand and gave back
+     * three and a half is not the same account as one that rose four thousand and gave back two
+     * hundred, and a report that prints only the drawdown makes them look identical while a report
+     * that prints only the run-up flatters both. For a trader reading their own history the run-up
+     * is also the honest ceiling: it is what the account actually reached, and the difference
+     * between it and where the account sits now is what was handed back.
+     *
+     * ### The percentage, and why it is only on a balance curve
+     *
+     * Against the trough it rose from, which is the convention the backtest engine uses. It is
+     * offered only where the curve is real account balance, for the reason [deepestDrawdown] gives:
+     * on a profit-from-zero curve the trough can be a few dollars — or negative — and the ratio is
+     * then either meaningless or upside down.
+     */
+    fun highestRunUp(curve: List<EquityPoint>, curveIsBalance: Boolean): RunUpSpan? {
+        if (curve.size < 2) return null
+        var troughIndex = 0
+        var trough = curve.first().equity
+        var best: RunUpSpan? = null
+        curve.forEachIndexed { index, point ->
+            if (point.equity < trough) {
+                trough = point.equity
+                troughIndex = index
+            }
+            val rise = point.equity - trough
+            if (rise > 0.0 && rise > (best?.height ?: 0.0)) {
+                best = RunUpSpan(
+                    troughIndex = troughIndex,
+                    peakIndex = index,
+                    troughAt = curve[troughIndex].time,
+                    peakAt = point.time,
+                    troughEquity = trough,
+                    peakEquity = point.equity,
+                    height = rise,
+                    heightPercent = if (curveIsBalance && trough > 0.0) rise / trough * 100.0 else null,
+                )
+            }
+        }
+        return best
+    }
+
+    /**
      * The longest stretch spent below a previous high, in trades and in seconds.
      *
      * A different question from [deepestDrawdown] and often a more useful one. The deepest fall
@@ -371,6 +425,41 @@ data class DrawdownSpan(
 }
 
 /**
+ * A single trough-to-peak rise on the equity curve.
+ *
+ * The mirror of [DrawdownSpan] and deliberately a separate type rather than a signed drawdown: the
+ * two are read in opposite directions — a drawdown is measured *down* from a peak that came first,
+ * a run-up *up* from a trough that came first — and one type with a sign on it would let a caller
+ * shade the wrong stretch of the curve without anything looking wrong.
+ *
+ * A trader whose stop was too tight learns it from here rather than from the P&L: the account
+ * reached [peakEquity] and finished somewhere else, and the gap is what the exits gave back.
+ */
+data class RunUpSpan(
+    /** Index into the equity curve of the low the rise started from. */
+    val troughIndex: Int,
+    /** Index of the high it reached. Always at or after [troughIndex]. */
+    val peakIndex: Int,
+    val troughAt: Long,
+    val peakAt: Long,
+    val troughEquity: Double,
+    val peakEquity: Double,
+    /** Positive magnitude, in account currency. */
+    val height: Double,
+    /** Only on a real balance curve — see `PortfolioMetrics.highestRunUp`. */
+    val heightPercent: Double?,
+) {
+    /** How long the rise took, in seconds. */
+    val seconds: Long get() = peakAt - troughAt
+
+    /** How many trades it took to rise. */
+    val trades: Int get() = peakIndex - troughIndex
+
+    /** Whether [closedAt], in unix seconds, falls inside this stretch. */
+    fun covers(closedAt: Long): Boolean = closedAt in troughAt..peakAt
+}
+
+/**
  * One stretch spent below a previous high.
  *
  * [recovered] is the field that changes how the run should be read: a closed run is history, and an
@@ -427,6 +516,8 @@ data class TradeMetrics(
     /** True only when every trade carried a broker balance. See `PortfolioMath.summarise`. */
     val equityIsBalance: Boolean = false,
     val drawdown: DrawdownSpan? = null,
+    /** The best trough-to-peak stretch. Read beside [drawdown], never instead of it. */
+    val runUp: RunUpSpan? = null,
     val longestDrawdown: DrawdownRun? = null,
 ) {
     /** Wins over decided trades. A scratch is in neither column and in neither total. */
@@ -462,4 +553,10 @@ data class TradeMetrics(
 
     /** Only on a real balance curve. Null everywhere else, on purpose. */
     val maxDrawdownPercent: Double? get() = drawdown?.depthPercent
+
+    /** Positive magnitude of the largest trough-to-peak rise, or zero on a curve that never rose. */
+    val maxRunUp: Double get() = runUp?.height ?: 0.0
+
+    /** Only on a real balance curve, exactly as [maxDrawdownPercent] is. */
+    val maxRunUpPercent: Double? get() = runUp?.heightPercent
 }
