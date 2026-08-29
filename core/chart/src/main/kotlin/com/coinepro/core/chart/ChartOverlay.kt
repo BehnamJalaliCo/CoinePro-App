@@ -30,6 +30,25 @@ data class ChartLine(
      * across them *is* the study.
      */
     val connectNulls: Boolean = false,
+    /**
+     * The price-row histogram this line is the summary of — item 54.
+     *
+     * Only «پروفایل حجم» sets it, and it is the way that study gets drawn at all. A profile is
+     * measured *across* the price axis — one bar per price row, growing sideways — and this type is
+     * one value per *time* bar, so for a long while the indicator resolved to three flat lines and
+     * the histogram [ChartCatalog.volumeProfileFor] had already computed was thrown away at the
+     * call site. Three lines is not a profile; it is the caption under one.
+     *
+     * Carried on the line rather than on [ChartDecoration] because that is the shape the feature
+     * layer already passes through untouched: `overlayFor` builds it, `decoration.overlays` moves
+     * it, the canvas draws it. A field on the decoration would have needed a second hand-off in a
+     * file that has no idea this study exists, which is how the rows came to be discarded the first
+     * time.
+     *
+     * It hangs off the point-of-control line specifically — the one line that *is* the profile's
+     * headline — so hiding that legend row hides the bars with it.
+     */
+    val profile: VolumeProfile? = null,
 )
 
 /**

@@ -789,9 +789,9 @@ object ChartCatalog {
      * One price repeated across every bar, so a horizontal level can be drawn as a [ChartLine].
      *
      * [PriceLevel] is the better shape for a level and is what [structureFor] returns, but
-     * [overlayFor]'s contract is a list of lines and the volume profile has to say three prices
-     * through it. Cheap enough at a few hundred bars, and honest: the value really is the same on
-     * every bar.
+     * [overlayFor]'s contract is a list of lines and the volume profile has to say its three prices
+     * through it — the rows themselves travel on [ChartLine.profile]. Cheap enough at a few hundred
+     * bars, and honest: the value really is the same on every bar.
      */
     private fun flat(size: Int, price: Double): Line =
         Line.of(size) { if (price.isFinite()) price else null }
@@ -869,10 +869,11 @@ object ChartCatalog {
     /**
      * The volume profile behind the `volumeprofile_ind` row, for a range of bars.
      *
-     * Public because [overlayFor] cannot express what this indicator actually draws. A profile is a
-     * histogram measured across the price axis — one bar per price row, growing sideways from the
-     * edge — and every type [overlayFor] can return is one value per *bar*. So the option hands the
-     * chart the three prices the profile names and the renderer calls this for the rows themselves.
+     * Public because a renderer that wants the rows on their own terms — the fixed-range and
+     * anchored profile tools do — should not have to go through an indicator row to get them. A
+     * profile is a histogram measured across the price axis, one bar per price row growing sideways
+     * from the edge, and every type [overlayFor] can return is one value per *bar*; the study's own
+     * row therefore carries the three prices as lines and the buckets as [ChartLine.profile].
      *
      * Null where there is nothing to draw: an empty series, a feed with no volume column, or a
      * window in which nothing traded. A profile of zeros would be drawn as equal bars at every
@@ -1207,13 +1208,19 @@ object ChartCatalog {
                 listOf(ChartLine(split, option.colour, widthDp = 1.4f, label = "Volatility Stop $n"))
             }
             "volumeprofile_ind" -> volumeProfileFor(series, window).let { profile ->
-                // Three prices, not a histogram.
+                // Three prices *and* the histogram they were read off — item 54.
                 //
-                // The profile itself is a set of bars measured *across* the price axis, and a
-                // `ChartLine` is one value per bar — the wrong shape entirely. What a line can
-                // carry honestly is the three prices the profile names: the point of control and
-                // the two edges of the value area, each drawn as a level that runs the width of the
-                // chart. A renderer that wants the bars themselves calls [volumeProfileFor].
+                // The three lines are the reading people want: the point of control and the two
+                // edges of the value area, each drawn as a level that runs the width of the chart.
+                // But for a long time they were all this study drew, because a `ChartLine` is one
+                // value per bar and a profile is one bar per *price row* — the wrong shape — so the
+                // rows this function had already bucketed were computed and dropped on the floor.
+                // An indicator called «پروفایل حجم» that draws no profile is the defect.
+                //
+                // The rows now ride along on the point-of-control line through [ChartLine.profile],
+                // and the canvas draws them as the histogram. The line is the natural carrier: it
+                // is the profile's headline, so switching that legend row off takes the bars with
+                // it rather than leaving a histogram with nothing naming it.
                 if (profile == null) {
                     emptyList()
                 } else {
@@ -1225,7 +1232,13 @@ object ChartCatalog {
                     // before it learned about the viewport.
                     val label = if (window == BarWindow.WHOLE_SERIES) "POC" else "POC · محدودهٔ دید"
                     listOf(
-                        ChartLine(flat(series.size, control), option.colour, widthDp = 1.4f, label = label),
+                        ChartLine(
+                            flat(series.size, control),
+                            option.colour,
+                            widthDp = 1.4f,
+                            label = label,
+                            profile = profile,
+                        ),
                         ChartLine(flat(series.size, profile.rowHigh[profile.valueAreaHigh]), option.colour, widthDp = 0.9f, dashed = true),
                         ChartLine(flat(series.size, profile.rowLow[profile.valueAreaLow]), option.colour, widthDp = 0.9f, dashed = true),
                     )

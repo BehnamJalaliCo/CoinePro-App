@@ -536,8 +536,12 @@ private fun AlertFrequency.asRepeat(): AlertRepeat = when (this) {
  * `DAILY` becomes [AlertFrequency.EVERY_TIME] rather than a bar policy, because a day is not a
  * number of bars and pretending it is would silently change how often the alert speaks. The reader
  * sees the honest answer in the sheet and can pick the one they meant.
+ *
+ * Visible to the module rather than to this file alone, because [AlertAuditTrail] has to compare
+ * two alerts the way the editor shows them: an older alert re-saved unchanged gains a frequency for
+ * the first time, and a comparison of the raw fields would call that an edit.
  */
-private fun AlertRepeat.asFrequency(): AlertFrequency = when (this) {
+internal fun AlertRepeat.asFrequency(): AlertFrequency = when (this) {
     AlertRepeat.ONCE -> AlertFrequency.ONCE
     AlertRepeat.DAILY -> AlertFrequency.EVERY_TIME
     AlertRepeat.ALWAYS -> AlertFrequency.EVERY_TIME

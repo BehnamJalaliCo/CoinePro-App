@@ -10,4 +10,8 @@
     <string name="chart_events_note_economic">انتشارهای اقتصادی که هر دو بازار را تکان می‌دهند.</string>
     <string name="chart_events_note_unserved">فید فعلی این نوع را نمی‌فرستد.</string>
     <string name="chart_events_importance">اثر %1$s</string>
+    <string name="chart_events_state_offline">دستگاه به شبکه‌ای وصل نیست، پس رویدادی خوانده نشد.</string>
+    <string name="chart_events_state_unserved">بک‌اند این بازار هنوز سند رویدادها را سرو نمی‌کند؛ تا آن روز روی این نمودار نشانه‌ای کشیده نمی‌شود.</string>
+    <string name="chart_events_state_failed">خواندن رویدادها ناموفق بود.</string>
+    <string name="chart_events_state_nothing">در بازهٔ روی صفحه رویدادی ثبت نشده است.</string>
 </resources>

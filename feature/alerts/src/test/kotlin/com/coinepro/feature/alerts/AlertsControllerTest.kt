@@ -5,11 +5,14 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
 import com.coinepro.core.datastore.AlertAuditStore
 import com.coinepro.core.datastore.LocalAlertStore
+import com.coinepro.core.notifications.AlertAuditEntry
 import com.coinepro.core.notifications.AlertRepeat
+import com.coinepro.core.notifications.AuditEvent
 import com.coinepro.core.notifications.LocalAlertCondition
 import com.coinepro.core.notifications.LocalPriceAlert
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -105,12 +108,111 @@ class AlertsControllerTest {
         assertEquals(70_000.0, store.current().first { it.id == "id0" }.value, 0.0001)
     }
 
+    @Test
+    fun `an alert's history starts when the reader makes it, not when it first fires`() = runTest {
+        val audit = AlertAuditStore(FakeAlertPreferences())
+        val store = store()
+        val controller = controller(store, audit = audit)
+
+        controller.openEditor("BTCUSDT")
+        controller.setFirst(index = 0, text = "70000")
+        controller.save()
+
+        // «کِی ساخته شد» was a question the sheet could not answer while the evaluator was the only
+        // thing writing to this log.
+        val made = store.current().single()
+        assertEquals(listOf(AuditEvent.CREATED), audit.eventsFor(made.id))
+    }
+
+    @Test
+    fun `pausing and un-pausing are both recorded, newest first`() = runTest {
+        val audit = AlertAuditStore(FakeAlertPreferences())
+        val store = store()
+        store.add(alert)
+        val controller = controller(store, audit = audit)
+
+        controller.setPaused(onlyRow(controller), paused = true)
+        controller.setPaused(onlyRow(controller), paused = false)
+
+        assertEquals(listOf(AuditEvent.ARMED, AuditEvent.SNOOZED), audit.eventsFor("abc123"))
+    }
+
+    @Test
+    fun `undoing a pause corrects the record rather than leaving it standing`() = runTest {
+        val audit = AlertAuditStore(FakeAlertPreferences())
+        val store = store()
+        store.add(alert)
+        val controller = controller(store, audit = audit)
+
+        controller.setPaused(onlyRow(controller), paused = true)
+        controller.undo()
+
+        // The alert is armed again, so a log whose last word on it is «به تعویق افتاد» would be the
+        // one place this record is knowingly wrong.
+        assertTrue(store.current().single().active)
+        assertEquals(listOf(AuditEvent.ARMED, AuditEvent.SNOOZED), audit.eventsFor("abc123"))
+    }
+
+    @Test
+    fun `an edit is recorded once and a save that changed nothing is not recorded at all`() = runTest {
+        val audit = AlertAuditStore(FakeAlertPreferences())
+        val store = store()
+        store.add(alert)
+        val controller = controller(store, audit = audit)
+
+        controller.editAlert(onlyRow(controller))
+        controller.setFirst(index = 0, text = "70000")
+        controller.save()
+
+        // Re-opened and closed with «ذخیره», which is how a reader closes a sheet they opened to
+        // read. A line here would be the start of a column of them.
+        controller.editAlert(onlyRow(controller))
+        controller.save()
+
+        assertEquals(listOf(AuditEvent.EDITED), audit.eventsFor("abc123"))
+    }
+
+    @Test
+    fun `deleting an alert records the deletion and keeps everything before it`() = runTest {
+        val audit = AlertAuditStore(FakeAlertPreferences())
+        val store = store()
+        store.add(alert)
+        val controller = controller(store, audit = audit)
+
+        controller.setPaused(onlyRow(controller), paused = true)
+        controller.requestDelete(onlyRow(controller))
+        controller.confirmDelete()
+
+        // `AlertAuditStore.removeFor` is deliberately not called: deleting an alert is the reader
+        // saying they no longer want it evaluated, and that is a different thing from saying they
+        // no longer want it recorded. Erasing the log with the alert would also erase the «حذف شد»
+        // written a moment earlier.
+        assertTrue(store.current().isEmpty())
+        assertEquals(listOf(AuditEvent.DELETED, AuditEvent.SNOOZED), audit.eventsFor("abc123"))
+    }
+
+    @Test
+    fun `a duplicated alert gets a history of its own`() = runTest {
+        val audit = AlertAuditStore(FakeAlertPreferences())
+        val store = store()
+        store.add(alert)
+        val controller = controller(store, audit = audit)
+
+        controller.duplicate(onlyRow(controller))
+
+        // The one alert a reader can make without opening the editor. Left out, it would be the one
+        // whose log still began at its first firing.
+        assertEquals(listOf(AuditEvent.CREATED), audit.eventsFor("new0000000000000"))
+        assertEquals(emptyList<AuditEvent>(), audit.eventsFor("abc123"))
+    }
+
     private fun TestScope.controller(
         store: LocalAlertStore,
         forgotten: MutableList<String> = mutableListOf(),
+        audit: AlertAuditStore = AlertAuditStore(FakeAlertPreferences()),
     ) = AlertsController(
         store = store,
-        audit = AlertAuditStore(FakeAlertPreferences()),
+        audit = audit,
         catalogOf = { listOf("BTCUSDT", "ETHUSDT") },
         scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
         timeframeOf = { null },
@@ -120,6 +222,16 @@ class AlertsControllerTest {
     )
 
     private fun store() = LocalAlertStore(FakeAlertPreferences())
+
+    /**
+     * One alert's history, newest first — the order the store keeps and the order this asserts in.
+     *
+     * The sheet turns it round for display, because a firing and its delivery only read as a pair
+     * downwards. Asserting the stored order here rather than the displayed one keeps this test
+     * about what was written.
+     */
+    private suspend fun AlertAuditStore.eventsFor(id: String): List<AuditEvent> =
+        entriesFor(id).first().map(AlertAuditEntry::event)
 
     private fun onlyRow(controller: AlertsController): AlertRow =
         controller.state.value.sections.flatMap(AlertRowSection::rows).single()

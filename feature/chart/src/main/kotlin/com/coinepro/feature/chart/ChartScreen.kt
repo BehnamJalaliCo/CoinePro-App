@@ -74,6 +74,7 @@ import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.chart.IndicatorPicker
 import com.coinepro.core.chart.ObjectTree
 import com.coinepro.core.chart.Replay
+import com.coinepro.core.chart.ScaleSide
 import com.coinepro.core.chart.SignalOverlay
 import com.coinepro.core.chart.ToolRail
 import com.coinepro.core.chart.TradeFromChart
@@ -91,6 +92,7 @@ import com.coinepro.core.datastore.ChartLayout
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.DrawingTemplate
 import com.coinepro.core.datastore.DrawingSyncStore
+import com.coinepro.core.datastore.TimeZonePrefStore
 import com.coinepro.core.datastore.DrawingTemplateStore
 import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.SymbolChartStateStore
@@ -115,12 +117,14 @@ import com.coinepro.core.designsystem.pressScale
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.help.CoineProHelpSheet
 import com.coinepro.core.help.HelpCatalog
+import com.coinepro.core.marketdata.CHART_TIME_ZONE
 import com.coinepro.core.marketdata.ChartInterval
 import com.coinepro.core.marketdata.Timeframe
 import com.coinepro.core.marketdata.customOf
 import com.coinepro.core.symbols.SymbolClassifier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import java.time.ZoneId
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -271,6 +275,18 @@ fun ChartScreen(
      * one a deep link opens and a default that depended on which was is not a default.
      */
     drawingSync: DrawingSyncStore? = null,
+    /**
+     * The zone the time axis is read in — item 107.
+     *
+     * `TimeZonePrefStore` was written, provided in Hilt and injected nowhere, so `CoineProChart`'s
+     * `zone` parameter took its default on every call and the axis was hard-wired to Tehran. Null
+     * here is the preview and the tests, which keep the default and are right to.
+     *
+     * The `ZoneId` is resolved once beside the collector rather than per label, because the canvas
+     * formats a date for every gridline on every frame and `ZoneId.of` is a lookup and an
+     * allocation — the store's own KDoc asks callers for exactly this.
+     */
+    timeZones: TimeZonePrefStore? = null,
 ) {
     /**
      * The instrument the reader switched to from the strip, or null while they are on the one this
@@ -294,6 +310,21 @@ fun ChartScreen(
     @Suppress("NAME_SHADOWING")
     val controller = resolvedController
     val state by controller.state.collectAsStateWithLifecycle()
+
+    /**
+     * The reader's chart zone, resolved once per change rather than once per label.
+     *
+     * The stored id is validated on the way in — `TimeZonePrefStore.setZone` refuses one this
+     * device cannot resolve — but the `runCatching` stays, because a row can also be read on a
+     * device that has since lost the zone through a tzdata update, and an axis that throws mid-draw
+     * takes the whole screen with it.
+     */
+    val storedZone by (timeZones?.zone() ?: flowOf(TimeZonePrefStore.DEFAULT_ZONE_ID))
+        .collectAsStateWithLifecycle(TimeZonePrefStore.DEFAULT_ZONE_ID)
+    val chartZone = remember(storedZone) {
+        runCatching { ZoneId.of(storedZone) }.getOrDefault(CHART_TIME_ZONE)
+    }
+    val zoneScope = rememberCoroutineScope()
 
     /**
      * Switching instrument without leaving the screen.
@@ -534,6 +565,8 @@ fun ChartScreen(
                     // controller clears it, so a reader who then pans away is not dragged back on
                     // the next recomposition. See `ChartController.focusBar`.
                     focusIndex = state.focusIndex,
+                    conflate = state.visibleSeries.bars.size > CONFLATE_FROM_BARS,
+                    zone = chartZone,
                     // The hidden drawings are filtered out here and merged back by the controller
                     // on the way in. See `ChartUiState.canvasDrawing`: passing the raw list would
                     // make the object tree's eye do nothing, and passing a permanently filtered
@@ -969,7 +1002,12 @@ fun ChartScreen(
             subtitle = state.scaleMode.persianLabel,
             onDismiss = { sheet = null },
         ) {
-            PriceScaleSheetBody(state = state, controller = controller)
+            PriceScaleSheetBody(
+                state = state,
+                controller = controller,
+                zoneId = timeZones?.let { storedZone },
+                onSelectZone = { id -> timeZones?.let { store -> zoneScope.launch { store.setZone(id) } } },
+            )
         }
 
         ChartSheet.COMPARE -> CoineProSheet(
@@ -1805,7 +1843,13 @@ private fun StarredIntervalSection(
  * switches and a precision row, in the order somebody would reach for them.
  */
 @Composable
-private fun PriceScaleSheetBody(state: ChartUiState, controller: ChartController) {
+private fun PriceScaleSheetBody(
+    state: ChartUiState,
+    controller: ChartController,
+    /** The stored zone id, and the way to change it. Null in a preview leaves the chips absent. */
+    zoneId: String?,
+    onSelectZone: (String) -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1844,14 +1888,50 @@ private fun PriceScaleSheetBody(state: ChartUiState, controller: ChartController
 
         HorizontalDivider(color = CoineProColors.Border)
 
-        // «جای محور» is deliberately absent from this sheet.
+        // «جای محور» — items 95 and 96, and the note that used to stand here was out of date.
         //
-        // `ScaleSide` is carried as state and reaches the canvas, but the canvas draws the
-        // right-hand gutter and only that one: moving it is plot geometry plus every gesture that
-        // measures against the canvas width, and the canvas was left whole rather than half moved.
-        // A segmented control with four options where three are silent is worse than no control —
-        // it is the reader choosing something and being told nothing. The state and the parameter
-        // stay, so the day the gutter moves this is four lines coming back, not a feature.
+        // It said the canvas drew the right-hand gutter and only that one, so a control would be
+        // three silent options out of four. That stopped being true when `plotFrame` learned all
+        // four cases: `ChartFrame.kt` places the gutter left, right or both and takes the width off
+        // the plot before the viewport is sized, and the legend insets at `CoineProChart.kt:1817`
+        // already read the side. Everything measures against the plot rectangle rather than the
+        // canvas edge, so the gestures came along for free. What was missing was only this — a way
+        // to say it. `ChartController.setScaleSide` had no caller at all.
+        //
+        // «یکی» is `MERGED` and is worth its own word rather than a fourth position: it is not
+        // about where the gutter sits but about whether two overlaid instruments share an axis,
+        // which is the difference between an honest comparison and one that flatters whichever
+        // series was drawn second.
+        SheetLabel("جای محور قیمت")
+        CoineProChipRow(
+            options = SCALE_SIDES.map { (side, label) -> CoineProChip(id = side.name, label = label) },
+            selectedId = state.scaleSide.name,
+            onSelect = { id ->
+                ScaleSide.entries.firstOrNull { it.name == id }?.let(controller::setScaleSide)
+            },
+            compact = true,
+        )
+
+        HorizontalDivider(color = CoineProColors.Border)
+
+        // «منطقهٔ زمانی» — item 107. A short list and not `ZoneId.getAvailableZoneIds()`: six
+        // hundred rows in a bottom sheet is a search problem, and the four that matter to somebody
+        // reading these two markets are the local one, the two sessions that move them, and UTC —
+        // which is what every exchange timestamp is quoted in and the only one that never shifts.
+        //
+        // The label carries the current offset because a zone name alone does not answer the
+        // question anybody is asking, which is «this candle closed at what o'clock for me».
+        if (zoneId != null) {
+            SheetLabel("منطقهٔ زمانی نمودار")
+            CoineProChipRow(
+                options = CHART_ZONES.map { (id, label) -> CoineProChip(id = id, label = label) },
+                selectedId = zoneId,
+                onSelect = { id -> id?.let(onSelectZone) },
+                compact = true,
+            )
+
+            HorizontalDivider(color = CoineProColors.Border)
+        }
 
         SheetLabel("رقم اعشار")
         CoineProChipRow(
@@ -2156,6 +2236,56 @@ private val COMPARISON_BASES = listOf(
 )
 
 /** The precisions the axis offers, plus null for the derived one. See `ChartViewport.decimals`. */
+/**
+ * The four gutter placements, in the order a reader meets them.
+ *
+ * Right first because it is the default and where every terminal in this market puts it; merged
+ * last because it is the one that is not about placement at all. Labels rather than glyphs: there
+ * is no icon for "one shared axis" that anybody reads correctly the first time.
+ */
+/**
+ * Above how many loaded bars the renderer starts merging half-pixel columns — item 176.
+ *
+ * `ColumnConflator` and its four draw paths were written, tested and correct, and `conflate`
+ * defaulted to `false` with not one of the five call sites passing it, so the merge never ran on
+ * anybody's phone.
+ *
+ * Decided from the series rather than from the viewport, because the viewport is private to the
+ * canvas and this is the honest upper bound: a chart can never show more bars than are loaded, so
+ * below this number no two points can share a column and every comparison conflation makes is one
+ * that fails. Eight hundred is wider than any phone plot in pixels, which is the number that
+ * matters — past it a reader panned out is drawing several vertices into one column, and that is
+ * the case the merge exists for.
+ */
+internal const val CONFLATE_FROM_BARS = 800
+
+/**
+ * The zones offered for the time axis — item 107.
+ *
+ * Tehran first because Persian is this app's default locale and the reader is almost always in it.
+ * New York and London because those two sessions are what move gold and the majors, and a reader
+ * timing an entry around a session open needs the axis to say so without arithmetic. UTC last
+ * because it is the one every exchange actually stamps and the only one with no daylight saving to
+ * shift a candle boundary twice a year.
+ *
+ * Four and not `ZoneId.getAvailableZoneIds()`. Six hundred rows in a chip row is not a list, it is
+ * a search screen, and none of the other five hundred and ninety-six answers a question anybody
+ * reading these two markets has.
+ */
+private val CHART_ZONES: List<Pair<String, String>> = listOf(
+    "Asia/Tehran" to "تهران",
+    "America/New_York" to "نیویورک",
+    "Europe/London" to "لندن",
+    "UTC" to "UTC",
+)
+
+private val SCALE_SIDES: List<Pair<ScaleSide, String>> = listOf(
+    ScaleSide.RIGHT to "راست",
+    ScaleSide.LEFT to "چپ",
+    ScaleSide.BOTH to "هر دو",
+    ScaleSide.MERGED to "یکی",
+)
+
 private val DECIMAL_CHOICES: List<Int?> = listOf(null, 0, 2, 4, 8)
 
 /** The chip id standing for "no pinned precision". Not a number, so it cannot collide with one. */

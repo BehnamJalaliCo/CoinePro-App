@@ -316,6 +316,9 @@ private fun ChartPane(
                         showCountdown = !state.replay.isOn,
                     ),
                     focusIndex = state.focusIndex,
+                    // The same threshold the single chart uses, and it matters more here: two
+                    // panes are two full draw passes a frame. See `CONFLATE_FROM_BARS`.
+                    conflate = state.visibleSeries.bars.size > CONFLATE_FROM_BARS,
                     drawing = state.canvasDrawing,
                     onDrawing = controller::onDrawing,
                     eraser = state.drawing.eraser,

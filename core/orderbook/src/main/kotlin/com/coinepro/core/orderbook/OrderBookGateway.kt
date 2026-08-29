@@ -20,9 +20,12 @@ enum class DepthUnavailableReason {
      * This is CoinePro-FX's case and it is a property of the *broker*, not of the app or the
      * backend. MetaTrader 5 exposes depth only through `MarketBookAdd`/`MarketBookGet`, and those
      * return nothing unless the broker has switched market-depth publication on for the symbol.
-     * Most retail forex brokers have not. No amount of work downstream changes it — see
-     * `docs/SERVER_ASKS_DOM.md`, where the question is put to the backend before anything is built
-     * on top of an answer nobody has yet.
+     * This broker has not.
+     *
+     * **Settled, not pending.** The question was put to CoinePro-FX and answered: there is no depth
+     * on that platform and none is coming. So this is not a gap waiting on a backend — it is the
+     * true and final answer for forex, and the reason the «عمق بازار» entry is not offered there at
+     * all rather than offered and refused. See `docs/SERVER_ASKS_DOM.md`.
      */
     FEED_PUBLISHES_NO_DEPTH,
 

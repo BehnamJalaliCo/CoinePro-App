@@ -7,14 +7,20 @@ import com.coinepro.core.chart.EventKind
 import com.coinepro.core.chart.EventMark
 import com.coinepro.core.chart.EventVisibility
 import com.coinepro.core.chart.Importance
+import java.io.IOException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import retrofit2.HttpException
+import retrofit2.Response
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChartEventControllerTest {
@@ -154,12 +160,8 @@ class ChartEventControllerTest {
 
     @Test
     fun `a read that failed leaves the reader the server's own wording and no marks`() = runTest {
-        val failing = object : ChartEventFeed {
-            override suspend fun events(symbol: String, fromSeconds: Long, toSeconds: Long): List<ChartEvent> =
-                throw IllegalStateException("boom")
-        }
         val controller = ChartEventController(
-            feed = failing,
+            feed = throwing(IllegalStateException("boom")),
             scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
             now = { 0L },
         )
@@ -169,4 +171,108 @@ class ChartEventControllerTest {
         assertTrue(controller.state.value.events.isEmpty())
         assertFalse(controller.state.value.loading)
     }
+
+    @Test
+    fun `the bars on screen are all a chart has to hand over, and the marks come back placed`() = runTest {
+        val feed = CountingFeed(listOf(event(150_000), event(160_000)))
+        val controller = ChartEventController(
+            feed = feed,
+            scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
+            now = { 0L },
+        )
+
+        controller.onVisibleBars("BTCUSDT", series, 0, 9)
+
+        // Placed against the bars, not merely fetched: bar 5 opens at 150000 and bar 6 at 160000.
+        assertEquals(listOf(5, 6), controller.marks.value.map(EventMark::barIndex))
+    }
+
+    @Test
+    fun `switching a kind off changes the marks without a second read`() = runTest {
+        val feed = CountingFeed(listOf(event(150_000, EventKind.NEWS), event(160_000, EventKind.ECONOMIC)))
+        val controller = ChartEventController(
+            feed = feed,
+            scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
+            now = { 0L },
+        )
+        controller.onVisibleBars("BTCUSDT", series, 0, 9)
+        controller.setVisibility(EventVisibility.Everything)
+        assertEquals(2, controller.marks.value.size)
+
+        controller.setVisible(EventKind.ECONOMIC, false)
+
+        assertEquals(listOf(EventKind.NEWS), controller.marks.value.map(EventMark::kind))
+        assertEquals(1, feed.reads)
+    }
+
+    @Test
+    fun `a series with no bars yet leaves the axis alone rather than placing against nothing`() = runTest {
+        val feed = CountingFeed(listOf(event(150_000)))
+        val controller = ChartEventController(
+            feed = feed,
+            scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
+            now = { 0L },
+        )
+
+        controller.onVisibleBars("BTCUSDT", CandleSeries(emptyList()), 0, 0)
+
+        assertTrue(controller.marks.value.isEmpty())
+        assertEquals(0, feed.reads)
+    }
+
+    @Test
+    fun `a route the backend does not serve is named as that, not left as a bare axis`() = runTest {
+        val controller = ChartEventController(
+            feed = throwing(notFound()),
+            scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
+            now = { 0L },
+        )
+
+        controller.onVisibleBars("BTCUSDT", series, 0, 9)
+
+        assertEquals(ChartEventNotice.UNSERVED, controller.state.value.notice)
+        assertTrue(controller.marks.value.isEmpty())
+    }
+
+    @Test
+    fun `a phone with no network is told so, and a quiet window is told apart from both`() = runTest {
+        val offline = ChartEventController(
+            feed = throwing(IOException("no route to host")),
+            scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
+            now = { 0L },
+        )
+        offline.onVisibleBars("BTCUSDT", series, 0, 9)
+        assertEquals(ChartEventNotice.OFFLINE, offline.state.value.notice)
+
+        val quiet = ChartEventController(
+            feed = CountingFeed(emptyList()),
+            scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
+            now = { 0L },
+        )
+        quiet.onVisibleBars("BTCUSDT", series, 0, 9)
+        assertEquals(ChartEventNotice.NOTHING, quiet.state.value.notice)
+    }
+
+    @Test
+    fun `a window with marks in it carries no notice at all`() = runTest {
+        val controller = ChartEventController(
+            feed = CountingFeed(listOf(event(150_000))),
+            scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
+            now = { 0L },
+        )
+
+        controller.onVisibleBars("BTCUSDT", series, 0, 9)
+
+        assertNull(controller.state.value.notice)
+    }
+
+    private fun throwing(failure: Throwable): ChartEventFeed = object : ChartEventFeed {
+        override suspend fun events(symbol: String, fromSeconds: Long, toSeconds: Long): List<ChartEvent> =
+            throw failure
+    }
+
+    /** A real 404 rather than a stub, so the classification is tested against retrofit's own type. */
+    private fun notFound(): HttpException = HttpException(
+        Response.error<Unit>(404, "{}".toResponseBody("application/json".toMediaType())),
+    )
 }

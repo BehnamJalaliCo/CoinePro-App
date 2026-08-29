@@ -71,6 +71,7 @@ import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.datastore.DrawingTemplateStore
 import com.coinepro.core.datastore.IndicatorTemplateStore
 import com.coinepro.core.datastore.DrawingSyncStore
+import com.coinepro.core.datastore.TimeZonePrefStore
 import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
@@ -142,6 +143,7 @@ import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.membership.MembershipController
 import com.coinepro.core.model.AvatarSpec
 import com.coinepro.core.model.MarketPlatform
+import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.SignalDirection
 import com.coinepro.core.navigation.AppDestination
 import com.coinepro.core.notifications.LocalPriceAlert
@@ -441,6 +443,7 @@ fun CoineProApp(
     drawingTemplateStore: DrawingTemplateStore,
     indicatorTemplateStore: IndicatorTemplateStore,
     drawingSyncStore: DrawingSyncStore,
+    timeZonePrefStore: TimeZonePrefStore,
     intervalFavouritesStore: IntervalFavouritesStore,
     /**
      * How the chart screen itself is arranged: the split with the watchlist, and what the two
@@ -839,6 +842,7 @@ fun CoineProApp(
                 drawingTemplateStore = drawingTemplateStore,
                 indicatorTemplateStore = indicatorTemplateStore,
                 drawingSyncStore = drawingSyncStore,
+                timeZonePrefStore = timeZonePrefStore,
                 intervalFavouritesStore = intervalFavouritesStore,
                 chartWorkspaceStore = chartWorkspaceStore,
                 portfolioController = portfolioControllers.getValue(activePlatform),
@@ -1019,6 +1023,7 @@ fun CoineProApp(
                         drawingTemplateStore = drawingTemplateStore,
                         indicatorTemplateStore = indicatorTemplateStore,
                         drawingSyncStore = drawingSyncStore,
+                        timeZonePrefStore = timeZonePrefStore,
                         intervalFavouritesStore = intervalFavouritesStore,
                         chartWorkspaceStore = chartWorkspaceStore,
                         portfolioController = portfolioControllers.getValue(activePlatform),
@@ -1198,6 +1203,7 @@ private fun MainShell(
     drawingTemplateStore: DrawingTemplateStore,
     indicatorTemplateStore: IndicatorTemplateStore,
     drawingSyncStore: DrawingSyncStore,
+    timeZonePrefStore: TimeZonePrefStore,
     intervalFavouritesStore: IntervalFavouritesStore,
     /**
      * How the chart screen itself is arranged: the split with the watchlist, and what the two
@@ -1564,7 +1570,22 @@ private fun MainShell(
                         val depthSymbol = chartSymbolOnScreen.ifBlank {
                             backStackEntry?.arguments?.getString("symbol").orEmpty()
                         }
-                        if (currentRoute == CHART_PATTERN && depthSymbol.isNotBlank()) {
+                        // Crypto only, and that is settled rather than pending.
+                        //
+                        // CoinePro-FX's MetaTrader 5 broker does not publish Level II, so
+                        // `NoDepthGateway` answers `FEED_PUBLISHES_NO_DEPTH` for every forex symbol
+                        // and always will — it is the broker's decision, not the backend's. This
+                        // entry used to be on every chart, so a reader on gold pressed «عمق بازار»
+                        // and got one sentence saying there is none. A button whose only
+                        // destination is a refusal is worse than an absent one; see
+                        // `docs/SERVER_ASKS_DOM.md`, section two.
+                        //
+                        // Read from the platform rather than by probing the gateway, because the
+                        // answer is a property of the venue and is known before any request. The
+                        // route itself stays reachable — a saved back stack or an old link still
+                        // lands on the screen, which still says the true thing.
+                        val depthAvailable = activePlatform.marketType == MarketType.CRYPTO
+                        if (currentRoute == CHART_PATTERN && depthSymbol.isNotBlank() && depthAvailable) {
                             TextButton(onClick = { navController.navigate(domRoute(depthSymbol)) }) {
                                 Text(
                                     text = stringResource(DomR.string.dom_title),
@@ -2243,6 +2264,7 @@ private fun MainShell(
                     chartLayoutStore = chartLayoutStore,
                     intervalFavourites = intervalFavouritesStore,
                     drawingSync = drawingSyncStore,
+                    timeZones = timeZonePrefStore,
                     onOpenStudio = { navController.navigate(studioRoute(activeChartSymbol)) },
                     onOpenTerminal = if (terminalController.isConfigured) {
                         { navController.navigate(TERMINAL_ROUTE) }

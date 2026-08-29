@@ -64,11 +64,14 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.ceil
+import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.PI
 import kotlin.math.pow
+import kotlin.math.sin
 
 /**
  * The price chart.
@@ -983,6 +986,56 @@ fun CoineProChart(
                                     }
                                 }
                             }
+                            .pointerInput(Unit) {
+                                // A second finger holds the magnet on — item 38.
+                                //
+                                // The latch and its rule live in `DrawingActions.holdMagnet` and
+                                // `commit` drops it, so a hold cannot outlive the drawing it was
+                                // held for. What was missing was the gesture, and without it the
+                                // whole momentary magnet was unreachable: `effectiveMagnetMode`
+                                // read a flag nothing outside a test ever set.
+                                //
+                                // A second finger and not a long press, because a long press is
+                                // already the eraser's "take the whole drawing" and a tool armed
+                                // mid-placement has no spare press left. Resting the other thumb on
+                                // the glass is what a reader does on a terminal to say «snap this
+                                // one», and it composes with the tap that follows instead of
+                                // replacing it.
+                                //
+                                // An observer in the same shape as the two below: the final pass,
+                                // consuming nothing, deciding nothing. Every other handler has
+                                // already had the event, so the pinch that a second finger usually
+                                // means goes on zooming exactly as it did — this only reads how
+                                // many pointers are down and latches a flag. Keyed on `Unit` and
+                                // reading the state through `rememberUpdatedState`, because a
+                                // handler keyed on the state it emits restarts itself on its own
+                                // output and loses the gesture halfway through.
+                                awaitPointerEventScope {
+                                    var held = false
+                                    while (true) {
+                                        val event = awaitPointerEvent(PointerEventPass.Final)
+                                        val state = currentDrawing.value
+                                        val emit = currentOnDrawing.value
+                                        // Only while something is actually being placed. A second
+                                        // finger on a chart with no tool armed is a pinch and
+                                        // nothing else, and latching there would leave the magnet
+                                        // held for the next drawing the reader starts.
+                                        val placing = state?.tool != null
+                                        val second = event.changes.count { it.pressed } > 1
+                                        val wanted = placing && second
+                                        if (wanted == held) continue
+                                        held = wanted
+                                        if (state == null || emit == null) continue
+                                        emit(
+                                            if (wanted) {
+                                                DrawingActions.holdMagnet(state)
+                                            } else {
+                                                DrawingActions.releaseMagnet(state)
+                                            },
+                                        )
+                                    }
+                                }
+                            }
                             .pointerInput(onRequestAlertAt != null) {
                                 // The `+` on the price axis: a watcher, not a gesture.
                                 //
@@ -1065,11 +1118,7 @@ fun CoineProChart(
                                         // that price", and grabbing an endpoint would rotate the
                                         // line instead of translating it.
                                         val plot = frameOf(size.width.toFloat()).toPlot(position)
-                                        handle = if (lineMove) -1 else target.points.indexOfFirst { point ->
-                                            val dx = view.xOfTime(point.time) - plot.x
-                                            val dy = view.yOf(point.price) - plot.y
-                                            dx * dx + dy * dy <= tolerancePx * tolerancePx
-                                        }
+                                        handle = if (lineMove) -1 else handleIndexAt(target, view, plot, tolerancePx)
                                         origin = view.chartPointAt(plot, display, state.magnetMode)
                                     },
                                     onDrag = { change, _ ->
@@ -1085,7 +1134,25 @@ fun CoineProChart(
                                         )
                                         change.consume()
                                         if (handle >= 0) {
-                                            emit(DrawingActions.movePoint(state, id, handle, to))
+                                            // The other end of a two-point object is what the
+                                            // moving one is held straight against — item 48. Only
+                                            // for a pair: a five-point pattern has no "other end",
+                                            // and `constrain` refuses those anyway.
+                                            val opposite = state.drawings
+                                                .firstOrNull { it.id == id }
+                                                ?.takeIf { it.points.size == 2 && state.constrainAngle }
+                                                ?.points?.get(1 - handle)
+                                            val end = if (opposite == null) {
+                                                to
+                                            } else {
+                                                DrawingActions.constrain(
+                                                    toolId = state.drawings.first { it.id == id }.toolId,
+                                                    from = opposite,
+                                                    to = to,
+                                                    view = view,
+                                                )
+                                            }
+                                            emit(DrawingActions.movePoint(state, id, handle, end))
                                         } else {
                                             // A delta in *chart* space, not pixels, so a shape
                                             // dragged while zoomed lands where the finger did.
@@ -1103,6 +1170,13 @@ fun CoineProChart(
                                         origin = to
                                     },
                                     onDragEnd = {
+                                        // Held for one adjustment, like the magnet and like the
+                                        // placing tap above. See the long-press branch.
+                                        if (handle >= 0) {
+                                            drawing?.takeIf { it.constrainAngle }?.let { held ->
+                                                onDrawing?.invoke(DrawingActions.setConstrainAngle(held, false))
+                                            }
+                                        }
                                         handle = -1
                                         origin = null
                                     },
@@ -1226,13 +1300,15 @@ fun CoineProChart(
                                 }
                             }
                             .pointerInput(display, drawing, onDrawing, eraser, tolerancePx) {
-                                // A long press means one of four things, decided by where it lands
+                                // A long press means one of five things, decided by where it lands
                                 // and by what is armed.
                                 //
                                 // With the eraser armed it takes out whatever is under the finger,
                                 // whole — the deliberate, destructive half of the eraser, kept
                                 // behind a press so that a tap can safely mean "just this leg".
-                                // Otherwise: in the gutter it opens the axis menu; on a level it
+                                // Otherwise: mid-placement, or on a handle of the selected drawing,
+                                // it latches the angle constraint — see `constrainableAt` and the
+                                // branch below; in the gutter it opens the axis menu; on a level it
                                 // offers an alert at that level's price; anywhere else it enters
                                 // tracking mode — the crosshair appears, follows the finger, and
                                 // **stays** when the finger lifts, until a tap dismisses it. A
@@ -1254,6 +1330,13 @@ fun CoineProChart(
                                         val axisMenu = currentAxisMenu.value
                                         val erasing = eraser && drawing != null &&
                                             onDrawing != null && view != null && !inGutter
+                                        // Where a long press means «hold it straight» instead —
+                                        // item 48. See `constrainableAt` for the two windows, and
+                                        // the note on the branch below for why the long press is
+                                        // the gesture at all.
+                                        val constraining = !erasing && !inGutter && view != null &&
+                                            drawing != null && onDrawing != null &&
+                                            constrainableAt(drawing, view, plot, tolerancePx)
                                         val level = view?.let { placed ->
                                             currentLevels.value.firstOrNull {
                                                 abs(placed.yOf(it.price) - plot.y) <= tolerancePx
@@ -1268,6 +1351,32 @@ fun CoineProChart(
                                                 tolerancePx = tolerancePx,
                                                 whole = true,
                                             )?.let { next -> onDrawing?.invoke(next) }
+                                            // The angle constraint, latched — item 48.
+                                            //
+                                            // A long press and not a second finger, because the
+                                            // second finger is already the momentary magnet's
+                                            // (item 38) and a chart on which one extra thumb means
+                                            // two different things is a chart on which it means
+                                            // neither. The long press is free in exactly the two
+                                            // windows `constrainableAt` names: mid-placement, where
+                                            // dropping a crosshair the next tap has to dismiss was
+                                            // never what a reader wanted anyway, and on a handle of
+                                            // the selected drawing, which is a target nobody presses
+                                            // to read a price off. Everywhere else — and that is
+                                            // almost everywhere — the long press still enters
+                                            // tracking mode exactly as it did.
+                                            //
+                                            // A latch rather than a hold, because placement is taps
+                                            // and not a drag: a constraint that died when the
+                                            // finger came up would be released before the tap it
+                                            // was held for. The tap that spends it clears it, and
+                                            // pressing again clears it early.
+                                            constraining -> onDrawing?.invoke(
+                                                DrawingActions.setConstrainAngle(
+                                                    drawing!!,
+                                                    !drawing.constrainAngle,
+                                                ),
+                                            )
                                             inGutter && axisMenu != null -> axisMenu()
                                             !inGutter && level != null && alert != null ->
                                                 alert(level.price)
@@ -1413,13 +1522,48 @@ fun CoineProChart(
                                         // the channel it chose is thrown away on the way in and the
                                         // binding this whole arrangement exists for is never
                                         // written. See `chartPointAt`.
+                                        //
+                                        // The held constraint bites here, on the point on its way
+                                        // in — item 48. Placement on a phone is N taps and not a
+                                        // drag, so "the moving end" of a two-point tool is whatever
+                                        // the second tap lands on, and this is the only place it
+                                        // passes through. Constrained *before* the magnet rather
+                                        // than after, because the magnet's job is to choose a
+                                        // channel for the point it is given: snapping first and
+                                        // then rotating the result would record a binding to a low
+                                        // the point no longer sits on.
+                                        val constrained = if (state.constrainAngle) {
+                                            state.tool?.let { armedTool ->
+                                                state.pending.lastOrNull()?.let { from ->
+                                                    DrawingActions.constrain(
+                                                        toolId = armedTool.id,
+                                                        from = from,
+                                                        to = view.rawChartPointAt(plot),
+                                                        view = view,
+                                                    )
+                                                }
+                                            }
+                                        } else {
+                                            null
+                                        }
+                                        val placed = DrawingActions.tapSnapped(
+                                            state = state,
+                                            point = constrained ?: view.rawChartPointAt(plot),
+                                            series = display,
+                                            nearest = hit,
+                                        )
+                                        // Held for one point, exactly as the magnet is: a latch
+                                        // nothing drops is a latch the reader turned on by accident
+                                        // and cannot find the switch for. `commit` releases the
+                                        // magnet and does not know about this one, so it is
+                                        // released here — on the tap that spent it, whether or not
+                                        // that tap finished the shape.
                                         emit(
-                                            DrawingActions.tapSnapped(
-                                                state = state,
-                                                point = view.rawChartPointAt(plot),
-                                                series = display,
-                                                nearest = hit,
-                                            ),
+                                            if (constrained != null) {
+                                                DrawingActions.setConstrainAngle(placed, false)
+                                            } else {
+                                                placed
+                                            },
                                         )
                                     },
                                 )
@@ -1610,6 +1754,14 @@ fun CoineProChart(
                 // and an unclipped Canvas paints them over the header and the axis. The first render
                 // of the chart screen had a pivot line drawn across the symbol name.
                 clipRect(0f, 0f, plotWidth, plotHeight) {
+                    // The volume profile's rows go in first, so its own three lines and every other
+                    // study on the price sit over them rather than under. See
+                    // [drawVolumeProfileRows] for why they are anchored where they are.
+                    shown.overlays.forEach { overlay ->
+                        overlay.profile?.let { rows ->
+                            drawVolumeProfileRows(view, rows, Color(overlay.colour), plotWidth)
+                        }
+                    }
                     shown.overlays.forEach { drawOverlay(view, it, density.density, conflateGap) }
                     // Over the overlays and under the levels: a comparison is a second instrument's
                     // price and belongs in the same layer as the first's moving averages, while a
@@ -1723,21 +1875,36 @@ fun CoineProChart(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val frame = frames[0] ?: return@Canvas
             val view = lastView[0] ?: return@Canvas
-            val mark = crosshairOverride ?: crosshair ?: return@Canvas
             if (view.visibleCount == 0) return@Canvas
+            val mark = crosshairOverride ?: crosshair
             val timeAxis = if (decoration.showAxes && decoration.showTimeAxis) timeHeight else 0f
             translate(left = frame.left) {
-                drawCrosshair(
-                    view = view,
-                    crosshair = mark,
-                    plotWidth = frame.width,
-                    frame = frame,
-                    fullHeight = max(0f, size.height - timeAxis),
-                    palette = palette,
-                    measurer = measurer,
-                    decoration = decoration,
-                    zone = zone,
-                )
+                // The eight directions the held constraint will accept, drawn from the anchor the
+                // next tap is measured against. See [drawConstraintSpokes]: without them the
+                // constraint is a mode with no tell, and a reader who armed it by accident has no
+                // way to discover they did.
+                drawing?.let { live ->
+                    if (live.constrainAngle) {
+                        constraintAnchors(live).forEach { drawConstraintSpokes(view, it, palette) }
+                    }
+                }
+                if (mark != null) {
+                    drawCrosshair(
+                        view = view,
+                        crosshair = mark,
+                        plotWidth = frame.width,
+                        frame = frame,
+                        fullHeight = max(0f, size.height - timeAxis),
+                        palette = palette,
+                        measurer = measurer,
+                        decoration = decoration,
+                        zone = zone,
+                        // Which of the three pointers the rail is in. Nothing read this before, so
+                        // «نشانگر پیکانی» and «نشانگر نقطه‌ای» were two rail entries that changed a
+                        // field and nothing else — see [DrawingMode].
+                        mode = drawing?.mode ?: DrawingMode.CURSOR,
+                    )
+                }
             }
         }
 
@@ -2249,6 +2416,69 @@ private fun DrawScope.drawLineSeries(
         drawPath(fill, brush = areaBrush(colour, 0f, view.plotHeight))
     }
     drawPath(path, color = colour, style = Stroke(width = LINE_WIDTH_DP.toPx()))
+}
+
+/**
+ * The volume profile itself: one horizontal bar per price row — item 54.
+ *
+ * The study used to resolve to three flat lines. The rows behind them were bucketed, the point of
+ * control and the value area were found, and then the histogram — the entire subject of an
+ * indicator named «پروفایل حجم» — was discarded at the call site because the type it had to travel
+ * in was one value per time bar. It travels on [ChartLine.profile] now, and this is what draws it.
+ *
+ * ### Where the bars sit, and why
+ *
+ * Anchored to the plot's left edge and given [PROFILE_SPAN] of its width at the widest row. Against
+ * an edge because a profile drawn across the middle is a profile drawn over the candles, and the
+ * candles are what the reader came for; the *left* edge because the price gutter and the last-price
+ * tag live on the right, and the newest bars — the ones anybody is actually reading — are there
+ * too. The oldest bars on screen are the cheapest pixels on the chart.
+ *
+ * ### Why it is flat fill and nothing else
+ *
+ * No gradient and no glow: this app's surface rules forbid both, and a histogram that has to be
+ * seen *through* is exactly the case where a designer reaches for one. Three flat alphas do the
+ * same job — the point-of-control row reads heaviest, the rest of the value area a step below it,
+ * and the tails faint enough that a candle behind them stays legible. That ladder is also the
+ * reading: the shape of the value area is visible without tracing the two dashed edges.
+ *
+ * A row with no volume is skipped rather than drawn as a zero-width rectangle, and the widest row
+ * is taken from the profile's own peak, so a window that traded almost everything at one price
+ * still fills the span instead of drawing twenty-four slivers.
+ */
+private fun DrawScope.drawVolumeProfileRows(
+    view: ChartViewport,
+    profile: VolumeProfile,
+    colour: Color,
+    plotWidth: Float,
+) {
+    var peak = 0.0
+    for (value in profile.volume) if (value > peak) peak = value
+    // A profile of zeros would be drawn as equal bars at every price, which is a claim that the
+    // market traded evenly across its whole range. `volumeProfileFor` already refuses the case; this
+    // is the second guard, because the divide below is the one that would produce it.
+    if (peak <= 0.0) return
+    val span = plotWidth * PROFILE_SPAN
+    if (span <= 0f) return
+    val valueArea = profile.valueAreaLow..profile.valueAreaHigh
+    for (row in profile.volume.indices) {
+        if (profile.volume[row] <= 0.0) continue
+        val top = view.yOf(profile.rowHigh[row])
+        val bottom = view.yOf(profile.rowLow[row])
+        val slot = abs(bottom - top)
+        // A hairline of gap between rows, so twenty-four bars read as twenty-four bars rather than
+        // as one block with a ragged right edge — and never thinner than a pixel, because a row
+        // that rounds to nothing is a price that traded and cannot be seen to have.
+        val height = max(1f, slot - PROFILE_ROW_GAP_DP.toPx())
+        val y = min(top, bottom) + (slot - height) / 2
+        val width = max(1f, (profile.volume[row] / peak).toFloat() * span)
+        val alpha = when {
+            row == profile.pocIndex -> PROFILE_POC_ALPHA
+            row in valueArea -> PROFILE_AREA_ALPHA
+            else -> PROFILE_TAIL_ALPHA
+        }
+        drawRect(colour.copy(alpha = alpha), Offset(0f, y), Size(width, height))
+    }
 }
 
 private fun DrawScope.drawOverlay(
@@ -3193,6 +3423,26 @@ private fun DrawScope.drawDashedLevel(y: Float, width: Float, colour: Color) {
  *
  * The vertical rule runs the full height, panes included, so a turn in the price and the reading in
  * the oscillator below it are measured against the same bar.
+ *
+ * ### The three pointers — item 40
+ *
+ * [DrawingMode] carries which of the rail's [ToolGroup.MODES] entries is on, and for two of them
+ * this is the only thing in the app that acts on it. «نشانگر پیکانی» and «نشانگر نقطه‌ای» were
+ * rail entries that set a field nothing read: tapping either changed the state, the button lit,
+ * and the chart went on drawing the same full crosshair. What the reader is choosing between is
+ * how much of the plot the pointer is allowed to cover, and that is a decision about *these two
+ * lines*, so it is decided here:
+ *
+ * * [DrawingMode.CURSOR] and every mode that is not a pointer — the full crosshair, both rules.
+ * * [DrawingMode.ARROW_CURSOR] — no rules at all. For a reader who finds the full-width lines busy
+ *   over a dense chart; the tags in the two gutters still say the price and the time, so nothing is
+ *   lost except the ink across the candles.
+ * * [DrawingMode.DOT] — a small ring at the touch point instead. The pointer a reader wants while
+ *   placing anchors on a crowded chart: it says *here* without painting over the two bars either
+ *   side of here.
+ *
+ * The readouts are the same in all three, because the readouts are the answer and only the pointer
+ * is a preference.
  */
 private fun DrawScope.drawCrosshair(
     view: ChartViewport,
@@ -3204,6 +3454,7 @@ private fun DrawScope.drawCrosshair(
     measurer: TextMeasurer,
     decoration: ChartDecoration,
     zone: ZoneId,
+    mode: DrawingMode = DrawingMode.CURSOR,
 ) {
     val index = crosshair.index.coerceIn(view.firstVisible, view.lastVisible)
     val bar = view.series[index]
@@ -3213,8 +3464,19 @@ private fun DrawScope.drawCrosshair(
     // distinguishable at a glance from the dashed levels it crosses; a shorter dash is the cheapest
     // way to say "this one is yours and it is not part of the chart".
     val dash = dashEffect(LineStyleKind.DASHED, HAIRLINE_DP.toPx())
-    drawLine(palette.crosshair, Offset(x, 0f), Offset(x, fullHeight), HAIRLINE_DP.toPx(), pathEffect = dash)
-    drawLine(palette.crosshair, Offset(0f, y), Offset(plotWidth, y), HAIRLINE_DP.toPx(), pathEffect = dash)
+    when (mode) {
+        DrawingMode.ARROW_CURSOR -> Unit
+        DrawingMode.DOT -> {
+            // A ring rather than a filled disc, so the pointer does not hide the pixel it is
+            // pointing at — which on a dot pointer is the entire point of choosing it.
+            drawCircle(palette.crosshair, DOT_CURSOR_DP.toPx(), Offset(x, y), style = Stroke(HAIRLINE_DP.toPx()))
+            drawCircle(palette.crosshair, HAIRLINE_DP.toPx(), Offset(x, y))
+        }
+        else -> {
+            drawLine(palette.crosshair, Offset(x, 0f), Offset(x, fullHeight), HAIRLINE_DP.toPx(), pathEffect = dash)
+            drawLine(palette.crosshair, Offset(0f, y), Offset(plotWidth, y), HAIRLINE_DP.toPx(), pathEffect = dash)
+        }
+    }
 
     if (!decoration.showAxes || frame.tagGutterWidth <= 0f) return
     drawAxisTag(
@@ -3244,6 +3506,50 @@ private fun DrawScope.drawCrosshair(
         cornerRadius = CornerRadius(TAG_RADIUS_DP.toPx(), TAG_RADIUS_DP.toPx()),
     )
     drawText(stamp, topLeft = Offset(left + TAG_PADDING_DP.toPx() * 2, fullHeight + 1f + TAG_PADDING_DP.toPx()))
+}
+
+/**
+ * The eight directions a held angle constraint will accept, drawn from the anchor — item 48.
+ *
+ * The constraint itself is arithmetic in `DrawingActions.constrain` and was correct long before
+ * anything called it. What it had no way to be was *visible*: a latch that only shows itself on the
+ * tap after the one that set it is a mode a reader cannot tell they are in, and the first thing
+ * they would do is put a point somewhere they did not mean to and conclude the chart is broken.
+ *
+ * So while the latch is held and there is an anchor to measure from, the eight rays are painted
+ * faintly from it — the four axes and the four diagonals, which is exactly what `constrain` rounds
+ * to. They are short, hairline and well under the crosshair's own weight: they are scaffolding for
+ * the next tap, not a study, and they disappear with it.
+ *
+ * Which anchors those are is [constraintAnchors]' answer, and it is called per anchor rather than
+ * given a list, because the two cases want different counts of it.
+ */
+private fun DrawScope.drawConstraintSpokes(
+    view: ChartViewport,
+    anchor: ChartPoint,
+    palette: ChartPalette,
+) {
+    val x = view.xOfTime(anchor.time)
+    val y = view.yOf(anchor.price)
+    val reach = SPOKE_REACH_DP.toPx()
+    val colour = palette.crosshair.copy(alpha = SPOKE_ALPHA)
+    val width = HAIRLINE_DP.toPx()
+    val dash = dashEffect(LineStyleKind.DASHED, width)
+    // An eighth of a turn at a time, which is the step `constrain` rounds to. Written as the same
+    // rotation rather than as eight literal offsets, so the picture cannot drift from the maths.
+    for (step in 0 until CONSTRAINT_STEPS) {
+        val angle = step * (2.0 * PI / CONSTRAINT_STEPS)
+        drawLine(
+            color = colour,
+            start = Offset(x, y),
+            end = Offset(
+                x + (reach * cos(angle)).toFloat(),
+                y + (reach * sin(angle)).toFloat(),
+            ),
+            strokeWidth = width,
+            pathEffect = dash,
+        )
+    }
 }
 
 // ---------------------------------------------------------------------------- helpers
@@ -3316,6 +3622,74 @@ internal fun closesPendingShape(
     val dx = view.xOfTime(first.time) - x
     val dy = view.yOf(first.price) - y
     return dx * dx + dy * dy <= tolerancePx * tolerancePx
+}
+
+/**
+ * Which of a drawing's own anchors a touch has landed on, or −1.
+ *
+ * Pixels rather than chart space, for the reason every hit test here is: an anchor is a finger's
+ * width, and a finger is not a number of bars. Extracted because the drag that moves a handle and
+ * the long press that constrains it have to agree exactly about what "on a handle" means — two
+ * copies of this test would be a gesture that constrains one handle and then drags a different one.
+ */
+internal fun handleIndexAt(
+    target: Drawing,
+    view: ChartViewport,
+    plot: Offset,
+    tolerancePx: Float,
+): Int = target.points.indexOfFirst { point ->
+    val dx = view.xOfTime(point.time) - plot.x
+    val dy = view.yOf(point.price) - plot.y
+    dx * dx + dy * dy <= tolerancePx * tolerancePx
+}
+
+/**
+ * The points a held angle constraint will be measured from, for the guide rays — item 48.
+ *
+ * One while a placement is running: the anchor already down, which is the `from` the next tap is
+ * constrained against. Two while a two-point drawing is selected, because the constraint there
+ * applies to whichever end the reader grabs and the other one is the pivot — and the canvas cannot
+ * know which that will be until the drag starts. Showing both is the honest answer to "what will
+ * this do", and it is also the picture: two fans that meet along the line the object already is.
+ *
+ * Empty in every other state, which is what stops eight rays appearing over a chart with a latch
+ * left on and nothing to spend it on.
+ */
+internal fun constraintAnchors(state: DrawingState): List<ChartPoint> {
+    state.pending.lastOrNull()?.let { return listOf(it) }
+    val id = state.selectedId ?: return emptyList()
+    val target = state.drawings.firstOrNull { it.id == id } ?: return emptyList()
+    return if (target.points.size == 2) target.points else emptyList()
+}
+
+/**
+ * Whether a long press here means «hold it straight» rather than «put a crosshair down» — item 48.
+ *
+ * Two windows and no others, and the narrowness is the design. The angle constraint needs a
+ * modifier a phone does not have, so it has to borrow a gesture; borrowing one costs whatever that
+ * gesture did before, and the long press on this canvas is worth a great deal — it is tracking mode,
+ * the eraser's whole-object rub-out, the axis menu and the alert offer.
+ *
+ * * **Mid-placement**, with an anchor already down. The long press here used to enter tracking
+ *   mode, which is a crosshair the very next tap has to dismiss instead of placing the point the
+ *   reader was in the middle of placing. It was never worth anything in this window.
+ * * **On a handle** of the selected drawing, with nothing armed. A twelve-pixel target on a shape
+ *   the reader has already selected is not somewhere anybody presses to read a price, and it is
+ *   exactly where they are about to drag.
+ *
+ * Everywhere else on the plot the long press still means what it always meant.
+ */
+internal fun constrainableAt(
+    state: DrawingState,
+    view: ChartViewport,
+    plot: Offset,
+    tolerancePx: Float,
+): Boolean {
+    if (state.tool != null) return state.pending.isNotEmpty()
+    val id = state.selectedId ?: return false
+    val target = state.drawings.firstOrNull { it.id == id } ?: return false
+    if (target.points.size != 2) return false
+    return handleIndexAt(target, view, plot, tolerancePx) >= 0
 }
 
 /**
@@ -3538,6 +3912,48 @@ private const val SPAN_MULTI_YEAR = 60L * 60 * 24 * 400
  * are never in doubt about which series the chart is about.
  */
 private const val VOLUME_INLINE = 0.20f
+
+/**
+ * How much of the plot's width the widest row of a volume profile reaches. See
+ * [drawVolumeProfileRows].
+ *
+ * A fifth, deliberately the same share the inline volume band takes of the height. The two are the
+ * same claim about the same number seen from two directions, and a chart on which one of them is
+ * twice as loud as the other reads as though it meant something by it.
+ */
+private const val PROFILE_SPAN = 0.20f
+
+/** The gap between two rows of the profile, so the bars read as bars rather than as a block. */
+private val PROFILE_ROW_GAP_DP = 1.dp
+
+/**
+ * The radius of the dot pointer's ring. See [drawCrosshair].
+ *
+ * Small enough that the ring is a mark rather than a target — a reader who picked the dot over the
+ * full crosshair picked it to stop the pointer covering the chart, and a fat circle would be the
+ * same complaint in a rounder shape.
+ */
+private val DOT_CURSOR_DP = 5.dp
+
+/** How far the constraint's guide rays reach from the anchor. See [drawConstraintSpokes]. */
+private val SPOKE_REACH_DP = 44.dp
+
+/** Faint: the rays are scaffolding for the next tap and must not read as a drawn object. */
+private const val SPOKE_ALPHA = 0.45f
+
+/** Eighths of a turn — the four axes and the four diagonals `DrawingActions.constrain` rounds to. */
+private const val CONSTRAINT_STEPS = 8
+
+/**
+ * The three weights of a profile row: the point of control, the rest of the value area, the tails.
+ *
+ * All well under half, because the whole bar has to be seen through — a row that hides the candle
+ * behind it has traded the subject of the chart for a study of it. The ladder is what carries the
+ * shape of the value area without the reader tracing its two dashed edges.
+ */
+private const val PROFILE_POC_ALPHA = 0.34f
+private const val PROFILE_AREA_ALPHA = 0.22f
+private const val PROFILE_TAIL_ALPHA = 0.12f
 
 /**
  * The most of the canvas indicator panes may take between them.

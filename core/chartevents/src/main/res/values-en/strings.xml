@@ -9,4 +9,8 @@
     <string name="chart_events_note_economic">Macro releases, which move both markets.</string>
     <string name="chart_events_note_unserved">The current feed does not send this kind.</string>
     <string name="chart_events_importance">%1$s impact</string>
+    <string name="chart_events_state_offline">This device has no network, so nothing was read.</string>
+    <string name="chart_events_state_unserved">The backend for this market does not serve the events document yet, so no mark is drawn on this chart until it does.</string>
+    <string name="chart_events_state_failed">The events could not be read.</string>
+    <string name="chart_events_state_nothing">Nothing was recorded in the range on screen.</string>
 </resources>

@@ -477,9 +477,25 @@ data class ChartUiState(
         // list on every read — which is exactly what `ChartDerived` exists to stop, and which the
         // memoisation test caught by identity. Chained indicators are the rare case; an ordinary
         // chart reads this on every frame of a drag.
-        get() = chainPlot.priceLines.ifEmpty { return derived.overlays }.let { derived.overlays + it }
+        get() = if (indicatorsHidden) emptyList()
+        else chainPlot.priceLines.ifEmpty { return derived.overlays }.let { derived.overlays + it }
 
-    val levels: List<PriceLevel> get() = derived.levels
+    val levels: List<PriceLevel> get() = if (indicatorsHidden) emptyList() else derived.levels
+
+    /**
+     * Whether the rail's «اندیکاتورها» switch is off — item 44.
+     *
+     * Read here rather than inside `DrawingState.isShown`, because that method filters *drawings*
+     * and an indicator is not one: it has no id in `hiddenIds`, no tool, and nothing on the drawing
+     * state to hide. So the layer switch wrote `DrawingLayer.INDICATORS` into `hidden` and the four
+     * getters below went on drawing every line — the switch moved, the chart did not, which is
+     * exactly the kind of control this wave exists to stop shipping.
+     *
+     * Hidden, not switched off. `activeIndicators` is left alone, so flicking the switch back
+     * brings the same set of studies with the same periods rather than an empty chart the reader
+     * has to rebuild.
+     */
+    private val indicatorsHidden: Boolean get() = DrawingLayer.INDICATORS in drawing.hidden
 
     /**
      * The arrows over and under the bars: the structure studies', plus the candlestick patterns.
@@ -489,7 +505,8 @@ data class ChartUiState(
      * switched on, so a chart without them allocates one empty list.
      */
     val markers: List<ChartMarker>
-        get() = CandlePatterns.markersFor(visibleSeries, patterns)
+        get() = if (indicatorsHidden) emptyList()
+        else CandlePatterns.markersFor(visibleSeries, patterns)
             .ifEmpty { return derived.markers }
             .let { derived.markers + it }
 
@@ -502,7 +519,8 @@ data class ChartUiState(
      */
     val panes: List<ChartPane>
         /** The same identity-preserving empty case as [overlays], for the same reason. */
-        get() = chainPlot.panes.ifEmpty { return derived.panes }.let { derived.panes + it }
+        get() = if (indicatorsHidden) emptyList()
+        else chainPlot.panes.ifEmpty { return derived.panes }.let { derived.panes + it }
 
     /**
      * What the chart may draw.

@@ -1,13 +1,19 @@
 package com.coinepro.core.chart
 
+import android.graphics.BitmapFactory
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -64,6 +70,15 @@ fun DrawScope.drawDrawing(
      * model's own answer and does not wait for a frame.
      */
     nowMillis: Long = System.currentTimeMillis(),
+    /**
+     * Where the image tool's pictures come from.
+     *
+     * Defaulted to the process-wide [DrawingImages] for the same reason [nowMillis] is defaulted to
+     * the clock: every caller but a test would be passing the one answer there is. The seam is here
+     * so a test can hand a picture in without a file, a decoder or a device — and so that the day
+     * the app holds two independent picture stores, this does not have to become a global again.
+     */
+    images: DrawingImageSource = DrawingImages,
 ): Boolean {
     val chart = drawing.points
     if (chart.isEmpty()) return false
@@ -580,7 +595,7 @@ fun DrawScope.drawDrawing(
         // reader loses their place in it, and the new tools all share a shape — chart-space
         // geometry from [DrawingGeometryA]/[DrawingGeometryB], projected and stroked — that has
         // nothing to do with the hand-rolled arithmetic above.
-        else -> drawExtendedDrawing(drawing, view, measurer, chart, p, colour, width, paint)
+        else -> drawExtendedDrawing(drawing, view, measurer, chart, p, colour, width, paint, images)
     }
 
     // The interval the mark was drawn on, as a small tag beside its first anchor. Only on a
@@ -603,6 +618,219 @@ fun DrawScope.drawDrawing(
 
 /** Which way a standalone arrow marker points. */
 enum class ArrowDirection { UP, DOWN, LEFT, RIGHT }
+
+// ---------------------------------------------------------------------------- the image tool's pictures
+
+/**
+ * What the image tool has to draw: a picture, or the reason there is not one.
+ *
+ * Three states and not a nullable bitmap, because "not here yet" and "not here any more" are
+ * different facts and the reader is owed the difference. A chart that has just opened has not
+ * finished reading its pictures off disk, and a frame that announced a missing file during that
+ * second would be crying wolf on every launch; a picture whose file a reinstall took is gone for
+ * good, and a frame that stayed hopeful about it would leave the reader waiting for a load that is
+ * never coming.
+ */
+sealed interface DrawingImage {
+
+    /** The picture, decoded and ready. */
+    data class Shown(val bitmap: ImageBitmap) : DrawingImage
+
+    /** Nothing yet — either nobody has asked for it, or the read is still running. */
+    data object Waiting : DrawingImage
+
+    /** Asked for, and the bytes are not there. See `DrawingImageStore`'s note on missing files. */
+    data object Gone : DrawingImage
+}
+
+/** Where [drawDrawing] gets an image drawing's picture from. One function, so a test can be one. */
+fun interface DrawingImageSource {
+    fun imageFor(imageId: String): DrawingImage
+}
+
+/**
+ * The decoded pictures, held for the process.
+ *
+ * ### Why the cache is here and not beside the files
+ *
+ * `DrawingImageStore` owns the bytes and knows nothing about Compose; this owns the decoded
+ * [ImageBitmap] and knows nothing about files. That split is not tidiness — `core:chart` does not
+ * depend on `core:datastore` and must not start, because the chart engine is the one part of this
+ * app that is pure enough to render in a unit test. The feature layer joins the two: it reads bytes
+ * from the store and puts them here, and that is the only place the two halves meet.
+ *
+ * ### Why it is a cache and not a map
+ *
+ * A picture at `DrawingImageStore.MAX_EDGE` is about four megabytes decoded. Holding every picture
+ * a reader has ever placed, across every symbol, is how a chart dies on a cheap phone — so this
+ * keeps [CAPACITY] of them in least-recently-drawn order and lets the rest go. An evicted picture
+ * is [DrawingImage.Waiting] again, not [DrawingImage.Gone]: the bytes are still on disk and the
+ * next read brings it back.
+ *
+ * ### Why a revision counter
+ *
+ * A picture arrives on a background thread, after the frame that wanted it was drawn. Compose
+ * repaints when state a draw read has changed, so [imageFor] reads [revision] and every [put]
+ * bumps it — without that, a picture loaded off disk would sit in this map invisible until the
+ * next tick of the feed moved something else, which on a closed market is never.
+ */
+object DrawingImages : DrawingImageSource {
+
+    /**
+     * How many decoded pictures are held at once.
+     *
+     * Six, which is about twenty-four megabytes at the store's cap and more images than any chart
+     * this app has been used on carries. The number matters less than the fact that there is one:
+     * an unbounded cache of photographs on a phone is a crash with a delay on it.
+     */
+    private const val CAPACITY = 6
+
+    /** Access-ordered, so [CAPACITY] evicts the picture least recently *drawn* rather than oldest. */
+    private val loaded = object : LinkedHashMap<String, ImageBitmap>(CAPACITY, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ImageBitmap>): Boolean =
+            size > CAPACITY
+    }
+
+    /** The ids somebody looked for and did not find. Never evicted; there is nothing to evict. */
+    private val gone = HashSet<String>()
+
+    private val revision = mutableIntStateOf(0)
+
+    /**
+     * The id inside a drawing's text, or null when there is not one.
+     *
+     * The image tool keeps its picture reference in `Drawing.text`, the field a note keeps its
+     * words in, because [Drawing] has no field of its own for it — adding one would change a codec
+     * that three other things write, and `core:chart` cannot be the module that decides that. The
+     * shape is `img_<sixteen hex>` optionally followed by a space and the reader's caption, so a
+     * picture and a caption can live in one field and an ordinary caption on an ordinary drawing is
+     * still just a caption.
+     *
+     * The pattern is duplicated from `DrawingImageStore.isImageId` rather than depended on, the way
+     * `StoredDrawing` duplicates the drawing defaults, and both are pinned by tests.
+     */
+    fun idIn(text: String?): String? =
+        text?.trim()?.substringBefore(' ')?.takeIf(ID::matches)
+
+    /** The reader's own words out of the same field, or null when the text is a bare id. */
+    fun captionIn(text: String?): String? {
+        val trimmed = text?.trim().orEmpty()
+        if (trimmed.isEmpty()) return null
+        val head = trimmed.substringBefore(' ')
+        val rest = if (ID.matches(head)) trimmed.substringAfter(' ', "") else trimmed
+        return rest.trim().takeIf(String::isNotEmpty)
+    }
+
+    /** The two halves back into one field, which is what the picker writes to `Drawing.text`. */
+    fun textFor(imageId: String, caption: String? = null): String =
+        listOfNotNull(imageId, caption?.trim()?.takeIf(String::isNotEmpty)).joinToString(" ")
+
+    override fun imageFor(imageId: String): DrawingImage {
+        // Read inside the draw phase on purpose — see the class note on the revision counter.
+        revision.intValue
+        synchronized(loaded) {
+            loaded[imageId]?.let { return DrawingImage.Shown(it) }
+            return if (imageId in gone) DrawingImage.Gone else DrawingImage.Waiting
+        }
+    }
+
+    /** Hold a picture somebody else decoded. */
+    fun put(imageId: String, bitmap: ImageBitmap) {
+        synchronized(loaded) {
+            loaded[imageId] = bitmap
+            gone.remove(imageId)
+        }
+        revision.intValue++
+    }
+
+    /**
+     * Decode stored bytes and hold the result. False means the bytes are not a picture.
+     *
+     * Here rather than at the call site so that the one place in the app that turns
+     * `DrawingImageStore`'s bytes into a bitmap is the one that caches it. A false answer is the
+     * caller's cue to call [markGone]: bytes that no decoder recognises are, to a reader, exactly
+     * as absent as a file that is not there.
+     *
+     * Decoding is not free — call it off the main thread.
+     */
+    fun put(imageId: String, encoded: ByteArray): Boolean {
+        val bitmap = runCatching { BitmapFactory.decodeByteArray(encoded, 0, encoded.size) }.getOrNull()
+            ?: return false
+        put(imageId, bitmap.asImageBitmap())
+        return true
+    }
+
+    /** Record that a picture's bytes are not there, so the frame can say so instead of waiting. */
+    fun markGone(imageId: String) {
+        synchronized(loaded) {
+            loaded.remove(imageId)
+            gone.add(imageId)
+        }
+        revision.intValue++
+    }
+
+    /** Drop one picture from memory — the reader deleted the drawing, or replaced its picture. */
+    fun forget(imageId: String) {
+        synchronized(loaded) {
+            loaded.remove(imageId)
+            gone.remove(imageId)
+        }
+        revision.intValue++
+    }
+
+    /** Drop everything. For a sign-out, and for a test that must not see the last one's pictures. */
+    fun clear() {
+        synchronized(loaded) {
+            loaded.clear()
+            gone.clear()
+        }
+        revision.intValue++
+    }
+
+    private val ID = Regex("^img_[0-9a-f]{16}$")
+}
+
+/**
+ * The rectangle an image drawing occupies, in screen pixels.
+ *
+ * Two anchors are the reader's own corners, in either order — a box dragged up and to the left is
+ * the same box as one dragged down and to the right, which is what every other two-point tool in
+ * this file assumes.
+ *
+ * One anchor has to have a size invented for it, and [span] is that size measured in bars by the
+ * caller. Invented in chart space rather than in device pixels because the alternative is a picture
+ * that stays the same size on the glass while the bars slide underneath it — which is a sticker,
+ * not an annotation. The height follows the picture's own aspect, so a one-tap image is never
+ * distorted and never needs a second tap to be right.
+ */
+internal fun imageFrame(a: Offset, b: Offset?, span: Float, imageWidth: Int, imageHeight: Int): Rect {
+    if (b != null) return Rect(min(a.x, b.x), min(a.y, b.y), max(a.x, b.x), max(a.y, b.y))
+    val aspect = if (imageWidth > 0 && imageHeight > 0) {
+        imageWidth.toFloat() / imageHeight
+    } else {
+        IMAGE_WIDTH.value / IMAGE_HEIGHT.value
+    }
+    return Rect(a.x, a.y, a.x + span, a.y + span / aspect)
+}
+
+/**
+ * The picture's own rectangle inside [frame], centred and never stretched.
+ *
+ * Letterboxed rather than filled. A reader dragging a box around a picture is positioning it, not
+ * cropping it, and a chart annotation that silently distorts the screenshot pasted into it is worse
+ * than one that leaves a margin. A degenerate frame — a two-point drawing still being placed, both
+ * anchors on the same bar — is handed straight back, so the caller draws nothing rather than
+ * dividing by it.
+ */
+internal fun fitImage(frame: Rect, imageWidth: Int, imageHeight: Int): Rect {
+    if (frame.width <= 0f || frame.height <= 0f || imageWidth <= 0 || imageHeight <= 0) return frame
+    val scale = min(frame.width / imageWidth, frame.height / imageHeight)
+    val width = imageWidth * scale
+    val height = imageHeight * scale
+    val left = frame.left + (frame.width - width) / 2f
+    val top = frame.top + (frame.height - height) / 2f
+    return Rect(left, top, left + width, top + height)
+}
 
 /**
  * A stored ARGB colour as a Compose colour, already carrying the mark's fade.
@@ -1166,6 +1394,7 @@ private fun DrawScope.drawExtendedDrawing(
     colour: Color,
     width: Float,
     paint: DrawingPaint,
+    images: DrawingImageSource,
 ): Boolean {
     val w = view.plotWidth
     val h = view.plotHeight
@@ -1356,35 +1585,78 @@ private fun DrawScope.drawExtendedDrawing(
             true
         }
         "image" -> {
-            // A frame and the picture's own mark, not a placeholder for one. The bitmap itself is
-            // not the chart layer's business — nothing here can load a file — so what this tool
-            // places is the frame the reader positions, and the caption under it.
-            val size = Size(IMAGE_WIDTH.toPx(), IMAGE_HEIGHT.toPx())
-            drawRect(paint.wash(colour.copy(alpha = FILL_SOFT)), a, size)
-            drawRect(colour, a, size, style = Stroke(width, pathEffect = paint.dash))
-            val floor = a.y + size.height * IMAGE_HORIZON
-            strokeSegment(
-                colour,
-                Offset(a.x + size.width * 0.12f, floor),
-                Offset(a.x + size.width * 0.42f, a.y + size.height * 0.42f),
-                width,
-                paint.dash,
-            )
-            strokeSegment(
-                colour,
-                Offset(a.x + size.width * 0.42f, a.y + size.height * 0.42f),
-                Offset(a.x + size.width * 0.88f, floor),
-                width,
-                paint.dash,
-            )
-            drawCircle(colour, size.height * 0.09f, Offset(a.x + size.width * 0.74f, a.y + size.height * 0.26f), style = Stroke(width))
-            paintLabel(
-                measurer,
-                drawing.text ?: DEFAULT_IMAGE_CAPTION,
-                a.x,
-                a.y + size.height + LABEL_INSET.toPx(),
-                paint.words(colour),
-            )
+            // The reader's own picture, anchored in chart space so it pans and zooms with the bars
+            // like every other mark. What this tool drew for the life of the app was a frame, a
+            // picture glyph and a caption — an empty box, which reads as a bitmap that failed to
+            // load — because nothing in this layer could open a file. It still cannot: the bytes
+            // are read by `DrawingImageStore` and decoded into [DrawingImages] above, and all this
+            // knows is an id off `Drawing.text` and a bitmap to put in a rectangle.
+            val imageId = DrawingImages.idIn(drawing.text)
+            val caption = DrawingImages.captionIn(drawing.text)
+            val picture = imageId?.let(images::imageFor) ?: DrawingImage.Waiting
+            val bitmap = (picture as? DrawingImage.Shown)?.bitmap
+            if (bitmap != null) {
+                // One anchor or two. The tool is a one-tap tool in the shipped catalogue, so a box
+                // has to be derived for it, and it is derived in *bars* rather than in pixels —
+                // that is the whole difference between a picture pinned to the chart and a sticker
+                // pinned to the glass. Two anchors, once the catalogue offers them, are the
+                // reader's own corners and are used exactly as given.
+                val span = max(MIN_IMAGE_SPAN.toPx(), view.barWidth * IMAGE_BARS)
+                val frame = imageFrame(a, screen.getOrNull(1), span, bitmap.width, bitmap.height)
+                val fitted = fitImage(frame, bitmap.width, bitmap.height)
+                // Scaled through a transform rather than drawn into an integer destination
+                // rectangle: `drawImage`'s sized overload takes `IntOffset`/`IntSize`, and rounding
+                // the destination every frame makes a picture shudder against the bars underneath
+                // it while the chart is panned.
+                withTransform({
+                    translate(fitted.left, fitted.top)
+                    scale(fitted.width / bitmap.width, fitted.height / bitmap.height, Offset.Zero)
+                }) {
+                    // The drawing's own opacity, which already carries the demonstration fade — see
+                    // the note on [DrawingPaint]. A picture that stayed solid while its frame faded
+                    // out would be the one mark on the chart that ignores the clock.
+                    drawImage(bitmap, alpha = colour.alpha)
+                }
+                drawRect(
+                    colour,
+                    Offset(frame.left, frame.top),
+                    Size(frame.width, frame.height),
+                    style = Stroke(width, pathEffect = paint.dash),
+                )
+                caption?.let {
+                    paintLabel(measurer, it, frame.left, frame.bottom + LABEL_INSET.toPx(), paint.words(colour))
+                }
+            } else {
+                // No picture yet, or none any more. Both draw the frame this tool has always drawn
+                // — the difference is what it says underneath. A drawing whose file is gone must
+                // not vanish and must not lie: the reader placed it, so it stays where they put it
+                // and tells them the picture is missing, which is something they can act on.
+                val size = Size(IMAGE_WIDTH.toPx(), IMAGE_HEIGHT.toPx())
+                drawRect(paint.wash(colour.copy(alpha = FILL_SOFT)), a, size)
+                drawRect(colour, a, size, style = Stroke(width, pathEffect = paint.dash))
+                val floor = a.y + size.height * IMAGE_HORIZON
+                strokeSegment(
+                    colour,
+                    Offset(a.x + size.width * 0.12f, floor),
+                    Offset(a.x + size.width * 0.42f, a.y + size.height * 0.42f),
+                    width,
+                    paint.dash,
+                )
+                strokeSegment(
+                    colour,
+                    Offset(a.x + size.width * 0.42f, a.y + size.height * 0.42f),
+                    Offset(a.x + size.width * 0.88f, floor),
+                    width,
+                    paint.dash,
+                )
+                drawCircle(colour, size.height * 0.09f, Offset(a.x + size.width * 0.74f, a.y + size.height * 0.26f), style = Stroke(width))
+                val words = if (picture is DrawingImage.Gone) {
+                    listOfNotNull(MISSING_IMAGE_CAPTION, caption).joinToString(" — ")
+                } else {
+                    caption ?: DEFAULT_IMAGE_CAPTION
+                }
+                paintLabel(measurer, words, a.x, a.y + size.height + LABEL_INSET.toPx(), paint.words(colour))
+            }
             true
         }
 
@@ -2010,6 +2282,26 @@ private val IMAGE_WIDTH = 76.dp
 private val IMAGE_HEIGHT = 52.dp
 private const val IMAGE_HORIZON = 0.74f
 
+/**
+ * How many bars wide a one-tap picture is drawn.
+ *
+ * The number that turns a single anchor into a box. Twenty-four bars is about a fifth of a phone
+ * chart's visible range at the default zoom — big enough to read a screenshot pasted into it,
+ * small enough that placing one does not hide the price it was placed next to. In *bars*, so the
+ * picture grows and shrinks with the chart the way its anchor does.
+ */
+private const val IMAGE_BARS = 24f
+
+/**
+ * The narrowest a picture is allowed to get, whatever the zoom.
+ *
+ * A floor and not a scale: zoomed far enough out, twenty-four bars is a dozen pixels, and a picture
+ * that small is not a small picture — it is a speck the reader cannot see, cannot recognise and
+ * cannot grab a handle on to delete. Below this the drawing stops shrinking, which breaks the
+ * chart-space rule deliberately and only where honouring it would make the mark unusable.
+ */
+private val MIN_IMAGE_SPAN = 48.dp
+
 /** How many price bands a drawn profile is cut into. Matches the volume-profile indicator. */
 private const val PROFILE_ROWS = 24
 
@@ -2040,11 +2332,20 @@ private const val DEFAULT_TABLE = "عنوان\nمقدار"
 private const val DEFAULT_SIGN = "نشانه"
 
 /**
- * What an image frame with no caption says, and it says what the tool is.
+ * What an image frame with no picture in it yet says, and it says what the tool is.
  *
- * The chart layer cannot open a file and nothing above it hands one down, so this tool places a
- * frame and a caption and never a picture. An unlabelled empty rectangle reads as a bitmap that
- * failed to load; a labelled one reads as what it is. `DrawingActions.toolNote` says the same thing
- * in longer form where the tool is armed.
+ * An unlabelled empty rectangle reads as a bitmap that failed to load; a labelled one reads as a
+ * frame waiting for a picture, which is what it is between the tap that places it and the moment
+ * the reader picks one.
  */
 private const val DEFAULT_IMAGE_CAPTION = "قاب تصویر"
+
+/**
+ * What a frame whose picture is not on disk any more says.
+ *
+ * The honest degrade, and the reason [DrawingImage] has three states rather than two. A reinstall,
+ * a cleared storage or a restored backup takes the files and leaves the drawings, and a reader who
+ * finds a blank frame where their screenshot was is owed the reason — otherwise the app looks like
+ * it lost the picture at random, which is the one reading that stops them trusting the tool.
+ */
+private const val MISSING_IMAGE_CAPTION = "تصویر یافت نشد"

@@ -36,6 +36,13 @@ import com.coinepro.core.designsystem.CoineProSpacing
  * earnings marker in another terminal will go looking for the switch, and "it is not here" is a
  * worse answer than "the feed does not send it". A disabled switch cannot be turned on, so nobody
  * ends up with a filter that quietly does nothing.
+ *
+ * ### And the state of the feed itself is said here too
+ *
+ * [notice] is why the axis is bare, when it is bare — the phone is offline, the backend does not
+ * publish the document at all, the read failed, or nothing happened. Without it the two working
+ * switches would be describing marks that cannot arrive on this platform, which is the same defect
+ * as the three disabled ones one level up: a control that says it does something it does not.
  */
 @Composable
 fun ChartEventSettings(
@@ -43,6 +50,7 @@ fun ChartEventSettings(
     onChange: (EventVisibility) -> Unit,
     modifier: Modifier = Modifier,
     served: Set<EventKind> = SERVED_EVENT_KINDS,
+    notice: ChartEventNotice? = null,
 ) {
     Column(
         modifier = modifier
@@ -60,6 +68,19 @@ fun ChartEventSettings(
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
         )
+        notice?.let { reason ->
+            Text(
+                text = stringResource(reason.reasonRes()),
+                style = MaterialTheme.typography.bodySmall,
+                // A market that is simply quiet is not a warning, and colouring it as one would
+                // teach the reader to ignore the colour on the day it means something.
+                color = if (reason == ChartEventNotice.NOTHING) {
+                    CoineProColors.TextMuted
+                } else {
+                    CoineProColors.Warning
+                },
+            )
+        }
         EventKind.entries.forEach { kind ->
             val available = kind in served
             EventKindRow(
@@ -113,6 +134,21 @@ private fun EventKindRow(
             ),
         )
     }
+}
+
+/**
+ * The sentence for a bare axis.
+ *
+ * Public because a chart screen shows the same line under the chart itself, and two wordings for
+ * one condition is how a reader ends up told the feed is missing in one place and that the market
+ * is quiet in another.
+ */
+@StringRes
+fun ChartEventNotice.reasonRes(): Int = when (this) {
+    ChartEventNotice.OFFLINE -> R.string.chart_events_state_offline
+    ChartEventNotice.UNSERVED -> R.string.chart_events_state_unserved
+    ChartEventNotice.FAILED -> R.string.chart_events_state_failed
+    ChartEventNotice.NOTHING -> R.string.chart_events_state_nothing
 }
 
 /** What the row says under the kind's name: what it shows, or why it cannot show anything. */

@@ -121,6 +121,67 @@ def check_bottom_navigation() -> None:
             require(key in labels, f"{language} bottom-navigation label missing: {key}")
 
 
+def check_learned_surfaces() -> None:
+    """The three surfaces a reader learns by position, pinned the way the bottom nav is — item 158.
+
+    The bottom navigation has been pinned here since the first release, on the reading that a person
+    who has learned where a thing is should not have to learn again. The same reading applies to the
+    chart, and did not reach it: the toolbar under the plot, the drawing rail's groups and the
+    studio's sections were all free to be reordered by any change that touched them, and a reader
+    who reaches for «ابزارها» in the fourth position and gets the backtest has lost the muscle
+    memory this gate exists to protect.
+
+    Identity and order only, and never the labels. Labels are Persian prose, they are edited, and
+    asserting one here would assert one translation — the same reason
+    :func:`check_bottom_navigation` stops at the route names.
+
+    Adding to the end of any of these is an ordinary change: extend the list here in the same
+    commit. Reordering or renaming is the thing that has to be deliberate, which is what a failure
+    from this gate is asking for.
+    """
+    sheets = read("feature/chart/src/main/kotlin/com/coinepro/feature/chart/ChartScreen.kt")
+    match = re.search(r"enum class ChartSheet \{ ([^}]+) \}", sheets)
+    require(match is not None, "ChartSheet is no longer a single-line enum; this gate cannot read it.")
+    entries = [name.strip() for name in match.group(1).split(",")]
+    expected_sheets = [
+        "TYPE",
+        "INDICATORS",
+        "TOOLS",
+        "DRAWINGS",
+        "SETUP",
+        "BACKTEST",
+        "LAYOUTS",
+        "INTERVAL",
+        "SCALE",
+        "COMPARE",
+    ]
+    require(
+        entries == expected_sheets,
+        f"The chart toolbar's sheets drifted: {entries}\nExpected {expected_sheets}.",
+    )
+
+    rail = read("core/chart/src/main/kotlin/com/coinepro/core/chart/Drawings.kt")
+    groups = re.findall(r'^\s{4}([A-Z_]+)\("', rail, flags=re.MULTILINE)
+    expected_groups = [
+        "MODES",
+        "LINES",
+        "CHANNELS",
+        "FIBONACCI",
+        "GANN",
+        "ELLIOTT",
+        "PATTERNS",
+        "SHAPES",
+        "ANNOTATION",
+        "MEASURE",
+        "POSITION",
+        "VOLUME",
+    ]
+    require(
+        groups == expected_groups,
+        f"The drawing rail's groups drifted: {groups}\nExpected {expected_groups}.",
+    )
+
+
 def check_environment_contract() -> None:
     auth = read("docs/AUTH_CONTRACT.md")
     for name in (
@@ -214,6 +275,7 @@ def main() -> None:
     check_module_map()
     check_every_screen_is_rendered()
     check_bottom_navigation()
+    check_learned_surfaces()
     check_environment_contract()
     check_persisted_signal_identity()
     check_market_truth()

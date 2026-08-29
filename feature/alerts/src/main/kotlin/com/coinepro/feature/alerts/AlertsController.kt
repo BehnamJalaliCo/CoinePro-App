@@ -8,6 +8,7 @@ import com.coinepro.core.notifications.AlertAuditEntry
 import com.coinepro.core.notifications.AlertChannel
 import com.coinepro.core.notifications.AlertFrequency
 import com.coinepro.core.notifications.AlertMessageTemplate
+import com.coinepro.core.notifications.AuditEvent
 import com.coinepro.core.notifications.ChannelOp
 import com.coinepro.core.notifications.LocalPriceAlert
 import com.coinepro.core.notifications.MoveOp
@@ -302,7 +303,14 @@ class AlertsController(
         }
         // Set before the write rather than after it, so an undo tapped in the second the toaster is
         // on screen is never dropped for arriving before the disk did.
-        undoAction = { store.setActive(id, previous) }
+        //
+        // The undo writes its own line. It has to: the log's whole claim is that it says what state
+        // the alert is in and when it changed, and a reversal that left «به تعویق افتاد» standing
+        // over an alert that is armed again would be the one place the record is knowingly wrong.
+        undoAction = {
+            store.setActive(id, previous)
+            record(row.alert, if (previous) AuditEvent.ARMED else AuditEvent.SNOOZED)
+        }
         scope.launch {
             store.setActive(id, !paused)
             // Switching an alert back on is re-arming it, and an alert that has just been re-armed
@@ -310,6 +318,12 @@ class AlertsController(
             // back on: pausing one is temporary and its stamps are still true when it resumes
             // without the reader having asked for anything to be forgotten.
             if (!paused) forgetFireState(id)
+            // Pausing is [AuditEvent.SNOOZED] rather than an event of its own, and that is what the
+            // case means: "the reader put it aside for a while rather than deleting it". Nothing in
+            // this app snoozes a *firing* — a notification has no such action — so this is the one
+            // thing a reader does that the case was written for, and leaving it unwritten would
+            // leave an alert that went quiet for a fortnight with nothing in its history to say so.
+            record(row.alert, if (paused) AuditEvent.SNOOZED else AuditEvent.ARMED)
         }
     }
 
@@ -335,9 +349,24 @@ class AlertsController(
         )
         // Removing an id the store never took is a no-op there, so this is safe to arm before the
         // write even in the case below where the write is refused.
-        undoAction = { store.remove(id) }
+        // The history line is written only where there was something to undo. This lambda is armed
+        // before the write and survives a refusal, so an unconditional «حذف شد» here would record
+        // the removal of a copy the store never accepted.
+        undoAction = {
+            val stored = store.current().any { it.id == id }
+            store.remove(id)
+            if (stored) record(copy, AuditEvent.DELETED)
+        }
         scope.launch {
-            if (!store.add(copy)) ui.update { it.copy(refusal = AlertRefusal.LIST_FULL) }
+            if (store.add(copy)) {
+                // A copy is a new alert and its history has to start where it started. Left out,
+                // the one alert in the list a reader made by *not* using the editor would be the
+                // one whose log begins at its first firing — which is the bug the rest of this is
+                // fixing.
+                record(copy, AuditEvent.CREATED)
+            } else {
+                ui.update { it.copy(refusal = AlertRefusal.LIST_FULL) }
+            }
         }
     }
 
@@ -363,6 +392,7 @@ class AlertsController(
         ui.update { it.copy(confirmingDelete = null, auditFor = null) }
         undoAction = null
         val serverId = ServerAlertRows.serverIdOf(id)
+        val alert = currentAlerts().firstOrNull { it.id == id }
         scope.launch {
             if (serverId != null) {
                 server.delete(serverId)
@@ -370,6 +400,22 @@ class AlertsController(
             }
             store.remove(id)
             forgetFireState(id)
+            // Written after the removal and *without* touching the rest of the history.
+            //
+            // `AlertAuditStore.removeFor` exists and is deliberately not called here. The store's
+            // own documentation makes the two different things: deleting an alert is the reader
+            // saying they no longer want it evaluated, and forgetting its history is the reader
+            // saying they no longer want it recorded. Erasing the log along with the alert would
+            // also erase this very line the instant after writing it, which is the one shape that
+            // cannot be right whichever way the argument goes.
+            //
+            // The consequence is worth stating plainly: this sheet is opened from a row, a deleted
+            // alert has no row, so nothing in the app reads these lines today. They are kept
+            // because the log is a record and a record that edits itself when its subject leaves is
+            // not one — and because `AlertAuditStore.entries` is the whole log, so any surface that
+            // ever asks "what happened to the alerts I used to have" already has the answer. Losing
+            // them costs nothing until such a surface exists and everything the moment it does.
+            alert?.let { record(it, AuditEvent.DELETED) }
         }
     }
 
@@ -699,6 +745,13 @@ class AlertsController(
             // the symbols it had already spoken about.
             if (written && existing != null) forgetFireState(alert.id)
             if (written) {
+                // The reader's own half of the history, and the half that was missing: until this
+                // line the log opened at the alert's first firing, so «کِی ساخته شد» and «چه چیزی
+                // عوض شد» had no answer anywhere in the app. [AlertAuditTrail.save] decides both
+                // whether this save is worth a line and which line — a save that changed nothing
+                // writes nothing, because the editor is opened to read an alert far more often than
+                // to change one and «ذخیره» is how a reader closes it.
+                AlertAuditTrail.save(existing, alert)?.let { write -> record(alert, write) }
                 ui.update { it.copy(draft = null, refusal = null, drawings = emptyList()) }
             } else {
                 // Replacing an alert that is already stored cannot fail, so this is only reachable
@@ -925,6 +978,37 @@ class AlertsController(
     }
 
     // ── internals ───────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Writes one line of an alert's history.
+     *
+     * ### Only for alerts this phone decides
+     *
+     * Every caller is already inside a device-only branch, and that is not an accident of where the
+     * calls landed. The audit log is written by this app's own evaluator against this app's own
+     * store; a server alert is paused and deleted over an HTTP route by something that keeps its
+     * own record, and the sheet says so in as many words rather than showing an empty timeline. A
+     * «حذف شد» written here for a server alert would be the app reporting on a decision it did not
+     * make and cannot see the rest of.
+     *
+     * ### A failed write must not undo the reader's action
+     *
+     * The log is a record *of* the change, not part of it. If the disk is full, the alert has still
+     * been deleted and the reader has still been shown that it is gone; letting the failure out of
+     * this coroutine would take the whole controller's scope down with it over a line of history.
+     * So it is swallowed here, deliberately, and the missing line is the honest consequence — the
+     * store's own decoder takes the same position on a half-written row.
+     */
+    private suspend fun record(alert: LocalPriceAlert, write: AlertAuditWrite) {
+        runCatching {
+            audit.record(write.entryFor(alert, at = now(), timeframe = timeframeOf(alert)))
+        }
+    }
+
+    /** The same, for the events that carry no note of their own. */
+    private suspend fun record(alert: LocalPriceAlert, event: AuditEvent) {
+        record(alert, AlertAuditWrite(event))
+    }
 
     private fun currentAlerts(): List<LocalPriceAlert> = state.value.sections.flatMap { section ->
         section.rows.map(AlertRow::alert)

@@ -18,6 +18,13 @@ import com.coinepro.core.marketintel.relevanceForSymbol
  * to publishes an earnings date, a dividend or a split — so the settings section offers those three
  * switched off and disabled rather than pretending a switch does something. The day a feed carries
  * one, adding it here is the whole change.
+ *
+ * That is a fact about the two backends rather than a gap in this module, and it is checkable:
+ * `docs/PHASE10_MARKET_INTELLIGENCE_CONTRACT.md` is the whole shape of the document and carries two
+ * collections, `news` and `calendar`. Neither platform lists an equity — CoinePro-FX serves metals
+ * and the macro calendar that moves them, TradeYar serves coins — and an instrument with no issuer
+ * has no earnings date, pays no dividend and cannot be split. There is nothing to ask either server
+ * for.
  */
 val SERVED_EVENT_KINDS: Set<EventKind> = setOf(EventKind.NEWS, EventKind.ECONOMIC)
 
@@ -51,6 +58,17 @@ interface ChartEventFeed {
  * discovering: a reader who pans a daily chart to last spring sees no marks, and that is the truth
  * about the feed rather than a bug in the placement. A dated query would need a route that does not
  * exist yet, and guessing one would fail as an ordinary HTTP error that looks like an outage.
+ *
+ * ### One of the two platforms does not serve it at all
+ *
+ * `docs/BACKEND_ROUTE_MAP.md` records `api/mobile/v1/market-intelligence` as requested of TradeYar
+ * and not yet built — the news rows exist in its `news_posts` table and are served on a public
+ * router in a different shape, and the adapter onto the mobile route is what was asked for. So on
+ * that platform this read is a 404 until it is. That is not something this module can route around:
+ * the path lives in `NetworkMarketIntelGateway`, one document per backend, and reading the public
+ * router's own shape here would be a second parser for the same rows kept in step by hand. What it
+ * does instead is name the condition — [ChartEventNotice.UNSERVED] — so a crypto reader is told the
+ * feed is missing rather than left looking at a bare axis that reads as "nothing has happened".
  *
  * ### Timestamps are precise enough to place a mark
  *
