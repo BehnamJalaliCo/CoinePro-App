@@ -86,12 +86,15 @@ import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.CoineProFxCandleGateway
 import com.coinepro.core.marketdata.MarketCatalogGateway
+import com.coinepro.core.marketdata.MarketTickerGateway
+import com.coinepro.core.marketdata.MarketTickerStore
 import com.coinepro.core.marketdata.MarketDataCache
 import com.coinepro.core.marketdata.MarketDataController
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketSnapshotGateway
 import com.coinepro.core.marketdata.NetworkAcademyTokenStore
 import com.coinepro.core.marketdata.NetworkMarketCatalogGateway
+import com.coinepro.core.marketdata.NetworkMarketTickerGateway
 import com.coinepro.core.marketdata.NetworkMarketSnapshotGateway
 import com.coinepro.core.marketdata.TradeYarCandleGateway
 import com.coinepro.core.marketintel.MarketIntelController
@@ -1336,6 +1339,58 @@ object AppModule {
     @CryptoPlatform
     fun cryptoMarketCatalogGateway(@CryptoPlatform retrofit: Retrofit): MarketCatalogGateway =
         NetworkMarketCatalogGateway.create(retrofit, MarketPlatform.TRADEYAR)
+
+    /**
+     * The day's figures, per platform — and the two platforms genuinely differ here.
+     *
+     * `NetworkMarketTickerGateway.create` hands back an [UnsupportedMarketTickerGateway] for
+     * CoinePro-FX, because that backend has no such route: it would have to derive gold and
+     * silver's day from its own daily candle and has not. That is a different fact from "the
+     * request failed", and the two call for different screens, so the gateway says which rather
+     * than answering with an empty table that looks like an outage.
+     */
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexMarketTickerGateway(@ForexPlatform retrofit: Retrofit): MarketTickerGateway =
+        NetworkMarketTickerGateway.create(retrofit, MarketPlatform.COINEPRO_FX)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoMarketTickerGateway(@CryptoPlatform retrofit: Retrofit): MarketTickerGateway =
+        NetworkMarketTickerGateway.create(retrofit, MarketPlatform.TRADEYAR)
+
+    /**
+     * One store per platform, shared by every screen that reads the day's figures.
+     *
+     * Six of them want this table — the market list's ordering and its gainers and losers, the
+     * screener, the heat map, a symbol's statistics and the funding reading — and the route answers
+     * for the whole catalogue at once. A store per screen would mean six copies of eight hundred
+     * rows, six timers, and two screens able to disagree about what today's move was.
+     */
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexMarketTickerStore(
+        @ForexPlatform gateway: MarketTickerGateway,
+        scope: CoroutineScope,
+    ): MarketTickerStore = MarketTickerStore(gateway, scope)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoMarketTickerStore(
+        @CryptoPlatform gateway: MarketTickerGateway,
+        scope: CoroutineScope,
+    ): MarketTickerStore = MarketTickerStore(gateway, scope)
+
+    @Provides
+    @Singleton
+    fun marketTickerStores(
+        @ForexPlatform forex: MarketTickerStore,
+        @CryptoPlatform crypto: MarketTickerStore,
+    ): Map<MarketPlatform, MarketTickerStore> = platformMap(forex, crypto)
 
     /**
      * Search is per platform because the catalogue is.

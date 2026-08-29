@@ -23,5 +23,9 @@ dependencies {
     implementation(libs.retrofit.gson)
     implementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.junit)
+    // The ticker route's wire names are pinned by hand because Gson's underscore policy cannot
+    // produce them; `MarketTickerWireTest` parses the server's own sample body to prove it, and
+    // needs the same Gson the network layer builds.
+    testImplementation(libs.retrofit.gson)
     testImplementation(libs.kotlinx.coroutines.test)
 }

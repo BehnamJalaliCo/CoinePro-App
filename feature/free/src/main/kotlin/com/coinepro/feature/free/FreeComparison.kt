@@ -92,6 +92,18 @@ object FreeComparison {
         ),
         FreeClaim(
             rival = "TradingView",
+            paywalled = R.string.free_tv_history,
+            price = null,
+            // The one row on this page where the rival's *free* tier beats ours, and it is here
+            // because the server measured it and told us so rather than because anybody wanted it.
+            // Their free plan gives 5,000 bars a chart; the venue's retention gives us about 1,900,
+            // and on the daily that is 3.7 years against roughly 13. Leaving it out would have
+            // been the easy choice and would have made every row above it worth less.
+            verdict = Verdict.ABSENT,
+            answer = R.string.free_tv_history_answer,
+        ),
+        FreeClaim(
+            rival = "TradingView",
             paywalled = R.string.free_tv_volume_profile,
             price = null,
             verdict = Verdict.ABSENT,
