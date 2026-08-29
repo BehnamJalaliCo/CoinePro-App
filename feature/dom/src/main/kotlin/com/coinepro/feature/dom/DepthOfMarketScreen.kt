@@ -453,7 +453,7 @@ private fun LadderHeaderRow() {
         Text(
             text = stringResource(R.string.dom_column_price),
             style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.TextDisabled,
+            color = CoineProColors.TextMuted,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(PriceColumnWidth),
         )
@@ -466,7 +466,7 @@ private fun RowScope.ColumnLabel(text: String, align: TextAlign) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelSmall,
-        color = CoineProColors.TextDisabled,
+        color = CoineProColors.TextMuted,
         textAlign = align,
         modifier = Modifier.weight(1f),
     )

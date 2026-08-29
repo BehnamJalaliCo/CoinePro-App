@@ -60,7 +60,9 @@ internal fun SetupSheetBody(
      * is open the same position with no money, at the entry the reader drew, sized by the risk
      * they entered. `docs/REQUEST4_ACCOUNT_DELETION.md` asks both servers for the real route.
      */
-    onPaperTrade: ((buy: Boolean, entry: Double, size: Double) -> Unit)? = null,
+    onPaperTrade: (
+        (buy: Boolean, entry: Double, size: Double, stopLoss: Double, takeProfit: Double) -> Unit
+    )? = null,
 ) {
     var riskInput by rememberSaveable { mutableStateOf("") }
     val risk = riskInput.foldDigitsToLatin().trim().toDoubleOrNull()
@@ -146,7 +148,18 @@ internal fun SetupSheetBody(
             val size = TradeFromChart.positionSize(order, risk)
             CoineProPrimaryButton(
                 text = stringResource(R.string.setup_paper_trade),
-                onClick = { onPaperTrade(order.side == TradeSide.BUY, order.entry, size.units) },
+                onClick = {
+                    onPaperTrade(
+                        order.side == TradeSide.BUY,
+                        order.entry,
+                        size.units,
+                        // Both lines the reader drew. The sheet computed them and threw them
+                        // away, so a setup taken as a paper trade arrived with no stop at all —
+                        // which is how a stop ends up not being set: by having to be re-entered.
+                        order.stopLoss,
+                        order.takeProfit,
+                    )
+                },
                 modifier = Modifier.fillMaxWidth(),
             )
             Text(

@@ -474,7 +474,7 @@ fun CoineProDenseRow(
                 Text(
                     text = it,
                     style = MaterialTheme.typography.labelSmall,
-                    color = CoineProColors.TextDisabled,
+                    color = CoineProColors.TextMuted,
                     fontWeight = FontWeight.Normal,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

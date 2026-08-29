@@ -480,7 +480,7 @@ private fun BalanceBlock(
                 Icon(
                     painter = painterResource(CoineProIcons.ChevronForward),
                     contentDescription = null,
-                    tint = CoineProColors.TextDisabled,
+                    tint = CoineProColors.TextMuted,
                     modifier = Modifier.size(14.dp),
                 )
                 Text(
@@ -598,7 +598,7 @@ private fun MarketCard(
                 Icon(
                     painter = painterResource(CoineProIcons.ChevronForward),
                     contentDescription = null,
-                    tint = CoineProColors.TextDisabled,
+                    tint = CoineProColors.TextMuted,
                     modifier = Modifier.size(16.dp),
                 )
             }

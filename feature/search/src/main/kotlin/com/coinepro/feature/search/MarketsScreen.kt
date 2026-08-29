@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -144,7 +145,7 @@ fun MarketsScreen(
         )
         // The panel draws its own headings, over whichever columns the reader chose. Two heading
         // strips, one of them describing a layout that is not on screen, would be worse than none.
-        if (!panel) ColumnHeadings()
+        if (!panel) ColumnHeadings(starRail = onToggleWatch != null)
 
         when {
             panel -> WatchlistPanel(
@@ -271,17 +272,48 @@ private fun Header(onOpenSearch: () -> Unit) {
  * it as one.
  */
 @Composable
-private fun ColumnHeadings() {
+private fun ColumnHeadings(starRail: Boolean) {
+    // Laid out as the row it labels, not as three words spread edge to edge.
+    //
+    // Under `SpaceBetween` «نماد» sat against the reading edge — a whole logo, and sometimes a
+    // star, to the right of the ticker it names — «روند» landed wherever its two neighbours left
+    // it rather than over the sparkline, and only «قیمت» happened to be correct. A heading that is
+    // not above its column tells the reader the list is arranged in a way it is not.
+    //
+    // Every measurement here is `MarketListRow`'s: the same 16 of horizontal padding, the same 12
+    // between elements, the same 30dp logo and the same [SymbolColumn]. The star is optional in
+    // the row, so it is optional here too, and it reserves 48 because that is what
+    // `minimumInteractiveComponentSize` gives it.
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = CoineProSpacing.Two, end = CoineProSpacing.Two, top = CoineProSpacing.OneHalf, bottom = CoineProSpacing.Half),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(horizontal = CoineProSpacing.Two)
+            .padding(top = CoineProSpacing.OneHalf, bottom = CoineProSpacing.Half),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         val style = MaterialTheme.typography.labelSmall
-        Text(stringResource(R.string.markets_column_symbol), style = style, color = CoineProColors.TextDisabled)
-        Text(stringResource(R.string.markets_column_trend), style = style, color = CoineProColors.TextDisabled)
-        Text(stringResource(R.string.markets_column_price), style = style, color = CoineProColors.TextDisabled)
+        if (starRail) Spacer(modifier = Modifier.width(48.dp))
+        Spacer(modifier = Modifier.width(30.dp))
+        Text(
+            text = stringResource(R.string.markets_column_symbol),
+            style = style,
+            color = CoineProColors.TextMuted,
+            maxLines = 1,
+            modifier = Modifier.width(SymbolColumn),
+        )
+        Text(
+            text = stringResource(R.string.markets_column_trend),
+            style = style,
+            color = CoineProColors.TextMuted,
+            maxLines = 1,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = stringResource(R.string.markets_column_price),
+            style = style,
+            color = CoineProColors.TextMuted,
+            maxLines = 1,
+        )
     }
 }
 

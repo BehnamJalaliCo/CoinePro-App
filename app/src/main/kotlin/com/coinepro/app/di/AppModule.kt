@@ -59,6 +59,7 @@ import com.coinepro.core.datastore.InstallIdStore
 import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
+import com.coinepro.core.datastore.PaperLedgerPrefStore
 import com.coinepro.core.datastore.ProfileStore
 import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.datastore.TimeZonePrefStore
@@ -109,6 +110,7 @@ import com.coinepro.core.orderbook.DepthUnavailableReason
 import com.coinepro.core.orderbook.NoDepthGateway
 import com.coinepro.core.orderbook.OrderBookGateway
 import com.coinepro.core.orderbook.TradeYarOrderBookGateway
+import com.coinepro.core.papertrade.PaperLedgerStore
 import com.coinepro.core.papertrade.PaperTradeController
 import com.coinepro.core.portfolio.PortfolioController
 import com.coinepro.core.portfolio.PortfolioGateway
@@ -398,8 +400,23 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun paperTradeController(database: CoineProDatabase, scope: CoroutineScope): PaperTradeController =
-        PaperTradeController(database.paperTradeDao(), scope)
+    fun paperLedgerStore(dataStore: DataStore<Preferences>): PaperLedgerStore =
+        PaperLedgerPrefStore(dataStore)
+
+    @Provides
+    @Singleton
+    fun paperTradeController(
+        store: PaperLedgerStore,
+        database: CoineProDatabase,
+        scope: CoroutineScope,
+    ): PaperTradeController =
+        // Stored rather than in memory: the paper account is now an account, and one that Android
+        // empties when it reclaims the process is not one anybody would trade a month on.
+        //
+        // The Room table is still read, once, on the first launch that finds nothing stored, so a
+        // reader's existing paper trades survive the rebuild rather than being deleted by an
+        // update they did not ask for. See `PaperMigration`.
+        PaperTradeController(store, scope, legacy = database.paperTradeDao())
 
     /**
      * The script studio, on the app-wide scope and not per platform.

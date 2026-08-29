@@ -171,7 +171,7 @@ internal fun MarketListRow(
             Text(
                 text = row.meta.listDescription,
                 style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextDisabled,
+                color = CoineProColors.TextMuted,
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

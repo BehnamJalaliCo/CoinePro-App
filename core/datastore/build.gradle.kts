@@ -19,6 +19,9 @@ dependencies {
     // api, not implementation: DataStore<Preferences> is in ActivePlatformStore's constructor, so
     // anything that builds one needs the type on its own classpath.
     api(libs.androidx.datastore.preferences)
+    // api: PaperLedgerPrefStore implements `PaperLedgerStore`, so anything binding one in Hilt
+    // needs the interface on its own classpath. No cycle — papertrade does not reach datastore.
+    api(project(":core:papertrade"))
     implementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

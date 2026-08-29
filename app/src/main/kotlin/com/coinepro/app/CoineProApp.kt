@@ -155,7 +155,11 @@ import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.notifications.NotificationSettings
 import com.coinepro.core.orderbook.OrderBookController
 import com.coinepro.core.orderbook.OrderBookGateway
+import com.coinepro.core.papertrade.PaperOrderRequest
+import com.coinepro.core.papertrade.PaperOrderType
+import com.coinepro.core.papertrade.PaperSide
 import com.coinepro.core.papertrade.PaperTradeController
+import com.coinepro.core.papertrade.asPaperQuote
 import com.coinepro.core.portfolio.PortfolioController
 import com.coinepro.core.script.ScriptController
 import com.coinepro.core.signals.SignalController
@@ -2154,6 +2158,12 @@ private fun MainShell(
                     // The same feed the market list is showing. A second source would let this
                     // screen and the row above it disagree about one instrument's price.
                     priceFor = { symbol -> marketState.quotes[symbol]?.price },
+                    // The whole observation where the feed sent one: both sides of the book and
+                    // the feed's own judgement of freshness. Without it the fill rules widen an
+                    // assumed spread around last and say on screen that they assumed it; with it
+                    // they cross the spread the venue actually quoted.
+                    quoteFor = { symbol -> marketState.quotes[symbol]?.asPaperQuote() },
+                    onOpenSymbol = { navController.navigate(chartRoute(it)) },
                 )
             }
             composable(JOURNAL_ROUTE) {
@@ -2306,8 +2316,29 @@ private fun MainShell(
                     onSaveLayout = onSaveLayoutAnnounced,
                     onDeleteLayout = onDeleteLayoutAnnounced,
                     watchlist = watchlist,
-                    onPaperTrade = { symbol, buy, entry, size ->
-                        paperTradeController.open(symbol, buy, entry, size)
+                    onPaperTrade = { symbol, buy, entry, size, stopLoss, takeProfit ->
+                        paperTradeController.place(
+                            PaperOrderRequest(
+                                symbol = symbol,
+                                side = if (buy) PaperSide.BUY else PaperSide.SELL,
+                                // A limit at the entry the reader drew, not a market order.
+                                //
+                                // The two are the same thing whenever the price is already there:
+                                // `PaperFills.marketable` fills a limit that the book has reached
+                                // at the book's own price, capped at the limit. They differ where
+                                // the setup is a level the market has not come to yet, and there a
+                                // market order would take a trade at a price the reader did not
+                                // choose — which is the opposite of what drawing an entry means.
+                                type = PaperOrderType.LIMIT,
+                                size = size,
+                                limitPrice = entry,
+                                // Both lines they drew. A setup that arrives without its stop is
+                                // one they have to protect a second time, and the second time is
+                                // the one that gets skipped.
+                                stopLoss = stopLoss,
+                                takeProfit = takeProfit,
+                            ),
+                        )
                     },
                     // The chart says which price; the composer asks the rest. Opened here rather
                     // than inside `feature:chart` so the sheet keeps one owner.

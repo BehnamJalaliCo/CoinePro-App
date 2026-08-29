@@ -321,7 +321,7 @@ private fun ColumnHeadings(
         Text(
             text = stringResource(R.string.screener_column_symbol),
             style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.TextDisabled,
+            color = CoineProColors.TextMuted,
             modifier = Modifier.width(SYMBOL_COLUMN),
         )
         Row(
@@ -431,7 +431,7 @@ private fun ScreenerTableRow(
             Text(
                 text = row.meta.listDescription,
                 style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextDisabled,
+                color = CoineProColors.TextMuted,
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

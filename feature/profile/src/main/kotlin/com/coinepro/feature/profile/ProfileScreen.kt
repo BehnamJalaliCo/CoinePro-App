@@ -271,7 +271,7 @@ fun ProfileScreen(
                 Text(
                     text = stringResource(group.titleRes()),
                     style = MaterialTheme.typography.labelSmall,
-                    color = CoineProColors.TextDisabled,
+                    color = CoineProColors.TextMuted,
                     modifier = Modifier.padding(
                         start = CoineProSpacing.Gutter,
                         end = CoineProSpacing.Gutter,
@@ -571,7 +571,7 @@ private fun ActionRow(action: ProfileAction) {
             // Forward in the reading direction, which the drawable mirrors for itself in RTL.
             painter = painterResource(CoineProIcons.ChevronForward),
             contentDescription = null,
-            tint = CoineProColors.TextDisabled,
+            tint = CoineProColors.TextMuted,
         )
     }
 }

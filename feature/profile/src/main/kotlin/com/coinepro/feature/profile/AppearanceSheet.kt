@@ -99,7 +99,7 @@ fun ColumnScope.AppearanceOptions(
         Text(
             text = stringResource(R.string.appearance_colours),
             style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.TextDisabled,
+            color = CoineProColors.TextMuted,
             modifier = Modifier.padding(top = CoineProSpacing.Row),
         )
         MarketColorScheme.entries.forEach { scheme ->

@@ -124,7 +124,7 @@ fun ProfileFactList(
         Text(
             text = title,
             style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.TextDisabled,
+            color = CoineProColors.TextMuted,
             modifier = Modifier.padding(
                 start = CoineProSpacing.Gutter,
                 end = CoineProSpacing.Gutter,
@@ -224,7 +224,7 @@ private fun ProfileFactRow(fact: ProfileFact) {
                 // The drawable mirrors itself in RTL, so "forward" stays forward in both scripts.
                 painter = painterResource(CoineProIcons.ChevronForward),
                 contentDescription = null,
-                tint = CoineProColors.TextDisabled,
+                tint = CoineProColors.TextMuted,
                 modifier = Modifier.size(20.dp),
             )
         }

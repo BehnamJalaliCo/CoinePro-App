@@ -217,7 +217,7 @@ private fun SectionHeading(
         Text(
             text = title,
             style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.TextDisabled,
+            color = CoineProColors.TextMuted,
             modifier = Modifier.weight(1f),
         )
         if (silenceable.isEmpty() || !settings.enabled) return@Row

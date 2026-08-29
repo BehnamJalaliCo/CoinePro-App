@@ -230,7 +230,16 @@ fun ChartScreen(
      */
     drawingTemplates: DrawingTemplateStore? = null,
     /** Takes the drawn setup as a paper trade. See [SetupSheetBody]. */
-    onPaperTrade: ((symbol: String, buy: Boolean, entry: Double, size: Double) -> Unit)? = null,
+    onPaperTrade: (
+        (
+            symbol: String,
+            buy: Boolean,
+            entry: Double,
+            size: Double,
+            stopLoss: Double,
+            takeProfit: Double,
+        ) -> Unit
+    )? = null,
     /**
      * Create a price alert at a price taken from the chart.
      *
@@ -1213,8 +1222,8 @@ fun ChartScreen(
                     symbol = state.symbol,
                     livePrice = state.lastPrice,
                     onPaperTrade = onPaperTrade?.let { take ->
-                        { buy, entry, size ->
-                            take(state.symbol, buy, entry, size)
+                        { buy, entry, size, stopLoss, takeProfit ->
+                            take(state.symbol, buy, entry, size, stopLoss, takeProfit)
                             sheet = null
                         }
                     },
