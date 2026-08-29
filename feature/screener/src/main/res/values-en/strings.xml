@@ -22,6 +22,7 @@
     <string name="screener_search_placeholder">Symbol or market name</string>
     <string name="screener_count">%1$s markets</string>
     <string name="screener_progress">%1$s of %2$s markets read</string>
+    <string name="screener_unknown">%1$s markets have no figure for these conditions and are not shown.</string>
     <string name="screener_column_symbol">Symbol</string>
     <string name="screener_category_all">All</string>
     <string name="screener_category_crypto">Crypto</string>

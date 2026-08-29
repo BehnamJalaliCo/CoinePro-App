@@ -25,6 +25,13 @@
     <string name="markets_column_symbol">نماد</string>
     <string name="markets_column_trend">روند ۲۴ ساعت</string>
     <string name="markets_column_price">قیمت / تغییر</string>
+    <string name="markets_column_turnover">ارزش معاملات</string>
+    <string name="markets_lens_all">همهٔ بازارها</string>
+    <string name="markets_lens_hot">داغ</string>
+    <string name="markets_lens_gainers">بیشترین رشد</string>
+    <string name="markets_lens_losers">بیشترین افت</string>
+    <string name="markets_lens_empty">امروز هیچ بازاری در این فهرست نیست.</string>
+    <string name="markets_figures_failed">آمار امروز بازار در دسترس نیست.</string>
     <string name="markets_open_signals">%1$d سیگنال باز</string>
     <string name="search_failed">بازارها در دسترس نیستند.</string>
     <!-- ── دیده‌بان ─────────────────────────────────────────────────────────────────────── -->

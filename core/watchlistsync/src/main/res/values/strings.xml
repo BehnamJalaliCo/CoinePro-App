@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default language: Persian. -->
+<resources>
+    <string name="watchlist_sync_title">همگام‌سازی دیده‌بان</string>
+    <string name="watchlist_sync_action">همگام‌سازی کن</string>
+    <string name="watchlist_sync_note">فهرست‌ها، رنگ‌ها و ستون‌های شما روی حساب تریدیار ذخیره می‌شود تا روی دستگاه بعدی هم باشد. تا وقتی خودتان نزنید چیزی فرستاده نمی‌شود، و هیچ همگام‌سازی‌ای فهرستی را که پاک نکرده‌اید برنمی‌دارد.</string>
+    <string name="watchlist_sync_state_never">هنوز همگام نشده است.</string>
+    <string name="watchlist_sync_state_current">همگام است؛ سرور همین را دارد.</string>
+    <string name="watchlist_sync_state_uploaded">دیده‌بان این دستگاه روی سرور ذخیره شد.</string>
+    <string name="watchlist_sync_state_merged">%1$s فهرست و %2$s نماد از دستگاه دیگر اضافه شد.</string>
+    <string name="watchlist_sync_state_removed">%1$s فهرست که روی دستگاه دیگر پاک شده بود، از اینجا هم برداشته شد.</string>
+    <string name="watchlist_sync_state_offline">دستگاه به شبکه‌ای وصل نیست، پس چیزی رد و بدل نشد. دیده‌بان روی همین دستگاه دست‌نخورده کار می‌کند.</string>
+    <string name="watchlist_sync_state_refused">سرور این بار جواب نداد. چیزی از دست نرفت؛ دفعهٔ بعد فرستاده می‌شود.</string>
+    <string name="watchlist_sync_state_too_large">دیده‌بان شما از سقف %1$s کیلوبایتی سرور بزرگ‌تر است، پس چیزی ذخیره نشد. یک فهرست را کوچک‌تر کنید یا پاک کنید و دوباره بزنید.</string>
+    <string name="watchlist_sync_state_too_large_unknown">دیده‌بان شما از سقف سرور بزرگ‌تر است، پس چیزی ذخیره نشد. یک فهرست را کوچک‌تر کنید یا پاک کنید و دوباره بزنید.</string>
+    <string name="watchlist_sync_state_unsupported">این بازار سروری برای نگهداری دیده‌بان ندارد؛ فهرست‌ها فقط روی همین دستگاه می‌مانند.</string>
+</resources>

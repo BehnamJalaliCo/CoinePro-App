@@ -82,9 +82,11 @@ import com.coinepro.core.symbols.SymbolCategory
  *
  * Three things follow, and they are the whole of this rework.
  *
- * **The figures are derived, not received.** [HeatmapController] reads each market's daily bars and
- * [HeatmapFacts] turns them into a change, a range, a gap, a volume and a volatility. That costs
- * one request per market and is bounded there.
+ * **The figures are obtained rather than assumed.** Where the platform serves the day's table —
+ * TradeYar does — [HeatmapController] reads the whole catalogue's change, range, volume and
+ * turnover in one request; where it does not, [HeatmapFacts] derives the same figures from each
+ * market's daily bars at one request per market, bounded by the controller. Either way the map has
+ * a second variable, which is the thing it never had.
  *
  * **An absent figure is drawn as absent.** A tile with no answer is hatched and dashed, never
  * neutral. A map that shows every coin as unchanged is telling the reader something false about the
@@ -113,9 +115,10 @@ fun HeatmapScreen(
     /**
      * The venue's twenty-four-hour statistics for the whole catalogue, in one call.
      *
-     * No route serves this yet — see this module's `## SERVER ASKS`. The parameter exists so that
-     * the day one does, the map's day figures stop costing a request per market and start costing
-     * one request in total, with nothing on this screen changing.
+     * With it wired the map's day figures cost one request in total instead of one per market, and
+     * the candles behind it are left to answer only the period return and the median daily range.
+     * Null is a supported state and is what CoinePro-FX gets, because that backend has no such
+     * route: the map there is exactly the map that shipped, filled in from bars.
      */
     tickers: HeatmapTickerSource? = null,
 ) {

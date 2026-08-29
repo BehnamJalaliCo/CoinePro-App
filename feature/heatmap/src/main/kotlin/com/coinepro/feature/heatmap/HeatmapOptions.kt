@@ -26,10 +26,17 @@ enum class HeatmapSize {
      */
     LIQUIDITY,
 
-    /** Traded quantity over the last daily bar, in units of the base asset. */
+    /** Traded quantity over the day, in units of the base asset. */
     VOLUME,
 
-    /** Quantity times price — money moved rather than units moved. */
+    /**
+     * Money moved rather than units moved.
+     *
+     * The honest sizing for a mixed list, and the one worth choosing over [VOLUME]: a count of
+     * bitcoin and a count of dogecoin are not comparable quantities, so a volume-sized map ranks
+     * the cheap coins at the top. The venue reports the two separately for exactly that reason and
+     * they are kept apart all the way down — see `MarketTicker.turnover24h`.
+     */
     TURNOVER,
 
     /**
@@ -51,9 +58,11 @@ enum class HeatmapSize {
  * market — where it closed, how it did over the window, whether it is unusually agitated, where in
  * the day's range it is sitting, and whether it opened away from where it closed.
  *
- * Every one of them is derived from the market's own daily bars by [HeatmapFacts], because the
- * quote either backend sends carries a price and nothing else. Without bars all five answer null
- * and the map draws as unknown rather than as flat — see [HeatmapColours.unknown].
+ * Every one of them comes from [HeatmapFacts], because the quote either backend sends carries a
+ * price and nothing else. [CHANGE] and [RANGE] are answered by the platform's day table where it
+ * serves one; [PERFORMANCE], [VOLATILITY] and [GAP] need a series behind them and are always read
+ * from the market's own daily bars. With neither read yet all five answer null and the map draws as
+ * unknown rather than as flat — see [HeatmapColours.unknown].
  */
 enum class HeatmapColour {
     /** Percentage change against the previous daily close. The default, and what a heatmap means. */

@@ -17,6 +17,12 @@ android {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:marketintel"))
+    // The announcements channel, which is a different route and a different promise from the news
+    // feed — durable rather than transient, and TradeYar's alone. The screen lives here rather than
+    // in a module of its own because a `feature:*` module must carry a `ScreenshotRenderTest` case
+    // and that test is in `app/`, which this work does not own; announcements are also the same
+    // reader, the same voice and the same three shared composables as the feed beside them.
+    implementation(project(":core:announcements"))
     // The market-to-instrument table, shared with the chart so a story and a mark cannot
     // disagree about which chart a gold headline opens.
     implementation(project(":core:chartevents"))

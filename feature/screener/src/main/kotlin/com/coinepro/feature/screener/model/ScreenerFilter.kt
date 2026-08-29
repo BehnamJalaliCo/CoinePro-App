@@ -115,6 +115,19 @@ sealed interface ScreenerFilter {
     fun matches(row: ScreenerRow): Boolean
 
     /**
+     * Whether this condition declined [row] for want of a figure rather than on the figure itself.
+     *
+     * The other half of the rule above, and the reason it is a separate question. "Not a match" is
+     * the right answer for a market whose volume nobody knows, but it is not the *same* answer as
+     * "this market traded less than you asked for" — and a screener that shows only the first
+     * quietly removes markets from a reader's list on the grounds that it has not read them yet.
+     * The controller counts these and the screen says how many, which is the table's equivalent of
+     * the heat map's hatched tile: the unknown is on screen, in its own words, instead of being
+     * filtered away where nobody can see it happen.
+     */
+    fun undecided(row: ScreenerRow): Boolean
+
+    /**
      * A threshold on a numeric field.
      *
      * [bound] is read only by [NumericOp.BETWEEN] and is null for every other operator. It is a
@@ -138,6 +151,17 @@ sealed interface ScreenerFilter {
             val actual = row.valueOf(field) ?: return false
             return op.matches(actual, value, bound)
         }
+
+        /**
+         * True where the field is numeric and the row has no figure for it.
+         *
+         * A categorical [field] is excluded rather than counted: a numeric threshold on «دسته» is
+         * a question with no meaning, and reporting every market in the catalogue as "not known"
+         * because of a filter the sheet never offers would be a count that tells the reader
+         * nothing.
+         */
+        override fun undecided(row: ScreenerRow): Boolean =
+            field.isNumeric && row.valueOf(field) == null
     }
 
     /**
@@ -165,6 +189,16 @@ sealed interface ScreenerFilter {
             val actual = row.textOf(field) ?: return false
             return values.any { it.uppercase() == actual }
         }
+
+        /**
+         * An index has no quote currency, and that is not a value that is going to arrive later.
+         *
+         * Counted anyway, because the reader's question is the same either way: this market was
+         * left out because nothing is known about it under one of the conditions, rather than
+         * because it was measured and fell short.
+         */
+        override fun undecided(row: ScreenerRow): Boolean =
+            values.isNotEmpty() && row.textOf(field) == null
     }
 
     /**
@@ -186,6 +220,9 @@ sealed interface ScreenerFilter {
             if (query.isBlank()) return true
             return SymbolSearch.match(row.meta, query) != null
         }
+
+        /** Never. A name is known from the catalogue, so this condition is always decidable. */
+        override fun undecided(row: ScreenerRow): Boolean = false
     }
 
     /**
@@ -221,6 +258,14 @@ sealed interface ScreenerFilter {
             val actual = row.indicators[key] ?: return false
             return op.matches(actual, value, bound)
         }
+
+        /**
+         * True while the reading has not been computed, and true for good where the market's
+         * history is too short for the lookback — a coin listed last week cannot answer a
+         * two-hundred-bar average, and it is left out of the table for that reason and not for
+         * failing the threshold.
+         */
+        override fun undecided(row: ScreenerRow): Boolean = row.indicators[key] == null
     }
 
     companion object {
@@ -234,6 +279,15 @@ sealed interface ScreenerFilter {
          */
         fun allMatch(filters: List<ScreenerFilter>, row: ScreenerRow): Boolean =
             filters.all { it.matches(row) }
+
+        /**
+         * Whether any condition in [filters] could not be decided for [row].
+         *
+         * Asked only of rows that did not match, and only so the screen can say how many markets it
+         * is holding back for want of a figure. See [ScreenerFilter.undecided].
+         */
+        fun anyUndecided(filters: List<ScreenerFilter>, row: ScreenerRow): Boolean =
+            filters.any { it.undecided(row) }
 
         /** The indicator readings [filters] needs before they can answer, as normalised keys. */
         fun indicatorKeys(filters: List<ScreenerFilter>): Set<String> = buildSet {

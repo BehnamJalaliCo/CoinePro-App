@@ -406,6 +406,7 @@ dependencies {
     implementation(project(":core:aisignal"))
     implementation(project(":core:aivision"))
     implementation(project(":core:account"))
+    implementation(project(":core:announcements"))
     implementation(project(":core:guest"))
     implementation(project(":core:membership"))
     implementation(project(":core:journal"))

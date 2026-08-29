@@ -1580,6 +1580,7 @@ object ScreenshotFixtures {
             com.coinepro.core.notifications.NotificationCategory.PRICE_ALERT -> "هشدارهای قیمت من"
             com.coinepro.core.notifications.NotificationCategory.WATCHLIST_MOVE -> "نوسان بازارهای ستاره‌دار"
             com.coinepro.core.notifications.NotificationCategory.NEWS -> "اخبار مهم"
+            com.coinepro.core.notifications.NotificationCategory.ANNOUNCEMENT -> "اطلاعیه‌های سرویس"
             com.coinepro.core.notifications.NotificationCategory.CALENDAR -> "تقویم اقتصادی"
             com.coinepro.core.notifications.NotificationCategory.AI_SETUP -> "ستاپ هوش مصنوعی"
             com.coinepro.core.notifications.NotificationCategory.SECURITY -> "امنیت حساب"

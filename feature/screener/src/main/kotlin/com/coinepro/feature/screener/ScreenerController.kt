@@ -6,6 +6,7 @@ import com.coinepro.core.common.toUiMessage
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.MarketCatalogGateway
 import com.coinepro.core.marketdata.MarketSnapshotGateway
+import com.coinepro.core.marketdata.MarketTicker
 import com.coinepro.core.marketdata.OhlcBar
 import com.coinepro.core.marketdata.Timeframe
 import com.coinepro.core.model.MarketQuote
@@ -103,10 +104,20 @@ data class ScreenerState(
     val saved: List<ScreenerScreen> = emptyList(),
     /** Which saved screen the current filter set came from, or null once it has been edited. */
     val activeScreenId: String? = null,
-    /** How many markets have had their day's bar read. See [ScreenerMetrics] for why this exists. */
+    /** How many markets have had their day read. See [ScreenerMetrics] for where that comes from. */
     val resolvedCount: Int = 0,
-    /** True while bars are still being fetched, so the count on screen can say it is not final. */
+    /** True while figures are still being fetched, so the count on screen can say it is not final. */
     val resolving: Boolean = false,
+    /**
+     * How many markets were left out because a condition could not be decided about them.
+     *
+     * The table's answer to the heat map's hatched tile. A market with no volume figure is not a
+     * market that traded less than the reader asked for, and dropping it into the same silence as
+     * one that genuinely failed the threshold is a screener quietly editing somebody's list. The
+     * screen prints this under the match count whenever it is not zero, so the unknown is visible
+     * as an unknown rather than as an absence.
+     */
+    val unknownCount: Int = 0,
     /**
      * Whether anything resolved so far reports a volume column.
      *
@@ -154,12 +165,19 @@ data class ScreenerState(
  * ### The one hard problem, and how it is answered
  *
  * A phone screener has to filter a catalogue of a thousand markets on figures that the snapshot
- * endpoint does not carry. The day's high, low, volume and change all come from a market's own
- * bars, which is one request each. Fetching a thousand before the first row draws is not a
- * screener; it is an outage of your own making.
+ * endpoint does not carry. Where the platform serves the day's table, all of them — the high, the
+ * low, the volume, the turnover and the change — arrive for the whole catalogue in one request, and
+ * this problem is simply gone: opening the screen costs the catalogue, that table, and the prices of
+ * the rows in view. Where it does not, those figures still come from each market's own bars at one
+ * request apiece, and fetching a thousand before the first row draws is not a screener but an outage
+ * of your own making.
  *
- * So the work is bounded in three ways, and each is a decision rather than a tuning constant:
+ * So the bar path is bounded in four ways, and each is a decision rather than a tuning constant:
  *
+ * * **Only what the table cannot answer.** A market the day's table covers is not asked for its
+ *   candles at all unless the screen carries an indicator condition, which is the one thing a
+ *   twenty-four-hour rollup cannot answer. That is the difference between opening the screener for
+ *   one request and opening it for a hundred and twenty.
  * * **Only what will be read.** Indicator readings are computed for the keys this screen's filters
  *   and columns actually name. A screen with no RSI column and no RSI filter never computes one.
  * * **Only as far as the reader can get.** [RESOLUTION_BUDGET] markets are resolved per pass, taken
@@ -193,6 +211,15 @@ class ScreenerController(
     private val quotes: MarketSnapshotGateway? = null,
     /** Bars, for every figure the snapshot does not carry. Null limits the screener to price. */
     private val barSource: ScreenerBarSource? = null,
+    /**
+     * The day's figures for the whole catalogue, followed rather than fetched.
+     *
+     * Wired on TradeYar, which serves the route, and on CoinePro-FX, which does not: the source
+     * there answers with an empty map and everything below carries on reading candles exactly as it
+     * did before. Null is the third case — a preview, or a caller with no market data at all — and
+     * behaves like the second.
+     */
+    private val tickers: ScreenerTickerSource? = null,
     /** Saved screens. Null on a surface with no persistence, such as a preview. */
     private val store: ScreenerStore? = null,
     /**
@@ -214,6 +241,7 @@ class ScreenerController(
 
     private val quoteBySymbol = mutableMapOf<String, MarketQuote>()
     private val barsBySymbol = mutableMapOf<String, List<OhlcBar>>()
+    private val tickerBySymbol = mutableMapOf<String, MarketTicker>()
     private val rowBySymbol = linkedMapOf<String, ScreenerRow>()
 
     /** Symbols whose bars have been asked for, whether or not an answer came. See the class note. */
@@ -235,10 +263,23 @@ class ScreenerController(
 
     private var loadJob: Job? = null
     private var pollJob: Job? = null
+    private var tickerJob: Job? = null
     private var resolveJob: Job? = null
     private val resolveGate = Semaphore(RESOLUTION_CONCURRENCY)
 
-    /** Loads the catalogue once and starts the quote poll. Called when the screener opens. */
+    /**
+     * True from the moment the day's table is asked for until the platform has answered once.
+     *
+     * The candle pass waits on this rather than racing it. Both requests go out together, and on a
+     * platform that serves the table the answer makes a hundred and twenty candle requests
+     * unnecessary — so starting them a few hundred milliseconds early would spend them on figures
+     * that were already on their way for free. The wait is bounded by the source's own contract:
+     * every implementation emits once on every platform, including one where the route does not
+     * exist and one where the request failed. See [ScreenerTickerSource].
+     */
+    private var awaitingTickers = false
+
+    /** Loads the catalogue once, follows the day's table, and starts the quote poll. */
     fun start() {
         val saved = store
         if (saved != null) {
@@ -246,6 +287,7 @@ class ScreenerController(
                 saved.screens.collect { screens -> _state.update { it.copy(saved = screens) } }
             }
         }
+        followTickers()
         if (pollJob == null && quotes != null) {
             pollJob = scope.launch {
                 while (isActive) {
@@ -290,10 +332,52 @@ class ScreenerController(
         }
     }
 
-    /** Stops the quote poll. Called when the screener leaves the composition. */
+    /**
+     * Stops the quote poll and lets go of the day's table.
+     *
+     * Cancelling [tickerJob] is what lowers the shared store's reference count — the source attaches
+     * that to its own collection — so a screener the reader has left does not keep a five-second
+     * request against the whole catalogue running behind them.
+     */
     fun stop() {
         pollJob?.cancel()
         pollJob = null
+        tickerJob?.cancel()
+        tickerJob = null
+        awaitingTickers = false
+    }
+
+    /**
+     * Follows the day's table for as long as the screen is open.
+     *
+     * One request answers every market, and then the store behind it re-reads at the server's own
+     * cache interval — so this is a subscription rather than a fetch, and «تغییر روزانه» keeps
+     * moving instead of freezing at whatever it was when the screen opened while the price column
+     * beside it went on ticking.
+     *
+     * An empty answer is folded in as nothing rather than as a wipe. It means one of two things —
+     * this platform has no such route, or the request failed — and neither is a reason to take
+     * figures off a table the reader is reading. What it does do is release the candle pass, which
+     * has been holding for exactly this answer.
+     */
+    private fun followTickers() {
+        val source = tickers ?: return
+        if (tickerJob?.isActive == true) return
+        awaitingTickers = true
+        tickerJob = scope.launch {
+            source.tickers().collect { table ->
+                awaitingTickers = false
+                if (table.isNotEmpty()) {
+                    // Replaced rather than merged: the table is the whole of what the platform
+                    // knows, so a market it stopped carrying has to stop carrying figures too.
+                    tickerBySymbol.clear()
+                    tickerBySymbol.putAll(table)
+                    rebuild(rowBySymbol.keys.toList())
+                    recompute()
+                }
+                scheduleResolution()
+            }
+        }
     }
 
     // ── the filter set ──────────────────────────────────────────────────────────────────────
@@ -474,6 +558,7 @@ class ScreenerController(
                 meta = meta,
                 quote = quoteBySymbol[symbol],
                 bars = barsBySymbol[symbol].orEmpty(),
+                ticker = tickerBySymbol[symbol],
                 indicators = if (cached == null || keys.isEmpty()) {
                     emptyMap()
                 } else {
@@ -528,11 +613,19 @@ class ScreenerController(
     private fun recompute() {
         val current = _state.value
         val all = rowBySymbol.values.toList()
-        val matched = all.filter { ScreenerFilter.allMatch(current.filters, it) }
+        // Counted in the same pass that filters, because the two answers are about the same rows
+        // and a second walk over a catalogue of a thousand on every quote tick is a walk too many.
+        var unknown = 0
+        val matched = all.filter { row ->
+            val kept = ScreenerFilter.allMatch(current.filters, row)
+            if (!kept && ScreenerFilter.anyUndecided(current.filters, row)) unknown += 1
+            kept
+        }
         _state.update {
             it.copy(
                 rows = it.sort.apply(matched),
                 resolvedCount = all.count(ScreenerRow::resolved),
+                unknownCount = unknown,
                 // One market with a volume figure proves the feed carries the column. `any` and
                 // not `all`: the catalogue is mixed, and one crypto pair reporting volume is enough
                 // to make a money-flow filter worth offering.
@@ -542,17 +635,29 @@ class ScreenerController(
     }
 
     /**
-     * Reads the day's bars for the markets the screen is about to need.
+     * Reads the day's bars for the markets the screen is about to need, and for no others.
      *
      * The order is deliberate: whatever is on screen first, then the head of the candidate list.
      * "Candidate" means a market that survives the filters that can be answered without bars — a
      * text match, a category, a price threshold — because resolving a market the reader has already
      * excluded by name is a request spent on a row that will never be drawn.
+     *
+     * A market the day's table already answered for is skipped outright unless the screen carries
+     * an indicator condition. That is the whole of the saving the table brought: the default screen
+     * — price, the day's move, volume — now costs the catalogue and one table, where it used to cost
+     * a hundred and twenty candle series to derive figures the venue had already computed. An
+     * indicator is the one thing a twenty-four-hour rollup structurally cannot answer, so the moment
+     * a reader adds an RSI condition the candles are fetched exactly as they always were.
      */
     private fun scheduleResolution() {
         val source = barSource ?: return
         if (resolveJob?.isActive == true) return
+        // The day's table is on its way and may make this pass unnecessary. See [awaitingTickers].
+        if (awaitingTickers) return
 
+        // Hoisted rather than asked per symbol: it is the same answer for every market in the pass,
+        // and it builds a set each time it is called.
+        val needsSeries = requiredIndicatorKeys().isNotEmpty()
         val cheap = _state.value.filters.filter(::answerableWithoutBars)
         val candidates = buildList {
             addAll(visible)
@@ -563,6 +668,7 @@ class ScreenerController(
         val wanted = candidates.asSequence()
             .distinct()
             .filterNot(asked::contains)
+            .filter { symbol -> needsSeries || symbol !in tickerBySymbol }
             .take(RESOLUTION_BUDGET)
             .toList()
         if (wanted.isEmpty()) {
@@ -597,14 +703,21 @@ class ScreenerController(
     /**
      * Whether a filter can decide a market without its bars.
      *
-     * A name and a category are known from the catalogue, and so is the price. Everything else —
-     * the day's move, the volume, any indicator — needs the series, and treating one of those as
-     * cheap would narrow the candidate list using values that are all still null, which is a
-     * screener that resolves nothing and shows nothing.
+     * A name and a category are known from the catalogue, and so is the price. The day's move, the
+     * volume and the rest are known too wherever the day's table answered for them — and there
+     * counting them as cheap is what stops a candle request being spent on a market the reader's
+     * own threshold has already excluded.
+     *
+     * Where there is no table they are not known, and treating one of them as cheap would narrow the
+     * candidate list using values that are all still null: a screener that resolves nothing and
+     * therefore shows nothing. An indicator is never cheap on either platform, because nothing but
+     * the series can answer it.
      */
     private fun answerableWithoutBars(filter: ScreenerFilter): Boolean = when (filter) {
         is ScreenerFilter.TextMatch, is ScreenerFilter.Category -> true
-        is ScreenerFilter.Numeric -> filter.field == ScreenerField.LAST_PRICE
+        is ScreenerFilter.Numeric ->
+            filter.field == ScreenerField.LAST_PRICE ||
+                (tickerBySymbol.isNotEmpty() && !filter.field.isDerived)
         is ScreenerFilter.IndicatorFilter -> false
     }
 

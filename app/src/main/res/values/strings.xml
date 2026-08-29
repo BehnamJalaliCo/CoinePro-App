@@ -168,4 +168,6 @@
     <string name="widget_old">خیلی وقت پیش</string>
     <string name="widget_never">هنوز به‌روز نشده</string>
     <string name="widget_stale">%1$s · آفلاین</string>
+    <string name="notify_announcement">اطلاعیه‌های سرویس</string>
+    <string name="notify_announcement_note">چیزهایی که خودمان اعلام می‌کنیم — قطعی، نسخهٔ تازه، بازار جدید، تغییر شرایط عضویت. جدا از اخبار، چون کسی که فید شلوغ خبر را ساکت می‌کند نباید در نتیجه نشنود که سرویس قطع است.</string>
 </resources>

@@ -8,8 +8,9 @@ import com.coinepro.core.symbols.SymbolMeta
  * ### Every figure is nullable, and that is the design
  *
  * Neither backend's snapshot carries a day's high, low, volume or change — the snapshot is a price
- * and a timestamp, and that is all it has ever been. Those figures come from the market's own bars,
- * which are a request per symbol; a catalogue of a thousand markets cannot be a thousand requests
+ * and a timestamp, and that is all it has ever been. Those figures come from the platform's day
+ * table where it serves one, and from the market's own bars where it does not; the second of those
+ * is a request per symbol, and a catalogue of a thousand markets cannot be a thousand requests
  * before the first row draws. So a row starts with a price and fills in as it is resolved, and a
  * field that has not arrived is **null rather than zero**.
  *
@@ -39,17 +40,23 @@ data class ScreenerRow(
     val indicators: Map<String, Double> = emptyMap(),
     /** Which platform quotes it — `CRYPTO` or `FOREX`. Used by [ScreenerField.MARKET]. */
     val market: String? = null,
+    /**
+     * True once this market's day has been read, whatever the reading turned out to contain.
+     *
+     * Deliberately not the same question as "does this row have figures on it". A market the day's
+     * table answered for with a price and no change has been read, and the progress line above the
+     * table must stop counting it as still arriving — while every figure on it goes on printing as
+     * «—», because they are genuinely unknown. Those are two different facts and the screen shows
+     * both.
+     *
+     * The default covers the path this feature had for its whole life: the high and the low are the
+     * two figures every daily bar carries, so a row that has them is a row whose bar was read. A row
+     * built from the day's table passes the answer in instead — see [ScreenerMetrics].
+     */
+    val resolved: Boolean = high != null && low != null,
 ) {
     /** The symbol, which is this row's identity everywhere including the list's item key. */
     val symbol: String get() = meta.symbol
-
-    /**
-     * True once the day's bar has been read for this market.
-     *
-     * A row can be resolved and still have a null [volume] — the MT5 side reports none — so this
-     * asks about the high and the low, which every bar has.
-     */
-    val resolved: Boolean get() = high != null && low != null
 
     /** The day's range as a share of its low. Null when the bar is not in yet, or the low is zero. */
     val rangePercent: Double?

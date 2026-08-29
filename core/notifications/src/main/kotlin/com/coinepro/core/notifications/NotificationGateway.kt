@@ -121,6 +121,12 @@ internal data class PushPreferencesDto(
     val newSignals: Boolean = true,
     val signalUpdates: Boolean = true,
     val priceAlerts: Boolean = true,
+    /**
+     * Separate from news on purpose, and the separation is the whole reason the key exists:
+     * somebody who silences a busy news feed must not thereby stop hearing that the service is
+     * down. Defaulted on for the same reason.
+     */
+    val announcements: Boolean = true,
 )
 internal data class PreferencesResponseDto(val preferences: PushPreferencesDto = PushPreferencesDto())
 internal data class NotificationDto(
@@ -255,12 +261,14 @@ internal fun PushPreferencesDto.toDomain() = PushPreferences(
     newSignals = newSignals,
     signalUpdates = signalUpdates,
     priceAlerts = priceAlerts,
+    announcements = announcements,
 )
 
 internal fun PushPreferences.toDto() = PushPreferencesDto(
     newSignals = newSignals,
     signalUpdates = signalUpdates,
     priceAlerts = priceAlerts,
+    announcements = announcements,
 )
 
 internal fun NotificationDto.toDomain(): AppNotification? {

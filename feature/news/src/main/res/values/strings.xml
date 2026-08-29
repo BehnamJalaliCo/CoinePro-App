@@ -55,4 +55,21 @@
     <string name="news_saved_empty">هنوز خبری ذخیره نکرده‌اید.</string>
     <string name="news_saved_empty_hint">هر خبری را که باز کنید، با دکمهٔ نشان‌گذاری بالای صفحه اینجا می‌ماند — حتی بعد از اینکه از فهرست بیفتد.</string>
     <string name="news_saved_back">بازگشت به اخبار</string>
+
+    <!-- The announcements channel. TradeYar only; the entry is absent elsewhere. -->
+    <string name="announcements_title">اطلاعیه‌ها</string>
+    <string name="announcements_subtitle">آنچه سرویس رسماً اعلام کرده</string>
+    <string name="announcements_open">اطلاعیه‌ها</string>
+    <string name="announcements_back">برگشت</string>
+    <string name="announcements_count">%1$s اطلاعیه</string>
+    <string name="announcements_loading">در حال خواندن اطلاعیه‌ها…</string>
+    <string name="announcements_empty">تا امروز اطلاعیه‌ای منتشر نشده.</string>
+    <string name="announcements_empty_hint">این فهرست خبر نیست و خودش پر نمی‌شود؛ وقتی پر می‌شود که ما چیزی برای گفتن داشته باشیم — قطعیِ سرویس، نسخهٔ تازه، بازارِ تازه، تغییر در قواعد اشتراک. هرچه اینجا نوشته شود می‌ماند، حتی اگر اعلانش را از دست بدهید. خالی بودنش یعنی چیزی گفته نشده، نه اینکه چیزی خراب است.</string>
+    <string name="announcements_offline">اطلاعیه‌ها خوانده نشد؛ دستگاه به سرور نرسید.</string>
+    <string name="announcements_unavailable">سرویس اطلاعیه پاسخ نداد.</string>
+    <string name="announcements_retry">تلاش دوباره</string>
+    <string name="announcements_refresh_failed">تازه‌سازی انجام نشد؛ آنچه می‌بینید آخرین چیزی است که خوانده شده.</string>
+    <string name="announcements_important">مهم</string>
+    <string name="announcements_read_more">متن کامل</string>
+    <string name="announcements_open_failed">مرورگری برای باز کردن این نشانی پیدا نشد.</string>
 </resources>

@@ -9,20 +9,22 @@ import kotlin.math.min
 /**
  * Turns a market's live price and its daily bars into the figures a tile is drawn from.
  *
- * ### Nothing on the wire carries any of this
+ * ### The snapshot carries none of it, and that is why there are two sources here
  *
  * Both backends answer the snapshot endpoint with a symbol, a price, a bid, an ask and a timestamp.
  * There is no change percent, no day's high, no low and no volume anywhere in either response —
  * `MarketQuote.changePercent` is hard-coded null in `MarketDataController` because neither feed's
- * quote object has a field to fill it from. `feature/screener` states the same constraint in the
- * same words, and reached the same answer: the only source for a day's figure available to this app
- * today is the market's own bars, and that costs one candle request per market.
+ * quote object has a field to fill it from. For a long time the only answer available to this app
+ * was the market's own bars, at one candle request per market, and `feature/screener` was shaped
+ * around the same constraint in the same words.
  *
- * That is the constraint the whole feature is shaped around, and it is worth stating plainly rather
- * than discovering: a map coloured by nothing is free, and a map coloured by anything at all costs
- * one request per tile. [HeatmapController] is where that cost is bounded.
+ * TradeYar has since built the day's table — the whole catalogue's open, high, low, change, volume
+ * and turnover in one request — so on that platform the figures below are the venue's own and cost
+ * one call for every tile on the map together. CoinePro-FX still has no such route, so there the
+ * bars are still the only source and the per-market cost is still real. [HeatmapController] is
+ * where it is bounded.
  *
- * ### Two sources, and the one that does not exist yet wins
+ * ### Two sources, and the venue wins
  *
  * A [HeatmapTicker] is preferred over the bars for every figure both can answer, and that ordering
  * is not a performance choice. The venue's own twenty-four-hour window is what the exchange's site
@@ -30,10 +32,10 @@ import kotlin.math.min
  * measured from a midnight boundary the venue does not use, so the two disagree by a few tenths on
  * a quiet day and by more than that on a loud one. Where the venue has spoken, the venue is right.
  *
- * The ticker route does not exist yet — see [HeatmapTickerSource] and this module's
- * `## SERVER ASKS` — and the merge is written now so that the day it does, nothing here changes.
- * Bars keep the two figures a twenty-four-hour ticker structurally cannot carry: the multi-week
- * period return, and the median daily range that gives volatility its sign.
+ * The merge was written a release before the route it expects — see [HeatmapTickerSource] — and
+ * nothing here changed when it landed. Bars keep the two figures a twenty-four-hour ticker
+ * structurally cannot carry: the multi-week period return, and the median daily range that gives
+ * volatility its sign.
  *
  * ### The live price wins over the bar's close, and widens the bar
  *

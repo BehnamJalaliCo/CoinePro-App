@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.coinepro.core.notifications.AlertScope
 import kotlinx.coroutines.flow.Flow
@@ -339,15 +340,64 @@ object WatchlistTransfer {
 }
 
 /**
+ * Everything this store holds, in one value, for the code that moves it between devices.
+ *
+ * A single object rather than three reads, because a merge is only correct if the lists, the
+ * settings that belong to them and the record of what was deleted were all read at the same
+ * instant. Reading them one at a time leaves a window in which the reader stars a symbol between
+ * the first read and the third, and the merge writes back a list that never existed on either
+ * device.
+ *
+ * [settings] is keyed by list id and holds an entry only for the lists that have one — a list
+ * whose columns and flags are still the defaults contributes nothing, which is what keeps a
+ * fifty-list payload small.
+ *
+ * [tombstones] maps a deleted list's id to the epoch millisecond it was deleted. It is the only
+ * thing in this file that exists purely for sync. Its whole job is to make a deletion a *fact*
+ * rather than an absence, so that a device holding a list, and a device that deliberately deleted
+ * that list, do not look identical to a merge. See `core:watchlistsync` for what is done with it
+ * and for what the rule still cannot recover.
+ */
+data class WatchlistSnapshot(
+    val lists: List<Watchlist> = emptyList(),
+    val settings: Map<String, WatchlistSettings> = emptyMap(),
+    val tombstones: Map<String, Long> = emptyMap(),
+)
+
+/**
+ * What this device last agreed with the server about.
+ *
+ * [version] is the server's own counter for the stored document and is what the next write sends
+ * back so the server can refuse a write built on a document that has since moved. Zero means this
+ * device has never completed a sync — which is not an error and not a missing document; the server
+ * answers a first-time reader with version zero and an empty payload rather than a 404.
+ *
+ * [syncedAtMs] is this device's clock, not the server's, and is only ever shown as "last synced".
+ * Nothing branches on it: a device whose clock is wrong would otherwise decide it is up to date.
+ */
+data class WatchlistSyncCursor(
+    val version: Long = 0L,
+    val syncedAtMs: Long = 0L,
+)
+
+/**
  * The reader's watchlists: several of them, named, flagged, and each with its own columns.
  *
- * ### Local, and deliberately so
+ * ### Local first, and deliberately so
  *
- * TradeYar does serve a watchlist, but behind its own device-link flow — a second identity to
- * establish before the first star can be placed. That is the wrong price for this feature. A
- * watchlist has to answer instantly, work with no signal, and survive a server being down; a round
- * trip per star turns the most-tapped control in a trading app into the slowest one. Sync is asked
- * for in `docs/REQUEST4_ACCOUNT_DELETION.md` and belongs on top of this, not instead of it.
+ * A watchlist has to answer instantly, work with no signal, and survive a server being down; a
+ * round trip per star turns the most-tapped control in a trading app into the slowest one. So
+ * every method here writes to this device and returns, and none of them waits for anything.
+ *
+ * `core:watchlistsync` sits **on top of** that, not in front of it: it reads [snapshot], merges
+ * whatever the server holds into it through [applyMerged], and sends the result back. A reader
+ * with no network, no account, or on the platform that serves no such route keeps every line of
+ * this file working exactly as it does with sync switched off, which is the only arrangement worth
+ * shipping to an audience that is offline most of the time.
+ *
+ * Three things here exist only because of that layer, and are inert without it: the tombstones
+ * [delete] leaves behind, the [Watchlist.updatedAt] bump [writeTouched] applies when a flag or a
+ * column changes, and the cursor in [syncCursor].
  *
  * ### There is no limit on how many lists a reader may keep
  *
@@ -521,6 +571,13 @@ class WatchlistStore(
      * Refusing is a no-op rather than an exception. The caller's job is to not offer the button —
      * a storage layer throwing here would turn a missing menu item into a crash — and the class
      * note explains why the default list has to survive.
+     *
+     * The id is recorded in [TOMBSTONES] on the way out, with the moment it was deleted. Nothing
+     * on this device reads that record — [readLists] never sees it and no screen can — and it
+     * exists entirely for sync. Without it, "this list is gone" and "this device has never heard
+     * of this list" are the same absence, and a merge cannot tell a deletion from a list the other
+     * phone made five minutes ago; the deleted list would arrive back on the next sync looking
+     * exactly like somebody else's work. See `core:watchlistsync`.
      */
     suspend fun delete(id: String) {
         if (id == Watchlist.DEFAULT_LIST_ID) return
@@ -528,6 +585,7 @@ class WatchlistStore(
             val lists = readLists(preferences)
             if (lists.none { it.id == id }) return@edit
             writeLists(preferences, lists.filterNot { it.id == id })
+            writeTombstones(preferences, readTombstones(preferences) + (id to now()))
             preferences.remove(settingsKey(id))
             if (preferences[ACTIVE] == id) preferences.remove(ACTIVE)
         }
@@ -614,7 +672,7 @@ class WatchlistStore(
             val lists = readLists(preferences)
             val list = lists.firstOrNull { it.id == listId } ?: return@edit
             if (ticker !in list.symbols) return@edit
-            writeLists(preferences, lists)
+            writeTouched(preferences, lists, listId)
             val settings = readSettings(preferences, listId)
             val flags = if (flag == null) settings.flags - ticker else settings.flags + (ticker to flag)
             writeSettings(preferences, listId, settings.copy(flags = flags))
@@ -632,7 +690,7 @@ class WatchlistStore(
         dataStore.edit { preferences ->
             val lists = readLists(preferences)
             if (lists.none { it.id == listId }) return@edit
-            writeLists(preferences, lists)
+            writeTouched(preferences, lists, listId)
             writeSettings(preferences, listId, readSettings(preferences, listId).copy(columns = columns))
         }
     }
@@ -649,7 +707,7 @@ class WatchlistStore(
         dataStore.edit { preferences ->
             val lists = readLists(preferences)
             if (lists.none { it.id == listId }) return@edit
-            writeLists(preferences, lists)
+            writeTouched(preferences, lists, listId)
             writeSettings(preferences, listId, readSettings(preferences, listId).copy(sort = sort))
         }
     }
@@ -744,6 +802,106 @@ class WatchlistStore(
     suspend fun export(listId: String): String =
         WatchlistTransfer.format(lists().first().firstOrNull { it.id == listId }?.symbols.orEmpty())
 
+    // ── sync ─────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Everything this store holds, read in one pass.
+     *
+     * The settings map carries an entry only for lists that have stored settings, so a reader who
+     * never touched a column or a flag contributes nothing to it. Every list gets its settings read
+     * anyway and the defaults are dropped afterwards, because [readSettings] answers with the
+     * defaults for a list it has never heard of and a caller cannot otherwise tell "the reader
+     * chose exactly the default three columns" from "nobody has been in here".
+     */
+    suspend fun snapshot(): WatchlistSnapshot = dataStore.data.first().let { preferences ->
+        val lists = readLists(preferences)
+        WatchlistSnapshot(
+            lists = lists,
+            settings = lists.associate { it.id to readSettings(preferences, it.id) }
+                .filterValues { it != WatchlistSettings() },
+            tombstones = readTombstones(preferences),
+        )
+    }
+
+    /**
+     * Replaces everything with what [transform] makes of what is currently stored, in one write.
+     *
+     * A transform run inside the edit rather than a snapshot passed in, and that is the whole point
+     * of the signature. A sync reads local, fetches remote, merges, and writes — and the network
+     * round trip in the middle is seconds long, which is plenty of time for the reader to star
+     * something. If the merged value were computed outside and handed in, that star would be
+     * overwritten by a document that predates it. Here the merge runs against whatever is stored at
+     * the instant of the write, so a concurrent edit is merged rather than lost.
+     *
+     * Settings belonging to a list the transform dropped are deleted with it. They would otherwise
+     * sit in the preferences file forever, and would repaint the reader's flags onto a list that
+     * happened to be recreated with the same id.
+     *
+     * The active-list pointer is deliberately **not** part of a [WatchlistSnapshot] and is not
+     * touched here beyond being repaired: which list is on screen is a fact about this device at
+     * this moment, not about the reader's data, and moving it because another phone was looking
+     * somewhere else is exactly the kind of surprise sync must never produce. If the pointer names
+     * a list the transform removed, it is cleared and [readActiveId] falls back to the default.
+     *
+     * @return what was actually written, so the caller can send precisely that to the server rather
+     *   than re-reading and hoping it did not change again.
+     */
+    suspend fun applyMerged(transform: (WatchlistSnapshot) -> WatchlistSnapshot): WatchlistSnapshot {
+        var written = WatchlistSnapshot()
+        dataStore.edit { preferences ->
+            val stored = readLists(preferences)
+            val current = WatchlistSnapshot(
+                lists = stored,
+                settings = stored.associate { it.id to readSettings(preferences, it.id) }
+                    .filterValues { it != WatchlistSettings() },
+                tombstones = readTombstones(preferences),
+            )
+            val next = transform(current)
+            val liveIds = next.lists.map { it.id }.toSet()
+            writeLists(preferences, next.lists)
+            writeTombstones(preferences, next.tombstones)
+            // Every settings key this store has ever written, so that a list dropped by the merge
+            // takes its flags with it. Reading the key names back off the preferences file is the
+            // only way to find them: the lists that owned them are, by definition, gone.
+            preferences.asMap().keys
+                .map { it.name }
+                .filter { it.startsWith(SETTINGS_PREFIX) }
+                .filterNot { it.removePrefix(SETTINGS_PREFIX) in liveIds }
+                .forEach { preferences.remove(stringPreferencesKey(it)) }
+            next.settings
+                .filterKeys { it in liveIds }
+                .forEach { (listId, settings) -> writeSettings(preferences, listId, settings) }
+            if (preferences[ACTIVE]?.takeIf { it !in liveIds } != null) preferences.remove(ACTIVE)
+            written = next
+        }
+        return written
+    }
+
+    /** What this device last agreed with the server about. See [WatchlistSyncCursor]. */
+    fun syncCursor(): Flow<WatchlistSyncCursor> = dataStore.data
+        .map { preferences ->
+            WatchlistSyncCursor(
+                version = preferences[SYNC_VERSION] ?: 0L,
+                syncedAtMs = preferences[SYNC_AT] ?: 0L,
+            )
+        }
+        .distinctUntilChanged()
+
+    /**
+     * Records that the server now holds exactly what this device holds.
+     *
+     * Written only after a write the server accepted, never after a read. A version stored on the
+     * strength of a fetch would claim agreement this device has not yet earned — the merge it did
+     * with that document is still sitting unsent — and the next write would be built on a claim
+     * rather than on a fact.
+     */
+    suspend fun recordSynced(version: Long, syncedAtMs: Long) {
+        dataStore.edit { preferences ->
+            preferences[SYNC_VERSION] = version
+            preferences[SYNC_AT] = syncedAtMs
+        }
+    }
+
     // ── reading ──────────────────────────────────────────────────────────────────────────────
 
     /**
@@ -821,6 +979,47 @@ class WatchlistStore(
         preferences[settingsKey(listId)] = encodeSettings(settings)
     }
 
+    /**
+     * Writes the lists with one of them marked as touched just now.
+     *
+     * Flags, columns and a sort are stored beside a list rather than inside it, so changing one of
+     * them used to rewrite the list record byte-for-byte unchanged and leave [Watchlist.updatedAt]
+     * standing still. That was harmless while this file was the only reader. It is not harmless
+     * now: the merge in `core:watchlistsync` settles a disagreement about a list's name, columns,
+     * sort and flags by taking the side with the newer [Watchlist.updatedAt] — so a reader who
+     * recoloured six symbols on this phone, against a list whose clock had not moved since it was
+     * created, would lose all six to a phone that had merely been opened more recently.
+     */
+    private fun writeTouched(preferences: MutablePreferences, lists: List<Watchlist>, listId: String) {
+        val timestamp = now()
+        writeLists(preferences, lists.map { if (it.id == listId) it.copy(updatedAt = timestamp) else it })
+    }
+
+    /** Deleted list ids and when they were deleted, newest first. See [WatchlistSnapshot]. */
+    private fun readTombstones(preferences: Preferences): Map<String, Long> =
+        decodeTombstones(preferences[TOMBSTONES].orEmpty())
+
+    /**
+     * Keeps the newest [MAX_TOMBSTONES] deletions that are younger than [TOMBSTONE_TTL_MS].
+     *
+     * Both bounds exist because a tombstone is the one record here that nothing ever removes on the
+     * reader's behalf: without them a phone that has been used for three years carries every list
+     * it ever deleted into every payload. Ninety days is chosen against the failure it causes —
+     * a device that has been offline for longer than the window re-uploads a list this device
+     * deleted, and the list comes back. That is the right way round: the alternative is a deletion
+     * that is remembered forever and a payload that grows forever.
+     */
+    private fun writeTombstones(preferences: MutablePreferences, tombstones: Map<String, Long>) {
+        val floor = now() - TOMBSTONE_TTL_MS
+        preferences[TOMBSTONES] = tombstones
+            .filterValues { it >= floor }
+            .entries
+            .sortedByDescending { it.value }
+            .take(MAX_TOMBSTONES)
+            .filterNot { hasSeparator(it.key) }
+            .joinToString(GROUP) { "${it.key}$RECORD${it.value}" }
+    }
+
     /** Trimmed, capped, and refused outright if it carries a separator or is blank. */
     private fun cleanName(name: String): String? = name.trim()
         .take(Watchlist.MAX_NAME_LENGTH)
@@ -842,6 +1041,15 @@ class WatchlistStore(
 
         internal val ACTIVE = stringPreferencesKey("watchlist_active_list")
 
+        /** Deleted list ids, so a merge can tell a deletion from a list it has never seen. */
+        internal val TOMBSTONES = stringPreferencesKey("watchlist_deleted")
+
+        /** The server's counter for the stored document, as of the last write it accepted. */
+        internal val SYNC_VERSION = longPreferencesKey("watchlist_sync_version")
+
+        /** This device's clock at that write. Shown, never branched on. */
+        internal val SYNC_AT = longPreferencesKey("watchlist_sync_at")
+
         /**
          * One preferences key per list for its flags, columns and sort.
          *
@@ -849,7 +1057,16 @@ class WatchlistStore(
          * corrupt — the string holding every list's membership. The id is already restricted to
          * characters a key tolerates by [create].
          */
-        internal fun settingsKey(listId: String) = stringPreferencesKey("watchlist_view_$listId")
+        internal fun settingsKey(listId: String) = stringPreferencesKey(SETTINGS_PREFIX + listId)
+
+        /**
+         * What every per-list settings key starts with.
+         *
+         * Spelled once and used both to build a key and to recognise one: [applyMerged] has to find
+         * the settings of lists that no longer exist in order to delete them, and the only place
+         * their ids survive is in the key names themselves.
+         */
+        internal const val SETTINGS_PREFIX = "watchlist_view_"
 
         /** A vertical bar: what the previous version joined tickers with. */
         private const val LEGACY_SEPARATOR = "|"
@@ -868,6 +1085,25 @@ class WatchlistStore(
 
         /** See the class note: TradingView's paid-tier ceiling, matched on purpose. */
         const val MAX_SYMBOLS = 1_000
+
+        /** As many deletions as there are lists. A reader cannot delete more than they can make. */
+        const val MAX_TOMBSTONES = MAX_LISTS
+
+        /** Ninety days. See [writeTombstones] for why the window is bounded at all. */
+        const val TOMBSTONE_TTL_MS = 90L * 24L * 60L * 60L * 1_000L
+
+        internal fun decodeTombstones(stored: String): Map<String, Long> = stored
+            .split(GROUP)
+            .filter(String::isNotBlank)
+            .mapNotNull { record ->
+                val parts = record.split(RECORD)
+                val id = parts.getOrNull(0)?.takeIf(String::isNotBlank) ?: return@mapNotNull null
+                // A record with no readable timestamp is dropped rather than dated to the epoch: a
+                // tombstone at time zero loses every comparison and would silently stop deleting.
+                val deletedAt = parts.getOrNull(1)?.toLongOrNull() ?: return@mapNotNull null
+                id to deletedAt
+            }
+            .toMap()
 
         internal fun encodeList(list: Watchlist): String? {
             if (list.id.isBlank() || hasSeparator(list.id)) return null

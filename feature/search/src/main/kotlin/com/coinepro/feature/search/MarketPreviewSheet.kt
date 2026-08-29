@@ -98,6 +98,15 @@ internal fun previewOf(
     line: List<Double>,
     starred: Boolean,
     status: MarketStatus,
+    /**
+     * The day's move, where the caller has a better source for it than the quote.
+     *
+     * It defaults to the quote's own field, which has been null on every quote either backend has
+     * ever returned — so in practice this is how the figure arrives at all. The markets list hands
+     * in the day's table, and it has to: a sheet reading a dash while the row it was opened from
+     * shows +5.2% is the same number disagreeing with itself one layer apart.
+     */
+    changePercent: Double? = row.quote?.changePercent,
 ): MarketPreviewState = MarketPreviewState(
     symbol = row.meta.symbol,
     pretty = BidiText.isolateLtr(row.meta.pretty),
@@ -105,7 +114,7 @@ internal fun previewOf(
     // An em dash, not a zero and not a blank: the feed has not quoted this market, and both of the
     // other two would be read as a price.
     price = row.quote?.price?.let(MarketNumberFormatter::priceAuto) ?: EM_DASH,
-    changePercent = row.quote?.changePercent?.takeIf { status.open },
+    changePercent = changePercent?.takeIf { status.open },
     // Fewer than two points is not a short line, it is no line — one price has no shape, and the
     // renderer would have to invent what a single value looks like.
     line = line.takeIf { it.size >= 2 }.orEmpty(),

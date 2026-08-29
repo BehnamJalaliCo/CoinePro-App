@@ -95,6 +95,17 @@ enum class NotificationCategory(
     /** Headlines the server marked important. Off by default: news is a stream, not an event. */
     NEWS("news", null, defaultOn = false, needsAccount = false),
 
+    /**
+     * Something the service itself announced — an outage, a release, a new market, a change to how
+     * membership works.
+     *
+     * **On by default, unlike [NEWS], and the contrast is the whole point.** News is a stream a
+     * reader chooses to follow; an announcement is addressed to this reader about the service they
+     * are using. The durable list at the announcements route is there for whoever misses the push,
+     * which is why the server built it as its own route rather than a flag on the news feed.
+     */
+    ANNOUNCEMENT("announcement", ServerSwitch.ANNOUNCEMENTS, defaultOn = true, needsAccount = false),
+
     /** A high-importance economic release is due. Off by default for the same reason. */
     CALENDAR("calendar", null, defaultOn = false, needsAccount = false),
 
@@ -153,6 +164,7 @@ enum class NotificationCategory(
             "alert", "price_alert" -> PRICE_ALERT
             "watchlist", "watchlist_move", "volatility" -> WATCHLIST_MOVE
             "news" -> NEWS
+            "announcement", "announcements", "notice" -> ANNOUNCEMENT
             "calendar", "economic" -> CALENDAR
             "ai", "ai_setup", "setup" -> AI_SETUP
             "security", "login" -> SECURITY
@@ -163,8 +175,13 @@ enum class NotificationCategory(
     }
 }
 
-/** The three flags both backends accept. See [NotificationCategory.server]. */
-enum class ServerSwitch { NEW_SIGNALS, SIGNAL_UPDATES, PRICE_ALERTS }
+/**
+ * The flags both backends accept. See [NotificationCategory.server].
+ *
+ * [ANNOUNCEMENTS] is TradeYar's and arrived with the announcements route. CoinePro-FX ignores an
+ * unknown key rather than rejecting the whole document, so it is sent to both.
+ */
+enum class ServerSwitch { NEW_SIGNALS, SIGNAL_UPDATES, PRICE_ALERTS, ANNOUNCEMENTS }
 
 /**
  * Hours in which nothing is shown.
@@ -263,5 +280,6 @@ data class NotificationSettings(
             NotificationCategory.SIGNAL_CLOSED,
         ).any(::isOn),
         priceAlerts = enabled && isOn(NotificationCategory.PRICE_ALERT),
+        announcements = enabled && isOn(NotificationCategory.ANNOUNCEMENT),
     )
 }

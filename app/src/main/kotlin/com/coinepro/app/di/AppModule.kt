@@ -13,6 +13,9 @@ import com.coinepro.core.academy.AcademyGateway
 import com.coinepro.core.academy.NetworkAcademyGateway
 import com.coinepro.core.account.AccountController
 import com.coinepro.core.account.AccountGateway
+import com.coinepro.core.announcements.AnnouncementsController
+import com.coinepro.core.announcements.AnnouncementsGateway
+import com.coinepro.core.announcements.NetworkAnnouncementsGateway
 import com.coinepro.core.account.NetworkAccountGateway
 import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aiassistant.AiAssistantGateway
@@ -125,12 +128,16 @@ import com.coinepro.core.signals.SignalController
 import com.coinepro.core.signals.SignalGateway
 import com.coinepro.core.signals.SignalHistoryCache
 import com.coinepro.core.symbols.SymbolMeta
+import com.coinepro.core.watchlistsync.NetworkWatchlistSyncGateway
+import com.coinepro.core.watchlistsync.WatchlistSyncController
+import com.coinepro.core.watchlistsync.WatchlistSyncGateway
 import com.coinepro.core.webhook.WebhookDispatcher
 import com.coinepro.core.webhook.WebhookStore
 import com.coinepro.feature.alerts.AlertsController
 import com.coinepro.feature.alerts.StoredWebhooks
 import com.coinepro.feature.chart.ChartWorkspaceStore
 import com.coinepro.feature.screener.CandleScreenerBarSource
+import com.coinepro.feature.screener.MarketTickerScreenerSource
 import com.coinepro.feature.screener.ScreenerController
 import com.coinepro.feature.screener.ScreenerStore
 import com.coinepro.feature.terminal.TerminalController
@@ -953,6 +960,40 @@ object AppModule {
     @Provides
     @Singleton
     @ForexPlatform
+    fun forexWatchlistSyncGateway(@ForexPlatform retrofit: Retrofit): WatchlistSyncGateway =
+        NetworkWatchlistSyncGateway.create(retrofit, MarketPlatform.COINEPRO_FX)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoWatchlistSyncGateway(@CryptoPlatform retrofit: Retrofit): WatchlistSyncGateway =
+        NetworkWatchlistSyncGateway.create(retrofit, MarketPlatform.TRADEYAR)
+
+    /**
+     * One controller rather than one per platform, which is the opposite of every other pair here.
+     *
+     * There is only one watchlist. [WatchlistStore] is app-wide and deliberately so — a starred
+     * instrument means the same thing whichever market is on screen — so a controller per platform
+     * would be two controllers writing one store. TradeYar is the only backend that serves the
+     * route, and where this build cannot reach it the CoinePro-FX gateway is supplied instead: it
+     * reports the feature absent, which hides the control rather than offering one that fails.
+     */
+    @Provides
+    @Singleton
+    fun watchlistSyncController(
+        @ForexPlatform forex: WatchlistSyncGateway,
+        @CryptoPlatform crypto: WatchlistSyncGateway,
+        store: WatchlistStore,
+        scope: CoroutineScope,
+    ): WatchlistSyncController = WatchlistSyncController(
+        gateway = if (isPlatformConfigured(BuildConfig.TRADEYAR_API_BASE_URL)) crypto else forex,
+        store = store,
+        scope = scope,
+    )
+
+    @Provides
+    @Singleton
+    @ForexPlatform
     fun forexExecutionGateway(@ForexPlatform retrofit: Retrofit): ExecutionGateway =
         NetworkExecutionGateway.create(retrofit, MarketPlatform.COINEPRO_FX)
 
@@ -1021,6 +1062,18 @@ object AppModule {
     @CryptoPlatform
     fun cryptoMarketIntelGateway(@CryptoPlatform retrofit: Retrofit): MarketIntelGateway =
         NetworkMarketIntelGateway.create(retrofit, MarketPlatform.TRADEYAR)
+
+    /**
+     * The announcements channel exists on TradeYar only.
+     *
+     * CoinePro-FX serves nothing at that path, so there is no forex binding and no qualifier on the
+     * result: one gateway on the crypto Retrofit, and the entry point simply absent on the other
+     * platform rather than present and answering 404 as though the service were down.
+     */
+    @Provides
+    @Singleton
+    fun announcementsGateway(@CryptoPlatform retrofit: Retrofit): AnnouncementsGateway =
+        NetworkAnnouncementsGateway.create(retrofit)
 
     /**
      * The one scope every controller in this app launches into — and the seatbelt on it.
@@ -1441,6 +1494,11 @@ object AppModule {
         @ForexPlatform catalog: MarketCatalogGateway,
         @ForexPlatform quotes: MarketSnapshotGateway,
         @ForexPlatform candles: CandleGateway,
+        // CoinePro-FX has no tickers route, so this store reports `supported = false` and the
+        // source answers empty at once — the screener there reads candles exactly as it always
+        // has. It is wired anyway so the two providers stay one shape, and neither becomes the
+        // one somebody forgot on the day a route appears.
+        @ForexPlatform tickerStore: MarketTickerStore,
         store: ScreenerStore,
         scope: CoroutineScope,
     ): ScreenerController = ScreenerController(
@@ -1448,6 +1506,7 @@ object AppModule {
         scope = scope,
         quotes = quotes,
         barSource = CandleScreenerBarSource(candles),
+        tickers = MarketTickerScreenerSource(tickerStore),
         store = store,
     )
 
@@ -1458,6 +1517,9 @@ object AppModule {
         @CryptoPlatform catalog: MarketCatalogGateway,
         @CryptoPlatform quotes: MarketSnapshotGateway,
         @CryptoPlatform candles: CandleGateway,
+        // The one that saves the requests: with the table present the screener stops fetching
+        // a candle series per market to derive a figure the venue already published.
+        @CryptoPlatform tickerStore: MarketTickerStore,
         store: ScreenerStore,
         scope: CoroutineScope,
     ): ScreenerController = ScreenerController(
@@ -1465,6 +1527,7 @@ object AppModule {
         scope = scope,
         quotes = quotes,
         barSource = CandleScreenerBarSource(candles),
+        tickers = MarketTickerScreenerSource(tickerStore),
         store = store,
     )
 
@@ -1716,6 +1779,22 @@ object AppModule {
         @CryptoPlatform gateway: MarketIntelGateway,
         scope: CoroutineScope,
     ): MarketIntelController = MarketIntelController(gateway, scope)
+
+    /**
+     * Keyed by platform though only one key is ever present, exactly as the chart-event controllers
+     * are: the map is what lets a screen ask for the active platform and get null for the one with
+     * no such route — and null for a build whose TradeYar base URL was never supplied.
+     */
+    @Provides
+    @Singleton
+    fun announcementsControllers(
+        gateway: AnnouncementsGateway,
+        scope: CoroutineScope,
+    ): Map<MarketPlatform, AnnouncementsController> = buildMap {
+        if (isPlatformConfigured(BuildConfig.TRADEYAR_API_BASE_URL)) {
+            put(MarketPlatform.TRADEYAR, AnnouncementsController(gateway, scope))
+        }
+    }
 
     /**
      * The chart's own reader of the document the news screen reads — items 118 and 119.

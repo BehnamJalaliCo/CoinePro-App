@@ -24,6 +24,9 @@ dependencies {
     // The watchlist panel reads and writes the reader's own lists. api rather than implementation:
     // WatchlistStore is a parameter of MarketsScreen, so whoever builds one needs the type.
     api(project(":core:datastore"))
+    // The sync control the watchlist panel draws. api rather than implementation: the controller
+    // is a parameter of MarketsScreen, so whoever builds one needs the type on their classpath.
+    api(project(":core:watchlistsync"))
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)

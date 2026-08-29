@@ -24,6 +24,13 @@
     <string name="markets_column_symbol">Symbol</string>
     <string name="markets_column_trend">24h trend</string>
     <string name="markets_column_price">Price / change</string>
+    <string name="markets_column_turnover">Turnover</string>
+    <string name="markets_lens_all">All markets</string>
+    <string name="markets_lens_hot">Hot</string>
+    <string name="markets_lens_gainers">Gainers</string>
+    <string name="markets_lens_losers">Losers</string>
+    <string name="markets_lens_empty">No market qualifies for this list today.</string>
+    <string name="markets_figures_failed">Today\u2019s market figures are unavailable.</string>
     <string name="markets_open_signals">%1$d open signals</string>
     <string name="search_failed">Markets are unavailable.</string>
     <!-- Watchlist -->

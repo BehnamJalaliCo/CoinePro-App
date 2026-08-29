@@ -19,6 +19,7 @@ data class PushPreferences(
     val newSignals: Boolean = true,
     val signalUpdates: Boolean = true,
     val priceAlerts: Boolean = true,
+    val announcements: Boolean = true,
 )
 
 data class AppNotification(

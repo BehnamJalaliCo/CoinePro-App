@@ -94,10 +94,10 @@ class HeatmapController(
     /**
      * The venue's own twenty-four-hour statistics for the whole catalogue, in one call.
      *
-     * Null today on both platforms, because no route serves it yet — the ask is recorded in this
-     * module's `## SERVER ASKS`. It is a constructor parameter now rather than later so that the
-     * day the route ships, the wiring is one argument and this class does not change: it already
-     * asks for the batch first and already lets [HeatmapFacts] prefer it over the bars.
+     * Wired on TradeYar and null on CoinePro-FX, which has no such route: there the map is exactly
+     * what it was, a candle request per market, and nothing about this class behaves differently.
+     * It was a constructor parameter a release before the route existed, which is why adopting it
+     * was one argument at the call site rather than a rework of the resolution path.
      */
     private val tickers: HeatmapTickerSource? = null,
 ) {
@@ -153,9 +153,13 @@ class HeatmapController(
      * The whole catalogue's twenty-four-hour statistics, in one request.
      *
      * Ahead of the per-market candles and independent of them: the moment this lands, every tile on
-     * the map has a change, a range and a volume, and the candle queue behind it is only still
-     * running for the two figures a rolling ticker cannot carry — the period return and the median
-     * daily range. Today it does nothing at all, because [tickers] is null on both platforms.
+     * the map has a change, a range, a volume and a turnover, and the candle queue behind it is
+     * only still running for the two figures a rolling ticker cannot carry — the period return and
+     * the median daily range. That is the difference between a map whose colour arrives after one
+     * request and a map whose colour arrives after two hundred and twenty.
+     *
+     * A failure is silent on purpose. The map is drawing from bars the whole time this is in
+     * flight, so a table that does not arrive costs the reader the speed and none of the content.
      */
     private fun loadTickers() {
         val source = tickers ?: return

@@ -1,8 +1,11 @@
 package com.coinepro.feature.heatmap
 
 import com.coinepro.core.marketdata.CandleGateway
+import com.coinepro.core.marketdata.MarketTicker
+import com.coinepro.core.marketdata.MarketTickerStore
 import com.coinepro.core.marketdata.OhlcBar
 import com.coinepro.core.marketdata.Timeframe
+import kotlinx.coroutines.flow.first
 
 /**
  * Where a market's daily bars come from.
@@ -35,9 +38,11 @@ fun interface HeatmapBarSource {
  * [HeatmapBarSource] over the app's own candle gateway.
  *
  * Daily bars, because the period modes measure in daily closes and the typical daily range is a
- * median over daily bars. The day's own figures do **not** have to come from here — see
- * [HeatmapTickerSource], which answers them for the whole catalogue in one call once the route
- * exists — but until it does, this is where every figure on the map comes from.
+ * median over daily bars. The day's own figures do **not** come from here any more where a
+ * [HeatmapTickerSource] is wired: that answers them for the whole catalogue in one call, and what
+ * is left for this source is the two figures a rolling twenty-four-hour window structurally cannot
+ * carry — the multi-week period return and the median daily range. On CoinePro-FX, which has no
+ * such route, this is still where every figure on the map comes from.
  *
  * [LIMIT] is chosen from the longest window the map offers rather than from a round number: a
  * ninety-day performance reading needs ninety-one bars to have a reference at all, and the typical
@@ -61,22 +66,19 @@ class CandleHeatmapBarSource(
 /**
  * One market's own twenty-four-hour statistics, as a venue reports them.
  *
- * ### Why this type exists before the route does
+ * ### This type existed before the route did, and that is why the route cost one line to adopt
  *
- * Every figure here is available upstream today. LBank publishes the whole spot catalogue's
- * twenty-four-hour statistics in a single call, and the same again for its perpetuals with a
- * funding rate attached; TradeYar already relays that venue for the ticker, the candles and the
- * depth book, so it is a route they can add without a new upstream integration. What is missing is
- * the relay, not the data — and the exact ask is recorded in this module's `## SERVER ASKS`.
+ * It was written against a relay that had not been built, on the reasoning that the data was
+ * already at the venue and only the route was missing. TradeYar has since built it —
+ * `GET /api/mobile/v1/market/tickers`, the whole catalogue in one request behind a five-second
+ * cache — and adopting it turned out to be exactly what was predicted: [MarketTickerHeatmapSource]
+ * maps one row onto one of these, and nothing above this type changed. [HeatmapFacts] already
+ * preferred a ticker over a bar wherever both can answer, and [HeatmapController] already asked for
+ * one if it was given a source.
  *
- * So the module is shaped for it now. The day that route ships, the map's day figures stop being a
- * hundred and twenty candle requests and become one call for the entire catalogue, and nothing
- * above this interface changes: [HeatmapFacts] already prefers a ticker over a bar wherever both
- * can answer, and [HeatmapController] already asks for one if it is given a source.
- *
- * Building the interface after the route would mean a rewrite of the resolution path at the moment
- * the route lands, which is the same as saying the feature would stay broken for one release longer
- * than it had to.
+ * CoinePro-FX still has no equivalent, so a map on that platform draws from bars exactly as it did
+ * before, and that is the reason this remains an interface with two possible answers rather than a
+ * gateway call.
  *
  * Every field is nullable because a relay may carry some and not others, and a partially-filled
  * ticker is worth more than none: a change with no volume still colours the map.
@@ -125,3 +127,72 @@ fun interface HeatmapTickerSource {
      */
     suspend fun tickers(): Map<String, HeatmapTicker>
 }
+
+/**
+ * [HeatmapTickerSource] over the shared [MarketTickerStore].
+ *
+ * ### Why it waits for the store's *next* table rather than reading the one it is holding
+ *
+ * The store polls only while a screen is holding it, so the table sitting in its state is as old as
+ * whenever the last reader let go — a minute, an hour, or the last time the app was opened. Drawing
+ * a map from that would be indistinguishable on screen from drawing it from a table fetched a
+ * second ago, and a stale change percent that looks live is the exact failure this rework exists to
+ * remove. [MarketTickerStore.start] loads immediately when nothing else is holding the store, so in
+ * the ordinary case this is one round trip; when another screen is already reading it the wait is
+ * that store's own poll interval, and the answer could not have been fresher than that anyway.
+ *
+ * ### The start/stop pair is balanced around the wait, not around the screen
+ *
+ * The store is reference counted, and this source is asked once per map open rather than subscribed
+ * to. Raising the count and not lowering it would leave a five-second poll running against the
+ * whole catalogue for the rest of the process, on somebody's mobile data, for a map they have
+ * already navigated away from. `finally` rather than a plain call, so the count comes down when the
+ * screen is closed mid-wait — which is the common case on a slow connection.
+ */
+class MarketTickerHeatmapSource(private val store: MarketTickerStore) : HeatmapTickerSource {
+
+    override suspend fun tickers(): Map<String, HeatmapTicker> {
+        // Empty rather than a wait, and this is the whole reason the store carries the flag:
+        // CoinePro-FX has no such route, so a map on that platform has to go straight back to its
+        // candles instead of hanging on a table that is never going to arrive.
+        if (!store.supported) return emptyMap()
+        val held = store.state.value.table
+        store.start()
+        val table = try {
+            store.state.first { it.table !== held }.table
+        } finally {
+            store.stop()
+        }
+        return table.tickers.mapValues { (_, ticker) -> ticker.asHeatmapTicker() }
+    }
+}
+
+/**
+ * One row of the day's table as the map's own ticker.
+ *
+ * Two fields are deliberately left absent rather than filled from something that resembles them.
+ *
+ * `open_24h` is the price twenty-four rolling hours ago; [HeatmapTicker.open] is a session's opening
+ * print, and [HeatmapColour.GAP] measures that against the previous daily close. Handing the rolling
+ * figure to it would turn a mode that correctly reads near zero across the crypto block — because
+ * crypto does not close — into a small non-zero number on every tile, under a label that says gap.
+ * The venue's own change percent is carried, so the reference is not needed for anything else.
+ *
+ * There is no previous close on this route at all, which is why [HeatmapTicker.previousClose] stays
+ * null and [HeatmapFacts] falls through to the bar for it.
+ *
+ * The funding rate arrives as a fraction — the server's own sample body carries `0.00009263` on
+ * BTCUSDT, which is nine thousandths of a percent — and the field it lands in is named for a
+ * percentage. Scaling it here rather than where it is drawn means the detail sheet is not the place
+ * somebody has to remember.
+ */
+private fun MarketTicker.asHeatmapTicker(): HeatmapTicker = HeatmapTicker(
+    symbol = symbol,
+    lastPrice = last,
+    changePercent = changePercent24h,
+    high = high24h,
+    low = low24h,
+    volume = volume24h,
+    turnover = turnover24h,
+    fundingRatePercent = fundingRate?.times(100.0),
+)

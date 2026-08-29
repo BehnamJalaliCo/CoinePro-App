@@ -303,6 +303,7 @@ core:aisignal
 core:aivision
 core:aiassistant
 core:marketintel
+core:announcements
 core:account
 core:guest
 core:journal
@@ -311,6 +312,7 @@ core:backtest
 core:diagnostics
 core:database
 core:export
+core:watchlistsync
 feature:admin
 feature:auth
 feature:home

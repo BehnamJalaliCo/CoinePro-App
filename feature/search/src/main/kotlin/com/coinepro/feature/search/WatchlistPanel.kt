@@ -39,12 +39,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.datastore.Watchlist
 import com.coinepro.core.datastore.WatchlistColumn
@@ -58,11 +61,17 @@ import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPillShape
+import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.marketdata.MarketSearchRow
+import com.coinepro.core.watchlistsync.R as SyncR
+import com.coinepro.core.watchlistsync.WatchlistSyncController
+import com.coinepro.core.watchlistsync.WatchlistSyncState
+import com.coinepro.core.watchlistsync.messageRes
+import com.coinepro.core.watchlistsync.noticeArguments
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -108,6 +117,8 @@ fun WatchlistPanel(
     /** Asks for one symbol's line. Called as a row appears, never for the whole list. */
     onRequestLine: (String) -> Unit,
     onOpenSymbol: (String) -> Unit,
+    /** Sync, where the platform serves it. Null draws nothing — see [MarketsScreen]'s own note. */
+    watchlistSync: WatchlistSyncController? = null,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -256,6 +267,45 @@ fun WatchlistPanel(
                         color = CoineProColors.BorderSubtle,
                     )
                 }
+            }
+        }
+    }
+
+    // Sync, at the foot of the panel and never above the lists themselves.
+    //
+    // Drawn only where the platform serves the route: `available` is false on CoinePro-FX, which
+    // has none, and a row saying so would be a row about a feature that platform's reader has no
+    // way to want. It is a button rather than a background job on purpose — the watchlist is the
+    // only thing a reader builds inside this app, and a sync they did not ask for, on a connection
+    // that comes and goes, is the wrong moment to touch it.
+    if (watchlistSync != null) {
+        val syncState by watchlistSync.state.collectAsStateWithLifecycle()
+        if (syncState.available) {
+            // Read from the configuration rather than a store: the app already re-bases its
+            // context on the reader's chosen language, so this is the same answer, and it is one a
+            // feature module can reach without depending on `:app`.
+            val language = AppLanguage.fromTag(LocalConfiguration.current.locales[0].language)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.One),
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(
+                        syncState.messageRes(),
+                        *syncState.noticeArguments(language).toTypedArray(),
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = CoineProColors.TextMuted,
+                    textAlign = TextAlign.Right,
+                    modifier = Modifier.weight(1f),
+                )
+                CoineProSecondaryButton(
+                    text = stringResource(SyncR.string.watchlist_sync_action),
+                    onClick = watchlistSync::sync,
+                )
             }
         }
     }

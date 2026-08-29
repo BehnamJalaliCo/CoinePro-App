@@ -248,6 +248,7 @@ object NotificationChannels {
         NotificationCategory.PRICE_ALERT,
         NotificationCategory.WATCHLIST_MOVE,
         NotificationCategory.NEWS,
+        NotificationCategory.ANNOUNCEMENT,
         NotificationCategory.CALENDAR,
         NotificationCategory.AI_SETUP,
         -> GROUP_MARKET
@@ -299,6 +300,7 @@ fun NotificationCategory.channelNameRes(): Int = when (this) {
     NotificationCategory.PRICE_ALERT -> R.string.notify_price_alert
     NotificationCategory.WATCHLIST_MOVE -> R.string.notify_watchlist_move
     NotificationCategory.NEWS -> R.string.notify_news
+    NotificationCategory.ANNOUNCEMENT -> R.string.notify_announcement
     NotificationCategory.CALENDAR -> R.string.notify_calendar
     NotificationCategory.AI_SETUP -> R.string.notify_ai_setup
     NotificationCategory.SECURITY -> R.string.notify_security
@@ -318,6 +320,7 @@ fun NotificationCategory.channelDescriptionRes(): Int = when (this) {
     NotificationCategory.PRICE_ALERT -> R.string.notify_price_alert_note
     NotificationCategory.WATCHLIST_MOVE -> R.string.notify_watchlist_move_note
     NotificationCategory.NEWS -> R.string.notify_news_note
+    NotificationCategory.ANNOUNCEMENT -> R.string.notify_announcement_note
     NotificationCategory.CALENDAR -> R.string.notify_calendar_note
     NotificationCategory.AI_SETUP -> R.string.notify_ai_setup_note
     NotificationCategory.SECURITY -> R.string.notify_security_note

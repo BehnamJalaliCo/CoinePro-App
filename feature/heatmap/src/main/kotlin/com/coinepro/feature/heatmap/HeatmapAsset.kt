@@ -9,8 +9,9 @@ import com.coinepro.core.symbols.SymbolRanking
  * Almost every figure here is nullable and that is the honest shape of the data rather than
  * laziness. Neither backend puts a change, a high, a low or a volume on a quote — the snapshot
  * carries a symbol, a price, a bid, an ask and a timestamp, and that is the whole of it. So every
- * figure below except [price] is derived from the market's own daily bars by [HeatmapFacts], one
- * request per market, and a market whose bars have not arrived yet answers null to all of them.
+ * figure below except [price] comes from [HeatmapFacts], out of the platform's day table where
+ * there is one and out of the market's own daily bars where there is not, and a market that has had
+ * neither read yet answers null to all of them.
  *
  * ### What used to be wrong here, and why the shape changed
  *
@@ -46,17 +47,17 @@ data class HeatmapAsset(
     val previousClose: Double? = null,
     val dayHigh: Double? = null,
     val dayLow: Double? = null,
-    /** Traded quantity over the last daily bar, in units of the base asset. */
+    /** Traded quantity over the day, in units of the base asset. Never interchangeable with below. */
     val volume: Double? = null,
-    /** Traded value over the last daily bar, in the quote currency. */
+    /** Traded value over the day, in the quote currency. The comparable one across a mixed list. */
     val turnover: Double? = null,
     /**
      * A perpetual's funding rate for the coming period, in percent.
      *
-     * Present only where the feed carries a swap market, which no route this app can call does yet
-     * — see [HeatmapTicker]. It is read in the detail sheet and by nothing else, deliberately: a
-     * colour mode for a figure that exists on a tenth of the catalogue would be a map that is
-     * nine-tenths hatched.
+     * Present only where the feed carries a swap market, which is the perpetuals on TradeYar's day
+     * table and nothing on CoinePro-FX — see [HeatmapTicker]. It is read in the detail sheet and by
+     * nothing else, deliberately: a colour mode for a figure that exists on a tenth of the
+     * catalogue would be a map that is nine-tenths hatched.
      */
     val fundingRatePercent: Double? = null,
     /**

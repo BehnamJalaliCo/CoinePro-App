@@ -242,4 +242,53 @@ class ScreenerFilterTest {
         )
         assertEquals(setOf("rsi:2", "adx:14"), keys)
     }
+
+    // ── the unknowns, which are counted rather than lost ─────────────────────────────────────
+
+    @Test
+    fun `a market with no figure is declined for want of one, and says which of the two it was`() {
+        // Both answers are "not a match", and they are not the same fact. One market traded less
+        // than the reader asked for; the other is a market nothing is known about, and a screener
+        // that reports only the first has quietly edited somebody's list.
+        val measured = row(volume = 10.0)
+        val unknown = row(volume = null)
+        val condition = ScreenerFilter.Numeric(ScreenerField.VOLUME, NumericOp.GT, 100.0)
+
+        assertFalse(condition.matches(measured))
+        assertFalse("a figure that fell short is not an unknown", condition.undecided(measured))
+
+        assertFalse(condition.matches(unknown))
+        assertTrue(condition.undecided(unknown))
+    }
+
+    @Test
+    fun `a name is always decidable and an indicator is undecidable until it is computed`() {
+        val subject = row(symbol = "BTCUSDT")
+        assertFalse(ScreenerFilter.TextMatch("bit").undecided(subject))
+        val rsi = ScreenerFilter.IndicatorFilter(ScreenerIndicatorId.RSI, 14, NumericOp.LT, 30.0)
+        assertTrue(rsi.undecided(subject))
+        assertFalse(rsi.undecided(row(indicators = mapOf("rsi:14" to 22.0))))
+    }
+
+    @Test
+    fun `a numeric threshold on a categorical field is not reported as an unknown market`() {
+        // A saved screen from a later build can carry one. It matches nothing, which is honest, but
+        // reporting the whole catalogue as "not known" because of a condition the sheet never
+        // offers would be a count that tells the reader nothing at all.
+        val condition = ScreenerFilter.Numeric(ScreenerField.ASSET_CLASS, NumericOp.GT, 0.0)
+        assertFalse(condition.matches(row()))
+        assertFalse(condition.undecided(row()))
+    }
+
+    @Test
+    fun `one undecidable condition is enough for the row to be counted as unknown`() {
+        val subject = row(changePercent = 4.0)
+        val decidable = ScreenerFilter.Numeric(ScreenerField.CHANGE_PERCENT, NumericOp.GT, 0.0)
+        val undecidable = ScreenerFilter.Numeric(ScreenerField.VOLUME, NumericOp.GT, 0.0)
+        assertFalse(ScreenerFilter.anyUndecided(listOf(decidable), subject))
+        assertTrue(ScreenerFilter.anyUndecided(listOf(decidable, undecidable), subject))
+        // No conditions, nothing to be unable to decide — which is why an unfiltered screen never
+        // draws the line the count feeds.
+        assertFalse(ScreenerFilter.anyUndecided(emptyList(), subject))
+    }
 }

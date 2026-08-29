@@ -261,12 +261,19 @@ private fun CategoryChips(selected: SymbolCategory?, onSelect: (SymbolCategory?)
 }
 
 /**
- * How many markets matched, and how much of the catalogue that answer is based on.
+ * How many markets matched, how much of the catalogue that answer is based on, and how many markets
+ * could not be judged at all.
  *
  * Persian digits, because this is prose: «۲۳ بازار» is read aloud as words with a number in it,
  * unlike the figures in the table below, which are held up against another terminal and stay Latin.
- * The progress line appears only while bars are still arriving — a count that is still moving has
+ * The progress line appears only while figures are still arriving — a count that is still moving has
  * to say so, or a reader will take the first number they see as the answer.
+ *
+ * The third line is this table's answer to the heat map's hatched tile. A market with no figure for
+ * one of the conditions is not a market that failed them; it is a market nothing is known about, and
+ * dropping it into the same silence as a market that was measured and fell short would be the
+ * screener editing somebody's list without saying so. It appears only when there is something to
+ * report, so an ordinary screen with every figure in hand carries no extra line at all.
  */
 @Composable
 private fun ResultCount(state: ScreenerState) {
@@ -288,6 +295,14 @@ private fun ResultCount(state: ScreenerState) {
                     state.resolvedCount.toPersianDigits(),
                     state.universeSize.toPersianDigits(),
                 ),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+                fontWeight = FontWeight.Normal,
+            )
+        }
+        if (state.unknownCount > 0) {
+            Text(
+                text = stringResource(R.string.screener_unknown, state.unknownCount.toPersianDigits()),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextMuted,
                 fontWeight = FontWeight.Normal,

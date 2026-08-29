@@ -54,4 +54,21 @@
     <string name="news_saved_empty">You have not saved anything yet.</string>
     <string name="news_saved_empty_hint">Open any story and the bookmark at the top keeps it here — even after it drops out of the feed.</string>
     <string name="news_saved_back">Back to the news</string>
+
+    <!-- The announcements channel. TradeYar only; the entry is absent elsewhere. -->
+    <string name="announcements_title">Announcements</string>
+    <string name="announcements_subtitle">What the service has said officially</string>
+    <string name="announcements_open">Announcements</string>
+    <string name="announcements_back">Back</string>
+    <string name="announcements_count">%1$s announcements</string>
+    <string name="announcements_loading">Reading the announcements…</string>
+    <string name="announcements_empty">Nothing has been announced yet.</string>
+    <string name="announcements_empty_hint">This is not a feed and it does not fill itself; it fills when we have something to say — a service outage, a new version, a new market, a change to how membership works. Whatever is written here stays, even if you miss the notification. Its being empty means nothing has been said, not that something is broken.</string>
+    <string name="announcements_offline">The announcements could not be read; the device did not reach the server.</string>
+    <string name="announcements_unavailable">The announcements service did not answer.</string>
+    <string name="announcements_retry">Try again</string>
+    <string name="announcements_refresh_failed">The refresh did not go through; what you see is the last that was read.</string>
+    <string name="announcements_important">Important</string>
+    <string name="announcements_read_more">The full text</string>
+    <string name="announcements_open_failed">No browser was found to open this address.</string>
 </resources>

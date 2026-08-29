@@ -23,6 +23,7 @@
     <string name="screener_search_placeholder">نماد یا نام بازار</string>
     <string name="screener_count">%1$s بازار</string>
     <string name="screener_progress">%1$s بازار از %2$s بررسی شد</string>
+    <string name="screener_unknown">%1$s بازار داده‌ای برای این شرط‌ها ندارد و نمایش داده نشده است.</string>
     <string name="screener_column_symbol">نماد</string>
     <string name="screener_category_all">همه</string>
     <string name="screener_category_crypto">کریپتو</string>

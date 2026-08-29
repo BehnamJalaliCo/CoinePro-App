@@ -52,6 +52,7 @@ import com.coinepro.core.academy.AcademyController
 import com.coinepro.core.account.AccountController
 import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aisignal.AiSignalController
+import com.coinepro.core.announcements.AnnouncementsController
 import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.EmailAuthController
 import com.coinepro.core.auth.EmailAuthStep
@@ -86,6 +87,7 @@ import com.coinepro.core.datastore.ThemeMode
 import com.coinepro.core.datastore.UserPreferencesStore
 import com.coinepro.core.datastore.StoredProfile
 import com.coinepro.core.datastore.WatchlistStore
+import com.coinepro.core.watchlistsync.WatchlistSyncController
 import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.resolve
@@ -142,6 +144,7 @@ import com.coinepro.core.marketdata.MarketDataController
 import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.marketdata.MarketDataSymbols
 import com.coinepro.core.marketdata.MarketSearchController
+import com.coinepro.core.marketdata.MarketTickerStore
 import com.coinepro.core.marketdata.SparklineStore
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.membership.MembershipController
@@ -199,6 +202,7 @@ import com.coinepro.feature.home.HomeBriefing
 import com.coinepro.feature.home.HomePortfolio
 import com.coinepro.feature.free.FreeScreen
 import com.coinepro.feature.heatmap.CandleHeatmapBarSource
+import com.coinepro.feature.heatmap.MarketTickerHeatmapSource
 import com.coinepro.feature.heatmap.HeatmapScreen
 import com.coinepro.feature.home.HomeScreen
 import com.coinepro.feature.portfolio.PortfolioReportScreen
@@ -488,6 +492,7 @@ fun CoineProApp(
     localAlertStore: LocalAlertStore,
     localAlertScheduler: LocalAlertScheduler,
     watchlistStore: WatchlistStore,
+    watchlistSyncController: WatchlistSyncController,
     chartLayoutStore: ChartLayoutStore,
     chartDrawingStore: ChartDrawingStore,
     /** Where the image drawing tool's pictures live. See `DrawingImageStore`. */
@@ -519,6 +524,15 @@ fun CoineProApp(
     scriptController: ScriptController,
     marketDataControllers: Map<MarketPlatform, MarketDataController>,
     marketSearchControllers: Map<MarketPlatform, MarketSearchController>,
+    /**
+     * The day's open, high, low, change and turnover, per platform.
+     *
+     * Keyed rather than singular for the reason every other map here is — exactly one feed runs at
+     * a time — and CoinePro-FX's entry is a store over a gateway that reports `supported = false`.
+     * That is what keeps the gainers and losers off that platform rather than putting tabs there
+     * which could only ever be empty.
+     */
+    marketTickerStores: Map<MarketPlatform, MarketTickerStore>,
     screenerControllers: Map<MarketPlatform, ScreenerController>,
     candleGateways: Map<MarketPlatform, CandleGateway>,
     /**
@@ -559,6 +573,8 @@ fun CoineProApp(
     aiVisionControllers: Map<MarketPlatform, AiVisionController>,
     aiAssistantController: AiAssistantController,
     marketIntelControllers: Map<MarketPlatform, MarketIntelController>,
+    /** The announcements channel, keyed by platform. Empty on a build with no TradeYar. */
+    announcementsControllers: Map<MarketPlatform, AnnouncementsController>,
     /** The chart's axis marks, per platform — items 118 and 119. Same rule as the news readers. */
     chartEventControllers: Map<MarketPlatform, ChartEventController>,
     /** Cleared on sign-out — a derived credential that would otherwise outlive the session. */
@@ -606,6 +622,7 @@ fun CoineProApp(
     val session = sessionStates[activePlatform] ?: SessionState.Loading
     val marketDataController = marketDataControllers.getValue(activePlatform)
     val marketSearchController = marketSearchControllers.getValue(activePlatform)
+    val marketTickerStore = marketTickerStores.getValue(activePlatform)
     val screenerController = screenerControllers.getValue(activePlatform)
     val marketState by marketDataController.state.collectAsStateWithLifecycle()
     // The account reads follow the same rule as the feed: one platform at a time, and the balance
@@ -615,6 +632,9 @@ fun CoineProApp(
     // decision has no bearing on a listing and a token unlock has none on bullion, so the wrong
     // market's headlines are not a degraded answer but a misleading one.
     val marketIntelController = marketIntelControllers.getValue(activePlatform)
+    // Null on CoinePro-FX, which has no such route, and on a build with no TradeYar base URL.
+    // The news screen draws no entry for a null, so the feature is absent rather than broken.
+    val announcementsController = announcementsControllers[activePlatform]
     // Absent where the platform is not configured for this build, which is why the map is keyed
     // rather than a pair. A null leaves the axis bare and the studio's section away, which is the
     // honest shape for a backend that is not there at all.
@@ -709,6 +729,7 @@ fun CoineProApp(
             aiVisionControllers.values.forEach(AiVisionController::clear)
             aiAssistantController.clear()
             marketIntelControllers.values.forEach(MarketIntelController::clear)
+            announcementsControllers.values.forEach(AnnouncementsController::clear)
             chartEventControllers.values.forEach(ChartEventController::clear)
             // The academy token is a second credential, derived from the mobile one and held only
             // in memory. Without this it outlives the sign-out by up to twelve hours — and after a
@@ -954,6 +975,9 @@ fun CoineProApp(
                 aiVisionController = aiVisionController,
                 aiAssistantController = aiAssistantController,
                 marketIntelController = marketIntelController,
+                announcementsController = announcementsController,
+                marketTickerStore = marketTickerStore,
+                watchlistSyncController = watchlistSyncController,
                 chartEventController = chartEventController,
                 accountController = accountController,
                 launchSignalId = launchSignalId,
@@ -1142,6 +1166,9 @@ fun CoineProApp(
                         aiVisionController = aiVisionController,
                         aiAssistantController = aiAssistantController,
                         marketIntelController = marketIntelController,
+                        announcementsController = announcementsController,
+                        marketTickerStore = marketTickerStore,
+                        watchlistSyncController = watchlistSyncController,
                         chartEventController = chartEventController,
                         accountController = accountController,
                         launchSignalId = null,
@@ -1325,6 +1352,12 @@ private fun MainShell(
     aiVisionController: AiVisionController,
     aiAssistantController: AiAssistantController,
     marketIntelController: MarketIntelController,
+    /** Null where the platform has no announcements route. See the shell's own note. */
+    announcementsController: AnnouncementsController?,
+    /** The day's figures for the platform on screen. See the shell's own note. */
+    marketTickerStore: MarketTickerStore,
+    /** Null-free: the controller reports the feature absent where the platform has no route. */
+    watchlistSyncController: WatchlistSyncController,
     /** This platform's chart-axis events, or null when the platform is not configured. */
     chartEventController: ChartEventController?,
     accountController: AccountController,
@@ -2287,8 +2320,14 @@ private fun MainShell(
                 MarketsScreen(
                     controller = marketSearchController,
                     sparklines = sparklineStore,
+                    // The day's figures, which is what the gainers, losers and «داغ» tabs are made
+                    // of. Passed as the store rather than a table so the screen starts and stops
+                    // the poll with its own lifetime — it is reference counted, so the heat map
+                    // reading the same table keeps it running when this screen leaves.
+                    tickers = marketTickerStore,
                     watchlist = watchlist,
                     watchlistStore = watchlistStore,
+                    watchlistSync = watchlistSyncController,
                     onOpenSymbol = { symbol -> navController.navigate(chartRoute(symbol)) },
                     onOpenSearch = { navController.navigate(MARKET_SEARCH_ROUTE) },
                     // The same hoisted composer the chart uses, at the price the preview showed —
@@ -2582,6 +2621,9 @@ private fun MainShell(
                     platform = activePlatform,
                     controller = marketIntelController,
                     onOpenCalendar = { navController.navigate(CALENDAR_ROUTE) },
+                    // Null draws no entry at all, which is how «this platform has no announcements»
+                    // is said: absent, rather than a button that opens a screen answering 404.
+                    announcements = announcementsController,
                 )
             }
             composable(CALENDAR_ROUTE) {
@@ -2602,6 +2644,11 @@ private fun MainShell(
                     controller = marketSearchController,
                     onOpenSymbol = { navController.navigate(chartRoute(it)) },
                     bars = remember(candleGateway) { CandleHeatmapBarSource(candleGateway) },
+                    // The whole catalogue's day in one request, from the store the market list is
+                    // already reading. Reference counted, so the map holds it only while it is
+                    // open — and the candles above stay, for the two figures a rolling
+                    // twenty-four hours cannot carry: the period return and the median daily range.
+                    tickers = remember(marketTickerStore) { MarketTickerHeatmapSource(marketTickerStore) },
                 )
             }
             composable(SCREENER_ROUTE) {
@@ -2814,6 +2861,7 @@ private fun notificationSections(guest: Boolean): List<NotificationSection> {
             NotificationCategory.PRICE_ALERT,
             NotificationCategory.WATCHLIST_MOVE,
             NotificationCategory.NEWS,
+            NotificationCategory.ANNOUNCEMENT,
             NotificationCategory.CALENDAR,
             NotificationCategory.AI_SETUP.takeUnless { guest },
         ),

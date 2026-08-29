@@ -40,6 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.coinepro.core.announcements.AnnouncementsController
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -129,6 +130,23 @@ fun NewsScreen(
      * page, and the copy kept with a saved story. The contract to ask for is in the report.
      */
     imageUrlOf: (MarketNewsItem) -> String? = { null },
+    /**
+     * The announcements channel, or null on a platform that has none.
+     *
+     * **Null is how "absent rather than broken" is expressed here, and it is why this is a
+     * controller and not a callback.** TradeYar serves `api/mobile/v1/announcements`; CoinePro-FX
+     * serves nothing at that address, and a shell that passed a controller pointing at the forex
+     * host would give a reader a 404 worded as an outage on a feature that was never built for
+     * them. With null the entry is not drawn at all, so there is no route into a screen that could
+     * only fail.
+     *
+     * It hangs off the news screen for the same reason [NewsArticleScreen] does — see the note on
+     * this file: a destination in the navigation graph is in `app/`, and a screen nobody can reach
+     * is not a feature. [AnnouncementsScreen] is a plain composable over a plain controller, so
+     * promoting it to `market/announcements` later is a `composable(...)` block and nothing here
+     * changes shape for it. The exact code is in the report's wiring section.
+     */
+    announcements: AnnouncementsController? = null,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var relevance by remember { mutableStateOf<MarketRelevance?>(null) }
@@ -146,6 +164,11 @@ fun NewsScreen(
     // the opposite of what pressing unsave asks for.
     var openArticleId by rememberSaveable { mutableStateOf<String?>(null) }
     var openArticle by remember { mutableStateOf<MarketNewsItem?>(null) }
+    // Saveable, so a reader who rotates the phone while reading an outage notice is still reading
+    // it afterwards. It is one boolean rather than a copy of the list because the list itself is
+    // held by a singleton controller and survives anything short of process death; on the other
+    // side of a process death the screen refetches, which on this route costs one small request.
+    var showAnnouncements by rememberSaveable { mutableStateOf(false) }
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -187,10 +210,27 @@ fun NewsScreen(
     }
 
     // The system gesture and the button on the page do the same thing, which is the point: a reader
-    // who swipes back out of a story should not leave the news screen entirely.
-    BackHandler(enabled = openArticleId != null) {
-        openArticleId = null
-        openArticle = null
+    // who swipes back out of a story should not leave the news screen entirely. Announcements are
+    // checked first because the two surfaces cannot both be open — an announcement offers no way
+    // into a story — so whichever is showing is the one the gesture closes.
+    BackHandler(enabled = showAnnouncements || openArticleId != null) {
+        if (showAnnouncements) {
+            showAnnouncements = false
+        } else {
+            openArticleId = null
+            openArticle = null
+        }
+    }
+
+    // Before the article, and guarded on the controller rather than on the flag alone: a shell that
+    // never passed one cannot be left holding a `true` restored from a Bundle written by a build
+    // that did — which would otherwise be a blank screen with no way out.
+    if (showAnnouncements && announcements != null) {
+        AnnouncementsScreen(
+            controller = announcements,
+            onBack = { showAnnouncements = false },
+        )
+        return
     }
 
     if (openArticleId != null) {
@@ -251,6 +291,16 @@ fun NewsScreen(
                         label = stringResource(R.string.news_saved_title),
                         onClick = { savedOnly = !savedOnly },
                         tint = if (savedOnly) CoineProColors.Accent else CoineProColors.TextPrimary,
+                    )
+                }
+                // Only where there is a channel to open. On CoinePro-FX the route does not exist,
+                // so the icon does not exist either — the alternative is a control that reports a
+                // 404 as though the announcements service were down.
+                if (announcements != null) {
+                    CoineProHeaderAction(
+                        icon = CoineProIcons.Info,
+                        label = stringResource(R.string.announcements_open),
+                        onClick = { showAnnouncements = true },
                     )
                 }
                 CoineProHeaderAction(

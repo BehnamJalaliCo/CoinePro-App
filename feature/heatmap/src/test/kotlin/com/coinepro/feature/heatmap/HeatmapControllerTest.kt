@@ -111,9 +111,9 @@ class HeatmapControllerTest {
 
     @Test
     fun `a ticker answers the whole catalogue in one call and outranks the bars`() = runTest {
-        // The route this expects does not exist yet — see the module's `## SERVER ASKS`. The path
-        // is asserted now so that wiring it is one argument rather than a rewrite, and so that the
-        // precedence is fixed before there is a second implementation to argue with it.
+        // Over a hand-made source rather than the real one, so the precedence stays pinned at the
+        // level of the controller's own contract: whatever a ticker answers, the bars do not get to
+        // answer instead. `MarketTickerHeatmapSourceTest` is the same rule over the shared store.
         val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
         var calls = 0
         val tickers = HeatmapTickerSource {

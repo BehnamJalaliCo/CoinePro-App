@@ -59,5 +59,5 @@
     <string name="free_investing_fair_value">Fair value from 17 valuation models</string>
     <string name="free_investing_fair_value_answer">We do not have it, and for crypto it has no meaning: those models work on a company\'s financial statements. Not building it is a decision, not a gap.</string>
     <string name="free_tv_history">Candle history — 5,000 bars on the free tier</string>
-    <string name="free_tv_history_answer">Ours is shorter, and this is the one row where their free tier beats us: about 1,900 bars, which on the daily is 3.7 years against roughly 13. The limit is the venue's retention window, not a decision of ours.</string>
+    <string name="free_tv_history_answer">Ours is shorter, and this is the one row where their free tier beats us: about 1,900 bars, which on the daily is 3.7 years against roughly 13. The limit is the venue\'s retention window, not a decision of ours.</string>
 </resources>

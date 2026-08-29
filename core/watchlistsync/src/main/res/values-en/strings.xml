@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="watchlist_sync_title">Watchlist sync</string>
+    <string name="watchlist_sync_action">Sync now</string>
+    <string name="watchlist_sync_note">Your lists, colours and columns are kept on your TradeYar account so they are there on the next device. Nothing is sent until you ask for it, and no sync ever removes a list you did not delete.</string>
+    <string name="watchlist_sync_state_never">Not synced yet.</string>
+    <string name="watchlist_sync_state_current">Up to date; the server holds exactly this.</string>
+    <string name="watchlist_sync_state_uploaded">This device\'s watchlist was saved to the server.</string>
+    <string name="watchlist_sync_state_merged">%1$s lists and %2$s symbols arrived from another device.</string>
+    <string name="watchlist_sync_state_removed">%1$s lists deleted on another device were removed here too.</string>
+    <string name="watchlist_sync_state_offline">This device has no network, so nothing was exchanged. The watchlist on this device is untouched and still works.</string>
+    <string name="watchlist_sync_state_refused">The server did not answer this time. Nothing was lost; it will be sent on the next sync.</string>
+    <string name="watchlist_sync_state_too_large">Your watchlist is larger than the server\'s %1$s KB cap, so nothing was saved. Shorten or delete a list and try again.</string>
+    <string name="watchlist_sync_state_too_large_unknown">Your watchlist is larger than the server\'s cap, so nothing was saved. Shorten or delete a list and try again.</string>
+    <string name="watchlist_sync_state_unsupported">This market has no server to keep a watchlist on; lists stay on this device only.</string>
+</resources>

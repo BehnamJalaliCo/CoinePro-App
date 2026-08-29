@@ -61,6 +61,7 @@ import com.coinepro.app.widget.WidgetRefreshEngine
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.network.NetworkStatus
 import com.coinepro.core.datastore.WatchlistStore
+import com.coinepro.core.watchlistsync.WatchlistSyncController
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.guest.GuestGateway
 import com.coinepro.core.membership.MembershipController
@@ -81,7 +82,9 @@ import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.portfolio.PortfolioController
 import com.coinepro.core.signals.SignalController
+import com.coinepro.core.announcements.AnnouncementsController
 import com.coinepro.core.marketdata.AcademyTokenStore
+import com.coinepro.core.marketdata.MarketTickerStore
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
@@ -113,6 +116,9 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var guestGateway: GuestGateway
     @Inject lateinit var membershipController: MembershipController
     @Inject lateinit var watchlistStore: WatchlistStore
+
+    @Inject
+    lateinit var watchlistSyncController: WatchlistSyncController
     @Inject lateinit var chartLayoutStore: ChartLayoutStore
     @Inject lateinit var chartDrawingStore: ChartDrawingStore
     @Inject lateinit var symbolChartStateStore: SymbolChartStateStore
@@ -128,6 +134,9 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var scriptController: ScriptController
     @Inject lateinit var marketDataControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketDataController>
     @Inject lateinit var marketSearchControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketSearchController>
+
+    @Inject
+    lateinit var marketTickerStores: Map<MarketPlatform, @JvmSuppressWildcards MarketTickerStore>
     @Inject lateinit var screenerControllers: Map<MarketPlatform, @JvmSuppressWildcards ScreenerController>
     @Inject lateinit var screenerStore: ScreenerStore
     @Inject lateinit var candleGateways: Map<MarketPlatform, @JvmSuppressWildcards CandleGateway>
@@ -152,6 +161,9 @@ class MainActivity : FragmentActivity() {
     @Inject
     lateinit var academyTokenStore: AcademyTokenStore
     @Inject lateinit var marketIntelControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketIntelController>
+
+    @Inject
+    lateinit var announcementsControllers: Map<MarketPlatform, @JvmSuppressWildcards AnnouncementsController>
     @Inject lateinit var chartEventControllers: Map<MarketPlatform, @JvmSuppressWildcards ChartEventController>
     @Inject lateinit var pushCoordinator: PushCoordinator
     @Inject lateinit var backgroundSyncScheduler: BackgroundSyncScheduler
@@ -216,6 +228,7 @@ class MainActivity : FragmentActivity() {
                 alertsController = alertsController,
                 inAppAlerts = inAppAlertBus,
                 watchlistStore = watchlistStore,
+                watchlistSyncController = watchlistSyncController,
                 chartLayoutStore = chartLayoutStore,
                 chartDrawingStore = chartDrawingStore,
                 drawingImageStore = drawingImageStore,
@@ -231,6 +244,7 @@ class MainActivity : FragmentActivity() {
                 scriptController = scriptController,
                 marketDataControllers = marketDataControllers,
                 marketSearchControllers = marketSearchControllers,
+                marketTickerStores = marketTickerStores,
                 screenerControllers = screenerControllers,
                 screenerStore = screenerStore,
                 candleGateways = candleGateways,
@@ -253,6 +267,7 @@ class MainActivity : FragmentActivity() {
                 aiVisionControllers = aiVisionControllers,
                 aiAssistantController = aiAssistantController,
                 marketIntelControllers = marketIntelControllers,
+                announcementsControllers = announcementsControllers,
                 chartEventControllers = chartEventControllers,
                 academyTokenStore = academyTokenStore,
                 pushCoordinator = pushCoordinator,
