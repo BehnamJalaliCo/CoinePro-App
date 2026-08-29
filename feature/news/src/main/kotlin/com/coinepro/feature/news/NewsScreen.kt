@@ -1,5 +1,6 @@
 package com.coinepro.feature.news
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
@@ -8,48 +9,43 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.coinepro.core.common.PersianDateTime
+import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProCard
-import com.coinepro.core.designsystem.CoineProEmptyState
-import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProHeaderAction
+import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProListHeader
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProPullToRefresh
@@ -58,17 +54,48 @@ import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.designsystem.R as DesignR
-import com.coinepro.core.chartevents.ChartEventSymbols
 import com.coinepro.core.marketintel.MarketImpact
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.marketintel.MarketNewsItem
 import com.coinepro.core.marketintel.MarketRelevance
 import com.coinepro.core.marketintel.NewsSentiment
 import com.coinepro.core.model.MarketPlatform
-import java.time.ZoneId
+import java.time.Instant
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 
-
-
+/**
+ * The market news feed, and the way into any one story.
+ *
+ * ### What this screen was, and what the owner said about it
+ *
+ * «اخبار بازار خیلی گرافیک بدی داره» — and it did. Every headline was one card of the same weight
+ * as every other, opening with a row of three coloured pills and a timestamp before it said what
+ * had happened; the headline itself was `titleSmall`, fifteen points, one step *below* the row title
+ * on a market list; and the card did nothing when it was pressed, because there was nowhere to go.
+ * A reader could scan that list. Nobody could read it.
+ *
+ * Three things changed and they are all the same change:
+ *
+ * * **The headline leads.** It is the first line of the card and it is set at eighteen points; the
+ *   classifications moved above it as small pills and the source and the moment moved together onto
+ *   one byline under it. What a card now answers, in order, is what happened, who says so, and when.
+ * * **A story is a place.** Pressing a card opens [NewsArticleScreen] — the whole screen, not a
+ *   sheet — with its own back, its own share, and its own save. See that file for what "read in
+ *   full" can honestly mean given that no backend sends an article body.
+ * * **The picture, where there is one, is above the headline.** The owner asked for that twice. See
+ *   [NewsHero] and [imageUrlOf]: the layout is built around a picture and complete without one,
+ *   which is what it has to be, because no feed sends one yet.
+ *
+ * ### Why the article is a state here rather than a route in the navigation graph
+ *
+ * Because a route in the graph is in `app/`, and a screen nobody can reach is not a feature. Held
+ * as state, the story opens today, on the existing news route, with the system back gesture wired
+ * to it through [BackHandler] and the open story surviving a rotation through [rememberSaveable].
+ * [NewsArticleScreen] is a plain composable taking a plain item, so promoting it to `market/news/{id}`
+ * later is a `composable(...)` block and a lambda — nothing here has to change shape for that, and
+ * the exact code for it is in the report's wiring section.
+ */
 @Composable
 fun NewsScreen(
     controller: MarketIntelController,
@@ -82,18 +109,62 @@ fun NewsScreen(
      * reader who tapped a mark on the axis is already able to read the headline. One direction
      * without the other is a feature that only works if you happened to start on the right screen.
      *
-     * Null where the host has no chart to send them to — the guest shell — and then no card offers
-     * the entry at all, rather than offering a button that does nothing.
+     * Null where the host has no chart to send them to — the guest shell — and then no story offers
+     * the entry at all, rather than offering a button that does nothing. It now lives on the story's
+     * own page rather than on its card: a button inside a card that is itself the tap target is two
+     * destinations under one thumb.
      */
     onOpenChart: ((symbol: String, atSeconds: Long) -> Unit)? = null,
+    /**
+     * The address of the picture that belongs above a story, or null where there is none.
+     *
+     * **This is the whole image seam and it is deliberately one function.** Neither backend sends an
+     * image field today — `MarketNewsDto` has no such member, and both contract documents describe a
+     * thin adapter over a cache that has never held one — so the default answers null for every
+     * story and every layout below is written to be correct in that case.
+     *
+     * It is a parameter rather than a field on [MarketNewsItem] because `core:marketintel` is not
+     * this module's to change. The day the field lands there, the app passes `{ it.imageUrl }` here
+     * and every picture in this feature appears at once: the hero on a card, the hero on the reading
+     * page, and the copy kept with a saved story. The contract to ask for is in the report.
+     */
+    imageUrlOf: (MarketNewsItem) -> String? = { null },
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var relevance by remember { mutableStateOf<MarketRelevance?>(null) }
+    var savedOnly by rememberSaveable { mutableStateOf(false) }
+    // The open story is held twice, and both halves earn their place.
+    //
+    // The **id** is what survives a rotation and a process death, because it is the only part of a
+    // story that can be written into a Bundle — and it is the right part to keep, since the feed
+    // underneath is refetched every two hours and a stored copy of a replaced story would come back
+    // out of date.
+    //
+    // The **item** is what keeps the page open while the reader is on it. Without it the page is
+    // only ever as alive as the reader's own two lists, so unsaving a story that had already aged
+    // out of the feed would make the page the reader was reading disappear under them — which is
+    // the opposite of what pressing unsave asks for.
+    var openArticleId by rememberSaveable { mutableStateOf<String?>(null) }
+    var openArticle by remember { mutableStateOf<MarketNewsItem?>(null) }
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val store = remember(context) { savedNewsStoreOrNull(context) }
+    val savedFlow = remember(store) { store?.saved() ?: flowOf(emptyList()) }
+    val savedArticles by savedFlow.collectAsStateWithLifecycle(emptyList())
 
     LaunchedEffect(controller) { controller.refresh() }
 
-    val filtered = remember(state.news, relevance) {
-        if (relevance == null) state.news else state.news.filter { relevance in it.relevance }
+    val filtered = remember(state.news, relevance, savedOnly, savedArticles) {
+        when {
+            // A saved story is drawn from the reader's own copy, not looked up in the feed. The feed
+            // is a two-hour window; anything older than that is gone from it, and a saved list that
+            // could only show what happened to still be in the window would be a saved list that
+            // empties itself overnight.
+            savedOnly -> savedArticles.map(SavedArticle::asNewsItem)
+            relevance == null -> state.news
+            else -> state.news.filter { relevance in it.relevance }
+        }
     }
 
     // Only the markets this platform serves. A crypto session filtering by "Gold" would be asking
@@ -106,6 +177,52 @@ fun NewsScreen(
     }
     LaunchedEffect(platform) { relevance = null }
 
+    // The item first, then the two lists — the second path is what a reader who was killed mid-story
+    // comes back through, and it is why saving is worth offering at all: it is the only one of the
+    // two that still has the story an hour later.
+    val reading = openArticleId?.let { id ->
+        openArticle?.takeIf { it.id == id }
+            ?: state.news.firstOrNull { it.id == id }
+            ?: savedArticles.firstOrNull { it.id == id }?.asNewsItem()
+    }
+
+    // The system gesture and the button on the page do the same thing, which is the point: a reader
+    // who swipes back out of a story should not leave the news screen entirely.
+    BackHandler(enabled = openArticleId != null) {
+        openArticleId = null
+        openArticle = null
+    }
+
+    if (openArticleId != null) {
+        ReadingSurface(
+            item = reading,
+            saved = savedArticles.any { it.id == openArticleId },
+            store = store,
+            feed = state.news,
+            imageUrlOf = imageUrlOf,
+            onOpenChart = onOpenChart,
+            onOpen = { next ->
+                openArticle = next
+                openArticleId = next.id
+            },
+            onClose = {
+                openArticleId = null
+                openArticle = null
+            },
+            onSave = { item, saved ->
+                scope.launch {
+                    val target = store ?: return@launch
+                    if (saved) {
+                        target.remove(item.id)
+                    } else {
+                        target.save(item.asSavedArticle(imageUrlOf(item), Instant.now()))
+                    }
+                }
+            },
+        )
+        return
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -113,13 +230,29 @@ fun NewsScreen(
             .padding(horizontal = CoineProSpacing.Gutter),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
-        // The list voice: a compact header with its one action as an icon, so the first headline
-        // is above the fold rather than under a two-line heading and a button.
+        // The list voice: a compact header with its actions as icons, so the first headline is above
+        // the fold rather than under a two-line heading and a button.
         CoineProListHeader(
-            title = stringResource(R.string.news_title),
-            subtitle = stringResource(R.string.news_subtitle),
+            title = stringResource(if (savedOnly) R.string.news_saved_title else R.string.news_title),
+            subtitle = if (savedOnly) {
+                // A prose count, so Persian digits — the app's rule, and the opposite of what the
+                // figures on a market row take.
+                stringResource(R.string.news_saved_count, savedArticles.size.toPersianDigits())
+            } else {
+                stringResource(R.string.news_subtitle)
+            },
             modifier = Modifier.padding(horizontal = 0.dp),
             actions = {
+                // Only where there is a store to read. A filter that can only ever be empty is a
+                // control that teaches the reader the feature is broken.
+                if (store != null) {
+                    NewsIconAction(
+                        icon = DesignR.drawable.icon_bookmark_simple,
+                        label = stringResource(R.string.news_saved_title),
+                        onClick = { savedOnly = !savedOnly },
+                        tint = if (savedOnly) CoineProColors.Accent else CoineProColors.TextPrimary,
+                    )
+                }
                 CoineProHeaderAction(
                     icon = DesignR.drawable.icon_calendar_dots,
                     label = stringResource(R.string.news_calendar),
@@ -129,8 +262,9 @@ fun NewsScreen(
         )
 
         // A one-market platform gets no filter at all: a control with a single alternative to "all"
-        // is a switch that says nothing.
-        if (relevances.size > 1) {
+        // is a switch that says nothing. Nor does the saved list, which is the reader's own sequence
+        // and not a slice of today's feed.
+        if (relevances.size > 1 && !savedOnly) {
             CoineProSegmentedControl(
                 options = listOf<MarketRelevance?>(null).plus(relevances)
                     .map { it to (it?.let { r -> stringResource(r.labelRes()) } ?: stringResource(R.string.news_filter_all)) },
@@ -141,6 +275,8 @@ fun NewsScreen(
 
         AnimatedContent(
             targetState = when {
+                savedOnly && filtered.isEmpty() -> "saved-empty"
+                savedOnly -> "content"
                 state.loading -> "loading"
                 state.error != null && state.news.isEmpty() -> "error"
                 filtered.isEmpty() -> "empty"
@@ -160,6 +296,13 @@ fun NewsScreen(
                     action = stringResource(R.string.news_retry),
                     onAction = controller::refresh,
                 )
+                "saved-empty" -> CoineProEmptyState(
+                    icon = DesignR.drawable.icon_bookmark_simple,
+                    message = stringResource(R.string.news_saved_empty),
+                    hint = stringResource(R.string.news_saved_empty_hint),
+                    action = stringResource(R.string.news_saved_back),
+                    onAction = { savedOnly = false },
+                )
                 "empty" -> CoineProEmptyState(
                     icon = CoineProIcons.News,
                     message = stringResource(R.string.news_empty),
@@ -174,24 +317,106 @@ fun NewsScreen(
                 ) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
                     ) {
-                        item {
-                            FreshnessStrip(
-                                refreshing = state.refreshing,
-                                onRefresh = controller::refresh,
-                            )
+                        if (!savedOnly) {
+                            item {
+                                FreshnessStrip(
+                                    refreshing = state.refreshing,
+                                    onRefresh = controller::refresh,
+                                )
+                            }
                         }
                         items(filtered, key = MarketNewsItem::id) { item ->
-                            NewsCard(item, onOpenChart, Modifier.animateItem())
+                            NewsCard(
+                                item = item,
+                                imageUrl = imageUrlOf(item),
+                                onOpen = {
+                                    openArticle = item
+                                    openArticleId = item.id
+                                },
+                                modifier = Modifier.animateItem(),
+                            )
                         }
-                        item { androidx.compose.foundation.layout.Spacer(Modifier.padding(8.dp)) }
+                        item { Spacer(Modifier.height(CoineProSpacing.Three)) }
                     }
                 }
             }
         }
     }
 }
+
+/**
+ * The reading page, plus the one state the list cannot show: a story that is no longer anywhere.
+ *
+ * It happens for one reason and it is worth telling the reader about rather than silently bouncing
+ * them back: the process was killed while they were reading, the feed was refetched on the way back
+ * in, and their story had aged out of a two-hour window. Saving is the answer to that, so the
+ * message says so.
+ */
+@Composable
+private fun ReadingSurface(
+    item: MarketNewsItem?,
+    saved: Boolean,
+    store: SavedNewsStore?,
+    feed: List<MarketNewsItem>,
+    imageUrlOf: (MarketNewsItem) -> String?,
+    onOpenChart: ((symbol: String, atSeconds: Long) -> Unit)?,
+    onOpen: (MarketNewsItem) -> Unit,
+    onClose: () -> Unit,
+    onSave: (MarketNewsItem, Boolean) -> Unit,
+) {
+    if (item == null) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(CoineProColors.Stage)
+                .padding(horizontal = CoineProSpacing.Gutter),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            CoineProEmptyState(
+                icon = CoineProIcons.News,
+                message = stringResource(R.string.news_article_gone),
+                hint = stringResource(R.string.news_article_gone_hint),
+                action = stringResource(R.string.news_back_to_list),
+                onAction = onClose,
+            )
+        }
+        return
+    }
+    NewsArticleScreen(
+        item = item,
+        onBack = onClose,
+        imageUrl = imageUrlOf(item),
+        saved = saved,
+        onToggleSave = store?.let { { onSave(item, saved) } },
+        related = remember(feed, item) { relatedTo(item, feed) },
+        onOpenRelated = onOpen,
+        onOpenChart = onOpenChart,
+    )
+}
+
+/**
+ * The next few stories about the same market, newest first.
+ *
+ * Same market rather than "everything else", because the point is to be the story this reader was
+ * already going to want. A story tagged with nothing has no market to match on, so it gets the rest
+ * of the feed instead — which is still the right answer for a general-market headline, where the
+ * reader's interest is the feed itself.
+ */
+internal fun relatedTo(item: MarketNewsItem, feed: List<MarketNewsItem>): List<MarketNewsItem> {
+    val others = feed.filterNot { it.id == item.id }
+    val matched = if (item.relevance.isEmpty()) {
+        others
+    } else {
+        others.filter { candidate -> candidate.relevance.any { it in item.relevance } }
+    }
+    return matched.sortedByDescending(MarketNewsItem::publishedAt).take(MAX_RELATED)
+}
+
+/** Four. Enough that the page continues, few enough that it is a suggestion and not a second feed. */
+internal const val MAX_RELATED = 4
 
 @Composable
 private fun FreshnessStrip(refreshing: Boolean, onRefresh: () -> Unit) {
@@ -223,10 +448,30 @@ private fun FreshnessStrip(refreshing: Boolean, onRefresh: () -> Unit) {
     }
 }
 
+/**
+ * One story in the list.
+ *
+ * ### The order of the card, which is the whole of what changed
+ *
+ * Picture, classification, headline, summary, byline. The old card ran pills-and-timestamp,
+ * headline, summary, source-and-markets, chart button — five bands of roughly equal weight, so the
+ * eye had nowhere to land and every card cost the same to read whether or not it was interesting.
+ *
+ * The picture goes above everything, which is what the owner asked for and is also what makes a
+ * feed look like a feed rather than like a settings list. The pills stay above the headline, small
+ * and quiet, because a reader filtering for high-impact stories is scanning that band — but they
+ * are now the only thing between the picture and the headline. The byline moved to the bottom and
+ * merged with the timestamp: who and when are one question.
+ *
+ * The card is the tap target and it has nothing else tappable inside it. The chart entry that used
+ * to sit here moved to the story's own page: two destinations under one thumb is a card a reader
+ * cannot press confidently, and it was the reason the old card had a button at all.
+ */
 @Composable
 private fun NewsCard(
     item: MarketNewsItem,
-    onOpenChart: ((symbol: String, atSeconds: Long) -> Unit)?,
+    imageUrl: String?,
+    onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // A live high-impact story is the one card that gets an edge. Everything else is separated by
@@ -243,91 +488,60 @@ private fun NewsCard(
                     Modifier
                 },
             ),
+        onClick = onOpen,
+        // Zero, so the picture can reach the card's own edges. Everything under it carries the
+        // padding the card would have applied — see the column below.
+        contentPadding = PaddingValues(0.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
-            Row(
+        NewsHero(
+            url = imageUrl,
+            contentDescription = stringResource(R.string.news_image_of, item.title),
+            // The card's own radius on the two corners the picture touches, so no fill shows through
+            // behind it. `MaterialTheme.shapes.large` is 16dp; naming it here rather than reading it
+            // keeps the two corners identical to the card's even if this card is ever given another.
+            shape = RoundedCornerShape(topStart = CARD_RADIUS, topEnd = CARD_RADIUS),
+        )
+        Column(
+            modifier = Modifier.padding(
+                horizontal = CoineProSpacing.CardHorizontal,
+                vertical = CoineProSpacing.CardVertical,
+            ),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (item.impact != MarketImpact.UNKNOWN) ImpactPill(item.impact)
+                if (item.sentiment != NewsSentiment.UNKNOWN) SentimentPill(item.sentiment)
+                // Staleness is said, not implied by a dimmer grey nobody reads as a claim.
+                if (item.isStale) MetaPill(stringResource(R.string.news_stale), CoineProColors.Warning)
+            }
+            Text(
+                text = item.title,
+                style = NewsTextStyles.CardHeadline,
+                color = CoineProColors.TextPrimary,
+                maxLines = 3,
+                textAlign = TextAlign.Right,
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    ImpactPill(item.impact)
-                    SentimentPill(item.sentiment)
-                    // Staleness is said, not implied by a dimmer grey nobody reads as a claim.
-                    if (item.isStale) MetaPill(stringResource(R.string.news_stale), CoineProColors.Warning)
-                }
+            )
+            item.summary?.let { summary ->
                 Text(
-                    PersianDateTime.moment(item.publishedAt),
-                    color = CoineProColors.TextMuted,
-                    style = MaterialTheme.typography.labelSmall,
+                    text = summary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CoineProColors.TextSecondary,
+                    // Two lines. The whole summary is on the story's own page, and a card that
+                    // prints all of it is a card that has already been read — which is precisely
+                    // what made the old list feel like it had nowhere to go.
+                    maxLines = 2,
+                    textAlign = TextAlign.Right,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
-            Text(item.title, style = MaterialTheme.typography.titleSmall, color = CoineProColors.TextPrimary)
-            item.summary?.let {
-                Text(it, color = CoineProColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(item.source, color = CoineProColors.TextMuted, style = MaterialTheme.typography.labelMedium)
-                // Resolved before the join: stringResource is composable and cannot be called from
-                // inside joinToString's non-composable transform.
-                val relevanceLabels = item.relevance.map { stringResource(it.labelRes()) }
-                Text(
-                    text = relevanceLabels.joinToString(" · ")
-                        .ifBlank { stringResource(R.string.news_relevance_general) },
-                    color = CoineProColors.TextMuted,
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            }
-            // Only where the story names a market. A general-market headline has no instrument to
-            // open, and sending the reader to an arbitrary chart would imply the story was about it.
-            val symbol = ChartEventSymbols.symbolFor(item.relevance)
-            if (onOpenChart != null && symbol != null) {
-                CoineProSecondaryButton(
-                    text = stringResource(R.string.news_open_chart),
-                    icon = DesignR.drawable.nav_chart,
-                    onClick = { onOpenChart(symbol, item.publishedAt.epochSecond) },
-                )
-            }
+            NewsByline(item)
         }
     }
 }
 
-@Composable
-private fun ImpactPill(impact: MarketImpact) {
-    val color = when (impact) {
-        MarketImpact.HIGH -> CoineProColors.Sell
-        MarketImpact.MEDIUM -> CoineProColors.Warning
-        MarketImpact.LOW -> CoineProColors.Buy
-        MarketImpact.UNKNOWN -> CoineProColors.TextMuted
-    }
-    MetaPill(stringResource(impact.labelRes()), color)
-}
-
-@Composable
-private fun SentimentPill(sentiment: NewsSentiment) {
-    val color = when (sentiment) {
-        NewsSentiment.BULLISH -> CoineProColors.Buy
-        NewsSentiment.BEARISH -> CoineProColors.Sell
-        NewsSentiment.NEUTRAL -> CoineProColors.Silver
-        NewsSentiment.UNKNOWN -> CoineProColors.TextMuted
-    }
-    MetaPill(stringResource(sentiment.labelRes()), color)
-}
-
-@Composable
-private fun MetaPill(text: String, color: androidx.compose.ui.graphics.Color) {
-    Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = color.copy(alpha = 0.12f),
-        border = BorderStroke(1.dp, color.copy(alpha = 0.32f)),
-    ) {
-        Text(text, color = color, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
-    }
-}
+/** The card's corner, repeated here so the picture inside it can match. See [NewsCard]. */
+private val CARD_RADIUS = 16.dp
 
 @Composable
 private fun CenterState(
@@ -342,32 +556,15 @@ private fun CenterState(
         verticalArrangement = Arrangement.Center,
     ) {
         if (showProgress) CoineProThinkingDots()
-        Text(message, color = CoineProColors.TextSecondary, modifier = Modifier.padding(16.dp))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = CoineProColors.TextSecondary,
+            textAlign = TextAlign.Right,
+            modifier = Modifier.padding(16.dp),
+        )
         if (action != null && onAction != null) {
             CoineProPrimaryButton(text = action, onClick = onAction)
         }
     }
-}
-
-@androidx.annotation.StringRes
-private fun MarketRelevance.labelRes(): Int = when (this) {
-    MarketRelevance.GOLD -> R.string.news_relevance_gold
-    MarketRelevance.SILVER -> R.string.news_relevance_silver
-    MarketRelevance.CRYPTO -> R.string.news_relevance_crypto
-}
-
-@androidx.annotation.StringRes
-private fun MarketImpact.labelRes(): Int = when (this) {
-    MarketImpact.HIGH -> R.string.news_impact_high
-    MarketImpact.MEDIUM -> R.string.news_impact_medium
-    MarketImpact.LOW -> R.string.news_impact_low
-    MarketImpact.UNKNOWN -> R.string.news_impact_unknown
-}
-
-@androidx.annotation.StringRes
-private fun NewsSentiment.labelRes(): Int = when (this) {
-    NewsSentiment.BULLISH -> R.string.news_sentiment_bullish
-    NewsSentiment.BEARISH -> R.string.news_sentiment_bearish
-    NewsSentiment.NEUTRAL -> R.string.news_sentiment_neutral
-    NewsSentiment.UNKNOWN -> R.string.news_sentiment_unknown
 }

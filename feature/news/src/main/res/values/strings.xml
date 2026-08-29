@@ -16,7 +16,6 @@
     <string name="news_relevance_gold">طلا</string>
     <string name="news_relevance_silver">نقره</string>
     <string name="news_relevance_crypto">کریپتو</string>
-    <string name="news_relevance_general">بازار عمومی</string>
     <string name="news_impact_high">تأثیر بالا</string>
     <string name="news_impact_medium">تأثیر متوسط</string>
     <string name="news_impact_low">تأثیر کم</string>
@@ -26,4 +25,34 @@
     <string name="news_sentiment_neutral">خنثی</string>
     <string name="news_sentiment_unknown">جهت نامشخص</string>
     <string name="news_open_chart">نمایش روی نمودار</string>
+
+    <!-- The reading page. -->
+    <string name="news_back">برگشت</string>
+    <string name="news_share">ارسال برای دیگری</string>
+    <string name="news_share_subject">یک خبر از پرو‌چارت</string>
+    <string name="news_share_unavailable">روی این دستگاه برنامه‌ای برای ارسال پیدا نشد.</string>
+    <string name="news_save">ذخیره در پروفایل</string>
+    <string name="news_unsave">حذف از ذخیره‌شده‌ها</string>
+    <string name="news_image_of">تصویر خبر: %1$s</string>
+    <string name="news_no_summary">سرور برای این خبر خلاصه‌ای نفرستاده است.</string>
+    <string name="news_full_text_eyebrow">متن کامل</string>
+    <string name="news_full_text_note">متن کامل این خبر نزد %1$s منتشر شده و همان‌جا خوانده می‌شود. آنچه اینجا می‌بینید عنوان و خلاصه‌ای است که سرور فرستاده.</string>
+    <string name="news_no_link">%1$s برای این خبر نشانی‌ای نفرستاده است، پس راهی به متن کامل نداریم.</string>
+    <string name="news_read_at_source">خواندن متن کامل در منبع</string>
+    <string name="news_open_failed">مرورگری برای باز کردن این نشانی پیدا نشد.</string>
+    <string name="news_context_eyebrow">این خبر به چه مربوط است</string>
+    <string name="news_context_markets">این خبر روی %1$s اثر دارد.</string>
+    <string name="news_context_general">این خبر به بازار خاصی بسته نشده و عمومی است.</string>
+    <string name="news_market_join">و</string>
+    <string name="news_related_title">بیشتر از همین بازار</string>
+    <string name="news_article_gone">این خبر دیگر در فهرست نیست.</string>
+    <string name="news_article_gone_hint">فهرست اخبار هر دو ساعت تازه می‌شود و خبرهای قدیمی از آن می‌افتند. خبری که ذخیره کنید می‌ماند.</string>
+    <string name="news_back_to_list">بازگشت به فهرست</string>
+
+    <!-- The saved list. -->
+    <string name="news_saved_title">ذخیره‌شده‌ها</string>
+    <string name="news_saved_count">%1$s خبر که نگه داشته‌اید</string>
+    <string name="news_saved_empty">هنوز خبری ذخیره نکرده‌اید.</string>
+    <string name="news_saved_empty_hint">هر خبری را که باز کنید، با دکمهٔ نشان‌گذاری بالای صفحه اینجا می‌ماند — حتی بعد از اینکه از فهرست بیفتد.</string>
+    <string name="news_saved_back">بازگشت به اخبار</string>
 </resources>

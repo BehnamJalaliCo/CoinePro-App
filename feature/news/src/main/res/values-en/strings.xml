@@ -15,7 +15,6 @@
     <string name="news_relevance_gold">Gold</string>
     <string name="news_relevance_silver">Silver</string>
     <string name="news_relevance_crypto">Crypto</string>
-    <string name="news_relevance_general">General market</string>
     <string name="news_impact_high">High impact</string>
     <string name="news_impact_medium">Medium impact</string>
     <string name="news_impact_low">Low impact</string>
@@ -25,4 +24,34 @@
     <string name="news_sentiment_neutral">Neutral</string>
     <string name="news_sentiment_unknown">Sentiment unknown</string>
     <string name="news_open_chart">Show on the chart</string>
+
+    <!-- The reading page. -->
+    <string name="news_back">Back</string>
+    <string name="news_share">Send to someone</string>
+    <string name="news_share_subject">A story from Pro-Chart</string>
+    <string name="news_share_unavailable">Nothing on this device can send it.</string>
+    <string name="news_save">Save to your profile</string>
+    <string name="news_unsave">Remove from saved</string>
+    <string name="news_image_of">Picture for: %1$s</string>
+    <string name="news_no_summary">The server sent no summary for this story.</string>
+    <string name="news_full_text_eyebrow">The full story</string>
+    <string name="news_full_text_note">The full text is published by %1$s and is read there. What you see here is the headline and summary the server sent.</string>
+    <string name="news_no_link">%1$s sent no address for this story, so there is no way through to the full text.</string>
+    <string name="news_read_at_source">Read the full story at the source</string>
+    <string name="news_open_failed">No browser was found to open this address.</string>
+    <string name="news_context_eyebrow">What this bears on</string>
+    <string name="news_context_markets">This story bears on %1$s.</string>
+    <string name="news_context_general">This story is not tied to one market.</string>
+    <string name="news_market_join">and</string>
+    <string name="news_related_title">More on this market</string>
+    <string name="news_article_gone">This story is no longer in the feed.</string>
+    <string name="news_article_gone_hint">The feed refreshes every two hours and older stories drop out of it. A story you save stays.</string>
+    <string name="news_back_to_list">Back to the list</string>
+
+    <!-- The saved list. -->
+    <string name="news_saved_title">Saved</string>
+    <string name="news_saved_count">%1$s stories you kept</string>
+    <string name="news_saved_empty">You have not saved anything yet.</string>
+    <string name="news_saved_empty_hint">Open any story and the bookmark at the top keeps it here — even after it drops out of the feed.</string>
+    <string name="news_saved_back">Back to the news</string>
 </resources>
