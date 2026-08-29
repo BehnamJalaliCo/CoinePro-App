@@ -193,6 +193,7 @@ import com.coinepro.feature.guest.GuestNewsScreen
 import com.coinepro.feature.guest.GuestScreen
 import com.coinepro.feature.home.HomeBriefing
 import com.coinepro.feature.home.HomePortfolio
+import com.coinepro.feature.free.FreeScreen
 import com.coinepro.feature.heatmap.CandleHeatmapBarSource
 import com.coinepro.feature.heatmap.HeatmapScreen
 import com.coinepro.feature.home.HomeScreen
@@ -248,6 +249,7 @@ private const val ACADEMY_ROUTE = "academy"
 private const val TERMINAL_ROUTE = "terminal"
 private const val LESSON_PATTERN = "academy/lesson/{slug}"
 private const val NEWS_ROUTE = "market/news"
+private const val FREE_ROUTE = "free"
 private const val CALENDAR_ROUTE = "market/calendar"
 private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
 private const val ADMIN_ROUTE = "diagnostics"
@@ -392,6 +394,7 @@ private val SELF_TITLED: Set<String> = setOf(
     MEMBERSHIP_ROUTE,
     HEATMAP_ROUTE,
     SCREENER_ROUTE,
+    FREE_ROUTE,
 )
 
 private fun accentFor(route: String?): PageAccent = when (route) {
@@ -1519,6 +1522,7 @@ private fun MainShell(
         ACADEMY_ROUTE, LESSON_PATTERN -> R.string.screen_academy
         TERMINAL_ROUTE -> R.string.screen_terminal
         NEWS_ROUTE -> R.string.screen_news
+        FREE_ROUTE -> R.string.screen_free
         CALENDAR_ROUTE -> R.string.screen_calendar
         LAUNCH_READINESS_ROUTE -> R.string.screen_launch_readiness
         else -> R.string.app_name
@@ -1736,6 +1740,7 @@ private fun MainShell(
                         onOpenSymbol = { navController.navigate(chartRoute(it)) },
                         onOpenMarket = { navController.navigate(AppDestination.MARKETS.route) },
                         onOpenTools = { navController.navigate(TOOLS_ROUTE) },
+                        onOpenFree = { navController.navigate(FREE_ROUTE) },
                     )
                     return@composable
                 }
@@ -2480,6 +2485,12 @@ private fun MainShell(
                     onPickPrice = { price -> alertFromChart = activeChartSymbol to price },
                 )
             }
+            composable(FREE_ROUTE) {
+                // No controller and no gateway: everything on it is either a constant or a count
+                // read from the app's own catalogues, so it renders identically for a guest, on a
+                // dead connection, on either platform.
+                FreeScreen()
+            }
             composable(NEWS_ROUTE) {
                 // A guest reads the public headline route, which needs no account and which their
                 // own home screen was already showing twelve of. Pointing them at the members'
@@ -2538,6 +2549,9 @@ private fun MainShell(
                     // on this screen is local to the phone and opens for anybody.
                     onOpenConnections = if (guest) null else ({ navController.navigate(CONNECTIONS_ROUTE) }),
                     onOpenNews = { navController.navigate(NEWS_ROUTE) },
+                    // Never gated. The comparison page is the answer to «چرا این اپ؟» and a
+                    // reader who cannot reach it is the reader who most needed it.
+                    onOpenFree = { navController.navigate(FREE_ROUTE) },
                     onOpenCalendar = if (guest) null else ({ navController.navigate(CALENDAR_ROUTE) }),
                     onOpenPortfolio = if (guest) null else ({ navController.navigate(PORTFOLIO_ROUTE) }),
                     onOpenAcademy = if (hasAcademy && !guest) {

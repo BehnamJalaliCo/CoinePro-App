@@ -8,7 +8,7 @@ import kotlin.math.pow
 import kotlin.math.sqrt
 
 /**
- * The second thirty indicators, ported from Pro-Chart's `indicators_ext_a.js` and
+ * The second thirty indicators, ported from Pro CHart's `indicators_ext_a.js` and
  * `indicators_ext_b.js`.
  *
  * Split from [Indicators] only because one file of fifty is unreadable; there is no other line
@@ -29,7 +29,7 @@ import kotlin.math.sqrt
  * On a clean close series the two are identical. They diverge exactly where one indicator is fed
  * another's output — TRIX's signal line over TRIX, SMI's double smoothing — which is most of the
  * interesting ones. Where an indicator appears in both registries (TRIX, %B, bandwidth), pack B is
- * the one Pro-Chart actually loads, so pack B is what is ported.
+ * the one Pro CHart actually loads, so pack B is what is ported.
  *
  * Reproducing that split is not tidiness lost. It is the difference between an indicator that
  * matches the web terminal and one that is plausibly wrong — and a plausibly wrong indicator is the

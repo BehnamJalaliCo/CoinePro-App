@@ -33,7 +33,7 @@ import kotlin.math.sin
  * The fifty drawing tools, drawn.
  *
  * This is the port of the web terminal's `drawings.js` and `drawtools_ext.js` — the geometry, not
- * the plumbing. Every formula here is the one that shipped in Pro-Chart, which matters for a reason
+ * the plumbing. Every formula here is the one that shipped in Pro CHart, which matters for a reason
  * beyond saving work: a reader who has drawn a Gann fan in the web terminal and draws one here has
  * to get the same nine rays at the same nine angles, or the two products disagree about the market.
  *

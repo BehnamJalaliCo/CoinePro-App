@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Default language: Persian. app_name is the brand and is not translated. -->
 <resources>
-    <string name="app_name" translatable="false">Pro-Chart</string>
+    <string name="app_name" translatable="false">Pro CHart</string>
 
     <string name="action_back">بازگشت</string>
     <string name="action_safety">ایمنی</string>
@@ -25,6 +25,7 @@
     <string name="screen_academy">آکادمی</string>
     <string name="screen_terminal">ترمینال حرفه‌ای</string>
     <string name="screen_news">اخبار بازار</string>
+    <string name="screen_free">اینجا رایگان است</string>
     <string name="screen_calendar">تقویم اقتصادی</string>
     <string name="screen_diagnostics">پنل تشخیص</string>
     <string name="screen_launch_readiness">ایمنی و انتشار</string>

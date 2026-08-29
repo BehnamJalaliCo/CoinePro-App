@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="free_title">Free here</string>
+    <string name="free_lede">If you have just installed this app and do not know us, this page is the shortest way to see what you get. Everything below it is something another product charges for.</string>
+    <string name="free_prices_checked">The prices below were read from each product\'s own page on %1$s and may have changed since.</string>
+    <string name="free_tally">Of the %1$s things we checked, %2$s are free here, %3$s are partial, and %4$s we do not have at all.</string>
+    <string name="free_honesty_title">What we do not have</string>
+    <string name="free_honesty_body">This section is here on purpose. If every line in this list said we had it, the first reader who had actually used one of these products would find the overstatement within a minute — and after that no other line would be believed either.</string>
+
+    <string name="free_verdict_free">Free</string>
+    <string name="free_verdict_partial">Partial</string>
+    <string name="free_verdict_absent">Not here</string>
+
+    <string name="free_footer">There is no monthly subscription, no in-app purchase and no advertising in this app.</string>
+
+    <string name="free_tv_indicators">Indicators per chart — 2 on the free tier</string>
+    <string name="free_tv_price">From $12.95 to $199.95 a month</string>
+    <string name="free_tv_indicators_answer">%1$s indicators, %2$s drawing tools and %3$s chart types, with no cap on how many you put on at once.</string>
+
+    <string name="free_tv_alerts">Price alerts — 3 on the free tier</string>
+    <string name="free_tv_alerts_answer">%1$s alerts, on the phone itself. The cap exists only so a bug in the app cannot write rows forever.</string>
+
+    <string name="free_tv_watchlists">Watchlists — 1 on the free tier · Saved layouts — 1</string>
+    <string name="free_tv_watchlists_answer">%1$s watchlists with colour flags and chosen columns, and %2$s saved layouts.</string>
+
+    <string name="free_tv_panes">Charts per tab — 1 on the free tier</string>
+    <string name="free_tv_panes_answer">Two. Ahead of their free tier and level with their middle plan, but not the eight their most expensive one gives.</string>
+
+    <string name="free_tv_volume_profile">Volume profile</string>
+    <string name="free_tv_volume_profile_answer">We do not have it, and it cannot be built without intraday volume. Neither of our two feeds sends any.</string>
+
+    <string name="free_gecko_ads">Ad removal</string>
+    <string name="free_gecko_price">From about $8.32 a month billed yearly</string>
+    <string name="free_gecko_ads_answer">This app has no advertising at all, so there is nothing to remove.</string>
+
+    <string name="free_gecko_wallets">On-chain wallet tracking</string>
+    <string name="free_gecko_wallets_answer">We do not have it. It needs an on-chain data provider, and we relay two exchanges.</string>
+
+    <string name="free_cmc_marketcap">Market cap, circulating supply and global rank</string>
+    <string name="free_cmc_price">From $29 a month</string>
+    <string name="free_cmc_marketcap_answer">We do not have these. They come from an aggregator rather than an exchange, and we have no aggregator — which is why the heat map has no size-by-market-cap mode at all, rather than a button that cannot answer.</string>
+
+    <string name="free_glassnode_onchain">On-chain metrics — exchange flows, SOPR, MVRV</string>
+    <string name="free_glassnode_price">From about $49 a month to near $999</string>
+    <string name="free_glassnode_onchain_answer">We do not have these and we are not promising them. Their whole product is on-chain and we have no source for it.</string>
+
+    <string name="free_messari_screener">Advanced screener</string>
+    <string name="free_messari_price">About $29 a month</string>
+    <string name="free_messari_screener_answer">Our screener is free and can filter on the indicators themselves.</string>
+
+    <string name="free_coinstats_portfolio">Portfolio analytics — Sharpe, Sortino, drawdown</string>
+    <string name="free_coinstats_price">About $8.33 a month billed yearly</string>
+    <string name="free_coinstats_portfolio_answer">Sharpe, Sortino, profit factor, expectancy, maximum drawdown, the equity curve, per-symbol attribution and CSV export — all free.</string>
+
+    <string name="free_investing_ai">AI assistant and custom alerts</string>
+    <string name="free_investing_price">From about $9.50 a month</string>
+    <string name="free_investing_ai_answer">The assistant, signal generation and chart-image analysis are all here and all free.</string>
+
+    <string name="free_investing_fair_value">Fair value from 17 valuation models</string>
+    <string name="free_investing_fair_value_answer">We do not have it, and for crypto it has no meaning: those models work on a company\'s financial statements. Not building it is a decision, not a gap.</string>
+</resources>

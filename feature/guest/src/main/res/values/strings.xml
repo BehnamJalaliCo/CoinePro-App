@@ -42,4 +42,7 @@
     <string name="guest_news_count">%1$s خبر تازه</string>
     <string name="guest_news_retry">تلاش دوباره</string>
     <string name="guest_news_empty">خبری منتشر نشده است.</string>
+    <string name="guest_free_title">اینجا رایگان است</string>
+    <string name="guest_free_body">اگر ما را نمی‌شناسید، این کوتاه‌ترین راه است: فهرستی از چیزهایی که محصولات دیگر بابتشان پول می‌گیرند، و اینکه اینجا کدامشان هست و کدامشان نیست.</string>
+    <string name="guest_free_open">ببینید چه چیزی رایگان است</string>
 </resources>

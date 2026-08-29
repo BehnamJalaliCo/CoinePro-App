@@ -183,4 +183,7 @@
     <string name="tools_paper_title">Paper trading</string>
     <string name="tools_paper_body">Live prices, no money. For the days before an account is funded.</string>
     <string name="tools_paper_open">Start</string>
+    <string name="tools_free_title">Free here</string>
+    <string name="tools_free_body">What TradingView, CoinGecko and the rest charge a subscription for — and which of those things are free here, and which we do not have at all.</string>
+    <string name="tools_free_open">See the comparison</string>
 </resources>

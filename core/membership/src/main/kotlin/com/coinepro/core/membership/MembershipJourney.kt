@@ -6,11 +6,11 @@ package com.coinepro.core.membership
  * They are the published terms' own list — §۶-۲ — plus the one the terms take for granted because
  * they are read on a web page: being signed in to the app at all. The order is not a presentation
  * choice. [EXCHANGE_ACCOUNT] is first because it is the only one that cannot be undone: an account
- * opened without Pro-Chart's link is not a sub-account in the exchange's own system and no later
+ * opened without Pro CHart's link is not a sub-account in the exchange's own system and no later
  * step can rescue it, so a reader who does the others first has lost the work.
  */
 enum class MembershipStep {
-    /** Signed in to Pro-Chart. */
+    /** Signed in to Pro CHart. */
     SIGN_IN,
 
     /** Registered at LBank or Ourbit **through the referral link**. */
@@ -19,7 +19,7 @@ enum class MembershipStep {
     /** Funded to the threshold the server publishes. */
     FUNDING,
 
-    /** The exchange UID handed to Pro-Chart. */
+    /** The exchange UID handed to Pro CHart. */
     UID,
 
     /** The exchange's own API asked, and its answer recorded. */
@@ -122,7 +122,7 @@ data class MembershipStepProgress(val step: MembershipStep, val state: Membershi
  * Every [MembershipStepState.DONE] below is a deduction from something the server said, and each
  * one is worth naming because the temptation to guess is real:
  *
- * * `approved` and `pending_deposit` both mean the exchange confirmed the account is a Pro-Chart
+ * * `approved` and `pending_deposit` both mean the exchange confirmed the account is a Pro CHart
  *   sub-account — that is what the verifier checks first — so [MembershipStep.EXCHANGE_ACCOUNT] is
  *   genuinely done in both. `pending_deposit` additionally means the balance was read and fell
  *   short, which is why funding becomes the current step rather than an unknown one.

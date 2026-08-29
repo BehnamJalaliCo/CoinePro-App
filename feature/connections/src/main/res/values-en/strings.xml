@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="connections_title">Connections</string>
-    <string name="connections_subtitle">Connect an account only to execute Pro-Chart signals. Credentials travel to the server over HTTPS and are never stored by the app.</string>
+    <string name="connections_subtitle">Connect an account only to execute Pro CHart signals. Credentials travel to the server over HTTPS and are never stored by the app.</string>
     <string name="connections_setup_not_proof">What you enter here is setup input, not proof of a connection. Connected state comes only from the server and the venue; if verification does not arrive, execution stays pending rather than being guessed locally.</string>
     <string name="connections_mt5_body">Broker, server, account number and trading password are yours to provide. Saving them is not a successful MetaTrader connection; verification must come back from the server.</string>
     <string name="connections_lbank_body">Create an LBank API key with only the permission you need: spot or futures. Withdrawal permission is not required. Saving a key does not mean the exchange has verified it.</string>

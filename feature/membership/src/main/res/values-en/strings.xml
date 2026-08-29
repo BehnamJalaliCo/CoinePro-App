@@ -31,20 +31,20 @@
 
     <!-- The locked-access panel: the whole arrangement, said in the app. -->
     <string name="membership_access_title">Access to signals</string>
-    <string name="membership_access_free">Membership is free — no monthly subscription, no in-app purchase, no activation fee. The one requirement is a funded exchange account opened through Pro-Chart\'s dedicated link.</string>
+    <string name="membership_access_free">Membership is free — no monthly subscription, no in-app purchase, no activation fee. The one requirement is a funded exchange account opened through Pro CHart\'s dedicated link.</string>
     <string name="membership_access_where">Where you are:</string>
 
-    <string name="membership_journey_sign_in">Sign in to Pro-Chart</string>
+    <string name="membership_journey_sign_in">Sign in to Pro CHart</string>
     <string name="membership_journey_sign_in_detail">This is the account access opens on.</string>
-    <string name="membership_journey_exchange">Register at an exchange through Pro-Chart\'s link</string>
-    <string name="membership_journey_exchange_detail">This step is not optional and cannot be fixed later: an account opened through any other link is not tied to Pro-Chart in the exchange\'s own system, and cannot be verified.</string>
+    <string name="membership_journey_exchange">Register at an exchange through Pro CHart\'s link</string>
+    <string name="membership_journey_exchange_detail">This step is not optional and cannot be fixed later: an account opened through any other link is not tied to Pro CHart in the exchange\'s own system, and cannot be verified.</string>
     <string name="membership_journey_funding">Fund the account to the threshold</string>
-    <string name="membership_journey_funding_amount">Fund your exchange account to at least %1$s USDT. The money stays yours, at the exchange; Pro-Chart never takes or holds it.</string>
-    <string name="membership_journey_funding_plain">Fund your exchange account to the threshold the exchange and the server state. The money stays yours, at the exchange; Pro-Chart never takes or holds it.</string>
+    <string name="membership_journey_funding_amount">Fund your exchange account to at least %1$s USDT. The money stays yours, at the exchange; Pro CHart never takes or holds it.</string>
+    <string name="membership_journey_funding_plain">Fund your exchange account to the threshold the exchange and the server state. The money stays yours, at the exchange; Pro CHart never takes or holds it.</string>
     <string name="membership_journey_uid">Submit your exchange UID</string>
     <string name="membership_journey_uid_detail">Copy the UID from your exchange account profile and enter it here, in the app.</string>
     <string name="membership_journey_verification">Automatic verification</string>
-    <string name="membership_journey_verification_detail">Pro-Chart asks the exchange\'s own API. Nothing is needed from you, and the answer appears on this screen.</string>
+    <string name="membership_journey_verification_detail">Pro CHart asks the exchange\'s own API. Nothing is needed from you, and the answer appears on this screen.</string>
 
     <string name="membership_step_done">Done</string>
     <string name="membership_step_current">Current step</string>
@@ -58,9 +58,9 @@
     <string name="membership_access_waiting">The check is running on the server. There is nothing for you to do; ask again here whenever you like.</string>
     <string name="membership_access_unreadable">Your membership status could not be read just now, so this screen claims nothing about your steps. The conditions below still stand.</string>
     <string name="membership_access_terms">Full membership terms</string>
-    <string name="membership_access_fund_note">Your account is confirmed as a Pro-Chart sub-account and only the balance is short. Top it up and verification runs again by itself.</string>
+    <string name="membership_access_fund_note">Your account is confirmed as a Pro CHart sub-account and only the balance is short. Top it up and verification runs again by itself.</string>
     <string name="membership_access_open_exchange">Open another account, this time through the link below. The UID on file cannot be accepted.</string>
-    <string name="membership_access_exchange_uid_note">If you have another account that was opened through Pro-Chart\'s link, send that UID instead.</string>
+    <string name="membership_access_exchange_uid_note">If you have another account that was opened through Pro CHart\'s link, send that UID instead.</string>
 
     <!-- The evidence a locked reader is owed before anything is asked of them. -->
     <string name="membership_record_title">Closed-signal track record</string>

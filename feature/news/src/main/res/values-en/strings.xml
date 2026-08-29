@@ -28,7 +28,7 @@
     <!-- The reading page. -->
     <string name="news_back">Back</string>
     <string name="news_share">Send to someone</string>
-    <string name="news_share_subject">A story from Pro-Chart</string>
+    <string name="news_share_subject">A story from Pro CHart</string>
     <string name="news_share_unavailable">Nothing on this device can send it.</string>
     <string name="news_save">Save to your profile</string>
     <string name="news_unsave">Remove from saved</string>

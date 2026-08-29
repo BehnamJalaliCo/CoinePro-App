@@ -447,6 +447,7 @@ dependencies {
     implementation(project(":feature:ai"))
     implementation(project(":feature:ai-vision"))
     implementation(project(":feature:ai-assistant"))
+    implementation(project(":feature:free"))
     implementation(project(":feature:news"))
     implementation(project(":feature:calendar"))
     implementation(project(":feature:screener"))

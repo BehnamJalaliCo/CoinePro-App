@@ -122,6 +122,13 @@ fun ToolsScreen(
     onOpenScreener: (() -> Unit)? = null,
     /** Opens the closed-trade history. Null on a build with no portfolio screen. */
     onOpenPortfolio: (() -> Unit)? = null,
+    /**
+     * «اینجا رایگان است» — the comparison page.
+     *
+     * Never null. Everything on that page is a constant or a count read from the app's own
+     * catalogues, so there is no platform, no session and no connection on which it cannot answer.
+     */
+    onOpenFree: () -> Unit,
     /** Opens the academy. Null on a platform that has none — TradeYar. */
     onOpenAcademy: (() -> Unit)? = null,
     /** Opens the trading journal. Local to the device and available on both platforms. */
@@ -171,6 +178,7 @@ fun ToolsScreen(
                 onOpenPaperTrade = onOpenPaperTrade,
                 onOpenScript = onOpenScript,
                 onOpenAcademy = onOpenAcademy,
+                onOpenFree = onOpenFree,
             )
         }
         item { Spacer(Modifier.height(20.dp)) }
@@ -642,6 +650,7 @@ private fun OperationalTools(
     onOpenConnections: (() -> Unit)?,
     onOpenPortfolio: (() -> Unit)?,
     onOpenAcademy: (() -> Unit)?,
+    onOpenFree: () -> Unit,
     onOpenJournal: (() -> Unit)?,
     onOpenPaperTrade: (() -> Unit)?,
     onOpenScript: (() -> Unit)?,
@@ -712,6 +721,12 @@ private fun OperationalTools(
                 onClick = it,
             )
         }
+        OperationalCard(
+            title = stringResource(R.string.tools_free_title),
+            description = stringResource(R.string.tools_free_body),
+            button = stringResource(R.string.tools_free_open),
+            onClick = onOpenFree,
+        )
     }
 }
 

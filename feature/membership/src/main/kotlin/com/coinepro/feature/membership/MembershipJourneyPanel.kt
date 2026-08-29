@@ -68,7 +68,7 @@ import com.coinepro.core.membership.membershipJourney
  * in three separate ways at once: they have never heard of the channel, there is nothing in the app
  * that tells them what the bot is or which of two channels to join, and — worst — **the sentence is
  * not true of this product any more.** §۶ of the published terms and the Play data declaration both
- * say Pro-Chart sells nothing: membership is free, and its condition is a funded exchange account
+ * say Pro CHart sells nothing: membership is free, and its condition is a funded exchange account
  * opened through the referral link and verified from the exchange's own API by UID. An app that
  * declares no purchases and then tells a reader to go and buy a subscription is not merely
  * unhelpful, it is the kind of contradiction a Play reviewer opens a policy ticket about.
@@ -98,7 +98,7 @@ import com.coinepro.core.membership.membershipJourney
  * the referral links, the UID form, a re-check, or the reload that a newly approved reader needs.
  *
  * The registration links are the server's and are never compiled in. A link one release out of date
- * does not fail visibly: the exchange simply never records the account as Pro-Chart's, so the reader
+ * does not fail visibly: the exchange simply never records the account as Pro CHart's, so the reader
  * funds it, submits their UID, and is refused for a reason nothing on screen could explain. Where
  * the server sent none, the steps are still stated and the panel says the link has not arrived —
  * which is honest, and is not a promise the app cannot keep.

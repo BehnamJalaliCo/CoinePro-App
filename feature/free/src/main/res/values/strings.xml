@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="free_title">اینجا رایگان است</string>
+    <string name="free_lede">اگر تازه اپ را نصب کرده‌اید و ما را نمی‌شناسید، این صفحه کوتاه‌ترین راه برای فهمیدن اینکه چه چیزی به دست می‌آورید. هرچه پایین‌تر آمده، جای دیگری پول می‌گیرند.</string>
+    <string name="free_prices_checked">قیمت‌های زیر در %1$s از صفحهٔ رسمی هر محصول خوانده شده‌اند و ممکن است تغییر کرده باشند.</string>
+    <string name="free_tally">از %1$s موردی که بررسی کردیم، %2$s مورد اینجا رایگان است، %3$s مورد نیمه، و %4$s مورد را اصلاً نداریم.</string>
+    <string name="free_honesty_title">چیزهایی که نداریم</string>
+    <string name="free_honesty_body">این بخش را عمداً ننداخته‌ایم بیرون. اگر هر چیزی که در این فهرست است را «داریم» می‌نوشتیم، اولین کسی که یکی از این محصولات را استفاده کرده باشد ظرف یک دقیقه اغراق را پیدا می‌کرد — و بعد از آن هیچ سطر دیگری هم باور نمی‌شد.</string>
+
+    <string name="free_verdict_free">رایگان</string>
+    <string name="free_verdict_partial">نیمه</string>
+    <string name="free_verdict_absent">نداریم</string>
+
+    <string name="free_footer">هیچ اشتراک ماهانه‌ای، هیچ خرید درون‌برنامه‌ای و هیچ تبلیغی در این اپ نیست.</string>
+
+    <string name="free_tv_indicators">اندیکاتور روی هر چارت — در نسخهٔ رایگان فقط ۲ تا</string>
+    <string name="free_tv_price">از ۱۲.۹۵ تا ۱۹۹.۹۵ دلار در ماه</string>
+    <string name="free_tv_indicators_answer">%1$s اندیکاتور، %2$s ابزار ترسیم و %3$s نوع چارت، بدون سقف روی تعدادی که هم‌زمان می‌گذارید.</string>
+
+    <string name="free_tv_alerts">هشدار قیمت — در نسخهٔ رایگان ۳ تا</string>
+    <string name="free_tv_alerts_answer">%1$s هشدار، روی خودِ گوشی. سقفش فقط برای این است که یک اشکالِ برنامه نتواند بی‌نهایت ردیف بسازد.</string>
+
+    <string name="free_tv_watchlists">دیده‌بان — در نسخهٔ رایگان ۱ تا · چیدمان ذخیره‌شده — ۱ تا</string>
+    <string name="free_tv_watchlists_answer">%1$s دیده‌بان با پرچم رنگی و ستون‌های انتخابی، و %2$s چیدمان ذخیره‌شده.</string>
+
+    <string name="free_tv_panes">چارت در هر تب — در نسخهٔ رایگان ۱ تا</string>
+    <string name="free_tv_panes_answer">دو تا. از نسخهٔ رایگانشان جلوتر و برابر با پلن میانی‌شان، ولی نه هشت‌تایی که در گران‌ترین پلن می‌دهند.</string>
+
+    <string name="free_tv_volume_profile">پروفایل حجم</string>
+    <string name="free_tv_volume_profile_answer">نداریم، و بدون حجمِ درون‌روزی هم نمی‌شود ساخت. هیچ‌کدام از دو فید ما آن را نمی‌فرستند.</string>
+
+    <string name="free_gecko_ads">حذف تبلیغات</string>
+    <string name="free_gecko_price">از حدود ۸.۳۲ دلار در ماه با پرداخت سالانه</string>
+    <string name="free_gecko_ads_answer">این اپ اصلاً تبلیغ ندارد، پس چیزی برای حذف کردن هم ندارد.</string>
+
+    <string name="free_gecko_wallets">ردیابی کیف پول‌های آن‌چین</string>
+    <string name="free_gecko_wallets_answer">نداریم. به یک ارائه‌دهندهٔ دادهٔ آن‌چین نیاز دارد و ما فقط دو صرافی را رله می‌کنیم.</string>
+
+    <string name="free_cmc_marketcap">ارزش بازار، عرضهٔ در گردش و رتبهٔ جهانی</string>
+    <string name="free_cmc_price">از ۲۹ دلار در ماه</string>
+    <string name="free_cmc_marketcap_answer">نداریم. اینها از یک آگرگاتور می‌آیند، نه از صرافی — و ما آگرگاتور نداریم. به همین دلیل در نقشهٔ حرارتی هم گزینهٔ «اندازه بر اساس ارزش بازار» را حذف کردیم به‌جای اینکه دکمه‌ای بگذاریم که کار نکند.</string>
+
+    <string name="free_glassnode_onchain">سنجه‌های آن‌چین — جریان صرافی‌ها، SOPR، MVRV</string>
+    <string name="free_glassnode_price">از حدود ۴۹ دلار در ماه تا نزدیک ۹۹۹ دلار</string>
+    <string name="free_glassnode_onchain_answer">نداریم و قول هم نمی‌دهیم. کلِ کارشان آن‌چین است و ما هیچ منبعی برایش نداریم.</string>
+
+    <string name="free_messari_screener">اسکرینر پیشرفته</string>
+    <string name="free_messari_price">حدود ۲۹ دلار در ماه</string>
+    <string name="free_messari_screener_answer">اسکرینر ما رایگان است و می‌تواند روی خودِ اندیکاتورها فیلتر بگذارد.</string>
+
+    <string name="free_coinstats_portfolio">تحلیل پرتفوی — شارپ، سورتینو، افت سرمایه</string>
+    <string name="free_coinstats_price">حدود ۸.۳۳ دلار در ماه با پرداخت سالانه</string>
+    <string name="free_coinstats_portfolio_answer">شارپ، سورتینو، ضریب سود، امیدِ ریاضی، بیشترین افت سرمایه، منحنی سرمایه، تفکیک به تفکیک نماد و برون‌بری CSV — همه رایگان.</string>
+
+    <string name="free_investing_ai">دستیار هوش مصنوعی و هشدار سفارشی</string>
+    <string name="free_investing_price">از حدود ۹.۵ دلار در ماه</string>
+    <string name="free_investing_ai_answer">دستیار، تولید سیگنال و تحلیل تصویرِ چارت هر سه اینجا هستند و رایگان‌اند.</string>
+
+    <string name="free_investing_fair_value">ارزش منصفانه از ۱۷ مدل ارزش‌گذاری</string>
+    <string name="free_investing_fair_value_answer">نداریم، و برای ارز دیجیتال معنا هم ندارد: این مدل‌ها روی صورت‌های مالی یک شرکت کار می‌کنند. نساختنش تصمیم است، نه کمبود.</string>
+</resources>

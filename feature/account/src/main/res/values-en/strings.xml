@@ -16,7 +16,7 @@
     <string name="delete_account_kept_note">Both are kept anonymised — no e-mail, name or UID — and are no longer attributable to you.</string>
 
     <string name="delete_account_not_removed_title">What is not deleted</string>
-    <string name="delete_account_not_removed_exchange">Your account at the exchange. That account is yours; Pro-Chart neither created it nor can close it.</string>
+    <string name="delete_account_not_removed_exchange">Your account at the exchange. That account is yours; Pro CHart neither created it nor can close it.</string>
 
     <string name="delete_account_confirm_word">DELETE</string>
     <string name="delete_account_type_to_confirm">Type “%1$s” to confirm.</string>

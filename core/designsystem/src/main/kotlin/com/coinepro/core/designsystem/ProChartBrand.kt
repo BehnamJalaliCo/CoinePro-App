@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * The Pro-Chart mark and wordmark.
+ * The Pro CHart mark and wordmark.
  *
  * ### One asset per shape, and the colour comes from the theme
  *
@@ -58,8 +58,12 @@ fun ProChartWordmark(
  * The name as live text, for places a raster cannot go — a notification title, a share subject, or
  * any surface that must stay selectable. Prefer [ProChartWordmark] wherever an image will do.
  *
- * One colour and one weight, because the name is one word in the artwork too. The hyphen is part of
- * it: the product is «Pro-Chart», and "Pro Chart" is two words that a line break may separate.
+ * One colour and one weight. The capital H is the owner's, settled, and it is deliberate rather
+ * than a typo to be helpfully corrected: the artwork reads «Pro CHart» and so does every string in
+ * the app. The Persian name is «پرو چارت» and is written out, never transliterated from this one.
+ *
+ * `textDirection = Ltr` on the style below matters more than it looks: the name is a Latin proper
+ * noun on a right-to-left screen, and without the isolation the two words swap around it.
  */
 @Composable
 fun ProChartWordmarkText(
@@ -77,7 +81,7 @@ fun ProChartWordmarkText(
 }
 
 /** The brand name in Latin, in one place so a rename is one edit. */
-const val PRO_CHART = "Pro-Chart"
+const val PRO_CHART = "Pro CHart"
 
 /*
  * There is deliberately no `ProChartMark` composable.
