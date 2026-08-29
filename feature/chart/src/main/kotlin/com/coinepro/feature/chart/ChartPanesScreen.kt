@@ -38,6 +38,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.chart.ChartDecoration
+import com.coinepro.core.chart.ChartLegendChange
+import com.coinepro.core.chart.ChartMarketStatus
 import com.coinepro.core.chart.CoineProChart
 import com.coinepro.core.chart.decimalsFor
 import com.coinepro.core.chart.formatPrice
@@ -53,6 +55,7 @@ import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.LtrDirection
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.marketdata.ChartInterval
+import com.coinepro.core.symbols.MarketHours
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -316,6 +319,22 @@ private fun ChartPane(
                         showCountdown = !state.replay.isOn,
                     ),
                     focusIndex = state.focusIndex,
+                    // Item 108, and this layout is the one that gains most: it draws no page
+                    // header at all, so before this the move and the market's state were nowhere
+                    // on screen.
+                    change = state.changePercent?.let { percent ->
+                        val bars = state.visibleSeries.bars
+                        val first = bars.firstOrNull()?.c ?: return@let null
+                        val last = bars.lastOrNull()?.c ?: return@let null
+                        ChartLegendChange(absolute = last - first, percent = percent)
+                    },
+                    marketStatus = MarketHours.statusOf(state.symbol).let { status ->
+                        when {
+                            status.open -> ChartMarketStatus.OPEN
+                            status.weekend -> ChartMarketStatus.WEEKEND
+                            else -> ChartMarketStatus.CLOSED
+                        }
+                    },
                     // The same threshold the single chart uses, and it matters more here: two
                     // panes are two full draw passes a frame. See `CONFLATE_FROM_BARS`.
                     conflate = state.visibleSeries.bars.size > CONFLATE_FROM_BARS,

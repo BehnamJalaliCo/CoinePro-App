@@ -21,6 +21,7 @@ import com.coinepro.app.alerts.AlertDeepLink
 import com.coinepro.app.notifications.PushCoordinator
 import com.coinepro.app.sync.BackgroundSyncScheduler
 import com.coinepro.core.academy.AcademyController
+import com.coinepro.core.chartevents.ChartEventController
 import com.coinepro.feature.terminal.TerminalController
 import com.coinepro.core.account.AccountController
 import com.coinepro.core.auth.PlatformCapabilities
@@ -37,6 +38,7 @@ import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.datastore.DrawingTemplateStore
 import com.coinepro.core.datastore.IndicatorTemplateStore
+import com.coinepro.core.datastore.DrawingImageStore
 import com.coinepro.core.datastore.DrawingSyncStore
 import com.coinepro.core.datastore.TimeZonePrefStore
 import com.coinepro.core.datastore.IntervalFavouritesStore
@@ -117,6 +119,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var drawingTemplateStore: DrawingTemplateStore
     @Inject lateinit var indicatorTemplateStore: IndicatorTemplateStore
     @Inject lateinit var drawingSyncStore: DrawingSyncStore
+    @Inject lateinit var drawingImageStore: DrawingImageStore
     @Inject lateinit var timeZonePrefStore: TimeZonePrefStore
     @Inject lateinit var intervalFavouritesStore: IntervalFavouritesStore
     @Inject lateinit var chartWorkspaceStore: ChartWorkspaceStore
@@ -149,6 +152,7 @@ class MainActivity : FragmentActivity() {
     @Inject
     lateinit var academyTokenStore: AcademyTokenStore
     @Inject lateinit var marketIntelControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketIntelController>
+    @Inject lateinit var chartEventControllers: Map<MarketPlatform, @JvmSuppressWildcards ChartEventController>
     @Inject lateinit var pushCoordinator: PushCoordinator
     @Inject lateinit var backgroundSyncScheduler: BackgroundSyncScheduler
 
@@ -214,6 +218,7 @@ class MainActivity : FragmentActivity() {
                 watchlistStore = watchlistStore,
                 chartLayoutStore = chartLayoutStore,
                 chartDrawingStore = chartDrawingStore,
+                drawingImageStore = drawingImageStore,
                 symbolChartStateStore = symbolChartStateStore,
                 drawingTemplateStore = drawingTemplateStore,
                 indicatorTemplateStore = indicatorTemplateStore,
@@ -248,6 +253,7 @@ class MainActivity : FragmentActivity() {
                 aiVisionControllers = aiVisionControllers,
                 aiAssistantController = aiAssistantController,
                 marketIntelControllers = marketIntelControllers,
+                chartEventControllers = chartEventControllers,
                 academyTokenStore = academyTokenStore,
                 pushCoordinator = pushCoordinator,
                 backgroundSyncScheduler = backgroundSyncScheduler,

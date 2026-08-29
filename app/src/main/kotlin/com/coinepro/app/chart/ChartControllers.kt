@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.coinepro.feature.chart.ChartController
 import com.coinepro.core.datastore.ChartDrawingStore
+import com.coinepro.core.datastore.DrawingImageStore
 import com.coinepro.core.diagnostics.AppLog
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.marketdata.CandleGateway
@@ -53,6 +54,8 @@ class ChartControllers(
     private val scope: CoroutineScope,
     /** Where each symbol's drawings are kept between sessions. */
     private val drawings: ChartDrawingStore,
+    /** Where the image tool's pictures live. Separate from [drawings]: bytes, not preferences. */
+    private val images: DrawingImageStore,
     /** The structured log, so every chart load is timed against its budget. */
     private val log: AppLog,
     /** The bars already held, so a chart draws before it fetches. See [CandleCache]. */
@@ -73,6 +76,7 @@ class ChartControllers(
             gateway = gateway,
             scope = scope,
             drawings = drawings,
+            images = images,
             log = log,
             cache = cache,
         )
@@ -100,8 +104,9 @@ fun rememberChartControllers(
     gateway: CandleGateway,
     scope: CoroutineScope,
     drawings: ChartDrawingStore,
+    images: DrawingImageStore,
     log: AppLog,
     cache: CandleCache,
-): ChartControllers = remember(gateway, scope, drawings, log, cache) {
-    ChartControllers(gateway, scope, drawings, log, cache)
+): ChartControllers = remember(gateway, scope, drawings, images, log, cache) {
+    ChartControllers(gateway, scope, drawings, images, log, cache)
 }

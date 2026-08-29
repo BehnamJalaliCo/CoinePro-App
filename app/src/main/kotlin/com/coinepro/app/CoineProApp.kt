@@ -62,6 +62,7 @@ import com.coinepro.core.auth.SessionState
 import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.chartevents.ChartEventController
 import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.datastore.ActivePlatformStore
 import com.coinepro.core.datastore.ChartLayout
@@ -70,6 +71,7 @@ import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.datastore.DrawingTemplateStore
 import com.coinepro.core.datastore.IndicatorTemplateStore
+import com.coinepro.core.datastore.DrawingImageStore
 import com.coinepro.core.datastore.DrawingSyncStore
 import com.coinepro.core.datastore.TimeZonePrefStore
 import com.coinepro.core.datastore.IntervalFavouritesStore
@@ -431,6 +433,8 @@ fun CoineProApp(
     watchlistStore: WatchlistStore,
     chartLayoutStore: ChartLayoutStore,
     chartDrawingStore: ChartDrawingStore,
+    /** Where the image drawing tool's pictures live. See `DrawingImageStore`. */
+    drawingImageStore: DrawingImageStore,
     /** Where each symbol's own chart settings live. See the Hilt provider for why it is separate. */
     symbolChartStateStore: SymbolChartStateStore,
     /**
@@ -498,6 +502,8 @@ fun CoineProApp(
     aiVisionControllers: Map<MarketPlatform, AiVisionController>,
     aiAssistantController: AiAssistantController,
     marketIntelControllers: Map<MarketPlatform, MarketIntelController>,
+    /** The chart's axis marks, per platform — items 118 and 119. Same rule as the news readers. */
+    chartEventControllers: Map<MarketPlatform, ChartEventController>,
     /** Cleared on sign-out — a derived credential that would otherwise outlive the session. */
     academyTokenStore: AcademyTokenStore,
     pushCoordinator: PushCoordinator,
@@ -552,6 +558,10 @@ fun CoineProApp(
     // decision has no bearing on a listing and a token unlock has none on bullion, so the wrong
     // market's headlines are not a degraded answer but a misleading one.
     val marketIntelController = marketIntelControllers.getValue(activePlatform)
+    // Absent where the platform is not configured for this build, which is why the map is keyed
+    // rather than a pair. A null leaves the axis bare and the studio's section away, which is the
+    // honest shape for a backend that is not there at all.
+    val chartEventController = chartEventControllers[activePlatform]
     // Everything else that reads from a backend follows the same rule: the screen belongs to the
     // platform named above it, and no controller is ever handed the other one's data.
     val signalController = signalControllers.getValue(activePlatform)
@@ -642,6 +652,7 @@ fun CoineProApp(
             aiVisionControllers.values.forEach(AiVisionController::clear)
             aiAssistantController.clear()
             marketIntelControllers.values.forEach(MarketIntelController::clear)
+            chartEventControllers.values.forEach(ChartEventController::clear)
             // The academy token is a second credential, derived from the mobile one and held only
             // in memory. Without this it outlives the sign-out by up to twelve hours — and after a
             // *deletion* it is a live bearer for an account that no longer exists.
@@ -837,6 +848,7 @@ fun CoineProApp(
                 orderBookGateway = orderBookGateways.getValue(activePlatform),
                 candleCache = candleCache,
                 chartDrawingStore = chartDrawingStore,
+                drawingImageStore = drawingImageStore,
                 chartLayoutStore = chartLayoutStore,
                 symbolChartStateStore = symbolChartStateStore,
                 drawingTemplateStore = drawingTemplateStore,
@@ -870,6 +882,7 @@ fun CoineProApp(
                 aiVisionController = aiVisionController,
                 aiAssistantController = aiAssistantController,
                 marketIntelController = marketIntelController,
+                chartEventController = chartEventController,
                 accountController = accountController,
                 launchSignalId = launchSignalId,
                 launchActivity = launchActivity,
@@ -1018,6 +1031,7 @@ fun CoineProApp(
                         orderBookGateway = orderBookGateways.getValue(activePlatform),
                         candleCache = candleCache,
                         chartDrawingStore = chartDrawingStore,
+                        drawingImageStore = drawingImageStore,
                         chartLayoutStore = chartLayoutStore,
                         symbolChartStateStore = symbolChartStateStore,
                         drawingTemplateStore = drawingTemplateStore,
@@ -1053,6 +1067,7 @@ fun CoineProApp(
                         aiVisionController = aiVisionController,
                         aiAssistantController = aiAssistantController,
                         marketIntelController = marketIntelController,
+                        chartEventController = chartEventController,
                         accountController = accountController,
                         launchSignalId = null,
                         launchActivity = false,
@@ -1189,6 +1204,8 @@ private fun MainShell(
     /** The bars already held, so a chart draws before it fetches. */
     candleCache: CandleCache,
     chartDrawingStore: ChartDrawingStore,
+    /** Where the image drawing tool's pictures live. See `DrawingImageStore`. */
+    drawingImageStore: DrawingImageStore,
     /** For the two things the layout list cannot answer: which one was last applied, and recording it. */
     chartLayoutStore: ChartLayoutStore,
     /** Threaded to the chart routes, which hand it to the controller before its first fetch. */
@@ -1233,6 +1250,8 @@ private fun MainShell(
     aiVisionController: AiVisionController,
     aiAssistantController: AiAssistantController,
     marketIntelController: MarketIntelController,
+    /** This platform's chart-axis events, or null when the platform is not configured. */
+    chartEventController: ChartEventController?,
     accountController: AccountController,
     adminController: AdminController,
     appLog: AppLog,
@@ -1369,7 +1388,14 @@ private fun MainShell(
     val sparklineStore = remember(candleGateway) { SparklineStore(candleGateway, sparklineScope) }
     // The charts, held here rather than inside their own destinations. See `ChartControllers`:
     // one controller per destination is what made every drawing tool in the app inert.
-    val chartControllers = rememberChartControllers(candleGateway, sparklineScope, chartDrawingStore, appLog, candleCache)
+    val chartControllers = rememberChartControllers(
+        gateway = candleGateway,
+        scope = sparklineScope,
+        drawings = chartDrawingStore,
+        images = drawingImageStore,
+        log = appLog,
+        cache = candleCache,
+    )
 
     // The prices the chart's watchlist strip and the two-pane pickers put beside their tickers,
     // taken from the feed already running for the platform on screen rather than from a second
@@ -2264,6 +2290,7 @@ private fun MainShell(
                     chartLayoutStore = chartLayoutStore,
                     intervalFavourites = intervalFavouritesStore,
                     drawingSync = drawingSyncStore,
+                    events = chartEventController,
                     timeZones = timeZonePrefStore,
                     onOpenStudio = { navController.navigate(studioRoute(activeChartSymbol)) },
                     onOpenTerminal = if (terminalController.isConfigured) {
@@ -2314,6 +2341,7 @@ private fun MainShell(
                     chartLayoutStore = chartLayoutStore,
                     indicatorTemplates = indicatorTemplateStore,
                     drawingSync = drawingSyncStore,
+                    events = chartEventController,
                     layouts = chartLayouts,
                     onSaveLayout = onSaveLayoutAnnounced,
                     onDeleteLayout = onDeleteLayoutAnnounced,

@@ -34,6 +34,8 @@ import com.coinepro.core.auth.PlatformSessions
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionMemory
 import com.coinepro.core.auth.SessionTokenStorage
+import com.coinepro.core.chartevents.ChartEventController
+import com.coinepro.core.chartevents.MarketIntelChartEventFeed
 import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.copytrade.CopyTradeGateway
 import com.coinepro.core.copytrade.NetworkCopyTradeGateway
@@ -48,6 +50,7 @@ import com.coinepro.core.datastore.AlertAuditStore
 import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartEventPrefsStore
 import com.coinepro.core.datastore.ChartLayoutStore
+import com.coinepro.core.datastore.DrawingImageStore
 import com.coinepro.core.datastore.DrawingSyncStore
 import com.coinepro.core.datastore.DrawingTemplateStore
 import com.coinepro.core.datastore.IndicatorTemplateStore
@@ -129,6 +132,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import java.io.File
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -487,6 +491,24 @@ object AppModule {
     @Singleton
     fun chartDrawingStore(dataStore: DataStore<Preferences>): ChartDrawingStore =
         ChartDrawingStore(dataStore)
+
+    /**
+     * Where the image drawing tool's pictures live — files, not preferences.
+     *
+     * Every other chart store packs its rows into one preferences string, and a bitmap must never
+     * go there: a photo is hundreds of kilobytes, DataStore rewrites the whole file on every edit,
+     * and a reader with three pictures on a chart would pay for all three on every drawing they
+     * moved. So the drawing carries an opaque id and this owns the bytes.
+     *
+     * Under `filesDir` rather than the cache directory, deliberately. The system may empty a cache
+     * at any moment, and a drawing whose picture vanished because the phone needed space is a
+     * drawing the reader did not delete — `DrawingImage.Gone` exists for a file that is genuinely
+     * gone, not as somewhere to put a routine eviction.
+     */
+    @Provides
+    @Singleton
+    fun drawingImageStore(@ApplicationContext context: Context): DrawingImageStore =
+        DrawingImageStore(File(context.filesDir, "chart-images"))
 
     /**
      * Saved per-tool drawing styles.
@@ -1574,6 +1596,44 @@ object AppModule {
         @CryptoPlatform gateway: MarketIntelGateway,
         scope: CoroutineScope,
     ): MarketIntelController = MarketIntelController(gateway, scope)
+
+    /**
+     * The chart's own reader of the document the news screen reads — items 118 and 119.
+     *
+     * One per platform for the same reason the news readers are: the gold calendar has no business
+     * under a crypto chart, and a single reader behind a flag is how it ends up there.
+     *
+     * A singleton and not a per-screen object, because it caches by symbol: flipping between two
+     * instruments and back costs no second read, which on a chart is the whole difference between
+     * marks that are there when you pan and marks that flicker.
+     */
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexChartEventController(
+        @ForexPlatform gateway: MarketIntelGateway,
+        scope: CoroutineScope,
+    ): ChartEventController = ChartEventController(MarketIntelChartEventFeed(gateway), scope)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoChartEventController(
+        @CryptoPlatform gateway: MarketIntelGateway,
+        scope: CoroutineScope,
+    ): ChartEventController = ChartEventController(MarketIntelChartEventFeed(gateway), scope)
+
+    @Provides
+    @Singleton
+    fun chartEventControllers(
+        @ForexPlatform forex: ChartEventController,
+        @CryptoPlatform crypto: ChartEventController,
+    ): Map<MarketPlatform, ChartEventController> = buildMap {
+        put(MarketPlatform.COINEPRO_FX, forex)
+        if (isPlatformConfigured(BuildConfig.TRADEYAR_API_BASE_URL)) {
+            put(MarketPlatform.TRADEYAR, crypto)
+        }
+    }
 
     /**
      * The news readers keyed by platform, so the screen shows the market it is named after.

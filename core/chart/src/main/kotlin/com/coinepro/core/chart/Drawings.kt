@@ -383,7 +383,10 @@ object DrawingTools {
         tool("comment", "دیدگاه", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_callout),
         tool("signpost", "تابلو", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_signpost),
         tool("icon", "آیکن", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_icon),
-        tool("image", "تصویر", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_image),
+        // Two anchors, not one. It was one while the tool drew a fixed frame with nothing in it;
+        // now that a picture goes inside, the reader drags the box they want it in — which is the
+        // difference between placing an image and being handed one at a size somebody guessed.
+        tool("image", "تصویر", 2, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_image),
 
         // ── Volume ──────────────────────────────────────────────────────────────────
         tool("avwap", "VWAP لنگرانداخته", 1, ToolGroup.VOLUME, DesignR.drawable.tv_tool_avwap),

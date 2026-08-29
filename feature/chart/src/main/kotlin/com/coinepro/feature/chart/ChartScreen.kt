@@ -1,5 +1,8 @@
 package com.coinepro.feature.chart
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -65,12 +68,18 @@ import com.coinepro.core.chart.ActiveToolBar
 import com.coinepro.core.chart.BarWindow
 import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.chart.ChartDecoration
+import com.coinepro.core.chart.ChartLegendChange
+import com.coinepro.core.chart.ChartLegendTarget
+import com.coinepro.core.chart.ChartMarketStatus
 import com.coinepro.core.chart.ChartOrder
 import com.coinepro.core.chart.ChartReading
+import com.coinepro.core.chart.ChartTransforms
 import com.coinepro.core.chart.ChartTypePicker
 import com.coinepro.core.chart.CoineProChart
+import com.coinepro.core.chart.DrawingImages
 import com.coinepro.core.chart.DrawingState
 import com.coinepro.core.chart.DrawingTools
+import com.coinepro.core.chart.EventMark
 import com.coinepro.core.chart.IndicatorPicker
 import com.coinepro.core.chart.ObjectTree
 import com.coinepro.core.chart.Replay
@@ -85,12 +94,15 @@ import com.coinepro.core.chart.MAX_COMPARISONS
 import com.coinepro.core.chart.PriceScaleMode
 import com.coinepro.core.chart.decimalsFor
 import com.coinepro.core.chart.formatPrice
+import com.coinepro.core.chartevents.ChartEventController
+import com.coinepro.core.chartevents.ChartEventSheet
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.datastore.ChartColourTemplate
 import com.coinepro.core.datastore.ChartLayout
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.DrawingTemplate
+import com.coinepro.core.datastore.DrawingImageStore
 import com.coinepro.core.datastore.DrawingSyncStore
 import com.coinepro.core.datastore.TimeZonePrefStore
 import com.coinepro.core.datastore.DrawingTemplateStore
@@ -121,10 +133,12 @@ import com.coinepro.core.marketdata.CHART_TIME_ZONE
 import com.coinepro.core.marketdata.ChartInterval
 import com.coinepro.core.marketdata.Timeframe
 import com.coinepro.core.marketdata.customOf
+import com.coinepro.core.symbols.MarketHours
 import com.coinepro.core.symbols.SymbolClassifier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import java.time.ZoneId
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -287,6 +301,16 @@ fun ChartScreen(
      * allocation — the store's own KDoc asks callers for exactly this.
      */
     timeZones: TimeZonePrefStore? = null,
+    /**
+     * Where the marks on the time axis come from — items 118 and 119.
+     *
+     * `core:chartevents` was written, cached, tested and reachable from nothing: no call site in
+     * the app ever set `ChartDecoration.events`, so a headline this app had already fetched and
+     * could already place was never drawn on any chart. Null is the preview, the tests, and a
+     * platform this build was not configured for — and the axis is then bare, which is right for a
+     * fixture and is exactly what shipped for everybody else.
+     */
+    events: ChartEventController? = null,
 ) {
     /**
      * The instrument the reader switched to from the strip, or null while they are on the one this
@@ -354,6 +378,48 @@ fun ChartScreen(
      * note tool ends up used once.
      */
     var labelling by remember { mutableStateOf<Long?>(null) }
+
+    /**
+     * The image drawing waiting for a picture, or null — item 35.
+     *
+     * Android's photo picker, so no storage permission is asked for and none is held: the reader
+     * grants one image at a time by choosing it. The bytes are read on an IO dispatcher and capped
+     * on the way in, so a file the size of a video is a refusal rather than an allocation — the
+     * cap is read before the read finishes, which is the only ordering that helps.
+     */
+    // Already bucketed into bars and already filtered by the reader's switches: the controller
+    // places them, so this screen never re-places anything when a switch is flipped.
+    val eventMarks by remember(events) { events?.marks ?: MutableStateFlow(emptyList()) }
+        .collectAsStateWithLifecycle()
+    /** The glyph a reader tapped, or null. Opens everything that landed in that bar. */
+    var openedMark by remember { mutableStateOf<EventMark?>(null) }
+    /**
+     * The bars the events are placed against — what the canvas draws, not what the feed sent.
+     *
+     * Remembered rather than transformed inside the viewport callback, which fires on every frame
+     * of a pan; five of the sixteen chart types re-grid the series, and re-gridding three hundred
+     * bars per frame is a dropped frame per pan.
+     */
+    val eventSeries = remember(state.visibleSeries, state.chartType) {
+        ChartTransforms.apply(state.visibleSeries, state.chartType)
+    }
+
+    var picturing by remember { mutableStateOf<Long?>(null) }
+    val pickerContext = LocalContext.current
+    val pickScope = rememberCoroutineScope()
+    val pickPicture = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        val target = picturing
+        picturing = null
+        if (uri == null || target == null) return@rememberLauncherForActivityResult
+        pickScope.launch(Dispatchers.IO) {
+            val bytes = runCatching {
+                pickerContext.contentResolver.openInputStream(uri)?.use { input ->
+                    input.readNBytes(DrawingImageStore.MAX_SOURCE_BYTES + 1)
+                }
+            }.getOrNull() ?: return@launch
+            if (bytes.size <= DrawingImageStore.MAX_SOURCE_BYTES) controller.attachImage(target, bytes)
+        }
+    }
     /**
      * Whether the reader is being asked before every drawing comes off the chart.
      *
@@ -560,6 +626,10 @@ fun ChartScreen(
                         // leaves the canvas on the theme's colours, which is not the same as
                         // choosing the dark built-in — see `ColourTemplateSection`.
                         colours = state.chartColours,
+                        // Items 118 and 119. Already placed against these exact bars, which is the
+                        // boundary `ChartDecoration.events` documents: bucketing needs the series
+                        // and the reader's filter, and the renderer has neither.
+                        events = eventMarks,
                     ),
                     // The bar «رفتن به تاریخ» resolved, or null. The canvas pans to it and the
                     // controller clears it, so a reader who then pans away is not dragged back on
@@ -613,6 +683,59 @@ fun ChartScreen(
                     // study that ignores the visible range.
                     onViewportChange = { view ->
                         controller.setVisibleWindow(BarWindow.visible(view.firstVisible, view.lastVisible))
+                        // The same window, to the events reader. It answers a cache hit without
+                        // touching a coroutine and drops a window already in flight, so it is safe
+                        // to call on every frame of a drag.
+                        //
+                        // The *displayed* series, not the raw one: a viewport reports indices into
+                        // what the canvas draws, and Renko, Kagi, Range, Line-break and
+                        // Point-and-figure re-grid the bars before they are drawn. Handing the raw
+                        // series over would put a headline on a different day on five of the
+                        // sixteen chart types.
+                        events?.onVisibleBars(
+                            state.symbol,
+                            eventSeries,
+                            view.firstVisible,
+                            view.lastVisible,
+                        )
+                    },
+                    // Offered only where something fetched the events. The canvas draws the glyphs
+                    // either way, and a glyph that answers nothing when you tap it is worse than
+                    // no glyph.
+                    onEventMark = events?.let { { mark -> openedMark = mark } },
+                    // Item 108. The window's move, and the market's state, on the legend itself —
+                    // which is the only place the two-pane layout has, since it draws no header.
+                    change = state.changePercent?.let { percent ->
+                        val bars = state.visibleSeries.bars
+                        val first = bars.firstOrNull()?.c ?: return@let null
+                        val last = bars.lastOrNull()?.c ?: return@let null
+                        ChartLegendChange(absolute = last - first, percent = percent)
+                    },
+                    marketStatus = MarketHours.statusOf(state.symbol).let { status ->
+                        when {
+                            status.open -> ChartMarketStatus.OPEN
+                            status.weekend -> ChartMarketStatus.WEEKEND
+                            else -> ChartMarketStatus.CLOSED
+                        }
+                    },
+                    // Item 109. Settings opens the sheet that owns that kind of series; remove
+                    // takes it off. A comparison is removed by symbol and an indicator by id, and
+                    // `indicatorFor` is what turns a legend row's index back into one — see its
+                    // note on why an index is not simply a position in `activeIndicators`.
+                    onSeriesSettings = { target ->
+                        sheet = if (target is ChartLegendTarget.Comparison) {
+                            ChartSheet.COMPARE
+                        } else {
+                            ChartSheet.INDICATORS
+                        }
+                    },
+                    onRemoveSeries = { target ->
+                        when (target) {
+                            is ChartLegendTarget.Comparison ->
+                                state.comparisons.getOrNull(target.index)
+                                    ?.let { controller.removeComparison(it.symbol) }
+                            else -> state.indicatorFor(target)?.let(controller::toggleIndicator)
+                        }
                     },
                 )
             }
@@ -849,7 +972,18 @@ fun ChartScreen(
     val newest = state.drawing.drawings.lastOrNull()
     LaunchedEffect(newest?.id) {
         val placed = newest ?: return@LaunchedEffect
-        if (placed.text == null && DrawingActions.holdsText(placed.toolId)) labelling = placed.id
+        if (placed.toolId == DrawingActions.IMAGE_TOOL) {
+            // A frame with no picture is the empty box this tool used to be, so it asks at once —
+            // the way a note asks for its words rather than waiting to be tapped a second time.
+            picturing = placed.id
+            pickPicture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        } else if (placed.text == null && DrawingActions.holdsText(placed.toolId)) {
+            labelling = placed.id
+        }
+    }
+
+    openedMark?.let { mark ->
+        ChartEventSheet(mark = mark, onDismiss = { openedMark = null })
     }
 
     when (sheet) {
@@ -1148,13 +1282,17 @@ fun ChartScreen(
             labelling = null
         } else {
             DrawingTextSheet(
-                initial = drawing.text.orEmpty(),
+                // The image tool keeps its picture id and its caption in the same field, so the
+                // sheet is shown only the caption. Editing words must not detach the photo.
+                initial = DrawingImages.captionIn(drawing.text) ?: drawing.text.orEmpty(),
                 // The icon tool keeps its glyph in the same field a note keeps its words, so the
                 // row of marks is offered *above* the keyboard rather than instead of it — a reader
                 // who wants a mark the row does not carry can still type one.
                 icons = DrawingActions.holdsIcon(drawing.toolId),
                 onSave = { text ->
-                    controller.onDrawing(DrawingActions.setText(state.drawing, id, text))
+                    val kept = DrawingImages.idIn(drawing.text)
+                    val value = if (kept != null) DrawingImages.textFor(kept, text) else text
+                    controller.onDrawing(DrawingActions.setText(state.drawing, id, value))
                     labelling = null
                 },
                 onDismiss = { labelling = null },

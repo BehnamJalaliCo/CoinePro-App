@@ -11,6 +11,7 @@ import com.coinepro.core.chart.Candle
 import com.coinepro.core.chart.CandleSeries
 import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.chart.ChartColours
+import com.coinepro.core.chart.ChartLegendTarget
 import com.coinepro.core.chart.ChartLine
 import com.coinepro.core.chart.ChartMarker
 import com.coinepro.core.chart.ChartOrder
@@ -21,6 +22,7 @@ import com.coinepro.core.chart.ComparisonBasis
 import com.coinepro.core.chart.ComparisonSeries
 import com.coinepro.core.chart.Drawing
 import com.coinepro.core.chart.DrawingActions
+import com.coinepro.core.chart.DrawingImages
 import com.coinepro.core.chart.DrawingLayer
 import com.coinepro.core.chart.DrawingState
 import com.coinepro.core.chart.DrawingSync
@@ -48,6 +50,7 @@ import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayout
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.DrawingSyncMode
+import com.coinepro.core.datastore.DrawingImageStore
 import com.coinepro.core.datastore.DrawingSyncStore
 import com.coinepro.core.datastore.IndicatorTemplate
 import com.coinepro.core.datastore.StoredDrawing
@@ -483,6 +486,21 @@ data class ChartUiState(
     val levels: List<PriceLevel> get() = if (indicatorsHidden) emptyList() else derived.levels
 
     /**
+     * Which indicator a legend row belongs to, or null — item 109.
+     *
+     * The legend hands back an index into the list it was given, and `ChartDerived` keeps the owner
+     * of each entry beside it. `getOrNull` rather than an assumption of alignment because a chained
+     * overlay is appended *after* the derived ones and carries no owner: a no-op is the honest
+     * answer there until the chain records one, and it is a great deal better than removing
+     * whichever study happens to sit at that index.
+     */
+    fun indicatorFor(target: ChartLegendTarget): String? = when (target) {
+        is ChartLegendTarget.Overlay -> derived.overlayOwners.getOrNull(target.index)
+        is ChartLegendTarget.Pane -> derived.paneOwners.getOrNull(target.index)
+        else -> null
+    }
+
+    /**
      * Whether the rail's «اندیکاتورها» switch is off — item 44.
      *
      * Read here rather than inside `DrawingState.isShown`, because that method filters *drawings*
@@ -714,6 +732,15 @@ class ChartController(
      */
     private val drawings: ChartDrawingStore? = null,
     /**
+     * Where the image tool's pictures live, or null in a test and the preview.
+     *
+     * Separate from [drawings] and deliberately so: that store packs every drawing on a symbol into
+     * one preferences string, and a photo has no business in one. A drawing carries an id; this
+     * owns the bytes behind it. Null leaves the image tool drawing its frame and nothing in it,
+     * which is exactly what it did before there was a store at all.
+     */
+    private val images: DrawingImageStore? = null,
+    /**
      * The app's structured log, or null in a test.
      *
      * Here for exactly one measurement: **time to first candle.** In a corpus of reviews of this
@@ -944,6 +971,18 @@ class ChartController(
                         )
                     },
                 )
+            }
+            // The pictures, off disk, after the drawings that name them are on the chart. Without
+            // this a restart shows every image drawing as an empty frame until something else
+            // happens to repaint it — and «چیزی دیگر» on a chart nobody is touching is never.
+            //
+            // A read that fails marks the id gone rather than leaving it waiting forever: the two
+            // states look different on the canvas, and «تصویر یافت نشد» is the true one for a file
+            // a reinstall took away.
+            val pictures = images ?: return@launch
+            for (imageId in stored.mapNotNull { DrawingImages.idIn(it.text) }.distinct()) {
+                val bytes = pictures.read(imageId)
+                if (bytes == null || !DrawingImages.put(imageId, bytes)) DrawingImages.markGone(imageId)
             }
         }
     }
@@ -1239,6 +1278,44 @@ class ChartController(
     fun recolourSelection(colour: Long) {
         _state.update { it.copy(drawing = DrawingActions.recolourSelection(it.drawing, colour)) }
         persistDrawings()
+    }
+
+    /**
+     * Store the picture the reader picked and point one drawing at it — item 35.
+     *
+     * Three steps and every one can fail, so none of them is assumed: the store downscales and
+     * writes, the decoder turns the *written* bytes back into a bitmap — the written ones, not the
+     * picked ones, so what is cached is what a restart will read — and only then does the drawing
+     * get the id. A failure at any step leaves the drawing exactly as it was, a frame with no
+     * picture, rather than one pointing at a file that is not there.
+     *
+     * The previous picture is forgotten last. Deleting it first would mean a reader who replaces a
+     * photo on a chart, and whose replacement fails, loses the one they had.
+     */
+    fun attachImage(id: Long, bytes: ByteArray) {
+        val store = images ?: return
+        scope.launch {
+            val before = _state.value.drawing.drawings.firstOrNull { it.id == id } ?: return@launch
+            val previous = DrawingImages.idIn(before.text)
+            val imageId = store.put(bytes) ?: return@launch
+            val stored = store.read(imageId)
+            if (stored == null || !DrawingImages.put(imageId, stored)) {
+                store.forget(imageId)
+                return@launch
+            }
+            val caption = DrawingImages.captionIn(before.text)
+            onDrawing(
+                DrawingActions.setText(
+                    _state.value.drawing,
+                    id,
+                    DrawingImages.textFor(imageId, caption),
+                ),
+            )
+            previous?.let {
+                store.forget(it)
+                DrawingImages.forget(it)
+            }
+        }
     }
 
     /**
@@ -2110,6 +2187,20 @@ data class ChartDerived internal constructor(
     val levels: List<PriceLevel> = emptyList(),
     val markers: List<ChartMarker> = emptyList(),
     val panes: List<ChartPane> = emptyList(),
+    /**
+     * Which indicator each entry of [overlays] came from, aligned index for index — item 109.
+     *
+     * A parallel list and not a field on `ChartLine`, because `ChartLine` belongs to `core:chart`
+     * and an indicator id is this module's idea; the legend hands back an index into the list it
+     * was given, so an index is exactly what has to be resolvable.
+     *
+     * Built in the same pass as [overlays] rather than reconstructed afterwards, which is the only
+     * way the two stay aligned: one indicator can produce three lines — a Bollinger band is three
+     * — so a second pass that assumed one line each would remove the wrong study.
+     */
+    val overlayOwners: List<String> = emptyList(),
+    /** The same for [panes], where the mapping happens to be one to one. Built the same way anyway. */
+    val paneOwners: List<String> = emptyList(),
 ) {
     /** What [ChartDerived] was computed from. See [key]. */
     internal data class Key(
@@ -2177,17 +2268,37 @@ data class ChartDerived internal constructor(
             val structures = chosen
                 .filter { it.pane == IndicatorPane.STRUCTURE }
                 .map { ChartCatalog.structureFor(it, series) }
+            // Paired before they are flattened, so the owner travels with the line rather than
+            // being inferred from a position afterwards. A Bollinger band is three lines from one
+            // indicator; a mapping rebuilt on the assumption of one apiece takes the wrong study
+            // off the chart when a reader presses remove on the third row.
+            val priceLines = chosen
+                .filter { it.pane == IndicatorPane.PRICE }
+                .flatMap { option ->
+                    ChartCatalog.overlayFor(option, series, periods[option.id], window)
+                        .map { option.id to it }
+                }
+            val structureLines = chosen
+                .filter { it.pane == IndicatorPane.STRUCTURE }
+                .zip(structures)
+                .flatMap { (option, structure) -> structure.lines.map { option.id to it } }
+            val separatePanes = chosen
+                .filter { it.pane == IndicatorPane.SEPARATE }
+                .mapNotNull { option ->
+                    ChartCatalog.paneFor(option, series, periods[option.id], comparison)
+                        ?.let { option.id to it }
+                }
             return ChartDerived(
                 key = key,
-                overlays = chosen
-                    .filter { it.pane == IndicatorPane.PRICE }
-                    .flatMap { ChartCatalog.overlayFor(it, series, periods[it.id], window) } +
-                    structures.flatMap { it.lines },
+                overlays = (priceLines + structureLines).map { it.second },
+                overlayOwners = (priceLines + structureLines).map { it.first },
                 levels = structures.flatMap { it.levels },
                 markers = structures.flatMap { it.markers },
-                panes = chosen
-                    .filter { it.pane == IndicatorPane.SEPARATE }
-                    .mapNotNull { ChartCatalog.paneFor(it, series, periods[it.id], comparison) }
+                paneOwners = separatePanes
+                    .filter { it.second.lines.isNotEmpty() || it.second.histogram != null }
+                    .map { it.first },
+                panes = separatePanes
+                    .map { it.second }
                     // A pane with neither a line nor a histogram is a titled empty box, and
                     // `correlation` returns exactly that when there is no second instrument
                     // loaded to correlate against. Dropped here rather than drawn: a strip of

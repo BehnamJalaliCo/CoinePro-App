@@ -797,13 +797,13 @@ object DrawingActions {
      * A plain sentence about what a tool actually does, or null where the label is the whole truth.
      *
      * One tool needs it. The image tool draws a frame and a caption and **cannot draw a picture**:
-     * nothing in the chart layer can open a file, and nothing above it hands one down. Left
-     * unexplained that is a tool a reader arms expecting a photo and gets an empty rectangle from,
-     * which reads as a bug rather than as a boundary. Saying so where the tool is armed is the
-     * cheapest honest answer, and it costs nothing on the ninety tools that need no note.
+     * the chart layer still cannot open a file — `DrawingImageStore` owns the bytes and the feature
+     * layer runs the picker — but the reader is no longer told a photo is impossible, because it is
+     * not. What the note now does is say what happens next, which is the only thing a tool with a
+     * second step needs to say. It costs nothing on the ninety tools that have no second step.
      */
     fun toolNote(toolId: String): String? = when (toolId) {
-        IMAGE_TOOL -> "این ابزار قاب و زیرنویس می‌کشد؛ بارگذاری فایل تصویر روی چارت پشتیبانی نمی‌شود."
+        IMAGE_TOOL -> "پس از کشیدن قاب، تصویری از گالری انتخاب کن."
         ICON_TOOL -> "یکی از نشانه‌های آماده را برای این ابزار انتخاب کن."
         else -> null
     }

@@ -246,6 +246,16 @@ fun CoineProChart(
     /** A legend row's remove was tapped. Null hides the affordance rather than disabling it. */
     onRemoveSeries: ((ChartLegendTarget) -> Unit)? = null,
     /**
+     * The session's move for the legend's change row, or null to let the bar answer for itself.
+     *
+     * Given, it wins on the last bar and is ignored on every earlier one: once the crosshair takes
+     * the legend into history, a figure about *today* printed under a bar from March is a number
+     * about a different day. See `ChartLegendChange`.
+     */
+    change: ChartLegendChange? = null,
+    /** Whether this instrument is trading. Named on the legend's head row only when it is not. */
+    marketStatus: ChartMarketStatus? = null,
+    /**
      * Where the crosshair went, every time it moved or was dismissed.
      *
      * Hoisted so two panes can share one. It was private `remember` state, which is exactly why the
@@ -1926,6 +1936,8 @@ fun CoineProChart(
                 },
                 onOpenSettings = onSeriesSettings,
                 onRemove = onRemoveSeries,
+                change = change,
+                marketStatus = marketStatus,
                 // Inset past the gutter it sits beside, so a left-hand axis does not have the
                 // legend printed over its numbers.
                 modifier = Modifier

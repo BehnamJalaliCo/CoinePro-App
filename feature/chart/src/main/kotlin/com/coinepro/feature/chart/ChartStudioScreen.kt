@@ -43,6 +43,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.chart.Candle
 import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.chart.ObjectTree
+import com.coinepro.core.chartevents.ChartEventController
+import com.coinepro.core.chartevents.ChartEventSettings
+import com.coinepro.core.chartevents.ChartEventState
+import com.coinepro.core.chartevents.SERVED_EVENT_KINDS
 import com.coinepro.core.datastore.ChartColourTemplate
 import com.coinepro.core.datastore.ChartLayout
 import com.coinepro.core.datastore.ChartLayoutStore
@@ -72,6 +76,7 @@ import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.help.CoineProHelpSheet
 import com.coinepro.core.marketdata.ChartInterval
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -141,9 +146,19 @@ fun ChartStudioScreen(
      * statement about how somebody works and not about one instrument.
      */
     drawingSync: DrawingSyncStore? = null,
+    /**
+     * The reader's kind filter for the marks on the time axis — items 118, 119 and 120.
+     *
+     * Here and not on the chart's own toolbar, because that toolbar is full and its own comment
+     * says so. The studio is where this app puts chart settings and it is one tap from the chart.
+     * Null hides the section entirely rather than showing switches that steer nothing.
+     */
+    events: ChartEventController? = null,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var section by rememberSaveable { mutableStateOf(StudioSection.INDICATORS) }
+    val eventState by remember(events) { events?.state ?: MutableStateFlow(ChartEventState()) }
+        .collectAsStateWithLifecycle()
     var helpId by rememberSaveable { mutableStateOf<String?>(null) }
     /** Which drawing's own settings are open, or null. Opened from the object tree's row. */
     var styling by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -460,6 +475,38 @@ fun ChartStudioScreen(
                     }
                 }
             }
+            events?.let { eventsController ->
+                item {
+                    SectionCard(
+                        section = StudioSection.EVENTS,
+                        open = section == StudioSection.EVENTS,
+                        // A prose count, so Persian digits. Counted over what a backend actually
+                        // serves and never over all five, because the other three cannot be
+                        // switched on and a total that included them would be a number nobody can
+                        // reach.
+                        detail = eventState.visibility.kinds
+                            .count { it in SERVED_EVENT_KINDS }
+                            .toPersianDigits() + " نوع روشن",
+                        onToggle = {
+                            section = if (section == StudioSection.EVENTS) {
+                                StudioSection.NONE
+                            } else {
+                                StudioSection.EVENTS
+                            }
+                        },
+                    ) {
+                        ChartEventSettings(
+                            visibility = eventState.visibility,
+                            onChange = eventsController::setVisibility,
+                            // Why the axis is bare, when it is: offline, this backend does not
+                            // serve the document yet, the read failed, or nothing happened in
+                            // this window. Four different sentences, and «هیچ خبری نبود» is the
+                            // only one that is not a fault.
+                            notice = eventState.notice,
+                        )
+                    }
+                }
+            }
             item {
                 ChartExportRow(
                     bars = state.visibleSeries.bars,
@@ -707,6 +754,9 @@ private enum class StudioSection(val title: String) {
     TOOLS("ابزار ترسیم"),
     DRAWINGS("ترسیم‌های روی چارت"),
     BACKTEST("بک‌تست"),
+
+    /** Which kinds of event are drawn on the time axis. See `ChartEventSettings`. */
+    EVENTS("رویدادها روی نمودار"),
     LAYOUTS("چیدمان‌ها"),
 }
 

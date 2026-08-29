@@ -413,6 +413,7 @@ dependencies {
     implementation(project(":core:script"))
     implementation(project(":core:diagnostics"))
     implementation(project(":core:aiassistant"))
+    implementation(project(":core:chartevents"))
     implementation(project(":core:marketintel"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:navigation"))
