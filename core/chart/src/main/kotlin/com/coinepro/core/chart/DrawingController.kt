@@ -13,30 +13,144 @@ data class DrawingState(
     val tool: DrawingTool? = null,
     /** Points tapped so far on the drawing being placed. */
     val pending: List<ChartPoint> = emptyList(),
+    /**
+     * Which price channel each pending tap bound to, aligned with [pending].
+     *
+     * Carried alongside rather than inside the point, because the channel is a property of *how the
+     * point was placed* and not of where it is: a tap with the magnet off has no channel and must
+     * stay exactly where the finger landed.
+     */
+    val pendingChannels: List<PriceChannel?> = emptyList(),
     val selectedId: Long? = null,
     /** The reader's chosen colour for the next drawing. */
     val colour: Long = Drawing.DEFAULT_DRAWING_COLOUR,
-    /** Snap each tap to the nearest of the bar's open/high/low/close. */
-    val magnet: Boolean = false,
+    /** How hard each tap is pulled onto a bar's open/high/low/close. See [MagnetMode]. */
+    val magnetMode: MagnetMode = MagnetMode.OFF,
+    /**
+     * Whether the armed tool survives a completed drawing.
+     *
+     * Off by default, which is the behaviour every reader gets first and the safer of the two: a
+     * rail that stays armed draws a second trend line the moment somebody taps the chart to look at
+     * something. On, it is the mode a reader marking up twenty levels in a row actually wants, and
+     * the arming indicator in [ActiveToolBar] is what stops it being a surprise.
+     */
+    val keepDrawing: Boolean = false,
+    /**
+     * Whether every drawing on the chart is locked at once.
+     *
+     * Kept as state as well as pushed onto each [Drawing.locked], so the rail can show the switch in
+     * the position the reader left it. A drawing placed *after* the switch was thrown is locked on
+     * arrival, which is what "lock all" means to somebody who threw it to stop nudging things.
+     */
+    val lockedAll: Boolean = false,
+    /** Which layers of the chart are hidden. See [DrawingLayer]. */
+    val hidden: Set<DrawingLayer> = emptySet(),
+    /**
+     * Everything selected, newest last. [selectedId] is the last of them.
+     *
+     * A set rather than a second single id, because the one operation multi-select exists for —
+     * recolouring eight lines at once — has to apply to all of them and the drag handles have to
+     * apply to one. Both readings come off this.
+     */
+    val selection: Set<Long> = emptySet(),
+    /** What copy put aside, waiting for a paste. Empty until something is copied. */
+    val clipboard: List<Drawing> = emptyList(),
+    /**
+     * Which OHLC channel each magnet-placed point bound to.
+     *
+     * The point the reader sees is a price, but what was *chosen* was "the low of that bar". Storing
+     * the channel rather than the price is what makes a later data revision — a corrected bar, a
+     * feed that resends the session — move the anchor with it instead of leaving a trend line
+     * hanging a few ticks off the low it was drawn against.
+     *
+     * A drawing with no entry here was placed with the magnet off and is left exactly where it is,
+     * which is also what a row saved by a version before this existed decodes to.
+     */
+    val bindings: Map<PointRef, PriceChannel> = emptyMap(),
+    /**
+     * Tool ids the reader pinned to the top of the rail.
+     *
+     * State rather than a rail-local `remember`, so it survives the sheet closing and can be
+     * persisted with the rest of the chart. Ninety-one tools is past the point where scanning is a
+     * reasonable ask, and a reader uses six of them.
+     */
+    val favourites: Set<String> = emptySet(),
+    /**
+     * The width the next drawing is placed at, in dp.
+     *
+     * Beside [colour] rather than only on the [Drawing], because the two together are what a saved
+     * template applies: a reader who has settled on a 2dp amber trend line is choosing a style for
+     * what they are *about* to draw, and a colour that carried over while the width did not would
+     * apply half of their template.
+     */
+    val widthDp: Float = DEFAULT_WIDTH_DP,
+    /**
+     * Individual drawings the reader has switched off, by id.
+     *
+     * Separate from [hidden], which hides whole layers. Hiding one object is what the object tree
+     * offers and the layer switches cannot: a reader comparing two of eight trend lines wants the
+     * other six out of the way for a minute, and their only alternative today is deleting them.
+     *
+     * Ids rather than a flag on the [Drawing] for the same reason [bindings] is a map: hiding is
+     * something done *to* a drawing by the view, not a property of the mark itself, and an id that
+     * no longer matches anything is harmless — it costs a set entry and hides nothing.
+     */
+    val hiddenIds: Set<Long> = emptySet(),
 ) {
     /**
-     * What the chart should render: the placed drawings plus the one being built.
+     * What the chart should render: the placed drawings plus the one being built, less what is
+     * hidden.
      *
      * The in-progress one is included so the reader sees a five-point pattern take shape as they
      * tap it out. Without this an XABCD is four taps into nothing followed by a shape appearing.
      */
     val visible: List<Drawing>
-        get() = if (pending.isEmpty() || tool == null) {
-            drawings
-        } else {
-            drawings + Drawing(
-                id = PREVIEW_ID,
-                toolId = tool.id,
-                points = pending,
-                colour = colour,
-                complete = false,
-            )
+        get() {
+            val shown = drawings.filter { isShown(it) }
+            return if (pending.isEmpty() || tool == null) {
+                shown
+            } else {
+                shown + Drawing(
+                    id = PREVIEW_ID,
+                    toolId = tool.id,
+                    points = pending,
+                    colour = colour,
+                    widthDp = widthDp,
+                    complete = false,
+                )
+            }
         }
+
+    /**
+     * Whether the magnet is on at all.
+     *
+     * Kept as a property so the call sites that only need the yes/no — the gesture handler that
+     * decides whether to snap a touch — read the same way they did when this was a boolean.
+     */
+    val magnet: Boolean get() = magnetMode != MagnetMode.OFF
+
+    /** Whether a layer is currently hidden. */
+    fun isHidden(layer: DrawingLayer): Boolean = layer in hidden
+
+    /** Whether one drawing has been switched off on its own, from the object tree. */
+    fun isHidden(id: Long): Boolean = id in hiddenIds
+
+    /**
+     * Whether one drawing survives the layer filter and its own switch.
+     *
+     * A position tool belongs to the positions layer and to nothing else, which is why hiding
+     * «رسم‌ها» leaves a trade setup on the chart: a reader hiding their annotations to look at the
+     * price is not asking to lose sight of where their stop is.
+     *
+     * The per-object switch is checked here as well, so every route to the canvas honours it rather
+     * than only the ones that remembered to filter.
+     */
+    private fun isShown(drawing: Drawing): Boolean {
+        if (drawing.id in hiddenIds) return false
+        val positional = drawing.toolId == DrawingActions.POSITION_TOOL
+        val layer = if (positional) DrawingLayer.POSITIONS else DrawingLayer.DRAWINGS
+        return layer !in hidden
+    }
 
     /** How many more taps the armed tool needs. Zero when nothing is armed or it is freehand. */
     val remaining: Int
@@ -54,6 +168,16 @@ data class DrawingState(
          * `selectedId` of a real drawing never accidentally lights up the preview.
          */
         const val PREVIEW_ID = -1L
+
+        /**
+         * The width a drawing is placed at before anybody chooses one.
+         *
+         * The same 1.6dp [Drawing] defaults to, named here because this is where it is now a
+         * *choice* rather than a constructor default — a template that sets a width has to be able
+         * to be cleared back to something, and "whatever the data class says" is not a value the
+         * rail can offer.
+         */
+        const val DEFAULT_WIDTH_DP = 1.6f
     }
 }
 
@@ -79,7 +203,9 @@ object DrawingActions {
     fun arm(state: DrawingState, tool: DrawingTool?): DrawingState = state.copy(
         tool = tool?.takeUnless { it.group == ToolGroup.MODES },
         pending = emptyList(),
+        pendingChannels = emptyList(),
         selectedId = null,
+        selection = emptySet(),
     )
 
     /**
@@ -88,12 +214,80 @@ object DrawingActions {
      * With no tool armed this selects — [nearest] is whatever the caller's hit test found, which
      * this cannot compute because it has no viewport and therefore no pixels.
      */
-    fun tap(state: DrawingState, point: ChartPoint, nearest: Long? = null): DrawingState {
-        val tool = state.tool ?: return state.copy(selectedId = nearest)
-        if (tool.points <= 0) return state
+    fun tap(
+        state: DrawingState,
+        point: ChartPoint,
+        nearest: Long? = null,
+        channel: PriceChannel? = null,
+    ): DrawingState {
+        val tool = state.tool ?: return select(state, nearest, additive = false)
         val points = state.pending + point
-        if (points.size < tool.points) return state.copy(pending = points)
-        return commit(state, tool, points)
+        val channels = state.pendingChannels + channel
+        // A path or a polyline has no tap count to reach — it ends when the reader says so, with a
+        // double tap or a tap back on the first anchor — so every tap simply extends it.
+        if (isVariablePoint(tool.id)) {
+            return state.copy(pending = points, pendingChannels = channels)
+        }
+        if (tool.points <= 0) return state
+        if (points.size < tool.points) return state.copy(pending = points, pendingChannels = channels)
+        return commit(state, tool, points, channels)
+    }
+
+    /**
+     * The same tap, with the magnet applied and the channel it chose remembered.
+     *
+     * The entry point a chart with a series in hand should use. [tap] cannot snap on its own — it
+     * has no bars — so a caller that snaps first and then taps loses which of the four prices the
+     * point was pulled onto, and the binding this whole arrangement exists for never gets written.
+     */
+    fun tapSnapped(
+        state: DrawingState,
+        point: ChartPoint,
+        series: CandleSeries,
+        nearest: Long? = null,
+    ): DrawingState {
+        val snapped = snap(point, series, state.magnetMode)
+        return tap(state, snapped.point, nearest, snapped.channel)
+    }
+
+    /**
+     * Whether this tool is placed by an arbitrary number of taps rather than a fixed count.
+     *
+     * Two of them, and they are the two whose shape the reader is describing rather than
+     * constructing: a path and a polyline are however many corners the thing being outlined has.
+     * Everything else has a defining count — a channel is three points because a channel *is* three
+     * points — and letting one of those run on would produce a shape the tool cannot render.
+     */
+    fun isVariablePoint(toolId: String): Boolean = toolId in VARIABLE_POINT_TOOLS
+
+    /**
+     * End a path or a polyline where it is: the double tap.
+     *
+     * Fewer than two anchors is a reader who armed the tool and changed their mind, and it disarms
+     * rather than placing a single point nobody can see or select.
+     */
+    fun finish(state: DrawingState): DrawingState {
+        val tool = state.tool ?: return state
+        if (!isVariablePoint(tool.id)) return state
+        if (state.pending.size < 2) return cancel(state)
+        return commit(state, tool, state.pending, state.pendingChannels)
+    }
+
+    /**
+     * End a polyline by tapping its first anchor again, which closes it.
+     *
+     * Closure is recorded by repeating the first anchor at the end rather than by a flag on the
+     * drawing, so the renderer reads it off the points and [Drawing] needs no new field. It also
+     * means a reader who drags that last handle away re-opens the shape, which is the behaviour
+     * somebody who dragged it would expect.
+     */
+    fun closeShape(state: DrawingState): DrawingState {
+        val tool = state.tool ?: return state
+        if (!isVariablePoint(tool.id)) return state
+        if (state.pending.size < 3) return finish(state)
+        val points = state.pending + state.pending.first()
+        val channels = state.pendingChannels + state.pendingChannels.firstOrNull()
+        return commit(state, tool, points, channels)
     }
 
     /**
@@ -105,14 +299,14 @@ object DrawingActions {
     fun drag(state: DrawingState, from: ChartPoint, to: ChartPoint): DrawingState {
         val tool = state.tool ?: return state
         if (tool.points != 2) return state
-        return commit(state, tool, listOf(from, to))
+        return commit(state, tool, listOf(from, to), listOf(null, null))
     }
 
     /** A freehand stroke, already sampled. */
     fun stroke(state: DrawingState, points: List<ChartPoint>): DrawingState {
         val tool = state.tool ?: return state
-        if (tool.points != 0 || points.size < 2) return state
-        return commit(state, tool, points)
+        if (tool.points != 0 || isVariablePoint(tool.id) || points.size < 2) return state
+        return commit(state, tool, points, points.map { null })
     }
 
     /**
@@ -122,7 +316,10 @@ object DrawingActions {
      * who hits undo means "that tap", not "that trend line".
      */
     fun undo(state: DrawingState): DrawingState = when {
-        state.pending.isNotEmpty() -> state.copy(pending = state.pending.dropLast(1))
+        state.pending.isNotEmpty() -> state.copy(
+            pending = state.pending.dropLast(1),
+            pendingChannels = state.pendingChannels.dropLast(1),
+        )
         state.drawings.isNotEmpty() -> state.copy(
             drawings = state.drawings.dropLast(1),
             selectedId = state.selectedId?.takeIf { it != state.drawings.last().id },
@@ -132,7 +329,7 @@ object DrawingActions {
 
     /** Disarm without placing anything. The way out of a mode. */
     fun cancel(state: DrawingState): DrawingState =
-        state.copy(tool = null, pending = emptyList())
+        state.copy(tool = null, pending = emptyList(), pendingChannels = emptyList())
 
     /**
      * Delete one drawing, unless it is locked.
@@ -146,6 +343,11 @@ object DrawingActions {
         return state.copy(
             drawings = state.drawings.filterNot { it.id == id },
             selectedId = state.selectedId?.takeIf { it != id },
+            selection = state.selection - id,
+            bindings = state.bindings.filterKeys { it.drawingId != id },
+            // Dropped with the drawing, so a later drawing that reuses the id — ids count up from
+            // the highest in the list — cannot be born invisible.
+            hiddenIds = state.hiddenIds - id,
         )
     }
 
@@ -154,18 +356,114 @@ object DrawingActions {
         drawings = state.drawings.map { if (it.id == id) it.copy(locked = locked) else it },
     )
 
-    fun clear(state: DrawingState): DrawingState =
-        state.copy(drawings = emptyList(), pending = emptyList(), selectedId = null)
+    fun clear(state: DrawingState): DrawingState = state.copy(
+        drawings = emptyList(),
+        pending = emptyList(),
+        pendingChannels = emptyList(),
+        selectedId = null,
+        selection = emptySet(),
+        bindings = emptyMap(),
+        hiddenIds = emptySet(),
+    )
 
     /** Bring one drawing to the front, which is what makes it the one a tap on an overlap finds. */
-    fun bringToFront(state: DrawingState, id: Long): DrawingState {
-        val subject = state.drawings.firstOrNull { it.id == id } ?: return state
-        return state.copy(drawings = state.drawings.filterNot { it.id == id } + subject)
-    }
+    fun bringToFront(state: DrawingState, id: Long): DrawingState =
+        state.copy(drawings = ObjectTree.bringToFront(state.drawings, id))
 
     fun recolour(state: DrawingState, id: Long, colour: Long): DrawingState = state.copy(
         drawings = state.drawings.map { if (it.id == id) it.copy(colour = colour) else it },
     )
+
+    /** Put one drawing behind everything else. The way out of "my note is covering my chart". */
+    fun sendToBack(state: DrawingState, id: Long): DrawingState =
+        state.copy(drawings = ObjectTree.sendToBack(state.drawings, id))
+
+    /**
+     * Move one drawing to a given place in the z-order — what a drag in the object tree commits.
+     *
+     * The list arithmetic lives in [ObjectTree.reorder] rather than here, because the tree needs it
+     * without holding a whole [DrawingState] and two implementations of "restack without losing
+     * anything" is one more than the number that can be kept correct.
+     */
+    fun reorder(state: DrawingState, id: Long, toIndex: Int): DrawingState =
+        state.copy(drawings = ObjectTree.reorder(state.drawings, id, toIndex))
+
+    /**
+     * Hide or show one drawing, without deleting it.
+     *
+     * Hiding is not deleting, and on a chart somebody has spent an hour marking up the difference
+     * is the whole point: a reader who wants two of their eight lines out of the way for a minute
+     * is not asking to redraw them afterwards. A locked drawing hides like any other — the lock
+     * guards the drawing's geometry, not the reader's view of it.
+     */
+    fun setObjectHidden(state: DrawingState, id: Long, hidden: Boolean): DrawingState = state.copy(
+        hiddenIds = if (hidden) state.hiddenIds + id else state.hiddenIds - id,
+    )
+
+    /**
+     * Bring every hidden drawing back.
+     *
+     * The escape hatch the object tree needs: somebody who hid twelve objects one at a time must
+     * not have to remember which twelve, and a chart that looks empty with no single switch to
+     * explain it is the failure this prevents.
+     */
+    fun showAllObjects(state: DrawingState): DrawingState = state.copy(hiddenIds = emptySet())
+
+    /** The width the next drawing is placed at. Half of what applying a template means. */
+    fun setWidth(state: DrawingState, widthDp: Float): DrawingState =
+        state.copy(widthDp = widthDp.coerceIn(MIN_WIDTH_DP, MAX_WIDTH_DP))
+
+    /**
+     * Apply a colour and a width to one placed drawing — a template, dropped onto something that
+     * already exists.
+     *
+     * Locked drawings are skipped, because restyling is an edit and the lock exists so that a
+     * drawing cannot be edited by accident. The style is *not* adopted as the state's own: applying
+     * a template to one old line is not a statement about what the reader wants to draw next.
+     */
+    fun restyle(state: DrawingState, id: Long, colour: Long, widthDp: Float): DrawingState {
+        val width = widthDp.coerceIn(MIN_WIDTH_DP, MAX_WIDTH_DP)
+        return state.copy(
+            drawings = state.drawings.map {
+                if (it.id == id && !it.locked) it.copy(colour = colour, widthDp = width) else it
+            },
+        )
+    }
+
+    /**
+     * The same, to everything selected at once.
+     *
+     * The reason multi-select is worth having: eight levels placed in the default gold become eight
+     * in the reader's own template in one gesture rather than eight round trips through a sheet.
+     * Unlike [restyle], this *does* adopt the style for the next drawing — a reader who has just
+     * restyled their whole selection has said what they want their drawings to look like.
+     */
+    fun restyleSelection(state: DrawingState, colour: Long, widthDp: Float): DrawingState {
+        val width = widthDp.coerceIn(MIN_WIDTH_DP, MAX_WIDTH_DP)
+        return state.copy(
+            colour = colour,
+            widthDp = width,
+            drawings = state.drawings.map {
+                if (it.id in state.selection && !it.locked) {
+                    it.copy(colour = colour, widthDp = width)
+                } else {
+                    it
+                }
+            },
+        )
+    }
+
+    /**
+     * The thinnest a drawing may be, in dp.
+     *
+     * Clamped rather than trusted, because a width arrives from a stored template and a row on disk
+     * is not a number this build wrote: a zero renders as nothing the reader can find or select,
+     * and a negative one is a stroke width the canvas refuses outright.
+     */
+    const val MIN_WIDTH_DP = 0.5f
+
+    /** The thickest, for the same reason: past this a line hides the candles it was drawn on. */
+    const val MAX_WIDTH_DP = 12f
 
     /**
      * Set what a text, callout, note or price label says.
@@ -282,38 +580,420 @@ object DrawingActions {
      * to touch two lows is wrong if it touches them to within a pixel, and a pixel at this zoom is
      * several dollars of gold.
      */
-    fun snap(point: ChartPoint, series: CandleSeries): ChartPoint {
-        if (series.isEmpty) return point
+    fun snap(point: ChartPoint, series: CandleSeries): ChartPoint =
+        snap(point, series, MagnetMode.STRONG).point
+
+    /**
+     * The magnet, in both of its strengths, reporting which channel it bound to.
+     *
+     * [MagnetMode.STRONG] pulls every point onto the nearest of the bar's four prices however far
+     * away the finger was, which is what somebody drawing a line between two lows wants and is
+     * unusable for anything else — a text label placed in strong magnet lands on a wick.
+     * [MagnetMode.WEAK] only pulls when the finger was already close, so the same reader can place
+     * a level in open space without turning the magnet off and on again.
+     *
+     * "Close" is measured against the bar's own range rather than in dollars or in pixels. A fixed
+     * price tolerance is a different fraction of a bar on gold and on a token worth four cents, and
+     * a pixel tolerance is not available here — this function has no viewport and must not grow
+     * one, or the magnet would stop being testable. On a bar with no range at all, weak snaps only
+     * on an exact hit, which is the honest reading of "within nothing".
+     *
+     * The returned [MagnetSnap.channel] is null whenever the point was left alone, and that null is
+     * meaningful: it is what tells [resnap] never to move this point.
+     */
+    fun snap(
+        point: ChartPoint,
+        series: CandleSeries,
+        mode: MagnetMode,
+        tolerance: Double = WEAK_TOLERANCE,
+    ): MagnetSnap {
+        if (mode == MagnetMode.OFF || series.isEmpty) return MagnetSnap(point, null)
+        val bar = nearestBar(series, point.time)
+        val channel = channelAt(series, bar, point.price)
+        val price = priceOf(series, bar, channel)
+        if (mode == MagnetMode.WEAK) {
+            val reach = (series.high[bar] - series.low[bar]) * tolerance
+            if (kotlin.math.abs(price - point.price) > reach) return MagnetSnap(point, null)
+        }
+        return MagnetSnap(ChartPoint(series.time[bar], price), channel)
+    }
+
+    /** Which of a bar's four prices a tapped price is nearest. Ties go to the close. */
+    fun channelAt(series: CandleSeries, barIndex: Int, price: Double): PriceChannel {
+        var best = PriceChannel.CLOSE
+        var bestDistance = kotlin.math.abs(series.close[barIndex] - price)
+        for (candidate in PriceChannel.entries) {
+            val distance = kotlin.math.abs(priceOf(series, barIndex, candidate) - price)
+            if (distance < bestDistance) {
+                bestDistance = distance
+                best = candidate
+            }
+        }
+        return best
+    }
+
+    /** One of a bar's four prices, named. */
+    fun priceOf(series: CandleSeries, barIndex: Int, channel: PriceChannel): Double = when (channel) {
+        PriceChannel.OPEN -> series.open[barIndex]
+        PriceChannel.HIGH -> series.high[barIndex]
+        PriceChannel.LOW -> series.low[barIndex]
+        PriceChannel.CLOSE -> series.close[barIndex]
+    }
+
+    /**
+     * Pull every magnet-bound point back onto the channel it was bound to.
+     *
+     * Called after the series is replaced — a corrected bar, a refetched session, a switch of chart
+     * type that rewrites the bars. A point bound to "the low of Tuesday" moves to whatever Tuesday's
+     * low now says; a point placed with the magnet off has no binding and is not touched, because
+     * the reader put it exactly where they meant it.
+     *
+     * A locked drawing is not moved either. A lock exists to stop a drawing changing, and a data
+     * revision is a change like any other.
+     */
+    fun resnap(state: DrawingState, series: CandleSeries): DrawingState {
+        if (series.isEmpty || state.bindings.isEmpty()) return state
+        return state.copy(
+            drawings = state.drawings.map { drawing ->
+                if (drawing.locked) return@map drawing
+                var moved = false
+                val points = drawing.points.mapIndexed { index, point ->
+                    val channel = state.bindings[PointRef(drawing.id, index)] ?: return@mapIndexed point
+                    val bar = nearestBar(series, point.time)
+                    val next = ChartPoint(series.time[bar], priceOf(series, bar, channel))
+                    if (next != point) moved = true
+                    next
+                }
+                if (moved) drawing.copy(points = points) else drawing
+            },
+        )
+    }
+
+    /** The channels one drawing's points are bound to, aligned with them — what a codec writes. */
+    fun channelsOf(state: DrawingState, drawing: Drawing): List<PriceChannel?> =
+        drawing.points.indices.map { state.bindings[PointRef(drawing.id, it)] }
+
+    /**
+     * Restore one drawing's bindings, as read back from storage.
+     *
+     * A shorter list than the drawing has points, or a list of nulls, is exactly what a row written
+     * before channels existed decodes to, and it leaves the drawing unbound rather than rejected.
+     */
+    fun withChannels(state: DrawingState, drawingId: Long, channels: List<PriceChannel?>): DrawingState {
+        val added = channels.withIndex().mapNotNull { (index, channel) ->
+            channel?.let { PointRef(drawingId, index) to it }
+        }
+        return state.copy(bindings = state.bindings + added)
+    }
+
+    // ── modes and layers ──────────────────────────────────────────────────────────────
+
+    /** Set the magnet outright. */
+    fun setMagnet(state: DrawingState, mode: MagnetMode): DrawingState = state.copy(magnetMode = mode)
+
+    /**
+     * Off, weak, strong, off — one rail button rather than three.
+     *
+     * Three targets for a setting with three values is most of a row on a phone, and the two that
+     * are not current are dead pixels most of the time. The button's own tint says which of the
+     * three it is in, which is the part that has to be unambiguous.
+     */
+    fun cycleMagnet(state: DrawingState): DrawingState = state.copy(
+        magnetMode = when (state.magnetMode) {
+            MagnetMode.OFF -> MagnetMode.WEAK
+            MagnetMode.WEAK -> MagnetMode.STRONG
+            MagnetMode.STRONG -> MagnetMode.OFF
+        },
+    )
+
+    /** Keep the tool armed after a drawing completes, or let it fall back to the cursor. */
+    fun setKeepDrawing(state: DrawingState, keep: Boolean): DrawingState = state.copy(keepDrawing = keep)
+
+    /**
+     * Lock or unlock every drawing at once, and remember which way the switch is.
+     *
+     * The switch is remembered as well as applied because it also governs what happens to the *next*
+     * drawing: a reader who locked everything to stop nudging lines does not want the line they draw
+     * a moment later to be the one loose object on the chart.
+     */
+    fun setLockAll(state: DrawingState, locked: Boolean): DrawingState = state.copy(
+        lockedAll = locked,
+        drawings = state.drawings.map { it.copy(locked = locked) },
+    )
+
+    /** Hide or show one layer. */
+    fun setHidden(state: DrawingState, layer: DrawingLayer, hidden: Boolean): DrawingState = state.copy(
+        hidden = if (hidden) state.hidden + layer else state.hidden - layer,
+    )
+
+    /** Hide or show every layer at once — the «همه» entry beside the three. */
+    fun setAllHidden(state: DrawingState, hidden: Boolean): DrawingState = state.copy(
+        hidden = if (hidden) DrawingLayer.entries.toSet() else emptySet(),
+    )
+
+    /** Pin a tool to the rail's favourites row, or take it back out. */
+    fun toggleFavourite(state: DrawingState, toolId: String): DrawingState = state.copy(
+        favourites = if (toolId in state.favourites) state.favourites - toolId else state.favourites + toolId,
+    )
+
+    // ── selection, and what can be done to one ────────────────────────────────────────
+
+    /**
+     * Select a drawing, or add it to what is already selected.
+     *
+     * [selectedId] follows the last thing touched rather than the first, because that is the one the
+     * handles belong to and the one a subsequent drag will move.
+     */
+    fun select(state: DrawingState, id: Long?, additive: Boolean = false): DrawingState {
+        if (id == null) return state.copy(selectedId = null, selection = emptySet())
+        val selection = if (additive) state.selection + id else setOf(id)
+        return state.copy(selectedId = id, selection = selection)
+    }
+
+    /** Drop the selection without touching anything in it. */
+    fun clearSelection(state: DrawingState): DrawingState =
+        state.copy(selectedId = null, selection = emptySet())
+
+    /**
+     * Recolour everything selected in one go.
+     *
+     * The reason multi-select is worth having at all: a reader who has marked eight levels in the
+     * default gold and wants them red is otherwise doing eight round trips through a colour sheet.
+     * A locked drawing is skipped rather than silently recoloured — colour is an edit.
+     */
+    fun recolourSelection(state: DrawingState, colour: Long): DrawingState = state.copy(
+        colour = colour,
+        drawings = state.drawings.map {
+            if (it.id in state.selection && !it.locked) it.copy(colour = colour) else it
+        },
+    )
+
+    /** Put the selection on the clipboard. Nothing selected leaves the clipboard as it was. */
+    fun copySelection(state: DrawingState): DrawingState {
+        val chosen = state.drawings.filter { it.id in state.selection }
+        if (chosen.isEmpty()) return state
+        return state.copy(clipboard = chosen)
+    }
+
+    /**
+     * Paste the clipboard, offset so the copies are not hidden underneath their originals.
+     *
+     * The offset is the caller's, in chart space, because "a little to the right" is a number of
+     * bars at one zoom and a number of pixels at another and only the chart knows which. Pasting
+     * with no offset at all is allowed and is what a paste onto a *different* symbol wants.
+     */
+    fun paste(state: DrawingState, deltaTime: Long = 0L, deltaPrice: Double = 0.0): DrawingState {
+        if (state.clipboard.isEmpty()) return state
+        var nextId = (state.drawings.maxOfOrNull { it.id } ?: 0L) + 1
+        val pasted = state.clipboard.map { source ->
+            val copy = source.copy(
+                id = nextId,
+                points = source.points.map { ChartPoint(it.time + deltaTime, it.price + deltaPrice) },
+                locked = state.lockedAll,
+            )
+            nextId++
+            copy
+        }
+        return state.copy(
+            drawings = state.drawings + pasted,
+            selectedId = pasted.last().id,
+            selection = pasted.map { it.id }.toSet(),
+        )
+    }
+
+    /** Copy one drawing and paste it in a single step — the long-press "duplicate". */
+    fun clone(state: DrawingState, id: Long, deltaTime: Long = 0L, deltaPrice: Double = 0.0): DrawingState {
+        val source = state.drawings.firstOrNull { it.id == id } ?: return state
+        return paste(state.copy(clipboard = listOf(source)), deltaTime, deltaPrice)
+            .copy(clipboard = state.clipboard)
+    }
+
+    // ── the eraser ────────────────────────────────────────────────────────────────────
+
+    /** The eraser in its whole-object mode: the same rules as [delete], including the lock. */
+    fun erase(state: DrawingState, id: Long): DrawingState = delete(state, id)
+
+    /**
+     * The eraser in its partial mode: take out the one leg under the finger.
+     *
+     * A path, a polyline or a brush stroke is a chain of legs, and a reader who overshot wants the
+     * overshoot gone, not the whole stroke. Removing leg *n* splits the chain in two — everything up
+     * to anchor *n*, and everything from anchor *n+1* — and each half survives only if it is still
+     * two anchors long, so erasing the first leg of a three-point path leaves one line rather than a
+     * line and an orphaned dot.
+     *
+     * Anything that is not a chain has no legs to take out and is deleted whole, which is what the
+     * eraser means everywhere else. A locked drawing is refused, the same as every other edit.
+     *
+     * The pieces keep the original's place in the z-order rather than being appended, so erasing a
+     * leg does not quietly bring a stroke to the front of everything drawn after it.
+     */
+    fun erasePartial(state: DrawingState, id: Long, segmentIndex: Int): DrawingState {
+        val index = state.drawings.indexOfFirst { it.id == id }
+        if (index < 0) return state
+        val source = state.drawings[index]
+        if (source.locked) return state
+        if (source.toolId !in CHAIN_TOOLS) return delete(state, id)
+        if (segmentIndex !in 0 until source.points.size - 1) return state
+        val head = source.points.take(segmentIndex + 1)
+        val tail = source.points.drop(segmentIndex + 1)
+        var nextId = (state.drawings.maxOfOrNull { it.id } ?: 0L) + 1
+        val pieces = listOf(head, tail).filter { it.size >= 2 }.map { points ->
+            val piece = source.copy(id = nextId, points = points)
+            nextId++
+            piece
+        }
+        val drawings = state.drawings.toMutableList()
+        drawings.removeAt(index)
+        drawings.addAll(index, pieces)
+        return state.copy(
+            drawings = drawings,
+            selectedId = pieces.firstOrNull()?.id,
+            selection = pieces.map { it.id }.toSet(),
+            bindings = state.bindings.filterKeys { it.drawingId != id },
+        )
+    }
+
+    /**
+     * Which leg of a chain a tap landed on, or −1.
+     *
+     * Screen space, because a tolerance is a finger's width — the same reasoning [DrawingHitTest]
+     * gives — and it delegates to that class's own segment distance so the eraser and the selector
+     * cannot disagree about which leg is under the finger.
+     */
+    fun segmentAt(drawing: Drawing, x: Float, y: Float, view: ChartViewport, tolerancePx: Float): Int {
+        val screen = drawing.points.map { view.xOfTime(it.time) to view.yOf(it.price) }
+        var best = -1
+        var bestDistance = tolerancePx
+        for (index in 0 until screen.size - 1) {
+            val (ax, ay) = screen[index]
+            val (bx, by) = screen[index + 1]
+            val distance = DrawingHitTest.distanceToSegment(x, y, ax, ay, bx, by)
+            if (distance <= bestDistance) {
+                bestDistance = distance
+                best = index
+            }
+        }
+        return best
+    }
+
+    // ── internals ─────────────────────────────────────────────────────────────────────
+
+    /** The bar nearest a moment. Linear, because a drawing is placed at human speed. */
+    private fun nearestBar(series: CandleSeries, time: Long): Int {
         var bestBar = 0
         var bestDistance = Long.MAX_VALUE
         for (index in 0 until series.size) {
-            val distance = kotlin.math.abs(series.time[index] - point.time)
+            val distance = kotlin.math.abs(series.time[index] - time)
             if (distance < bestDistance) {
                 bestDistance = distance
                 bestBar = index
             }
         }
-        val candidates = doubleArrayOf(
-            series.open[bestBar],
-            series.high[bestBar],
-            series.low[bestBar],
-            series.close[bestBar],
-        )
-        val price = candidates.minByOrNull { kotlin.math.abs(it - point.price) } ?: point.price
-        return ChartPoint(series.time[bestBar], price)
+        return bestBar
     }
 
-    private fun commit(state: DrawingState, tool: DrawingTool, points: List<ChartPoint>): DrawingState {
+    private fun commit(
+        state: DrawingState,
+        tool: DrawingTool,
+        points: List<ChartPoint>,
+        channels: List<PriceChannel?>,
+    ): DrawingState {
         val id = (state.drawings.maxOfOrNull { it.id } ?: 0L) + 1
-        val drawing = Drawing(id = id, toolId = tool.id, points = withTarget(tool, points), colour = state.colour)
+        val placed = withTarget(tool, points)
+        val drawing = Drawing(
+            id = id,
+            toolId = tool.id,
+            points = placed,
+            colour = state.colour,
+            widthDp = state.widthDp,
+            locked = state.lockedAll,
+        )
+        val bound = channels.withIndex().mapNotNull { (index, channel) ->
+            channel?.let { PointRef(id, index) to it }
+        }
         return state.copy(
             drawings = state.drawings + drawing,
             pending = emptyList(),
-            // Disarm after placing. A rail that stays armed draws a second trend line the moment
-            // the reader taps the chart to look at something, which is the single most reported
-            // complaint about every terminal that does it the other way.
-            tool = null,
+            pendingChannels = emptyList(),
+            // Disarm after placing, unless the reader asked for the opposite. A rail that stays
+            // armed by default draws a second trend line the moment they tap the chart to look at
+            // something, which is the single most reported complaint about every terminal that does
+            // it the other way — and keeping it armed is exactly what somebody marking twenty levels
+            // in a row wants, which is why it is a latch and not a decision made here.
+            tool = if (state.keepDrawing) tool else null,
             selectedId = id,
+            selection = setOf(id),
+            bindings = state.bindings + bound,
         )
     }
+
+    /** The two tools a reader ends by saying so rather than by running out of taps. */
+    private val VARIABLE_POINT_TOOLS = setOf("path", "polyline")
+
+    /** The tools whose points are a chain, and so can have one leg erased out of the middle. */
+    private val CHAIN_TOOLS = setOf("path", "polyline", "brush", "highlighter")
+
+    /**
+     * How close a weak magnet has to be, as a fraction of the bar's own high-low range.
+     *
+     * A quarter. Half would capture the whole bar — every tap inside the range is within half a
+     * range of one of the four prices — and a tenth is close enough that the reader cannot tell it
+     * from the magnet being off.
+     */
+    const val WEAK_TOLERANCE = 0.25
 }
+
+/**
+ * How hard the magnet pulls.
+ *
+ * Three states rather than a boolean, because the two useful behaviours are genuinely different
+ * tools and readers of every terminal in this category ask for both. Strong is for construction —
+ * a trend line between two lows must *touch* both lows — and weak is for annotation, where the
+ * reader wants the help only when they are already aiming at a price.
+ */
+enum class MagnetMode { OFF, WEAK, STRONG }
+
+/**
+ * Which of a bar's four prices a magnet-placed point was bound to.
+ *
+ * The thing that is persisted, rather than the price it happened to be at when the reader tapped.
+ * A price is a snapshot of a number that the feed may revise; "the low of that bar" is what the
+ * reader actually chose, and it survives the revision.
+ */
+enum class PriceChannel {
+    OPEN,
+    HIGH,
+    LOW,
+    CLOSE,
+    ;
+
+    companion object {
+        /**
+         * A stored channel name, or null.
+         *
+         * Null for null, for a blank, and for anything unrecognised — which is precisely what a row
+         * written before channels existed reads back as, and it must decode to "no channel" rather
+         * than to a default that would start moving somebody's old trend line.
+         */
+        fun decode(text: String?): PriceChannel? = entries.firstOrNull { it.name == text }
+    }
+}
+
+/** One point of one drawing, as a key. */
+data class PointRef(val drawingId: Long, val index: Int)
+
+/** What the magnet did: where the point ended up, and which channel it bound to if it moved. */
+data class MagnetSnap(val point: ChartPoint, val channel: PriceChannel?)
+
+/**
+ * The layers a reader can hide without deleting anything.
+ *
+ * Hiding is not deleting and the difference matters on a chart somebody has spent time marking up:
+ * a reader who wants to see the price for a moment is not asking to lose their work, and every
+ * terminal that offered only "delete all" taught its readers not to draw.
+ *
+ * Indicators are in the list even though this file draws none of them. The switch belongs beside the
+ * other two — a reader hiding "everything" means everything — and the chart reads the flag.
+ */
+enum class DrawingLayer { DRAWINGS, INDICATORS, POSITIONS }

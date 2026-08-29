@@ -21,7 +21,16 @@ class HelpCatalogTest {
 
     @Test
     fun `every entry the export promised is here, plus the ones written since`() {
-        assertEquals(177 + 9, catalog.size)
+        // 177 exported from the web terminal, then 9 written for indicators it never had, then 55
+        // more for the thirty-nine drawing tools and the twenty-seven indicators this app added.
+        //
+        // Written as a sum rather than as 241 so the provenance survives: the first number is the
+        // export and may not change without a re-export, and the rest are ours. Four entries were
+        // deliberately *not* overwritten during that merge — `avwap`, `table`, `magnet` and `dot`
+        // already existed and meant something else or said the same thing, and one of them
+        // (`table`) is the scripting primitive rather than the drawing tool, which is why the tool
+        // is keyed `tabledraw`.
+        assertEquals(177 + 9 + 55, catalog.size)
     }
 
     @Test

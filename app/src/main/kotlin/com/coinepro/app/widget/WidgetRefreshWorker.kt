@@ -14,6 +14,7 @@ import androidx.work.WorkerParameters
 import com.coinepro.core.common.AppResult
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.datastore.Watchlist
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.datastore.WidgetMarket
 import com.coinepro.core.datastore.WidgetSnapshot
@@ -183,7 +184,12 @@ class WidgetRefreshEngine @Inject constructor(
      * placed is a widget that gets removed the same day.
      */
     private suspend fun symbols(): List<String> {
-        val starred = runCatching { watchlist.symbols.first() }.getOrDefault(emptyList())
+        // The default list by name, not the active one. A widget is glanced at from the home
+        // screen with the app closed; having it follow whichever list happened to be open last
+        // would make its contents change for a reason the reader cannot see from where they are
+        // standing.
+        val starred = runCatching { watchlist.symbols(Watchlist.DEFAULT_LIST_ID).first() }
+            .getOrDefault(emptyList())
         val chosen = starred.ifEmpty { MarketDataSymbols.crypto }
         return chosen.map { it.uppercase() }.distinct().take(WidgetSnapshotStore.MAX_MARKETS)
     }

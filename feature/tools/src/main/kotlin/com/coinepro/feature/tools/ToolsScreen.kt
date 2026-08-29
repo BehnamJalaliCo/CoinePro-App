@@ -118,6 +118,8 @@ fun ToolsScreen(
     onOpenConnections: (() -> Unit)? = null,
     onOpenNews: (() -> Unit)? = null,
     onOpenCalendar: (() -> Unit)? = null,
+    onOpenHeatmap: (() -> Unit)? = null,
+    onOpenScreener: (() -> Unit)? = null,
     /** Opens the closed-trade history. Null on a build with no portfolio screen. */
     onOpenPortfolio: (() -> Unit)? = null,
     /** Opens the academy. Null on a platform that has none — TradeYar. */
@@ -161,6 +163,8 @@ fun ToolsScreen(
             OperationalTools(
                 onOpenNews = onOpenNews,
                 onOpenCalendar = onOpenCalendar,
+                onOpenHeatmap = onOpenHeatmap,
+                onOpenScreener = onOpenScreener,
                 onOpenConnections = onOpenConnections,
                 onOpenPortfolio = onOpenPortfolio,
                 onOpenJournal = onOpenJournal,
@@ -633,6 +637,8 @@ private fun ResetRow(onReset: () -> Unit) {
 private fun OperationalTools(
     onOpenNews: (() -> Unit)?,
     onOpenCalendar: (() -> Unit)?,
+    onOpenHeatmap: (() -> Unit)? = null,
+    onOpenScreener: (() -> Unit)? = null,
     onOpenConnections: (() -> Unit)?,
     onOpenPortfolio: (() -> Unit)?,
     onOpenAcademy: (() -> Unit)?,
@@ -674,6 +680,12 @@ private fun OperationalTools(
         }
         onOpenNews?.let {
             OperationalCard(stringResource(R.string.tools_news_title), stringResource(R.string.tools_news_body), stringResource(R.string.tools_news_open), it)
+        }
+        onOpenScreener?.let {
+            OperationalCard(stringResource(R.string.tools_screener_title), stringResource(R.string.tools_screener_body), stringResource(R.string.tools_screener_open), it)
+        }
+        onOpenHeatmap?.let {
+            OperationalCard(stringResource(R.string.tools_heatmap_title), stringResource(R.string.tools_heatmap_body), stringResource(R.string.tools_heatmap_open), it)
         }
         onOpenCalendar?.let {
             OperationalCard(stringResource(R.string.tools_calendar_title), stringResource(R.string.tools_calendar_body), stringResource(R.string.tools_calendar_open), it)

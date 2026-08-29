@@ -42,7 +42,15 @@ class DrawingToolsTest {
 
     @Test
     fun `the rail offers what the web terminal offers`() {
-        assertEquals(52, DrawingTools.ALL.size)
+        // Fifty-two was the web terminal's set. Ninety-one is that set plus the thirty-nine written
+        // against TradingView's published inventory of a hundred and ten — the three volume tools
+        // first, because a volume profile is the most-cited tool among traders who have been at it
+        // a while and the one whose absence was the real gap.
+        //
+        // Pinned as a number rather than a floor so that removing one is as loud as adding one. A
+        // tool that quietly disappears from the rail is a reader's saved drawing that no longer
+        // renders, and nothing else in this suite would catch it.
+        assertEquals(91, DrawingTools.ALL.size)
     }
 
     @Test

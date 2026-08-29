@@ -39,4 +39,44 @@
     <string name="portfolio_direction_sell">Sell</string>
     <string name="portfolio_eyebrow">Portfolio</string>
     <string name="portfolio_reading_factor">Profit factor</string>
+
+    <string name="portfolio_report_open">Full report</string>
+    <string name="portfolio_report_title">Full report</string>
+    <string name="portfolio_report_subtitle">Advanced metrics and file export, with no subscription.</string>
+    <string name="portfolio_report_empty">No trade has closed yet, so there is nothing to report on.</string>
+    <string name="portfolio_report_empty_hint">Once your first trade closes, the equity curve and every metric appear here.</string>
+    <string name="portfolio_report_metrics">Metrics</string>
+    <string name="portfolio_report_attribution">By symbol</string>
+    <string name="portfolio_report_year_total">Year</string>
+    <string name="portfolio_report_peak_note">The dashed line is the high so far; the shaded area is how far equity sat below it.</string>
+    <string name="portfolio_report_drawdown_span">Max drawdown</string>
+    <string name="portfolio_report_drawdown_between">%1$s to %2$s</string>
+    <string name="portfolio_report_drawdown_note">This is peak to trough on the equity curve, not the largest losing trade — several losses in a row make a fall larger than any one of them.</string>
+    <string name="portfolio_report_drawdown_recovered">It took %1$s trades to make a new high.</string>
+    <string name="portfolio_report_drawdown_open">You have been below the previous high for %1$s trades.</string>
+    <string name="portfolio_report_ratio_note">Sharpe and Sortino are both per trade rather than annualised, so they are not comparable with a fund\'s published figure.</string>
+    <string name="portfolio_report_holding_sample">Averaged over %1$s trades of %2$s; the rest carry no open time.</string>
+    <string name="portfolio_report_export">Export</string>
+    <string name="portfolio_report_export_csv">CSV</string>
+    <string name="portfolio_report_export_xlsx">Excel</string>
+    <string name="portfolio_report_export_done">The file was saved.</string>
+    <string name="portfolio_report_export_failed">The file could not be written. Choose another location.</string>
+
+    <string name="portfolio_metric_average_win">Average win</string>
+    <string name="portfolio_metric_average_loss">Average loss</string>
+    <string name="portfolio_metric_win_loss">Win / loss ratio</string>
+    <string name="portfolio_metric_largest_win">Largest win</string>
+    <string name="portfolio_metric_largest_loss">Largest loss</string>
+    <string name="portfolio_metric_longest_drawdown">Longest drawdown</string>
+    <string name="portfolio_metric_sharpe">Sharpe</string>
+    <string name="portfolio_metric_sortino">Sortino</string>
+    <string name="portfolio_metric_holding">Average holding time</string>
+    <string name="portfolio_metric_streak_wins">Longest winning streak</string>
+    <string name="portfolio_metric_streak_losses">Longest losing streak</string>
+    <string name="portfolio_metric_scratches">Break-even trades</string>
+
+    <string name="portfolio_duration_day_hour">%1$s d %2$s h</string>
+    <string name="portfolio_duration_hour_minute">%1$s h %2$s m</string>
+    <string name="portfolio_duration_minute">%1$s m</string>
+    <string name="portfolio_duration_second">%1$s s</string>
 </resources>

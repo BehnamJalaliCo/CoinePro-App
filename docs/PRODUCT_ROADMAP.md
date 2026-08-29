@@ -311,6 +311,7 @@ feature:admin
 feature:auth
 feature:home
 feature:script
+feature:screener
 feature:search
 feature:chart
 feature:portfolio
@@ -327,6 +328,7 @@ feature:guest
 feature:membership
 feature:notifications
 feature:alerts
+feature:heatmap
 feature:journal
 feature:papertrade
 feature:copytrade

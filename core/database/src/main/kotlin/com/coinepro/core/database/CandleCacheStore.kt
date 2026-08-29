@@ -30,17 +30,27 @@ import androidx.room.Transaction
  *
  * ### The key
  *
- * Symbol **and** timeframe. The same instrument on two timeframes is two different series and
- * caching them under one key is how a reader ends up looking at hourly bars labelled daily.
+ * Symbol **and** interval. The same instrument on two intervals is two different series and caching
+ * them under one key is how a reader ends up looking at hourly bars labelled daily.
+ *
+ * The interval column holds `ChartInterval.wire` — `"M5"`, `"H4"`, `"MN1"` for a preset and a bare
+ * minute count such as `"205"` for one the reader typed. It was a `Timeframe` enum name until
+ * version 6 of this database, which was correct only while every series had a preset to name it.
+ * A custom interval has none, and forcing one to borrow a preset's key means two different series
+ * silently overwrite each other: 205 minutes and 137 minutes both land in the same row, and
+ * whichever was fetched last is drawn under both labels. Wire spellings cannot collide, because no
+ * preset is spelled as a bare number — which is also why the migration that renamed this column
+ * could copy every row across unchanged rather than dropping them.
  */
 @Entity(
     tableName = "cached_candles",
-    primaryKeys = ["symbol", "timeframe", "t"],
-    indices = [Index(value = ["symbol", "timeframe", "t"])],
+    primaryKeys = ["symbol", "interval", "t"],
+    indices = [Index(value = ["symbol", "interval", "t"])],
 )
 data class CachedCandleEntity(
     val symbol: String,
-    val timeframe: String,
+    /** `ChartInterval.wire`: a preset's canonical spelling, or a custom interval's minute count. */
+    val interval: String,
     /** Bar open time, unix **seconds** — the same unit both backends send. */
     val t: Long,
     val o: Double,
@@ -61,18 +71,21 @@ interface CandleCacheDao {
      * Ordered descending in SQL and reversed in Kotlin, because "the newest N" is what a chart
      * opens on and an index scan from the end is what makes that cheap. Reversing a few hundred
      * items in memory costs nothing next to reading rows the chart will not draw.
+     *
+     * [intervalWire] is spelled out rather than named `interval` so that the bound parameter and
+     * the quoted column beside it stay distinguishable to a reader of the SQL.
      */
     @Query(
-        "SELECT * FROM cached_candles WHERE symbol = :symbol AND timeframe = :timeframe " +
+        "SELECT * FROM cached_candles WHERE symbol = :symbol AND `interval` = :intervalWire " +
             "ORDER BY t DESC LIMIT :limit",
     )
-    suspend fun newest(symbol: String, timeframe: String, limit: Int): List<CachedCandleEntity>
+    suspend fun newest(symbol: String, intervalWire: String, limit: Int): List<CachedCandleEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(candles: List<CachedCandleEntity>)
 
-    @Query("DELETE FROM cached_candles WHERE symbol = :symbol AND timeframe = :timeframe")
-    suspend fun clearSeries(symbol: String, timeframe: String)
+    @Query("DELETE FROM cached_candles WHERE symbol = :symbol AND `interval` = :intervalWire")
+    suspend fun clearSeries(symbol: String, intervalWire: String)
 
     /**
      * Drop everything older than the newest [keep] bars of one series.
@@ -81,11 +94,11 @@ interface CandleCacheDao {
      * adds a row a minute, and paging back through history adds thousands at a time.
      */
     @Query(
-        "DELETE FROM cached_candles WHERE symbol = :symbol AND timeframe = :timeframe AND t NOT IN " +
-            "(SELECT t FROM cached_candles WHERE symbol = :symbol AND timeframe = :timeframe " +
+        "DELETE FROM cached_candles WHERE symbol = :symbol AND `interval` = :intervalWire AND t NOT IN " +
+            "(SELECT t FROM cached_candles WHERE symbol = :symbol AND `interval` = :intervalWire " +
             "ORDER BY t DESC LIMIT :keep)",
     )
-    suspend fun trim(symbol: String, timeframe: String, keep: Int)
+    suspend fun trim(symbol: String, intervalWire: String, keep: Int)
 
     @Query("DELETE FROM cached_candles")
     suspend fun clearAll()
@@ -97,9 +110,9 @@ interface CandleCacheDao {
      * is the half that never has a reason to run on its own.
      */
     @Transaction
-    suspend fun replace(candles: List<CachedCandleEntity>, symbol: String, timeframe: String, keep: Int) {
+    suspend fun replace(candles: List<CachedCandleEntity>, symbol: String, intervalWire: String, keep: Int) {
         if (candles.isEmpty()) return
         upsert(candles)
-        trim(symbol, timeframe, keep)
+        trim(symbol, intervalWire, keep)
     }
 }

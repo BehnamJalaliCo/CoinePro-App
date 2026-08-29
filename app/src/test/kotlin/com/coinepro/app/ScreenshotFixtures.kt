@@ -1442,6 +1442,15 @@ object ScreenshotFixtures {
      * arrives alphabetically and full of listings nobody has heard of, so a fixture sorted the way
      * the screen should end up would prove nothing.
      */
+    /**
+     * The tickers the alert editor's symbol picker may offer.
+     *
+     * A short list rather than the whole catalogue: the render is checking the row and the sheet,
+     * and a picker over four hundred symbols renders the same first screen as one over eight.
+     */
+    fun alertSymbols(): List<String> =
+        listOf("BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "EURUSD", "GBPUSD", "XAGUSD", "USDJPY")
+
     fun searchCatalog(): MarketCatalogGateway {
         val symbols = listOf(
             "AAVEUSDT", "ADAUSDT", "ALGOUSDT", "APTUSDT", "ARBUSDT", "ATOMUSDT", "AVAXUSDT",

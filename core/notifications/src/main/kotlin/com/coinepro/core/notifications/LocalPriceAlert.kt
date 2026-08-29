@@ -107,7 +107,84 @@ data class LocalPriceAlert(
     val active: Boolean = true,
     val createdAtEpochMillis: Long = 0L,
     val lastFiredAtEpochMillis: Long? = null,
+    /**
+     * The richer condition, where the reader chose one.
+     *
+     * Null means the alert is one of the six flat [condition]s and nothing has changed for it. Both
+     * live side by side rather than one replacing the other, because every alert already on a phone
+     * is a [condition] and rewriting them all during an upgrade — silently, with no way to check
+     * the result — is not a migration anybody should run on somebody else's alerts. Where this is
+     * present it wins; see the [due] overload that takes a previous sample.
+     */
+    val trigger: AlertTrigger? = null,
+    /**
+     * What the alert is about, where that is more than the one [symbol].
+     *
+     * Null means [symbol] and nothing else, which is what every stored alert written before
+     * watchlist alerts existed means. Read it through [effectiveScope] rather than directly.
+     */
+    val scope: AlertScope? = null,
+    /**
+     * The bar-aware repeat policy, for an alert made from a chart.
+     *
+     * Null means this alert has none and the older [repeat] governs it. The two are not merged
+     * because they answer in different units — [repeat] in wall-clock time, [frequency] in bars —
+     * and mapping "once a day" onto a bar policy would be inventing an answer the reader never
+     * gave. An alert that has a [frequency] is evaluated by the chart-aware evaluator, which knows
+     * the timeframe; one that does not is evaluated on price ticks.
+     */
+    val frequency: AlertFrequency? = null,
+    /**
+     * When this alert stops being evaluated, or **null for never** — and null is the default.
+     *
+     * Stated plainly because the industry default is the opposite and readers have been burned by
+     * it: TradingView's free tier expires an alert after roughly a month, so an alert set for a
+     * level the market might reach next quarter quietly stops existing before it gets there, and
+     * the reader finds out by not being told. Nothing here expires anything on its own. An alert
+     * with no expiry is evaluated until the reader deletes it, and the only expiry that can exist
+     * is one they typed themselves.
+     */
+    val expiresAt: Long? = null,
+    /** How this one alert may reach the reader. Per alert, not per app; see [AlertChannel]. */
+    val channels: Set<AlertChannel> = AlertChannel.DEFAULTS,
+    /** How loud its own sound is, independently of the app's other notifications. See [AlertSound]. */
+    val soundLevel: Float = AlertSound.DEFAULT_LEVEL,
+    /**
+     * The reader's own wording, with `{symbol}`, `{price}`, `{time}` and `{tf}` filled in.
+     *
+     * Null for the app's own wording. Rendered by [AlertMessageTemplate.render], never by string
+     * concatenation at a call site — the digits have to be Latin and there is one place that
+     * guarantees it.
+     */
+    val message: String? = null,
 ) {
+
+    /**
+     * The symbols this alert covers, resolved now rather than when it was made.
+     *
+     * A watchlist alert whose list has gained a symbol covers it from this call onwards, which is
+     * the whole promise of [AlertScope.Watchlist]. An alert with no scope is its own [symbol].
+     */
+    fun symbols(membersOf: (String) -> List<String>): List<String> =
+        effectiveScope.resolve(membersOf)
+
+    /** The scope as written, or the single [symbol] for every alert stored before scopes existed. */
+    val effectiveScope: AlertScope
+        get() = scope ?: AlertScope.Symbol(symbol)
+
+    /** [soundLevel] clamped into range, so a corrupt stored value cannot reach an audio player. */
+    val effectiveSoundLevel: Float
+        get() = AlertSound.coerce(soundLevel)
+
+    /**
+     * Whether the reader's own expiry has passed.
+     *
+     * False whenever [expiresAt] is null, which is the default and the common case. Inclusive at
+     * the instant itself: an alert set to expire at nine o'clock does not fire at nine o'clock.
+     */
+    fun hasExpired(nowEpochMillis: Long): Boolean =
+        expiresAt != null && nowEpochMillis >= expiresAt
+
     companion object {
         /** Between two firings of an [AlertRepeat.ALWAYS] alert. Long enough not to be a stream. */
         const val COOLDOWN_MILLIS = 15 * 60 * 1000L
@@ -117,11 +194,29 @@ data class LocalPriceAlert(
         /**
          * How many one phone may hold.
          *
-         * A cap because every one of them is evaluated on every price tick, and because a list
-         * nobody can read is a list nobody manages. Binance allows fifty across all pairs and ten
-         * per pair; this is the same order of magnitude, chosen for the same reason.
+         * ### Why there is a cap at all
+         *
+         * Not because two hundred alerts are hard to evaluate — they are not; the whole evaluation
+         * is arithmetic over a list. The cap is about **storage**. These live in one delimited
+         * string inside a preferences file, which is read whole, parsed whole and written whole on
+         * every change. That is the right shape for a feature that has to work on the first screen
+         * of a fresh install with no account and no database, and it is the wrong shape for
+         * unbounded growth: past a few hundred rows the parse starts to show up on a cold start,
+         * and a single half-written write loses more than anybody should lose at once.
+         *
+         * ### Why forty was too few
+         *
+         * Forty was chosen against Binance's fifty. It is the wrong comparison, because Binance's
+         * alerts are one-per-instrument prices and these are not: a reader with a watchlist alert,
+         * a channel on each of half a dozen instruments and a handful of indicator conditions
+         * reaches forty without doing anything unusual, and then the app tells them their list is
+         * full. Two hundred is the number at which the preference is still comfortably small and at
+         * which no reader running out of alerts is doing anything a trading app should refuse.
+         *
+         * The day this needs to be larger is the day it needs to be a database rather than a
+         * bigger number here.
          */
-        const val MAX_ALERTS = 40
+        const val MAX_ALERTS = 200
 
         /**
          * Whether this alert should fire now.
@@ -139,7 +234,64 @@ data class LocalPriceAlert(
             nowEpochMillis: Long,
         ): Boolean {
             if (!alert.active) return false
+            if (alert.hasExpired(nowEpochMillis)) return false
             if (!alert.repeatAllows(nowEpochMillis)) return false
+            return conditionMet(alert, price, changePercent24h)
+        }
+
+        /**
+         * The same question, for a caller that has the previous sample and the recent closes.
+         *
+         * This is the overload the chart-aware evaluator uses, and it is the only one that can
+         * answer a crossing, a channel transition, a multi-bar move or a drawing touch — all of
+         * which need to know where the price came from. Where the alert has no [trigger] it falls
+         * straight through to the flat [condition], so one evaluator can drive both kinds.
+         *
+         * [barStart] and [barClosed] describe the bar this sample belongs to and are used only when
+         * the alert has a [frequency]; an alert without one is governed by [repeat] as before. Pure,
+         * like its sibling: every input including the clock is a parameter.
+         */
+        fun due(
+            alert: LocalPriceAlert,
+            previous: Double?,
+            price: Double,
+            series: DoubleArray?,
+            changePercent24h: Double?,
+            nowEpochMillis: Long,
+            barStart: Long,
+            barClosed: Boolean,
+        ): Boolean {
+            if (!alert.active) return false
+            if (alert.hasExpired(nowEpochMillis)) return false
+            val frequency = alert.frequency
+            val allowed = if (frequency == null) {
+                alert.repeatAllows(nowEpochMillis)
+            } else {
+                frequency.shouldFire(
+                    now = nowEpochMillis,
+                    lastFiredAt = alert.lastFiredAtEpochMillis,
+                    barStart = barStart,
+                    barClosed = barClosed,
+                )
+            }
+            if (!allowed) return false
+            val trigger = alert.trigger
+                ?: return conditionMet(alert, price, changePercent24h)
+            return trigger.evaluate(previous, price, series)
+        }
+
+        /**
+         * The flat [LocalAlertCondition] half, split out so both overloads share one copy.
+         *
+         * Separate from the repeat and expiry rules on purpose: this answers only "is the condition
+         * true", which is the part a screen may also want in order to warn that an alert would fire
+         * the moment it is created.
+         */
+        fun conditionMet(
+            alert: LocalPriceAlert,
+            price: Double,
+            changePercent24h: Double?,
+        ): Boolean {
             return when (alert.condition) {
                 LocalAlertCondition.ABOVE -> price >= alert.value
                 LocalAlertCondition.BELOW -> price <= alert.value

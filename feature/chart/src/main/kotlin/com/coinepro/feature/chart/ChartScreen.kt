@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -29,6 +30,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -63,20 +66,29 @@ import com.coinepro.core.chart.ChartOrder
 import com.coinepro.core.chart.ChartReading
 import com.coinepro.core.chart.ChartTypePicker
 import com.coinepro.core.chart.CoineProChart
-import com.coinepro.core.chart.DrawingList
 import com.coinepro.core.chart.DrawingState
 import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.chart.IndicatorPicker
+import com.coinepro.core.chart.ObjectTree
 import com.coinepro.core.chart.Replay
 import com.coinepro.core.chart.SignalOverlay
 import com.coinepro.core.chart.ToolRail
 import com.coinepro.core.chart.TradeFromChart
 import com.coinepro.core.chart.TradeSide
+import com.coinepro.core.chart.ComparisonBasis
+import com.coinepro.core.chart.ComparisonSeries
+import com.coinepro.core.chart.MAX_COMPARISONS
+import com.coinepro.core.chart.PriceScaleMode
 import com.coinepro.core.chart.decimalsFor
 import com.coinepro.core.chart.formatPrice
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.datastore.ChartColourTemplate
 import com.coinepro.core.datastore.ChartLayout
+import com.coinepro.core.datastore.ChartLayoutStore
+import com.coinepro.core.datastore.DrawingTemplate
+import com.coinepro.core.datastore.DrawingTemplateStore
+import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProChip
@@ -97,9 +109,12 @@ import com.coinepro.core.designsystem.pressScale
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.help.CoineProHelpSheet
 import com.coinepro.core.help.HelpCatalog
+import com.coinepro.core.marketdata.ChartInterval
 import com.coinepro.core.marketdata.Timeframe
+import com.coinepro.core.marketdata.customOf
 import com.coinepro.core.symbols.SymbolClassifier
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.activity.compose.BackHandler
@@ -116,9 +131,10 @@ import com.coinepro.core.common.BidiText
 /**
  * The chart screen.
  *
- * This is the screen the whole `core:chart` module existed for and did not have: fifty-six
- * indicators, fifty-two drawing tools, eleven chart types and eight timeframes were all built,
- * tested and rendered into screenshots without a single reader being able to reach any of them.
+ * This is the screen the whole `core:chart` module existed for and did not have: eighty-three
+ * indicators, ninety-one drawing tools, eighteen chart types and fifteen timeframes — plus any
+ * minute count a reader types — were all built, tested and rendered into screenshots without a
+ * single reader being able to reach any of them.
  *
  * The layout is one decision repeated: the chart gets the room and everything else is a sheet. A
  * phone has one screenful, and a toolbar that permanently occupies a fifth of it to hold controls
@@ -151,6 +167,47 @@ fun ChartScreen(
     /** The reader's watchlist, for the switcher strip. Fewer than two symbols hides it. */
     watchlist: List<String> = emptyList(),
     onSelectSymbol: ((String) -> Unit)? = null,
+    /**
+     * The app's controller holder, keyed by symbol — what makes the split watchlist a *switch*
+     * rather than a navigation.
+     *
+     * With it, tapping a row in the strip below the chart swaps the controller in place: the
+     * screen never leaves, nothing is popped, and the new symbol arrives with its own drawings,
+     * its own timeframe and its own indicators because it has its own controller and the
+     * per-symbol store restores the rest. Without it the screen falls back to [onSelectSymbol],
+     * which is a navigation and loses the scroll position, the armed tool and the sheet state
+     * every time.
+     *
+     * Null in the preview and the tests, where there is one controller and no holder.
+     */
+    controllerFor: ((String) -> ChartController)? = null,
+    /**
+     * Told which instrument the reader switched to, so the shell can keep up.
+     *
+     * Not a navigation and must not become one — the whole point of [controllerFor] is that the
+     * screen stays. It exists because the shell holds routes that name a symbol, the studio's above
+     * all, and after an in-place switch «استودیو» has to open on the chart in front of the reader
+     * rather than on the one the route was built with. A shell that does not care may leave it null.
+     */
+    onSymbolChanged: ((String) -> Unit)? = null,
+    /** Live prices for the watchlist strip. Empty draws tickers with no figures beside them. */
+    watchlistQuotes: Map<String, WatchlistQuote> = emptyMap(),
+    /**
+     * Where the divider between the chart and the watchlist is remembered.
+     *
+     * Null keeps the split at its default and forgets a drag when the screen leaves, which is what
+     * a preview wants and would be a small daily annoyance in the app. See [ChartWorkspaceStore].
+     */
+    workspace: ChartWorkspaceStore? = null,
+    /**
+     * The reader's saved drawing styles, and the per-tool defaults over them.
+     *
+     * Passed as the store rather than as a list and six lambdas, the way [chartLayoutStore] is:
+     * this screen reads templates for the armed tool and for the drawing being edited, which are
+     * two different queries that change as the reader works, and hoisting both would put the
+     * screen's own state in the shell.
+     */
+    drawingTemplates: DrawingTemplateStore? = null,
     /** Takes the drawn setup as a paper trade. See [SetupSheetBody]. */
     onPaperTrade: ((symbol: String, buy: Boolean, entry: Double, size: Double) -> Unit)? = null,
     /**
@@ -169,10 +226,67 @@ fun ChartScreen(
     /** Saved layouts. Null leaves the button off — a build with no store has nothing to offer. */
     layouts: List<ChartLayout>? = null,
     onSaveLayout: ((ChartLayout) -> Unit)? = null,
+    /** Removes one layout **by id**. A name is not an identity: two layouts may share one. */
     onDeleteLayout: ((String) -> Unit)? = null,
+    /**
+     * Where this symbol's own chart settings live between sessions.
+     *
+     * Handed to the controller here rather than injected into it, because the app builds its chart
+     * controllers in a session-lived holder that knows nothing about persistence. Null is the
+     * preview and the tests: the chart then opens on the app defaults every time, which is correct
+     * for a fixture and would be a bug in the app. See [ChartController.start].
+     */
+    symbolChartStates: SymbolChartStateStore? = null,
+    /**
+     * The layout store, for the two things the list of layouts cannot answer: which one was last
+     * applied, and recording the next one. Saving and deleting stay hoisted, because those are the
+     * two the shell says something about.
+     */
+    chartLayoutStore: ChartLayoutStore? = null,
 ) {
+    /**
+     * The instrument the reader switched to from the strip, or null while they are on the one this
+     * screen was opened with.
+     *
+     * Saved rather than remembered, so a rotation does not send them back to the symbol they
+     * arrived on — which would be the switch silently undoing itself at the worst moment.
+     */
+    var activeSymbol by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // The controller the whole screen works against.
+    //
+    // Shadowing the parameter deliberately: everything below this line means "the chart in front
+    // of the reader", and after a tap in the watchlist strip that is a *different* controller —
+    // the one the app's holder keeps for that symbol, with its own drawings and its own restored
+    // timeframe. Two names for the same idea would be one name too many, and the mistake it
+    // invites is the interesting one: half the screen driving the old symbol's controller.
+    val resolvedController = remember(controller, controllerFor, activeSymbol) {
+        activeSymbol?.let { symbol -> controllerFor?.invoke(symbol) } ?: controller
+    }
+    @Suppress("NAME_SHADOWING")
+    val controller = resolvedController
     val state by controller.state.collectAsStateWithLifecycle()
+
+    /**
+     * Switching instrument without leaving the screen.
+     *
+     * The controller swap is the whole feature: the per-symbol store restores that symbol's
+     * timeframe, chart type, indicators and periods before its first fetch, and its own drawings
+     * come back from `ChartDrawingStore` — so a tap costs a fetch and nothing else. On a build
+     * with no holder this falls back to the navigation that was here before, which is correct but
+     * loses the scroll position and the armed tool.
+     */
+    val switchSymbol: (String) -> Unit = { symbol ->
+        if (controllerFor != null) {
+            activeSymbol = symbol
+            onSymbolChanged?.invoke(symbol)
+        } else {
+            onSelectSymbol?.invoke(symbol)
+        }
+    }
     var sheet by remember { mutableStateOf<ChartSheet?>(null) }
+    /** Which drawing's own settings are open, or null. Opened from the object tree's row. */
+    var styling by remember { mutableStateOf<Long?>(null) }
     /**
      * The annotation whose text the reader is typing, or null.
      *
@@ -205,7 +319,48 @@ fun ChartScreen(
     val helpEntry = helpId?.let { help?.get(it) }
     val onHelp: (String) -> Unit = { helpId = it }
 
-    LaunchedStart(controller)
+    LaunchedStart(controller, symbolChartStates, chartLayoutStore)
+
+    // The tree, rebuilt only when the drawings or what is hidden actually change. `treeOf` does a
+    // catalogue lookup and formats a label per drawing, and on a chart with forty objects that is
+    // not work to repeat on every frame of a pan.
+    val objectTree = remember(state.drawing.drawings, state.hiddenDrawingIds) {
+        ObjectTree.treeOf(state.drawing.drawings, state.hiddenDrawingIds)
+    }
+
+    val storeScope = rememberCoroutineScope()
+
+    // Every colour template, the two built-ins first. Collected here rather than hoisted, because
+    // the picker that shows them and the chart that paints with them are both on this screen.
+    val colourTemplates by remember(chartLayoutStore) {
+        chartLayoutStore?.templates() ?: flowOf(emptyList<ChartColourTemplate>())
+    }.collectAsStateWithLifecycle(emptyList())
+
+    val armedToolId = state.drawing.tool?.id
+    val armedTemplates by remember(armedToolId, drawingTemplates) {
+        if (armedToolId == null || drawingTemplates == null) {
+            flowOf(emptyList<DrawingTemplate>())
+        } else {
+            drawingTemplates.templates(armedToolId)
+        }
+    }.collectAsStateWithLifecycle(emptyList())
+    val armedDefault by remember(armedToolId, drawingTemplates) {
+        if (armedToolId == null || drawingTemplates == null) {
+            flowOf<DrawingTemplate?>(null)
+        } else {
+            drawingTemplates.defaultFor(armedToolId)
+        }
+    }.collectAsStateWithLifecycle(null)
+
+    // A tool that has a default template arrives already wearing it.
+    //
+    // Applied here rather than at each rail — the chart's sheet, the studio's section, a keyboard
+    // shortcut — because a default that only some of the ways of arming a tool honour is a default
+    // the reader cannot rely on, which is worse than none.
+    LaunchedEffect(armedToolId, armedDefault?.id) {
+        val template = armedDefault ?: return@LaunchedEffect
+        controller.setDrawingStyle(template.colour, template.widthDp)
+    }
 
     val chartLayer = rememberGraphicsLayer()
     val shareScope = rememberCoroutineScope()
@@ -242,15 +397,59 @@ fun ChartScreen(
                         // already happened. The replay is history too, so it turns the countdown
                         // off with it.
                         showCountdown = !state.replay.isOn,
+                        // The overlays and how they are expressed. Handed over raw rather than
+                        // rebased here, because the anchor a percentage comparison is measured
+                        // from is the leftmost *visible* bar — and this screen does not know
+                        // where the reader has panned to. Only the renderer holds the viewport.
+                        comparisons = state.comparisons,
+                        comparisonBasis = state.comparisonBasis,
+                        // The reader's own palette, mapped from the stored row at this boundary
+                        // rather than by either module: `core:chart` may not depend on
+                        // `core:datastore` and `core:datastore` may not depend on Compose, so this
+                        // screen is the one place both types are already on the classpath. Null
+                        // leaves the canvas on the theme's colours, which is not the same as
+                        // choosing the dark built-in — see `ColourTemplateSection`.
+                        colours = state.chartColours,
                     ),
-                    drawing = state.drawing,
+                    // The hidden drawings are filtered out here and merged back by the controller
+                    // on the way in. See `ChartUiState.canvasDrawing`: passing the raw list would
+                    // make the object tree's eye do nothing, and passing a permanently filtered
+                    // one would persist a hide as a delete.
+                    drawing = state.canvasDrawing,
                     onDrawing = controller::onDrawing,
+                    // The eraser arms as a mode rather than as a tool, so it cannot be read off
+                    // the drawing state and travels as its own flag. See [ChartController.arm].
+                    eraser = state.eraser,
                     // The controller guards against a second call while one is in flight and
                     // against asking for history the server has already said does not exist, so
                     // the chart can ask freely.
                     onLoadMore = controller::loadMore,
                     logScale = state.logScale,
+                    // The axis, carried through rather than stopping at the sheet that sets it.
+                    //
+                    // Every one of these was saved per symbol, restored on reopen, and reached the
+                    // canvas nowhere: a reader could choose «درصدی», watch it persist across a
+                    // restart, and never see the axis relabel. `logScale` stays for the callers
+                    // holding a saved boolean and [scaleMode] wins where the two disagree.
+                    scaleMode = state.scaleMode,
+                    inverted = state.inverted,
+                    priceBarLock = state.priceBarLock,
+                    decimals = state.decimals,
+                    scaleSide = state.scaleSide,
                     onScalePanes = controller::scalePanes,
+                    // A long press on a drawn level offers an alert at exactly that price.
+                    //
+                    // The shortest route there is between "I can see the level" and "tell me when
+                    // it is hit", which is the loop the product is built around. Offered only
+                    // where the app can actually take an alert; on a build without the composer
+                    // the gesture is absent rather than silently doing nothing.
+                    onRequestAlertAt = onCreateAlert?.let { create ->
+                        { price -> create(state.symbol, price) }
+                    },
+                    // Long press on the price gutter opens the axis' own settings, which is where
+                    // every terminal puts them and the one gesture on this chart a reader is
+                    // likely to try by accident and be pleased to find.
+                    onPriceAxisMenu = { sheet = ChartSheet.SCALE },
                 )
             }
             if (state.loadingMore) {
@@ -270,9 +469,18 @@ fun ChartScreen(
             onExit = { fullscreen = false },
         )
     } else {
+    // The page above, the reader's own watchlist below, and a handle they can reach with the thumb
+    // already holding the phone. See `ChartWatchlistLayout`: with no watchlist this is exactly the
+    // page it always was, so nothing is a mode and nothing has to be discovered.
+    ChartWatchlistLayout(
+        symbols = watchlist,
+        current = state.symbol,
+        quotes = watchlistQuotes,
+        onSelect = switchSymbol,
+        workspace = workspace,
+    ) { pageModifier ->
     Column(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = pageModifier
             .background(CoineProColors.Stage)
             .verticalScroll(rememberScrollState())
             .focusRequester(focusRequester)
@@ -287,8 +495,13 @@ fun ChartScreen(
             ),
     ) {
         Header(state, onOpenTerminal)
-        onSelectSymbol?.let { select ->
-            SymbolWheel(symbols = watchlist, current = state.symbol, onSelect = select)
+        // The wheel is the strip's older, worse sibling and only appears where the split cannot:
+        // on a build with no controller holder, where switching is a navigation anyway. Drawing
+        // both would be the same list twice on one screen.
+        if (controllerFor == null) {
+            onSelectSymbol?.let { select ->
+                SymbolWheel(symbols = watchlist, current = state.symbol, onSelect = select)
+            }
         }
 
         // The chart in a card with a gold hairline, rather than bled to the screen's edges. The
@@ -317,6 +530,32 @@ fun ChartScreen(
                     },
             )
             ProvenanceLine(source = controller.sourceName, series = state.series)
+            // Only for the intervals the feed does not serve, where the fold makes one page of
+            // bars genuinely short. Saying so is the difference between a limitation and a defect.
+            if (state.historyTruncated) {
+                Text(
+                    text = "این بازه روی دستگاه از کندل‌های کوتاه‌تر ساخته می‌شود، پس هر بار تعداد کمتری کندل می‌آید. برای دیدن گذشتهٔ بیشتر، نمودار را به عقب بکشید.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextMuted,
+                    fontWeight = FontWeight.Normal,
+                    modifier = Modifier.padding(
+                        start = CoineProSpacing.Half,
+                        end = CoineProSpacing.Half,
+                        top = CoineProSpacing.Half,
+                    ),
+                )
+            }
+        }
+
+        // Only when something is being compared, so a chart with one instrument on it pays
+        // nothing for the feature at all.
+        if (state.comparisons.isNotEmpty()) {
+            ComparisonBar(
+                comparisons = state.comparisons,
+                basis = state.comparisonBasis,
+                onSetBasis = controller::setComparisonBasis,
+                onRemove = controller::removeComparison,
+            )
         }
 
         if (state.replay.isOn) {
@@ -326,7 +565,11 @@ fun ChartScreen(
                 onStep = controller::replayStep,
                 onStepBack = controller::replayStepBack,
                 onSeek = controller::replaySeek,
-                onSpeed = controller::replaySetSpeed,
+                // The ladder overload, not the `Double` one: the picker hands over a step and the
+                // type is what makes an unknown speed impossible rather than merely ignored.
+                onSpeed = { step -> controller.replaySetSpeed(step) },
+                onJumpToLive = controller::replayJumpToLive,
+                onGoTo = controller::replayGoTo,
                 onExit = controller::exitReplay,
             )
         }
@@ -334,7 +577,11 @@ fun ChartScreen(
         // Timeframe first, then the tools — both under the chart, in the order a reader reaches
         // for them. Switching timeframe is the most frequent thing anybody does on a chart, so it
         // gets the position closest to the thumb.
-        TimeframeRow(state.timeframe, controller::setTimeframe)
+        IntervalRow(
+            selected = state.interval,
+            onSelect = controller::setInterval,
+            onMore = { sheet = ChartSheet.INTERVAL },
+        )
 
         // The bar that makes the chart a chart, and it sits **below** the chart rather than above
         // it.
@@ -352,8 +599,10 @@ fun ChartScreen(
             onOpen = { sheet = it },
             onOpenStudio = onOpenStudio,
             onFullscreen = { fullscreen = true },
-            logScale = state.logScale,
-            onToggleLog = controller::toggleLogScale,
+            scaleMode = state.scaleMode,
+            axisAdjusted = state.inverted || state.priceBarLock || state.decimals != null,
+            comparisons = state.comparisons.size,
+            onOpenScale = { sheet = ChartSheet.SCALE },
             // Offered only when there is a price to alert on. A button that opens a composer with
             // an empty number is a button that makes the reader type what the chart already knows.
             onCreateAlert = onCreateAlert?.let { create ->
@@ -384,6 +633,7 @@ fun ChartScreen(
         Spacer(Modifier.height(CoineProSpacing.Three))
     }
     }
+    }
 
     // A text tool that has just been placed asks for its text at once.
     //
@@ -399,7 +649,9 @@ fun ChartScreen(
     when (sheet) {
         ChartSheet.TYPE -> CoineProSheet(
             title = "نوع چارت",
-            subtitle = "${(ChartCatalog.CHART_TYPES.size).toPersianDigits()} نوع",
+            // Counted after the volume gate, not before. A subtitle that promises eighteen over a
+            // list of sixteen is a small lie the reader catches immediately.
+            subtitle = "${ChartCatalog.chartTypeCount(state.series.hasVolume).toPersianDigits()} نوع",
             onDismiss = { sheet = null },
         ) {
             ChartTypePicker(
@@ -409,12 +661,16 @@ fun ChartScreen(
                     sheet = null
                 },
                 onHelp = onHelp,
+                hasVolume = state.series.hasVolume,
             )
         }
 
         ChartSheet.INDICATORS -> CoineProSheet(
             title = "اندیکاتورها",
-            subtitle = "${(ChartCatalog.INDICATORS.size).toPersianDigits()} اندیکاتور",
+            // Counted after the volume gate, like the chart-type subtitle above: fourteen studies
+            // are arithmetic on a volume column, and a subtitle promising eighty-three over a list
+            // of sixty-nine is a small lie the reader catches immediately.
+            subtitle = "${ChartCatalog.indicatorCount(state.series.hasVolume).toPersianDigits()} اندیکاتور",
             onDismiss = { sheet = null },
         ) {
             // No dismiss on select: switching four indicators on is four taps, and a sheet that
@@ -423,6 +679,7 @@ fun ChartScreen(
                 active = state.activeIndicators,
                 onToggle = { controller.toggleIndicator(it.id) },
                 onHelp = onHelp,
+                hasVolume = state.series.hasVolume,
                 periods = state.indicatorPeriods,
                 onSetPeriod = controller::setIndicatorPeriod,
             )
@@ -433,9 +690,24 @@ fun ChartScreen(
             subtitle = "${(DrawingTools.ALL.size).toPersianDigits()} ابزار",
             onDismiss = { sheet = null },
         ) {
+            // The armed tool's saved styles, above the rail rather than on the toolbar. Choosing
+            // one arms the tool *and* sets the style in a single tap, which is the whole point:
+            // "draw a trend line the way I always draw trend lines" is one decision, not two.
+            ToolTemplateRow(
+                tool = state.drawing.tool,
+                templates = armedTemplates,
+                defaultTemplateId = armedDefault?.id,
+                onApply = { template ->
+                    controller.armWithStyle(state.drawing.tool, template.colour, template.widthDp)
+                    sheet = null
+                },
+            )
             ToolRail(
                 selected = state.drawing.tool?.id,
                 onSelect = {
+                    // Plain arm. This tool's own default template, where the reader has set one,
+                    // is applied by the effect that watches the armed tool — one place rather than
+                    // two, so the studio's rail gets the same behaviour without repeating it.
                     controller.arm(it)
                     sheet = null
                 },
@@ -449,27 +721,67 @@ fun ChartScreen(
         ) {
             LayoutSheetBody(
                 layouts = layouts.orEmpty(),
-                current = ChartLayout(
-                    name = "",
-                    chartTypeId = state.chartType.name,
-                    timeframeId = state.timeframe.name,
-                    indicatorIds = state.activeIndicators.toList(),
-                ),
+                current = state,
                 onApply = { layout ->
-                    controller.applyLayout(layout.chartTypeId, layout.timeframeId, layout.indicatorIds)
+                    controller.applyLayout(layout)
                     sheet = null
                 },
-                onSave = { name ->
-                    onSaveLayout?.invoke(
-                        ChartLayout(
-                            name = name,
-                            chartTypeId = state.chartType.name,
-                            timeframeId = state.timeframe.name,
-                            indicatorIds = state.activeIndicators.toList(),
-                        ),
-                    )
+                onSave = { name -> onSaveLayout?.invoke(newLayout(state, name)) },
+                onDelete = { id -> onDeleteLayout?.invoke(id) },
+            )
+            // The palette, inside the sheet that already means «the apparatus I look through» —
+            // and not on the toolbar, which is full and must not grow. `ChartLayout` has always
+            // had a field for it; until now nothing could set one.
+            chartLayoutStore?.let { store ->
+                HorizontalDivider(color = CoineProColors.Border)
+                ColourTemplateSection(
+                    templates = colourTemplates,
+                    selected = state.colourTemplate,
+                    onSelect = controller::setColourTemplate,
+                    onSave = { template -> storeScope.launch { runCatching { store.saveTemplate(template) } } },
+                    onDelete = { id ->
+                        if (state.colourTemplate?.id == id) controller.setColourTemplate(null)
+                        storeScope.launch { runCatching { store.deleteTemplate(id) } }
+                    },
+                )
+            }
+        }
+
+        ChartSheet.INTERVAL -> CoineProSheet(
+            title = "بازهٔ زمانی",
+            subtitle = "${Timeframe.entries.size.toPersianDigits()} بازهٔ آماده",
+            onDismiss = { sheet = null },
+        ) {
+            IntervalSheetBody(
+                selected = state.interval,
+                onSelect = {
+                    controller.setInterval(it)
+                    sheet = null
                 },
-                onDelete = { name -> onDeleteLayout?.invoke(name) },
+            )
+        }
+
+        ChartSheet.SCALE -> CoineProSheet(
+            title = "مقیاس قیمت",
+            subtitle = state.scaleMode.persianLabel,
+            onDismiss = { sheet = null },
+        ) {
+            PriceScaleSheetBody(state = state, controller = controller)
+        }
+
+        ChartSheet.COMPARE -> CoineProSheet(
+            title = "مقایسه با نماد دیگر",
+            subtitle = "${MAX_COMPARISONS.toPersianDigits()} نماد هم‌زمان",
+            onDismiss = { sheet = null },
+        ) {
+            ComparisonSheetBody(
+                base = state.symbol,
+                watchlist = watchlist,
+                comparisons = state.comparisons,
+                basis = state.comparisonBasis,
+                onSetBasis = controller::setComparisonBasis,
+                onAdd = controller::addComparison,
+                onRemove = controller::removeComparison,
             )
         }
 
@@ -502,18 +814,67 @@ fun ChartScreen(
         }
 
         ChartSheet.DRAWINGS -> CoineProSheet(
-            title = "ترسیم‌های روی چارت",
+            title = "درخت ترسیم‌ها",
+            subtitle = state.drawing.drawings.size.toPersianDigits() + " ترسیم",
             onDismiss = { sheet = null },
         ) {
-            DrawingList(
+            ObjectTreeSheetBody(
+                groups = objectTree,
                 drawings = state.drawing.drawings,
-                onSelect = { },
-                onDelete = { controller.deleteDrawing(it.id) },
-                onSetLocked = { drawing, locked -> controller.setDrawingLocked(drawing.id, locked) },
+                selectedId = state.drawing.selectedId,
+                onSelect = { id ->
+                    controller.selectDrawing(id)
+                    // Closed on select, because a reader who has just found their line wants to be
+                    // looking at it. Every other action on the row leaves the sheet open.
+                    sheet = null
+                },
+                onToggleHidden = controller::toggleDrawingHidden,
+                onToggleLocked = { node -> controller.setDrawingLocked(node.id, !node.locked) },
+                onDelete = controller::deleteDrawing,
+                onReorder = controller::reorderDrawing,
+                onOpenStyle = { id -> styling = id },
             )
         }
 
         null -> Unit
+    }
+
+    // One drawing's own settings, opened from its row in the object tree.
+    //
+    // Keyed on the drawing rather than on the sheet, so a drawing deleted from underneath the sheet
+    // — by a swipe on the row behind it, or by the eraser — closes it instead of leaving a panel
+    // editing something that is gone.
+    styling?.let { id ->
+        val drawing = state.drawing.drawings.firstOrNull { it.id == id }
+        if (drawing == null) {
+            styling = null
+        } else {
+            DrawingStyleSheet(
+                drawing = drawing,
+                store = drawingTemplates,
+                onDismiss = { styling = null },
+                onSetColour = { colour ->
+                    controller.applyTemplateToDrawing(drawing.id, colour, drawing.widthDp)
+                    // The next drawing follows the last decision, which is what every terminal
+                    // does and what a reader marking six levels in red expects after the first.
+                    controller.setDrawingStyle(colour, drawing.widthDp)
+                },
+                onSetWidth = { width ->
+                    controller.applyTemplateToDrawing(drawing.id, drawing.colour, width)
+                    controller.setDrawingStyle(drawing.colour, width)
+                },
+                onApplyTemplate = { template ->
+                    controller.applyTemplateToDrawing(drawing.id, template.colour, template.widthDp)
+                    controller.setDrawingStyle(template.colour, template.widthDp)
+                },
+                onBringToFront = { controller.bringDrawingToFront(drawing.id) },
+                onSendToBack = { controller.sendDrawingToBack(drawing.id) },
+                onDelete = {
+                    controller.deleteDrawing(drawing.id)
+                    styling = null
+                },
+            )
+        }
     }
 
     labelling?.let { id ->
@@ -654,7 +1015,11 @@ private fun FullscreenChart(
                 .fillMaxWidth()
                 .background(CoineProColors.Stage.copy(alpha = STRIP_ALPHA)),
         ) {
-            TimeframeRow(state.timeframe, controller::setTimeframe)
+            IntervalRow(
+                selected = state.interval,
+                onSelect = controller::setInterval,
+                onMore = { onOpenSheet(ChartSheet.INTERVAL) },
+            )
         }
     }
 }
@@ -711,11 +1076,25 @@ internal fun rememberHelpCatalog(wanted: Boolean): HelpCatalog? {
     return catalog
 }
 
-private enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST, LAYOUTS }
+private enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST, LAYOUTS, INTERVAL, SCALE, COMPARE }
 
+/**
+ * Binds the stores and starts the controller, in that order and in one effect.
+ *
+ * The order is the whole of it. `start` reads this symbol's saved settings and applies them before
+ * it fetches anything, so a store bound after it would arrive too late to stop the chart opening on
+ * the app default — and the reader would watch it load once and then jump.
+ */
 @Composable
-private fun LaunchedStart(controller: ChartController) {
-    androidx.compose.runtime.LaunchedEffect(controller) { controller.start() }
+private fun LaunchedStart(
+    controller: ChartController,
+    symbolChartStates: SymbolChartStateStore?,
+    chartLayoutStore: ChartLayoutStore?,
+) {
+    LaunchedEffect(controller) {
+        controller.bindStores(symbolChartStates, chartLayoutStore)
+        controller.start()
+    }
 }
 
 /**
@@ -797,53 +1176,623 @@ private fun Header(state: ChartUiState, onOpenTerminal: (() -> Unit)?) {
 }
 
 /**
- * The timeframe strip: outlined pills, gold on the one in force.
+ * The interval strip: outlined pills, gold on the one in force.
  *
- * All eight, at the owner's call, in the mockup's shape rather than the mockup's five. Eight fit
- * because the pill is sized to its label and the row scrolls if a wider locale ever needs it —
- * dropping M1, M5 and M30 would have taken the three shortest frames away from scalpers, who are
- * exactly the readers who open a chart most often.
+ * ### Why six and not fifteen
+ *
+ * It used to draw every preset, reversed, and that was right when there were eight. There are now
+ * fifteen plus whatever minute count a reader types, and fifteen pills is not a strip — it is a
+ * scrolling wall directly under the chart, in which the frame somebody actually wants is somewhere
+ * off the edge. The row would have grown into the thing this screen is built to avoid.
+ *
+ * So the six that carry almost all of the traffic stay one tap away — one minute, five, fifteen,
+ * the hour, four hours and the day, which is also exactly the set the keyboard shortcuts bind and
+ * the set chart vision reads — and the other nine, plus the custom field, live behind «بیشتر».
+ * Nothing is unreachable and nothing common costs two taps.
+ *
+ * Whatever is in force is always drawn, even when it is not one of the six. A strip that showed no
+ * selection because the reader had chosen H2 would leave them unable to see what they were looking
+ * at from the control that sets it.
  */
 @Composable
-private fun TimeframeRow(selected: Timeframe, onSelect: (Timeframe) -> Unit) {
+internal fun IntervalRow(
+    selected: ChartInterval,
+    onSelect: (ChartInterval) -> Unit,
+    onMore: () -> Unit,
+) {
+    // Rebuilt only when the selection moves off the common six, which is the one thing that
+    // changes the row's contents.
+    val shown = remember(selected) {
+        val common = COMMON_INTERVALS.map { ChartInterval.Preset(it) }
+        if (common.any { it == selected }) common else common + selected
+    }
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = CoineProSpacing.OneHalf),
-        // Tighter than the page's gutter, which is what lets all eight sit on a phone without the
-        // row having to be scrolled to reach the shortest frames.
+        // Tighter than the page's gutter, which is what lets the whole row sit on a phone without
+        // having to be scrolled to reach the shortest frames.
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
         contentPadding = PaddingValues(horizontal = CoineProSpacing.Two),
     ) {
-        // Reversed, so the row reads W1 · D1 · H4 · H1 · … from the side the eye starts on. The
-        // enum is ordered shortest-first because that is how a period is naturally listed, but the
-        // timeframes people reach for are the long ones, and in enum order they were the ones
-        // scrolled off the edge.
-        items(Timeframe.entries.reversed(), key = { it.wire }) { frame ->
-            val active = frame == selected
-            Box(
+        items(shown, key = { it.wire }) { interval ->
+            IntervalPill(
+                text = interval.wire,
+                active = interval == selected,
+                onClick = { onSelect(interval) },
+            )
+        }
+        item(key = "more") {
+            IntervalPill(text = "بیشتر", active = false, latin = false, onClick = onMore)
+        }
+    }
+}
+
+/** One pill in the interval strip, and in the groups inside the sheet. */
+@Composable
+private fun IntervalPill(
+    text: String,
+    active: Boolean,
+    onClick: () -> Unit,
+    /** Wire spellings are market figures and stay Latin; «بیشتر» is prose and must not be. */
+    latin: Boolean = true,
+) {
+    Box(
+        modifier = Modifier
+            .clip(CoineProPillShape)
+            .background(
+                if (active) {
+                    CoineProTint.fill(CoineProColors.Gold, CoineProColors.Stage)
+                } else {
+                    Color.Transparent
+                },
+            )
+            .border(
+                width = 1.dp,
+                color = if (active) CoineProTint.edge(CoineProColors.Gold) else CoineProColors.Border,
+                shape = CoineProPillShape,
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
+    ) {
+        val ink = if (active) CoineProColors.Gold else CoineProColors.TextMuted
+        if (latin) {
+            LtrDirection {
+                Text(text = text, style = MaterialTheme.typography.labelSmall, color = ink)
+            }
+        } else {
+            Text(text = text, style = MaterialTheme.typography.labelSmall, color = ink)
+        }
+    }
+}
+
+/**
+ * Every interval, grouped, with a field for one the reader makes up.
+ *
+ * Three groups rather than one reversed list, because fifteen pills in a single wrap have no shape
+ * and a reader looking for the three-hour has to read all fifteen. Minutes, hours, then days and
+ * up is how a trader already names them, and within a group the order is shortest first, which is
+ * how a period is naturally listed.
+ *
+ * The custom field is the point of the sheet as much as the presets are. It takes Persian or Latin
+ * digits — an Iranian keyboard produces the first by default, and a field that silently refuses
+ * «۲۰۵» while accepting `205` looks broken — and it stays disabled until what is typed is actually
+ * an interval, so the reader is never sent to a server with a number it will refuse.
+ */
+@Composable
+internal fun IntervalSheetBody(
+    selected: ChartInterval,
+    onSelect: (ChartInterval) -> Unit,
+) {
+    var typed by rememberSaveable { mutableStateOf("") }
+    val custom = customOf(typed)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+    ) {
+        INTERVAL_GROUPS.forEach { (title, frames) ->
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+                fontWeight = FontWeight.Normal,
+            )
+            Row(
                 modifier = Modifier
-                    .clip(CoineProPillShape)
-                    .background(if (active) CoineProTint.fill(CoineProColors.Gold, CoineProColors.Stage) else Color.Transparent)
-                    .border(
-                        width = 1.dp,
-                        color = if (active) CoineProTint.edge(CoineProColors.Gold) else CoineProColors.Border,
-                        shape = CoineProPillShape,
-                    )
-                    .clickable { onSelect(frame) }
-                    .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
             ) {
-                LtrDirection {
-                    Text(
+                frames.forEach { frame ->
+                    val interval = ChartInterval.Preset(frame)
+                    IntervalPill(
                         text = frame.wire,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (active) CoineProColors.Gold else CoineProColors.TextMuted,
+                        active = interval == selected,
+                        onClick = { onSelect(interval) },
+                    )
+                }
+            }
+        }
+
+        HorizontalDivider(color = CoineProColors.Border)
+
+        Text(
+            text = "بازهٔ دلخواه",
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+            fontWeight = FontWeight.Normal,
+        )
+        CoineProTextField(
+            value = typed,
+            onValueChange = { typed = it },
+            label = "دقیقه، از ۱ تا ۱۴۴۰",
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        CoineProPrimaryButton(
+            text = custom?.let { "نمایش ${it.label}" } ?: "نمایش بازهٔ دلخواه",
+            onClick = {
+                custom?.let {
+                    onSelect(ChartInterval.Custom(it))
+                    typed = ""
+                }
+            },
+            enabled = custom != null,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            text = "کندل بازهٔ دلخواه روی همین دستگاه از کندل‌های کوتاه‌تر ساخته می‌شود و از نیمه‌شب تهران شمرده می‌شود.",
+            style = MaterialTheme.typography.bodySmall,
+            color = CoineProColors.TextMuted,
+        )
+    }
+}
+
+/**
+ * The price axis' own settings.
+ *
+ * Everything here is one tap deep from the toolbar and none of it is on the toolbar, which is the
+ * trade this screen keeps making: an axis has six things a reader might want to change and a chart
+ * has one screenful. The four modes are a chip row because they are exclusive; the rest are
+ * switches and a precision row, in the order somebody would reach for them.
+ */
+@Composable
+private fun PriceScaleSheetBody(state: ChartUiState, controller: ChartController) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+    ) {
+        SheetLabel("چه چیزی اندازه گرفته می‌شود")
+        CoineProChipRow(
+            options = PriceScaleMode.entries.map { CoineProChip(id = it.name, label = it.persianLabel) },
+            selectedId = state.scaleMode.name,
+            onSelect = { id ->
+                PriceScaleMode.entries.firstOrNull { it.name == id }?.let(controller::setScaleMode)
+            },
+            compact = true,
+        )
+        Text(
+            text = state.scaleMode.persianNote,
+            style = MaterialTheme.typography.bodySmall,
+            color = CoineProColors.TextMuted,
+        )
+
+        HorizontalDivider(color = CoineProColors.Border)
+
+        SettingSwitch(
+            label = "معکوس",
+            note = "کف قیمت بالا و سقف پایین. برای خواندن جفت‌ارز وارونه.",
+            checked = state.inverted,
+            onChange = { controller.toggleInverted() },
+        )
+        SettingSwitch(
+            label = "قفل نسبت قیمت به کندل",
+            note = "بزرگ‌نمایی افقی و عمودی با هم حرکت می‌کنند، پس شیب خط روند ثابت می‌ماند.",
+            checked = state.priceBarLock,
+            onChange = controller::setPriceBarLock,
+        )
+
+        HorizontalDivider(color = CoineProColors.Border)
+
+        // «جای محور» is deliberately absent from this sheet.
+        //
+        // `ScaleSide` is carried as state and reaches the canvas, but the canvas draws the
+        // right-hand gutter and only that one: moving it is plot geometry plus every gesture that
+        // measures against the canvas width, and the canvas was left whole rather than half moved.
+        // A segmented control with four options where three are silent is worse than no control —
+        // it is the reader choosing something and being told nothing. The state and the parameter
+        // stay, so the day the gutter moves this is four lines coming back, not a feature.
+
+        SheetLabel("رقم اعشار")
+        CoineProChipRow(
+            // Null is «خودکار», which is not the same as zero: the axis derives a precision from
+            // the range, and a chart of a coin priced at 0.00004 needs eight where gold needs two.
+            options = DECIMAL_CHOICES.map { count ->
+                CoineProChip(
+                    id = count?.toString() ?: AUTOMATIC_DECIMALS,
+                    label = count?.toPersianDigits() ?: "خودکار",
+                )
+            },
+            selectedId = state.decimals?.toString() ?: AUTOMATIC_DECIMALS,
+            onSelect = { id -> controller.setDecimals(id?.takeIf { it != AUTOMATIC_DECIMALS }?.toIntOrNull()) },
+            compact = true,
+        )
+    }
+}
+
+/**
+ * Choosing a second instrument, from the strip the reader already keeps.
+ *
+ * The watchlist and nothing else, for the same reason [SymbolWheel] shows only the watchlist: a
+ * full market search inside this sheet would be a second search screen, and the set somebody
+ * compares against is by definition the set they already follow. Anything already on the chart,
+ * and the chart's own symbol, are absent rather than shown greyed — a row that cannot be tapped is
+ * a row that costs a tap to discover.
+ */
+@Composable
+private fun ComparisonSheetBody(
+    base: String,
+    watchlist: List<String>,
+    comparisons: List<ComparisonSeries>,
+    basis: ComparisonBasis,
+    onSetBasis: (ComparisonBasis) -> Unit,
+    onAdd: (String) -> ComparisonRefusal?,
+    onRemove: (String) -> Unit,
+) {
+    var refusal by remember { mutableStateOf<ComparisonRefusal?>(null) }
+    val drawn = comparisons.map { it.symbol.uppercase() }.toSet()
+    val offered = watchlist.filter { it.uppercase() != base.uppercase() && it.uppercase() !in drawn }
+    val full = comparisons.size >= MAX_COMPARISONS
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+    ) {
+        SheetLabel("چطور اندازه گرفته شود")
+        CoineProChipRow(
+            options = COMPARISON_BASES.map { CoineProChip(id = it.name, label = it.persianLabel) },
+            selectedId = basis.name,
+            onSelect = { id ->
+                COMPARISON_BASES.firstOrNull { it.name == id }?.let(onSetBasis)
+            },
+            compact = true,
+        )
+
+        comparisons.forEachIndexed { index, series ->
+            ComparisonRow(
+                symbol = series.symbol,
+                colour = Color(series.colour.toULong() shl COLOUR_SHIFT),
+                index = index,
+                onRemove = { onRemove(series.symbol) },
+            )
+        }
+
+        HorizontalDivider(color = CoineProColors.Border)
+
+        if (full) {
+            Text(
+                text = ComparisonRefusal.LIMIT_REACHED.persianMessage,
+                style = MaterialTheme.typography.bodySmall,
+                color = CoineProColors.TextMuted,
+            )
+        } else if (offered.isEmpty()) {
+            Text(
+                text = "برای مقایسه، نمادی به دیده‌بان اضافه کنید.",
+                style = MaterialTheme.typography.bodySmall,
+                color = CoineProColors.TextMuted,
+            )
+        } else {
+            SheetLabel("از دیده‌بان")
+            offered.forEach { symbol ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(CoineProShapes.small)
+                        .clickable { refusal = onAdd(symbol) }
+                        .padding(vertical = CoineProSpacing.Half),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                ) {
+                    CoineProAssetLogo(symbol = symbol, size = 20.dp)
+                    Text(
+                        text = BidiText.isolateLtr(symbol),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = CoineProColors.TextSecondary,
+                    )
+                }
+            }
+        }
+
+        refusal?.let { reason ->
+            Text(
+                text = reason.persianMessage,
+                style = MaterialTheme.typography.bodySmall,
+                color = CoineProColors.Sell,
+            )
+        }
+    }
+}
+
+/** One compared instrument inside the sheet, with the way off it. */
+@Composable
+private fun ComparisonRow(symbol: String, colour: Color, index: Int, onRemove: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        Box(modifier = Modifier.size(COMPARISON_DOT).clip(CircleShape).background(colour))
+        Text(
+            text = BidiText.isolateLtr(symbol),
+            style = MaterialTheme.typography.labelMedium,
+            color = CoineProColors.TextPrimary,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            // A prose count of where this line sits in the four slots, so the legend and the chip
+            // row can be matched up without relying on colour alone.
+            text = "خط ${(index + 1).toPersianDigits()}",
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+        )
+        Text(
+            text = "حذف",
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.Sell,
+            modifier = Modifier
+                .clip(CoineProShapes.small)
+                .clickable(onClick = onRemove)
+                .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
+        )
+    }
+}
+
+/**
+ * The compared instruments, under the chart, each in the colour of its own line.
+ *
+ * Present only while something is compared, so the ordinary chart is unchanged. The basis sits in
+ * the same strip rather than in the sheet because it is the control a reader reaches for *while*
+ * looking at the two lines — "which rose more" and "is gold gaining on the dollar" are two
+ * different readings of the same picture, and making the second one cost a sheet is making it a
+ * thing nobody discovers.
+ */
+@Composable
+private fun ComparisonBar(
+    comparisons: List<ComparisonSeries>,
+    basis: ComparisonBasis,
+    onSetBasis: (ComparisonBasis) -> Unit,
+    onRemove: (String) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = CoineProSpacing.Half),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        CoineProChipRow(
+            options = COMPARISON_BASES.map { CoineProChip(id = it.name, label = it.persianLabel) },
+            selectedId = basis.name,
+            onSelect = { id -> COMPARISON_BASES.firstOrNull { it.name == id }?.let(onSetBasis) },
+            compact = true,
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = CoineProSpacing.Gutter),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            comparisons.forEach { series ->
+                val colour = Color(series.colour.toULong() shl COLOUR_SHIFT)
+                Row(
+                    modifier = Modifier
+                        .clip(CoineProPillShape)
+                        .background(CoineProTint.fill(colour, CoineProColors.Stage))
+                        .border(1.dp, CoineProTint.edge(colour), CoineProPillShape)
+                        .clickable { onRemove(series.symbol) }
+                        .padding(horizontal = CoineProSpacing.One, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    LtrDirection {
+                        Text(
+                            text = series.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colour,
+                        )
+                    }
+                    Icon(
+                        painter = painterResource(CoineProIcons.Close),
+                        contentDescription = "حذف " + series.label,
+                        tint = colour,
+                        modifier = Modifier.size(12.dp),
                     )
                 }
             }
         }
     }
 }
+
+/** A quiet heading inside a sheet, for a control that needs one word of context. */
+@Composable
+private fun SheetLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = CoineProColors.TextMuted,
+        fontWeight = FontWeight.Normal,
+    )
+}
+
+/** A labelled switch with the sentence that says what it does to the picture. */
+@Composable
+private fun SettingSwitch(
+    label: String,
+    note: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = label, style = MaterialTheme.typography.labelMedium, color = CoineProColors.TextPrimary)
+            Text(
+                text = note,
+                style = MaterialTheme.typography.bodySmall,
+                color = CoineProColors.TextMuted,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onChange,
+            modifier = Modifier.widthIn(min = SWITCH_MIN),
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = CoineProColors.OnAccent,
+                checkedTrackColor = CoineProColors.Accent,
+                uncheckedThumbColor = CoineProColors.TextMuted,
+                uncheckedTrackColor = CoineProColors.SurfaceElevated,
+            ),
+        )
+    }
+}
+
+/**
+ * This chart's apparatus, ready to be saved under [name].
+ *
+ * The id is generated here rather than taken from the name, because the store keys on it and two
+ * layouts are allowed to share a name — a reader who saves «روزانه» twice has two layouts, not one
+ * overwritten. The clock is read once so that a new layout's created and updated dates agree.
+ */
+private fun newLayout(state: ChartUiState, name: String): ChartLayout {
+    val now = System.currentTimeMillis()
+    return state.toLayout(id = "layout_" + now.toString(RADIX_36), name = name, createdAt = now, updatedAt = now)
+}
+
+/**
+ * The six intervals that stay one tap from the chart.
+ *
+ * Not a guess: they are the set the keyboard already binds to the number keys, and the set chart
+ * vision was trained on. Three controls agreeing on which six matter is worth more than each of
+ * them picking its own.
+ */
+private val COMMON_INTERVALS = listOf(
+    Timeframe.M1,
+    Timeframe.M5,
+    Timeframe.M15,
+    Timeframe.H1,
+    Timeframe.H4,
+    Timeframe.D1,
+)
+
+/** The fifteen presets as a reader groups them, for the sheet behind «بیشتر». */
+private val INTERVAL_GROUPS: List<Pair<String, List<Timeframe>>> = listOf(
+    "دقیقه" to listOf(
+        Timeframe.M1,
+        Timeframe.M2,
+        Timeframe.M3,
+        Timeframe.M5,
+        Timeframe.M10,
+        Timeframe.M15,
+        Timeframe.M30,
+        Timeframe.M45,
+    ),
+    "ساعت" to listOf(Timeframe.H1, Timeframe.H2, Timeframe.H3, Timeframe.H4),
+    "روز و بالاتر" to listOf(Timeframe.D1, Timeframe.W1, Timeframe.MN1),
+)
+
+/**
+ * The three bases the chart may offer.
+ *
+ * `ABSOLUTE` is deliberately absent. It needs a second price axis to be drawn against — see
+ * `ComparisonBasis.ABSOLUTE`, which says so — and offering it without one would put an instrument
+ * priced at 0.42 on an axis running to 2,300, where its line leaves the plot entirely and the
+ * reader concludes the comparison is broken.
+ */
+private val COMPARISON_BASES = listOf(
+    ComparisonBasis.PERCENT,
+    ComparisonBasis.INDEXED_100,
+    ComparisonBasis.RATIO,
+)
+
+/** The precisions the axis offers, plus null for the derived one. See `ChartViewport.decimals`. */
+private val DECIMAL_CHOICES: List<Int?> = listOf(null, 0, 2, 4, 8)
+
+/** The chip id standing for "no pinned precision". Not a number, so it cannot collide with one. */
+private const val AUTOMATIC_DECIMALS = "auto"
+
+/**
+ * What turns a stored ARGB `Long` into a Compose colour.
+ *
+ * Thirty-two, and it is not obvious: `Color(ULong)` takes the value in the *high* half of a 64-bit
+ * word, so a plain `Color(0xFF4C9AFFL.toULong())` is transparent black. `core:datastore` and
+ * `core:chart` both hand colours over as packed longs because neither may depend on Compose, so
+ * this shift is the whole of the boundary and it is written down once.
+ */
+private const val COLOUR_SHIFT = 32
+
+/** Base thirty-six, so a millisecond clock becomes a short id rather than thirteen digits. */
+private const val RADIX_36 = 36
+
+/** How large the dot standing for a comparison line is. */
+private val COMPARISON_DOT = 10.dp
+
+/** Keeps a switch from being squeezed to nothing beside a long Persian label. */
+private val SWITCH_MIN = 48.dp
+
+/** What the axis is measuring, in a word. The store keeps ids; the screen keeps the words. */
+private val PriceScaleMode.persianLabel: String
+    get() = when (this) {
+        PriceScaleMode.REGULAR -> "عادی"
+        PriceScaleMode.LOGARITHMIC -> "لگاریتمی"
+        PriceScaleMode.PERCENT -> "درصدی"
+        PriceScaleMode.INDEXED_100 -> "شاخص ۱۰۰"
+    }
+
+/** One sentence on what each mode is for, because the four names do not say it on their own. */
+private val PriceScaleMode.persianNote: String
+    get() = when (this) {
+        PriceScaleMode.REGULAR -> "فاصله‌های برابر روی محور، مقدارهای برابر پول."
+        PriceScaleMode.LOGARITHMIC -> "فاصله‌های برابر، درصدهای برابر. برای بازه‌های بلند که قیمت چند برابر شده."
+        PriceScaleMode.PERCENT -> "صفر روی اولین کندل دیدهٔ شما، و بقیه درصد نسبت به آن."
+        PriceScaleMode.INDEXED_100 -> "همان درصد، با مبدأ ۱۰۰ — آن‌طور که شاخص‌ها خوانده می‌شوند."
+    }
+
+/** How a compared instrument is expressed against this one. */
+private val ComparisonBasis.persianLabel: String
+    get() = when (this) {
+        ComparisonBasis.PERCENT -> "درصد"
+        ComparisonBasis.INDEXED_100 -> "شاخص ۱۰۰"
+        ComparisonBasis.RATIO -> "نسبت"
+        ComparisonBasis.ABSOLUTE -> "قیمت خام"
+    }
+
+/**
+ * Why a comparison was refused, said to the reader.
+ *
+ * Each one is a different sentence on purpose. A single «نشد» would leave somebody at the cap
+ * tapping the same row again, and somebody who mis-tapped the chart's own symbol looking for a
+ * fault that is not there.
+ */
+private val ComparisonRefusal.persianMessage: String
+    get() = when (this) {
+        ComparisonRefusal.BLANK -> "نمادی انتخاب نشد."
+        ComparisonRefusal.SAME_SYMBOL -> "همین نماد روی نمودار است."
+        ComparisonRefusal.ALREADY_COMPARED -> "این نماد همین حالا روی نمودار است."
+        ComparisonRefusal.LIMIT_REACHED ->
+            "بیشتر از ${MAX_COMPARISONS.toPersianDigits()} نماد هم‌زمان خوانده نمی‌شود. یکی را حذف کنید."
+    }
 
 /** What the card above the chart says: the window, and its high and low. */
 /**
@@ -914,7 +1863,7 @@ private fun ChartCardHeading(state: ChartUiState) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = state.timeframe.label,
+            text = state.interval.label,
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
             fontWeight = FontWeight.Normal,
@@ -1229,8 +2178,13 @@ private fun ChartToolBar(
     onOpen: (ChartSheet) -> Unit,
     onOpenStudio: (() -> Unit)?,
     onFullscreen: () -> Unit,
-    logScale: Boolean,
-    onToggleLog: () -> Unit,
+    /** What the price axis is measuring, so the control can show that it is not the default. */
+    scaleMode: PriceScaleMode,
+    /** Whether anything else on the axis has been changed — inverted, locked, or pinned. */
+    axisAdjusted: Boolean,
+    /** How many instruments are drawn over this one. Badged, like the indicator count. */
+    comparisons: Int,
+    onOpenScale: () -> Unit,
     onCreateAlert: (() -> Unit)?,
 ) {
     Row(
@@ -1280,14 +2234,28 @@ private fun ChartToolBar(
                 onClick = create,
             )
         }
-        // The axis. On a chart spanning more than a decade of price — which is most of crypto
-        // over a year — a linear axis presses the whole early history into a flat line against
-        // the bottom of the plot and hides every level in it.
+        // A second instrument over this one. It is the one thing on a chart that answers a
+        // question about the world rather than about one symbol, and without it the reader opens
+        // two charts and holds one of them in their head.
         ToolBarButton(
-            icon = DesignR.drawable.tv_scan_line,
-            label = "مقیاس لگاریتمی",
-            active = logScale,
-            onClick = onToggleLog,
+            icon = DesignR.drawable.tv_chart_line,
+            label = "مقایسه",
+            count = comparisons,
+            onClick = { onOpen(ChartSheet.COMPARE) },
+        )
+        // The axis, and it opens a sheet rather than toggling.
+        //
+        // It was a one-tap logarithmic switch, which is two of the four questions an axis can be
+        // asked; percent and indexed-100 had nowhere to live, and neither did inverting it or
+        // pinning its precision. Six controls do not fit on a toolbar and would have made it the
+        // row of buttons this screen is deliberately without — so the button stays one button and
+        // the choices moved into the sheet behind it. Lit when the axis is not on its defaults,
+        // which is what the old toggle's highlight was actually telling the reader.
+        ToolBarButton(
+            icon = DesignR.drawable.tv_chart_percent,
+            label = "مقیاس قیمت",
+            active = scaleMode != PriceScaleMode.REGULAR || axisAdjusted,
+            onClick = onOpenScale,
         )
         ToolBarButton(
             icon = DesignR.drawable.tv_maximize2,

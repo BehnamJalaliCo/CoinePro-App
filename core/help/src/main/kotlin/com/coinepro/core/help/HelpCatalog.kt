@@ -59,6 +59,7 @@ class HelpCatalog private constructor(private val entries: Map<String, HelpEntry
                     how = entry.bilingualList("how"),
                     tips = entry.bilingualList("tips"),
                     example = entry.bilingual("example"),
+                    pitfall = entry.bilingual("pitfall"),
                     images = entry.images(),
                 )
             }

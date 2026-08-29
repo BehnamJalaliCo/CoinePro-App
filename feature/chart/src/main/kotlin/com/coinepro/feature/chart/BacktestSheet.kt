@@ -23,6 +23,9 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Canvas
+// The explicit path matters: `com.coinepro.core.chart.Backtest` also exists now and is a
+// different thing — a low-level runner that takes a strategy function. This sheet offers three
+// named rules over the bars on screen, which is what `core:backtest` is.
 import com.coinepro.core.backtest.Backtest
 import com.coinepro.core.chart.Candle
 import com.coinepro.core.common.BidiText
@@ -109,9 +112,7 @@ internal fun BacktestSheetBody(bars: List<Candle>, symbol: String) {
                     BidiText.isolateLtr(MarketNumberFormatter.price(result.maxDrawdownPercent, 1) + "%"),
                     CoineProColors.Sell,
                 )
-                result.profitFactor?.let {
-                    Line("ضریب سود", BidiText.isolateLtr(MarketNumberFormatter.price(it, 2)))
-                }
+                Line("ضریب سود", profitFactorText(result.profitFactor))
             }
         }
 
@@ -188,3 +189,20 @@ private fun Backtest.Strategy.label(): String = when (this) {
     Backtest.Strategy.RSI_REVERSION -> "بازگشت RSI"
     Backtest.Strategy.BREAKOUT -> "شکست کانال"
 }
+
+/**
+ * The profit factor, or a dash where the number would be a lie.
+ *
+ * Gross profit over gross loss is undefined when nothing lost — the ratio is infinite, and every
+ * way of printing that is wrong. A blank row hides a result the reader should see; a very large
+ * number reads as a spectacular strategy when it is a sample-size artefact, and a run of three
+ * winning trades is exactly where somebody is most likely to believe it. A dash says "there is no
+ * ratio here" and sends the reader to the trade count beside it, which is the number that actually
+ * settles it.
+ *
+ * `core:backtest` answers null for the same case; this function takes both that and an infinity,
+ * so it stays correct if the sheet is ever moved onto `core:chart`'s runner, which answers
+ * `Double.POSITIVE_INFINITY`.
+ */
+private fun profitFactorText(value: Double?): String =
+    if (value == null || !value.isFinite()) "—" else BidiText.isolateLtr(MarketNumberFormatter.price(value, 2))

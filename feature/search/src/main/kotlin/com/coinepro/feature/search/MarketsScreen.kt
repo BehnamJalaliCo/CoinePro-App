@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,7 +22,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,7 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.MarketNumberFormatter
-import com.coinepro.core.designsystem.CoineProAssetLogo
+import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
@@ -53,8 +52,6 @@ import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProSparkline
 import com.coinepro.core.designsystem.R as DesignR
-import com.coinepro.core.designsystem.coineProPriceFlash
-import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketSearchRow
@@ -76,6 +73,11 @@ import com.coinepro.core.symbols.SymbolCategory
  * Search is a *separate destination* rather than a field at the top. A field here would occupy the
  * first row of every visit for something people do on a minority of them — and the search screen
  * that already exists ranks, highlights and remembers in a way an inline filter cannot.
+ *
+ * The «دیده‌بان» segment is [WatchlistPanel] rather than a fourth filter over the same list, and
+ * that is the one structural change here. A watchlist is not a category: it has its own order, its
+ * own colour flags, its own columns and several of itself. It shares this screen's row so the two
+ * cannot look like two apps — see [MarketListRow].
  */
 @Composable
 fun MarketsScreen(
@@ -94,6 +96,15 @@ fun MarketsScreen(
      * search, to fill a tab that is one tap away.
      */
     onToggleWatch: ((String) -> Unit)? = null,
+    /**
+     * The lists themselves.
+     *
+     * Optional, and the tab degrades to a plain filter over [watchlist] without it, because the
+     * guest build reaches this screen with no preferences file of its own to write into. Where it
+     * is supplied the segment becomes the full panel: several lists, flags, columns, import and
+     * export.
+     */
+    watchlistStore: WatchlistStore? = null,
     /** The open signals strip at the foot. Null on a build with nothing to link to. */
     openSignals: MarketsSignalStrip? = null,
 ) {
@@ -118,6 +129,7 @@ fun MarketsScreen(
             }
         }
     }
+    val panel = tab == MarketsTab.WATCHLIST && watchlistStore != null
 
     Column(modifier = modifier.fillMaxSize().background(CoineProColors.Stage)) {
         Header(onOpenSearch = onOpenSearch)
@@ -130,9 +142,19 @@ fun MarketsScreen(
             selected = tab,
             onSelect = { tab = it },
         )
-        ColumnHeadings()
+        // The panel draws its own headings, over whichever columns the reader chose. Two heading
+        // strips, one of them describing a layout that is not on screen, would be worse than none.
+        if (!panel) ColumnHeadings()
 
         when {
+            panel -> WatchlistPanel(
+                store = requireNotNull(watchlistStore),
+                catalogue = state.results,
+                lines = lines,
+                onRequestLine = sparklines::request,
+                onOpenSymbol = onOpenSymbol,
+                modifier = Modifier.weight(1f),
+            )
             state.loading && state.results.isEmpty() -> Centred {
                 CircularProgressIndicator(color = CoineProColors.Gold, strokeWidth = 2.dp)
             }
@@ -173,13 +195,15 @@ fun MarketsScreen(
                         // Asked for as the row appears, not for the whole catalogue up front — a
                         // thousand markets would be a thousand requests nobody looked at.
                         LaunchedEffect(row.meta.symbol) { sparklines.request(row.meta.symbol) }
-                        MarketRow(
+                        MarketListRow(
                             row = row,
-                            line = lines[row.meta.symbol.uppercase()].orEmpty(),
                             onClick = { onOpenSymbol(row.meta.symbol) },
                             starred = onToggleWatch?.let { row.meta.symbol.uppercase() in watched },
                             onToggleStar = onToggleWatch?.let { toggle ->
                                 { toggle(row.meta.symbol) }
+                            },
+                            trailing = {
+                                MarketFigures(row = row, line = lines[row.meta.symbol.uppercase()].orEmpty())
                             },
                         )
                         HorizontalDivider(
@@ -261,112 +285,57 @@ private fun ColumnHeadings() {
     }
 }
 
+/**
+ * The trailing block of a markets row: the day's shape, then the price and the move.
+ *
+ * Split out of the row itself because it is the one part the watchlist replaces — that list puts
+ * the reader's chosen columns here instead. Everything before it is fixed in [MarketListRow], so
+ * the two can never drift apart in the ways three copies of a market row already have once.
+ */
 @Composable
-private fun MarketRow(
+private fun RowScope.MarketFigures(
     row: MarketSearchRow,
     line: List<Double>,
-    onClick: () -> Unit,
-    /** Null where the list offers no starring, so no grey star appears that cannot be pressed. */
-    starred: Boolean? = null,
-    onToggleStar: (() -> Unit)? = null,
 ) {
     val change = row.quote?.changePercent
-    val up = (change ?: 0.0) >= 0.0
     val tone = when {
         change == null -> CoineProColors.TextMuted
-        up -> CoineProColors.Buy
+        change >= 0.0 -> CoineProColors.Buy
         else -> CoineProColors.Sell
     }
-    val haptics = rememberCoineProHaptics()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            // Every row the same height whether or not the feed has quoted it yet. Without this a
-            // list of forty markets where six are still waiting breathes as the prices land, and
-            // the reader's thumb lands on the row below the one they aimed at.
-            .defaultMinSize(minHeight = 58.dp)
-            // The tint a trader reads: which rows are moving, found before any figure is read.
-            .coineProPriceFlash(row.quote?.price)
-            .clickable {
-                haptics.select()
-                onClick()
-            }
-            .padding(horizontal = CoineProSpacing.Two, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+        CoineProSparkline(
+            values = line,
+            modifier = Modifier.width(58.dp).height(24.dp),
+            colour = tone,
+        )
+    }
+    Column(
+        // Fixed and end-aligned, so the decimal points line up down the column. Free-width,
+        // `1.08` and `91,248.30` both started at the same x and ended 36dp apart — a column of
+        // prices nothing could be compared across, which is most of what a market list is for.
+        modifier = Modifier.width(FIGURE_COLUMN),
+        horizontalAlignment = Alignment.End,
     ) {
-        if (starred != null && onToggleStar != null) {
-            val starHaptics = rememberCoineProHaptics()
-            Icon(
-                painter = painterResource(
-                    if (starred) DesignR.drawable.icon_filled_star else DesignR.drawable.icon_star,
-                ),
-                contentDescription = null,
-                modifier = Modifier
-                    .minimumInteractiveComponentSize()
-                    .clip(CoineProShapes.small)
-                    .clickable {
-                        starHaptics.commit()
-                        onToggleStar()
-                    }
-                    .size(18.dp),
-                tint = if (starred) CoineProColors.Accent else CoineProColors.TextDisabled,
+        Text(
+            text = row.quote?.let { MarketNumberFormatter.priceAuto(it.price) }
+                ?: stringResource(R.string.search_no_price),
+            style = MaterialTheme.typography.labelMedium.copy(textDirection = TextDirection.Ltr),
+            color = CoineProColors.TextPrimary,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Right,
+            maxLines = 1,
+        )
+        // The shared pill, not a local one. This row had grown its own — a flat alpha over the
+        // move's colour rather than the tint formula the rest of the app computes against the
+        // surface behind it — so the same percentage was a slightly different green here than
+        // on Home, on a screen a reader reaches from Home.
+        change?.let {
+            CoineProPercentPill(
+                percent = it,
+                modifier = Modifier.padding(top = 2.dp),
+                background = CoineProColors.Stage,
             )
-        }
-        CoineProAssetLogo(symbol = row.meta.symbol, size = 30.dp)
-        // Wider than it was. Eighty-four points fitted the ticker and cut every Persian name
-        // under it; the sparkline beside it was floating in a weighted box with room to spare.
-        Column(modifier = Modifier.width(96.dp)) {
-            Text(
-                text = row.meta.symbol,
-                style = MaterialTheme.typography.labelMedium.copy(textDirection = TextDirection.Ltr),
-                color = CoineProColors.TextPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = row.meta.listDescription,
-                style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextDisabled,
-                fontWeight = FontWeight.Normal,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-            CoineProSparkline(
-                values = line,
-                modifier = Modifier.width(58.dp).height(24.dp),
-                colour = tone,
-            )
-        }
-        Column(
-            // Fixed and end-aligned, so the decimal points line up down the column. Free-width,
-            // `1.08` and `91,248.30` both started at the same x and ended 36dp apart — a column of
-            // prices nothing could be compared across, which is most of what a market list is for.
-            modifier = Modifier.width(FIGURE_COLUMN),
-            horizontalAlignment = Alignment.End,
-        ) {
-            Text(
-                text = row.quote?.let { MarketNumberFormatter.priceAuto(it.price) }
-                    ?: stringResource(R.string.search_no_price),
-                style = MaterialTheme.typography.labelMedium.copy(textDirection = TextDirection.Ltr),
-                color = CoineProColors.TextPrimary,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Right,
-                maxLines = 1,
-            )
-            // The shared pill, not a local one. This row had grown its own — a flat alpha over the
-            // move's colour rather than the tint formula the rest of the app computes against the
-            // surface behind it — so the same percentage was a slightly different green here than
-            // on Home, on a screen a reader reaches from Home.
-            change?.let {
-                CoineProPercentPill(
-                    percent = it,
-                    modifier = Modifier.padding(top = 2.dp),
-                    background = CoineProColors.Stage,
-                )
-            }
         }
     }
 }

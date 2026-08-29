@@ -124,7 +124,11 @@
     <string name="notify_marketing_note">به‌صورت پیش‌فرض خاموش است</string>
     <string name="alert_fired_title">هشدار قیمت</string>
     <string name="alert_fired_body">%1$s به %2$s رسید.</string>
-    <string name="alert_fired_body_no_price">شرط هشدار %1$s برقرار شد.</string>
+    <string name="alert_toast_open">نمودار</string>
+    <string name="channel_price_alert_loud">هشدار قیمت با صدای بلند</string>
+    <string name="channel_price_alert_loud_note">هشدارهایی که خودتان بلندتر از بقیه تنظیم کرده‌اید. روی بلندی صدای زنگ هشدار پخش می‌شود.</string>
+    <string name="channel_price_alert_vibrate">هشدار قیمت بی‌صدا با لرزش</string>
+    <string name="channel_price_alert_vibrate_note">هشدارهایی که فقط گوشی را می‌لرزانند و صدایی ندارند.</string>
     <string name="screen_notifications">اعلان‌ها</string>
     <string name="profile_action_notifications_note">سیگنال، حد سود، کپی، هشدار قیمت و ساعات سکوت</string>
     <string name="screen_membership">عضویت و شناسه‌ی صرافی</string>

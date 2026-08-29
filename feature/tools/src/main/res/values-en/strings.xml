@@ -56,6 +56,12 @@
     <string name="tools_calendar_title">Economic calendar</string>
     <string name="tools_calendar_body">Actual, forecast and previous only when the provider supplies them.</string>
     <string name="tools_calendar_open">Open calendar</string>
+    <string name="tools_heatmap_title">Market heatmap</string>
+    <string name="tools_heatmap_body">Tile size is market value, tile colour is the move.</string>
+    <string name="tools_heatmap_open">Open heatmap</string>
+    <string name="tools_screener_title">Screener</string>
+    <string name="tools_screener_body">Filter on price, volume, volatility and any indicator.</string>
+    <string name="tools_screener_open">Open screener</string>
     <string name="tools_connections_title">Connections</string>
     <string name="tools_connections_body">Account connections are used only by validated signal execution flows.</string>
     <string name="tools_direction">Direction</string>

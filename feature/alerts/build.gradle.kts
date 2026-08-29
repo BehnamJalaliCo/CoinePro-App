@@ -16,11 +16,19 @@ android {
 
 dependencies {
     implementation(project(":core:notifications"))
+    // The alerts themselves and their audit log both live in stores here; see AlertsController.
+    implementation(project(":core:datastore"))
+    // Classification and artwork coverage, so the symbol picker can only offer markets that have a
+    // logo. A symbol without artwork must never reach a list in this app.
+    implementation(project(":core:symbols"))
     implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.kotlinx.coroutines.core)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.material3)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

@@ -57,6 +57,12 @@
     <string name="tools_calendar_title">تقویم اقتصادی</string>
     <string name="tools_calendar_body">واقعی، پیش‌بینی و قبلی — فقط وقتی منبع بدهد.</string>
     <string name="tools_calendar_open">باز کردن تقویم</string>
+    <string name="tools_heatmap_title">نقشهٔ حرارتی بازار</string>
+    <string name="tools_heatmap_body">اندازهٔ هر خانه از ارزش بازار، رنگش از تغییر قیمت.</string>
+    <string name="tools_heatmap_open">باز کردن نقشه</string>
+    <string name="tools_screener_title">اسکرینر</string>
+    <string name="tools_screener_body">فیلتر روی قیمت، حجم، نوسان و هر اندیکاتور.</string>
+    <string name="tools_screener_open">باز کردن اسکرینر</string>
     <string name="tools_connections_title">اتصال‌ها</string>
     <string name="tools_connections_body">اتصال حساب فقط در مسیر اجرای سیگنالِ تأییدشده استفاده می‌شود.</string>
     <string name="tools_direction">جهت</string>

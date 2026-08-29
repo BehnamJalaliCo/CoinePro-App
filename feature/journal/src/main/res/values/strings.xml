@@ -13,11 +13,34 @@
     <string name="journal_lesson">دفعهٔ بعد چه می‌کنی؟</string>
     <string name="journal_save">ثبت</string>
     <string name="journal_delete">حذف</string>
-    <string name="journal_export">خروجی CSV</string>
+    <string name="journal_export">خروجی CSV از همین فهرست</string>
     <string name="journal_stat_entries">تعداد ثبت</string>
     <string name="journal_stat_graded">با عدد سود و زیان</string>
     <string name="journal_stat_winrate">نرخ برد</string>
     <string name="journal_stat_net">سود خالص</string>
     <string name="journal_stat_pf">ضریب سود</string>
     <string name="journal_stat_expectancy">انتظار هر معامله</string>
+
+    <!-- %1$s تعداد نمایش‌داده‌شده و %2$s کل ثبت‌هاست؛ ارقام فارسی چون شمارش در متن‌اند -->
+    <string name="journal_stat_shown">%1$s از %2$s</string>
+    <string name="journal_stat_average_win">میانگین برد</string>
+    <string name="journal_stat_average_loss">میانگین باخت</string>
+
+    <string name="journal_filter">فیلتر</string>
+    <string name="journal_filter_all">همه</string>
+    <string name="journal_filter_wins">بردها</string>
+    <string name="journal_filter_losses">باخت‌ها</string>
+    <string name="journal_filter_ungraded">بدون عدد</string>
+    <string name="journal_search">جست‌وجو در نماد، یادداشت و درس</string>
+    <string name="journal_clear_filter">برداشتن فیلتر</string>
+
+    <string name="journal_empty">هنوز چیزی ثبت نکرده‌اید.</string>
+    <string name="journal_empty_hint">نماد را بنویسید و یک جمله دربارهٔ آنچه دیدید؛ بقیه اختیاری است.</string>
+    <string name="journal_no_match">هیچ ثبتی با این فیلتر نیست.</string>
+    <string name="journal_no_match_hint">برچسب یا حالت دیگری بزنید، یا فیلتر را بردارید.</string>
+
+    <string name="journal_shot_add">افزودن تصویر</string>
+    <string name="journal_shot_replace">تغییر تصویر</string>
+    <string name="journal_shot_remove">حذف تصویر</string>
+    <string name="journal_shot_after_saving">تصویر چارت را پس از ثبت، روی همان ردیف اضافه کنید.</string>
 </resources>

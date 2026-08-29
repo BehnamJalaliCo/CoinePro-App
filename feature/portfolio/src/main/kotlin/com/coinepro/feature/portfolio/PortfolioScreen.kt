@@ -73,6 +73,14 @@ fun PortfolioScreen(
     controller: PortfolioController,
     /** Opens the connections screen. Null hides the offer, on a platform that has no such screen. */
     onOpenConnections: (() -> Unit)? = null,
+    /**
+     * Opens the full report — the metric set, the attribution, the monthly matrix and the exports.
+     *
+     * Null simply omits the link rather than disabling it. A visible control that does nothing is
+     * worse than an absent one, and a host that has not registered the report route has no screen
+     * to send the reader to.
+     */
+    onOpenReport: (() -> Unit)? = null,
     zone: ZoneId = ZoneId.systemDefault(),
 ) {
     LaunchedEffect(controller) { controller.start() }
@@ -90,7 +98,7 @@ fun PortfolioScreen(
                     color = CoineProColors.TextSecondary,
                 )
             }
-            else -> Content(state, controller::loadMore, zone)
+            else -> Content(state, controller::loadMore, onOpenReport, zone)
         }
     }
 }
@@ -114,7 +122,12 @@ private fun WindowChips(selected: PortfolioWindow, onSelect: (PortfolioWindow) -
 }
 
 @Composable
-private fun Content(state: PortfolioUiState, onLoadMore: () -> Unit, zone: ZoneId) {
+private fun Content(
+    state: PortfolioUiState,
+    onLoadMore: () -> Unit,
+    onOpenReport: (() -> Unit)?,
+    zone: ZoneId,
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -135,6 +148,17 @@ private fun Content(state: PortfolioUiState, onLoadMore: () -> Unit, zone: ZoneI
         item { Headline(state.stats) }
         item { CurveCard(state.stats) }
         item { StatsGrid(state.stats) }
+        // Directly under the summary figures, because that is where a reader who wants more of
+        // them looks. Below the trade list it would be a link nobody scrolls to.
+        onOpenReport?.let { open ->
+            item {
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.portfolio_report_open),
+                    onClick = open,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
         if (state.byMonth.size > 1) {
             item { MonthsCard(state.byMonth, zone) }
         }

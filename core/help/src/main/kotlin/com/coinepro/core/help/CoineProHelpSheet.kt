@@ -140,6 +140,29 @@ fun HelpBody(entry: HelpEntry, persian: Boolean = true, modifier: Modifier = Mod
                 )
             }
         }
+        // Last, and given a warning colour rather than the body colour.
+        //
+        // Last because a reader who stops early has still read what the tool is and how to place
+        // it; coloured because this is the only section that says the tool can mislead you, and a
+        // caution set in the same grey as the tips is a caution nobody reads. A hairline and a
+        // tinted title, not a filled panel — the surface rules here are the same everywhere else.
+        entry.pitfall?.let { pitfall ->
+            item {
+                Text(
+                    text = if (persian) "کجا گمراهت می‌کند" else "Where it misleads you",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = CoineProColors.Warning,
+                    modifier = Modifier.padding(top = CoineProSpacing.Two, bottom = CoineProSpacing.Half),
+                )
+            }
+            item {
+                Text(
+                    text = pitfall.inLanguage(persian),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CoineProColors.TextSecondary,
+                )
+            }
+        }
     }
 }
 

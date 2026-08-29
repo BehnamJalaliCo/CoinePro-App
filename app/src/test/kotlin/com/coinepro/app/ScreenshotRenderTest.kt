@@ -42,6 +42,9 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.emptyPreferences
 import com.coinepro.app.security.TamperedScreen
 import com.coinepro.core.academy.AcademyExtra
 import com.coinepro.core.account.AccountController
@@ -83,6 +86,8 @@ import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.ErrorKind
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.copytrade.CopyTradeController
+import com.coinepro.core.datastore.AlertAuditStore
+import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.StoredProfile
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProAvatar
@@ -118,7 +123,8 @@ import com.coinepro.feature.account.DeleteAccountScreen
 import com.coinepro.feature.activity.ActivityScreen
 import com.coinepro.feature.admin.AdminScreen
 import com.coinepro.feature.ai.AiStudioScreen
-import com.coinepro.feature.alerts.AlertsScreen
+import com.coinepro.feature.alerts.AlertCenterScreen
+import com.coinepro.feature.alerts.AlertsController
 import com.coinepro.feature.auth.AuthScreen
 import com.coinepro.feature.auth.EmailAuthScreen
 import com.coinepro.feature.calendar.EconomicCalendarScreen
@@ -130,6 +136,7 @@ import com.coinepro.feature.guest.GuestGate
 import com.coinepro.feature.guest.GuestGateScreen
 import com.coinepro.feature.guest.GuestScreen
 import com.coinepro.feature.guest.MembershipGate
+import com.coinepro.feature.heatmap.HeatmapScreen
 import com.coinepro.feature.home.HomeScreen
 import com.coinepro.feature.home.HomeSubscription
 import com.coinepro.feature.journal.JournalScreen
@@ -143,6 +150,8 @@ import com.coinepro.feature.portfolio.PortfolioScreen
 import com.coinepro.feature.profile.AvatarComposerBody
 import com.coinepro.feature.profile.ProfileAction
 import com.coinepro.feature.profile.ProfileScreen
+import com.coinepro.feature.screener.ScreenerController
+import com.coinepro.feature.screener.ScreenerScreen
 import com.coinepro.feature.script.ScriptScreen
 import com.coinepro.feature.search.MarketsScreen
 import com.coinepro.feature.search.MarketsSignalStrip
@@ -153,6 +162,7 @@ import com.coinepro.feature.tools.ToolsScreen
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -1282,6 +1292,39 @@ class ScreenshotRenderTest {
     }
 
     /**
+     * The heatmap, over the same catalogue the search cases use.
+     *
+     * Worth a render case rather than a unit test alone because the thing that can be wrong here is
+     * not the arithmetic — the treemap has its own tests — it is whether a tile at phone width is
+     * still big enough to carry its ticker, and whether the colour ramp reads as a scale rather
+     * than as noise. Neither is visible in an assertion.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun marketHeatmap() {
+        val controller = MarketSearchController(ScreenshotFixtures.searchCatalog(), scope)
+        controller.start()
+        capture("34-heatmap-fa") { HeatmapScreen(controller = controller, onOpenSymbol = {}) }
+    }
+
+    /**
+     * The screener, over the same catalogue.
+     *
+     * TradingView ships seven of these on the web and none at all on a phone — they say so in their
+     * own help centre. That makes this screen one of the few where we have no reference to copy, so
+     * it is rendered rather than only asserted: the question is whether a filter row, a sortable
+     * header and a dense result table can share a 411dp width without any of the three becoming
+     * unreadable.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun marketScreener() {
+        val controller = ScreenerController(gateway = ScreenshotFixtures.searchCatalog(), scope = scope)
+        controller.start()
+        capture("35-screener-fa") { ScreenerScreen(controller = controller, onOpenSymbol = {}) }
+    }
+
+    /**
      * The chart, in the three states that actually have to be looked at.
      *
      * A renderer is the one part of this app that unit tests cannot judge. The arithmetic is
@@ -1589,7 +1632,17 @@ class ScreenshotRenderTest {
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
     fun alerts() = capture("82-alerts-fa") {
-        AlertsScreen(controller = NotificationController(FakeNotificationGateway(), scope))
+        // The alert centre, not the old single-condition screen it replaced. Rendered because the
+        // list row is where the condition becomes a Persian sentence with a Latin price inside it,
+        // and a bidi run that comes out reversed is invisible to every assertion in this suite.
+        AlertCenterScreen(
+            controller = AlertsController(
+                store = LocalAlertStore(FakeScreenshotPreferences()),
+                audit = AlertAuditStore(FakeScreenshotPreferences()),
+                catalogOf = { ScreenshotFixtures.alertSymbols() },
+                scope = scope,
+            ),
+        )
     }
 
     /**
@@ -1850,7 +1903,7 @@ class ScreenshotRenderTest {
         val covered = SHEET_GROUPS.flatMap { DrawingTools.inGroup(it) }.map { it.id }.toSet()
         val expected = DrawingTools.ALL.filterNot { it.group == ToolGroup.MODES }.map { it.id }.toSet()
         assertEquals(expected, covered)
-        assertEquals(50, expected.size)
+        assertEquals(85, expected.size)
     }
 
     private fun sheet(name: String, vararg groups: ToolGroup) {
@@ -1973,6 +2026,10 @@ private fun gallerySeries(): CandleSeries = CandleSeries(
             h = base + 1.2,
             l = base - 1.2,
             c = base + 0.4,
+            // A volume column, so the three volume tools draw something in the gallery rather than
+            // correctly refusing. They return early on a feed that reports none — which is the right
+            // behaviour on MT5 and the wrong thing to be reviewing a blank sheet for here.
+            v = 400.0 + 260 * kotlin.math.sin(phase * Math.PI * 3),
         )
     },
 )
@@ -2018,6 +2075,7 @@ private val SHEET_GROUPS = listOf(
     ToolGroup.MEASURE,
     ToolGroup.POSITION,
     ToolGroup.ANNOTATION,
+    ToolGroup.VOLUME,
 )
 
 /**
@@ -2093,5 +2151,16 @@ private fun AvatarGallery() {
                 size = 56.dp,
             )
         }
+    }
+}
+
+/** A `DataStore` that holds its preferences in memory, for the screens that read one. */
+private class FakeScreenshotPreferences : DataStore<Preferences> {
+    override val data = MutableStateFlow<Preferences>(emptyPreferences())
+
+    override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences {
+        val next = transform(data.value)
+        data.value = next
+        return next
     }
 }

@@ -19,9 +19,13 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:common"))
+    // The watchlist panel reads and writes the reader's own lists. api rather than implementation:
+    // WatchlistStore is a parameter of MarketsScreen, so whoever builds one needs the type.
+    api(project(":core:datastore"))
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
+    testImplementation(libs.junit)
 }

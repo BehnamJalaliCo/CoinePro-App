@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="screener_title">Screener</string>
+    <string name="screener_open_filters">Filters</string>
+    <string name="screener_filter_sheet_title">Conditions</string>
+    <string name="screener_filter_sheet_subtitle">As many as you like. No limit, no subscription.</string>
+    <string name="screener_saved_sheet_title">Saved screens</string>
+    <string name="screener_presets">Quick start</string>
+    <string name="screener_saved">Saved</string>
+    <string name="screener_save">Save this screen</string>
+    <string name="screener_save_name">Screen name</string>
+    <string name="screener_delete">Delete</string>
+    <string name="screener_apply">Apply</string>
+    <string name="screener_add_condition">Add condition</string>
+    <string name="screener_clear">Clear conditions</string>
+    <string name="screener_field">Value</string>
+    <string name="screener_operator">Condition</string>
+    <string name="screener_value">Number</string>
+    <string name="screener_second_value">to</string>
+    <string name="screener_indicator">Indicator</string>
+    <string name="screener_period">Period</string>
+    <string name="screener_search_placeholder">Symbol or market name</string>
+    <string name="screener_count">%1$s markets</string>
+    <string name="screener_progress">%1$s of %2$s markets read</string>
+    <string name="screener_column_symbol">Symbol</string>
+    <string name="screener_category_all">All</string>
+    <string name="screener_category_crypto">Crypto</string>
+    <string name="screener_category_forex">Forex</string>
+    <string name="screener_category_metal">Metals</string>
+    <string name="screener_category_index">Indices</string>
+    <string name="screener_category_energy">Energy</string>
+    <string name="screener_empty">No market matches these conditions.</string>
+    <string name="screener_empty_hint">Widen one of the conditions, or start the screen again.</string>
+    <string name="screener_empty_open">The market list has not arrived yet.</string>
+    <string name="screener_failed">The market list is unavailable.</string>
+    <string name="screener_retry">Try again</string>
+    <string name="screener_free_note">Every condition and every indicator is free, and saved screens are unlimited.</string>
+</resources>

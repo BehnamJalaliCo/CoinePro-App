@@ -20,6 +20,7 @@ import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 import kotlin.math.sin
 
 /**
@@ -499,7 +500,12 @@ fun DrawScope.drawDrawing(
             true
         }
 
-        else -> false
+        // Everything the second wave of tools added. Split into its own function rather than
+        // grown onto the end of this `when`: the branch list above is already at the size where a
+        // reader loses their place in it, and the new tools all share a shape — chart-space
+        // geometry from [DrawingGeometryA]/[DrawingGeometryB], projected and stroked — that has
+        // nothing to do with the hand-rolled arithmetic above.
+        else -> drawExtendedDrawing(drawing, view, measurer, chart, p, colour, width)
     }
 
     // The handles come last so they sit over whatever the tool drew, and only on the selected one:
@@ -900,3 +906,833 @@ private const val ZONE = 0.12f
 
 /** What a text or callout with nothing typed in it yet says. */
 private const val DEFAULT_NOTE = "یادداشت"
+
+// ============================================================================ the second wave
+
+/**
+ * The thirty-five drawing tools that arrived with the two pure geometry libraries.
+ *
+ * One painter per *shape type* rather than one per tool, which is the whole reason this stayed a
+ * readable function while the tool count nearly doubled. [DrawingGeometryA] and [DrawingGeometryB]
+ * return three shapes between them — a straight run, an arc, a chain of points — so this routes a
+ * tool id to the right geometry call and hands whatever comes back to [paintRuns], [paintArcs] or
+ * [paintPoly]. A new tool built out of those shapes is one line here.
+ *
+ * Returns whether the tool was recognised, on the same contract [drawDrawing] has: a recognised
+ * tool that had nothing to draw yet — three anchors of a five-anchor pattern, a volume tool on a
+ * feed with no volume — still answers true, because the alternative would report a tool as missing
+ * from the renderer when it is merely waiting for the reader's next tap.
+ */
+@Suppress("CyclomaticComplexMethod", "LongMethod", "ReturnCount")
+private fun DrawScope.drawExtendedDrawing(
+    drawing: Drawing,
+    view: ChartViewport,
+    measurer: TextMeasurer,
+    chart: List<ChartPoint>,
+    screen: List<Offset>,
+    colour: Color,
+    width: Float,
+): Boolean {
+    val w = view.plotWidth
+    val h = view.plotHeight
+    val geo = chart.map { GeoPoint(it.time.toDouble(), it.price) }
+    val geoB = chart.map { GeoPointB(it.time.toDouble(), it.price) }
+    val series = view.series
+    val a = screen[0]
+
+    fun runs(list: List<GeoSegment>): Boolean =
+        paintRuns(list.map { view.runOf(it) }, measurer, colour, width, w, h)
+
+    fun runsB(list: List<GeoSegmentB>): Boolean =
+        paintRuns(list.map { view.runOf(it) }, measurer, colour, width, w, h)
+
+    return when (drawing.toolId) {
+
+        // ── Channels ────────────────────────────────────────────────────────────────
+        "regression" -> {
+            val from = barIndexOf(series, chart[0].time)
+            val to = chart.getOrNull(1)?.let { barIndexOf(series, it.time) } ?: -1
+            runs(
+                DrawingGeometryA.regressionChannel(
+                    points = geo,
+                    closes = series.close,
+                    fromIndex = min(from, to),
+                    toIndex = max(from, to),
+                ),
+            )
+            true
+        }
+        "flattop" -> { runs(DrawingGeometryA.flatTopBottom(geo)); true }
+        "disjoint" -> { runs(DrawingGeometryA.disjointChannel(geo)); true }
+        "pitchfork_inside" -> { runs(DrawingGeometryA.insidePitchfork(geo)); true }
+        "pitchfork_schiff" -> { runs(DrawingGeometryA.schiffPitchfork(geo)); true }
+        "pitchfork_schiffmod" -> { runs(DrawingGeometryA.modifiedSchiffPitchfork(geo)); true }
+        "pitchfan" -> { runs(DrawingGeometryA.pitchfan(geo)); true }
+
+        // ── Fibonacci curves ────────────────────────────────────────────────────────
+        "fibspiral" -> { paintArcs(DrawingGeometryA.fibonacciSpiral(geo), view, measurer, colour, width); true }
+        "fibwedge" -> {
+            // The two rays the arcs are swept between, faint. Without them the wedge is a stack of
+            // arcs with nothing saying where the angle came from.
+            screen.getOrNull(1)?.let { drawLine(colour.copy(alpha = GHOST), a, it, width) }
+            screen.getOrNull(2)?.let { drawLine(colour.copy(alpha = GHOST), a, it, width) }
+            paintArcs(DrawingGeometryA.fibonacciWedge(geo), view, measurer, colour, width)
+            true
+        }
+
+        // ── Gann squares ────────────────────────────────────────────────────────────
+        "gannsquare" -> { runs(DrawingGeometryA.gannSquare(geo)); true }
+        "gannsquarefixed" -> {
+            // One tap, so the box has to come from somewhere: it is sized so that the 1×1 leaves
+            // the anchor at forty-five degrees *on screen*, which is the only reading of "one unit
+            // of time equals one unit of price" that survives a chart whose axes share no unit.
+            val boxT = GANN_FIXED_BARS * max(1.0, barSpacingOf(series))
+            // `priceAt` takes a screen y in Float; the constant is a Double so the time side of the
+            // box keeps its precision. Convert at the boundary rather than making the constant a
+            // Float, which would quietly coarsen `boxT` above.
+            val boxP = view.priceAt(a.y - (GANN_FIXED_BARS * view.barWidth).toFloat()) - chart[0].price
+            runs(DrawingGeometryA.gannSquareFixed(geo, boxT, boxP))
+            true
+        }
+
+        // ── Patterns and Elliott ────────────────────────────────────────────────────
+        "threedrives" -> { runsB(DrawingGeometryB.threeDrives(geoB)); true }
+        "ell_triangle" -> { runsB(DrawingGeometryB.elliottTriangle(geoB)); true }
+        "ell_double" -> { runsB(DrawingGeometryB.elliottDoubleCombo(geoB)); true }
+        "ell_triple" -> { runsB(DrawingGeometryB.elliottTripleCombo(geoB)); true }
+
+        // ── Free-form shapes ────────────────────────────────────────────────────────
+        "path" -> { paintPoly(DrawingGeometryB.path(geoB), view, colour, width); true }
+        "polyline" -> {
+            paintPoly(DrawingGeometryB.polyline(geoB, closed = isClosedRing(chart)), view, colour, width)
+            true
+        }
+        "arc" -> { paintPoly(DrawingGeometryB.arc(geoB), view, colour, width); true }
+        "curve" -> { paintPoly(DrawingGeometryB.curve(geoB), view, colour, width); true }
+        "doublecurve" -> { paintPoly(DrawingGeometryB.doubleCurve(geoB), view, colour, width); true }
+        "sector" -> { paintPoly(DrawingGeometryB.sector(geoB), view, colour, width); true }
+
+        // ── Measure ─────────────────────────────────────────────────────────────────
+        "timecycles" -> { runsB(DrawingGeometryB.timeCycles(geoB)); true }
+        "barspattern" -> {
+            val anchor = geoB.getOrNull(1) ?: return true
+            val from = barIndexOf(series, chart[0].time)
+            val to = barIndexOf(series, chart[1].time)
+            val copy = DrawingGeometryB.barsPattern(
+                source = series.close,
+                sourceOpen = series.open,
+                sourceHigh = series.high,
+                sourceLow = series.low,
+                fromIndex = min(from, to),
+                toIndex = max(from, to),
+                anchor = anchor,
+            )
+            paintBarOffsetRuns(copy, view, anchor, colour, max(width, view.bodyWidth * BAR_COPY_RATIO))
+            true
+        }
+        "ghostfeed" -> {
+            val anchor = geoB.getOrNull(1) ?: return true
+            val from = barIndexOf(series, chart[0].time)
+            val to = barIndexOf(series, chart[1].time)
+            val window = abs(to - from)
+            val ghost = DrawingGeometryB.ghostFeed(
+                closes = series.close,
+                fromIndex = min(from, to),
+                toIndex = max(from, to),
+                anchor = anchor,
+                bars = window,
+            )
+            paintBarOffsetPoly(ghost, view, anchor, colour.copy(alpha = GHOST_FEED_ALPHA), width)
+            true
+        }
+
+        // ── Annotation ──────────────────────────────────────────────────────────────
+        "arrowmarks" -> { runsB(DrawingGeometryB.arrowMarks(geoB)); true }
+        "pricenote" -> {
+            dashed(a, Offset(w, a.y), colour, width)
+            val text = listOfNotNull(drawing.text, priceText(chart[0].price)).joinToString("  ")
+            boxLabel(measurer, text, a.x + LABEL_INSET.toPx(), a.y, colour, Anchor.ABOVE)
+            true
+        }
+        "pin" -> {
+            val head = Offset(a.x, a.y - PIN_HEIGHT.toPx())
+            drawLine(colour, head, a, width)
+            drawCircle(colour, PIN_RADIUS.toPx(), head)
+            drawCircle(BOX_BACKGROUND, PIN_RADIUS.toPx() / 2, head)
+            drawing.text?.let { boxLabel(measurer, it, head.x + PIN_RADIUS.toPx() + 4, head.y, colour, Anchor.ABOVE) }
+            true
+        }
+        // `tabledraw`, not `table`: the shipped help catalogue keys `table` to the scripting
+        // language's `table.new`, so the drawing tool had to be renamed to keep the two «؟» entries
+        // apart. The renderer is where a rename like that goes unnoticed — the tool stays in the
+        // rail, arms, places its point and then draws nothing.
+        "tabledraw" -> {
+            panel(measurer, drawing.text ?: DEFAULT_TABLE, a, colour, rule = true)
+            true
+        }
+        "comment" -> {
+            // A bubble with a tail, so the note points at the bar it is about. A boxed label on its
+            // own says "somewhere near here", which on a crowded chart is not an answer.
+            val body = Offset(a.x, a.y - COMMENT_LIFT.toPx())
+            val tail = Path().apply {
+                moveTo(a.x, a.y)
+                lineTo(a.x + COMMENT_TAIL.toPx(), body.y)
+                lineTo(a.x - COMMENT_TAIL.toPx() / 2, body.y)
+                close()
+            }
+            drawPath(tail, BOX_BACKGROUND)
+            drawPath(tail, colour, style = Stroke(1f))
+            panel(measurer, drawing.text ?: DEFAULT_NOTE, Offset(a.x, body.y), colour, rule = false, above = true)
+            true
+        }
+        "signpost" -> {
+            val top = Offset(a.x, a.y - POST_HEIGHT.toPx())
+            drawLine(colour, a, top, width)
+            drawCircle(colour, POST_FOOT.toPx(), a)
+            panel(measurer, drawing.text ?: DEFAULT_SIGN, top, colour, rule = false, above = true)
+            true
+        }
+        "icon" -> {
+            val reach = ICON_SIZE.toPx()
+            val diamond = Path().apply {
+                moveTo(a.x, a.y - reach)
+                lineTo(a.x + reach, a.y)
+                lineTo(a.x, a.y + reach)
+                lineTo(a.x - reach, a.y)
+                close()
+            }
+            drawPath(diamond, colour.copy(alpha = FILL_SOFT))
+            drawPath(diamond, colour, style = Stroke(width))
+            drawing.text?.let { label(measurer, it, a.x + reach + 4, a.y - reach, colour) }
+            true
+        }
+        "image" -> {
+            // A frame and the picture's own mark, not a placeholder for one. The bitmap itself is
+            // not the chart layer's business — nothing here can load a file — so what this tool
+            // places is the frame the reader positions, and the caption under it.
+            val size = Size(IMAGE_WIDTH.toPx(), IMAGE_HEIGHT.toPx())
+            drawRect(colour.copy(alpha = FILL_SOFT), a, size)
+            drawRect(colour, a, size, style = Stroke(width))
+            val floor = a.y + size.height * IMAGE_HORIZON
+            drawLine(colour, Offset(a.x + size.width * 0.12f, floor), Offset(a.x + size.width * 0.42f, a.y + size.height * 0.42f), width)
+            drawLine(colour, Offset(a.x + size.width * 0.42f, a.y + size.height * 0.42f), Offset(a.x + size.width * 0.88f, floor), width)
+            drawCircle(colour, size.height * 0.09f, Offset(a.x + size.width * 0.74f, a.y + size.height * 0.26f), style = Stroke(width))
+            drawing.text?.let { label(measurer, it, a.x, a.y + size.height + LABEL_INSET.toPx(), colour) }
+            true
+        }
+
+        // ── Volume ──────────────────────────────────────────────────────────────────
+        "avwap" -> {
+            if (!volumeToolDrawable(drawing.toolId, series)) return true
+            drawAnchoredVwap(view, measurer, barIndexOf(series, chart[0].time), colour, width)
+            true
+        }
+        "volumeprofile" -> {
+            if (!volumeToolDrawable(drawing.toolId, series)) return true
+            val end = screen.getOrNull(1) ?: return true
+            val from = barIndexOf(series, chart[0].time)
+            val to = barIndexOf(series, chart[1].time)
+            drawVolumeProfile(
+                view = view,
+                measurer = measurer,
+                fromIndex = min(from, to),
+                toIndex = max(from, to),
+                leftX = min(a.x, end.x),
+                rightX = max(a.x, end.x),
+                colour = colour,
+                width = width,
+            )
+            true
+        }
+        "avolumeprofile" -> {
+            if (!volumeToolDrawable(drawing.toolId, series)) return true
+            val from = barIndexOf(series, chart[0].time)
+            if (from < 0) return true
+            drawVolumeProfile(
+                view = view,
+                measurer = measurer,
+                fromIndex = from,
+                toIndex = series.size - 1,
+                leftX = a.x,
+                rightX = min(w, view.xOf(series.size - 1)),
+                colour = colour,
+                width = width,
+            )
+            true
+        }
+
+        else -> false
+    }
+}
+
+// ---------------------------------------------------------------------------- shape painters
+
+/**
+ * One straight run of a tool, already in pixels.
+ *
+ * The two geometry libraries return two segment types that carry the same four facts, and both are
+ * flattened to this before anything is stroked. One painter that both feed rather than two that
+ * drift: the extend flags and the label placement are exactly the sort of thing that gets fixed in
+ * one copy and not the other.
+ */
+private data class ScreenRun(
+    val from: Offset,
+    val to: Offset,
+    val extendA: Boolean,
+    val extendB: Boolean,
+    val label: String?,
+)
+
+private fun ChartViewport.runOf(segment: GeoSegment) = ScreenRun(
+    from = screenOf(segment.a),
+    to = screenOf(segment.b),
+    extendA = segment.extendA,
+    extendB = segment.extendB,
+    label = segment.label,
+)
+
+private fun ChartViewport.runOf(segment: GeoSegmentB) = ScreenRun(
+    from = screenOf(segment.a),
+    to = screenOf(segment.b),
+    extendA = segment.extendA,
+    extendB = segment.extendB,
+    label = segment.label,
+)
+
+/** A chart-space point in pixels. The one place the geometry's `Double` time is rounded. */
+private fun ChartViewport.screenOf(point: GeoPoint): Offset =
+    Offset(xOfTime(point.t.roundToLong()), yOf(point.p))
+
+private fun ChartViewport.screenOf(point: GeoPointB): Offset =
+    Offset(xOfTime(point.t.roundToLong()), yOf(point.p))
+
+/**
+ * Stroke a set of runs, then label them.
+ *
+ * Two passes and not one, because a Gann square's seventeen lines cross each other: labels drawn
+ * inline are struck through by whatever is stroked after them, and the reader is left with ratios
+ * that have a rule through the middle.
+ *
+ * [DrawingGeometryB.MARK_UP] and [DrawingGeometryB.MARK_DOWN] are colour instructions rather than text — they come off `arrowMarks`
+ * and `barsPattern` to say which way that piece read — so they choose the market colour and are
+ * never drawn as a label.
+ */
+private fun DrawScope.paintRuns(
+    runs: List<ScreenRun>,
+    measurer: TextMeasurer,
+    colour: Color,
+    width: Float,
+    w: Float,
+    h: Float,
+): Boolean {
+    if (runs.isEmpty()) return false
+    for (run in runs) {
+        strokeRun(run, markColour(run.label, colour), width, w, h)
+    }
+    val lane = LabelLane(RATIO_LABEL_WIDTH.toPx(), LABEL_MIN_GAP.toPx())
+    for (run in runs) {
+        val text = run.label?.takeUnless { it == DrawingGeometryB.MARK_UP || it == DrawingGeometryB.MARK_DOWN }
+            ?: continue
+        val at = labelAnchorOf(run)
+        if (at.x < -w || at.x > w * 2) continue
+        if (!lane.claim(at.x, at.y)) continue
+        label(measurer, text, at.x + LABEL_INSET.toPx(), at.y, colour)
+    }
+    return true
+}
+
+/**
+ * Where a run's label goes: its right-hand end, which is the end a reader's eye arrives at.
+ *
+ * A degenerate run is the exception and is not a degenerate case. `timeCycles` expresses a
+ * full-height vertical as a zero-length segment with both extend flags set, so its label belongs at
+ * the top of the plot beside the line rather than at a point in the middle of the candles.
+ */
+private fun labelAnchorOf(run: ScreenRun): Offset {
+    if (isDegenerate(run)) return Offset(run.from.x, 0f)
+    return if (run.to.x >= run.from.x) run.to else run.from
+}
+
+private fun isDegenerate(run: ScreenRun): Boolean =
+    hypot(run.to.x - run.from.x, run.to.y - run.from.y) < DEGENERATE_PX
+
+/**
+ * Stroke one run, honouring its extend flags with the reach a ray already uses.
+ *
+ * The zero-length case is the trap the geometry authors flagged and it is handled first: a segment
+ * whose two ends coincide *and* which asks to be extended is a full-height vertical, because a
+ * library with no viewport cannot express "as tall as the plot" any other way. Skipping it as an
+ * empty segment would silently drop every line of the time-cycles tool.
+ */
+private fun DrawScope.strokeRun(run: ScreenRun, colour: Color, width: Float, w: Float, h: Float) {
+    if (isDegenerate(run)) {
+        if (run.extendA || run.extendB) drawLine(colour, Offset(run.from.x, 0f), Offset(run.from.x, h), width)
+        return
+    }
+    val dx = run.to.x - run.from.x
+    val dy = run.to.y - run.from.y
+    val length = max(1f, hypot(dx, dy))
+    val unit = Offset(dx / length, dy / length)
+    val reach = max(w, h) * RAY_REACH
+    val start = if (run.extendA) run.from - unit * reach else run.from
+    val end = if (run.extendB) run.to + unit * reach else run.to
+    drawLine(colour, start, end, width)
+}
+
+/**
+ * Stroke a set of arcs.
+ *
+ * The two radii are converted through their own axis — the time radius through [ChartViewport.xOfTime],
+ * the price radius through [ChartViewport.yOf] — which is what makes a Fibonacci spiral keep its
+ * shape at every zoom instead of breathing as the price scale changes.
+ *
+ * The angle is negated on the way to the canvas. Chart space measures degrees anticlockwise from
+ * increasing time, and a canvas measures them clockwise from three o'clock because its y axis points
+ * down; a spiral drawn without the negation winds the wrong way and its quarters no longer join.
+ */
+private fun DrawScope.paintArcs(
+    arcs: List<GeoArc>,
+    view: ChartViewport,
+    measurer: TextMeasurer,
+    colour: Color,
+    width: Float,
+): Boolean {
+    if (arcs.isEmpty()) return false
+    val lane = LabelLane(RATIO_LABEL_WIDTH.toPx(), LABEL_MIN_GAP.toPx())
+    for (arc in arcs) {
+        val centre = view.screenOf(arc.centre)
+        val rx = abs(view.xOfTime((arc.centre.t + arc.radiusT).roundToLong()) - centre.x)
+        val ry = abs(view.yOf(arc.centre.p + arc.radiusP) - centre.y)
+        oval(centre, rx, ry, (-arc.startDeg).toFloat(), (-arc.sweepDeg).toFloat(), colour.copy(alpha = 0.85f), width)
+        val text = arc.label ?: continue
+        val radians = arc.startDeg * Math.PI / 180.0
+        val at = Offset(
+            (centre.x + rx * cos(radians)).toFloat(),
+            (centre.y - ry * sin(radians)).toFloat(),
+        )
+        if (!lane.claim(at.x, at.y)) continue
+        label(measurer, text, at.x + LABEL_INSET.toPx(), at.y, colour)
+    }
+    return true
+}
+
+/**
+ * Stroke or fill a sampled chain of points.
+ *
+ * Closed chains are filled at the tool's own colour and low alpha and then outlined with a hairline,
+ * which is the treatment every other filled shape in this file gets; open ones are stroked. A chain
+ * labelled [DrawingGeometryB.ARROW_HEAD] gets its last leg capped, which is the single thing that
+ * separates a path from a polyline.
+ */
+private fun DrawScope.paintPoly(
+    poly: GeoPolyB,
+    view: ChartViewport,
+    colour: Color,
+    width: Float,
+): Boolean {
+    if (poly.points.size < 2) return false
+    val points = poly.points.map { view.screenOf(it) }
+    if (poly.closed) {
+        val path = Path().apply {
+            moveTo(points[0].x, points[0].y)
+            for (index in 1 until points.size) lineTo(points[index].x, points[index].y)
+            close()
+        }
+        drawPath(path, colour.copy(alpha = FILL_SOFT))
+        drawPath(path, colour, style = Stroke(width))
+        return true
+    }
+    polyline(points, colour, width)
+    if (poly.label == DrawingGeometryB.ARROW_HEAD) {
+        arrowHead(points[points.size - 2], points.last(), colour, ARROW_HEAD.toPx())
+    }
+    return true
+}
+
+/**
+ * The two tools that lay their output one *bar* apart from the anchor rather than one second.
+ *
+ * `barsPattern` and `ghostFeed` are given no bar spacing and cannot invent one, so they return
+ * times as `anchor.t + n` for a whole number of bars. Rounding those to a `Long` and asking the
+ * viewport for them would place a thirty-bar copy inside thirty seconds — a vertical smear one
+ * pixel wide. The offset is multiplied by the bar width here instead, which is the one place that
+ * knows what a bar is worth in pixels.
+ */
+private fun DrawScope.paintBarOffsetRuns(
+    runs: List<GeoSegmentB>,
+    view: ChartViewport,
+    anchor: GeoPointB,
+    colour: Color,
+    width: Float,
+) {
+    val originX = view.xOfTime(anchor.t.roundToLong())
+    for (run in runs) {
+        val ink = markColour(run.label, colour)
+        drawLine(
+            ink,
+            Offset(originX + ((run.a.t - anchor.t) * view.barWidth).toFloat(), view.yOf(run.a.p)),
+            Offset(originX + ((run.b.t - anchor.t) * view.barWidth).toFloat(), view.yOf(run.b.p)),
+            width,
+        )
+    }
+}
+
+private fun DrawScope.paintBarOffsetPoly(
+    poly: GeoPolyB,
+    view: ChartViewport,
+    anchor: GeoPointB,
+    colour: Color,
+    width: Float,
+) {
+    if (poly.points.size < 2) return
+    val originX = view.xOfTime(anchor.t.roundToLong())
+    polyline(
+        poly.points.map { Offset(originX + ((it.t - anchor.t) * view.barWidth).toFloat(), view.yOf(it.p)) },
+        colour,
+        width,
+    )
+}
+
+/** A `MARK_UP`/`MARK_DOWN` hint resolved to a market colour; anything else keeps the tool's own. */
+private fun markColour(label: String?, colour: Color): Color = when (label) {
+    DrawingGeometryB.MARK_UP -> buyColour()
+    DrawingGeometryB.MARK_DOWN -> sellColour()
+    else -> colour
+}
+
+/**
+ * A bordered panel with the reader's text in it, optionally with a rule under the first line.
+ *
+ * Shared by the four annotation tools that are a box with words in it. They differ in what points
+ * at the box — a post, a tail, nothing — and not in the box, and four copies of the measuring and
+ * padding arithmetic is four chances for one of them to sit a pixel off the others.
+ */
+private fun DrawScope.panel(
+    measurer: TextMeasurer,
+    text: String,
+    at: Offset,
+    colour: Color,
+    rule: Boolean,
+    above: Boolean = false,
+): Boolean {
+    val measured = measurer.measure(text, boxStyle(Color.White))
+    val boxWidth = measured.size.width + BOX_PADDING_X.toPx() * 2
+    val boxHeight = measured.size.height + BOX_PADDING_Y.toPx() * 2
+    val origin = if (above) Offset(at.x, at.y - boxHeight) else at
+    drawRect(BOX_BACKGROUND, origin, Size(boxWidth, boxHeight))
+    drawRect(colour, origin, Size(boxWidth, boxHeight), style = Stroke(1f))
+    if (rule && measured.lineCount > 1) {
+        val y = origin.y + BOX_PADDING_Y.toPx() + measured.getLineBottom(0)
+        drawLine(colour.copy(alpha = GHOST), Offset(origin.x, y), Offset(origin.x + boxWidth, y), 1f)
+    }
+    drawText(measured, topLeft = Offset(origin.x + BOX_PADDING_X.toPx(), origin.y + BOX_PADDING_Y.toPx()))
+    return true
+}
+
+// ---------------------------------------------------------------------------- label collisions
+
+/**
+ * Which labels fit, given the ones already placed.
+ *
+ * A Gann square emits seventeen runs and a pitchfan fourteen, and every one of them carries a ratio.
+ * Drawn unmanaged at anything but the widest zoom they overlap into a grey smear that is neither
+ * readable nor obviously a set of numbers, which is worse than showing fewer of them: the lines are
+ * the tool, the labels are a convenience, and a convenience yields.
+ *
+ * Collision is judged in **both** axes rather than only vertically, which is not fussiness. A Gann
+ * grid's horizontal rules share an x and differ in y, so a vertical-only rule would be right for
+ * them — but the time-cycles tool puts a dozen labels along the top of the plot at the *same* y and
+ * different x, and a vertical-only rule would suppress all but the first of them.
+ *
+ * Not a `Set` of rounded positions: two labels a hair either side of a bucket boundary land in
+ * different buckets and both draw, which is exactly the case this exists to catch.
+ */
+internal class LabelLane(private val gapX: Float, private val gapY: Float) {
+
+    private val takenX = ArrayList<Float>()
+    private val takenY = ArrayList<Float>()
+
+    /**
+     * Claim a position, and say whether the label may be drawn there.
+     *
+     * A refused claim is *not* recorded. The label was never drawn, so it occupies nothing, and
+     * recording it would let one suppressed label cast a shadow that suppresses a second.
+     */
+    fun claim(x: Float, y: Float): Boolean {
+        for (index in takenX.indices) {
+            if (abs(x - takenX[index]) < gapX && abs(y - takenY[index]) < gapY) return false
+        }
+        takenX += x
+        takenY += y
+        return true
+    }
+
+    /** How many labels have actually been placed. The count a test reads to see the rule working. */
+    val placed: Int get() = takenX.size
+}
+
+// ---------------------------------------------------------------------------- volume tools
+
+/**
+ * The three tools that read volume rather than price.
+ *
+ * Named here rather than inferred from the group, because the renderer must not depend on the
+ * rail's grouping to decide whether it is about to draw a lie.
+ */
+private val VOLUME_TOOLS = setOf("avwap", "volumeprofile", "avolumeprofile")
+
+/**
+ * Whether a volume tool has any volume to read.
+ *
+ * **The MT5 forex feed reports no volume at all**, and [CandleSeries.volume] fills the absent
+ * entries with zeros so the panes that must draw something per bar have an array to walk. A volume
+ * profile computed over those zeros does not fail — it returns a profile with no point of control
+ * and empty rows — and a caller that drew it anyway would put a confident, empty histogram on the
+ * chart, which reads as "nothing traded anywhere" rather than as "this feed does not say".
+ *
+ * So the three volume tools draw nothing on such a feed. They still report themselves as
+ * *recognised*, because the tool is implemented; it is the data that is missing, and the rail hides
+ * the whole group in that case rather than offering a tool that would draw nothing.
+ */
+internal fun volumeToolDrawable(toolId: String, series: CandleSeries): Boolean =
+    toolId !in VOLUME_TOOLS || series.hasVolume
+
+/**
+ * The running volume-weighted mean price from an anchor bar forward.
+ *
+ * Anchored, so there is no window and no warm-up: the reader's tap *is* the start of the average,
+ * which is the whole point of the tool — a VWAP from the day's open, from the gap, from the news.
+ * Each bar contributes its typical price weighted by its volume, and the result at bar *n* is every
+ * bar from the anchor to *n* and nothing before it.
+ *
+ * A bar with no volume contributes nothing and does not reset the average, and a window whose
+ * volume is still zero falls back to the typical price rather than dividing by it.
+ */
+internal fun anchoredVwap(
+    high: DoubleArray,
+    low: DoubleArray,
+    close: DoubleArray,
+    volume: DoubleArray,
+    fromIndex: Int,
+    toIndex: Int,
+): DoubleArray {
+    val size = minOf(high.size, low.size, close.size, volume.size)
+    val from = fromIndex.coerceIn(0, max(0, size - 1))
+    val to = toIndex.coerceIn(from, max(0, size - 1))
+    if (size == 0) return DoubleArray(0)
+    val out = DoubleArray(to - from + 1)
+    var weighted = 0.0
+    var traded = 0.0
+    for (index in from..to) {
+        val typical = (high[index] + low[index] + close[index]) / 3.0
+        val amount = if (volume[index] > 0.0 && volume[index].isFinite()) volume[index] else 0.0
+        weighted += typical * amount
+        traded += amount
+        out[index - from] = if (traded > 0.0) weighted / traded else typical
+    }
+    return out
+}
+
+/** The anchored VWAP as a line from the anchor bar to the last bar, with its value on the end. */
+private fun DrawScope.drawAnchoredVwap(
+    view: ChartViewport,
+    measurer: TextMeasurer,
+    fromIndex: Int,
+    colour: Color,
+    width: Float,
+): Boolean {
+    val series = view.series
+    if (series.isEmpty || fromIndex < 0) return false
+    val last = series.size - 1
+    val values = anchoredVwap(series.high, series.low, series.close, series.volume, fromIndex, last)
+    if (values.size < 2) return false
+    val points = values.indices.map { step ->
+        Offset(view.xOf(fromIndex + step), view.yOf(values[step]))
+    }
+    polyline(points, colour, max(width, VWAP_WIDTH.toPx()))
+    drawCircle(colour, HANDLE_RADIUS.toPx() / 2, points.first())
+    labelAbove(measurer, "VWAP  ${priceText(values.last())}", points.last().x - VWAP_LABEL_BACK.toPx(), points.last().y, colour)
+    return true
+}
+
+/**
+ * The volume profile of one window, drawn against the right-hand end of the drawing's own range.
+ *
+ * Against the drawing's range and not the pane's edge, which is the difference between a tool that
+ * answers "where did this move trade" and one that answers "where did the screen trade": a reader
+ * who drags a profile over last Tuesday and finds the histogram pinned to the right of the chart
+ * cannot tell which bars it covered.
+ *
+ * The buy/sell split is drawn only when the range is wide enough for two bars in a row to be told
+ * apart. Below that the two pieces are a few pixels each and read as one bar in an arbitrary
+ * colour, so the total is drawn in the drawing's own colour instead — fewer facts, none of them
+ * misleading.
+ *
+ * Draws nothing at all when the window carries no volume: [IndicatorsExtC.volumeProfile] reports a
+ * point of control of −1 in that case, and flat rows drawn from it would claim the market traded
+ * evenly at every price.
+ */
+private fun DrawScope.drawVolumeProfile(
+    view: ChartViewport,
+    measurer: TextMeasurer,
+    fromIndex: Int,
+    toIndex: Int,
+    leftX: Float,
+    rightX: Float,
+    colour: Color,
+    width: Float,
+): Boolean {
+    val series = view.series
+    if (series.isEmpty || fromIndex < 0 || toIndex < fromIndex) return false
+    val profile = IndicatorsExtC.volumeProfile(
+        high = series.high,
+        low = series.low,
+        close = series.close,
+        open = series.open,
+        volume = series.volume,
+        fromIndex = fromIndex,
+        toIndex = toIndex,
+        rows = PROFILE_ROWS,
+    )
+    if (profile.pocIndex < 0) return false
+    var peak = 0.0
+    for (value in profile.volume) if (value > peak) peak = value
+    if (peak <= 0.0) return false
+
+    val span = max(MIN_PROFILE_SPAN.toPx(), rightX - leftX)
+    val split = span >= SPLIT_PROFILE_SPAN.toPx()
+    if (profile.valueAreaLow in profile.rowLow.indices && profile.valueAreaHigh in profile.rowHigh.indices) {
+        band(
+            leftX,
+            rightX,
+            view.yOf(profile.rowLow[profile.valueAreaLow]),
+            view.yOf(profile.rowHigh[profile.valueAreaHigh]),
+            colour.copy(alpha = ZONE),
+        )
+    }
+    for (row in profile.volume.indices) {
+        if (profile.volume[row] <= 0.0) continue
+        val top = view.yOf(profile.rowHigh[row])
+        val bottom = view.yOf(profile.rowLow[row])
+        val slot = abs(bottom - top)
+        val height = max(1f, slot - ROW_GAP.toPx())
+        val y = min(top, bottom) + (slot - height) / 2
+        if (split) {
+            val buyWidth = (profile.buy[row] / peak).toFloat() * span
+            val sellWidth = (profile.sell[row] / peak).toFloat() * span
+            drawRect(buyColour().copy(alpha = PROFILE_FILL), Offset(rightX - buyWidth, y), Size(max(0f, buyWidth), height))
+            drawRect(
+                sellColour().copy(alpha = PROFILE_FILL),
+                Offset(rightX - buyWidth - sellWidth, y),
+                Size(max(0f, sellWidth), height),
+            )
+        } else {
+            val full = (profile.volume[row] / peak).toFloat() * span
+            drawRect(colour.copy(alpha = PROFILE_FILL), Offset(rightX - full, y), Size(max(0f, full), height))
+        }
+    }
+    val control = (profile.rowLow[profile.pocIndex] + profile.rowHigh[profile.pocIndex]) / 2
+    val pocY = view.yOf(control)
+    drawLine(colour, Offset(leftX, pocY), Offset(rightX, pocY), max(width, POC_WIDTH.toPx()))
+    labelAbove(measurer, "POC  ${priceText(control)}", leftX + LABEL_INSET.toPx(), pocY, colour)
+    return true
+}
+
+// ---------------------------------------------------------------------------- series lookups
+
+/**
+ * The bar nearest a moment, or −1 on an empty series.
+ *
+ * Nearest rather than containing: a drawing's anchor is a time the reader's finger landed on, which
+ * is somewhere inside a bar and, once the anchor has been dragged past the live edge, may be after
+ * every bar there is. Clamping to the ends is the honest answer in both directions.
+ */
+private fun barIndexOf(series: CandleSeries, time: Long): Int {
+    if (series.isEmpty) return -1
+    val times = series.time
+    if (time <= times[0]) return 0
+    if (time >= times[times.size - 1]) return times.size - 1
+    var low = 0
+    var high = times.size - 1
+    while (low < high) {
+        val middle = (low + high) / 2
+        if (times[middle] < time) low = middle + 1 else high = middle
+    }
+    val before = max(0, low - 1)
+    return if (abs(times[low] - time) <= abs(times[before] - time)) low else before
+}
+
+/** The series' median-ish bar spacing in seconds, or one when there is nothing to measure. */
+private fun barSpacingOf(series: CandleSeries): Double {
+    if (series.size < 2) return 1.0
+    val span = series.time[series.size - 1] - series.time[0]
+    if (span <= 0) return 1.0
+    return span.toDouble() / (series.size - 1)
+}
+
+/**
+ * Whether a free-form chain was closed by a tap on its own first point.
+ *
+ * Closure is stored by repeating the first anchor at the end rather than by a flag, which is what
+ * lets [Drawing] stay the shape it has always been. Three anchors minimum, because two points that
+ * happen to coincide are a reader who tapped twice, not a shape.
+ */
+private fun isClosedRing(points: List<ChartPoint>): Boolean =
+    points.size > 2 && points.first() == points.last()
+
+// ---------------------------------------------------------------------------- second-wave constants
+
+/** How wide the box of a one-tap Gann square is, in bars. */
+private const val GANN_FIXED_BARS = 20.0
+
+/** A run shorter than this in pixels is the geometry's way of writing "a full-height vertical". */
+private const val DEGENERATE_PX = 0.5f
+
+/** How near two labels may come vertically before the second one yields. */
+private val LABEL_MIN_GAP = 11.dp
+
+/** How thick a copied bar is drawn, as a fraction of a real candle body. */
+private const val BAR_COPY_RATIO = 0.6f
+
+/** A projection is a hypothesis, and is drawn as one. */
+private const val GHOST_FEED_ALPHA = 0.7f
+
+private val PIN_HEIGHT = 22.dp
+private val PIN_RADIUS = 5.dp
+private val POST_HEIGHT = 30.dp
+private val POST_FOOT = 3.dp
+private val COMMENT_LIFT = 16.dp
+private val COMMENT_TAIL = 7.dp
+private val ICON_SIZE = 7.dp
+private val IMAGE_WIDTH = 76.dp
+private val IMAGE_HEIGHT = 52.dp
+private const val IMAGE_HORIZON = 0.74f
+
+/** How many price bands a drawn profile is cut into. Matches the volume-profile indicator. */
+private const val PROFILE_ROWS = 24
+
+/** The histogram's fill. Solid enough to read against candles, faint enough not to bury them. */
+private const val PROFILE_FILL = 0.45f
+
+/** A profile narrower than this has nowhere to put a bar; it is widened to this instead. */
+private val MIN_PROFILE_SPAN = 24.dp
+
+/** Below this the buy and sell pieces are a few pixels each, and the total is drawn instead. */
+private val SPLIT_PROFILE_SPAN = 64.dp
+
+/** The gap between two rows of the histogram, so the bars read as bars rather than as a block. */
+private val ROW_GAP = 1.dp
+
+/** The point of control is a hairline, and a distinctly heavier one than the rows around it. */
+private val POC_WIDTH = 2.dp
+
+private val VWAP_WIDTH = 2.dp
+
+/** How far back from the last bar the VWAP's own value is written, so it is not off the edge. */
+private val VWAP_LABEL_BACK = 60.dp
+
+/** What a table with nothing typed into it yet shows. */
+private const val DEFAULT_TABLE = "عنوان\nمقدار"
+
+/** What a signpost with nothing typed into it yet shows. */
+private const val DEFAULT_SIGN = "نشانه"

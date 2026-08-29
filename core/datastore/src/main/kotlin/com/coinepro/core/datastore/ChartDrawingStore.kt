@@ -26,6 +26,21 @@ data class StoredDrawing(
     /** Whether the drawing refuses to be moved, edited or deleted. See `Drawing.locked`. */
     val locked: Boolean = false,
     val direction: String,
+    /**
+     * Which OHLC channel each point was magnet-bound to, aligned with [points], or empty for none.
+     *
+     * A plain string rather than `core:chart`'s `PriceChannel`, because this module does not depend
+     * on the chart engine and must not start: the mapper at the call site already converts every
+     * other field and converts this one too. An empty list means no point on this drawing was
+     * placed with the magnet on, which is also what every row written before channels existed reads
+     * back as.
+     *
+     * Why the channel and not the price it landed on: a price is a snapshot of a number the feed may
+     * revise, and "the low of that bar" is what the reader actually chose. A drawing anchored by
+     * channel follows a corrected bar; one anchored by a frozen price drifts off the low it was
+     * drawn against.
+     */
+    val channels: List<String?> = emptyList(),
 )
 
 /**
@@ -54,9 +69,22 @@ data class StoredDrawing(
  * The same delimited-string scheme [ChartLayoutStore] uses, for the same reason: the alternative is
  * a serialisation library in a preferences module. Three separators rather than two, because a
  * drawing holds a list of points — ASCII's group separator joins drawings, the record separator
- * joins a drawing's fields, and the unit separator joins one point's two numbers. All three are
+ * joins a drawing's fields, and the unit separator joins one point's fields. All three are
  * control characters, so no tool id or note text can contain one, and [encode] drops a drawing
  * whose text does rather than writing a record that would parse back as different fields.
+ *
+ * ### Two tolerances, and they are the same tolerance
+ *
+ * A record is **seven or eight** fields, and a point is **two or three** halves. In both cases the
+ * shorter form is what a build that shipped before the field existed wrote — seven fields before
+ * the lock, two halves before [StoredDrawing.channels] — and in both cases the shorter form is read
+ * back with that field at its default rather than discarded. A reader who updates the app does not
+ * expect their chart to come back empty, and a codec that only accepts what the current build
+ * writes turns every added field into exactly that.
+ *
+ * The rule this file follows, and the one anything added later has to follow too: a new field goes
+ * on the **end**, its absence has a meaning, and the length check becomes a range instead of an
+ * equality. Nothing already written is ever reinterpreted.
  *
  * Decoding never throws. A record written by an older version, or half-written when the process
  * died, is skipped; the alternative is an app that cannot open a chart because of a stored string.
@@ -108,11 +136,31 @@ class ChartDrawingStore(private val dataStore: DataStore<Preferences>) {
          */
         const val MAX_DRAWINGS = 120
 
+        /**
+         * Whether a stored channel name is safe to write, and worth writing.
+         *
+         * Blank is the same as absent and is dropped rather than written as an empty third half,
+         * which would parse back as an unknown channel — the same answer by a longer route. A name
+         * carrying a separator would parse back as a different point entirely, so it is dropped
+         * too; the mapper only ever hands over an enum name, and a name that is not one is not a
+         * channel this build can honour anyway.
+         */
+        fun usableChannel(name: String?): String? = name
+            ?.takeIf { it.isNotBlank() }
+            ?.takeIf { candidate -> candidate.none { it == GROUP[0] || it == RECORD[0] || it == UNIT[0] } }
+
         fun encode(drawing: StoredDrawing): String? {
             val text = drawing.text.orEmpty()
             if (text.any { it == GROUP[0] || it == RECORD[0] || it == UNIT[0] }) return null
             if (drawing.toolId.isBlank()) return null
-            val points = drawing.points.joinToString(",") { (time, price) -> "$time$UNIT$price" }
+            // Two halves for a point the reader placed freehand, three for one the magnet bound to
+            // a bar's open, high, low or close. Written per point rather than per drawing because a
+            // reader who turns the magnet on halfway through a polyline gets exactly that: some
+            // anchors bound and the rest left where their finger was.
+            val points = drawing.points.mapIndexed { index, (time, price) ->
+                val channel = usableChannel(drawing.channels.getOrNull(index))
+                if (channel == null) "$time$UNIT$price" else "$time$UNIT$price$UNIT$channel"
+            }.joinToString(",")
             return listOf(
                 drawing.id.toString(),
                 drawing.toolId,
@@ -133,28 +181,38 @@ class ChartDrawingStore(private val dataStore: DataStore<Preferences>) {
             if (parts.size !in 7..8) return null
             val id = parts[0].toLongOrNull() ?: return null
             val toolId = parts[1].takeIf(String::isNotBlank) ?: return null
-            val points = parts[2]
+            val decoded = parts[2]
                 .split(",")
                 .filter(String::isNotBlank)
                 .mapNotNull { pair ->
                     val halves = pair.split(UNIT)
-                    if (halves.size != 2) return@mapNotNull null
+                    // Two or three. Two is a row written by the shipped build, before a point could
+                    // carry a channel, and it decodes to a point with no binding — which is the
+                    // truth about it: it was placed with the magnet off, or by a build that had no
+                    // magnet worth the name. Rejecting it would empty every chart drawn so far.
+                    if (halves.size !in 2..3) return@mapNotNull null
                     val time = halves[0].toLongOrNull() ?: return@mapNotNull null
                     val price = halves[1].toDoubleOrNull() ?: return@mapNotNull null
-                    time to price
+                    Triple(time, price, usableChannel(halves.getOrNull(2)))
                 }
             // A drawing with no points is not a drawing: it would render as nothing and sit in the
             // list as a row nobody can select or delete.
-            if (points.isEmpty()) return null
+            if (decoded.isEmpty()) return null
             return StoredDrawing(
                 id = id,
                 toolId = toolId,
-                points = points,
+                points = decoded.map { (time, price, _) -> time to price },
                 colour = parts[3].toLongOrNull() ?: DEFAULT_COLOUR,
                 widthDp = parts[4].toFloatOrNull() ?: DEFAULT_WIDTH_DP,
                 text = parts[5].takeIf(String::isNotBlank),
                 direction = parts[6].takeIf(String::isNotBlank) ?: "UP",
                 locked = parts.getOrNull(7) == "1",
+                // Collapsed to nothing when no point bound to anything, so a drawing that was
+                // placed with the magnet off is equal to the one that was saved rather than
+                // differing by a list of nulls nobody can see.
+                channels = decoded.map { (_, _, channel) -> channel }
+                    .takeIf { list -> list.any { it != null } }
+                    .orEmpty(),
             )
         }
 

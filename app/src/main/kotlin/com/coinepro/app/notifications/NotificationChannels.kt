@@ -4,7 +4,9 @@ import android.app.NotificationChannel
 import android.app.NotificationChannelGroup
 import android.app.NotificationManager
 import android.content.Context
+import android.media.AudioAttributes
 import android.os.Build
+import android.provider.Settings
 import androidx.annotation.StringRes
 import com.coinepro.app.R
 import com.coinepro.core.notifications.NotificationCategory
@@ -42,6 +44,37 @@ object NotificationChannels {
 
     /** The channel a message with no known category falls back to. */
     const val GENERAL = "general_v2"
+
+    /**
+     * A price alert the reader has deliberately made louder than the rest of the phone.
+     *
+     * ### Why a second channel rather than a bumped version of the first
+     *
+     * [channelVersion] exists to *correct* a channel whose shipped default was wrong, and correcting
+     * it costs every reader whatever they had customised. This is not a correction: both channels are
+     * right, and they are for different alerts. One review of this category of app puts it plainly —
+     * *a beep is not enough to alert someone busy at work* — and
+     * [com.coinepro.core.notifications.AlertSound] is the reader's own answer to it, per alert. The
+     * two must be separately silenceable, because somebody who turns down the ordinary price alerts
+     * has not asked to lose the one they set for the level they have been waiting three weeks for.
+     *
+     * The sound goes out on the **alarm** usage, which is the only mechanism Android offers for
+     * "louder than a notification": it plays at the alarm volume, which is the volume people leave up.
+     * That is a real escalation and it is why nothing reaches this channel unless the reader pushed
+     * that one alert past [com.coinepro.core.notifications.AlertSound.LOUD_THRESHOLD] themselves.
+     */
+    const val PRICE_ALERT_LOUD = "price_alert_loud_v1"
+
+    /**
+     * A price alert that buzzes and does not make a sound.
+     *
+     * The combination somebody in a meeting wants, and one the app cannot produce on the ordinary
+     * channel: from Android 8 both sound and vibration belong to the channel, so a per-alert choice
+     * of «vibrate, no sound» has to be a channel of its own. Doing it from the app instead would mean
+     * asking for the vibrate permission in order to reproduce something the notification manager
+     * already does on the app's behalf.
+     */
+    const val PRICE_ALERT_VIBRATE = "price_alert_vibrate_v1"
 
     private const val GROUP_TRADING = "group_trading"
     private const val GROUP_MARKET = "group_market"
@@ -83,6 +116,39 @@ object NotificationChannels {
             ).apply {
                 group = GROUP_OTHER
                 description = context.getString(R.string.channel_general_description)
+            },
+        )
+
+        manager.createNotificationChannel(
+            NotificationChannel(
+                PRICE_ALERT_LOUD,
+                context.getString(R.string.channel_price_alert_loud),
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                group = GROUP_MARKET
+                description = context.getString(R.string.channel_price_alert_loud_note)
+                enableVibration(true)
+                setSound(
+                    Settings.System.DEFAULT_ALARM_ALERT_URI,
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build(),
+                )
+            },
+        )
+
+        manager.createNotificationChannel(
+            NotificationChannel(
+                PRICE_ALERT_VIBRATE,
+                context.getString(R.string.channel_price_alert_vibrate),
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                group = GROUP_MARKET
+                description = context.getString(R.string.channel_price_alert_vibrate_note)
+                enableVibration(true)
+                // Null, not the default: this channel's whole purpose is the buzz without the sound.
+                setSound(null, null)
             },
         )
 

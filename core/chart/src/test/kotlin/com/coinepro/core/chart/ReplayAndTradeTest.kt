@@ -108,8 +108,12 @@ class ReplayAndTradeTest {
         assertTrue(Replay.delayMillis(10.0) < Replay.delayMillis(1.0))
         assertTrue(Replay.delayMillis(1.0) < Replay.delayMillis(0.1))
         // Clamped at both ends: a 30× step must still be long enough to see.
+        //
+        // The slow ceiling is sixteen seconds, not four. Four collapsed 0.1× and 0.25× onto the
+        // same delay, so two of the nine speed chips did the same thing — a control that lies about
+        // having nine settings is worse than one offering seven.
         assertTrue(Replay.delayMillis(1_000.0) >= 16)
-        assertTrue(Replay.delayMillis(0.001) <= 4_000)
+        assertTrue(Replay.delayMillis(0.001) <= 16_000)
     }
 
     @Test

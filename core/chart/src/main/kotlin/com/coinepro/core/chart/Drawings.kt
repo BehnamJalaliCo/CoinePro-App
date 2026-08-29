@@ -11,7 +11,7 @@ import kotlin.math.hypot
  * Never in pixels. That is the single decision the whole drawing layer rests on: a trend line
  * anchored to Tuesday at 2,614 stays on Tuesday at 2,614 through every pan, zoom, chart-type switch
  * and rotation, and nothing in a tool has to be told that the view moved. It is the arrangement the
- * web terminal's fifty-two tools were built on, and it is why they port without their maths changing.
+ * web terminal's tools were built on, and it is why they port without their maths changing.
  */
 data class ChartPoint(val time: Long, val price: Double)
 
@@ -50,6 +50,16 @@ enum class ToolGroup(val label: String) {
     ANNOTATION("یادداشت"),
     MEASURE("اندازه‌گیری"),
     POSITION("موقعیت معاملاتی"),
+
+    /**
+     * The three tools that read volume rather than price.
+     *
+     * Their own group because they answer a different question from everything above: not «where
+     * did price go» but «where did it trade». They are also the only tools that are meaningless on
+     * a feed without a volume column — the MT5 forex feed reports none — so grouping them makes the
+     * rail honest when that group is hidden.
+     */
+    VOLUME("حجم"),
 }
 
 /** One placed drawing: which tool, where, and in what colour. */
@@ -90,7 +100,7 @@ data class Drawing(
  *
  * Fifty-two of them, which is the number the web terminal offers. Every icon here was already in
  * this repository — the `tv_tool_*` set converted earlier — and every one is a small picture of
- * what the tool produces, which is the only way a rail of fifty-two glyphs is usable at all.
+ * what the tool produces, which is the only way a rail of ninety-one glyphs is usable at all.
  *
  * `DrawingToolsTest` asserts that every tool has an icon that exists and a help entry that exists.
  */
@@ -109,6 +119,10 @@ object DrawingTools {
         // ── Modes ───────────────────────────────────────────────────────────────────
         tool("cursor", "نشانگر", 0, ToolGroup.MODES, DesignR.drawable.tv_tool_cursor),
         tool("select", "انتخاب", 0, ToolGroup.MODES, DesignR.drawable.tv_tool_select),
+        tool("arrowcursor", "نشانگر پیکانی", 0, ToolGroup.MODES, DesignR.drawable.tv_tool_cursor),
+        tool("dot", "نشانگر نقطه‌ای", 0, ToolGroup.MODES, DesignR.drawable.tv_tool_dot),
+        tool("magnet", "آهنربا", 0, ToolGroup.MODES, DesignR.drawable.tv_magnet),
+        tool("eraser", "پاک‌کن", 0, ToolGroup.MODES, DesignR.drawable.tv_tool_eraser),
 
         // ── Lines ───────────────────────────────────────────────────────────────────
         tool("trend", "خط روند", 2, ToolGroup.LINES, DesignR.drawable.tv_tool_trend),
@@ -123,7 +137,19 @@ object DrawingTools {
 
         // ── Channels ────────────────────────────────────────────────────────────────
         tool("channel", "کانال موازی", 3, ToolGroup.CHANNELS, DesignR.drawable.tv_tool_channel),
+        tool("regression", "کانال رگرسیون", 2, ToolGroup.CHANNELS, DesignR.drawable.tv_tool_regchannel),
+        tool("flattop", "سقف/کف تخت", 3, ToolGroup.CHANNELS, DesignR.drawable.tv_tool_flatchannel),
+        tool("disjoint", "کانال گسسته", 4, ToolGroup.CHANNELS, DesignR.drawable.tv_tool_disjointchannel),
+        // The four forks differ only in where the handle starts, and that is the entire reason to
+        // ship four rather than one: classic anchors on the pivot itself, Schiff halves the price
+        // toward the base's midpoint, modified Schiff halves both axes, inside takes the midpoint
+        // of the first leg. Each «؟» states its own origin, because a rail of four identical
+        // glyphs with four identical descriptions would be worse than offering only the classic.
         tool("pitchfork", "چنگال اندروز", 3, ToolGroup.CHANNELS, DesignR.drawable.tv_tool_pitchfork),
+        tool("pitchfork_inside", "چنگال داخلی", 3, ToolGroup.CHANNELS, DesignR.drawable.tv_tool_insidepitchfork),
+        tool("pitchfork_schiff", "چنگال شیف", 3, ToolGroup.CHANNELS, DesignR.drawable.tv_tool_schiff),
+        tool("pitchfork_schiffmod", "چنگال شیف اصلاح‌شده", 3, ToolGroup.CHANNELS, DesignR.drawable.tv_tool_modschiff),
+        tool("pitchfan", "بادبزن چنگال", 3, ToolGroup.CHANNELS, DesignR.drawable.tv_tool_pitchfan),
 
         // ── Fibonacci ───────────────────────────────────────────────────────────────
         tool("fib", "بازگشت فیبوناچی", 2, ToolGroup.FIBONACCI, DesignR.drawable.tv_tool_fib),
@@ -135,10 +161,14 @@ object DrawingTools {
         tool("fibchannel", "کانال فیبوناچی", 3, ToolGroup.FIBONACCI, DesignR.drawable.tv_tool_fibchannel),
         tool("fibcircles", "دایرهٔ فیبوناچی", 2, ToolGroup.FIBONACCI, DesignR.drawable.tv_tool_fibcircles),
         tool("fibarcs", "کمان فیبوناچی", 2, ToolGroup.FIBONACCI, DesignR.drawable.tv_tool_fibarcs),
+        tool("fibspiral", "مارپیچ فیبوناچی", 2, ToolGroup.FIBONACCI, DesignR.drawable.tv_tool_fibspiral),
+        tool("fibwedge", "گوه فیبوناچی", 3, ToolGroup.FIBONACCI, DesignR.drawable.tv_tool_fibwedge),
 
         // ── Gann ────────────────────────────────────────────────────────────────────
         tool("gannbox", "جعبهٔ گن", 2, ToolGroup.GANN, DesignR.drawable.tv_tool_gannbox),
         tool("gannfan", "بادبزن گن", 2, ToolGroup.GANN, DesignR.drawable.tv_tool_gannfan),
+        tool("gannsquare", "مربع گن", 2, ToolGroup.GANN, DesignR.drawable.tv_tool_gannsquare),
+        tool("gannsquarefixed", "مربع گن ثابت", 1, ToolGroup.GANN, DesignR.drawable.tv_tool_gannfixed),
 
         // ── Patterns ────────────────────────────────────────────────────────────────
         tool("xabcd", "الگوی XABCD", 5, ToolGroup.PATTERNS, DesignR.drawable.tv_tool_xabcd),
@@ -146,10 +176,14 @@ object DrawingTools {
         tool("cypher", "الگوی سایفر", 5, ToolGroup.PATTERNS, DesignR.drawable.tv_tool_cypher),
         tool("tripattern", "الگوی مثلثی", 3, ToolGroup.PATTERNS, DesignR.drawable.tv_tool_tripattern),
         tool("hns", "سر و شانه", 5, ToolGroup.PATTERNS, DesignR.drawable.tv_tool_hns),
+        tool("threedrives", "سه رانش", 5, ToolGroup.PATTERNS, DesignR.drawable.tv_tool_threedrives),
 
         // ── Elliott ─────────────────────────────────────────────────────────────────
         tool("ell_impulse", "موج ایمپالس", 6, ToolGroup.ELLIOTT, DesignR.drawable.tv_tool_ell_impulse),
         tool("ell_abc", "اصلاح ABC", 4, ToolGroup.ELLIOTT, DesignR.drawable.tv_tool_ell_abc),
+        tool("ell_triangle", "مثلث الیوت", 5, ToolGroup.ELLIOTT, DesignR.drawable.tv_tool_ell_triangle),
+        tool("ell_double", "ترکیب دوگانه", 5, ToolGroup.ELLIOTT, DesignR.drawable.tv_tool_ell_wxy),
+        tool("ell_triple", "ترکیب سه‌گانه", 7, ToolGroup.ELLIOTT, DesignR.drawable.tv_tool_ell_wxyxz),
 
         // ── Shapes ──────────────────────────────────────────────────────────────────
         tool("triangle", "مثلث", 3, ToolGroup.SHAPES, DesignR.drawable.tv_tool_triangle),
@@ -160,6 +194,12 @@ object DrawingTools {
         tool("sine", "موج سینوسی", 2, ToolGroup.SHAPES, DesignR.drawable.tv_tool_sine),
         tool("brush", "قلم‌مو", 0, ToolGroup.SHAPES, DesignR.drawable.tv_tool_brush),
         tool("highlighter", "هایلایتر", 0, ToolGroup.SHAPES, DesignR.drawable.tv_tool_highlighter),
+        tool("path", "مسیر", 0, ToolGroup.SHAPES, DesignR.drawable.tv_tool_path),
+        tool("polyline", "خط شکسته", 0, ToolGroup.SHAPES, DesignR.drawable.tv_tool_polyline),
+        tool("arc", "کمان", 3, ToolGroup.SHAPES, DesignR.drawable.tv_tool_arc),
+        tool("curve", "منحنی", 3, ToolGroup.SHAPES, DesignR.drawable.tv_tool_curve),
+        tool("doublecurve", "منحنی دوگانه", 4, ToolGroup.SHAPES, DesignR.drawable.tv_tool_doublecurve),
+        tool("sector", "قطاع", 3, ToolGroup.SHAPES, DesignR.drawable.tv_tool_sector),
 
         // ── Position ────────────────────────────────────────────────────────────────
         tool("longshort", "موقعیت خرید/فروش", 2, ToolGroup.POSITION, DesignR.drawable.tv_tool_longshort),
@@ -171,6 +211,9 @@ object DrawingTools {
         tool("forecast", "پیش‌بینی", 2, ToolGroup.MEASURE, DesignR.drawable.tv_tool_forecast),
         tool("ruler", "خط‌کش", 2, ToolGroup.MEASURE, DesignR.drawable.tv_tool_ruler),
         tool("cyclic", "خطوط دوره‌ای", 2, ToolGroup.MEASURE, DesignR.drawable.tv_tool_cyclic),
+        tool("timecycles", "چرخه‌های زمانی", 2, ToolGroup.MEASURE, DesignR.drawable.tv_tool_timecycles),
+        tool("barspattern", "الگوی کندل‌ها", 2, ToolGroup.MEASURE, DesignR.drawable.tv_tool_barspattern),
+        tool("ghostfeed", "فید شبح", 2, ToolGroup.MEASURE, DesignR.drawable.tv_tool_ghostfeed),
 
         // ── Annotation ──────────────────────────────────────────────────────────────
         tool("arrow", "پیکان", 2, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_arrow),
@@ -179,6 +222,22 @@ object DrawingTools {
         tool("callout", "بالن متن", 2, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_callout),
         tool("pricelabel", "برچسب قیمت", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_pricelabel),
         tool("note", "یادداشت", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_note),
+        tool("arrowmarks", "علامت پیکانی", 0, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_arrowmarks),
+        tool("pricenote", "یادداشت قیمت", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_pricenote),
+        tool("pin", "سنجاق", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_note),
+        // `tabledraw`, not `table`: the shipped help catalogue already keys `table` to the
+        // scripting language's `table.new` primitive, which is a different thing entirely. A tool
+        // pointing at that entry would open a page about writing a script.
+        tool("tabledraw", "جدول", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_table),
+        tool("comment", "دیدگاه", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_callout),
+        tool("signpost", "تابلو", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_signpost),
+        tool("icon", "آیکن", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_icon),
+        tool("image", "تصویر", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_image),
+
+        // ── Volume ──────────────────────────────────────────────────────────────────
+        tool("avwap", "VWAP لنگرانداخته", 1, ToolGroup.VOLUME, DesignR.drawable.tv_tool_avwap),
+        tool("volumeprofile", "پروفایل حجم", 2, ToolGroup.VOLUME, DesignR.drawable.tv_tool_volumeprofile),
+        tool("avolumeprofile", "پروفایل حجم لنگرانداخته", 1, ToolGroup.VOLUME, DesignR.drawable.tv_tool_avolumeprofile),
     )
 
     private val BY_ID: Map<String, DrawingTool> = ALL.associateBy { it.id }
@@ -191,7 +250,7 @@ object DrawingTools {
      * Tools whose Persian name or id contains what was typed.
      *
      * A plain substring match rather than the ranked matcher `core:symbols` uses for markets, and
-     * deliberately: that one exists to order a thousand candidates, while this filters fifty-two
+     * deliberately: that one exists to order a thousand candidates, while this filters ninety-one
      * whose names a reader is choosing between by eye anyway. Ranking here would reorder the groups
      * out from under them for no gain.
      *

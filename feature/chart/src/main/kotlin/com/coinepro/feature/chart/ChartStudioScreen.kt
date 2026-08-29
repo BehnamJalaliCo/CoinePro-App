@@ -18,8 +18,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -32,9 +35,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.chart.ChartCatalog
+import com.coinepro.core.chart.ObjectTree
+import com.coinepro.core.datastore.ChartColourTemplate
 import com.coinepro.core.datastore.ChartLayout
+import com.coinepro.core.datastore.ChartLayoutStore
+import com.coinepro.core.datastore.DrawingTemplate
+import com.coinepro.core.datastore.DrawingTemplateStore
+import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.chart.ChartTypePicker
-import com.coinepro.core.chart.DrawingList
 import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.chart.IndicatorPicker
 import com.coinepro.core.chart.Replay
@@ -48,6 +56,8 @@ import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.help.CoineProHelpSheet
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 
 /**
  * The chart's working surface: everything you *do* to a chart, on its own page.
@@ -74,19 +84,78 @@ fun ChartStudioScreen(
     onOpenScript: (() -> Unit)? = null,
     layouts: List<ChartLayout>? = null,
     onSaveLayout: ((ChartLayout) -> Unit)? = null,
+    /** Removes one layout **by id**. A name is not an identity: two layouts may share one. */
     onDeleteLayout: ((String) -> Unit)? = null,
+    /**
+     * Opens chart vision on this symbol, or null on a deployment that does not offer it.
+     *
+     * Offered here rather than on the chart page because it is a job rather than a reading, and
+     * because it is the one entry that has to be able to *refuse*: the model reads six bar lengths
+     * and this chart may be on any of fifteen, or on a minute count the reader typed. See
+     * [ChartUiState.aiVisionRefusal].
+     */
+    onOpenChartVision: (() -> Unit)? = null,
     /** Leaves the studio and returns to the chart, so a change can be looked at. */
     onBackToChart: (() -> Unit)? = null,
+    /**
+     * Opens the two-chart screen on this symbol, or null on a build without the route.
+     *
+     * Here rather than on the chart's bar, and that is the discipline this screen exists for: the
+     * bar is full, a second chart is a job rather than a reading, and «استودیو» is already where
+     * the jobs are. See [ChartPanesScreen] for why the cap is two.
+     */
+    onOpenPanes: (() -> Unit)? = null,
+    /** Bound to the controller here too, because the studio may be the screen that opens first. */
+    symbolChartStates: SymbolChartStateStore? = null,
+    chartLayoutStore: ChartLayoutStore? = null,
+    /** The reader's saved drawing styles. See the same parameter on [ChartScreen]. */
+    drawingTemplates: DrawingTemplateStore? = null,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var section by rememberSaveable { mutableStateOf(StudioSection.INDICATORS) }
     var helpId by rememberSaveable { mutableStateOf<String?>(null) }
+    /** Which drawing's own settings are open, or null. Opened from the object tree's row. */
+    var styling by rememberSaveable { mutableStateOf<Long?>(null) }
     val help = rememberHelpCatalog(helpId != null)
     val helpEntry = helpId?.let { help?.get(it) }
     val onHelp: (String) -> Unit = { helpId = it }
 
+    // Bound before `start`, and `start` is idempotent — the chart screen may already have run it.
+    // Binding again is what makes the studio safe as the first screen a deep link opens.
+    LaunchedEffect(controller) {
+        controller.bindStores(symbolChartStates, chartLayoutStore)
+        controller.start()
+    }
+
+    val storeScope = rememberCoroutineScope()
+
+    val objectTree = remember(state.drawing.drawings, state.hiddenDrawingIds) {
+        ObjectTree.treeOf(state.drawing.drawings, state.hiddenDrawingIds)
+    }
+
+    val colourTemplates by remember(chartLayoutStore) {
+        chartLayoutStore?.templates() ?: flowOf(emptyList<ChartColourTemplate>())
+    }.collectAsStateWithLifecycle(emptyList())
+
+    val armedToolId = state.drawing.tool?.id
+    val armedDefault by remember(armedToolId, drawingTemplates) {
+        if (armedToolId == null || drawingTemplates == null) {
+            flowOf<DrawingTemplate?>(null)
+        } else {
+            drawingTemplates.defaultFor(armedToolId)
+        }
+    }.collectAsStateWithLifecycle(null)
+
+    // The same rule as on the chart page: a tool with a default template arrives wearing it. Both
+    // rails arm the same controller, so a default honoured by only one of them would be a default
+    // that depends on which screen the reader happened to be on.
+    LaunchedEffect(armedToolId, armedDefault?.id) {
+        val template = armedDefault ?: return@LaunchedEffect
+        controller.setDrawingStyle(template.colour, template.widthDp)
+    }
+
     Column(modifier = modifier.fillMaxSize().background(CoineProColors.Stage)) {
-        StudioHeader(symbol = state.symbol, timeframe = state.timeframe.label, onBackToChart = onBackToChart)
+        StudioHeader(symbol = state.symbol, timeframe = state.interval.label, onBackToChart = onBackToChart)
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -103,6 +172,7 @@ fun ChartStudioScreen(
                         selected = state.chartType,
                         onSelect = controller::setChartType,
                         onHelp = onHelp,
+                        hasVolume = state.series.hasVolume,
                     )
                 }
             }
@@ -123,6 +193,11 @@ fun ChartStudioScreen(
                         active = state.activeIndicators,
                         onToggle = { controller.toggleIndicator(it.id) },
                         onHelp = onHelp,
+                        // The MT5 forex feed reports no volume, and the fourteen studies that are
+                        // arithmetic on a volume column would draw a flat line of zeros there —
+                        // which reads as a market with no participants rather than as a feed that
+                        // does not carry the column.
+                        hasVolume = state.series.hasVolume,
                         periods = state.indicatorPeriods,
                         onSetPeriod = controller::setIndicatorPeriod,
                     )
@@ -155,10 +230,24 @@ fun ChartStudioScreen(
                         detail = state.drawing.drawings.size.toPersianDigits() + " ترسیم",
                         onToggle = { section = if (section == StudioSection.DRAWINGS) StudioSection.NONE else StudioSection.DRAWINGS },
                     ) {
-                        DrawingList(
+                        ObjectTreeSheetBody(
+                            groups = objectTree,
                             drawings = state.drawing.drawings,
-                            onSelect = { },
-                            onDelete = { controller.deleteDrawing(it.id) },
+                            selectedId = state.drawing.selectedId,
+                            onSelect = { id ->
+                                controller.selectDrawing(id)
+                                // Selecting puts the handles on the canvas, which is on the other
+                                // screen — so this is one of the two actions here whose whole
+                                // point is over there, like arming a tool above.
+                                onBackToChart?.invoke()
+                            },
+                            onToggleHidden = controller::toggleDrawingHidden,
+                            onToggleLocked = { node ->
+                                controller.setDrawingLocked(node.id, !node.locked)
+                            },
+                            onDelete = controller::deleteDrawing,
+                            onReorder = controller::reorderDrawing,
+                            onOpenStyle = { id -> styling = id },
                         )
                     }
                 }
@@ -174,6 +263,17 @@ fun ChartStudioScreen(
                 ) {
                     controller.enterReplay()
                     onBackToChart?.invoke()
+                }
+            }
+            onOpenPanes?.let { open ->
+                item {
+                    ActionRow(
+                        title = "دو نمودار هم‌زمان",
+                        body = "دو نمودار روی هم، هرکدام با نماد و بازه و اندیکاتور خودش. هم‌گام‌سازی نماد و بازه اختیاری است.",
+                        action = "باز کردن",
+                        icon = DesignR.drawable.tv_layout_grid,
+                        onClick = open,
+                    )
                 }
             }
             item {
@@ -198,6 +298,22 @@ fun ChartStudioScreen(
                     }
                 }
             }
+            onOpenChartVision?.let { open ->
+                item {
+                    ActionRow(
+                        title = "تحلیل تصویری چارت",
+                        body = "تصویر همین چارت را می‌فرستد و ساختار، سوگیری و یک ستاپ پیشنهادی را برمی‌گرداند.",
+                        action = "فرستادن",
+                        icon = DesignR.drawable.tv_scan_line,
+                        // Asked before the request, not after it. Forwarding an interval the
+                        // endpoint refuses turns a reader's own choice of bar length into a
+                        // server-worded failure they cannot act on.
+                        enabled = state.aiVisionRefusal == null,
+                        disabledNote = state.aiVisionRefusal.orEmpty(),
+                        onClick = open,
+                    )
+                }
+            }
             onOpenScript?.let { open ->
                 item {
                     ActionRow(
@@ -217,32 +333,65 @@ fun ChartStudioScreen(
                         detail = if (layouts.isEmpty()) "چیدمانی ذخیره نشده" else layouts.size.toPersianDigits() + " چیدمان",
                         onToggle = { section = if (section == StudioSection.LAYOUTS) StudioSection.NONE else StudioSection.LAYOUTS },
                     ) {
-                        LayoutSheetBody(
-                            layouts = layouts,
-                            current = ChartLayout(
-                                name = "",
-                                chartTypeId = state.chartType.name,
-                                timeframeId = state.timeframe.name,
-                                indicatorIds = state.activeIndicators.toList(),
-                            ),
-                            onApply = { layout ->
-                                controller.applyLayout(layout.chartTypeId, layout.timeframeId, layout.indicatorIds)
-                            },
-                            onSave = { name ->
-                                onSaveLayout?.invoke(
-                                    ChartLayout(
-                                        name = name,
-                                        chartTypeId = state.chartType.name,
-                                        timeframeId = state.timeframe.name,
-                                        indicatorIds = state.activeIndicators.toList(),
-                                    ),
+                        Column {
+                            LayoutSheetBody(
+                                layouts = layouts,
+                                current = state,
+                                onApply = controller::applyLayout,
+                                onSave = { name -> onSaveLayout?.invoke(studioLayout(state, name)) },
+                                onDelete = { id -> onDeleteLayout?.invoke(id) },
+                            )
+                            chartLayoutStore?.let { store ->
+                                ColourTemplateSection(
+                                    templates = colourTemplates,
+                                    selected = state.colourTemplate,
+                                    onSelect = controller::setColourTemplate,
+                                    onSave = { template ->
+                                        storeScope.launch { runCatching { store.saveTemplate(template) } }
+                                    },
+                                    onDelete = { id ->
+                                        if (state.colourTemplate?.id == id) {
+                                            controller.setColourTemplate(null)
+                                        }
+                                        storeScope.launch { runCatching { store.deleteTemplate(id) } }
+                                    },
                                 )
-                            },
-                            onDelete = { name -> onDeleteLayout?.invoke(name) },
-                        )
+                            }
+                        }
                     }
                 }
             }
+        }
+    }
+
+    styling?.let { id ->
+        val drawing = state.drawing.drawings.firstOrNull { it.id == id }
+        if (drawing == null) {
+            styling = null
+        } else {
+            DrawingStyleSheet(
+                drawing = drawing,
+                store = drawingTemplates,
+                onDismiss = { styling = null },
+                onSetColour = { colour ->
+                    controller.applyTemplateToDrawing(drawing.id, colour, drawing.widthDp)
+                    controller.setDrawingStyle(colour, drawing.widthDp)
+                },
+                onSetWidth = { width ->
+                    controller.applyTemplateToDrawing(drawing.id, drawing.colour, width)
+                    controller.setDrawingStyle(drawing.colour, width)
+                },
+                onApplyTemplate = { template ->
+                    controller.applyTemplateToDrawing(drawing.id, template.colour, template.widthDp)
+                    controller.setDrawingStyle(template.colour, template.widthDp)
+                },
+                onBringToFront = { controller.bringDrawingToFront(drawing.id) },
+                onSendToBack = { controller.sendDrawingToBack(drawing.id) },
+                onDelete = {
+                    controller.deleteDrawing(drawing.id)
+                    styling = null
+                },
+            )
         }
     }
 
@@ -452,3 +601,25 @@ private fun ActionRow(
  * page.
  */
 private val SECTION_MAX = 380.dp
+
+/**
+ * This chart's apparatus, ready to be saved under [name].
+ *
+ * The same assembly the chart page's sheet does, and deliberately a second small function rather
+ * than a shared one: the two screens are in the same module and both go through
+ * [ChartUiState.toLayout], which is where the fields actually live. What differs is only the id,
+ * and an id generated in one place for two screens would collide if a reader saved from both
+ * within the same millisecond.
+ */
+private fun studioLayout(state: ChartUiState, name: String): ChartLayout {
+    val now = System.currentTimeMillis()
+    return state.toLayout(
+        id = "layout_s" + now.toString(STUDIO_ID_RADIX),
+        name = name,
+        createdAt = now,
+        updatedAt = now,
+    )
+}
+
+/** Base thirty-six, so a millisecond clock becomes a short id rather than thirteen digits. */
+private const val STUDIO_ID_RADIX = 36

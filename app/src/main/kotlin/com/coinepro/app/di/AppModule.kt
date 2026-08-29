@@ -5,11 +5,19 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.coinepro.app.BuildConfig
+import com.coinepro.app.alerts.AlertFireStateStore
 import com.coinepro.core.account.AccountController
 import com.coinepro.core.account.AccountGateway
 import com.coinepro.core.account.NetworkAccountGateway
+import com.coinepro.core.datastore.AlertAuditStore
 import com.coinepro.core.datastore.ChartDrawingStore
+import com.coinepro.core.datastore.DrawingTemplateStore
 import com.coinepro.core.datastore.ChartLayoutStore
+import com.coinepro.core.datastore.SymbolChartStateStore
+import com.coinepro.feature.chart.ChartWorkspaceStore
+import com.coinepro.feature.screener.CandleScreenerBarSource
+import com.coinepro.feature.screener.ScreenerController
+import com.coinepro.feature.screener.ScreenerStore
 import com.coinepro.core.datastore.UserPreferencesStore
 import com.coinepro.core.database.RoomCandleCache
 import com.coinepro.core.datastore.WidgetSnapshotStore
@@ -97,6 +105,8 @@ import com.coinepro.core.notifications.NetworkNotificationGateway
 import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.notifications.NotificationGateway
 import com.coinepro.core.security.KeystoreSessionTokenStorage
+import com.coinepro.core.symbols.SymbolMeta
+import com.coinepro.feature.alerts.AlertsController
 import com.coinepro.core.signals.NetworkSignalGateway
 import com.coinepro.core.signals.SignalController
 import com.coinepro.core.signals.SignalGateway
@@ -109,7 +119,9 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 
@@ -433,6 +445,24 @@ object AppModule {
     fun chartLayoutStore(dataStore: DataStore<Preferences>): ChartLayoutStore = ChartLayoutStore(dataStore)
 
     /**
+     * How each symbol was last being looked at — its timeframe, its chart type, its indicators.
+     *
+     * Beside the layout store rather than folded into it, because the two answer opposite
+     * questions. A layout is the apparatus a reader chose and *carries* from instrument to
+     * instrument; this is what one particular instrument was left on, and carrying it anywhere
+     * would be the bug it exists to fix. The loudest small complaint about the large mobile
+     * terminals is that chart settings are global: change the timeframe while reading gold and
+     * every other chart changes with it. Keyed per symbol, that stops happening.
+     *
+     * The same preferences file as everything else here. It is a local preference and nothing in
+     * it is sent to either backend.
+     */
+    @Provides
+    @Singleton
+    fun symbolChartStateStore(dataStore: DataStore<Preferences>): SymbolChartStateStore =
+        SymbolChartStateStore(dataStore)
+
+    /**
      * Where a reader's drawings live between sessions.
      *
      * Separate from the layout store and keyed per symbol, because they answer opposite questions:
@@ -443,6 +473,31 @@ object AppModule {
     @Singleton
     fun chartDrawingStore(dataStore: DataStore<Preferences>): ChartDrawingStore =
         ChartDrawingStore(dataStore)
+
+    /**
+     * Saved per-tool drawing styles.
+     *
+     * The same `DataStore` every other chart store uses, deliberately: these are all one reader's
+     * chart preferences and splitting them across files would mean a restore that half worked.
+     */
+    @Provides
+    @Singleton
+    fun drawingTemplateStore(dataStore: DataStore<Preferences>): DrawingTemplateStore =
+        DrawingTemplateStore(dataStore)
+
+    /**
+     * How the reader has arranged the chart screen itself: where the split with the watchlist
+     * sits, what the two panes tie together, and which instrument the second pane was left on.
+     *
+     * The same `DataStore` as every other chart store, and deliberately so — see
+     * [drawingTemplateStore]. These are all one reader's chart preferences, and splitting them
+     * across files would mean a restore that half worked: a divider back where it was above a
+     * second pane that had forgotten its symbol.
+     */
+    @Provides
+    @Singleton
+    fun chartWorkspaceStore(dataStore: DataStore<Preferences>): ChartWorkspaceStore =
+        ChartWorkspaceStore(dataStore)
 
     /**
      * The reader's own name and face.
@@ -470,6 +525,64 @@ object AppModule {
     @Provides
     @Singleton
     fun localAlertStore(dataStore: DataStore<Preferences>): LocalAlertStore = LocalAlertStore(dataStore)
+
+    /**
+     * Every firing an alert has ever had, for the sheet that explains itself.
+     *
+     * From the graph rather than built where it is needed, so the screen that *shows* the log and
+     * the evaluator that *writes* it are looking at one store. The store holds no state of its own —
+     * everything it knows is in the preferences file — so a second instance over the same file
+     * would behave identically; sharing it is about the two never drifting apart in future, not
+     * about correctness today.
+     */
+    @Provides
+    @Singleton
+    fun alertAuditStore(dataStore: DataStore<Preferences>): AlertAuditStore = AlertAuditStore(dataStore)
+
+    /**
+     * The alert centre's controller, and the three things it cannot find out for itself.
+     *
+     * **The catalogue** it offers in the symbol picker is every market either backend quotes, so an
+     * alert can be put on gold and on Bitcoin from one screen — alerts are evaluated over the public
+     * guest route and are not a platform's property the way a position is. See
+     * [AlertSymbolCatalogue] for why it is a supplier and when it loads.
+     *
+     * **The timeframe** of an alert is not stored on the alert. It is whatever bar the reader left
+     * that symbol's chart on, which is exactly what the evaluator reads when it runs the condition,
+     * so the label on the row and the bar it fires on come from one place. A symbol the reader has
+     * never charted has no timeframe and the row then says nothing rather than inventing a default.
+     *
+     * **Forgetting the fire state** is the deletion the store cannot do for itself: the evaluator's
+     * per-symbol stamps live in the application module and would otherwise outlive the alert they
+     * belong to. See [AlertsController] for what a new alert inheriting them would do.
+     */
+    @Provides
+    @Singleton
+    fun alertsController(
+        store: LocalAlertStore,
+        audit: AlertAuditStore,
+        fireStates: AlertFireStateStore,
+        chartStates: SymbolChartStateStore,
+        marketCache: MarketDataCache,
+        @ForexPlatform forexCatalog: MarketCatalogGateway,
+        @CryptoPlatform cryptoCatalog: MarketCatalogGateway,
+        scope: CoroutineScope,
+    ): AlertsController {
+        val catalogue = AlertSymbolCatalogue(
+            gateways = listOf(forexCatalog, cryptoCatalog),
+            cache = marketCache,
+            scope = scope,
+        )
+        val timeframes = SymbolTimeframes(chartStates, scope)
+        return AlertsController(
+            store = store,
+            audit = audit,
+            catalogOf = catalogue::symbols,
+            scope = scope,
+            timeframeOf = { alert -> timeframes.of(alert.symbol) },
+            forgetFireState = fireStates::forget,
+        )
+    }
 
     @Provides
     @Singleton
@@ -1044,6 +1157,61 @@ object AppModule {
     ): Map<MarketPlatform, MarketSearchController> = platformMap(forex, crypto)
 
     /**
+     * The screener, one per platform, for the same reason search is.
+     *
+     * Each takes its own platform's catalogue, its own live quotes and its own candle feed, so a
+     * screen run on one backend never lists a market the active session cannot open. The saved
+     * screens are deliberately *not* per platform: a filter is «RSI زیر ۳۰», which means the same
+     * thing on gold as on Bitcoin, and making a reader re-enter it after switching backend would
+     * be asking them to keep two copies of one idea.
+     */
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexScreenerController(
+        @ForexPlatform catalog: MarketCatalogGateway,
+        @ForexPlatform quotes: MarketSnapshotGateway,
+        @ForexPlatform candles: CandleGateway,
+        store: ScreenerStore,
+        scope: CoroutineScope,
+    ): ScreenerController = ScreenerController(
+        gateway = catalog,
+        scope = scope,
+        quotes = quotes,
+        barSource = CandleScreenerBarSource(candles),
+        store = store,
+    )
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoScreenerController(
+        @CryptoPlatform catalog: MarketCatalogGateway,
+        @CryptoPlatform quotes: MarketSnapshotGateway,
+        @CryptoPlatform candles: CandleGateway,
+        store: ScreenerStore,
+        scope: CoroutineScope,
+    ): ScreenerController = ScreenerController(
+        gateway = catalog,
+        scope = scope,
+        quotes = quotes,
+        barSource = CandleScreenerBarSource(candles),
+        store = store,
+    )
+
+    @Provides
+    @Singleton
+    fun screenerControllers(
+        @ForexPlatform forex: ScreenerController,
+        @CryptoPlatform crypto: ScreenerController,
+    ): Map<MarketPlatform, ScreenerController> = platformMap(forex, crypto)
+
+    /** Where a reader's own saved screens live. One file, shared by both platforms — see above. */
+    @Provides
+    @Singleton
+    fun screenerStore(dataStore: DataStore<Preferences>): ScreenerStore = ScreenerStore(dataStore)
+
+    /**
      * The feeds keyed by platform, so the shell can start and stop whichever one is on screen
      * without knowing how either was built.
      */
@@ -1290,4 +1458,98 @@ object AppModule {
      */
     private fun isPlatformConfigured(baseUrl: String): Boolean =
         baseUrl.isNotBlank() && !baseUrl.contains(".invalid")
+}
+
+/**
+ * The tickers the alert editor's symbol picker may offer, as a value that can be read synchronously.
+ *
+ * ### Why this exists rather than the search controller's own catalogue
+ *
+ * `MarketSearchController` loads the same lists and keeps them to itself, and it keeps one platform's
+ * — it is the markets screen's search, and that screen belongs to the platform named above it. An
+ * alert does not: it is evaluated over the public guest route, so a reader may perfectly well hold an
+ * alert on gold and one on Bitcoin at the same time, and a picker that offered only the platform they
+ * happen to be signed into would hide half of their own alerts' instruments from them.
+ *
+ * ### When it loads, and what the picker shows before then
+ *
+ * On the first read, not at startup: two catalogue requests on every launch to fill a picker most
+ * readers never open is network nobody asked for. Until the load lands the answer is whatever the
+ * market cache already holds from the last time the app read quotes, which on any launch after the
+ * first is the whole universe and costs one query against a local table. A first-ever launch with the
+ * editor opened immediately shows an empty browse list for as long as one request takes.
+ *
+ * The same list instance is returned until a load replaces it, deliberately: `AlertsController` memos
+ * its classification on the list's identity, and a fresh copy per call would re-classify a few
+ * thousand tickers on every keystroke.
+ */
+private class AlertSymbolCatalogue(
+    private val gateways: List<MarketCatalogGateway>,
+    private val cache: MarketDataCache,
+    private val scope: CoroutineScope,
+) {
+
+    @Volatile
+    private var symbols: List<String> = emptyList()
+
+    private var loadJob: Job? = null
+
+    /** Every ticker known so far. Empty only before anything has been read at all. */
+    fun symbols(): List<String> {
+        val running = loadJob
+        // A read while a load is in flight must not start a second one, and a read after a load
+        // that came back with nothing must start another: the first attempt failing is the case
+        // where the reader is most likely to open the picker again in a moment.
+        if (running == null || (!running.isActive && symbols.isEmpty())) {
+            loadJob = scope.launch { load() }
+        }
+        return symbols
+    }
+
+    private suspend fun load() {
+        if (symbols.isEmpty()) {
+            val cached = runCatching { cache.read() }.getOrNull()
+            val fromCache = cached?.quotes?.map { it.instrument.symbol }.orEmpty()
+            if (fromCache.isNotEmpty()) symbols = fromCache.distinct().sorted()
+        }
+        // Each gateway on its own: one backend being unreachable is no reason to offer none of the
+        // other's markets, and a reader with no session at all still has both catalogues, which are
+        // public reads.
+        val loaded = gateways.flatMap { gateway ->
+            runCatching { gateway.load().markets.map(SymbolMeta::symbol) }.getOrDefault(emptyList())
+        }
+        if (loaded.isNotEmpty()) symbols = loaded.distinct().sorted()
+    }
+}
+
+/**
+ * The bar each symbol was last charted on, readable without suspending.
+ *
+ * `SymbolChartStateStore` answers in a `Flow`, and the alerts list needs the answer while it is
+ * building a row — during composition, for every alert on screen. Following the store once and
+ * keeping the last emission is what turns that into a lookup; it also means a reader who changes the
+ * timeframe on a chart and returns to the alert centre sees the new label, which a value read once at
+ * construction would not give them.
+ *
+ * A symbol with no entry answers null, and the row omits the label. That is the honest answer: an
+ * alert made from a market row was never given a timeframe, and the evaluator has its own documented
+ * default for that case rather than one this class should guess at.
+ */
+private class SymbolTimeframes(store: SymbolChartStateStore, scope: CoroutineScope) {
+
+    @Volatile
+    private var timeframes: Map<String, String> = emptyMap()
+
+    init {
+        scope.launch {
+            store.all().collect { states ->
+                timeframes = states.mapNotNull { state ->
+                    state.timeframe?.takeIf(String::isNotBlank)?.let { state.symbol to it }
+                }.toMap()
+            }
+        }
+    }
+
+    /** The bar this symbol was left on, or null where the reader has never charted it. */
+    fun of(symbol: String): String? = timeframes[symbol.uppercase()]
 }

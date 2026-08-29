@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hand-authored companion glyph for the TradingView tool rail. Matches the generated
+     tv_* set: 28x28 viewport at 24dp, 1-unit stroke, round caps and joins. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="28"
+    android:viewportHeight="28"
+    >
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 6.5 6a 2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0 -5ZM 14 16.5a 2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0 -5ZM 16 6L 4.5 21.5" />
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 24 5v 18M 24 8.5h -2M 24 14h -2M 24 19.5h -2" />
+</vector>

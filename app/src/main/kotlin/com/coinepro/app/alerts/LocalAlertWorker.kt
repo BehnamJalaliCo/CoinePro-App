@@ -1,14 +1,6 @@
 package com.coinepro.app.alerts
 
-import android.Manifest
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -17,126 +9,77 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.coinepro.app.MainActivity
-import com.coinepro.app.R
-import com.coinepro.app.notifications.NotificationChannels
-import com.coinepro.app.notifications.minuteOfDay
-import com.coinepro.core.common.AppResult
-import com.coinepro.core.common.MarketNumberFormatter
-import com.coinepro.core.datastore.LocalAlertStore
-import com.coinepro.core.datastore.NotificationSettingsStore
-import com.coinepro.core.guest.GuestGateway
-import com.coinepro.core.guest.GuestQuote
-import com.coinepro.core.notifications.LocalPriceAlert
-import com.coinepro.core.notifications.NotificationCategory
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.flow.first
 
 /**
- * Evaluates the device's own price alerts, and tells the reader when one is due.
+ * Evaluates the device's own alerts on Android's schedule, and tells the reader when one is due.
+ *
+ * ### What is actually in this class, and what is not
+ *
+ * Almost nothing. Every decision — which alerts are due, what each trigger is compared against,
+ * which watchlist member fired, what is written to the audit log, what happens when a delivery
+ * fails — lives in [AlertEvaluator], which has no Android in it and is unit-tested at the
+ * boundaries that matter. What is left here is the two things only a worker can do: start the pass,
+ * and translate its result into WorkManager's vocabulary.
+ *
+ * ### Why the failure path is `retry` and not `success`
+ *
+ * A price route that was unreachable once says nothing about whether an alert should have fired.
+ * Reporting success would consume the wake-up and wait another fifteen minutes; reporting failure
+ * would stop the schedule. Retry is the only answer that leaves the reader's alert exactly as armed
+ * as it was, which is the promise this whole feature rests on. [AlertPassResult.Unavailable] is the
+ * evaluator saying that nothing was decided *and nothing was written*.
  *
  * ### Why this runs against the public feed
  *
  * Because it must work with no account. The whole point of a local alert is that somebody who
  * installed the app ten minutes ago can ask to be told when Bitcoin reaches a number — and every
- * other app in this market answers that question with a sign-up form. The public price route needs
- * no token, so this works on a fresh install and keeps working after somebody signs in.
- *
- * ### What it asks for, and what that costs somebody else
- *
- * Only the symbols that have an alert on them, never the whole universe. A worker that pulled
- * several hundred quotes every fifteen minutes to check two alerts would be spending TradeYar's
- * bandwidth to save this app a `joinToString`.
+ * other app in this market answers that question with a sign-up form. The public routes need no
+ * token, so this works on a fresh install and keeps working after somebody signs in. Only the
+ * symbols that have an alert on them are ever asked for, and candles only for the alerts whose
+ * condition genuinely needs bars; see [GuestAlertMarketSource].
  *
  * ### The honest limit
  *
  * Android schedules periodic work at its own convenience and never more often than every fifteen
  * minutes; on a phone in a battery-saving mode it may be considerably less often. A move that
- * happens and reverses inside that gap is missed. The alerts screen says so in as many words rather
- * than letting somebody find out during the move that mattered, and it says what fixes it: the
- * server's alerts, which watch continuously, once there is an account to attach them to.
+ * happens and reverses inside that gap is missed. An alert set to fire only on a bar close is not
+ * affected by that in the way it looks — it is judged on the bar that has closed rather than on
+ * whenever this happens to wake, so it reports the right bar late rather than the wrong bar on
+ * time. The alerts screen says all of this in as many words rather than letting somebody find out
+ * during the move that mattered, and it says what fixes it: the server's alerts, which watch
+ * continuously, once there is an account to attach them to.
  */
 @HiltWorker
 class LocalAlertWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted parameters: WorkerParameters,
-    private val alerts: LocalAlertStore,
-    private val settings: NotificationSettingsStore,
-    private val gateway: GuestGateway,
+    alerts: StoredAlertRepository,
+    membership: WatchlistAlertMembership,
+    fireStates: AlertFireStateStore,
+    market: GuestAlertMarketSource,
+    audit: PreferencesAlertAuditLog,
+    deliverer: AndroidAlertDeliverer,
 ) : CoroutineWorker(context, parameters) {
 
-    override suspend fun doWork(): Result {
-        val stored = alerts.current().filter(LocalPriceAlert::active)
-        if (stored.isEmpty()) return Result.success()
+    private val evaluator = AlertEvaluator(
+        alerts = alerts,
+        membership = membership,
+        fireStates = fireStates,
+        market = market,
+        audit = audit,
+        deliverer = deliverer,
+    )
 
-        val symbols = stored.map(LocalPriceAlert::symbol).distinct()
-        val quotes = when (val result = gateway.prices(symbols)) {
-            is AppResult.Success -> result.value.quotes.associateBy(GuestQuote::symbol)
-            // Retried rather than failed: a price route that was unreachable once says nothing
-            // about whether the alert should have fired, and giving up would silently stop the
-            // whole schedule.
-            is AppResult.Failure -> return Result.retry()
+    override suspend fun doWork(): Result =
+        when (evaluator.evaluate(System.currentTimeMillis())) {
+            is AlertPassResult.Unavailable -> Result.retry()
+            AlertPassResult.Idle, is AlertPassResult.Completed -> Result.success()
         }
-
-        val now = System.currentTimeMillis()
-        val current = settings.settings.first()
-        val due = stored.filter { alert ->
-            val quote = quotes[alert.symbol] ?: return@filter false
-            LocalPriceAlert.due(alert, quote.price, quote.changePercent24h, now)
-        }
-        if (due.isEmpty()) return Result.success()
-
-        // Stamped before anything is shown. If the process dies between the two, the reader loses
-        // one notification; stamping afterwards would instead re-fire the same alert on every run
-        // for as long as the condition held, which is the failure that empties an inbox.
-        alerts.markFired(due, now)
-
-        if (current.shouldShow(NotificationCategory.PRICE_ALERT, now, minuteOfDay())) {
-            due.forEach { alert -> notify(alert, quotes[alert.symbol]?.price) }
-        }
-        return Result.success()
-    }
-
-    private fun notify(alert: LocalPriceAlert, price: Double?) {
-        val context = applicationContext
-        if (
-            android.os.Build.VERSION.SDK_INT >= 33 &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
-        val intent = Intent(context, MainActivity::class.java).apply {
-            action = Intent.ACTION_VIEW
-            data = Uri.parse("coinepro://activity")
-            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }
-        val pending = PendingIntent.getActivity(
-            context,
-            alert.id.hashCode(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-        val body = price
-            ?.let { context.getString(R.string.alert_fired_body, alert.symbol, MarketNumberFormatter.priceAuto(it)) }
-            ?: context.getString(R.string.alert_fired_body_no_price, alert.symbol)
-        val notification = NotificationCompat.Builder(
-            context,
-            NotificationChannels.channelId(NotificationCategory.PRICE_ALERT),
-        )
-            .setSmallIcon(android.R.drawable.stat_notify_more)
-            .setContentTitle(context.getString(R.string.alert_fired_title))
-            .setContentText(body)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-            .setAutoCancel(true)
-            .setContentIntent(pending)
-            .build()
-        NotificationManagerCompat.from(context).notify(alert.id.hashCode(), notification)
-    }
 }
 
 /**

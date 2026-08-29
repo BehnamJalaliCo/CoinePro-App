@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default language: Persian. -->
+<resources>
+    <string name="screener_title">فیلتر بازار</string>
+    <string name="screener_open_filters">فیلترها</string>
+    <string name="screener_filter_sheet_title">شرط‌ها</string>
+    <string name="screener_filter_sheet_subtitle">هر شرطی که بخواهید، بدون محدودیت و بدون اشتراک.</string>
+    <string name="screener_saved_sheet_title">صفحه‌های ذخیره‌شده</string>
+    <string name="screener_presets">شروع سریع</string>
+    <string name="screener_saved">ذخیره‌شده‌ها</string>
+    <string name="screener_save">ذخیره این صفحه</string>
+    <string name="screener_save_name">نام صفحه</string>
+    <string name="screener_delete">حذف</string>
+    <string name="screener_apply">اعمال</string>
+    <string name="screener_add_condition">افزودن شرط</string>
+    <string name="screener_clear">پاک کردن شرط‌ها</string>
+    <string name="screener_field">مقدار</string>
+    <string name="screener_operator">شرط</string>
+    <string name="screener_value">عدد</string>
+    <string name="screener_second_value">تا</string>
+    <string name="screener_indicator">اندیکاتور</string>
+    <string name="screener_period">دوره</string>
+    <string name="screener_search_placeholder">نماد یا نام بازار</string>
+    <string name="screener_count">%1$s بازار</string>
+    <string name="screener_progress">%1$s بازار از %2$s بررسی شد</string>
+    <string name="screener_column_symbol">نماد</string>
+    <string name="screener_category_all">همه</string>
+    <string name="screener_category_crypto">کریپتو</string>
+    <string name="screener_category_forex">فارکس</string>
+    <string name="screener_category_metal">فلزات</string>
+    <string name="screener_category_index">شاخص‌ها</string>
+    <string name="screener_category_energy">انرژی</string>
+    <string name="screener_empty">هیچ بازاری با این شرط‌ها پیدا نشد.</string>
+    <string name="screener_empty_hint">یکی از شرط‌ها را بازتر کنید یا صفحه را از نو بسازید.</string>
+    <string name="screener_empty_open">بازارها هنوز دریافت نشده‌اند.</string>
+    <string name="screener_failed">فهرست بازارها در دسترس نیست.</string>
+    <string name="screener_retry">تلاش دوباره</string>
+    <string name="screener_free_note">همه شرط‌ها و همه اندیکاتورها رایگان‌اند و تعداد صفحه‌های ذخیره‌شده محدود نیست.</string>
+</resources>

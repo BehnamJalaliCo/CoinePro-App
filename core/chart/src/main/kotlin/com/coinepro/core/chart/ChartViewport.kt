@@ -1,10 +1,86 @@
 package com.coinepro.core.chart
 
+import java.util.Locale
 import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+
+/**
+ * What the price axis is measuring.
+ *
+ * A price chart is asked four different questions and only one of them is "what is it worth". The
+ * mode is which question the axis answers, and it is a mode rather than four separate flags because
+ * they are mutually exclusive by construction: an axis cannot be counting money and counting
+ * percent at the same time, and the boolean this replaced made that representable.
+ */
+enum class PriceScaleMode {
+    /**
+     * What is it worth. Equal distances are equal amounts of money.
+     *
+     * The right answer inside a single session of a single instrument, where the range is small
+     * enough that the other three modes would all draw the same picture with worse labels.
+     */
+    REGULAR,
+
+    /**
+     * What did it move, as a percentage. Equal distances are equal percentages.
+     *
+     * The axis still prints prices — the *spacing* is what changes. It earns its place on the long
+     * views: Bitcoin over two years spans more than an order of magnitude, and on a regular axis
+     * the whole of the first year is a flat line pressed against the bottom of the plot with every
+     * level and every trend line in it invisible.
+     */
+    LOGARITHMIC,
+
+    /**
+     * How far is it from where the screen starts. The axis prints `0` at the first visible bar and
+     * a percentage everywhere else.
+     *
+     * This is the mode that makes two instruments comparable. A reader who wants to know whether
+     * gold beat the index this quarter cannot read that off two axes denominated in different
+     * units, and percent is the only labelling under which "the higher line won" is true.
+     */
+    PERCENT,
+
+    /**
+     * The same question as [PERCENT], answered on the scale a performance chart is conventionally
+     * quoted on: the first visible bar is `100` and everything else is relative to it.
+     *
+     * Arithmetically it is [PERCENT] plus a hundred and nothing else, and it exists because
+     * "it is at 118" and "it is up 18%" are the same fact read by different people. Fund and index
+     * work is quoted the first way; nothing is gained by making that reader do the addition.
+     */
+    INDEXED_100,
+}
+
+/**
+ * Which edge of the plot carries the price axis.
+ *
+ * State only — this viewport places prices in the plot and knows nothing about the gutters around
+ * it. The renderer reads this to decide where to put the labels and how much width to take off the
+ * plot before handing it back through [ChartViewport.sized].
+ */
+enum class ScaleSide {
+    /** The default, and where every terminal in this market puts it: nearest the live edge. */
+    RIGHT,
+
+    /** For a reader who came from a platform that put it there, and for a left-handed grip. */
+    LEFT,
+
+    /** Both gutters labelled. Costs width, and buys a reading at either end of a wide tablet. */
+    BOTH,
+
+    /**
+     * One axis shared by every series in the pane, rather than one per series.
+     *
+     * The mode that matters once a second instrument is overlaid: separate axes let two series be
+     * drawn on top of each other at different scales, which flatters whichever one is being sold.
+     * Merged, they are on the same axis and the comparison is honest.
+     */
+    MERGED,
+}
 
 /**
  * Which bars are on screen, and where each price and time lands in pixels.
@@ -44,35 +120,6 @@ data class ChartViewport(
      */
     val includedPrices: List<Double> = emptyList(),
     /**
-     * Whether the price axis is logarithmic.
-     *
-     * ### Why a trading chart needs this and a general-purpose chart does not
-     *
-     * On a linear axis, equal *distances* mean equal amounts of money. On a log axis they mean
-     * equal *percentages*, which is what a trader actually reads: a move from 100 to 110 and one
-     * from 1,000 to 1,100 are the same trade and the linear axis draws the second one ten times
-     * larger.
-     *
-     * It matters most exactly where this app is weakest without it. Bitcoin over two years spans
-     * more than one order of magnitude; on a linear axis the whole of the first year is a flat
-     * line pressed against the bottom of the plot, and every structure in it — every level, every
-     * trend line a reader might want to draw — is invisible. That is not a preference, it is a
-     * chart that cannot answer the question it was opened for.
-     *
-     * ### Off by default
-     *
-     * Because on a single day of a single instrument the two are indistinguishable, and the axis a
-     * reader has not asked about should be the one they expect. It earns its place on the long
-     * views, and it is one tap away.
-     *
-     * ### What it does not touch
-     *
-     * Time. A log *time* axis is meaningless. And nothing in chart space: a drawing is still
-     * `(time, price)`, so a trend line drawn on the linear axis is the same two prices on the log
-     * one — it simply stops being straight, which is correct and is what every terminal does.
-     */
-    val logScale: Boolean = false,
-    /**
      * How much of the price axis is shown, relative to what the visible bars need.
      *
      * One is the default and means "fit the bars, with headroom" — the behaviour the chart has
@@ -94,7 +141,107 @@ data class ChartViewport(
      * Both are states somebody can reach by accident and neither is a chart.
      */
     val priceZoom: Float = 1f,
+    /**
+     * Which question the price axis answers. See [PriceScaleMode].
+     *
+     * ### Why the geometry only changes for one of the four
+     *
+     * Percent and indexed are *affine* rewrites of price — multiply by a constant, add a constant —
+     * and a linear axis laid out over an affine rewrite of a range is the same axis. So the bars
+     * land in exactly the same pixels in those two modes and only the labels change, which is what
+     * every terminal does and is the property that lets a drawing survive a mode switch untouched.
+     * Only [PriceScaleMode.LOGARITHMIC] genuinely moves anything, because a logarithm is not affine.
+     *
+     * That is worth knowing before someone "fixes" percent mode by rebuilding [priceRange] in
+     * percent space: it would place every bar in the pixel it is already in, and would divide by a
+     * base of zero on an instrument that has printed one.
+     *
+     * ### What no mode touches
+     *
+     * Time — a logarithmic *time* axis is meaningless — and nothing in chart space. A drawing is
+     * still `(time, price)`, so a trend line drawn on the regular axis is the same two prices on
+     * the logarithmic one. It simply stops being straight, which is correct.
+     */
+    val scaleMode: PriceScaleMode = PriceScaleMode.REGULAR,
+    /**
+     * Whether the axis runs the other way, with the low at the top.
+     *
+     * Not a novelty. It is how an inverse pair is read without refetching it: `USD/IRR` flipped is
+     * the shape of `IRR/USD`, and a reader holding one side of a pair wants their own side the
+     * right way up. It is also the fastest way to see whether two instruments are genuinely
+     * inversely correlated — flip one and the two lines should lie on top of each other.
+     *
+     * Applied at the very last step, on the fraction of the plot a price has reached, so it
+     * composes with all four modes for free rather than needing a branch inside each of them.
+     */
+    val inverted: Boolean = false,
+    /**
+     * Whether the two axes zoom together.
+     *
+     * ### What it protects
+     *
+     * An angle. A trend line's slope is pixels of price over pixels of time, so zooming one axis
+     * without the other rewrites the geometry of every drawing on the chart: the line still passes
+     * through its two anchors — those are stored as `(time, price)` and cannot move — but it is no
+     * longer the same line to look at, and a reader who drew a channel by eye at one zoom finds it
+     * does not describe the same market at another. Anything measured off a slope — a fan, a pitchfork,
+     * an angle — is only meaningful with this on.
+     *
+     * ### Off by default
+     *
+     * Because the far more common gesture is "show me more bars", and a reader who has not drawn
+     * anything does not want the candles flattening as they pinch out.
+     */
+    val priceBarLock: Boolean = false,
+    /**
+     * An explicit number of decimals for every price label, or null to derive one.
+     *
+     * Derived is right almost always — an instrument at 30,000 needs two decimals and one at
+     * 0.00004 needs eight, and nothing but the price itself says which. It is wrong for the case
+     * the derivation cannot see: a venue's own tick size. An instrument quoted to five decimals
+     * that happens to be trading near one gets four from the rule below, and the label then rounds
+     * two adjacent ticks to the same string — an axis where two different prices read identically.
+     * That is what this overrides.
+     */
+    val decimals: Int? = null,
+    /**
+     * Which side of the plot the price gutter is drawn on. Pure state; see [ScaleSide].
+     *
+     * It lives here rather than in the renderer because it is part of what a saved layout means —
+     * a reader who moved the axis should find it moved when they come back — and because the
+     * renderer already reads its geometry from this one object.
+     */
+    val scaleSide: ScaleSide = ScaleSide.RIGHT,
 ) {
+    /**
+     * The old boolean shape of [scaleMode], for the call sites written before there were four modes.
+     *
+     * Derived rather than stored, so there is exactly one thing to set and no way to reach the
+     * state where a viewport claims to be logarithmic and regular at once.
+     */
+    constructor(
+        series: CandleSeries,
+        barsPerView: Int = DEFAULT_BARS_PER_VIEW,
+        offset: Int = 0,
+        plotWidth: Float = 0f,
+        plotHeight: Float = 0f,
+        includedPrices: List<Double> = emptyList(),
+        logScale: Boolean,
+        priceZoom: Float = 1f,
+    ) : this(
+        series = series,
+        barsPerView = barsPerView,
+        offset = offset,
+        plotWidth = plotWidth,
+        plotHeight = plotHeight,
+        includedPrices = includedPrices,
+        priceZoom = priceZoom,
+        scaleMode = if (logScale) PriceScaleMode.LOGARITHMIC else PriceScaleMode.REGULAR,
+    )
+
+    /** Whether the price axis is logarithmic — the one bit of [scaleMode] most callers want. */
+    val logScale: Boolean get() = scaleMode == PriceScaleMode.LOGARITHMIC
+
     /** Index of the first visible bar, inclusive. */
     val firstVisible: Int
         get() = max(0, lastVisible + 1 - visibleCount)
@@ -141,6 +288,9 @@ data class ChartViewport(
      * edge. Two fallbacks matter: a perfectly flat series has no range to take a percentage of, and
      * an empty one has no prices at all. Both would otherwise collapse the axis to a single value
      * and divide by zero.
+     *
+     * Always in price, in every mode. Percent and indexed are affine and so lay out identically;
+     * see [scaleMode] for why rebuilding this in their units would be work that changes nothing.
      */
     val priceRange: ClosedFloatingPointRange<Double> by lazy {
         if (series.isEmpty || visibleCount == 0) return@lazy 0.0..1.0
@@ -164,7 +314,7 @@ data class ChartViewport(
         // each end. Multiplicative padding is the same eight percent of the *visible height* at
         // both ends, which is what the linear branch means by it too.
         val zoom = priceZoom.coerceIn(MIN_PRICE_ZOOM, MAX_PRICE_ZOOM).toDouble()
-        if (logScale && low > 0.0 && high > low) {
+        if (scaleMode == PriceScaleMode.LOGARITHMIC && low > 0.0 && high > low) {
             // Widened about the geometric middle rather than the arithmetic one: on a log axis
             // that is the point that stays still, and expanding about the wrong centre would slide
             // the whole chart up the plot as the reader dragged.
@@ -182,6 +332,79 @@ data class ChartViewport(
         (middle - half * zoom)..(middle + half * zoom)
     }
 
+    // ---------------------------------------------------------------- what the axis prints
+
+    /**
+     * The price the percentage modes are measured from: the close of the first bar on screen.
+     *
+     * The close rather than the open, because that is the value the series' own line is drawn
+     * through and the one a reader sees at the left edge — measuring from an open the chart never
+     * plotted would put the zero line a gap away from where the line starts.
+     *
+     * Recomputed as the reader pans, which is the point: percent mode answers "since the left of
+     * *this* screen", not "since some fixed epoch". Zero on an empty series, where it is unused.
+     */
+    val scaleBase: Double
+        get() = if (series.isEmpty || visibleCount == 0) 0.0 else series.close[firstVisible]
+
+    /**
+     * The number the axis prints for a price, which is not the price in two of the four modes.
+     *
+     * Everything that draws a label — the gutter, the crosshair, the last-price tag — goes through
+     * here rather than formatting the price directly, so that turning on percent mode relabels all
+     * of them at once instead of relabelling the gutter and leaving the crosshair quoting dollars.
+     */
+    fun scaleValue(price: Double): Double = when (scaleMode) {
+        PriceScaleMode.REGULAR, PriceScaleMode.LOGARITHMIC -> price
+        PriceScaleMode.PERCENT -> percentOf(price, scaleBase)
+        PriceScaleMode.INDEXED_100 -> indexedOf(price, scaleBase)
+    }
+
+    /**
+     * Back from a printed number to the price it stands for.
+     *
+     * The exact inverse of [scaleValue], and it exists for the same reason [priceAt] does: a reader
+     * can type a level into an alert or a drawing while the axis is in percent, and the value that
+     * comes back has to be a price or the alert fires at eighteen units instead of at eighteen
+     * percent up.
+     */
+    fun priceOfScaleValue(value: Double): Double = when (scaleMode) {
+        PriceScaleMode.REGULAR, PriceScaleMode.LOGARITHMIC -> value
+        PriceScaleMode.PERCENT -> priceOfPercent(value, scaleBase)
+        PriceScaleMode.INDEXED_100 -> priceOfPercent(value - 100.0, scaleBase)
+    }
+
+    /**
+     * How many decimals a label carries: [decimals] when the caller has set one, or a figure taken
+     * from the magnitude of the range when they have not.
+     *
+     * Four bands rather than a count of significant digits, because the axis is read as a column
+     * and a column of labels has to agree on its decimal point. Deriving per label would print
+     * `9.9995` above `10.000` and the reader would have to compare them digit by digit.
+     */
+    val effectiveDecimals: Int
+        get() {
+            decimals?.let { return it.coerceIn(0, MAX_DECIMALS) }
+            val magnitude = max(abs(priceRange.start), abs(priceRange.endInclusive))
+            return when {
+                magnitude >= 1_000.0 -> 2
+                magnitude >= 1.0 -> 4
+                else -> 8
+            }
+        }
+
+    /**
+     * A market figure as a string, at the axis' precision.
+     *
+     * `Locale.US` is not decoration and this is the second time it has had to be written down. The
+     * app's default locale is Persian, `String.format` follows the default, and a price rendered
+     * through it comes out in Persian digits — which is correct for a count in prose and wrong on
+     * an axis, where the reader is comparing it against an order book and a wallet balance that are
+     * both in Latin digits.
+     */
+    fun formatPrice(value: Double): String =
+        String.format(Locale.US, "%.${effectiveDecimals}f", value)
+
     // ---------------------------------------------------------------- chart space to screen
 
     /** Screen x of the bar at [index], at the centre of its slot. */
@@ -196,21 +419,35 @@ data class ChartViewport(
      * reader dragged below the axis and an indicator pane reuses this function for values that
      * routinely are (MACD, a rate of change). Anything the log axis cannot place falls back to the
      * linear placement rather than to `NaN`, which would silently stop drawing that line.
+     *
+     * [inverted] is applied once, at the end, to the fraction of the plot the price reached. That
+     * is why flipping the axis needs no branch of its own in any mode and why flipping twice is
+     * exactly the identity rather than nearly it.
      */
-    fun yOf(price: Double): Float {
+    fun yOf(price: Double): Float = yOfFraction(fractionOf(price))
+
+    /**
+     * How far up the plot a price sits, from zero at the bottom of the range to one at the top.
+     *
+     * Before inversion, and in whichever space the mode lays the axis out in. Everything about the
+     * vertical placement is here, so the two public conversions cannot drift apart.
+     */
+    private fun fractionOf(price: Double): Double {
         val low = priceRange.start
         val high = priceRange.endInclusive
-        if (logScale && low > 0.0 && high > low && price > 0.0) {
+        if (scaleMode == PriceScaleMode.LOGARITHMIC && low > 0.0 && high > low && price > 0.0) {
             val logLow = ln(low)
             val logSpan = ln(high) - logLow
-            if (logSpan > 0.0) {
-                return (plotHeight - (ln(price) - logLow) / logSpan * plotHeight).toFloat()
-            }
+            if (logSpan > 0.0) return (ln(price) - logLow) / logSpan
         }
         val span = high - low
-        if (span <= 0.0) return plotHeight / 2
-        return (plotHeight - (price - low) / span * plotHeight).toFloat()
+        if (span <= 0.0) return 0.5
+        return (price - low) / span
     }
+
+    /** The fraction turned into a pixel, and the only place [inverted] is honoured. */
+    private fun yOfFraction(fraction: Double): Float =
+        if (inverted) (fraction * plotHeight).toFloat() else (plotHeight - fraction * plotHeight).toFloat()
 
     /**
      * Screen x of a moment.
@@ -237,22 +474,21 @@ data class ChartViewport(
     /**
      * The price at a screen y. Not clamped: dragging above the plot means a higher price.
      *
-     * The exact inverse of [yOf], including its log branch and its fallback — they have to agree
-     * or a drawing placed by a finger lands somewhere else. That is the failure this pairing
-     * exists to prevent, and `ChartViewportTest` holds them against each other.
+     * The exact inverse of [yOf], including its log branch, its inversion and its fallback — they
+     * have to agree or a drawing placed by a finger lands somewhere else. That is the failure this
+     * pairing exists to prevent, and `ChartViewportTest` holds them against each other.
      */
     fun priceAt(y: Float): Double {
         val low = priceRange.start
         val high = priceRange.endInclusive
         if (plotHeight <= 0f) return low
-        if (logScale && low > 0.0 && high > low) {
+        val fraction = if (inverted) y / plotHeight else (plotHeight - y) / plotHeight
+        if (scaleMode == PriceScaleMode.LOGARITHMIC && low > 0.0 && high > low) {
             val logLow = ln(low)
             val logSpan = ln(high) - logLow
-            if (logSpan > 0.0) {
-                return exp(logLow + (plotHeight - y) / plotHeight * logSpan)
-            }
+            if (logSpan > 0.0) return exp(logLow + fraction * logSpan)
         }
-        return low + (plotHeight - y) / plotHeight * (high - low)
+        return low + fraction * (high - low)
     }
 
     /** The moment at a screen x, interpolated between bars the same way [xOfTime] is. */
@@ -289,11 +525,22 @@ data class ChartViewport(
      * present and it is what a reader is looking at. Zooming around the finger is correct on a map
      * and disorienting here — the live price would slide off screen while you were trying to look
      * at it more closely.
+     *
+     * With [priceBarLock] on, the price axis moves by whatever factor the bar count *actually*
+     * moved by — after rounding to whole bars and after the bounds — rather than by the factor that
+     * was asked for. Using the requested one would let the two axes drift apart at the ends of the
+     * zoom range, which is exactly where a reader zooming hard would notice their drawings shearing.
      */
     fun zoomedBy(scale: Float): ChartViewport {
-        if (scale <= 0f) return this
-        val bars = (effectiveBarsPerView / scale).roundToInt()
-        return copy(barsPerView = bars.coerceIn(MIN_BARS_PER_VIEW, MAX_BARS_PER_VIEW))
+        if (scale <= 0f || !scale.isFinite()) return this
+        val before = effectiveBarsPerView
+        val bars = (before / scale).roundToInt().coerceIn(MIN_BARS_PER_VIEW, MAX_BARS_PER_VIEW)
+        if (!priceBarLock) return copy(barsPerView = bars)
+        val realised = bars.toFloat() / before
+        return copy(
+            barsPerView = bars,
+            priceZoom = (priceZoom * realised).coerceIn(MIN_PRICE_ZOOM, MAX_PRICE_ZOOM),
+        )
     }
 
     /**
@@ -310,6 +557,47 @@ data class ChartViewport(
 
     /** Back to fitting the visible bars. What a double-tap on the price gutter does. */
     fun autoPriceScale(): ChartViewport = copy(priceZoom = 1f)
+
+    // ---------------------------------------------------------------- axis settings
+
+    /** Switch what the axis measures. See [PriceScaleMode]. */
+    fun withScaleMode(mode: PriceScaleMode): ChartViewport = copy(scaleMode = mode)
+
+    /**
+     * The one-tap version of [withScaleMode], between regular and logarithmic.
+     *
+     * Kept because that is the toggle the toolbar actually offers and the one the chart shipped
+     * with; the other two modes are reached from the axis menu, where there is room to name them.
+     */
+    fun toggleLogScale(): ChartViewport = withScaleMode(
+        if (scaleMode == PriceScaleMode.LOGARITHMIC) PriceScaleMode.REGULAR else PriceScaleMode.LOGARITHMIC,
+    )
+
+    /** Flip the axis so the low is at the top, or back. See [inverted]. */
+    fun toggleInverted(): ChartViewport = copy(inverted = !inverted)
+
+    /** Tie the price axis to the bar axis, or let them move independently. See [priceBarLock]. */
+    fun withPriceBarLock(locked: Boolean): ChartViewport = copy(priceBarLock = locked)
+
+    /** Pin the label precision, or pass null to go back to deriving it. See [decimals]. */
+    fun withDecimals(n: Int?): ChartViewport = copy(decimals = n?.coerceIn(0, MAX_DECIMALS))
+
+    /** Move the price gutter. See [ScaleSide]. */
+    fun withScaleSide(side: ScaleSide): ChartViewport = copy(scaleSide = side)
+
+    /**
+     * The boolean form of [withScaleMode], for callers holding a saved `logScale` flag.
+     *
+     * Turning it off returns to [PriceScaleMode.REGULAR] only when the axis was actually
+     * logarithmic. A caller that is merely restoring a stale `false` must not silently drag a
+     * reader out of percent mode, which a plain `copy(scaleMode = REGULAR)` would do on every
+     * recomposition.
+     */
+    fun copy(logScale: Boolean): ChartViewport = when {
+        logScale -> withScaleMode(PriceScaleMode.LOGARITHMIC)
+        scaleMode == PriceScaleMode.LOGARITHMIC -> withScaleMode(PriceScaleMode.REGULAR)
+        else -> this
+    }
 
     /** Re-measure after a layout pass. */
     fun sized(width: Float, height: Float): ChartViewport =
@@ -422,5 +710,49 @@ data class ChartViewport(
 
         /** Above this the candles are a horizontal line. */
         const val MAX_PRICE_ZOOM = 8f
+
+        /**
+         * The most decimals any label may carry.
+         *
+         * Eight, because that is a satoshi and nothing quoted on either feed is finer. It is a
+         * clamp on [decimals] rather than a suggestion: `"%.400f"` is a legal format string and
+         * would put four hundred characters into a text measure inside a draw.
+         */
+        const val MAX_DECIMALS = 8
+
+        /**
+         * A value as a percentage of a base — the arithmetic behind [PriceScaleMode.PERCENT].
+         *
+         * The negation when the base is below zero is the part worth explaining. Dividing by a
+         * negative base already flips the sign, so a series that went *up* from −40 to −20 would
+         * report −50%: technically what the formula says, and read by every human being as a loss.
+         * Flipping it back keeps "up on the chart" and "positive on the axis" the same thing.
+         * Prices are never negative, but the indicator panes share this axis and oscillators are.
+         *
+         * A base of zero has no percentage of it at all — every value is infinitely far from
+         * nothing — so it reports zero rather than an infinity that would take the whole axis
+         * with it.
+         */
+        fun percentOf(value: Double, base: Double): Double {
+            if (base == 0.0 || !base.isFinite() || !value.isFinite()) return 0.0
+            val raw = 100.0 * (value - base) / base
+            return if (base < 0.0) -raw else raw
+        }
+
+        /**
+         * The same figure rebased so the first visible bar reads 100, which is
+         * [PriceScaleMode.INDEXED_100].
+         *
+         * Written as [percentOf] plus a hundred rather than as its own expression, so the two
+         * cannot disagree about what a base of zero or a negative base means.
+         */
+        fun indexedOf(value: Double, base: Double): Double = percentOf(value, base) + 100.0
+
+        /** [percentOf] run backwards: the value that is this many percent from the base. */
+        fun priceOfPercent(percent: Double, base: Double): Double {
+            if (base == 0.0 || !base.isFinite() || !percent.isFinite()) return base
+            val signed = if (base < 0.0) -percent else percent
+            return base + signed * base / 100.0
+        }
     }
 }

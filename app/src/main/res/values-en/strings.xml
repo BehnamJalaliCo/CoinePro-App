@@ -121,7 +121,11 @@
     <string name="notify_marketing_note">Off by default</string>
     <string name="alert_fired_title">Price alert</string>
     <string name="alert_fired_body">%1$s reached %2$s.</string>
-    <string name="alert_fired_body_no_price">Your %1$s alert condition was met.</string>
+    <string name="alert_toast_open">Chart</string>
+    <string name="channel_price_alert_loud">Loud price alerts</string>
+    <string name="channel_price_alert_loud_note">Alerts you made louder than the rest yourself. Played at the alarm volume.</string>
+    <string name="channel_price_alert_vibrate">Silent price alerts with vibration</string>
+    <string name="channel_price_alert_vibrate_note">Alerts that only buzz the phone and make no sound.</string>
     <string name="screen_notifications">Notifications</string>
     <string name="profile_action_notifications_note">Signals, targets, copies, price alerts and quiet hours</string>
     <string name="screen_membership">Membership and exchange UID</string>

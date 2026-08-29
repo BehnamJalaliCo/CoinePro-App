@@ -46,11 +46,20 @@ import com.coinepro.core.designsystem.R as DesignR
 /**
  * The chart-type list.
  *
- * Eleven rows in two groups, and the grouping is the whole point. Six of these eleven have no clock
- * on the x axis at all — a Renko brick appears when price moves, not when time passes — and that is
- * the single fact a reader needs before choosing one. It was previously printed as a subtitle under
- * each of the six, which said the same sentence six times; said once, over a heading, it is a
- * distinction rather than a repetition.
+ * Eighteen rows in three groups, and the grouping is the whole point. Five of the eighteen have no
+ * clock on the x axis at all — a Renko brick appears when price moves, not when time passes — and
+ * that is the single fact a reader needs before choosing one. It was previously printed as a
+ * subtitle under each of the five, which said the same sentence five times; said once, over a
+ * heading, it is a distinction rather than a repetition.
+ *
+ * The third group is the derived types — volume candles, footprint, TPO. They are on the clock like
+ * candles are, so they do not belong under the price-driven heading, but they are not a plain
+ * rendering of the feed either: each one reads volume per price row and draws a second dimension
+ * inside the bar. Separating them keeps the first group honest as "the bars, drawn".
+ *
+ * [hasVolume] hides footprint and TPO entirely. The MT5 forex feed reports no volume, and a
+ * footprint over fabricated zeros is not a degraded chart, it is a confident lie — so the type is
+ * not offered rather than offered and empty.
  *
  * Every row carries a «؟». That is not decoration and it is not optional: this list offers Kagi and
  * Point & Figure beside candles, and a professional audience still contains people who have never
@@ -66,9 +75,13 @@ fun ChartTypePicker(
     onSelect: (ChartType) -> Unit,
     modifier: Modifier = Modifier,
     onHelp: ((String) -> Unit)? = null,
+    hasVolume: Boolean = true,
 ) {
-    val timed = ChartCatalog.CHART_TYPES.filter { it.type.isTimeBased }
-    val untimed = ChartCatalog.CHART_TYPES.filterNot { it.type.isTimeBased }
+    val derivedTypes = setOf(ChartType.VOLUME_CANDLES, ChartType.FOOTPRINT, ChartType.TPO)
+    val offered = ChartCatalog.chartTypesFor(hasVolume)
+    val timed = offered.filter { it.type.isTimeBased && it.type !in derivedTypes }
+    val untimed = offered.filterNot { it.type.isTimeBased }
+    val derived = offered.filter { it.type in derivedTypes }
     LazyColumn(
         modifier = modifier.fillMaxWidth().background(CoineProColors.Surface),
         contentPadding = PaddingValues(bottom = CoineProSpacing.Two),
@@ -95,6 +108,19 @@ fun ChartTypePicker(
                 onHelp = onHelp?.let { { it(option.helpId) } },
             )
         }
+        if (derived.isNotEmpty()) {
+            item { GroupHeader("مشتق از داده — همان میله‌ها، با هندسه‌ای که چیز دیگری را می‌گوید") }
+            items(derived, key = { it.type }) { option ->
+                PickerRow(
+                    label = option.label,
+                    icon = option.icon,
+                    selected = option.type == selected,
+                    accent = null,
+                    onClick = { onSelect(option.type) },
+                    onHelp = onHelp?.let { { it(option.helpId) } },
+                )
+            }
+        }
     }
 }
 
@@ -117,6 +143,15 @@ fun IndicatorPicker(
     modifier: Modifier = Modifier,
     onHelp: ((String) -> Unit)? = null,
     /**
+     * Whether the loaded feed reports volume.
+     *
+     * Fourteen of the eighty-three studies read a volume column, and the MT5 forex feed has none.
+     * Offering them there would put a flat line of zeros on the chart, which reads as «this market
+     * had no participants» rather than as «this feed does not carry that». Hiding them is the
+     * honest answer, and it is why this parameter exists rather than a disabled row.
+     */
+    hasVolume: Boolean = true,
+    /**
      * The lookbacks the reader has changed, and how to change them. Both null means no stepper —
      * which is what a picker used as a read-only list wants.
      */
@@ -131,10 +166,11 @@ fun IndicatorPicker(
     // tapped" — and an empty result the reader cannot explain is the worst outcome of two filters
     // combining quietly.
     val searching = query.isNotBlank()
+    val offered = ChartCatalog.indicatorsFor(hasVolume)
     val shown = when {
-        searching -> ChartCatalog.matchingIndicators(query)
-        pane != null -> ChartCatalog.INDICATORS.filter { it.pane == pane }
-        else -> ChartCatalog.INDICATORS
+        searching -> ChartCatalog.matchingIndicators(query).filter { it in offered }
+        pane != null -> offered.filter { it.pane == pane }
+        else -> offered
     }
 
     Column(modifier = modifier.fillMaxWidth().background(CoineProColors.Surface)) {
@@ -151,7 +187,7 @@ fun IndicatorPicker(
                     CoineProChip(
                         id = candidate.name,
                         label = candidate.label,
-                        count = ChartCatalog.INDICATORS.count { it.pane == candidate },
+                        count = offered.count { it.pane == candidate },
                     )
                 },
                 selectedId = pane?.name,
@@ -187,11 +223,11 @@ fun IndicatorPicker(
                         selected = option.id in active,
                         accent = Color(option.colour),
                         onClick = { onToggle(option) },
-                        // Nine of the fifty have no entry in the shipped catalogue. They get no
-                        // «؟» rather than one that opens nothing.
+                        // A handful of the eighty-three have no entry in the shipped catalogue yet.
+                        // They get no «؟» rather than one that opens nothing.
                         onHelp = option.helpId?.let { id -> onHelp?.let { { it(id) } } },
                         // Only on a switched-on indicator, and only where there is one lookback to
-                        // change. A stepper on fifty rows at once would be a wall of numbers on a
+                        // change. A stepper on eighty-three rows at once would be a wall of numbers on a
                         // list whose job is choosing; a reader sets the length of the thing they
                         // have already decided to use.
                         period = ChartCatalog.periodOf(option.id)
@@ -424,7 +460,7 @@ private fun HelpDot(onClick: () -> Unit) {
             contentDescription = HELP_LABEL,
             modifier = Modifier.size(18.dp),
             // Brighter than the muted text it sat in before, which made it look disabled — it is a
-            // control, and on a list of eleven chart types it is the one that answers the question
+            // control, and on a list of eighteen chart types it is the one that answers the question
             // the reader actually has.
             tint = CoineProColors.TextSecondary,
         )

@@ -33,11 +33,18 @@ import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.EmailAuthController
 import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayoutStore
+import com.coinepro.core.datastore.SymbolChartStateStore
+import com.coinepro.core.datastore.DrawingTemplateStore
+import com.coinepro.feature.chart.ChartWorkspaceStore
+import com.coinepro.feature.alerts.AlertsController
+import com.coinepro.feature.screener.ScreenerController
+import com.coinepro.feature.screener.ScreenerStore
 import com.coinepro.app.security.AppIntegrity
 import com.coinepro.app.security.IntegrityState
 import com.coinepro.app.security.TamperedScreen
 import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.app.alerts.LocalAlertScheduler
+import com.coinepro.app.alerts.InAppAlertBus
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
@@ -93,16 +100,23 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var notificationSettingsStore: NotificationSettingsStore
     @Inject lateinit var localAlertStore: LocalAlertStore
     @Inject lateinit var localAlertScheduler: LocalAlertScheduler
+    @Inject lateinit var alertsController: AlertsController
+    @Inject lateinit var inAppAlertBus: InAppAlertBus
     @Inject lateinit var guestGateway: GuestGateway
     @Inject lateinit var membershipController: MembershipController
     @Inject lateinit var watchlistStore: WatchlistStore
     @Inject lateinit var chartLayoutStore: ChartLayoutStore
     @Inject lateinit var chartDrawingStore: ChartDrawingStore
+    @Inject lateinit var symbolChartStateStore: SymbolChartStateStore
+    @Inject lateinit var drawingTemplateStore: DrawingTemplateStore
+    @Inject lateinit var chartWorkspaceStore: ChartWorkspaceStore
     @Inject lateinit var journalController: JournalController
     @Inject lateinit var paperTradeController: PaperTradeController
     @Inject lateinit var scriptController: ScriptController
     @Inject lateinit var marketDataControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketDataController>
     @Inject lateinit var marketSearchControllers: Map<MarketPlatform, @JvmSuppressWildcards MarketSearchController>
+    @Inject lateinit var screenerControllers: Map<MarketPlatform, @JvmSuppressWildcards ScreenerController>
+    @Inject lateinit var screenerStore: ScreenerStore
     @Inject lateinit var candleGateways: Map<MarketPlatform, @JvmSuppressWildcards CandleGateway>
     @Inject lateinit var portfolioControllers: Map<MarketPlatform, @JvmSuppressWildcards PortfolioController>
     @Inject lateinit var academyController: AcademyController
@@ -181,14 +195,21 @@ class MainActivity : FragmentActivity() {
                 notificationSettingsStore = notificationSettingsStore,
                 localAlertStore = localAlertStore,
                 localAlertScheduler = localAlertScheduler,
+                alertsController = alertsController,
+                inAppAlerts = inAppAlertBus,
                 watchlistStore = watchlistStore,
                 chartLayoutStore = chartLayoutStore,
                 chartDrawingStore = chartDrawingStore,
+                symbolChartStateStore = symbolChartStateStore,
+                drawingTemplateStore = drawingTemplateStore,
+                chartWorkspaceStore = chartWorkspaceStore,
                 journalController = journalController,
                 paperTradeController = paperTradeController,
                 scriptController = scriptController,
                 marketDataControllers = marketDataControllers,
                 marketSearchControllers = marketSearchControllers,
+                screenerControllers = screenerControllers,
+                screenerStore = screenerStore,
                 candleGateways = candleGateways,
                 portfolioControllers = portfolioControllers,
                 academyController = academyController,

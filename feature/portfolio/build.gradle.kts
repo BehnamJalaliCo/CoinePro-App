@@ -18,6 +18,11 @@ dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:portfolio"))
+    // The system document picker, for the CSV and XLSX exports. The alternative is a FileProvider
+    // and a shared cache directory, which means the app keeps a copy of a document that belongs to
+    // the reader and to nobody else.
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.kotlinx.coroutines.core)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.animation)

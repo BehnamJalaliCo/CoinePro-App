@@ -33,13 +33,18 @@ internal fun Modifier.chartShortcuts(
 ): Modifier = onKeyEvent { event ->
     if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
     when (event.key) {
-        // The digits pick a timeframe by position, the way every terminal does it.
-        Key.One -> Timeframe.entries.getOrNull(0)?.let(onTimeframe) != null
-        Key.Two -> Timeframe.entries.getOrNull(1)?.let(onTimeframe) != null
-        Key.Three -> Timeframe.entries.getOrNull(2)?.let(onTimeframe) != null
-        Key.Four -> Timeframe.entries.getOrNull(3)?.let(onTimeframe) != null
-        Key.Five -> Timeframe.entries.getOrNull(4)?.let(onTimeframe) != null
-        Key.Six -> Timeframe.entries.getOrNull(5)?.let(onTimeframe) != null
+        // The digits pick a timeframe, the way every terminal does it.
+        //
+        // Named constants rather than `entries[n]`. The ordinals moved the day M2, M3, M10, M45,
+        // H2, H3 and MN1 were added, and a positional binding would silently have started putting
+        // three-minute bars on the key a reader had learned meant fifteen. A shortcut whose meaning
+        // drifts under a release is worse than no shortcut, because the hand does not check.
+        Key.One -> { onTimeframe(Timeframe.M1); true }
+        Key.Two -> { onTimeframe(Timeframe.M5); true }
+        Key.Three -> { onTimeframe(Timeframe.M15); true }
+        Key.Four -> { onTimeframe(Timeframe.H1); true }
+        Key.Five -> { onTimeframe(Timeframe.H4); true }
+        Key.Six -> { onTimeframe(Timeframe.D1); true }
 
         // Space plays and pauses replay, as it does in every player anybody has used.
         Key.Spacebar -> { onReplayToggle(); true }

@@ -40,4 +40,48 @@
     <string name="portfolio_direction_sell">فروش</string>
     <string name="portfolio_eyebrow">پرتفوی</string>
     <string name="portfolio_reading_factor">ضریب سود</string>
+
+    <string name="portfolio_report_open">گزارش کامل</string>
+    <string name="portfolio_report_title">گزارش کامل</string>
+    <string name="portfolio_report_subtitle">سنجه‌های پیشرفته و خروجی فایل، بدون اشتراک.</string>
+    <string name="portfolio_report_empty">هنوز معامله‌ای بسته نشده تا گزارشی از آن ساخته شود.</string>
+    <string name="portfolio_report_empty_hint">وقتی اولین معامله‌تان بسته شد، منحنی سرمایه و همهٔ سنجه‌ها همین‌جا می‌آیند.</string>
+    <string name="portfolio_report_metrics">سنجه‌ها</string>
+    <string name="portfolio_report_attribution">سهم هر نماد</string>
+    <string name="portfolio_report_year_total">کل سال</string>
+    <string name="portfolio_report_peak_note">خط چین، سقف تا آن لحظه است؛ ناحیهٔ رنگی، فاصلهٔ سرمایه تا آن سقف.</string>
+    <string name="portfolio_report_drawdown_span">بیشترین افت</string>
+    <!-- %1$s تاریخ سقف و %2$s تاریخ کف است -->
+    <string name="portfolio_report_drawdown_between">از %1$s تا %2$s</string>
+    <string name="portfolio_report_drawdown_note">این عدد از سقف تا کف منحنی سرمایه است، نه بزرگ‌ترین معاملهٔ زیان‌ده؛ چند زیان پشت‌سرهم افتی بزرگ‌تر از هر کدامشان می‌سازد.</string>
+    <!-- %1$s تعداد معاملات آن دوره است -->
+    <string name="portfolio_report_drawdown_recovered">%1$s معامله طول کشید تا سقف قبلی دوباره زده شود.</string>
+    <string name="portfolio_report_drawdown_open">%1$s معامله است که هنوز زیر سقف قبلی هستید.</string>
+    <string name="portfolio_report_ratio_note">شارپ و سورتینو هر دو به ازای هر معامله محاسبه شده‌اند، نه سالانه؛ با عدد سالانهٔ یک صندوق قابل مقایسه نیستند.</string>
+    <!-- %1$s تعداد معامله‌های دارای زمان باز شدن، %2$s کل معامله‌ها -->
+    <string name="portfolio_report_holding_sample">میانگین بر پایهٔ %1$s معامله از %2$s معامله است؛ بقیه زمان باز شدن ندارند.</string>
+    <string name="portfolio_report_export">خروجی گرفتن</string>
+    <string name="portfolio_report_export_csv">CSV</string>
+    <string name="portfolio_report_export_xlsx">Excel</string>
+    <string name="portfolio_report_export_done">فایل ذخیره شد.</string>
+    <string name="portfolio_report_export_failed">فایل نوشته نشد. جای دیگری را انتخاب کنید.</string>
+
+    <string name="portfolio_metric_average_win">میانگین برد</string>
+    <string name="portfolio_metric_average_loss">میانگین باخت</string>
+    <string name="portfolio_metric_win_loss">نسبت برد به باخت</string>
+    <string name="portfolio_metric_largest_win">بزرگ‌ترین برد</string>
+    <string name="portfolio_metric_largest_loss">بزرگ‌ترین باخت</string>
+    <string name="portfolio_metric_longest_drawdown">طولانی‌ترین دورهٔ افت</string>
+    <string name="portfolio_metric_sharpe">شارپ</string>
+    <string name="portfolio_metric_sortino">سورتینو</string>
+    <string name="portfolio_metric_holding">میانگین مدت نگهداری</string>
+    <string name="portfolio_metric_streak_wins">بیشترین بردهای پیاپی</string>
+    <string name="portfolio_metric_streak_losses">بیشترین باخت‌های پیاپی</string>
+    <string name="portfolio_metric_scratches">معاملات سربه‌سر</string>
+
+    <!-- ارقام فارسی: این‌ها شمارش در متن‌اند، نه عدد بازار -->
+    <string name="portfolio_duration_day_hour">%1$s روز و %2$s ساعت</string>
+    <string name="portfolio_duration_hour_minute">%1$s ساعت و %2$s دقیقه</string>
+    <string name="portfolio_duration_minute">%1$s دقیقه</string>
+    <string name="portfolio_duration_second">%1$s ثانیه</string>
 </resources>

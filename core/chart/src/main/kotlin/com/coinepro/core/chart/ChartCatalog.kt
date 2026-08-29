@@ -13,8 +13,8 @@ import com.coinepro.core.designsystem.R as DesignR
  * be written down once and be checkable — a picker that silently offers a tool with no help, or
  * points at the wrong entry, is exactly the kind of gap nobody notices until a user does.
  *
- * `ChartCatalogTest` asserts that every id here exists in the shipped catalogue, and pins the nine
- * indicators that have no entry so a tenth cannot join them unnoticed.
+ * `ChartCatalogTest` asserts that every id here exists in the shipped catalogue, and pins the
+ * thirteen indicators that have no entry so a fourteenth cannot join them unnoticed.
  */
 data class ChartTypeOption(
     val type: ChartType,
@@ -46,10 +46,10 @@ data class IndicatorOption(
     /**
      * The «؟» entry id, or null where the shipped catalogue has no entry.
      *
-     * Null rather than a guess. Nine of the fifty point at nothing — the web terminal's help was
-     * written before those indicators were added to it — and a «؟» that opens an empty sheet is a
-     * worse answer than no «؟». `ChartCatalogTest` pins exactly which nine, so the gap can only
-     * close, never quietly widen.
+     * Null rather than a guess. Thirteen of the eighty-three point at nothing — the web terminal's
+     * help was written before those indicators were added to it — and a «؟» that opens an empty
+     * sheet is a worse answer than no «؟». `ChartCatalogTest` pins exactly which thirteen, so the
+     * gap can only close, never quietly widen.
      */
     val helpId: String?,
     val pane: IndicatorPane,
@@ -126,6 +126,22 @@ object ChartCatalog {
      * between candles and Heikin-Ashi; Renko and Point & Figure are deliberate choices that people
      * go looking for.
      */
+    /**
+     * The chart types a feed can actually draw.
+     *
+     * Footprint and TPO both read volume per price row, and the MT5 forex feed reports none, so on
+     * that platform they are not offered at all. A caller that wants the raw table uses
+     * [CHART_TYPES]; a caller that is about to show a reader a number or a list uses this.
+     */
+    fun chartTypesFor(hasVolume: Boolean): List<ChartTypeOption> =
+        if (hasVolume) CHART_TYPES else CHART_TYPES.filter { it.type !in VOLUME_ONLY_TYPES }
+
+    /** How many types [chartTypesFor] would offer. */
+    fun chartTypeCount(hasVolume: Boolean): Int = chartTypesFor(hasVolume).size
+
+    /** The two types that are meaningless without a volume column. */
+    val VOLUME_ONLY_TYPES: Set<ChartType> = setOf(ChartType.FOOTPRINT, ChartType.TPO)
+
     val CHART_TYPES: List<ChartTypeOption> = listOf(
         ChartTypeOption(ChartType.CANDLES, "کندل", "candles", DesignR.drawable.tv_chart_candles),
         ChartTypeOption(ChartType.HOLLOW, "کندل توخالی", "hollow", DesignR.drawable.tv_chart_hollow),
@@ -138,12 +154,59 @@ object ChartCatalog {
         ChartTypeOption(ChartType.LINE_BREAK, "لاین‌بریک", "linebreak", DesignR.drawable.tv_chart_linebreak),
         ChartTypeOption(ChartType.KAGI, "کاگی", "kagi", DesignR.drawable.tv_chart_kagi),
         ChartTypeOption(ChartType.POINT_AND_FIGURE, "نقطه و رقم", "pnf", DesignR.drawable.tv_chart_pnf),
+
+        // ── The same bars, rendered to answer a different question ──────────────────
+        //
+        // Six of these seven are the feed untouched with added geometry rather than a new
+        // aggregation, which is why they carry no `ChartTypeConfig` of their own beyond a base
+        // level or a row count. FOOTPRINT and TPO are the exception in a way that matters at the
+        // picker: both read volume per price row, and the MT5 forex feed reports no volume at all,
+        // so `ChartTransforms.footprint` returns an empty list there rather than a wall of zeros.
+        // The picker hides them on that feed; see `ChartTypePicker`.
+        ChartTypeOption(ChartType.BASELINE, "خط پایه", "baseline", DesignR.drawable.tv_chart_baseline),
+        ChartTypeOption(ChartType.HLC_AREA, "ناحیهٔ HLC", "hlcarea", DesignR.drawable.tv_chart_hlcarea),
+        ChartTypeOption(ChartType.STEP_LINE, "پلکانی", "step", DesignR.drawable.tv_chart_step),
+        ChartTypeOption(ChartType.LINE_MARKERS, "خطی با نشانگر", "lwm", DesignR.drawable.tv_chart_lwm),
+        ChartTypeOption(ChartType.VOLUME_CANDLES, "کندل حجمی", "volcandles", DesignR.drawable.tv_chart_volcandles),
+        ChartTypeOption(ChartType.FOOTPRINT, "فوت‌پرینت", "footprint", DesignR.drawable.tv_chart_footprint),
+        ChartTypeOption(ChartType.TPO, "پروفایل زمانی", "tpo", DesignR.drawable.tv_chart_tpo),
     )
 
     /**
-     * The fifty indicators the engine computes, grouped the way a trader thinks about them.
+     * The indicators a feed can actually compute.
      *
-     * Fifty is past the point where a list can be scanned, which is why the picker grew a search
+     * The same shape as [chartTypesFor] and for the same reason: fourteen of the rows below are
+     * arithmetic on a volume column, the MT5 forex feed reports none, and an indicator offered on a
+     * feed that cannot compute it is a switch that draws nothing when tapped. A caller that wants
+     * the raw table uses [INDICATORS]; a caller that is about to put a list in front of a reader
+     * uses this.
+     */
+    fun indicatorsFor(hasVolume: Boolean): List<IndicatorOption> =
+        if (hasVolume) INDICATORS else INDICATORS.filterNot { it.id in VOLUME_ONLY_INDICATORS }
+
+    /** How many indicators [indicatorsFor] would offer. */
+    fun indicatorCount(hasVolume: Boolean): Int = indicatorsFor(hasVolume).size
+
+    /**
+     * The indicators that are arithmetic on a volume column and nothing else.
+     *
+     * Zero is not the same claim as absent, and this set is where that distinction is written down
+     * once. A money-flow index computed from a volume array of zeros is not "no money flowing"; it
+     * is a reading of a column the feed never sent, and drawn as a flat line at fifty it looks like
+     * a market in perfect balance. [overlayFor] and [paneFor] both consult this and return nothing
+     * rather than a fabricated line, and the picker hides the rows entirely through
+     * [indicatorsFor].
+     */
+    val VOLUME_ONLY_INDICATORS: Set<String> = setOf(
+        "vwap", "obv", "adline", "chaikinOsc", "eom", "forceIndex", "klinger", "pvt",
+        "vwma", "volumeprofile_ind", "mfi", "cmf", "pvo", "netvolume",
+    )
+
+    /**
+     * The eighty-three indicators the engine computes, grouped the way a trader thinks about them.
+     *
+     * Twenty-six draw on the price, forty-nine in a pane of their own and eight as structure. That
+     * is far past the point where a list can be scanned, which is why the picker grew a search
      * field and a pane filter before this list grew past twenty. The order is the useful one and
      * not an alphabet: within each pane, the ones most readers reach for first.
      */
@@ -210,6 +273,44 @@ object ChartCatalog {
         IndicatorOption("klinger", "اسیلاتور کلینگر", "klinger", IndicatorPane.SEPARATE, 0xFFA855F7, DesignR.drawable.tv_chart_volcandles),
         IndicatorOption("pvt", "روند قیمت-حجم", "pvt", IndicatorPane.SEPARATE, 0xFF10B981, DesignR.drawable.tv_chart_volcandles),
 
+        // ── The third pack, from indicators_ext_b.js and indicators_ext_c.js ────────────────
+        // Trend and trailing stops, on the price.
+        IndicatorOption("sar", "پارابولیک سار (SAR)", "psar", IndicatorPane.PRICE, 0xFFE0A85C, DesignR.drawable.tv_tool_dot),
+        IndicatorOption("alligator", "تمساح ویلیامز (Alligator)", "alligator", IndicatorPane.PRICE, 0xFF6E8BE0, DesignR.drawable.tv_tool_doublecurve),
+        IndicatorOption("vwma", "میانگین متحرک وزن‌دار حجم (VWMA)", "vwma", IndicatorPane.PRICE, 0xFF10B981, DesignR.drawable.tv_chart_volcandles),
+        IndicatorOption("tema", "میانگین نمایی سه‌گانه (TEMA)", "tema", IndicatorPane.PRICE, 0xFF2DD4BF, DesignR.drawable.tv_chart_line),
+        IndicatorOption("dema", "میانگین نمایی دوگانه (DEMA)", "dema", IndicatorPane.PRICE, 0xFF38BDF8, DesignR.drawable.tv_chart_line),
+        IndicatorOption("chandekroll", "حد ضرر چاند-کرول", "chandeKroll", IndicatorPane.PRICE, 0xFFB08BC7, DesignR.drawable.tv_tool_longshort),
+        IndicatorOption("volstop", "حد ضرر نوسانی", "volstop", IndicatorPane.PRICE, 0xFFF97316, DesignR.drawable.tv_tool_trend),
+        IndicatorOption("volumeprofile_ind", "پروفایل حجم", "volumeProfile", IndicatorPane.PRICE, 0xFF94A3B8, DesignR.drawable.tv_tool_volumeprofile),
+
+        // Momentum and trend strength, on their own scale.
+        IndicatorOption("stochrsi", "استوکاستیک RSI", "stochrsi", IndicatorPane.SEPARATE, 0xFF4FB3A5, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("tsi", "شاخص قدرت واقعی (TSI)", "tsi", IndicatorPane.SEPARATE, 0xFFE879F9, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("aroon", "آرون (Aroon)", "aroon", IndicatorPane.SEPARATE, 0xFF84CC16, DesignR.drawable.tv_tool_arrowdir),
+        // Points at the ADX entry, which is not a stand-in: that entry explains the +DI/−DI pair
+        // and the ADX built on them as one system, which is exactly what this row draws. DMI is
+        // offered separately because a trader running it as a crossover system wants its own
+        // lookback, not the one their trend filter is on.
+        IndicatorOption("dmi", "شاخص حرکت جهت‌دار (DMI)", "adx", IndicatorPane.SEPARATE, 0xFFE0A85C, DesignR.drawable.tv_tool_arrowdir),
+        IndicatorOption("ppo", "اسیلاتور درصدی قیمت (PPO)", "ppo", IndicatorPane.SEPARATE, 0xFF6E8BE0, DesignR.drawable.tv_chart_columns),
+        IndicatorOption("dpo", "اسیلاتور قیمت بدون روند (DPO)", "dpo", IndicatorPane.SEPARATE, 0xFF9B7BE0, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("kst", "مجموع نرخ تغییر (KST)", "kst", IndicatorPane.SEPARATE, 0xFFFACC15, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("cmo", "اسیلاتور مومنتوم چاند (CMO)", "cmo", IndicatorPane.SEPARATE, 0xFFF472B6, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("coppock", "منحنی کاپاک (Coppock)", "coppock", IndicatorPane.SEPARATE, 0xFF34D399, DesignR.drawable.tv_tool_curve),
+        IndicatorOption("rvi", "شاخص سرزندگی نسبی (RVI)", "rvi", IndicatorPane.SEPARATE, 0xFF22D3EE, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("woodiescci", "سی‌سی‌آی وودیز (Woodies CCI)", "woodiescci", IndicatorPane.SEPARATE, 0xFFA855F7, DesignR.drawable.tv_tool_sine),
+        IndicatorOption("massindex", "شاخص جرم (Mass Index)", "massIndex", IndicatorPane.SEPARATE, 0xFF7FA3C7, DesignR.drawable.tv_ruler),
+        IndicatorOption("ao", "اسیلاتور شگفت‌انگیز (AO)", "ao", IndicatorPane.SEPARATE, 0xFFD8A848, DesignR.drawable.tv_chart_columns),
+        IndicatorOption("correlation", "ضریب همبستگی", "correlation", IndicatorPane.SEPARATE, 0xFF8E9BAE, DesignR.drawable.tv_tool_sync),
+
+        // Volume, on its own scale. Every one of these is in [VOLUME_ONLY_INDICATORS] and is not
+        // offered at all on a feed that reports no volume.
+        IndicatorOption("mfi", "شاخص جریان نقدینگی", "mfi", IndicatorPane.SEPARATE, 0xFF0EA5E9, DesignR.drawable.tv_chart_volcandles),
+        IndicatorOption("cmf", "جریان نقدینگی چایکین", "cmf", IndicatorPane.SEPARATE, 0xFFFB923C, DesignR.drawable.tv_chart_volcandles),
+        IndicatorOption("pvo", "اسیلاتور درصدی حجم (PVO)", "pvo", IndicatorPane.SEPARATE, 0xFFFB7185, DesignR.drawable.tv_chart_columns),
+        IndicatorOption("netvolume", "حجم خالص", "netVolume", IndicatorPane.SEPARATE, 0xFFF0B90B, DesignR.drawable.tv_chart_columns),
+
         // ── Structure: levels and marks rather than a value per bar ─────────────────────────
         IndicatorOption("pivots", "پیووت (۵ روش)", null, IndicatorPane.STRUCTURE, 0xFF94A3B8, DesignR.drawable.tv_tool_hline),
         IndicatorOption("swings", "نقاط چرخش", null, IndicatorPane.STRUCTURE, 0xFFF59E0B, DesignR.drawable.tv_tool_arrowdir),
@@ -218,6 +319,10 @@ object ChartCatalog {
         IndicatorOption("autofib", "فیبوناچی خودکار", null, IndicatorPane.STRUCTURE, 0xFF22D3EE, DesignR.drawable.tv_tool_fib),
         IndicatorOption("sr", "حمایت و مقاومت", null, IndicatorPane.STRUCTURE, 0xFFF59E0B, DesignR.drawable.tv_tool_hline),
         IndicatorOption("supplydemand", "نواحی عرضه و تقاضا", null, IndicatorPane.STRUCTURE, 0xFF00B15C, DesignR.drawable.tv_tool_rect),
+        // Structure rather than a pane of its own, because it is not a level and not a value: it
+        // is a regime reading, one verdict per bar, and the thing it belongs beside is the candle
+        // it describes. See [CHOP_ZONE_COLOURS].
+        IndicatorOption("chopzone", "ناحیهٔ چاپ (Chop Zone)", "chopzone", IndicatorPane.STRUCTURE, 0xFF7FA3C7, DesignR.drawable.tv_layout_grid),
     )
 
     /**
@@ -238,6 +343,11 @@ object ChartCatalog {
             "autofib" -> StructureOverlay(levels = Structure.autoFibonacci(series))
             "sr" -> StructureOverlay(levels = Structure.supportResistance(series))
             "supplydemand" -> StructureOverlay(levels = Structure.supplyDemand(series))
+            // One coloured mark per bar, hung under the low, so the row of them reads as a band
+            // along the foot of the candles. A `ChartLine` cannot express it — a line has one
+            // colour for its whole length and the colour here *is* the reading — and a
+            // `PriceLevel` cannot either, because the verdict changes bar to bar.
+            "chopzone" -> StructureOverlay(markers = chopZoneMarks(series))
             else -> StructureOverlay()
         }
     }
@@ -258,8 +368,19 @@ object ChartCatalog {
         series: CandleSeries,
         /** The reader's lookback, or null for this indicator's own default. See [PERIODS]. */
         period: Int? = null,
+        /**
+         * The second instrument, for the one indicator that measures two series against each other.
+         *
+         * Only `correlation` reads it, and it is null on every other call — which is why it is the
+         * last parameter with a default rather than a second entry point. A correlation with
+         * nothing to correlate against is not a correlation of zero, so the pane comes back empty;
+         * see the `correlation` branch below.
+         */
+        comparison: ComparisonSeries? = null,
     ): ChartPane? {
         if (option.pane != IndicatorPane.SEPARATE || series.isEmpty) return null
+        // A volume study on a feed that reports no volume has no values, not values of zero.
+        if (option.id in VOLUME_ONLY_INDICATORS && !series.hasVolume) return null
         val n = periodFor(option.id, period)
         val open = series.open
         val high = series.high
@@ -434,6 +555,153 @@ object ChartCatalog {
                 )
             }
             "pvt" -> pane("PVT", ChartLine(IndicatorsExt.priceVolumeTrend(close, volume), colour))
+
+            // ── The third pack's own-scale entries ────────────────────────────────────────
+            "stochrsi" -> IndicatorsExtB.stochasticRsi(close, n, n).let { stoch ->
+                pane(
+                    "Stoch RSI $n",
+                    ChartLine(stoch.k.asLine(), colour, label = "%K"),
+                    ChartLine(stoch.d.asLine(), second, label = "%D"),
+                    levels = listOf(band(80.0), band(20.0)),
+                )
+            }
+            "tsi" -> IndicatorsExtB.trueStrengthIndex(close, n).let { tsi ->
+                pane(
+                    "TSI $n/13/13",
+                    ChartLine(tsi.tsi.asLine(), colour, label = "TSI"),
+                    ChartLine(tsi.signal.asLine(), second, label = "سیگنال"),
+                    levels = listOf(band(25.0), band(0.0, faint = true), band(-25.0)),
+                )
+            }
+            "aroon" -> IndicatorsExtB.aroon(high, low, n).let { aroon ->
+                pane(
+                    "Aroon $n",
+                    ChartLine(aroon.up.asLine(), 0xFF00B15C, label = "Aroon Up"),
+                    ChartLine(aroon.down.asLine(), 0xFFF6465D, label = "Aroon Down"),
+                    // Seventy and thirty rather than the eighty/twenty of an RSI: Aroon counts
+                    // bars since the extreme, and a reading above seventy means the window's high
+                    // was set in its most recent third.
+                    levels = listOf(band(70.0), band(50.0, faint = true), band(30.0)),
+                )
+            }
+            "dmi" -> IndicatorsExtB.directionalMovement(high, low, close, n).let { dmi ->
+                pane(
+                    "DMI $n",
+                    ChartLine(dmi.plusDi.asLine(), 0xFF00B15C, label = "+DI"),
+                    ChartLine(dmi.minusDi.asLine(), 0xFFF6465D, label = "−DI"),
+                    ChartLine(dmi.adx.asLine(), colour, widthDp = 0.9f, label = "ADX"),
+                    levels = listOf(band(25.0)),
+                )
+            }
+            "ppo" -> IndicatorsExtB.ppo(close).let { ppo ->
+                pane(
+                    "PPO 12/26/9",
+                    ChartLine(ppo.oscillator.asLine(), colour, label = "PPO"),
+                    ChartLine(ppo.signal.asLine(), second, label = "سیگنال"),
+                    levels = listOf(band(0.0, faint = true)),
+                    histogram = ChartLine(ppo.histogram.asLine(), colour),
+                )
+            }
+            "pvo" -> IndicatorsExtB.pvo(volume).let { pvo ->
+                pane(
+                    "PVO 12/26/9",
+                    ChartLine(pvo.oscillator.asLine(), colour, label = "PVO"),
+                    ChartLine(pvo.signal.asLine(), second, label = "سیگنال"),
+                    levels = listOf(band(0.0, faint = true)),
+                    histogram = ChartLine(pvo.histogram.asLine(), colour),
+                )
+            }
+            "ao" -> pane(
+                "Awesome Oscillator 5/34",
+                levels = listOf(band(0.0, faint = true)),
+                histogram = ChartLine(IndicatorsExtB.awesomeOscillator(high, low).asLine(), colour),
+            )
+            "mfi" -> pane(
+                "MFI $n",
+                ChartLine(IndicatorsExtB.moneyFlowIndex(high, low, close, volume, n).asLine(), colour),
+                levels = listOf(band(80.0), band(50.0, faint = true), band(20.0)),
+            )
+            "cmf" -> pane(
+                "CMF $n",
+                ChartLine(IndicatorsExtB.chaikinMoneyFlow(high, low, close, volume, n).asLine(), colour),
+                levels = listOf(band(0.0, faint = true)),
+            )
+            "dpo" -> pane(
+                "DPO $n",
+                ChartLine(IndicatorsExtC.detrendedPriceOscillator(close, n).asLine(), colour),
+                levels = listOf(band(0.0, faint = true)),
+            )
+            "kst" -> IndicatorsExtC.knowSureThing(close).let { kst ->
+                pane(
+                    "KST 10/15/20/30",
+                    ChartLine(kst.kst.asLine(), colour, label = "KST"),
+                    ChartLine(kst.signal.asLine(), second, label = "سیگنال"),
+                    levels = listOf(band(0.0, faint = true)),
+                )
+            }
+            "massindex" -> pane(
+                "Mass Index $n/9",
+                ChartLine(IndicatorsExtC.massIndex(high, low, n).asLine(), colour),
+                // The reversal bulge, which is the only thing the indicator is read for: it has to
+                // rise through 27 and then fall back below 26.5, and without both lines drawn the
+                // second half of that sentence is invisible.
+                levels = listOf(band(27.0), band(26.5, faint = true)),
+            )
+            "cmo" -> pane(
+                "CMO $n",
+                ChartLine(IndicatorsExtC.chandeMomentumOscillator(close, n).asLine(), colour),
+                levels = listOf(band(50.0), band(0.0, faint = true), band(-50.0)),
+            )
+            "coppock" -> pane(
+                "Coppock 14/11/10",
+                ChartLine(IndicatorsExtC.coppockCurve(close).asLine(), colour),
+                levels = listOf(band(0.0, faint = true)),
+            )
+            "netvolume" -> pane(
+                "Net Volume",
+                ChartLine(IndicatorsExtC.netVolume(close, volume).asLine(), colour),
+                levels = listOf(band(0.0, faint = true)),
+            )
+            "rvi" -> IndicatorsExtC.relativeVigorIndex(open, high, low, close, n).let { rvi ->
+                pane(
+                    "RVI $n",
+                    ChartLine(rvi.rvi.asLine(), colour, label = "RVI"),
+                    ChartLine(rvi.signal.asLine(), second, label = "سیگنال"),
+                    levels = listOf(band(0.0, faint = true)),
+                )
+            }
+            "woodiescci" -> IndicatorsExtC.woodiesCci(high, low, close, n).let { woodies ->
+                pane(
+                    "Woodies CCI $n/6",
+                    ChartLine(woodies.cci.asLine(), colour, label = "CCI $n"),
+                    ChartLine(woodies.turbo.asLine(), second, label = "Turbo 6"),
+                    levels = listOf(band(100.0), band(0.0, faint = true), band(-100.0)),
+                )
+            }
+            "correlation" -> {
+                // The one indicator here that is not a function of this symbol alone.
+                //
+                // With no second series loaded there is nothing to correlate against, and every
+                // available wrong answer is worse than none: zero would claim the two assets move
+                // independently, a flat line at one would claim they are the same bet, and either
+                // is a statement about a comparison the reader never made. So the pane comes back
+                // with its title and no line — and with a height of zero, so it costs no canvas
+                // and the chart degrades to nothing rather than to an empty strip.
+                val other = comparison?.values?.takeIf { it.size == close.size }
+                if (other == null) {
+                    ChartPane(title = "Correlation $n", heightRatio = 0f)
+                } else {
+                    pane(
+                        "Correlation $n · ${comparison.label}",
+                        ChartLine(
+                            IndicatorsExtC.correlationCoefficient(close, other, n).asLine(),
+                            comparison.colour,
+                            label = comparison.label,
+                        ),
+                        levels = listOf(band(0.5), band(0.0, faint = true), band(-0.5)),
+                    )
+                }
+            }
             else -> null
         }
     }
@@ -461,6 +729,133 @@ object ChartCatalog {
         val green = ((argb shr 8 and 0xFF) * 55 / 100) shl 8
         val blue = (argb and 0xFF) * 55 / 100
         return alpha or red or green or blue
+    }
+
+    /**
+     * A `DoubleArray` from the newer packs as a [Line].
+     *
+     * [IndicatorsExtB] and [IndicatorsExtC] hand back bare arrays with `Double.NaN` in the warm-up,
+     * because half of what they compute is fed to the other half and a presence mask is a place to
+     * lose a bar at every hand-off. This is the single edge where that convention is converted to
+     * the one the renderer reads, and it is the only place `isFinite` should appear on the way in:
+     * a NaN that survives into a [Line] is drawn as a real value at whatever `Double.NaN` maps to
+     * on the price axis, which is nowhere useful.
+     */
+    private fun DoubleArray.asLine(): Line = Line.of(size) { this[it].takeIf(Double::isFinite) }
+
+    /**
+     * One price repeated across every bar, so a horizontal level can be drawn as a [ChartLine].
+     *
+     * [PriceLevel] is the better shape for a level and is what [structureFor] returns, but
+     * [overlayFor]'s contract is a list of lines and the volume profile has to say three prices
+     * through it. Cheap enough at a few hundred bars, and honest: the value really is the same on
+     * every bar.
+     */
+    private fun flat(size: Int, price: Double): Line =
+        Line.of(size) { if (price.isFinite()) price else null }
+
+    /** The window the chop zone normalises its slope over. Fixed; see the note under [PERIODS]. */
+    private const val CHOP_ZONE_PERIOD = 30
+
+    /** How many price rows the volume profile indicator buckets the window into. */
+    private const val VOLUME_PROFILE_ROWS = 24
+
+    /**
+     * The chop zone's eight colours, steepest rise first and steepest fall last.
+     *
+     * `IndicatorsExtC.chopZone` returns a palette index and no palette, on purpose: the arithmetic
+     * has no business knowing what a colour is. So the ramp lives here, beside the option it
+     * belongs to, and this is what each index means:
+     *
+     * * `0` — rising at 5° or more. Strong uptrend.
+     * * `1` — rising between 2.14° and 5°.
+     * * `2` — rising between 0.71° and 2.14°.
+     * * `3` — rising by less than 0.71°: flat, tilted up. Chop.
+     * * `4` — falling by less than 0.71°: flat, tilted down. Chop.
+     * * `5` — falling between 0.71° and 2.14°.
+     * * `6` — falling between 2.14° and 5°.
+     * * `7` — falling at 5° or more. Strong downtrend.
+     *
+     * ### Why it is not red to green
+     *
+     * The original is, and roughly one man in twelve cannot read it. This ramp runs blue to orange
+     * instead — the axis that red/green deficiency leaves intact — and carries the same reading a
+     * second time in lightness: the two extremes are the darkest colours and the two chop buckets
+     * the palest. So the band still says «trending» versus «going nowhere» in greyscale, on a
+     * washed-out screen in sunlight, and to a reader who sees no difference between the ends of the
+     * red/green axis at all. Somebody who cannot tell rise from fall can still tell *chop* from
+     * *trend*, which is the one thing this indicator exists to say.
+     */
+    val CHOP_ZONE_COLOURS: List<Long> = listOf(
+        0xFF15427F, // 0 — steep rise: darkest blue.
+        0xFF2563EB, // 1
+        0xFF60A5FA, // 2
+        0xFFB6D4F2, // 3 — chop, tilted up: palest blue.
+        0xFFF0DCBE, // 4 — chop, tilted down: palest sand.
+        0xFFE0A45C, // 5
+        0xFFC2700C, // 6
+        0xFF7A3210, // 7 — steep fall: darkest orange.
+    )
+
+    /**
+     * The chop zone as one coloured mark per bar, hung under the low.
+     *
+     * Under rather than over, and at the low rather than at a value of its own, because the study
+     * has no value on the price axis at all — it is a verdict about the bar, and the only place a
+     * verdict belongs is against the bar it judges. Warm-up bars carry `-1` and are skipped rather
+     * than drawn in a neutral colour, which would read as a real "no trend" verdict.
+     */
+    private fun chopZoneMarks(series: CandleSeries): List<ChartMarker> {
+        val zones = IndicatorsExtC.chopZone(series.high, series.low, series.close, CHOP_ZONE_PERIOD)
+        return buildList {
+            for (index in zones.indices) {
+                val zone = zones[index]
+                if (zone !in CHOP_ZONE_COLOURS.indices) continue
+                add(
+                    ChartMarker(
+                        time = series.time[index],
+                        price = series.low[index],
+                        above = false,
+                        colour = CHOP_ZONE_COLOURS[zone],
+                        glyph = MarkerGlyph.CIRCLE,
+                    ),
+                )
+            }
+        }
+    }
+
+    /**
+     * The volume profile behind the `volumeprofile_ind` row, for a range of bars.
+     *
+     * Public because [overlayFor] cannot express what this indicator actually draws. A profile is a
+     * histogram measured across the price axis — one bar per price row, growing sideways from the
+     * edge — and every type [overlayFor] can return is one value per *bar*. So the option hands the
+     * chart the three prices the profile names and the renderer calls this for the rows themselves.
+     *
+     * Null where there is nothing to draw: an empty series, a feed with no volume column, or a
+     * window in which nothing traded. A profile of zeros would be drawn as equal bars at every
+     * price, which is a claim that the market traded evenly across its whole range.
+     */
+    fun volumeProfileFor(
+        series: CandleSeries,
+        fromIndex: Int = 0,
+        toIndex: Int = series.size - 1,
+        rows: Int = VOLUME_PROFILE_ROWS,
+    ): VolumeProfile? {
+        if (series.isEmpty || !series.hasVolume) return null
+        val profile = IndicatorsExtC.volumeProfile(
+            high = series.high,
+            low = series.low,
+            close = series.close,
+            open = series.open,
+            volume = series.volume,
+            fromIndex = fromIndex,
+            toIndex = toIndex,
+            rows = rows,
+        )
+        return profile.takeIf {
+            it.pocIndex >= 0 && it.valueAreaLow >= 0 && it.valueAreaHigh >= 0
+        }
     }
 
     /**
@@ -509,7 +904,51 @@ object ChartCatalog {
         "atr" to IndicatorPeriod(14),
         "adx" to IndicatorPeriod(14),
         "choppiness" to IndicatorPeriod(14),
+        // ── The third pack ──────────────────────────────────────────────────────────────
+        // On the price.
+        "vwma" to IndicatorPeriod(20),
+        "tema" to IndicatorPeriod(20),
+        "dema" to IndicatorPeriod(20),
+        "chandekroll" to IndicatorPeriod(10),
+        "volstop" to IndicatorPeriod(20),
+        // On their own scale. The lookback is the one that moves the reading; where a second
+        // number exists — Woodie's turbo six, the Mass Index's nine-bar smoothing, the Stochastic
+        // RSI's 3/3 — it is the method rather than the setting, and the label prints it so a
+        // reader can see it is fixed rather than merely absent.
+        "stochrsi" to IndicatorPeriod(14),
+        "tsi" to IndicatorPeriod(25),
+        "aroon" to IndicatorPeriod(14),
+        "dmi" to IndicatorPeriod(14),
+        "dpo" to IndicatorPeriod(20),
+        "cmo" to IndicatorPeriod(9),
+        "massindex" to IndicatorPeriod(25),
+        "rvi" to IndicatorPeriod(10),
+        "woodiescci" to IndicatorPeriod(14),
+        "mfi" to IndicatorPeriod(14),
+        "cmf" to IndicatorPeriod(20),
+        // Two bars is a correlation of exactly ±1 on any pair, which is arithmetic rather than a
+        // reading, so this one starts at five.
+        "correlation" to IndicatorPeriod(20, min = 5),
     )
+
+    /*
+     * Deliberately absent from the table above, and each for a stated reason rather than an
+     * oversight:
+     *
+     * `ppo`, `pvo` and `coppock` are three-parameter indicators in the same family as MACD, which
+     * is absent for exactly this reason — a stepper labelled "period" on a fast/slow/signal triple
+     * moves one third of the tool and the picture barely changes.
+     *
+     * `sar` has no lookback at all: its two settings are the acceleration step and its ceiling,
+     * both fractions, and an integer stepper cannot express either.
+     *
+     * `alligator`, `ao`, `kst` and `netvolume` are defined by fixed period sets — 13/8/5, 5/34,
+     * 10/15/20/30 — that are the indicator rather than a setting on it.
+     *
+     * `volumeprofile_ind` is parameterised by row count and window, not by a lookback, and
+     * `chopzone` by a thirty-bar normalisation window that changes the colours without changing
+     * what they mean. Both would be steppers a reader could move without learning anything.
+     */
 
     /** The lookback [id] can be given, or null where it has no single one. */
     fun periodOf(id: String): IndicatorPeriod? = PERIODS[id]
@@ -556,6 +995,9 @@ object ChartCatalog {
         period: Int? = null,
     ): List<ChartLine> {
         if (option.pane != IndicatorPane.PRICE || series.isEmpty) return emptyList()
+        // Same rule as [paneFor]: no volume column, no volume-weighted line. See
+        // [VOLUME_ONLY_INDICATORS] for why zero is not an acceptable substitute.
+        if (option.id in VOLUME_ONLY_INDICATORS && !series.hasVolume) return emptyList()
         val close = series.close
         val high = series.high
         val low = series.low
@@ -643,6 +1085,86 @@ object ChartCatalog {
                     ChartLine(band.basis, option.colour, widthDp = 0.9f),
                     ChartLine(band.lower, option.colour),
                 )
+            }
+
+            // ── The third pack's price-scale entries ──────────────────────────────────────
+            "sar" -> IndicatorsExtB.parabolicSar(high, low).let { sar ->
+                // Broken where the stop changes sides, for the reason SuperTrend is: the SAR jumps
+                // from under the price to over it in one bar, and a pen carried across that jump
+                // draws a vertical stroke through the candles that never happened. The values are
+                // untouched; only the join is removed.
+                val split = Line.of(series.size) { index ->
+                    val value = sar[index]
+                    if (!value.isFinite()) return@of null
+                    val previous = if (index > 0) sar[index - 1] else Double.NaN
+                    val flipped = previous.isFinite() &&
+                        (value > close[index]) != (previous > close[index - 1])
+                    if (flipped) null else value
+                }
+                listOf(ChartLine(split, option.colour, widthDp = 1.4f, label = "SAR 0.02/0.2"))
+            }
+            "alligator" -> IndicatorsExtB.alligator(high, low).let { gator ->
+                // The three arrays already carry their 8/5/3-bar forward displacement, so nothing
+                // here shifts them again. Shifting twice is invisible on screen — the lines still
+                // fan and still cross — and it is the failure this comment exists to prevent.
+                listOf(
+                    ChartLine(gator.jaw.asLine(), 0xFF6E8BE0, label = "Alligator"),
+                    ChartLine(gator.teeth.asLine(), 0xFFF6465D),
+                    ChartLine(gator.lips.asLine(), 0xFF00B15C),
+                )
+            }
+            "vwma" -> listOf(
+                ChartLine(
+                    IndicatorsExtB.vwma(close, series.volume, n).asLine(),
+                    option.colour,
+                    label = "VWMA $n",
+                ),
+            )
+            "tema" -> listOf(
+                ChartLine(IndicatorsExtB.tema(close, n).asLine(), option.colour, label = "TEMA $n"),
+            )
+            "dema" -> listOf(
+                ChartLine(IndicatorsExtB.dema(close, n).asLine(), option.colour, label = "DEMA $n"),
+            )
+            "chandekroll" -> IndicatorsExtC.chandeKrollStop(high, low, close, n).let { stop ->
+                // Both stops are drawn, in the colours of the side each protects, because which one
+                // matters depends on a position this module knows nothing about.
+                listOf(
+                    ChartLine(stop.longStop.asLine(), 0xFF00B15C, label = "Chande Kroll $n"),
+                    ChartLine(stop.shortStop.asLine(), 0xFFF6465D),
+                )
+            }
+            "volstop" -> IndicatorsExtC.volatilityStop(high, low, close, n).let { result ->
+                // Broken at each flip, exactly as the SAR is, and for the same reason. The side is
+                // the thing that changes: `isLong` turning over is the stop crossing the candles.
+                val split = Line.of(series.size) { index ->
+                    val value = result.stop[index]
+                    if (!value.isFinite()) return@of null
+                    val flipped = index > 0 &&
+                        result.stop[index - 1].isFinite() &&
+                        result.isLong[index] != result.isLong[index - 1]
+                    if (flipped) null else value
+                }
+                listOf(ChartLine(split, option.colour, widthDp = 1.4f, label = "Volatility Stop $n"))
+            }
+            "volumeprofile_ind" -> volumeProfileFor(series).let { profile ->
+                // Three prices, not a histogram.
+                //
+                // The profile itself is a set of bars measured *across* the price axis, and a
+                // `ChartLine` is one value per bar — the wrong shape entirely. What a line can
+                // carry honestly is the three prices the profile names: the point of control and
+                // the two edges of the value area, each drawn as a level that runs the width of the
+                // chart. A renderer that wants the bars themselves calls [volumeProfileFor].
+                if (profile == null) {
+                    emptyList()
+                } else {
+                    val control = (profile.rowLow[profile.pocIndex] + profile.rowHigh[profile.pocIndex]) / 2
+                    listOf(
+                        ChartLine(flat(series.size, control), option.colour, widthDp = 1.4f, label = "POC"),
+                        ChartLine(flat(series.size, profile.rowHigh[profile.valueAreaHigh]), option.colour, widthDp = 0.9f, dashed = true),
+                        ChartLine(flat(series.size, profile.rowLow[profile.valueAreaLow]), option.colour, widthDp = 0.9f, dashed = true),
+                    )
+                }
             }
             else -> emptyList()
         }

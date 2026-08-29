@@ -18,15 +18,18 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,19 +54,33 @@ import com.coinepro.core.designsystem.R as DesignR
 /**
  * The drawing tools.
  *
- * Fifty-two of them, which is the number that decides the whole layout. Three arrangements were
- * available and only one survives contact with a phone:
+ * Ninety-one of them in twelve groups, which is the number that decides the whole layout. Three
+ * arrangements were available and only one survives contact with a phone:
  *
- * * The web terminal's **vertical rail** becomes a two-screen scroll of 24dp targets here. It works
+ * * The web terminal's **vertical rail** becomes a four-screen scroll of 24dp targets here. It works
  *   on a desktop because a mouse is precise and the rail sits permanently beside the chart; neither
  *   is true on a phone.
- * * An **accordion** of eleven groups hides ten group names behind a tap and turns finding a tool
+ * * An **accordion** of twelve groups hides eleven group names behind a tap and turns finding a tool
  *   into a two-step search — open the right drawer, then look inside it — while leaving the reader
  *   wondering what is collapsed.
  * * A **chip row over a grid** keeps every group name visible, costs one tap, and carries a search
  *   field for the reader who knows the name. That is this.
  *
- * The search earns its place: with fifty-two tools, typing «فیب» beats any amount of scanning, and
+ * Three things were added when the list grew from fifty-two to ninety-one, and each of them exists
+ * because that grid stopped being scannable at about sixty:
+ *
+ * * A **favourites row** the reader fills themselves. Nobody uses ninety-one tools; everybody uses
+ *   six, and which six is personal enough that no default is right. The star acts on whatever is
+ *   armed, so pinning is one tap after using a tool rather than a mode of its own.
+ * * A **pinned group heading**, so a reader four screens down still knows whether they are looking
+ *   at Gann or at Elliott. `LazyVerticalGrid` has no sticky header of its own, so the heading is a
+ *   strip above the grid that follows whichever row is at the top — the same effect, and it does
+ *   not fight the grid's spans.
+ * * The **volume group disappears entirely** on a feed that reports no volume. Greying it out would
+ *   be honest too, but three permanently dead cells in a rail this long is three cells a reader
+ *   scans past forever; the group's own «؟» is where the explanation belongs.
+ *
+ * The search earns its place: with ninety-one tools, typing «فیب» beats any amount of scanning, and
  * it is the only path that works for somebody who knows a tool by name but not by glyph.
  */
 @Composable
@@ -72,21 +89,63 @@ fun ToolRail(
     onSelect: (DrawingTool) -> Unit,
     modifier: Modifier = Modifier,
     onHelp: ((String) -> Unit)? = null,
+    /**
+     * Whether the feed reports volume at all.
+     *
+     * False on the MT5 forex side, and the whole volume group is dropped rather than offered as
+     * three tools that would draw nothing.
+     */
+    hasVolume: Boolean = true,
+    /** Tool ids pinned to the top of the rail. See [DrawingState.favourites]. */
+    favourites: Set<String> = emptySet(),
+    onToggleFavourite: ((DrawingTool) -> Unit)? = null,
+    magnet: MagnetMode = MagnetMode.OFF,
+    /** Advance the magnet one step: off, weak, strong. Null hides the action. */
+    onCycleMagnet: (() -> Unit)? = null,
+    keepDrawing: Boolean = false,
+    onKeepDrawing: ((Boolean) -> Unit)? = null,
+    lockedAll: Boolean = false,
+    onLockAll: ((Boolean) -> Unit)? = null,
+    hidden: Set<DrawingLayer> = emptySet(),
+    onHide: ((DrawingLayer, Boolean) -> Unit)? = null,
+    onHideAll: ((Boolean) -> Unit)? = null,
 ) {
     var group by remember { mutableStateOf<ToolGroup?>(null) }
     var query by remember { mutableStateOf("") }
+    val gridState = rememberLazyGridState()
+
+    val catalogue = remember(hasVolume) {
+        if (hasVolume) DrawingTools.ALL else DrawingTools.ALL.filterNot { it.group == ToolGroup.VOLUME }
+    }
+    val offered = remember(catalogue) { catalogue.map { it.id }.toSet() }
 
     // Typing overrides the chips rather than intersecting with them. Somebody who types «کمان»
     // wants the arc tool — not "the arc tool if it happens to be in the group I last tapped". An
     // empty result the reader cannot explain is the worst outcome of combining two filters quietly.
     val searching = query.isNotBlank()
     val tools = when {
-        searching -> DrawingTools.matching(query)
-        group != null -> DrawingTools.inGroup(group!!)
-        else -> DrawingTools.ALL
+        searching -> DrawingTools.matching(query).filter { it.id in offered }
+        group != null -> DrawingTools.inGroup(group!!).filter { it.id in offered }
+        else -> catalogue
+    }
+    val grouped = !searching && group == null
+    val rows = remember(tools, grouped) { railRows(tools, grouped) }
+    val heading by remember(rows) {
+        derivedStateOf { rows.getOrNull(gridState.firstVisibleItemIndex)?.group }
     }
 
     Column(modifier = modifier.fillMaxWidth().background(CoineProColors.Surface)) {
+        RailActions(
+            magnet = magnet,
+            onCycleMagnet = onCycleMagnet,
+            keepDrawing = keepDrawing,
+            onKeepDrawing = onKeepDrawing,
+            lockedAll = lockedAll,
+            onLockAll = onLockAll,
+            hidden = hidden,
+            onHide = onHide,
+            onHideAll = onHideAll,
+        )
         CoineProSheetSearch(
             value = query,
             onValueChange = { query = it },
@@ -94,9 +153,17 @@ fun ToolRail(
             modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
         )
         Spacer(Modifier.height(CoineProSpacing.OneHalf))
+        if (onToggleFavourite != null || favourites.isNotEmpty()) {
+            FavouritesRow(
+                favourites = catalogue.filter { it.id in favourites },
+                armed = selected?.let { id -> catalogue.firstOrNull { it.id == id } },
+                onSelect = onSelect,
+                onToggleFavourite = onToggleFavourite,
+            )
+        }
         if (!searching) {
             CoineProChipRow(
-                options = DrawingTools.GROUPS.map { candidate ->
+                options = DrawingTools.GROUPS.filter { it != ToolGroup.VOLUME || hasVolume }.map { candidate ->
                     CoineProChip(
                         id = candidate.name,
                         label = candidate.label,
@@ -115,8 +182,26 @@ fun ToolRail(
             return@Column
         }
 
-        val grouped = !searching && group == null
+        // The pinned heading. Only when the list actually spans groups: printing "فیبوناچی" over a
+        // grid the reader just filtered *to* فیبوناچی is a line of noise.
+        if (grouped) {
+            heading?.let { current ->
+                Text(
+                    text = current.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextSecondary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(CoineProColors.SurfaceElevated)
+                        .padding(
+                            horizontal = CoineProSpacing.Gutter,
+                            vertical = CoineProSpacing.Half,
+                        ),
+                )
+            }
+        }
         LazyVerticalGrid(
+            state = gridState,
             columns = GridCells.Fixed(TOOLS_ACROSS),
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(
@@ -126,16 +211,14 @@ fun ToolRail(
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
             verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         ) {
-            // A group heading only when the list actually spans groups. Printing "فیبوناچی" over a
-            // grid the reader just filtered *to* فیبوناچی is a line of noise.
-            var lastGroup: ToolGroup? = null
-            for (tool in tools) {
-                if (grouped && tool.group != lastGroup) {
-                    lastGroup = tool.group
-                    val heading = tool.group
-                    item(key = "h-${heading.name}", span = { GridItemSpan(TOOLS_ACROSS) }) {
+            for (row in rows) {
+                when (row) {
+                    is RailRow.Heading -> item(
+                        key = "h-${row.group.name}",
+                        span = { GridItemSpan(TOOLS_ACROSS) },
+                    ) {
                         Text(
-                            text = heading.label,
+                            text = row.group.label,
                             style = MaterialTheme.typography.labelSmall,
                             color = CoineProColors.TextMuted,
                             modifier = Modifier.padding(
@@ -144,16 +227,206 @@ fun ToolRail(
                             ),
                         )
                     }
-                }
-                item(key = tool.id) {
-                    ToolCell(
-                        tool = tool,
-                        selected = tool.id == selected,
-                        onClick = { onSelect(tool) },
-                        onHelp = tool.helpId?.let { id -> onHelp?.let { { it(id) } } },
-                    )
+                    is RailRow.Cell -> item(key = row.tool.id) {
+                        ToolCell(
+                            tool = row.tool,
+                            selected = row.tool.id == selected,
+                            favourite = row.tool.id in favourites,
+                            onClick = { onSelect(row.tool) },
+                            onHelp = row.tool.helpId?.let { id -> onHelp?.let { { it(id) } } },
+                        )
+                    }
                 }
             }
+        }
+    }
+}
+
+/**
+ * One entry in the flat list the grid walks.
+ *
+ * Flattened before the grid rather than decided inside it, for one reason: the pinned heading has to
+ * name the group of whatever row is at the top of the viewport, and that means asking "what is at
+ * index n" — a question a `for` loop emitting items into a lazy scope cannot answer.
+ */
+private sealed interface RailRow {
+    val group: ToolGroup
+
+    data class Heading(override val group: ToolGroup) : RailRow
+
+    data class Cell(val tool: DrawingTool) : RailRow {
+        override val group: ToolGroup get() = tool.group
+    }
+}
+
+private fun railRows(tools: List<DrawingTool>, grouped: Boolean): List<RailRow> {
+    val rows = ArrayList<RailRow>(tools.size + DrawingTools.GROUPS.size)
+    var last: ToolGroup? = null
+    for (tool in tools) {
+        if (grouped && tool.group != last) {
+            last = tool.group
+            rows += RailRow.Heading(tool.group)
+        }
+        rows += RailRow.Cell(tool)
+    }
+    return rows
+}
+
+/**
+ * The modes that sit above the tool grid rather than inside it.
+ *
+ * Magnet, keep-drawing, lock-all and the four visibility switches are not tools — arming them draws
+ * nothing — and putting them in the grid beside ninety-one things that do draw is how a reader ends
+ * up with a trend line they did not ask for. They are actions, they live in an action row, and the
+ * row disappears entirely when the caller offers none of them.
+ */
+@Composable
+private fun RailActions(
+    magnet: MagnetMode,
+    onCycleMagnet: (() -> Unit)?,
+    keepDrawing: Boolean,
+    onKeepDrawing: ((Boolean) -> Unit)?,
+    lockedAll: Boolean,
+    onLockAll: ((Boolean) -> Unit)?,
+    hidden: Set<DrawingLayer>,
+    onHide: ((DrawingLayer, Boolean) -> Unit)?,
+    onHideAll: ((Boolean) -> Unit)?,
+) {
+    if (onCycleMagnet == null && onKeepDrawing == null && onLockAll == null &&
+        onHide == null && onHideAll == null
+    ) {
+        return
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = CoineProSpacing.Half),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        onCycleMagnet?.let { cycle ->
+            RailAction(
+                icon = DesignR.drawable.tv_magnet,
+                label = when (magnet) {
+                    MagnetMode.OFF -> "آهنربا خاموش"
+                    MagnetMode.WEAK -> "آهنربای ضعیف"
+                    MagnetMode.STRONG -> "آهنربای قوی"
+                },
+                tint = when (magnet) {
+                    MagnetMode.OFF -> null
+                    MagnetMode.WEAK -> CoineProColors.TextPrimary
+                    MagnetMode.STRONG -> CoineProColors.Accent
+                },
+                onClick = cycle,
+            )
+        }
+        onKeepDrawing?.let { set ->
+            RailAction(
+                icon = DesignR.drawable.tv_tool_keepdrawing,
+                label = if (keepDrawing) "ماندن روی ابزار: روشن" else "ماندن روی ابزار: خاموش",
+                tint = if (keepDrawing) CoineProColors.Accent else null,
+            ) { set(!keepDrawing) }
+        }
+        onLockAll?.let { set ->
+            RailAction(
+                icon = if (lockedAll) DesignR.drawable.tv_lock else DesignR.drawable.tv_unlock,
+                label = if (lockedAll) "باز کردن قفل همه" else "قفل کردن همه",
+                tint = if (lockedAll) CoineProColors.Gold else null,
+            ) { set(!lockedAll) }
+        }
+        Spacer(Modifier.weight(1f))
+        onHide?.let { set ->
+            LayerAction(DesignR.drawable.tv_pencil, "رسم‌ها", DrawingLayer.DRAWINGS, hidden, set)
+            LayerAction(DesignR.drawable.tv_chart_line, "اندیکاتورها", DrawingLayer.INDICATORS, hidden, set)
+            LayerAction(DesignR.drawable.tv_tool_longshort, "موقعیت‌ها", DrawingLayer.POSITIONS, hidden, set)
+        }
+        onHideAll?.let { set ->
+            val allHidden = hidden.size == DrawingLayer.entries.size
+            RailAction(
+                icon = if (allHidden) DesignR.drawable.icon_eye_slash else DesignR.drawable.icon_eye,
+                label = if (allHidden) "نمایش همه" else "پنهان کردن همه",
+                tint = if (allHidden) CoineProColors.TextDisabled else null,
+            ) { set(!allHidden) }
+        }
+    }
+}
+
+/** One layer's visibility switch. Dimmed when that layer is hidden, which is the whole state. */
+@Composable
+private fun LayerAction(
+    icon: Int,
+    name: String,
+    layer: DrawingLayer,
+    hidden: Set<DrawingLayer>,
+    onHide: (DrawingLayer, Boolean) -> Unit,
+) {
+    val isHidden = layer in hidden
+    RailAction(
+        icon = icon,
+        label = if (isHidden) "نمایش $name" else "پنهان کردن $name",
+        tint = if (isHidden) CoineProColors.TextDisabled else null,
+    ) { onHide(layer, !isHidden) }
+}
+
+/**
+ * The reader's own shortlist, above everything else.
+ *
+ * The star acts on the **armed** tool rather than opening a picker, because the moment a reader
+ * knows a tool is worth pinning is the moment they have just used it. Long-pressing a pinned tool
+ * takes it back out, which is the only other thing this row has to do.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun FavouritesRow(
+    favourites: List<DrawingTool>,
+    armed: DrawingTool?,
+    onSelect: (DrawingTool) -> Unit,
+    onToggleFavourite: ((DrawingTool) -> Unit)?,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = CoineProSpacing.Half, end = CoineProSpacing.Half),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (favourites.isEmpty()) {
+            Text(
+                text = "ابزار انتخاب‌شده را با ستاره اینجا سنجاق کن.",
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+                modifier = Modifier.weight(1f).padding(horizontal = CoineProSpacing.One),
+            )
+        } else {
+            LazyRow(modifier = Modifier.weight(1f)) {
+                items(favourites.size, key = { "fav-" + favourites[it].id }) { index ->
+                    val tool = favourites[index]
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CoineProShapes.small)
+                            .combinedClickable(
+                                onClick = { onSelect(tool) },
+                                onLongClick = onToggleFavourite?.let { { it(tool) } },
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(tool.icon),
+                            contentDescription = tool.label,
+                            modifier = Modifier.size(20.dp),
+                            tint = CoineProColors.TextSecondary,
+                        )
+                    }
+                }
+            }
+        }
+        onToggleFavourite?.let { toggle ->
+            val pinned = armed != null && favourites.any { it.id == armed.id }
+            RailAction(
+                icon = if (pinned) DesignR.drawable.icon_filled_star else DesignR.drawable.icon_star,
+                label = if (pinned) "برداشتن از برگزیده‌ها" else "افزودن به برگزیده‌ها",
+                tint = if (pinned) CoineProColors.Gold else null,
+                enabled = armed != null,
+            ) { armed?.let(toggle) }
         }
     }
 }
@@ -163,6 +436,7 @@ fun ToolRail(
 private fun ToolCell(
     tool: DrawingTool,
     selected: Boolean,
+    favourite: Boolean,
     onClick: () -> Unit,
     onHelp: (() -> Unit)?,
 ) {
@@ -188,7 +462,14 @@ private fun ToolCell(
             painter = painterResource(tool.icon),
             contentDescription = null,
             modifier = Modifier.size(24.dp),
-            tint = if (selected) CoineProColors.Accent else CoineProColors.TextSecondary,
+            tint = when {
+                selected -> CoineProColors.Accent
+                // A pinned tool is marked in the grid as well as listed at the top, so a reader
+                // scrolling past one can see it is already on their shortlist and does not pin it
+                // twice looking for the row to change.
+                favourite -> CoineProColors.Gold
+                else -> CoineProColors.TextSecondary
+            },
         )
         Spacer(Modifier.height(CoineProSpacing.Half))
         Text(

@@ -37,6 +37,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.coinepro.app.alerts.InAppAlertBus
 import com.coinepro.app.alerts.LocalAlertScheduler
 import com.coinepro.app.auth.GoogleSignInClient
 import com.coinepro.app.auth.GoogleSignInOutcome
@@ -65,6 +66,8 @@ import com.coinepro.core.datastore.ActivePlatformStore
 import com.coinepro.core.datastore.ChartLayout
 import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayoutStore
+import com.coinepro.core.datastore.SymbolChartStateStore
+import com.coinepro.core.datastore.DrawingTemplateStore
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
@@ -153,13 +156,17 @@ import com.coinepro.feature.admin.AdminScreen
 import com.coinepro.feature.ai.AiStudioScreen
 import com.coinepro.feature.aiassistant.AiAssistantScreen
 import com.coinepro.feature.aivision.AiVisionScreen
-import com.coinepro.feature.alerts.AlertsScreen
+import com.coinepro.feature.alerts.AlertCenterScreen
+import com.coinepro.feature.alerts.AlertsController
 import com.coinepro.feature.auth.AuthScreen
 import com.coinepro.feature.auth.EmailAuthScreen
 import com.coinepro.feature.calendar.EconomicCalendarScreen
 import com.coinepro.feature.chart.ChartController
+import com.coinepro.feature.chart.ChartPanesScreen
 import com.coinepro.feature.chart.ChartScreen
 import com.coinepro.feature.chart.ChartStudioScreen
+import com.coinepro.feature.chart.ChartWorkspaceStore
+import com.coinepro.feature.chart.WatchlistQuote
 import com.coinepro.feature.connections.ConnectionsScreen
 import com.coinepro.feature.copytrade.CopyTradeScreen
 import com.coinepro.feature.execution.ExecutionScreen
@@ -169,7 +176,13 @@ import com.coinepro.feature.guest.GuestNewsScreen
 import com.coinepro.feature.guest.GuestScreen
 import com.coinepro.feature.home.HomeBriefing
 import com.coinepro.feature.home.HomePortfolio
+import com.coinepro.feature.heatmap.HeatmapScreen
 import com.coinepro.feature.home.HomeScreen
+import com.coinepro.feature.portfolio.PortfolioReportScreen
+import com.coinepro.feature.screener.CandleScreenerBarSource
+import com.coinepro.feature.screener.ScreenerController
+import com.coinepro.feature.screener.ScreenerScreen
+import com.coinepro.feature.screener.ScreenerStore
 import com.coinepro.feature.home.HomeSubscription
 import com.coinepro.feature.home.toHomeBriefing
 import com.coinepro.feature.home.toHomePortfolio
@@ -229,9 +242,38 @@ private const val PAPER_TRADE_ROUTE = "paper-trade"
  * still land — what changed is that they are reached from Home rather than from the bar.
  */
 private const val TOOLS_ROUTE = "tools"
+
+/**
+ * The market heat map.
+ *
+ * No account needed and none asked for: it is drawn from the public catalogue, which is the same
+ * feed a guest's own home screen already reads.
+ */
+private const val HEATMAP_ROUTE = "market/heatmap"
+
+/**
+ * The screener: every market the catalogue carries, filtered by what it is doing.
+ *
+ * Guest-safe like the heat map, and for the same reason — it is the public catalogue plus the
+ * public quote feed, neither of which needs an account.
+ */
+private const val SCREENER_ROUTE = "screener"
+
+/** The portfolio's own report: the curve, the attribution, the month matrix and the export. */
+private const val PORTFOLIO_REPORT_ROUTE = "portfolio-report"
 private const val ACTIVITY_ROUTE = "activity"
 private const val SCRIPT_PATTERN = "script/{symbol}"
 private const val STUDIO_PATTERN = "chart/{symbol}/studio"
+
+/**
+ * Two charts, one above the other, on the symbol the reader split from.
+ *
+ * A sibling of the studio's route rather than a mode flag on the chart's, because it is a
+ * different screen with a different back stack entry: leaving it must put the reader back on the
+ * single chart they came from, and a flag on `chart/{symbol}` would have made "back" mean
+ * "close the app" for anyone who arrived here first.
+ */
+private const val PANES_PATTERN = "chart/{symbol}/panes"
 private fun signalDetailRoute(signalId: Long) = "signal/$signalId"
 private fun executionRoute(signalId: Long) = "execution/$signalId"
 
@@ -252,6 +294,9 @@ private fun scriptRoute(symbol: String) = "script/" + Uri.encode(symbol)
 
 /** The chart's working surface, on a symbol. */
 private fun studioRoute(symbol: String) = "chart/" + Uri.encode(symbol) + "/studio"
+
+/** The two-chart screen, on the symbol its upper pane opens with. */
+private fun panesRoute(symbol: String) = "chart/" + Uri.encode(symbol) + "/panes"
 
 /**
  * Which symbol the studio opens on when it was not reached from a chart.
@@ -286,6 +331,7 @@ private fun defaultScriptSymbol(platform: MarketPlatform, watchlist: List<String
 private val SELF_TITLED: Set<String> = setOf(
     CHART_PATTERN,
     STUDIO_PATTERN,
+    PANES_PATTERN,
     SCRIPT_PATTERN,
     SIGNAL_DETAIL_PATTERN,
     PORTFOLIO_ROUTE,
@@ -296,6 +342,8 @@ private val SELF_TITLED: Set<String> = setOf(
     PROFILE_ROUTE,
     NOTIFICATIONS_ROUTE,
     MEMBERSHIP_ROUTE,
+    HEATMAP_ROUTE,
+    SCREENER_ROUTE,
 )
 
 private fun accentFor(route: String?): PageAccent = when (route) {
@@ -307,6 +355,9 @@ private fun accentFor(route: String?): PageAccent = when (route) {
     AI_ASSISTANT_ROUTE,
     SCRIPT_PATTERN,
     STUDIO_PATTERN,
+    PANES_PATTERN,
+    HEATMAP_ROUTE,
+    SCREENER_ROUTE,
     AppDestination.MARKETS.route,
     AppDestination.CHART.route,
     AppDestination.AI.route,
@@ -339,11 +390,30 @@ fun CoineProApp(
     watchlistStore: WatchlistStore,
     chartLayoutStore: ChartLayoutStore,
     chartDrawingStore: ChartDrawingStore,
+    /** Where each symbol's own chart settings live. See the Hilt provider for why it is separate. */
+    symbolChartStateStore: SymbolChartStateStore,
+    /**
+     * The reader's saved per-tool drawing styles, for the chart and the studio both.
+     *
+     * Handed to the screens as the store rather than as a list, because they read templates for
+     * the armed tool and for the drawing being edited — two queries that change as the reader
+     * works, and hoisting either would put the screen's own state up here.
+     */
+    drawingTemplateStore: DrawingTemplateStore,
+    /**
+     * How the chart screen itself is arranged: the split with the watchlist, and what the two
+     * panes tie together. Without it a drag on the divider is forgotten the moment the chart is
+     * left, and the second pane opens on nothing every time.
+     */
+    chartWorkspaceStore: ChartWorkspaceStore,
+    /** The reader's saved screens. One file for both platforms — a filter is not per backend. */
+    screenerStore: ScreenerStore,
     journalController: JournalController,
     paperTradeController: PaperTradeController,
     scriptController: ScriptController,
     marketDataControllers: Map<MarketPlatform, MarketDataController>,
     marketSearchControllers: Map<MarketPlatform, MarketSearchController>,
+    screenerControllers: Map<MarketPlatform, ScreenerController>,
     candleGateways: Map<MarketPlatform, CandleGateway>,
     portfolioControllers: Map<MarketPlatform, PortfolioController>,
     academyController: AcademyController,
@@ -358,6 +428,17 @@ fun CoineProApp(
     activePlatformStore: ActivePlatformStore,
     signalControllers: Map<MarketPlatform, SignalController>,
     notificationControllers: Map<MarketPlatform, NotificationController>,
+    /** The alert centre's own controller. Device-local, so one for both platforms. */
+    alertsController: AlertsController,
+    /**
+     * Firings offered to whatever is on screen, for the reader who chose «in the app» as a channel.
+     *
+     * Collected in the shell rather than by the alerts screen, because the whole point of the
+     * channel is a reader who is looking at something else — usually the chart of the very symbol
+     * that just moved. See [InAppAlertBus] for why an uncollected firing must not be recorded as
+     * delivered.
+     */
+    inAppAlerts: InAppAlertBus,
     executionControllers: Map<MarketPlatform, ExecutionController>,
     copyTradeControllers: Map<MarketPlatform, CopyTradeController>,
     aiSignalControllers: Map<MarketPlatform, AiSignalController>,
@@ -407,6 +488,7 @@ fun CoineProApp(
     val session = sessionStates[activePlatform] ?: SessionState.Loading
     val marketDataController = marketDataControllers.getValue(activePlatform)
     val marketSearchController = marketSearchControllers.getValue(activePlatform)
+    val screenerController = screenerControllers.getValue(activePlatform)
     val marketState by marketDataController.state.collectAsStateWithLifecycle()
     // The account reads follow the same rule as the feed: one platform at a time, and the balance
     // on screen always belongs to the backend named above it.
@@ -455,7 +537,7 @@ fun CoineProApp(
     }
     val notificationSettings by notificationSettingsStore.settings
         .collectAsStateWithLifecycle(initialValue = NotificationSettings())
-    val chartLayouts by chartLayoutStore.layouts.collectAsStateWithLifecycle(initialValue = emptyList())
+    val chartLayouts by chartLayoutStore.layouts().collectAsStateWithLifecycle(initialValue = emptyList())
 
     val capabilities by platformCapabilities.state.collectAsStateWithLifecycle()
     // What each deployment offers. Read once on sign-in: it is server configuration, not live
@@ -695,9 +777,14 @@ fun CoineProApp(
                 membershipController = membershipController,
                 marketState = marketState,
                 marketSearchController = marketSearchController,
+                screenerController = screenerController,
                 candleGateway = candleGateways.getValue(activePlatform),
                 candleCache = candleCache,
                 chartDrawingStore = chartDrawingStore,
+                chartLayoutStore = chartLayoutStore,
+                symbolChartStateStore = symbolChartStateStore,
+                drawingTemplateStore = drawingTemplateStore,
+                chartWorkspaceStore = chartWorkspaceStore,
                 portfolioController = portfolioControllers.getValue(activePlatform),
                 academyController = academyController,
                 terminalController = terminalController,
@@ -710,10 +797,13 @@ fun CoineProApp(
                 portfolio = portfolioState.toHomePortfolio(),
                 subscription = current.entitlement.toHomeSubscription(),
                 watchlist = watchlist,
+                watchlistStore = watchlistStore,
                 onToggleWatch = { symbol -> scope.launch { watchlistStore.toggle(symbol) } },
                 onRefreshAccount = accountController::refresh,
                 signalController = signalController,
                 notificationController = notificationController,
+                alertsController = alertsController,
+                inAppAlerts = inAppAlerts,
                 executionController = executionController,
                 copyTradeController = copyTradeController,
                 aiSignalController = aiSignalController,
@@ -736,7 +826,7 @@ fun CoineProApp(
                 scriptController = scriptController,
                 chartLayouts = chartLayouts,
                 onSaveLayout = { layout -> scope.launch { chartLayoutStore.save(layout) } },
-                onDeleteLayout = { name -> scope.launch { chartLayoutStore.delete(name) } },
+                onDeleteLayout = { id -> scope.launch { chartLayoutStore.delete(id) } },
                 onSignalLaunchConsumed = onSignalLaunchConsumed,
                 onActivityLaunchConsumed = onActivityLaunchConsumed,
                 onRequestNotificationPermission = onRequestNotificationPermission,
@@ -822,6 +912,20 @@ fun CoineProApp(
                     val guestSearch = remember(guestCatalog, scope) {
                         MarketSearchController(gateway = guestCatalog, scope = scope)
                     }
+                    // The guest's own screener, on the guest's own catalogue and candles. The
+                    // signed-in one reads authenticated routes, which for a guest is a 401 worded
+                    // as an outage over a screen that needs no account at all. No live quote feed
+                    // here — the catalogue's prices simply do not tick, which is the honest
+                    // degradation rather than a broken screen. Saved screens are the same file,
+                    // because a filter belongs to the phone rather than to a session.
+                    val guestScreener = remember(guestCatalog, guestCandles, screenerStore, scope) {
+                        ScreenerController(
+                            gateway = guestCatalog,
+                            scope = scope,
+                            barSource = CandleScreenerBarSource(guestCandles),
+                            store = screenerStore,
+                        )
+                    }
                     MainShell(
                         guest = true,
                         profile = profile,
@@ -844,9 +948,14 @@ fun CoineProApp(
                         // their markets list reads the catalogue below.
                         marketState = MarketDataState(),
                         marketSearchController = guestSearch,
+                        screenerController = guestScreener,
                         candleGateway = guestCandles,
                         candleCache = candleCache,
                         chartDrawingStore = chartDrawingStore,
+                        chartLayoutStore = chartLayoutStore,
+                        symbolChartStateStore = symbolChartStateStore,
+                        drawingTemplateStore = drawingTemplateStore,
+                        chartWorkspaceStore = chartWorkspaceStore,
                         portfolioController = portfolioControllers.getValue(activePlatform),
                         academyController = academyController,
                         terminalController = terminalController,
@@ -861,10 +970,13 @@ fun CoineProApp(
                         portfolio = null,
                         subscription = null,
                         watchlist = watchlist,
+                        watchlistStore = watchlistStore,
                         onToggleWatch = { symbol -> scope.launch { watchlistStore.toggle(symbol) } },
                         onRefreshAccount = {},
                         signalController = signalController,
                         notificationController = notificationController,
+                        alertsController = alertsController,
+                        inAppAlerts = inAppAlerts,
                         executionController = executionController,
                         copyTradeController = copyTradeController,
                         aiSignalController = aiSignalController,
@@ -885,7 +997,7 @@ fun CoineProApp(
                         scriptController = scriptController,
                         chartLayouts = chartLayouts,
                         onSaveLayout = { layout -> scope.launch { chartLayoutStore.save(layout) } },
-                        onDeleteLayout = { name -> scope.launch { chartLayoutStore.delete(name) } },
+                        onDeleteLayout = { id -> scope.launch { chartLayoutStore.delete(id) } },
                         onSignalLaunchConsumed = onSignalLaunchConsumed,
                         onActivityLaunchConsumed = onActivityLaunchConsumed,
                         onRequestNotificationPermission = onRequestNotificationPermission,
@@ -997,11 +1109,31 @@ private fun MainShell(
     membershipController: MembershipController,
     marketState: MarketDataState,
     marketSearchController: MarketSearchController,
+    /** The screener for the platform on screen. Its saved screens are shared across both. */
+    screenerController: ScreenerController,
     /** The candle source for the platform on screen. See the chart route below. */
     candleGateway: CandleGateway,
     /** The bars already held, so a chart draws before it fetches. */
     candleCache: CandleCache,
     chartDrawingStore: ChartDrawingStore,
+    /** For the two things the layout list cannot answer: which one was last applied, and recording it. */
+    chartLayoutStore: ChartLayoutStore,
+    /** Threaded to the chart routes, which hand it to the controller before its first fetch. */
+    symbolChartStateStore: SymbolChartStateStore,
+    /**
+     * The reader's saved per-tool drawing styles, for the chart and the studio both.
+     *
+     * Handed to the screens as the store rather than as a list, because they read templates for
+     * the armed tool and for the drawing being edited — two queries that change as the reader
+     * works, and hoisting either would put the screen's own state up here.
+     */
+    drawingTemplateStore: DrawingTemplateStore,
+    /**
+     * How the chart screen itself is arranged: the split with the watchlist, and what the two
+     * panes tie together. Without it a drag on the divider is forgotten the moment the chart is
+     * left, and the second pane opens on nothing every time.
+     */
+    chartWorkspaceStore: ChartWorkspaceStore,
     portfolioController: PortfolioController,
     academyController: AcademyController,
     terminalController: TerminalController,
@@ -1014,6 +1146,10 @@ private fun MainShell(
     hasAcademy: Boolean,
     signalController: SignalController,
     notificationController: NotificationController,
+    /** The alert centre, at [ALERTS_ROUTE]. Not per platform: these alerts are the phone's own. */
+    alertsController: AlertsController,
+    /** Firings to show while the app is open. See the collector below. */
+    inAppAlerts: InAppAlertBus,
     executionController: ExecutionController,
     copyTradeController: CopyTradeController,
     aiSignalController: AiSignalController,
@@ -1048,6 +1184,14 @@ private fun MainShell(
     onSaveLayout: (ChartLayout) -> Unit,
     onDeleteLayout: (String) -> Unit,
     watchlist: List<String>,
+    /**
+     * The store behind [watchlist], for the surfaces that need more than the active list's tickers.
+     *
+     * Both, not one: nearly every caller wants only the flat list of the active list's symbols, and
+     * making them all collect it themselves would put a `Flow` read in a dozen composables. The
+     * markets tab is the one that needs the lists, the flags and the columns, so it takes the store.
+     */
+    watchlistStore: WatchlistStore,
     onToggleWatch: (String) -> Unit,
     onSignalLaunchConsumed: () -> Unit,
     onActivityLaunchConsumed: () -> Unit,
@@ -1099,6 +1243,7 @@ private fun MainShell(
     val deletedMessage = stringResource(R.string.toast_deleted)
     val layoutSavedMessage = stringResource(R.string.toast_layout_saved)
     val undoLabel = stringResource(R.string.action_undo)
+    val openChartLabel = stringResource(R.string.alert_toast_open)
 
     // The layout callbacks, with a sentence added. Wrapped once here rather than at the two
     // screens that take them, so the chart and the studio cannot disagree about whether saving
@@ -1114,9 +1259,9 @@ private fun MainShell(
     // impossible. A layout is a name, a timeframe, a chart type and a list of indicator ids — all
     // of it still in hand at the moment of deletion — so an undo recovers it exactly and costs the
     // reader who meant it nothing at all.
-    val onDeleteLayoutAnnounced: (String) -> Unit = { name ->
-        val removed = chartLayouts.firstOrNull { it.name == name }
-        onDeleteLayout(name)
+    val onDeleteLayoutAnnounced: (String) -> Unit = { id ->
+        val removed = chartLayouts.firstOrNull { it.id == id }
+        onDeleteLayout(id)
         toaster.show(
             CoineProToast(
                 message = deletedMessage,
@@ -1133,6 +1278,23 @@ private fun MainShell(
     // The charts, held here rather than inside their own destinations. See `ChartControllers`:
     // one controller per destination is what made every drawing tool in the app inert.
     val chartControllers = rememberChartControllers(candleGateway, sparklineScope, chartDrawingStore, appLog, candleCache)
+
+    // The prices the chart's watchlist strip and the two-pane pickers put beside their tickers,
+    // taken from the feed already running for the platform on screen rather than from a second
+    // subscription. Keyed uppercase because that is how those strips look a symbol up: a reader
+    // who starred «btcusdt» from a search result must not get a blank row for it.
+    //
+    // A guest's shell passes an empty [MarketDataState] — see the note at that call site — so the
+    // strips there draw tickers with no figures, which is what they are built to do.
+    val watchlistQuotes: Map<String, WatchlistQuote> = remember(marketState.quotes) {
+        marketState.quotes.entries.associate { (ticker, quote) ->
+            ticker.uppercase() to WatchlistQuote(
+                symbol = ticker.uppercase(),
+                price = quote.price,
+                changePercent = quote.changePercent,
+            )
+        }
+    }
     val currentRoute = backStackEntry?.destination?.route
 
     // Every screen the reader reaches, in sequence. It is two lines and it is the single most
@@ -1155,6 +1317,7 @@ private fun MainShell(
         NOTIFICATIONS_ROUTE,
         MEMBERSHIP_ROUTE,
         PORTFOLIO_ROUTE,
+        PORTFOLIO_REPORT_ROUTE,
         ACADEMY_ROUTE,
         LESSON_PATTERN,
         TERMINAL_ROUTE,
@@ -1167,6 +1330,7 @@ private fun MainShell(
         PAPER_TRADE_ROUTE,
         SCRIPT_PATTERN,
         STUDIO_PATTERN,
+        PANES_PATTERN,
         // Tools, Activity, News and the calendar are **not** sub-screens and used to be listed
         // here. A sub-screen loses the bottom bar, which is right for a chart or a lesson — a
         // place you are inside and leave by going back. These four are places a reader *goes*,
@@ -1205,7 +1369,9 @@ private fun MainShell(
         // The chart names itself: its header is the symbol, which is more use than the word
         // "chart" over a screen that is obviously one.
         CHART_PATTERN -> R.string.screen_chart
-        PORTFOLIO_ROUTE -> R.string.screen_portfolio
+        // The report is a reading of the portfolio, so the bar keeps saying «سبد» rather than
+        // introducing a second word for the same account.
+        PORTFOLIO_ROUTE, PORTFOLIO_REPORT_ROUTE -> R.string.screen_portfolio
         // The lesson names itself in its own heading, so the bar carries the section instead.
         ACADEMY_ROUTE, LESSON_PATTERN -> R.string.screen_academy
         TERMINAL_ROUTE -> R.string.screen_terminal
@@ -1230,6 +1396,30 @@ private fun MainShell(
         launchSymbol?.let { symbol ->
             navController.navigate(chartRoute(symbol)) { launchSingleTop = true }
             onSymbolLaunchConsumed()
+        }
+    }
+    // The in-app delivery channel, which is this collector and nothing else.
+    //
+    // `AlertChannel.IN_APP` is a reader saying «tell me here, where I am already looking» — usually
+    // at the chart of the very symbol that moved — and it is a separate choice from a push, not a
+    // fallback for one. `InAppAlertBus` refuses to record a firing as delivered when nobody is
+    // collecting, so without this the channel wrote «برنامه باز نبود» into the audit log every time,
+    // including while the reader was watching the price.
+    //
+    // The toaster is the app's one message surface and this uses it rather than adding a second: a
+    // banner that only alerts can produce is a banner nobody has learned to dismiss. The tap-through
+    // is the point of the interruption — the alert says a level was reached, and the next thing
+    // anybody wants is the bars around it.
+    LaunchedEffect(inAppAlerts) {
+        inAppAlerts.fired.collect { firing ->
+            toaster.show(
+                CoineProToast(
+                    message = firing.body,
+                    tone = ToastTone.NEUTRAL,
+                    actionLabel = openChartLabel,
+                    onAction = { navController.navigate(chartRoute(firing.symbol)) },
+                ),
+            )
         }
     }
     LaunchedEffect(launchActivity) {
@@ -1764,7 +1954,7 @@ private fun MainShell(
                 JournalScreen(controller = journalController)
             }
             composable(ALERTS_ROUTE) {
-                AlertsScreen(controller = notificationController)
+                AlertCenterScreen(controller = alertsController)
             }
             composable(DELETE_ACCOUNT_ROUTE) {
                 DeleteAccountScreen(
@@ -1829,6 +2019,7 @@ private fun MainShell(
                     controller = marketSearchController,
                     sparklines = sparklineStore,
                     watchlist = watchlist,
+                    watchlistStore = watchlistStore,
                     onOpenSymbol = { symbol -> navController.navigate(chartRoute(symbol)) },
                     onOpenSearch = { navController.navigate(MARKET_SEARCH_ROUTE) },
                     // Only when there is something to say. A strip reading «۰ سیگنال باز» is a row
@@ -1868,8 +2059,23 @@ private fun MainShell(
                 route = CHART_PATTERN,
                 arguments = listOf(navArgument("symbol") { type = NavType.StringType }),
             ) { entry ->
-                val symbol = entry.arguments?.getString("symbol").orEmpty()
-                val chartController = chartControllers.controllerFor(symbol)
+                val routeSymbol = entry.arguments?.getString("symbol").orEmpty()
+                /**
+                 * The instrument actually in front of the reader.
+                 *
+                 * Not the route argument, and this is the whole reason it exists: the watchlist
+                 * strip under the chart swaps the symbol *in place* without navigating, so the
+                 * path still names the market they started from. Every entry that leaves this
+                 * screen *on a symbol* reads this instead — the studio above all, and through it
+                 * the two-pane screen — or it would open on the chart the reader stopped looking
+                 * at several taps ago. The terminal is not one of them: its address carries no
+                 * instrument. `onSelectSymbol` below is the deliberate exception, because that is
+                 * the fallback path that really does navigate.
+                 *
+                 * Saved rather than remembered, so a rotation does not undo the switch.
+                 */
+                var activeChartSymbol by rememberSaveable { mutableStateOf(routeSymbol) }
+                val chartController = chartControllers.controllerFor(routeSymbol)
                 ChartScreen(
                     layouts = chartLayouts,
                     onSaveLayout = onSaveLayoutAnnounced,
@@ -1891,7 +2097,17 @@ private fun MainShell(
                         }
                     },
                     controller = chartController,
-                    onOpenStudio = { navController.navigate(studioRoute(symbol)) },
+                    // What turns a tap in the strip into a switch rather than a navigation: the
+                    // holder already keeps a controller per symbol, with that symbol's own
+                    // drawings and its own restored timeframe.
+                    controllerFor = chartControllers::controllerFor,
+                    onSymbolChanged = { activeChartSymbol = it },
+                    watchlistQuotes = watchlistQuotes,
+                    workspace = chartWorkspaceStore,
+                    drawingTemplates = drawingTemplateStore,
+                    symbolChartStates = symbolChartStateStore,
+                    chartLayoutStore = chartLayoutStore,
+                    onOpenStudio = { navController.navigate(studioRoute(activeChartSymbol)) },
                     onOpenTerminal = if (terminalController.isConfigured) {
                         { navController.navigate(TERMINAL_ROUTE) }
                     } else {
@@ -1931,14 +2147,44 @@ private fun MainShell(
                 // wrote to an object the chart could not see, and the studio's copy was thrown
                 // away on the way back. See `ChartControllers`.
                 val studioController = chartControllers.controllerFor(symbol)
-                LaunchedEffect(studioController) { studioController.start() }
                 ChartStudioScreen(
                     controller = studioController,
+                    // The studio starts the controller itself, after binding the stores — so a
+                    // deep link that opens the studio first still restores this symbol's own
+                    // settings before the first fetch rather than after it.
+                    symbolChartStates = symbolChartStateStore,
+                    chartLayoutStore = chartLayoutStore,
                     layouts = chartLayouts,
                     onSaveLayout = onSaveLayoutAnnounced,
                     onDeleteLayout = onDeleteLayoutAnnounced,
+                    drawingTemplates = drawingTemplateStore,
                     onOpenScript = { navController.navigate(scriptRoute(symbol)) },
+                    onOpenPanes = { navController.navigate(panesRoute(symbol)) },
+                    onOpenChartVision = if (chartVisionAvailable) {
+                        { navController.navigate(AI_VISION_ROUTE) }
+                    } else {
+                        null
+                    },
                     onBackToChart = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = PANES_PATTERN,
+                arguments = listOf(navArgument("symbol") { type = NavType.StringType }),
+            ) { entry ->
+                val symbol = entry.arguments?.getString("symbol").orEmpty()
+                ChartPanesScreen(
+                    firstSymbol = symbol,
+                    // The same holder both other chart routes use, so a pane opened on a symbol
+                    // the reader has already charted arrives with that symbol's drawings and its
+                    // own timeframe rather than on the defaults.
+                    controllerFor = chartControllers::controllerFor,
+                    watchlist = watchlist,
+                    quotes = watchlistQuotes,
+                    workspace = chartWorkspaceStore,
+                    symbolChartStates = symbolChartStateStore,
+                    chartLayoutStore = chartLayoutStore,
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable(NEWS_ROUTE) {
@@ -1962,8 +2208,25 @@ private fun MainShell(
                     onOpenNews = { navController.navigate(NEWS_ROUTE) },
                 )
             }
+            composable(HEATMAP_ROUTE) {
+                // The catalogue controller the search screen already uses, rather than a second
+                // one: two would fetch the same several thousand symbols twice and could disagree
+                // about which of them the app has artwork for.
+                HeatmapScreen(
+                    controller = marketSearchController,
+                    onOpenSymbol = { navController.navigate(chartRoute(it)) },
+                )
+            }
+            composable(SCREENER_ROUTE) {
+                ScreenerScreen(
+                    controller = screenerController,
+                    onOpenSymbol = { navController.navigate(chartRoute(it)) },
+                )
+            }
             composable(TOOLS_ROUTE) {
                 ToolsScreen(
+                    onOpenHeatmap = { navController.navigate(HEATMAP_ROUTE) },
+                    onOpenScreener = { navController.navigate(SCREENER_ROUTE) },
                     onOpenJournal = { navController.navigate(JOURNAL_ROUTE) },
                     onOpenPaperTrade = { navController.navigate(PAPER_TRADE_ROUTE) },
                     // The studio needs a symbol to run against, and from here there is no chart to
@@ -2014,7 +2277,14 @@ private fun MainShell(
                 PortfolioScreen(
                     controller = portfolioController,
                     onOpenConnections = { navController.navigate(CONNECTIONS_ROUTE) },
+                    onOpenReport = { navController.navigate(PORTFOLIO_REPORT_ROUTE) },
                 )
+            }
+            composable(PORTFOLIO_REPORT_ROUTE) {
+                // The same controller as the list above it, not a second one: the report is a
+                // reading of the trades already loaded, and a second fetch would let the two
+                // screens disagree about what the account did.
+                PortfolioReportScreen(controller = portfolioController)
             }
             composable(ACTIVITY_ROUTE) {
                 ActivityScreen(

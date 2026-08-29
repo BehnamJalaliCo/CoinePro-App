@@ -27,6 +27,13 @@ data class HelpImage(
  * [useCase] is the one exception and is marked as such in the export: it is an editorial one-line
  * summary added for the export, not text the site serves. It is used for the subtitle in a list,
  * where the full [what] would not fit.
+ *
+ * [pitfall] is the second exception, and it is editorial for a reason worth stating. The exported
+ * text explains what a tool *is*; it rarely says where it lies to you. An oscillator pinned at
+ * seventy through an entire trend, a Parabolic SAR whipsawing in a range, an Alligator whose lines
+ * are displaced so they do not belong to the bar being read — those are the ways a reader actually
+ * loses money with these, and an entry that omits them is accurate and still misleading. Null on
+ * every entry exported before the field existed, which is most of them.
  */
 data class HelpEntry(
     /** Canonical id — `rsi`, `fib`, `heikin`, `H4`. Stable, and what every call site keys on. */
@@ -41,6 +48,8 @@ data class HelpEntry(
     val tips: BilingualList,
     /** A worked example. */
     val example: Bilingual?,
+    /** The specific mistake people make with this one. See the class KDoc. */
+    val pitfall: Bilingual? = null,
     /** Ordered gallery. Empty for the entries the site never illustrated. */
     val images: List<HelpImage>,
 ) {

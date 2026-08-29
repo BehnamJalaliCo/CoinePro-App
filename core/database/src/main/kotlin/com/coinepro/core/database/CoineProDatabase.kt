@@ -159,11 +159,11 @@ abstract class CoineProCacheDao {
         SavedScriptEntity::class,
         CachedCandleEntity::class,
     ],
-    // Bumped for the candle cache. `fallbackToDestructiveMigration` is deliberately *not* used:
-    // every cache table here can be refetched, and the three that cannot — the journal, the paper
-    // trades and the reader's own scripts — are the whole reason the migrations below are written
-    // out.
-    version = 5,
+    // Bumped for the candle cache, then again to re-key it on the chart interval rather than the
+    // timeframe enum. `fallbackToDestructiveMigration` is deliberately *not* used: every cache
+    // table here can be refetched, and the three that cannot — the journal, the paper trades and
+    // the reader's own scripts — are the whole reason the migrations below are written out.
+    version = 6,
     exportSchema = false,
 )
 abstract class CoineProDatabase : RoomDatabase() {
@@ -280,6 +280,85 @@ val MIGRATION_4_5: Migration = object : Migration(4, 5) {
     }
 }
 
+/**
+ * Version 5 to 6: the candle cache is keyed on the chart interval, not the timeframe enum.
+ *
+ * ### What changed and why it could not stay
+ *
+ * `cached_candles.timeframe` held a `Timeframe` enum name, which was a complete key only while
+ * every series the chart could draw had a preset to name it. Custom minute intervals broke that:
+ * two of them have no enum to borrow, so they would either collide with each other — 205 minutes
+ * and 137 minutes overwriting one another in the same row, each drawn under the other's label —
+ * or collide with a preset outright. The column now holds `ChartInterval.wire`, which is the
+ * preset's canonical spelling for a preset and a bare minute count for a custom one, and those two
+ * shapes cannot be confused for each other.
+ *
+ * ### Why this is a rebuild and not a drop
+ *
+ * SQLite cannot rename a column that is part of a primary key without rewriting the table, so the
+ * table is rewritten — but every row is carried across. It would have been a two-line migration to
+ * drop the table and let it refill, and it would have been the wrong two lines. This cache is the
+ * only reason a chart has anything to draw before its first request answers; emptying it means
+ * every symbol on every timeframe opens behind an empty rectangle once more, for every reader who
+ * updates, which is precisely the complaint the table was added to end.
+ *
+ * The copy needs no translation. A `Timeframe` enum name and its wire spelling are the same text
+ * for all fifteen presets — `M5` is `M5` — so `SELECT timeframe` into the new `interval` column
+ * preserves both the value and the identity of every cached series. The old rows keep pointing at
+ * the same charts they always did.
+ *
+ * The statements are kept in [CANDLE_CACHE_INTERVAL_REBUILD] rather than written inline so a test
+ * can run them without Room, an emulator or a device, and so the row-preserving `INSERT … SELECT`
+ * in the middle cannot quietly become a `DELETE` in some later edit without a test noticing.
+ */
+val MIGRATION_5_6: Migration = object : Migration(5, 6) {
+    override fun migrate(connection: SQLiteConnection) {
+        CANDLE_CACHE_INTERVAL_REBUILD.forEach { statement -> connection.execSQL(statement) }
+    }
+}
+
+/**
+ * The five statements [MIGRATION_5_6] runs, in order.
+ *
+ * Order is the whole correctness argument: the new table is created, **then** every existing row is
+ * copied into it, **then** the old table is dropped, and only then is the new one renamed into its
+ * place and re-indexed. Dropping before the copy would be a one-word edit and would silently throw
+ * away every reader's cached history. Room runs a migration inside a transaction, so a failure at
+ * any point leaves the version-5 table exactly as it was.
+ *
+ * The column list on both sides of the `INSERT` is written out rather than relying on `SELECT *`.
+ * Positional insertion is how a column reordering turns a price into a volume without any statement
+ * looking wrong.
+ */
+internal val CANDLE_CACHE_INTERVAL_REBUILD: List<String> = listOf(
+    """
+    CREATE TABLE IF NOT EXISTS cached_candles_v6 (
+        symbol TEXT NOT NULL,
+        `interval` TEXT NOT NULL,
+        t INTEGER NOT NULL,
+        o REAL NOT NULL,
+        h REAL NOT NULL,
+        l REAL NOT NULL,
+        c REAL NOT NULL,
+        v REAL NOT NULL,
+        cachedAtEpochMillis INTEGER NOT NULL,
+        PRIMARY KEY (symbol, `interval`, t)
+    )
+    """.trimIndent(),
+    """
+    INSERT OR REPLACE INTO cached_candles_v6
+        (symbol, `interval`, t, o, h, l, c, v, cachedAtEpochMillis)
+    SELECT symbol, timeframe, t, o, h, l, c, v, cachedAtEpochMillis FROM cached_candles
+    """.trimIndent(),
+    "DROP TABLE cached_candles",
+    "ALTER TABLE cached_candles_v6 RENAME TO cached_candles",
+    // The index name is not cosmetic: Room derives the expected name from the entity's columns and
+    // refuses to open a database whose indices do not match, so this has to be spelled exactly as
+    // `@Index(value = ["symbol", "interval", "t"])` on `CachedCandleEntity` implies.
+    "CREATE INDEX IF NOT EXISTS index_cached_candles_symbol_interval_t " +
+        "ON cached_candles (symbol, `interval`, t)",
+)
+
 object CoineProDatabaseFactory {
     fun create(context: Context): CoineProDatabase = Room.databaseBuilder(
         context.applicationContext,
@@ -288,7 +367,7 @@ object CoineProDatabaseFactory {
     )
         // The journal migration is registered rather than the database being allowed to fall back
         // to destructive recreation. Every other table here is a cache; the journal is not.
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
         .build()
 }
 

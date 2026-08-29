@@ -419,6 +419,7 @@ dependencies {
     implementation(project(":feature:admin"))
     implementation(project(":feature:auth"))
     implementation(project(":feature:home"))
+    implementation(project(":feature:heatmap"))
     implementation(project(":feature:search"))
     implementation(project(":feature:chart"))
     implementation(project(":feature:academy"))
@@ -444,6 +445,7 @@ dependencies {
     implementation(project(":feature:ai-assistant"))
     implementation(project(":feature:news"))
     implementation(project(":feature:calendar"))
+    implementation(project(":feature:screener"))
     implementation(project(":feature:tools"))
     implementation(project(":feature:activity"))
 

@@ -130,6 +130,31 @@ data class SignalOverlay(
 }
 
 /** Everything drawn on one chart, beyond the bars themselves. */
+/**
+ * A chart's own palette, overriding the theme's.
+ *
+ * ARGB longs rather than Compose `Color` because these come out of storage, and the storage layer
+ * deliberately knows nothing about Compose. Convert at the edge with `Color(value.toULong() shl 32)`.
+ *
+ * Only the seven colours a reader can actually distinguish on a chart are here. A template with
+ * thirty knobs is a template nobody finishes filling in, and every extra one is another way for two
+ * saved templates to differ invisibly.
+ */
+data class ChartColours(
+    /** The rising candle body, border and wick. */
+    val up: Long,
+    /** The falling candle body, border and wick. */
+    val down: Long,
+    /** Both grid directions. */
+    val grid: Long,
+    /** The pane behind everything. */
+    val background: Long,
+    /** Axis labels and the legend. */
+    val text: Long,
+    /** The crosshair line, drawn dashed at partial alpha over this. */
+    val crosshair: Long,
+)
+
 data class ChartDecoration(
     val overlays: List<ChartLine> = emptyList(),
     val signal: SignalOverlay? = null,
@@ -143,6 +168,37 @@ data class ChartDecoration(
     val drawings: List<Drawing> = emptyList(),
     /** Which drawing shows its handles. Only one at a time — see [drawDrawing]. */
     val selectedDrawingId: Long? = null,
+    /**
+     * Other instruments laid over this one, already aligned to this chart's bar grid.
+     *
+     * Aligned, not merged: [Comparison.align] carries the compared feed's last known value forward
+     * across a bar this market has and that one does not, and leaves NaN before it starts. The base
+     * series is never trimmed to match, because a comparison must not change the geometry of the
+     * chart it was added to.
+     *
+     * At most [MAX_COMPARISONS] of them, and that cap is a legibility limit rather than a technical
+     * one: past four the colours stop being distinguishable at phone width, and a chart nobody can
+     * read is not a feature.
+     */
+    val comparisons: List<ComparisonSeries> = emptyList(),
+    /**
+     * How the comparisons are made comparable.
+     *
+     * Percent by default, because two instruments at different price magnitudes cannot share an
+     * axis any other way — gold at 2,400 and a coin at 0.08 on one linear scale is one flat line
+     * and one invisible one. Ratio answers a different question entirely and gets its own scale.
+     */
+    val comparisonBasis: ComparisonBasis = ComparisonBasis.PERCENT,
+    /**
+     * The colours the canvas paints with, or null for the theme's own.
+     *
+     * A stored colour template is worthless until it reaches the renderer, and until this existed
+     * the app could save one, list it and restore it while the chart went on painting in the theme
+     * palette — a setting that appears to work and does nothing, which is worse than one that is
+     * absent. Null keeps the existing behaviour exactly, so every call site that does not care is
+     * unaffected.
+     */
+    val colours: ChartColours? = null,
     /** Horizontal levels: pivots, auto-Fibonacci, support and resistance, supply and demand. */
     val levels: List<PriceLevel> = emptyList(),
     /** Per-bar marks: swing points, fractals, zigzag turns. */
