@@ -51,6 +51,7 @@ import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextField
+import com.coinepro.core.designsystem.CoineProToggleChip
 import com.coinepro.core.journal.Journal
 import com.coinepro.core.journal.JournalController
 import com.coinepro.core.journal.JournalStats
@@ -573,23 +574,26 @@ private fun Line(label: String, value: String, colour: Color = CoineProColors.Te
     }
 }
 
+/**
+ * The design system's chip, under this screen's old name.
+ *
+ * It used to be its own Text with four points of vertical padding — about twenty-three drawn, no
+ * press state, no haptic, and an unselected state with no border at all, so a chip nobody had
+ * chosen was indistinguishable from a caption. It also filled with `CoineProColors.Accent`, the
+ * *ink* gold, and lettered that in `OnAccent`: near-black on dark brown in the light theme.
+ *
+ * All four are fixed in [CoineProToggleChip] and were fixed there before this screen was written.
+ * The only thing worth keeping was the accent parameter, and only for buy/sell, where the colour
+ * is the content of the choice rather than a selection state — so it is passed through as a fill.
+ */
 @Composable
 private fun Chip(
     label: String,
     selected: Boolean,
-    accent: Color = CoineProColors.Accent,
+    accent: Color? = null,
     onClick: () -> Unit,
 ) {
-    Text(
-        text = label,
-        style = MaterialTheme.typography.labelSmall,
-        color = if (selected) CoineProColors.OnAccent else CoineProColors.TextSecondary,
-        modifier = Modifier
-            .clip(CoineProShapes.small)
-            .background(if (selected) accent else Color.Transparent)
-            .clickable(onClick = onClick)
-            .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
-    )
+    CoineProToggleChip(label = label, selected = selected, onClick = onClick, fill = accent)
 }
 
 private val decimal = KeyboardOptions(keyboardType = KeyboardType.Decimal)

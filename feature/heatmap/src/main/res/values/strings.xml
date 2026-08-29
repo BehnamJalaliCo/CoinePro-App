@@ -2,17 +2,20 @@
 <!-- Default language: Persian. -->
 <resources>
     <string name="heatmap_title">نقشه حرارتی بازار</string>
-    <string name="heatmap_subtitle">%1$s بازار</string>
+    <string name="heatmap_subtitle">%1$s از %2$s بازار</string>
     <string name="heatmap_settings">تنظیمات نقشه</string>
     <string name="heatmap_refresh">به‌روزرسانی</string>
     <string name="heatmap_empty">بازاری برای نمایش روی نقشه نیست.</string>
     <string name="heatmap_empty_hint">پس از دریافت قیمت‌ها، هر بازار یک خانه می‌گیرد.</string>
+    <string name="heatmap_canvas">نقشه بازارها. روی هر خانه بزنید تا نمودارش باز شود؛ نگه دارید تا جزئیاتش را ببینید.</string>
 
     <string name="heatmap_size">اندازه خانه‌ها</string>
-    <string name="heatmap_size_market_cap">ارزش بازار</string>
+    <string name="heatmap_size_liquidity">نقدشوندگی</string>
     <string name="heatmap_size_volume">حجم</string>
     <string name="heatmap_size_turnover">گردش</string>
     <string name="heatmap_size_mono">یکسان</string>
+    <string name="heatmap_size_note">اندازه بر پایه رتبه‌بندی نقدشوندگی خودِ برنامه است؛ هیچ‌کدام از دو سرور ارزش بازار نمی‌فرستند.</string>
+    <string name="heatmap_size_volume_note">این فید حجمی نمی‌فرستد، پس اندازه‌ها به رتبه‌بندی نقدشوندگی برمی‌گردند.</string>
 
     <string name="heatmap_colour">رنگ بر پایه</string>
     <string name="heatmap_colour_change">تغییر روز</string>
@@ -20,6 +23,12 @@
     <string name="heatmap_colour_volatility">نوسان</string>
     <string name="heatmap_colour_range">جای قیمت در دامنه</string>
     <string name="heatmap_colour_gap">شکاف بازگشایی</string>
+    <string name="heatmap_colour_unavailable">هنوز هیچ بازاری این عدد را ندارد؛ خانه‌ها هاشورخورده‌اند تا با «بدون تغییر» اشتباه نشوند.</string>
+
+    <string name="heatmap_period">دوره بازدهی</string>
+    <string name="heatmap_period_week">۷ روز</string>
+    <string name="heatmap_period_month">۳۰ روز</string>
+    <string name="heatmap_period_quarter">۹۰ روز</string>
 
     <string name="heatmap_palette">پالت رنگ</string>
     <string name="heatmap_palette_classic">کلاسیک</string>
@@ -30,11 +39,41 @@
     <string name="heatmap_grouping">گروه‌بندی</string>
     <string name="heatmap_grouping_none">بدون گروه</string>
     <string name="heatmap_grouping_class">بر پایه دسته</string>
+    <string name="heatmap_grouping_quote">بر پایه ارز مظنه</string>
+    <string name="heatmap_grouping_note">روی نوار نام هر گروه بزنید تا فقط همان گروه را ببینید.</string>
+
+    <string name="heatmap_density">چگالی نقشه</string>
+    <string name="heatmap_density_focused">درشت</string>
+    <string name="heatmap_density_standard">متعادل</string>
+    <string name="heatmap_density_everything">همه</string>
+    <string name="heatmap_density_note">نقشه پرحجم‌ترین بازارها را می‌کشد؛ بقیه با گروه‌بندی و ورود به گروه در دسترس‌اند.</string>
 
     <string name="heatmap_scale">دامنه رنگ تا ±%1$s</string>
-    <string name="heatmap_scale_low">−%1$s</string>
-    <string name="heatmap_scale_high">+%1$s</string>
     <string name="heatmap_scale_zero">0</string>
+    <string name="heatmap_legend_unknown">بدون داده</string>
+
+    <string name="heatmap_coverage">%1$s از %2$s خانه عدد دارد</string>
+    <string name="heatmap_coverage_loading">در حال خواندن کندل روزانه…</string>
+    <string name="heatmap_coverage_none">کندلی در دسترس این صفحه نیست، پس رنگی هم نیست. همه خانه‌ها هاشورخورده‌اند.</string>
+
+    <string name="heatmap_focus_clear">بازگشت به کل نقشه</string>
+
+    <string name="heatmap_detail_open_chart">نمایش نمودار</string>
+    <string name="heatmap_detail_unresolved">کندل روزانه این بازار هنوز خوانده نشده است.</string>
+    <string name="heatmap_detail_price">قیمت</string>
+    <string name="heatmap_detail_change">تغییر روز</string>
+    <string name="heatmap_detail_period">بازدهی %1$s</string>
+    <string name="heatmap_detail_open">بازگشایی</string>
+    <string name="heatmap_detail_previous_close">بسته‌شدن پیشین</string>
+    <string name="heatmap_detail_high">سقف روز</string>
+    <string name="heatmap_detail_low">کف روز</string>
+    <string name="heatmap_detail_range">جای قیمت در دامنه</string>
+    <string name="heatmap_detail_gap">شکاف بازگشایی</string>
+    <string name="heatmap_detail_volume">حجم روز</string>
+    <string name="heatmap_detail_turnover">گردش روز</string>
+    <string name="heatmap_detail_funding">نرخ فاندینگ</string>
+    <string name="heatmap_detail_volatility">نوسان روز</string>
+    <string name="heatmap_detail_typical">نوسان معمول</string>
 
     <string name="heatmap_class_forex">فارکس</string>
     <string name="heatmap_class_crypto">کریپتو</string>

@@ -140,7 +140,12 @@ val CoineProDarkPalette = CoineProPalette(
     textPrimary = Color(0xFFF0F1F2),
     textSecondary = Color(0xFFB7BDC6),
     textMuted = Color(0xFF848E9C),
-    textDisabled = Color(0xFF5E6673),
+    // Raised from #5E6673, which read 2.95:1 on an elevated card. The dark theme had the same
+    // defect the light one did and it hid better: `textDisabled` is not reserved for disabled
+    // controls — the column headings, a signal's setup name and an interactive row's chevron all
+    // take it — so it carries real content and has to clear three to one on every rung, not just
+    // on the stage.
+    textDisabled = Color(0xFF6B7482), // 3.62:1 on the elevated card, 4.10:1 on the stage
     accent = Color(0xFFD8A848),
     accentFill = Color(0xFFD8A848),
     onAccent = Color(0xFF0B0E11),
@@ -184,17 +189,27 @@ val CoineProLightPalette = CoineProPalette(
     borderStrong = Color(0x330D121C),
     textPrimary = Color(0xFF111318),
     textSecondary = Color(0xFF4E5661),
-    textMuted = Color(0xFF707A88),
-    textDisabled = Color(0xFFA1A8B2),
+    // Four inks darkened to clear AA against the light theme's own surfaces, measured rather than
+    // picked. Each figure below is the ratio on `surface` (#F6F7FA), which is the harder of the two
+    // grounds — on the white stage every one is a tenth higher.
+    //
+    // These were not decorative colours. `textMuted` is the caption under every card in the app and
+    // read 4.06:1; `textDisabled` read 2.24:1 and is not reserved for disabled — the column
+    // headings on four screens, a signal's setup name and the chevron on an *interactive* row all
+    // take it. Real content and a live control were below three to one on a white phone.
+    textMuted = Color(0xFF5F6875), // 5.26:1
+    textDisabled = Color(0xFF767F8D), // 3.78:1 — see below
     accent = Color(0xFF8A6318),
     accentFill = Color(0xFFD8A848),
     onAccent = Color(0xFF111318),
     analysis = Color(0xFF1B4ACC),
     social = Color(0xFF0E8A4C),
     premium = Color(0xFF8A6318),
-    buy = Color(0xFF0E8A4C),
+    // The two semantic inks, at the sizes they are actually used: a percent pill sets 13sp, which
+    // is not large text, so 4.5 is the bar and 4.12 was under it.
+    buy = Color(0xFF08703C), // 5.78:1
     sell = Color(0xFFC9203A),
-    warning = Color(0xFFB4700C),
+    warning = Color(0xFF8A5606), // 5.74:1
     assetInkShift = 0.35f,
     isDark = false,
 )

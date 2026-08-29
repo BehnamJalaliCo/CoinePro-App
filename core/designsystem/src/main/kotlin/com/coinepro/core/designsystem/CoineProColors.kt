@@ -132,6 +132,16 @@ object CoineProColors {
     /** Gold as ink. Darkened in the light theme, where the brand mid-tone is unreadable. */
     val Accent: Color @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.accent
 
+    /**
+     * Gold **as a fill** — behind a label, never as the label.
+     *
+     * The brand gold in both themes. [Accent] is its ink twin and the two are not interchangeable:
+     * in the light theme [Accent] is a dark brown, so a chip filled with it and labelled with
+     * [OnAccent] is near-black on near-black. Fill with this; write with [Accent].
+     */
+    val AccentFill: Color
+        @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.accentFill
+
     /** The label on a gold fill — near-black in both themes. */
     val OnAccent: Color
         @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.onAccent

@@ -127,7 +127,7 @@ private fun EventKindRow(
             enabled = enabled,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = CoineProColors.OnAccent,
-                checkedTrackColor = CoineProColors.Accent,
+                checkedTrackColor = CoineProColors.AccentFill,
                 uncheckedThumbColor = CoineProColors.TextMuted,
                 uncheckedTrackColor = CoineProColors.Surface,
                 uncheckedBorderColor = CoineProColors.Border,

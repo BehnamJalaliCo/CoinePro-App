@@ -87,7 +87,7 @@ fun AppLockSheet(
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = CoineProColors.OnAccent,
-                        checkedTrackColor = CoineProColors.Gold,
+                        checkedTrackColor = CoineProColors.AccentFill,
                         uncheckedTrackColor = CoineProColors.Surface,
                         uncheckedBorderColor = CoineProColors.Border,
                     ),

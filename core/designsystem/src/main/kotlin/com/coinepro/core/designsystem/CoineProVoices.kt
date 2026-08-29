@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -368,17 +369,51 @@ fun CoineProColumnHeadings(
     middle: String?,
     end: String,
     modifier: Modifier = Modifier,
+    /** The fixed width of the row's identity column — [CoineProDenseRow]'s `leadingWidth`. */
+    leadingWidth: androidx.compose.ui.unit.Dp = 96.dp,
+    /**
+     * The width of whatever sits before that column — a symbol's artwork, usually.
+     *
+     * Zero for a list with no leading element. [CoineProDenseRow] draws whatever `leading` it is
+     * given, so the caller is the only one who knows how wide it is.
+     */
+    leadingInset: androidx.compose.ui.unit.Dp = 0.dp,
 ) {
+    // Laid out as the row it labels, not as three words spread across the screen.
+    //
+    // It was `SpaceBetween` over three wrapped Texts, which puts «نماد» hard against the reading
+    // edge, «جهت» wherever the two neighbours happen to leave it, and «سطوح» against the far edge.
+    // The row underneath is a logo, then a fixed 96dp identity column, then a centred middle that
+    // takes the remaining width, then figures at the end — so the middle heading landed nowhere
+    // near the pill it named and the start heading sat over the logo rather than over the ticker.
+    // A heading that is not above its column is worse than no heading: it tells the reader the
+    // list is arranged in a way it is not.
+    //
+    // Every measurement below is [CoineProDenseRow]'s, and they have to stay that way.
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.Half),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
         val style = MaterialTheme.typography.labelSmall
-        Text(start, style = style, color = CoineProColors.TextDisabled, fontWeight = FontWeight.Normal)
-        middle?.let { Text(it, style = style, color = CoineProColors.TextDisabled, fontWeight = FontWeight.Normal) }
-        Text(end, style = style, color = CoineProColors.TextDisabled, fontWeight = FontWeight.Normal)
+        val ink = CoineProColors.TextMuted
+        if (leadingInset > 0.dp) Spacer(modifier = Modifier.width(leadingInset))
+        Text(
+            text = start,
+            style = style,
+            color = ink,
+            fontWeight = FontWeight.Normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.width(leadingWidth),
+        )
+        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            middle?.let {
+                Text(it, style = style, color = ink, fontWeight = FontWeight.Normal, maxLines = 1)
+            }
+        }
+        Text(end, style = style, color = ink, fontWeight = FontWeight.Normal, maxLines = 1)
     }
 }
 

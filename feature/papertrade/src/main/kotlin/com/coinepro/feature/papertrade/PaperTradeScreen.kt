@@ -1,237 +1,309 @@
 package com.coinepro.feature.papertrade
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.coinepro.core.common.BidiText
-import com.coinepro.core.common.MarketNumberFormatter
-import com.coinepro.core.common.foldDigitsToLatin
-import com.coinepro.core.common.toPersianDigits
-import com.coinepro.core.database.PaperTradeEntity
 import com.coinepro.core.designsystem.CoineProCard
+import com.coinepro.core.designsystem.CoineProChip
+import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors
-import com.coinepro.core.designsystem.CoineProPrimaryButton
+import com.coinepro.core.designsystem.CoineProHeaderAction
+import com.coinepro.core.designsystem.CoineProHeroFigure
+import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.CoineProListHeader
+import com.coinepro.core.designsystem.CoineProReading
+import com.coinepro.core.designsystem.CoineProReadingRow
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
-import com.coinepro.core.designsystem.CoineProTextField
+import com.coinepro.core.papertrade.PaperEngine
+import com.coinepro.core.papertrade.PaperQuote
 import com.coinepro.core.papertrade.PaperTradeController
-import com.coinepro.core.papertrade.PaperTrading
+import com.coinepro.core.papertrade.PaperTradeUiState
+import java.time.ZoneId
+
+/** The five things a paper account is, in the order a session uses them. */
+enum class PaperTab { TICKET, POSITIONS, ORDERS, HISTORY, RECORD }
 
 /**
- * Trading with no money.
+ * A paper-trading account, as its own product.
  *
- * For the reader who has installed the app and has not funded an exchange account — which, given
- * that membership needs fifty tether, is most first-day readers. Practising the decision is the
- * only thing they can do with the product on day one, and giving them nothing to do is how an app
- * gets opened once.
+ * ### What this replaced, and why the replacement is this large
  *
- * The screen states what it does not model — fees, spread, swap, funding, slippage — rather than
- * leaving it to be discovered by comparing against a real fill. A simulation that quietly guesses
- * a broker's fee schedule produces a number that *looks* like a real result and is not, which is
- * worse than one that plainly says what it left out.
+ * The screen before it was a symbol field, a size field, a buy/sell pair and a list. It opened at
+ * the last price, closed at the last price, charged nothing, held no balance, and stated in one
+ * line that it modelled no costs. That is a profit-and-loss calculator with a history, and the
+ * owner's word for it — decoration — was exact. Worse than incomplete, it was *teaching*: a reader
+ * who practises here learns that entering and leaving is free, and takes that habit to a market
+ * that charges them the spread twice and the fee twice on every round trip.
  *
- * [priceFor] is the live price for a symbol. Passed in rather than fetched here so an open position
- * marks against the same feed the rest of the app is showing — a second source would let this
- * screen and the market list disagree about the same instrument.
+ * So the arithmetic came first and the screen follows it. There is an account with a balance the
+ * reader sets, equity that moves with what is open, realised and unrealised kept apart, margin and
+ * a stop-out where there is leverage. There are four order types, stops and targets on a position,
+ * partial closes and reversals. There is a record built by the portfolio's own arithmetic. And
+ * there is a fill model with rules a reader can read on this screen — see [PaperRulesCard], which
+ * is not a disclaimer but the specification.
+ *
+ * ### Two things it must never do
+ *
+ * **Be mistakable for a real order.** The account panel, every list row and every ticket carry the
+ * word in Persian, permanently, not behind a tooltip and not only on the first visit. This app has
+ * real execution and real copy trading a tab away; a reader who confuses the two loses money.
+ *
+ * **Invent a price.** [quoteFor] and [priceFor] both read the app's one market feed. Nothing here
+ * fetches. A second source would let this screen and the chart above it disagree about one
+ * instrument, and the reader would have no way to tell which had lied.
+ *
+ * @param priceFor the last price for a symbol, from the same feed the market list reads.
+ * @param quoteFor the fuller observation where the host can supply one — bid, ask and the feed's
+ *   own staleness. Null falls back to [priceFor], which costs the fill rules their real spread and
+ *   makes them use the assumed one; see `## WIRING NEEDED` for the one-line upgrade.
+ * @param onOpenSymbol opens the chart for a symbol. Null simply omits the affordance rather than
+ *   showing a dead one.
  */
 @Composable
 fun PaperTradeScreen(
     controller: PaperTradeController,
     priceFor: (String) -> Double?,
+    quoteFor: ((String) -> PaperQuote?)? = null,
+    onOpenSymbol: ((String) -> Unit)? = null,
+    zone: ZoneId = ZoneId.systemDefault(),
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
-
+    var tab by rememberSaveable { mutableStateOf(PaperTab.TICKET) }
     var symbol by rememberSaveable { mutableStateOf("") }
-    var size by rememberSaveable { mutableStateOf("") }
-    var buy by rememberSaveable { mutableStateOf(true) }
+    var assumptionsOpen by rememberSaveable { mutableStateOf(false) }
 
-    val price = priceFor(symbol.trim().uppercase())
-    val quantity = size.foldDigitsToLatin().trim().toDoubleOrNull()
-    val armed = price != null && quantity != null && quantity > 0
+    // Every symbol the book needs marking, plus whatever the ticket is looking at. Built on each
+    // composition rather than remembered: the enclosing screen passes a new lambda whenever the
+    // feed ticks, and a remembered map keyed on the lambda would go stale the moment a host held
+    // its own reference.
+    val observed = observations(state, symbol, priceFor, quoteFor)
+    LaunchedEffect(observed) { controller.onQuotes(observed) }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),
-        contentPadding = PaddingValues(CoineProSpacing.Two),
-        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
-    ) {
-        item {
-            CoineProCard(modifier = Modifier.fillMaxWidth()) {
-                Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
-                    Text(
-                        text = stringResource(R.string.paper_record_closed, state.record.closed.toPersianDigits()),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = CoineProColors.TextSecondary,
-                    )
-                    state.record.winRate?.let {
-                        Text(
-                            text = stringResource(
-                                R.string.paper_record_winrate,
-                                MarketNumberFormatter.price(it, 1),
-                            ),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (it >= 50) CoineProColors.Buy else CoineProColors.Sell,
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.paper_disclaimer),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = CoineProColors.TextMuted,
-                    )
-                }
-            }
-        }
+    Column(modifier = Modifier.fillMaxSize().background(CoineProColors.Stage)) {
+        CoineProListHeader(
+            title = stringResource(R.string.paper_title),
+            subtitle = stringResource(R.string.paper_generation, PaperFormat.count(state.book.account.generation)),
+            actions = {
+                CoineProHeaderAction(
+                    icon = CoineProIcons.Settings,
+                    label = stringResource(R.string.paper_settings),
+                    onClick = { assumptionsOpen = true },
+                )
+            },
+        )
+        AccountPanel(state)
+        TabChips(tab) { tab = it }
 
-        item {
-            CoineProCard(modifier = Modifier.fillMaxWidth()) {
-                Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
-                    CoineProTextField(
-                        value = symbol,
-                        onValueChange = { symbol = it.uppercase() },
-                        label = stringResource(R.string.paper_symbol),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    // The live price, shown before the tap. A simulation that fills at a number the
-                    // reader never saw is teaching them something untrue about market orders.
-                    Text(
-                        text = price?.let { MarketNumberFormatter.priceAuto(it) }
-                            ?: stringResource(R.string.paper_no_price),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (price == null) CoineProColors.TextMuted else CoineProColors.TextPrimary,
-                    )
-                    CoineProTextField(
-                        value = size,
-                        onValueChange = { size = it },
-                        label = stringResource(R.string.paper_size),
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
-                        Chip(stringResource(R.string.paper_buy), buy, CoineProColors.Buy) { buy = true }
-                        Chip(stringResource(R.string.paper_sell), !buy, CoineProColors.Sell) { buy = false }
-                    }
-                    CoineProPrimaryButton(
-                        text = stringResource(R.string.paper_open),
-                        onClick = {
-                            controller.open(symbol, buy, price ?: return@CoineProPrimaryButton, quantity ?: return@CoineProPrimaryButton)
-                            size = ""
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = armed,
-                    )
-                }
-            }
+        when (tab) {
+            PaperTab.TICKET -> PaperTicket(
+                state = state,
+                controller = controller,
+                symbol = symbol,
+                onSymbol = { symbol = it },
+                modifier = Modifier.fillMaxSize(),
+            )
+            PaperTab.POSITIONS -> PaperPositions(
+                state = state,
+                controller = controller,
+                onOpenSymbol = onOpenSymbol,
+                modifier = Modifier.fillMaxSize(),
+            )
+            PaperTab.ORDERS -> PaperOrders(
+                state = state,
+                controller = controller,
+                zone = zone,
+                modifier = Modifier.fillMaxSize(),
+            )
+            PaperTab.HISTORY -> PaperHistory(
+                state = state,
+                zone = zone,
+                modifier = Modifier.fillMaxSize(),
+            )
+            PaperTab.RECORD -> PaperRecordTab(
+                state = state,
+                zone = zone,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
+    }
 
-        if (state.open.isNotEmpty()) {
-            item { SectionTitle(stringResource(R.string.paper_open_title)) }
-            items(state.open, key = PaperTradeEntity::id) { trade ->
-                TradeCard(trade, priceFor(trade.symbol)) { live ->
-                    controller.close(trade, live)
-                }
-            }
-        }
-        if (state.closed.isNotEmpty()) {
-            item { SectionTitle(stringResource(R.string.paper_closed_title)) }
-            items(state.closed, key = PaperTradeEntity::id) { trade ->
-                TradeCard(trade, null, null)
-            }
-        }
+    if (assumptionsOpen) {
+        PaperAssumptionsSheet(
+            state = state,
+            controller = controller,
+            onDismiss = { assumptionsOpen = false },
+        )
     }
 }
 
+/**
+ * The account, at the top of every tab.
+ *
+ * Pinned rather than scrolled away with the content, because it is the thing the whole screen is
+ * about: a reader placing an order has to be able to see what it is being placed against without
+ * scrolling back. It is also where the permanent simulation line lives — the one sentence that has
+ * to be true on every tab, and the reason this panel is not collapsible.
+ */
 @Composable
-private fun TradeCard(
-    trade: PaperTradeEntity,
-    livePrice: Double?,
-    onClose: ((Double) -> Unit)?,
-) {
-    val profit = PaperTrading.profit(trade, livePrice)
-    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+private fun AccountPanel(state: PaperTradeUiState) {
+    val account = state.book.account
+    val realised = account.balance - account.startingBalance
+    CoineProCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            horizontal = CoineProSpacing.OneHalf,
+            vertical = CoineProSpacing.OneHalf,
+        ),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = BidiText.isolateLtr(trade.symbol),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = CoineProColors.TextPrimary,
-                )
-                Text(
-                    text = stringResource(if (trade.buy) R.string.paper_buy else R.string.paper_sell) +
-                        " · " + MarketNumberFormatter.priceAuto(trade.entry),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = CoineProColors.TextMuted,
-                )
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    // A dash, not a zero. An open position with no live price has an unknown
-                    // result, and a zero would read as a trade going nowhere.
-                    text = profit?.let { MarketNumberFormatter.priceAuto(it) } ?: "—",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = when {
-                        profit == null -> CoineProColors.TextMuted
-                        profit >= 0 -> CoineProColors.Buy
-                        else -> CoineProColors.Sell
+            Text(
+                text = stringResource(R.string.paper_equity_caption),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+            )
+            PaperBadge()
+        }
+        CoineProHeroFigure(
+            figure = if (state.loaded) PaperFormat.money(state.equity) else PaperFormat.ABSENT,
+            modifier = Modifier.padding(top = CoineProSpacing.Half),
+            caption = PaperFormat.money(realised, signed = true),
+        )
+        CoineProReadingRow(
+            readings = listOf(
+                CoineProReading(stringResource(R.string.paper_balance), PaperFormat.money(account.balance)),
+                CoineProReading(
+                    stringResource(R.string.paper_unrealised),
+                    PaperFormat.money(state.unrealised, signed = true),
+                    PaperFormat.tone(state.unrealised),
+                ),
+                CoineProReading(
+                    // The margin level where there is leverage; the free margin where there is not,
+                    // because at one times the level is a ratio nobody reads and the money left is.
+                    if (state.book.marginUsed > 0.0 && state.book.rules.leverage > 1.0) {
+                        stringResource(R.string.paper_margin_level)
+                    } else {
+                        stringResource(R.string.paper_free_margin)
                     },
-                )
-                if (onClose != null && livePrice != null) {
-                    Text(
-                        text = stringResource(R.string.paper_close),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = CoineProColors.Accent,
-                        modifier = Modifier
-                            .clip(CoineProShapes.small)
-                            .clickable { onClose(livePrice) }
-                            .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
-                    )
-                }
-            }
+                    if (state.book.marginUsed > 0.0 && state.book.rules.leverage > 1.0) {
+                        PaperFormat.ratio(state.marginLevelPercent)
+                    } else {
+                        PaperFormat.money(state.freeMargin)
+                    },
+                ),
+            ),
+            modifier = Modifier.padding(horizontal = 0.dp),
+        )
+        Text(
+            text = stringResource(R.string.paper_banner),
+            style = MaterialTheme.typography.bodySmall,
+            color = CoineProColors.TextSecondary,
+            textAlign = TextAlign.Right,
+            modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.Half),
+        )
+        if (!state.loaded) {
+            Notice(stringResource(R.string.paper_loading), CoineProColors.TextMuted)
+        }
+        if (state.stale) {
+            Notice(stringResource(R.string.paper_stale), CoineProColors.Warning)
+        }
+        if (state.markIncomplete) {
+            Notice(stringResource(R.string.paper_marks_missing), CoineProColors.Warning)
         }
     }
 }
 
 @Composable
-private fun SectionTitle(text: String) {
-    Text(text, style = MaterialTheme.typography.titleMedium, color = CoineProColors.TextPrimary)
+private fun Notice(text: String, tone: androidx.compose.ui.graphics.Color) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = tone,
+        textAlign = TextAlign.Right,
+        modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.Half),
+    )
+}
+
+/**
+ * The word, wherever a surface could be mistaken for a real one.
+ *
+ * Small and permanent rather than large and dismissible. A banner a reader can close is a banner
+ * that is absent on the day it matters, and this app has a real order ticket two taps away.
+ */
+@Composable
+fun PaperBadge(modifier: Modifier = Modifier) {
+    Text(
+        text = stringResource(R.string.paper_badge),
+        style = MaterialTheme.typography.labelSmall,
+        color = CoineProColors.Warning,
+        modifier = modifier
+            .background(CoineProColors.SurfaceElevated, CoineProShapes.small)
+            .padding(horizontal = CoineProSpacing.One, vertical = 2.dp),
+    )
 }
 
 @Composable
-private fun Chip(label: String, selected: Boolean, accent: Color, onClick: () -> Unit) {
-    Text(
-        text = label,
-        style = MaterialTheme.typography.labelSmall,
-        color = if (selected) CoineProColors.OnAccent else CoineProColors.TextSecondary,
-        modifier = Modifier
-            .clip(CoineProShapes.small)
-            .background(if (selected) accent else Color.Transparent)
-            .clickable(onClick = onClick)
-            .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
+private fun TabChips(selected: PaperTab, onSelect: (PaperTab) -> Unit) {
+    val options = listOf(
+        CoineProChip(PaperTab.TICKET.name, stringResource(R.string.paper_tab_ticket)),
+        CoineProChip(PaperTab.POSITIONS.name, stringResource(R.string.paper_tab_positions)),
+        CoineProChip(PaperTab.ORDERS.name, stringResource(R.string.paper_tab_orders)),
+        CoineProChip(PaperTab.HISTORY.name, stringResource(R.string.paper_tab_history)),
+        CoineProChip(PaperTab.RECORD.name, stringResource(R.string.paper_tab_record)),
     )
+    CoineProChipRow(
+        options = options,
+        selectedId = selected.name,
+        // Null is the reader tapping the section they are already in. There is no "no section" to
+        // fall back to, so it means nothing and does nothing.
+        onSelect = { id -> id?.let { onSelect(PaperTab.valueOf(it)) } },
+        modifier = Modifier.padding(bottom = CoineProSpacing.One),
+    )
+}
+
+/**
+ * What the screen is allowed to tell the simulator about the market.
+ *
+ * The ticket's symbol is included even when nothing is open in it, because the fill preview has to
+ * be able to price an order before it exists. Everything else comes from the book itself, so a
+ * screen never subscribes to more than the account needs.
+ */
+private fun observations(
+    state: PaperTradeUiState,
+    ticket: String,
+    priceFor: (String) -> Double?,
+    quoteFor: ((String) -> PaperQuote?)?,
+): Map<String, PaperQuote> {
+    val wanted = state.book.tracked + PaperEngine.normalise(ticket)
+    return buildMap {
+        wanted.filter { it.isNotEmpty() }.forEach { symbol ->
+            val quote = quoteFor?.invoke(symbol)
+                ?: priceFor(symbol)
+                    ?.takeIf { it.isFinite() && it > 0.0 }
+                    ?.let { PaperQuote(symbol = symbol, last = it) }
+            if (quote != null) put(symbol, quote)
+        }
+    }
 }

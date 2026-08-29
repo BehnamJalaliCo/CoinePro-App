@@ -5,6 +5,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
+/**
+ * The old model's arithmetic, which the migration reproduces rather than recomputes.
+ *
+ * These stay because the import depends on them: a reader's forty closed trades must come across
+ * showing the numbers the old screen showed them, not the numbers the new rules would have charged.
+ */
 class PaperTradingTest {
 
     @Test
@@ -27,25 +33,14 @@ class PaperTradingTest {
     }
 
     @Test
-    fun `the record counts only closed trades`() {
-        val record = PaperTrading.record(
-            listOf(
-                trade(entry = 100.0, size = 1.0).copy(exit = 110.0),
-                trade(entry = 100.0, size = 1.0).copy(exit = 95.0),
-                // Still open: its profit changes while being read, and a win rate that moves when
-                // nothing happened is not a win rate.
-                trade(entry = 100.0, size = 1.0),
-            ),
-        )
-
-        assertEquals(2, record.closed)
-        assertEquals(1, record.wins)
-        assertEquals(5.0, record.net, 1e-9)
+    fun `the percentage divides by what was committed`() {
+        val trade = trade(entry = 100.0, size = 2.0).copy(exit = 110.0)
+        assertEquals(10.0, PaperTrading.profitPercent(trade, price = null)!!, 1e-9)
     }
 
     @Test
-    fun `an empty record has no win rate, not a zero one`() {
-        assertNull(PaperTrading.record(emptyList()).winRate)
+    fun `an entry of zero has no percentage, rather than an infinite one`() {
+        assertNull(PaperTrading.profitPercent(trade(entry = 0.0).copy(exit = 10.0), price = null))
     }
 }
 

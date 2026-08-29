@@ -575,7 +575,7 @@ private fun CategoryRow(
 @Composable
 private fun switchColours() = SwitchDefaults.colors(
     checkedThumbColor = CoineProColors.OnAccent,
-    checkedTrackColor = CoineProColors.Accent,
+    checkedTrackColor = CoineProColors.AccentFill,
     uncheckedThumbColor = CoineProColors.TextMuted,
     uncheckedTrackColor = CoineProColors.Surface,
     uncheckedBorderColor = CoineProColors.Border,

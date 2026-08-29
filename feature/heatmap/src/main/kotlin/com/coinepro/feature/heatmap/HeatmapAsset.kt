@@ -7,25 +7,38 @@ import com.coinepro.core.symbols.SymbolRanking
  * One market, as the heatmap needs it.
  *
  * Almost every figure here is nullable and that is the honest shape of the data rather than
- * laziness. Neither backend sends a capitalisation, the MT5 side sends no volume at all, and the
- * socket feed sends a session high and low only for the symbols currently subscribed. A model that
- * demanded them would force whoever mapped it to invent numbers, and an invented area on a treemap
- * is a lie the reader has no way to detect — it looks exactly like a real one.
+ * laziness. Neither backend puts a change, a high, a low or a volume on a quote — the snapshot
+ * carries a symbol, a price, a bid, an ask and a timestamp, and that is the whole of it. So every
+ * figure below except [price] is derived from the market's own daily bars by [HeatmapFacts], one
+ * request per market, and a market whose bars have not arrived yet answers null to all of them.
  *
- * So the map degrades instead: [HeatmapMetrics.weightOf] falls back to the catalogue's own
- * liquidity ranking when the requested figure is missing, and [HeatmapMetrics.valueOf] answers null
- * so the tile draws neutral. A neutral tile says "nothing known"; a fabricated one says something
- * false.
+ * ### What used to be wrong here, and why the shape changed
+ *
+ * These fields existed before anything wrote them. `HeatmapAssets` filled in [meta], [price] and a
+ * [changePercent] taken straight off `MarketQuote.changePercent` — which is null on every quote
+ * either feed has ever sent — and left the other eight at their defaults. The result was a map
+ * where all five colour modes drew every tile the same neutral grey and all four sizings fell back
+ * to the same ranking. It looked like a wall of names because it *was* a wall of names: there was
+ * no second variable on the screen at all.
+ *
+ * A `marketCap` field is gone entirely rather than left unwritten. Nothing on either backend can
+ * supply one, and a declared field that is never filled is how the first version of this ended up
+ * shipping a control named after a quantity the app does not have.
+ *
+ * Null is load-bearing, not a placeholder: [HeatmapMetrics.valueOf] answers null so the tile draws
+ * as *unknown* — hatched, and visibly not part of the ramp — rather than as neutral. A neutral
+ * tile in a field of coloured ones reads as "this market did not move", and saying that about a
+ * market nobody has read is the one failure a heatmap must not have.
  */
 data class HeatmapAsset(
     /** Classification, display names and the base/quote split, from `core:symbols`. */
     val meta: SymbolMeta,
     val price: Double,
-    /** Session change, in percent. The default colour metric. */
+    /** Change against the previous daily close, in percent. The default colour metric. */
     val changePercent: Double? = null,
-    /** Change over the longer window the screen was opened on, in percent. */
+    /** Change over the window the reader chose, in percent. See [HeatmapPeriod]. */
     val periodPercent: Double? = null,
-    /** Realised range over the window, in percent of price. */
+    /** The day's realised range, in percent of price. */
     val volatilityPercent: Double? = null,
     /** What [volatilityPercent] usually is for this instrument, so the excess has a sign. */
     val typicalVolatilityPercent: Double? = null,
@@ -33,17 +46,41 @@ data class HeatmapAsset(
     val previousClose: Double? = null,
     val dayHigh: Double? = null,
     val dayLow: Double? = null,
-    val marketCap: Double? = null,
-    /** Twenty-four-hour traded quantity, in units of the base asset. */
+    /** Traded quantity over the last daily bar, in units of the base asset. */
     val volume: Double? = null,
-    /** Twenty-four-hour traded value, in the quote currency. */
+    /** Traded value over the last daily bar, in the quote currency. */
     val turnover: Double? = null,
+    /**
+     * A perpetual's funding rate for the coming period, in percent.
+     *
+     * Present only where the feed carries a swap market, which no route this app can call does yet
+     * — see [HeatmapTicker]. It is read in the detail sheet and by nothing else, deliberately: a
+     * colour mode for a figure that exists on a tenth of the catalogue would be a map that is
+     * nine-tenths hatched.
+     */
+    val fundingRatePercent: Double? = null,
+    /**
+     * Whether this market's own bars have been read.
+     *
+     * Distinct from "every figure is null", which is also true of a market whose bars arrived and
+     * turned out to hold one candle. The screen counts these to tell the reader how much of the
+     * map is real yet, and the counting has to mean "asked and answered" rather than "has numbers".
+     */
+    val resolved: Boolean = false,
 ) {
     /** The feed's own spelling, which is what goes back on the wire when a tile is tapped. */
     val symbol: String get() = meta.symbol
 
     /** What the tile is labelled with: the base alone for a coin, the pair for everything else. */
     val label: String get() = meta.short
+
+    /** What the day's range spans, or null where the day has no range to speak of. */
+    val dayRange: ClosedFloatingPointRange<Double>?
+        get() {
+            val high = dayHigh?.takeIf { it.isFinite() } ?: return null
+            val low = dayLow?.takeIf { it.isFinite() } ?: return null
+            return if (high >= low) low..high else null
+        }
 }
 
 /**
@@ -58,11 +95,12 @@ object HeatmapMetrics {
     /**
      * How much area a market claims under a given sizing.
      *
-     * When the requested figure is missing the answer is derived from
-     * [SymbolRanking.rank], which is this app's offline answer to "how large is this market" and
-     * already exists precisely because the feeds cannot be asked. It is coarse — it knows that
-     * Bitcoin outweighs a mid-cap alt, not by how much — so the resulting map is a rough one, and
-     * that is still better than either dropping the market or inventing a capitalisation for it.
+     * When the requested figure is missing the answer is derived from [SymbolRanking.rank], which
+     * is this app's offline answer to "how large is this market" and already exists precisely
+     * because the feeds cannot be asked. That is a fallback for *area* and not for colour, and the
+     * asymmetry is deliberate: a rough area still tells the reader roughly the right thing about
+     * importance, while a fabricated colour would tell them something specific and false about
+     * price.
      *
      * Always strictly positive, so a market can never claim zero area and vanish from a map it is
      * listed on.
@@ -70,10 +108,9 @@ object HeatmapMetrics {
     fun weightOf(asset: HeatmapAsset, size: HeatmapSize): Double {
         if (size == HeatmapSize.MONO) return 1.0
         val reported = when (size) {
-            HeatmapSize.MARKET_CAP -> asset.marketCap
             HeatmapSize.VOLUME -> asset.volume
             HeatmapSize.TURNOVER -> asset.turnover ?: asset.volume?.let { it * asset.price }
-            HeatmapSize.MONO -> null
+            HeatmapSize.LIQUIDITY, HeatmapSize.MONO -> null
         }
         val usable = reported?.takeIf { it.isFinite() && it > 0.0 }
         return usable ?: rankWeight(asset)
@@ -82,17 +119,46 @@ object HeatmapMetrics {
     /**
      * The quantity the colour ramp plots, or null when this market cannot answer that question.
      *
-     * Null is a real answer and the tile draws neutral for it. The alternative — treating a missing
-     * figure as zero — paints an unknown market with the same colour as a market that genuinely did
-     * not move, and those are not the same thing.
+     * Null is a real answer and the tile draws as unknown for it. The alternative — treating a
+     * missing figure as zero, or borrowing a neighbouring metric — paints an unread market with
+     * the same colour as a market that genuinely did not move, and those are not the same thing.
      */
     fun valueOf(asset: HeatmapAsset, colour: HeatmapColour): Double? = when (colour) {
         HeatmapColour.CHANGE -> asset.changePercent
-        HeatmapColour.PERFORMANCE -> asset.periodPercent ?: asset.changePercent
+        HeatmapColour.PERFORMANCE -> asset.periodPercent
         HeatmapColour.VOLATILITY -> volatilityExcess(asset)
         HeatmapColour.RANGE -> rangePosition(asset)
         HeatmapColour.GAP -> gap(asset)
     }?.takeIf { it.isFinite() }
+
+    /**
+     * Whether the map, as a whole, can answer this colour question at all.
+     *
+     * Asked of a whole list rather than of one market because the answer drives a control: a mode
+     * nothing can answer is labelled as having no data in the settings sheet instead of sitting
+     * there as a radio button that changes nothing. One market answering is enough to keep the
+     * mode live — the rest draw as unknown, which is a fact about those markets and not about the
+     * mode.
+     */
+    fun anyValueFor(assets: List<HeatmapAsset>, colour: HeatmapColour): Boolean =
+        assets.any { valueOf(it, colour) != null }
+
+    /**
+     * Whether the map can size by this figure, as opposed to falling back to the ranking.
+     *
+     * [HeatmapSize.LIQUIDITY] and [HeatmapSize.MONO] need nothing and are always true. The other
+     * two are true only where some market reports a traded quantity — which the MT5 forex side
+     * never does, so on a forex-only catalogue both are honestly reported as unavailable rather
+     * than quietly drawing the ranking under a volume label.
+     */
+    fun anyWeightFor(assets: List<HeatmapAsset>, size: HeatmapSize): Boolean = when (size) {
+        HeatmapSize.LIQUIDITY, HeatmapSize.MONO -> true
+        HeatmapSize.VOLUME -> assets.any { it.volume?.takeIf { v -> v.isFinite() && v > 0.0 } != null }
+        HeatmapSize.TURNOVER -> assets.any {
+            val turnover = it.turnover ?: it.volume?.times(it.price)
+            turnover?.takeIf { t -> t.isFinite() && t > 0.0 } != null
+        }
+    }
 
     /**
      * The band the colour scale is held inside for each metric.
@@ -103,7 +169,10 @@ object HeatmapMetrics {
      * [HeatmapColours.scaleFor] for what the band is for.
      */
     fun scaleBoundsOf(colour: HeatmapColour): Pair<Double, Double> = when (colour) {
-        HeatmapColour.CHANGE, HeatmapColour.PERFORMANCE -> 0.5 to 25.0
+        HeatmapColour.CHANGE -> 0.5 to 25.0
+        // A quarter's move is a larger number than a day's by construction, so the same ceiling
+        // would put every coin at the end of the ramp and make the mode a two-colour map.
+        HeatmapColour.PERFORMANCE -> 1.0 to 60.0
         HeatmapColour.VOLATILITY -> 0.2 to 10.0
         // Already a percentage *of the range*, so the full extent of the scale is the whole answer
         // and there is nothing to normalise away.
@@ -118,7 +187,7 @@ object HeatmapMetrics {
     }
 
     /**
-     * How far the window's range sits above or below this instrument's own normal range.
+     * How far the day's range sits above or below this instrument's own normal range.
      *
      * Expressed in percentage points of price rather than as a multiple, so a quiet major and a
      * lively alt are compared on the same axis instead of the alt permanently reading as calm

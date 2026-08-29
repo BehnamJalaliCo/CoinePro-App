@@ -4,14 +4,29 @@ package com.coinepro.feature.heatmap
  * What decides how much room a market gets on the map.
  *
  * Area is the map's loudest signal — it is read before any colour — so the choice here is a choice
- * about what the reader is being told is important. Three of these are figures the feed supplies
- * and one is a deliberate refusal to weight at all.
+ * about what the reader is being told is important.
+ *
+ * ### Why capitalisation is not one of the choices any more
+ *
+ * There used to be a fifth member, `MARKET_CAP`, and it was the default. Nothing ever wrote it.
+ * Neither backend has a capitalisation field anywhere in its surface — not on the snapshot, not on
+ * the candle route, not on the catalogue — so every map drawn under it silently fell through to
+ * [LIQUIDITY]'s ranking while telling the reader it was showing capitalisation. A control that
+ * names a quantity the app cannot obtain is worse than no control: the reader trusts the label and
+ * reads a different map from the one they asked for. It is gone rather than disabled, and
+ * [LIQUIDITY] is what that fallback was all along, now under its own name.
  */
 enum class HeatmapSize {
-    /** Capitalisation: the map of what the market *is*. */
-    MARKET_CAP,
+    /**
+     * The app's own offline liquidity ranking, named honestly.
+     *
+     * Coarse — it knows that Bitcoin outweighs a mid-cap alt, not by how much — and it needs no
+     * network at all, which is why it is the default: it is the one sizing that is complete the
+     * instant the catalogue lands, before a single daily bar has been fetched.
+     */
+    LIQUIDITY,
 
-    /** Twenty-four-hour traded quantity: the map of what is being traded today. */
+    /** Traded quantity over the last daily bar, in units of the base asset. */
     VOLUME,
 
     /** Quantity times price — money moved rather than units moved. */
@@ -35,12 +50,23 @@ enum class HeatmapSize {
  * changes is the quantity being placed on it, and each one is a different question about the same
  * market — where it closed, how it did over the window, whether it is unusually agitated, where in
  * the day's range it is sitting, and whether it opened away from where it closed.
+ *
+ * Every one of them is derived from the market's own daily bars by [HeatmapFacts], because the
+ * quote either backend sends carries a price and nothing else. Without bars all five answer null
+ * and the map draws as unknown rather than as flat — see [HeatmapColours.unknown].
  */
 enum class HeatmapColour {
-    /** Percentage change over the session. The default, and what a heatmap normally means. */
+    /** Percentage change against the previous daily close. The default, and what a heatmap means. */
     CHANGE,
 
-    /** Percentage change over the longer window the screen was opened on. */
+    /**
+     * Percentage change over the window named by [HeatmapPeriod].
+     *
+     * This used to fall back to [CHANGE] when no period figure was available, which meant a reader
+     * who selected "three months" could be shown today's move under a three-month label with
+     * nothing on screen saying so. It answers null now: a mode that cannot answer its own question
+     * says so.
+     */
     PERFORMANCE,
 
     /**
@@ -48,7 +74,7 @@ enum class HeatmapColour {
      *
      * A raw volatility figure cannot go on a diverging ramp: it has no sign, so half the scale
      * would be unreachable and every tile would read as a gain. What is plotted instead is the
-     * excess over the instrument's typical range, which does have a sign and does answer the
+     * excess over the instrument's typical daily range, which does have a sign and does answer the
      * question a reader is asking — is this market calmer or wilder than it usually is.
      */
     VOLATILITY,
@@ -62,8 +88,29 @@ enum class HeatmapColour {
      */
     RANGE,
 
-    /** The opening gap against the previous close. */
+    /**
+     * The opening gap against the previous close.
+     *
+     * On a coin this is almost always near zero, because crypto does not close; on a currency pair,
+     * a metal or an index it is the weekend, and it is one of the few figures a reader cannot get
+     * from the price alone. Both are true answers, and a map of near-zero gaps across the crypto
+     * block beside a real gap on gold is itself the information.
+     */
     GAP,
+}
+
+/**
+ * The window [HeatmapColour.PERFORMANCE] measures over.
+ *
+ * Counted in daily bars rather than in calendar days, which is the same thing for a coin and
+ * deliberately not the same thing for a currency pair: a forex market has no Saturday bar, so
+ * "thirty bars back" is six weeks of calendar and is nonetheless the right reference, because the
+ * days in between had no trading to measure.
+ */
+enum class HeatmapPeriod(val bars: Int) {
+    WEEK(7),
+    MONTH(30),
+    QUARTER(90),
 }
 
 /**
@@ -108,29 +155,71 @@ enum class HeatmapPalette {
 }
 
 /**
- * Whether markets of different kinds are kept apart.
+ * Whether markets of different kinds are kept apart, and by what.
  *
- * Grouping costs area — each group needs a strip for its name — so it is off by default. It earns
- * its cost on a mixed catalogue, where an ungrouped map interleaves coins with currency pairs and
- * the reader cannot see that one whole class has turned.
+ * Grouping costs area — each block needs a strip for its name — and it used to be off by default
+ * for that reason. It is on now, because [HeatmapDensity] caps how many tiles a map draws: at a
+ * hundred and forty tiles the blocks are tall enough to give a strip up without the tiles under
+ * them becoming unreadable, and an ungrouped map of that size interleaves coins with currency
+ * pairs so thoroughly that a reader cannot see one whole class turn.
+ *
+ * A group is also the drill-down: tapping a block's name strip focuses that block, which is how a
+ * reader reaches the markets the density cap left off the map.
  */
 enum class HeatmapGrouping {
     NONE,
 
     /** By the class [com.coinepro.core.symbols.SymbolClassifier] derives from the ticker. */
     BY_CLASS,
+
+    /**
+     * By what the market is priced in — USDT, USD, JPY.
+     *
+     * A different question from the class and a better one on a day when a quote currency is
+     * itself moving: every USD-quoted pair falling together is a dollar story, not forty separate
+     * ones, and only this grouping shows it as one block.
+     */
+    BY_QUOTE,
 }
 
 /**
- * The four choices the settings sheet writes and the map reads.
+ * How many markets the map draws at once.
  *
- * One immutable object rather than four pieces of state because the plan is rebuilt whenever any
- * of them changes, and a single key makes that `remember` correct by construction instead of
- * correct if somebody remembered to list all four.
+ * ### The problem this exists to answer
+ *
+ * The catalogue runs to several hundred markets. A treemap of four hundred tiles on a phone is four
+ * hundred rectangles averaging under a fifth of a square centimetre: no ticker fits in one, no
+ * figure fits in one, and no thumb can hit the one it aimed at. What shipped looked like a wall of
+ * names precisely because it drew every market it was handed.
+ *
+ * So the map draws the largest [tiles] by whatever the current sizing is, and the reader reaches
+ * the rest by grouping and focusing rather than by squinting. [EVERYTHING] is kept because a
+ * reader on a tablet, or one who has filtered to a single class, genuinely can use it — but it is
+ * not the default, and choosing it is a choice rather than an accident.
+ */
+enum class HeatmapDensity(val tiles: Int?) {
+    /** Big tiles, every one of them labelled with its ticker and its figure. */
+    FOCUSED(48),
+
+    /** The default. Most tiles carry a ticker; the smallest carry colour alone. */
+    STANDARD(144),
+
+    /** No cap. Honest about what it costs: below a certain size a tile is a coloured pixel. */
+    EVERYTHING(null),
+}
+
+/**
+ * The six choices the settings sheet writes and the map reads.
+ *
+ * One immutable object rather than six pieces of state because the plan is rebuilt whenever any of
+ * them changes, and a single key makes that `remember` correct by construction instead of correct
+ * if somebody remembered to list all six.
  */
 data class HeatmapOptions(
-    val size: HeatmapSize = HeatmapSize.MARKET_CAP,
+    val size: HeatmapSize = HeatmapSize.LIQUIDITY,
     val colour: HeatmapColour = HeatmapColour.CHANGE,
+    val period: HeatmapPeriod = HeatmapPeriod.MONTH,
     val palette: HeatmapPalette = HeatmapPalette.CLASSIC,
-    val grouping: HeatmapGrouping = HeatmapGrouping.NONE,
+    val grouping: HeatmapGrouping = HeatmapGrouping.BY_CLASS,
+    val density: HeatmapDensity = HeatmapDensity.STANDARD,
 )

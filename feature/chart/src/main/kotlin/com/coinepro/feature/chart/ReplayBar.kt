@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -51,6 +52,7 @@ import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.CoineProToggleChip
 import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.R as DesignR
@@ -129,8 +131,8 @@ internal fun ReplayBar(
             value = state.progress,
             onValueChange = onSeek,
             colors = SliderDefaults.colors(
-                thumbColor = CoineProColors.Accent,
-                activeTrackColor = CoineProColors.Accent,
+                thumbColor = CoineProColors.AccentFill,
+                activeTrackColor = CoineProColors.AccentFill,
                 inactiveTrackColor = CoineProColors.Border,
             ),
             modifier = Modifier.fillMaxWidth().height(20.dp),
@@ -147,19 +149,17 @@ internal fun ReplayBar(
                 // restored from a saved run always lights exactly one chip. See
                 // `ReplayState.speedStep`.
                 val selected = state.speedStep == step
-                Text(
+                CoineProToggleChip(
                     // The multiplier is a market-adjacent figure and stays Latin, like every other
                     // number a trader compares against another app.
-                    text = BidiText.isolateLtr(
+                    label = BidiText.isolateLtr(
                         if (step.multiplier < 1) "${step.multiplier}×" else "${step.multiplier.toInt()}×",
                     ),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (selected) CoineProColors.OnAccent else CoineProColors.TextSecondary,
-                    modifier = Modifier
-                        .clip(CoineProShapes.small)
-                        .background(if (selected) CoineProColors.Accent else Color.Transparent)
-                        .clickable { onSpeed(step) }
-                        .padding(horizontal = CoineProSpacing.One, vertical = 2.dp),
+                    selected = selected,
+                    onClick = { onSpeed(step) },
+                    // Compact, because this is the chart's chrome. Nine of these sit in a scrolling
+                    // strip and at the full size they would be a headline over the plot.
+                    compact = true,
                 )
             }
         }
@@ -210,8 +210,11 @@ internal fun GoToDateField(
             style = MaterialTheme.typography.labelSmall,
             color = if (target == null) CoineProColors.TextDisabled else CoineProColors.OnAccent,
             modifier = Modifier
+                // A button, so a thumb has to reach it: six points of padding around labelSmall
+                // draws about twenty-six.
+                .minimumInteractiveComponentSize()
                 .clip(CoineProShapes.small)
-                .background(if (target == null) Color.Transparent else CoineProColors.Accent)
+                .background(if (target == null) Color.Transparent else CoineProColors.AccentFill)
                 .clickable(enabled = target != null) {
                     target?.let {
                         onGoTo(it)
@@ -274,8 +277,9 @@ private fun ReplayLedgerPanel(state: ReplayState) {
                 style = MaterialTheme.typography.labelSmall,
                 color = if (expanded) CoineProColors.OnAccent else CoineProColors.TextSecondary,
                 modifier = Modifier
+                    .minimumInteractiveComponentSize()
                     .clip(CoineProShapes.small)
-                    .background(if (expanded) CoineProColors.Accent else Color.Transparent)
+                    .background(if (expanded) CoineProColors.AccentFill else Color.Transparent)
                     .clickable { expanded = !expanded }
                     .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
             )
@@ -349,8 +353,9 @@ private fun ReplayLedgerPanel(state: ReplayState) {
                         style = MaterialTheme.typography.labelSmall,
                         color = CoineProColors.OnAccent,
                         modifier = Modifier
+                            .minimumInteractiveComponentSize()
                             .clip(CoineProShapes.small)
-                            .background(CoineProColors.Accent)
+                            .background(CoineProColors.AccentFill)
                             .clickable {
                                 session = ReplayLedger.closeAll(marked, state.bars, state.cursor)
                             }
@@ -433,8 +438,9 @@ private fun OpenPositionRow(position: ReplayPosition, price: Double?, onClose: (
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.OnAccent,
             modifier = Modifier
+                .minimumInteractiveComponentSize()
                 .clip(CoineProShapes.small)
-                .background(CoineProColors.Accent)
+                .background(CoineProColors.AccentFill)
                 .clickable(onClick = onClose)
                 .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
         )

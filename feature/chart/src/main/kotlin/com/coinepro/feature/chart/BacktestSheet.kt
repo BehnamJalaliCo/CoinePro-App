@@ -68,6 +68,7 @@ import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextStyles
+import com.coinepro.core.designsystem.CoineProToggleChip
 import com.coinepro.core.marketdata.CHART_TIME_ZONE
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -856,18 +857,16 @@ private fun MetricRow(label: String, value: String, colour: Color = CoineProColo
     }
 }
 
+/**
+ * The design system's chip, under this sheet's old name.
+ *
+ * It was its own Text at four points of vertical padding — about twenty-three drawn, no press
+ * state, no haptic, and nothing at all to look at when unselected. Compact, because this is a
+ * sheet's chrome rather than its content.
+ */
 @Composable
 private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
-    Text(
-        text = label,
-        style = MaterialTheme.typography.labelSmall,
-        color = if (selected) CoineProColors.OnAccent else CoineProColors.TextSecondary,
-        modifier = Modifier
-            .clip(CoineProShapes.small)
-            .background(if (selected) CoineProColors.Accent else Color.Transparent)
-            .clickable(onClick = onClick)
-            .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
-    )
+    CoineProToggleChip(label = label, selected = selected, onClick = onClick, compact = true)
 }
 
 /** Green above zero, red below, and the ordinary ink at exactly zero — a scratch is not a result. */

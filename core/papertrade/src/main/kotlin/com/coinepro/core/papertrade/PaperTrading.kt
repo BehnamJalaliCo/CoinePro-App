@@ -3,21 +3,26 @@ package com.coinepro.core.papertrade
 import com.coinepro.core.database.PaperTradeEntity
 
 /**
- * The arithmetic of a trade taken with no money.
+ * The arithmetic the old paper screen ran on, kept for exactly one purpose.
  *
- * Deliberately the plainest possible model: `(exit − entry) × size`, with the sign flipped for a
- * sell. No fees, no spread, no swap, no funding and no slippage — and the screen says so in as many
- * words rather than leaving a reader to discover it by comparing against a real fill.
+ * `(exit − entry) × size`, sign flipped for a sell, with no fees, no spread, no swap, no funding
+ * and no slippage. That was the whole model, and the screen said so — which was honest about the
+ * omission and, the owner's judgement, decoration rather than a product. Everything that trades now
+ * goes through [PaperEngine] and is charged properly.
  *
- * That is a decision, not an omission. Modelling fees would require this app to know the reader's
- * broker, their tier and their instrument's contract size, and a simulation that guesses those is
- * more misleading than one that plainly does not include them: it produces a number that *looks*
- * like a real fill and is not. The trader tools already size a position properly with real inputs;
- * this is for practising the decision, not the invoice.
+ * This survives because [PaperMigration] needs it. A reader who took forty trades under the old
+ * screen was shown a result for each one, and the import has to reproduce **that** number rather
+ * than recompute it under rules that did not exist when they took the trade. Back-charging fees
+ * onto a closed history would change a reader's past record because the app was updated, which is
+ * a record nobody can learn from.
+ *
+ * There is deliberately no win rate here any more. There was one, and a second definition of what
+ * counts as a win — beside `PortfolioMath`'s, which the record now uses — is how two screens come
+ * to print different numbers under the same Persian word. See [PaperRecordMath].
  */
 object PaperTrading {
 
-    /** Where the position stands against a price. Null when the price is not a number. */
+    /** Where an old row stands against a price. Null when the price is not a number. */
     fun profit(trade: PaperTradeEntity, price: Double?): Double? {
         val mark = trade.exit ?: price ?: return null
         if (!mark.isFinite()) return null
@@ -34,25 +39,4 @@ object PaperTrading {
     }
 
     val PaperTradeEntity.open: Boolean get() = exit == null
-
-    /**
-     * The closed record.
-     *
-     * Only closed trades count. An open position's profit is a number that changes while being
-     * read, and folding it into a win rate would mean a statistic that moves when nothing happened.
-     */
-    data class Record(val closed: Int, val wins: Int, val net: Double) {
-        val winRate: Double? get() = if (closed == 0) null else wins * 100.0 / closed
-    }
-
-    fun record(trades: List<PaperTradeEntity>): Record {
-        val closed = trades.filter { it.exit != null }
-        val results = closed.mapNotNull { profit(it, null) }
-        return Record(
-            closed = closed.size,
-            // Zero is a scratch, as everywhere else in this app.
-            wins = results.count { it > 0 },
-            net = results.sum(),
-        )
-    }
 }

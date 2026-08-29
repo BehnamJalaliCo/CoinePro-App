@@ -693,7 +693,7 @@ private fun Toggle(@StringRes label: Int, checked: Boolean, onChange: (Boolean) 
             onCheckedChange = onChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = CoineProColors.OnAccent,
-                checkedTrackColor = CoineProColors.Accent,
+                checkedTrackColor = CoineProColors.AccentFill,
                 uncheckedThumbColor = CoineProColors.TextMuted,
                 uncheckedTrackColor = CoineProColors.SurfaceElevated,
             ),

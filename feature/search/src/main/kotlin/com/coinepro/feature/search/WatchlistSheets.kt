@@ -300,7 +300,7 @@ private fun ColumnsSheet(
                         modifier = Modifier
                             .size(18.dp)
                             .clip(CoineProShapes.extraSmall)
-                            .background(if (ticked) CoineProColors.Accent else Color.Transparent)
+                            .background(if (ticked) CoineProColors.AccentFill else Color.Transparent)
                             .border(1.dp, CoineProColors.Border, CoineProShapes.extraSmall),
                         contentAlignment = Alignment.Center,
                     ) {

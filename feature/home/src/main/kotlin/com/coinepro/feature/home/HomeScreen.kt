@@ -2,6 +2,7 @@ package com.coinepro.feature.home
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -938,8 +939,18 @@ private fun ShortcutRow(
 private fun Shortcut(label: String, icon: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
+            // Twelve of vertical padding around an 18dp glyph draws a 42dp row, and this is a
+            // control on the first screen the app opens on.
+            .minimumInteractiveComponentSize()
             .clip(CoineProShapes.small)
-            .background(CoineProColors.Surface)
+            // Elevated with a hairline, not `Surface` with nothing.
+            //
+            // These three sit directly on the page rather than inside a card, and `Surface` on the
+            // stage measures 1.07:1 in the dark theme and 1.04:1 in the light — a fill that is
+            // there in the file and not on the panel. With no border either, the row read as three
+            // labels floating on the page rather than three things to press.
+            .background(CoineProColors.SurfaceElevated)
+            .border(1.dp, CoineProColors.BorderSubtle, CoineProShapes.small)
             .clickable(onClick = onClick)
             .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.CenterVertically,

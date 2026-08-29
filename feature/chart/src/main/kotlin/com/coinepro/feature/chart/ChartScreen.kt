@@ -2416,7 +2416,7 @@ private fun SettingSwitch(
             modifier = Modifier.widthIn(min = SWITCH_MIN),
             colors = SwitchDefaults.colors(
                 checkedThumbColor = CoineProColors.OnAccent,
-                checkedTrackColor = CoineProColors.Accent,
+                checkedTrackColor = CoineProColors.AccentFill,
                 uncheckedThumbColor = CoineProColors.TextMuted,
                 uncheckedTrackColor = CoineProColors.SurfaceElevated,
             ),

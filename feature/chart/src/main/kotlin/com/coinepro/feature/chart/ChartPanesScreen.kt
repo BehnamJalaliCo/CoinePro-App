@@ -482,7 +482,7 @@ private fun PaneSyncRow(
                             onCheckedChange = { on -> onChange(field, on) },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = CoineProColors.OnAccent,
-                                checkedTrackColor = CoineProColors.Accent,
+                                checkedTrackColor = CoineProColors.AccentFill,
                                 uncheckedThumbColor = CoineProColors.TextMuted,
                                 uncheckedTrackColor = CoineProColors.SurfaceElevated,
                             ),

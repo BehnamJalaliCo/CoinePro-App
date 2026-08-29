@@ -189,6 +189,7 @@ import com.coinepro.feature.guest.GuestNewsScreen
 import com.coinepro.feature.guest.GuestScreen
 import com.coinepro.feature.home.HomeBriefing
 import com.coinepro.feature.home.HomePortfolio
+import com.coinepro.feature.heatmap.CandleHeatmapBarSource
 import com.coinepro.feature.heatmap.HeatmapScreen
 import com.coinepro.feature.home.HomeScreen
 import com.coinepro.feature.portfolio.PortfolioReportScreen
@@ -2473,9 +2474,14 @@ private fun MainShell(
                 // The catalogue controller the search screen already uses, rather than a second
                 // one: two would fetch the same several thousand symbols twice and could disagree
                 // about which of them the app has artwork for.
+                // And the candles, because without a bar source the map has no second variable
+                // and draws itself entirely hatched — honest, and useless. `candleGateway` is
+                // whichever one this shell was built with, so the guest's map reads the guest's
+                // candles without a second branch here.
                 HeatmapScreen(
                     controller = marketSearchController,
                     onOpenSymbol = { navController.navigate(chartRoute(it)) },
+                    bars = remember(candleGateway) { CandleHeatmapBarSource(candleGateway) },
                 )
             }
             composable(SCREENER_ROUTE) {

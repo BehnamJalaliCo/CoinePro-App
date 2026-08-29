@@ -166,21 +166,22 @@ fun CoineProChipRow(
     ) {
         if (allLabel != null) {
             item(key = "__all") {
-                Chip(
+                CoineProToggleChip(
                     label = allLabel,
-                    count = null,
                     selected = selectedId == null,
+                    onClick = { onSelect(null) },
                     compact = compact,
-                ) { onSelect(null) }
+                )
             }
         }
         items(options, key = { it.id }) { option ->
-            Chip(
+            CoineProToggleChip(
                 label = option.label,
-                count = option.count,
                 selected = option.id == selectedId,
+                onClick = { onSelect(option.id) },
+                count = option.count,
                 compact = compact,
-            ) { onSelect(option.id) }
+            )
         }
     }
 }
@@ -207,12 +208,25 @@ data class CoineProChip(val id: String, val label: String, val count: Int? = nul
  * between selected and not. That is most of what "nothing responds" means.
  */
 @Composable
-private fun Chip(
+fun CoineProToggleChip(
     label: String,
-    count: Int?,
     selected: Boolean,
-    compact: Boolean = false,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    count: Int? = null,
+    compact: Boolean = false,
+    /**
+     * A fill for a chip that means something other than "selected" — a side, an outcome.
+     *
+     * Null takes the page accent, which is what a filter should do. The journal's buy/sell pair is
+     * the case for passing one: green and red there are the *content* of the choice, not a
+     * selection colour, and replacing them with the page accent would lose the only thing that
+     * tells the two chips apart at a glance.
+     *
+     * It is a **fill**, so pass a fill colour. `CoineProColors.Accent` is the ink gold and is a
+     * dark brown in the light theme; [CoineProColors.AccentFill] is its fill twin.
+     */
+    fill: Color? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val haptics = rememberCoineProHaptics()
@@ -220,17 +234,31 @@ private fun Chip(
     // crosses over its neighbour's in 160ms is what tells the reader the selection *moved* instead
     // of two unrelated chips independently changing colour.
     val fill by animateColorAsState(
-        targetValue = if (selected) CoineProColors.pageAccent else CoineProColors.SurfaceElevated,
+        targetValue = when {
+            !selected -> CoineProColors.SurfaceElevated
+            else -> fill ?: CoineProColors.pageAccent
+        },
         animationSpec = CoineProMotionSpecs.standard(),
         label = "chipFill",
     )
     val ink by animateColorAsState(
-        targetValue = if (selected) CoineProColors.onPageAccent else CoineProColors.TextSecondary,
+        targetValue = when {
+            !selected -> CoineProColors.TextSecondary
+            // Every fill this chip accepts is a mid-tone or darker in both themes — the page
+            // accents, the brand gold, buy and sell — so the label that reads on all of them is
+            // the one the gold already needs. White would fail on gold in either theme.
+            fill != null -> CoineProColors.OnAccent
+            else -> CoineProColors.onPageAccent
+        },
         animationSpec = CoineProMotionSpecs.standard(),
         label = "chipInk",
     )
     Row(
-        modifier = Modifier
+        modifier = modifier
+            // A chip is a control and a control is reachable with a thumb. Five screens had
+            // hand-rolled their own at four points of vertical padding, which draws about
+            // twenty-three — half a target — and this is the row a reader taps most in the app.
+            .minimumInteractiveComponentSize()
             .pressScale(interaction, CoineProPress.CHIP)
             .clip(CoineProPillShape)
             .background(fill)

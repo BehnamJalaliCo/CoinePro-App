@@ -25,7 +25,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -198,22 +197,28 @@ fun CoineProPrimaryButton(
             haptics.commit()
             onClick()
         },
-        modifier = modifier
-            .alpha(if (enabled) 1f else DISABLED_ALPHA)
-            .pressScale(interaction, CoineProPress.CTA),
+        modifier = modifier.pressScale(interaction, CoineProPress.CTA),
         enabled = enabled,
         shape = CoineProPillShape,
         // The screen's own accent, not a fixed gold. One button component, four identities: gold
         // where an action executes, blue where it analyses, green where it is social, premium gold
         // where it costs money. The alternative is a variant parameter every call site has to get
         // right, and the one that forgets ships a gold "execute" on an analysis screen.
-        color = CoineProColors.pageAccent,
+        //
+        // Disabled is its own pair rather than the accent behind 45% alpha. Dimming the whole
+        // button moves the fill and the label toward the page *together*, so the label's contrast
+        // against its own fill collapsed with it: 2.62:1 in the dark theme and 2.15:1 in the
+        // light, which is a button whose text cannot be read at the exact moment the reader is
+        // trying to work out why they cannot press it. A neutral fill says unavailable more
+        // plainly than a faded gold does, and it keeps the sentence legible while it says it.
+        color = if (enabled) CoineProColors.pageAccent else CoineProColors.SurfaceElevated,
+        border = if (enabled) null else BorderStroke(1.dp, CoineProColors.BorderSubtle),
         interactionSource = interaction,
     ) {
         ButtonContent(
             text = text,
             icon = icon,
-            ink = CoineProColors.onPageAccent,
+            ink = if (enabled) CoineProColors.onPageAccent else CoineProColors.TextMuted,
         )
     }
 }
@@ -351,9 +356,6 @@ fun CoineProAgentOrb(
         )
     }
 }
-
-/** Dim enough to read as unavailable, light enough that the label stays legible. */
-private const val DISABLED_ALPHA = 0.45f
 
 /**
  * A hairline that starts at the screen's accent and fades out.

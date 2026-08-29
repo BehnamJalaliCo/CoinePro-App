@@ -135,6 +135,72 @@ class SurfaceLadderTest {
     }
 
     @Test
+    fun `the text ramp is readable on every ground it is written on`() {
+        // `textMuted` is the caption under every card in the app, and it read 4.06:1 in the light
+        // theme. `textDisabled` read 2.24:1 — and it is not reserved for disabled: the column
+        // headings on four screens, a signal's setup name and the chevron on an *interactive* row
+        // all take it, so it carries real content and has to clear the large-text bar at least.
+        palettes.forEach { palette ->
+            listOf(palette.stage, palette.surface, palette.surfaceElevated).forEach { ground ->
+                assertTrue(
+                    "textPrimary is unreadable on a surface (isDark=${palette.isDark})",
+                    contrast(palette.textPrimary, ground) >= 7.0,
+                )
+                assertTrue(
+                    "textSecondary is unreadable on a surface (isDark=${palette.isDark})",
+                    contrast(palette.textSecondary, ground) >= 4.5,
+                )
+                assertTrue(
+                    "textMuted is unreadable on a surface (isDark=${palette.isDark})",
+                    contrast(palette.textMuted, ground) >= 4.5,
+                )
+                assertTrue(
+                    "textDisabled is unreadable on a surface (isDark=${palette.isDark})",
+                    contrast(palette.textDisabled, ground) >= 3.0,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `the text ramp stays a ramp`() {
+        // Four steps that have to keep their order, or "muted" stops meaning quieter than
+        // "secondary" and the hierarchy the whole app is laid out on inverts.
+        palettes.forEach { palette ->
+            val ramp = listOf(
+                palette.textPrimary,
+                palette.textSecondary,
+                palette.textMuted,
+                palette.textDisabled,
+            ).map { contrast(it, palette.surface) }
+            ramp.zipWithNext { louder, quieter ->
+                assertTrue(
+                    "the text ramp is not monotonic (isDark=${palette.isDark})",
+                    louder > quieter,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `the semantic inks carry a figure at the size they are actually set`() {
+        // A percent pill sets 13sp, which is not large text, so 4.5 is the bar and the light
+        // theme's green measured 4.12. Green, red and the warning amber are all read as ink on a
+        // card — never as a fill with their own label — so this is the only bar that applies.
+        palettes.forEach { palette ->
+            listOf(palette.stage, palette.surface, palette.surfaceElevated).forEach { ground ->
+                listOf("buy" to palette.buy, "sell" to palette.sell, "warning" to palette.warning)
+                    .forEach { (name, ink) ->
+                        assertTrue(
+                            "$name is unreadable on a surface (isDark=${palette.isDark})",
+                            contrast(ink, ground) >= 4.5,
+                        )
+                    }
+            }
+        }
+    }
+
+    @Test
     fun `the ink accent is not usable as a fill, which is why the two are separate fields`() {
         // The failure the chip shipped with: `Accent` as the fill and `OnAccent` as the label. In
         // the light theme that is near-black on dark brown. This test exists so that swapping them

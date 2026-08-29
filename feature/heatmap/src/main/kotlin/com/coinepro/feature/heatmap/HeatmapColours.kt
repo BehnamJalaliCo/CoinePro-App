@@ -62,16 +62,36 @@ object HeatmapColours {
     }
 
     /**
-     * The neutral tile: no move, or nothing to say.
+     * The neutral tile: a market that genuinely did not move.
      *
-     * A tile with no figure behind it gets this too. It has to be a colour that reads as *absent*
-     * rather than as a small loss, which is why it is the surface grey the rest of the app uses for
-     * a raised block and not the dark end of either ramp.
+     * This is the **zero of the ramp** and nothing else. It used to double as the colour of a tile
+     * with no figure behind it, and that was the single worst thing in this feature: on a feed that
+     * supplies no change at all — which is both of them, until the bars arrive — every tile took
+     * the neutral, and a reader looking at two hundred neutral squares was being told the entire
+     * market was flat. It was not flat. It was unread. See [unknown].
      */
     fun neutralOf(palette: HeatmapPalette): Long = when (palette) {
         HeatmapPalette.CLASSIC, HeatmapPalette.COLOUR_BLIND -> NEUTRAL
         HeatmapPalette.MONOCHROME -> MONO_NEUTRAL
     }
+
+    /**
+     * The tile of a market that cannot answer the question the map is asking.
+     *
+     * Darker and flatter than any point on any ramp, so it recedes rather than competing — but the
+     * fill alone is deliberately **not** the whole signal. On [HeatmapPalette.MONOCHROME] the ramp
+     * spans the entire lightness axis, so there exists no grey that is not also a value; the draw
+     * pass therefore lays a hairline hatch across every unknown tile, in [hatch], and it is the
+     * hatch that makes the state unmistakable on all three palettes. A reader must never have to
+     * compare two dark squares to work out which one is data.
+     *
+     * The same colour on every palette, because "no answer" is not a value and has no place on a
+     * scheme's own scale.
+     */
+    val unknown: Long get() = UNKNOWN
+
+    /** The hatch drawn across an unknown tile. Faint: it marks the tile, it does not fill it. */
+    val hatch: Long get() = UNKNOWN_HATCH
 
     /**
      * The full-scale value to normalise a set of figures against.
@@ -187,6 +207,18 @@ object HeatmapColours {
 
     /** Mid-grey, so the monochrome ramp has the same distance to travel in both directions. */
     private const val MONO_NEUTRAL = 0xFF6E7681L
+
+    /**
+     * The unknown fill: a near-black with a cold cast, below the darkest stop of every ramp.
+     *
+     * Below rather than beside, so a screenful of unresolved markets reads as a map that has not
+     * loaded rather than as a market that has crashed. The classic ramp's darkest red is 0x8C2331
+     * and the monochrome's darkest is 0x14171C; this sits under both and is bluer than either.
+     */
+    private const val UNKNOWN = 0xFF0E1116L
+
+    /** The hatch ink, one step up from the fill: legible at a hairline, invisible as a wash. */
+    private const val UNKNOWN_HATCH = 0xFF2C333CL
 
     // The stops. Each pair is (halfway, full scale); see `ramp`.
 

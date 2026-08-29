@@ -1,17 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="heatmap_title">Market heatmap</string>
-    <string name="heatmap_subtitle">%1$s markets</string>
+    <string name="heatmap_subtitle">%1$s of %2$s markets</string>
     <string name="heatmap_settings">Map settings</string>
     <string name="heatmap_refresh">Refresh</string>
     <string name="heatmap_empty">There are no markets to map.</string>
     <string name="heatmap_empty_hint">Every market gets a tile once prices arrive.</string>
+    <string name="heatmap_canvas">Market map. Tap a tile for its chart; press and hold for its detail.</string>
 
     <string name="heatmap_size">Tile size</string>
-    <string name="heatmap_size_market_cap">Market cap</string>
+    <string name="heatmap_size_liquidity">Liquidity</string>
     <string name="heatmap_size_volume">Volume</string>
     <string name="heatmap_size_turnover">Turnover</string>
     <string name="heatmap_size_mono">Equal</string>
+    <string name="heatmap_size_note">Sized by the app\'s own liquidity ranking: neither backend sends a market capitalisation.</string>
+    <string name="heatmap_size_volume_note">This feed reports no volume, so tiles fall back to the liquidity ranking.</string>
 
     <string name="heatmap_colour">Colour by</string>
     <string name="heatmap_colour_change">Day change</string>
@@ -19,6 +22,12 @@
     <string name="heatmap_colour_volatility">Volatility</string>
     <string name="heatmap_colour_range">Place in range</string>
     <string name="heatmap_colour_gap">Opening gap</string>
+    <string name="heatmap_colour_unavailable">No market can answer this yet. Tiles are hatched so they cannot be read as unchanged.</string>
+
+    <string name="heatmap_period">Performance window</string>
+    <string name="heatmap_period_week">7 days</string>
+    <string name="heatmap_period_month">30 days</string>
+    <string name="heatmap_period_quarter">90 days</string>
 
     <string name="heatmap_palette">Palette</string>
     <string name="heatmap_palette_classic">Classic</string>
@@ -29,11 +38,41 @@
     <string name="heatmap_grouping">Grouping</string>
     <string name="heatmap_grouping_none">None</string>
     <string name="heatmap_grouping_class">By class</string>
+    <string name="heatmap_grouping_quote">By quote currency</string>
+    <string name="heatmap_grouping_note">Tap a group\'s name strip to see that group on its own.</string>
+
+    <string name="heatmap_density">Map density</string>
+    <string name="heatmap_density_focused">Large</string>
+    <string name="heatmap_density_standard">Balanced</string>
+    <string name="heatmap_density_everything">All</string>
+    <string name="heatmap_density_note">The map draws the heaviest markets; the rest are reached by grouping and focusing.</string>
 
     <string name="heatmap_scale">Colour scale ±%1$s</string>
-    <string name="heatmap_scale_low">−%1$s</string>
-    <string name="heatmap_scale_high">+%1$s</string>
     <string name="heatmap_scale_zero">0</string>
+    <string name="heatmap_legend_unknown">No data</string>
+
+    <string name="heatmap_coverage">%1$s of %2$s tiles have a figure</string>
+    <string name="heatmap_coverage_loading">Reading daily candles…</string>
+    <string name="heatmap_coverage_none">No candles are available to this screen, so there is no colour. Every tile is hatched.</string>
+
+    <string name="heatmap_focus_clear">Back to the whole map</string>
+
+    <string name="heatmap_detail_open_chart">Open chart</string>
+    <string name="heatmap_detail_unresolved">This market\'s daily candles have not been read yet.</string>
+    <string name="heatmap_detail_price">Price</string>
+    <string name="heatmap_detail_change">Day change</string>
+    <string name="heatmap_detail_period">%1$s performance</string>
+    <string name="heatmap_detail_open">Open</string>
+    <string name="heatmap_detail_previous_close">Previous close</string>
+    <string name="heatmap_detail_high">Day high</string>
+    <string name="heatmap_detail_low">Day low</string>
+    <string name="heatmap_detail_range">Place in range</string>
+    <string name="heatmap_detail_gap">Opening gap</string>
+    <string name="heatmap_detail_volume">Day volume</string>
+    <string name="heatmap_detail_turnover">Day turnover</string>
+    <string name="heatmap_detail_funding">Funding rate</string>
+    <string name="heatmap_detail_volatility">Day range</string>
+    <string name="heatmap_detail_typical">Typical range</string>
 
     <string name="heatmap_class_forex">Forex</string>
     <string name="heatmap_class_crypto">Crypto</string>

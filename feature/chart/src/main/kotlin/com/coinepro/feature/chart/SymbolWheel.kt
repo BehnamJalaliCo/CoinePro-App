@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,8 +68,12 @@ internal fun SymbolWheel(
             val selected = symbol == current
             Row(
                 modifier = Modifier
+                    // Not [CoineProToggleChip], because this chip carries the symbol's artwork and
+                    // that composable takes a label and a count. It does have to be as reachable
+                    // as one: four points of padding around an 18dp logo draws about twenty-six.
+                    .minimumInteractiveComponentSize()
                     .clip(CoineProShapes.small)
-                    .background(if (selected) CoineProColors.Accent else Color.Transparent)
+                    .background(if (selected) CoineProColors.AccentFill else Color.Transparent)
                     .clickable(enabled = !selected) { onSelect(symbol) }
                     .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),

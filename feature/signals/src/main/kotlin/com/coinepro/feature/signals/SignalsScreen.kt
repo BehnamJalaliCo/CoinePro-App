@@ -182,6 +182,9 @@ fun SignalsScreen(
                     start = stringResource(R.string.signals_column_symbol),
                     middle = stringResource(R.string.signals_column_direction),
                     end = stringResource(R.string.signals_column_levels),
+                    // The row below draws a 30dp logo before its 96dp identity column, so the
+                    // headings have to step past the same 30 to sit over the same columns.
+                    leadingInset = 30.dp,
                 )
                 // The pull is the gesture a reader watching a signal actually makes; the arrow in
                 // the header stays for the reader who wants a target to aim at. Both call refresh.
@@ -356,14 +359,24 @@ private fun LevelFigure(labelRes: Int, value: Double?, symbol: String, colour: a
 private fun pluralCount(count: Int): String =
     stringResource(R.string.signals_count, count.toPersianDigits())
 
+/**
+ * Where an empty, failed or loading list puts its one piece of content.
+ *
+ * Near the top rather than dead centre. This box takes the whole column under the tab strip —
+ * roughly seven hundred points on a phone — and centring in it left the sentence about three
+ * hundred and fifty below the tabs, with nothing above or below it. A reader who has just tapped
+ * «فعال» is looking immediately under the tab they tapped; that is where the answer belongs.
+ * Scrolled off the vertical middle it also stops reading as a screen that failed to draw.
+ */
 @Composable
 private fun ColumnScope.Placeholder(content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
             .weight(1f)
             .fillMaxWidth()
-            .padding(CoineProSpacing.Gutter),
-        contentAlignment = Alignment.Center,
+            .padding(horizontal = CoineProSpacing.Gutter)
+            .padding(top = CoineProSpacing.Six, bottom = CoineProSpacing.Gutter),
+        contentAlignment = Alignment.TopCenter,
     ) { content() }
 }
 
