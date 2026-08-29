@@ -1522,6 +1522,16 @@ private fun MainShell(
     // top of it would be a second one saying less.
     val showTopBar = isSubScreen || currentRoute != AppDestination.HOME.route
 
+    /**
+     * Whether this destination has somewhere to go back **to**.
+     *
+     * The five bottom-bar roots do not: they are reached by tapping the bar, and an arrow on one of
+     * them would pop to whichever root the reader happened to visit before, which is not "back" in
+     * any sense they would recognise. Everything else was navigated into and needs the arrow —
+     * including the six screens that keep the bottom bar, which is where this was wrong.
+     */
+    val canGoBack = currentRoute != null && AppDestination.entries.none { it.route == currentRoute }
+
     LaunchedEffect(launchSignalId) {
         launchSignalId?.let { signalId ->
             navController.navigate(signalDetailRoute(signalId)) { launchSingleTop = true }
@@ -1584,7 +1594,16 @@ private fun MainShell(
                         if (currentRoute !in SELF_TITLED) Text(stringResource(subTitleRes))
                     },
                     navigationIcon = {
-                        if (isSubScreen) {
+                        // Anything that is not one of the five bottom-bar roots gets the way back.
+                        //
+                        // It used to be `isSubScreen`, which is a different question: that set says
+                        // *whether the bottom bar goes away*, and Tools, the screener, the heat map,
+                        // news, the calendar and activity are deliberately not in it because they
+                        // keep the bar. The two got conflated, so those six drew a top bar with a
+                        // title and no arrow — «داخل بخش اسکرینر دکمه برگشت نذاشتی», and it was true
+                        // of five more besides. Keeping the bottom bar is not a reason to take away
+                        // the way back; a reader on a screen they navigated into needs both.
+                        if (canGoBack) {
                             IconButton(onClick = { navController.popBackStack() }) {
                                 Icon(
                                     painter = painterResource(CoineProIcons.Back),
@@ -1712,7 +1731,6 @@ private fun MainShell(
                         onOpenSymbol = { navController.navigate(chartRoute(it)) },
                         onOpenMarket = { navController.navigate(AppDestination.MARKETS.route) },
                         onOpenTools = { navController.navigate(TOOLS_ROUTE) },
-                        onOpenNews = { navController.navigate(NEWS_ROUTE) },
                     )
                     return@composable
                 }

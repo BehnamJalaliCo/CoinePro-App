@@ -289,29 +289,22 @@ fun CoineProMarketRow(
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
-            Text(
-                text = price ?: "—",
-                style = CoineProTextStyles.RowFigure,
-                color = if (price == null) CoineProColors.TextMuted else CoineProColors.TextPrimary,
-                maxLines = 1,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Right,
-            )
-            // Two lines, never three. The range bar sits *beside* the pill rather than under it,
-            // which buys the day's range for no extra height — the reason most lists do not carry
-            // one is that a third line per row costs more than the range is worth.
+            // The price and the move **on one line**, the price leading.
+            //
+            // They were stacked, price over pill, on the reasoning that a row is two lines and the
+            // range bar deserved the second one. On the phone that reads as the percentage having
+            // fallen off the number — «درصد زیر عدد افتاده» — and it is the more common way to be
+            // wrong: a market row is scanned across, not down, and a reader comparing rows wants
+            // price-and-move as one reading rather than two columns to interleave.
+            //
+            // The layout direction puts the price at the reading edge, so in Persian the eye lands
+            // on the figure and moves left to the move that produced it. `IntrinsicSize` is not
+            // needed: the pill is a fixed shape and the price column below is pinned.
             Row(
-                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One, Alignment.End),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (low24h != null && high24h != null && rawPrice != null && changePercent != null) {
-                    CoineProRangeBar(
-                        low = low24h,
-                        high = high24h,
-                        price = rawPrice,
-                        ink = if (changePercent >= 0) CoineProColors.Buy else CoineProColors.Sell,
-                    )
-                }
                 when {
                     trailingNote != null -> Text(
                         text = trailingNote,
@@ -325,6 +318,24 @@ fun CoineProMarketRow(
                     // column where the movers are read looks like a market that did not move.
                     else -> Unit
                 }
+                Text(
+                    text = price ?: "—",
+                    style = CoineProTextStyles.RowFigure,
+                    color = if (price == null) CoineProColors.TextMuted else CoineProColors.TextPrimary,
+                    maxLines = 1,
+                    textAlign = TextAlign.Right,
+                )
+            }
+            // The day's range keeps the second line to itself, which is what it was sharing with
+            // the pill before. It is the one thing here that is a picture rather than a figure, and
+            // a picture squeezed beside two numbers was never legible at that width.
+            if (low24h != null && high24h != null && rawPrice != null && changePercent != null) {
+                CoineProRangeBar(
+                    low = low24h,
+                    high = high24h,
+                    price = rawPrice,
+                    ink = if (changePercent >= 0) CoineProColors.Buy else CoineProColors.Sell,
+                )
             }
         }
     }
@@ -349,4 +360,6 @@ private val ROW_MIN_HEIGHT = 56.dp
  * It grew from 92 with the figure, which went from 15sp to 16 so that the price stops being the
  * same size as the name of the thing it prices. Six points is the width that point bought.
  */
-private val FIGURE_COLUMN = 98.dp
+// Wide enough for the price **and** the move on one line: `105,432.10` plus a gap plus the pill.
+// It was 98 when the two were stacked.
+private val FIGURE_COLUMN = 152.dp

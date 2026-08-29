@@ -43,9 +43,7 @@ import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.guest.GuestController
-import com.coinepro.core.guest.GuestHeadline
 import com.coinepro.core.guest.GuestMembershipState
-import com.coinepro.core.guest.GuestNewsState
 import com.coinepro.core.guest.GuestPricesState
 import com.coinepro.core.guest.GuestQuote
 import com.coinepro.core.guest.GuestTrackRecord
@@ -87,18 +85,8 @@ fun GuestScreen(
     onOpenMarket: (() -> Unit)? = null,
     /** The local toolkit: journal, paper trading, NamaScript. None of it needs an account. */
     onOpenTools: (() -> Unit)? = null,
-    /**
-     * The news screen, which a guest could not reach at all.
-     *
-     * This page used to print twelve headline cards in full — 1,700dp, about forty per cent of the
-     * whole page, at the very bottom, so a guest scrolled four screens to reach them and had
-     * nowhere to go afterwards. The headlines come from a public route; there was never a reason
-     * for them to be trapped here.
-     */
-    onOpenNews: (() -> Unit)? = null,
 ) {
     val prices by controller.prices.collectAsStateWithLifecycle()
-    val news by controller.news.collectAsStateWithLifecycle()
     val trackRecord by controller.trackRecord.collectAsStateWithLifecycle()
     val membership by controller.membership.collectAsStateWithLifecycle()
 
@@ -215,27 +203,14 @@ fun GuestScreen(
             )
         }
 
-        item {
-            Text(
-                text = stringResource(R.string.guest_news_title),
-                style = MaterialTheme.typography.titleMedium,
-                color = CoineProColors.TextPrimary,
-            )
-        }
-        when (val current = news) {
-            GuestNewsState.Loading -> item { CoineProThinkingDots() }
-            // The newest headline and a count, not twelve cards. See `onOpenNews`.
-            is GuestNewsState.Ready -> current.headlines.firstOrNull()?.let { newest ->
-                item { NewsTeaser(newest, current.headlines.size, onOpenNews) }
-            }
-            is GuestNewsState.Unavailable -> item {
-                Text(
-                    text = current.reason ?: stringResource(R.string.guest_news_unavailable),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = CoineProColors.TextMuted,
-                )
-            }
-        }
+        // News is **not** here any more, on the owner's call, and it lives in Tools.
+        //
+        // The last thing on the guest's first screen was a headline and a count. It read as the
+        // page trailing off: the two blocks above it — the market shelf and the membership gate —
+        // are what this screen is for, and a news teaser under them competes with the one action a
+        // stranger is meant to take. Tools is where the app keeps things a reader *goes to*, and
+        // news is one of them; the entry there was already built and already reachable.
+        //
     }
 }
 
@@ -402,59 +377,6 @@ fun TrackRecordSummary(record: GuestTrackRecord, modifier: Modifier = Modifier) 
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextMuted,
             )
-        }
-    }
-}
-
-/**
- * The news, as one card.
- *
- * Twelve headline cards at the foot of the guest home was the single largest thing on the page and
- * the last thing on it — so a reader scrolled past everything the app is for to reach a list they
- * then could not open. This says what the newest one is and how many there are, and goes to the
- * screen built for reading them.
- *
- * Where there is nowhere to go — a build with no news route — the card still renders the headline
- * and simply is not clickable. A teaser that led nowhere would be worse than the twelve cards.
- */
-@Composable
-private fun NewsTeaser(newest: GuestHeadline, total: Int, onOpenNews: (() -> Unit)?) {
-    CoineProCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .let { base -> onOpenNews?.let { base.clickable(onClick = it) } ?: base },
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
-            ) {
-                Text(
-                    text = newest.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = CoineProColors.TextPrimary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    // A prose count, so Persian digits — the rule the whole app follows.
-                    text = stringResource(R.string.guest_news_count, total.toPersianDigits()),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = CoineProColors.TextMuted,
-                    fontWeight = FontWeight.Normal,
-                )
-            }
-            if (onOpenNews != null) {
-                Icon(
-                    painter = painterResource(CoineProIcons.ChevronForward),
-                    contentDescription = null,
-                    tint = CoineProColors.TextDisabled,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
         }
     }
 }

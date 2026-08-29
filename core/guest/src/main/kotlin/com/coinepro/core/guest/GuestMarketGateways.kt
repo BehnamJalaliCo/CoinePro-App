@@ -45,7 +45,10 @@ class GuestMarketCatalogGateway(
             is AppResult.Failure -> throw IllegalStateException(result.message)
         }
         val at = nowMillis()
-        val quotes = prices.quotes.associate { quote ->
+        // The same filter the catalogue below applies, on the same list. These two halves used to
+        // disagree — `markets` was filtered and `quotes` was the raw feed — so a caller reading the
+        // quotes got symbols the catalogue had already refused.
+        val quotes = prices.quotes.filter { SymbolArtwork.covers(it.symbol) }.associate { quote ->
             quote.symbol to MarketQuote(
                 instrument = Instrument(
                     symbol = quote.symbol,
@@ -62,7 +65,7 @@ class GuestMarketCatalogGateway(
             )
         }
         return MarketCatalog(
-            markets = prices.quotes.map(GuestQuote::symbol)
+            markets = quotes.keys
                 .filterNot(SymbolClassifier::isNoise)
                 .map(SymbolClassifier::classify)
                 // The same rule the signed-in catalogue follows, and it has to be the same rule: a

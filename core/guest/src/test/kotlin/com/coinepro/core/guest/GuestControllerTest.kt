@@ -57,15 +57,24 @@ class GuestControllerTest {
         assertEquals(1, (state as GuestNewsState.Ready).headlines.size)
     }
 
+    /**
+     * Real tickers, not invented ones.
+     *
+     * This used to read `SMALLUSDT` / `BIGUSDT` / `MIDUSDT`, which say what they are for and are
+     * also markets no exchange lists — so when the shelf started applying `SymbolArtwork.covers`,
+     * every row vanished and the test failed for a reason that had nothing to do with ordering.
+     * Three real coins with the same volume spread keep it about the thing it is testing, and mean
+     * the fixture goes through the same filter the app does.
+     */
     @Test
     fun `the shelf keeps its order while the feed reorders underneath it`() = runTest {
         val gateway = FakeGuestGateway(
             prices = AppResult.Success(
                 GuestPrices(
                     listOf(
-                        quote("SMALLUSDT", 1.0, volume = 10.0),
-                        quote("BIGUSDT", 2.0, volume = 900.0),
-                        quote("MIDUSDT", 3.0, volume = 400.0),
+                        quote("ADAUSDT", 1.0, volume = 10.0),
+                        quote("BTCUSDT", 2.0, volume = 900.0),
+                        quote("ETHUSDT", 3.0, volume = 400.0),
                     ),
                     stale = false, ageMillis = 10,
                 ),
@@ -78,15 +87,15 @@ class GuestControllerTest {
 
         // Busiest first on the first read, and the total is carried so the screen can say how many
         // markets there really are.
-        assertEquals(listOf("BIGUSDT", "MIDUSDT", "SMALLUSDT"), first)
+        assertEquals(listOf("BTCUSDT", "ETHUSDT", "ADAUSDT"), first)
 
         // Now the feed answers in a different order. The shelf must not move.
         gateway.prices = AppResult.Success(
             GuestPrices(
                 listOf(
-                    quote("MIDUSDT", 3.5, volume = 4000.0),
-                    quote("SMALLUSDT", 1.5, volume = 20.0),
-                    quote("BIGUSDT", 2.5, volume = 10.0),
+                    quote("ETHUSDT", 3.5, volume = 4000.0),
+                    quote("ADAUSDT", 1.5, volume = 20.0),
+                    quote("BTCUSDT", 2.5, volume = 10.0),
                 ),
                 stale = false, ageMillis = 10,
             ),

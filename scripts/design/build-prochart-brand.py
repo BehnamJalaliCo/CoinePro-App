@@ -50,21 +50,41 @@ MARK_MDPI = 96
 WORDMARK_MDPI = 168
 
 # The adaptive icon's safe zone: the launcher may mask anything outside the middle 66 of 108.
-# Drawing the mark at 60 rather than 66 keeps a hairline of ground on every mask shape, so a circle
-# mask does not shave the arrow's point.
+#
+# 72, not 60. The first cut sat the mark at 60 to keep a hairline of ground inside every mask shape,
+# which is the cautious reading of the guideline — and on a real launcher it produced a small mark
+# adrift in a black square, which is what the owner saw. The safe zone is a circle of 66 units and
+# the mark is *not* a square: its own bounding box is taller than it is wide, so at 72 the widest
+# part still sits inside that circle and only the empty corners of the box cross it. Every mask
+# shape Android ships — circle, squircle, rounded square, teardrop — clips those corners and
+# nothing else.
 LAUNCHER_CANVAS = 432
-LAUNCHER_MARK = int(LAUNCHER_CANVAS * 60 / 108)
+LAUNCHER_MARK = int(LAUNCHER_CANVAS * 72 / 108)
+
+
+# Below this luminance a pixel is ground, not ink.
+#
+# The masters are rendered artwork, not vector exports, and their "black" is not zero — it runs one
+# to three. `Image.getbbox()` treats any non-zero alpha as content, so the trim below found the
+# whole 1254-square canvas every time and did nothing at all. The mark was then scaled *canvas and
+# all* into the launcher's safe zone, and since the artwork fills about half of that canvas, the
+# icon showed a mark at half the size it was supposed to be — which is exactly what the owner saw.
+#
+# Eight is high enough to clear the noise floor and far below anything on the anti-aliased edge,
+# which climbs to 255 within a pixel or two. Nothing visible is lost.
+INK_FLOOR = 8
 
 
 def inked(master: Image.Image) -> Image.Image:
     """White artwork on black becomes flat white with the luminance as its alpha.
 
-    `convert("L")` is the luminance, and on this artwork it is already the coverage: the ink is
-    255 and the ground is 0. So it is used directly as the alpha channel rather than thresholded —
+    `convert("L")` is the luminance, and on this artwork it is very nearly the coverage: the ink is
+    255 and the ground is meant to be 0. It is used as the alpha channel rather than thresholded —
     a threshold would throw away the anti-aliasing the master was rendered with and leave a stair
-    edge on every curve of the C.
+    edge on every curve of the C — but everything under [INK_FLOOR] is forced to zero first, so the
+    ground is *actually* transparent and the trim that follows has an edge to find.
     """
-    alpha = master.convert("L")
+    alpha = master.convert("L").point(lambda value: 0 if value < INK_FLOOR else value)
     white = Image.new("RGBA", master.size, (255, 255, 255, 255))
     white.putalpha(alpha)
     return white
@@ -147,8 +167,11 @@ def main() -> int:
     # rejected at upload — so this is the only place the black ground is baked in.
     print("play:")
     play = Image.new("RGBA", (512, 512), (0, 0, 0, 255))
-    play_mark = scaled_to_box(mark, 320)
-    play.paste(play_mark, (96, 96), play_mark)
+    # The same proportion the launcher uses, so the store icon and the one on the home screen are
+    # the same drawing at two sizes rather than two different logos.
+    play_side = round(512 * 72 / 108)
+    play_mark = scaled_to_box(mark, play_side)
+    play.paste(play_mark, ((512 - play_side) // 2, (512 - play_side) // 2), play_mark)
     write(play.convert("RGB").convert("RGBA"), ROOT / "design" / "play" / "icon-512.png")
 
     return 0

@@ -1,6 +1,7 @@
 package com.coinepro.core.guest
 
 import com.coinepro.core.common.AppResult
+import com.coinepro.core.symbols.SymbolArtwork
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
@@ -137,6 +138,13 @@ class GuestController(
                     // personalised yet: it is what other people are actually trading, rather than
                     // what moved most in the last hour, which rewards whatever is briefly wild.
                     val chosen = result.value.quotes
+                        // The artwork rule, which this shelf was the one list in the app not
+                        // applying. `GuestMarketGateway` filters its `markets` by it and builds its
+                        // `quotes` from the raw feed, and this screen renders the quotes — so a
+                        // coin with no mark, `HYPE` among them, arrived on the first screen a
+                        // stranger ever sees, as a blank disc beside real logos. That is the exact
+                        // failure `SymbolArtwork.covers` exists to prevent, and it is worst here.
+                        .filter { SymbolArtwork.covers(it.symbol) }
                         .sortedByDescending { it.volume24h ?: 0.0 }
                         .take(visibleCount)
                     polled = chosen.map(GuestQuote::symbol)
