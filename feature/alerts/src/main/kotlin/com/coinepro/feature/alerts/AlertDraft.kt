@@ -17,11 +17,12 @@ import com.coinepro.core.notifications.PriceOp
 /**
  * The kinds of condition the editor can build.
  *
- * Four, and `AlertTrigger.DrawingTouch` is deliberately absent. A drawing alert is made by pressing
- * a line on the chart, because that is the only place the line exists to be pointed at; offering a
- * fifth segment here would need a picker listing drawings by id, which is a list of hexadecimal
- * strings. The list and the audit log render such an alert perfectly well — it just is not made
- * from this sheet.
+ * Five. [DRAWING] was absent for a release, on the reasoning that a drawing alert is made by
+ * pressing the line on the chart — which is true, and was never built, so the trigger, its codec
+ * and the evaluator's level resolver all existed and nothing in the app could produce one. The
+ * objection that kept it out was real and is answered rather than ignored: a picker listing
+ * drawings by id is unusable, so the picker lists them by *what they are and what price they are
+ * at*. See [AlertDrawingOption].
  */
 enum class AlertTriggerKind {
     /** One level. One number field. */
@@ -35,6 +36,9 @@ enum class AlertTriggerKind {
 
     /** A study's own output against a level. A picker, a period stepper, and one number field. */
     INDICATOR,
+
+    /** A line the reader drew on this symbol's chart. A picker of their own drawings, no field. */
+    DRAWING,
 }
 
 /**
@@ -61,6 +65,14 @@ data class AlertConditionDraft(
     val indicatorId: String = AlertIndicators.DEFAULT_ID,
     /** Null where the chosen study has no single lookback, which hides the stepper. */
     val period: Int? = AlertIndicators.defaultPeriodOf(AlertIndicators.DEFAULT_ID),
+    /**
+     * The chosen drawing's stored id, or empty while none has been picked.
+     *
+     * Only [AlertTriggerKind.DRAWING] reads it. Empty rather than null so the field behaves like
+     * the two text fields beside it: "nothing chosen yet" and "chosen" are the same distinction as
+     * "empty" and "typed", and one representation of absence is easier to reason about than two.
+     */
+    val drawingId: String = "",
 ) {
 
     /** [first] as a number, or null while it is empty or half-typed. */
@@ -92,6 +104,11 @@ data class AlertConditionDraft(
      * channel would otherwise take the sheet down.
      */
     fun build(): AlertTrigger? {
+        // Before the number is read, because this is the one kind with no number field at all. A
+        // drawing alert asks «which line», and the line carries its own level.
+        if (kind == AlertTriggerKind.DRAWING) {
+            return drawingId.trim().takeIf(String::isNotEmpty)?.let(AlertTrigger::DrawingTouch)
+        }
         val value = firstValue?.takeIf(Double::isFinite) ?: return null
         return when (kind) {
             // A level of zero or less is not a price on any instrument this app quotes; a field
@@ -120,6 +137,10 @@ data class AlertConditionDraft(
                     value = value,
                 )
             }
+
+            // Answered above, before the number was read. Present because the compiler wants every
+            // case and because a silent `else` here would hide the next kind somebody adds.
+            AlertTriggerKind.DRAWING -> null
         }
     }
 
@@ -131,9 +152,11 @@ data class AlertConditionDraft(
         /**
          * The row that represents an existing trigger, so editing starts from what is there.
          *
-         * Null for a `AlertTrigger.DrawingTouch` and for a nested multi-condition, neither of which
-         * this sheet builds. The caller hides «ویرایش» for those rather than opening an editor that
-         * would quietly change what the alert means.
+         * Null only for a nested multi-condition, which this sheet does not build. The caller hides
+         * «ویرایش» for that rather than opening an editor that would quietly change what the alert
+         * means. A drawing alert *is* re-openable now that the sheet can make one — and re-opening
+         * it is how the reader moves an alert from a line they have deleted onto one they still
+         * have; the picker shows the drawing missing rather than the sheet refusing to open.
          */
         fun of(trigger: AlertTrigger): AlertConditionDraft? = when (trigger) {
             is AlertTrigger.Price -> AlertConditionDraft(
@@ -163,7 +186,11 @@ data class AlertConditionDraft(
                 period = trigger.period,
             )
 
-            is AlertTrigger.DrawingTouch -> null
+            is AlertTrigger.DrawingTouch -> AlertConditionDraft(
+                kind = AlertTriggerKind.DRAWING,
+                drawingId = trigger.drawingId,
+            )
+
             is AlertTrigger.MultiCondition -> null
         }
 
@@ -221,6 +248,21 @@ data class AlertConditionDraft(
 }
 
 /**
+ * One named watchlist, as the scope control offers it.
+ *
+ * ### The count is the whole reason this is not just an id and a name
+ *
+ * «فهرست ارزها» tells the reader nothing about what they are about to agree to. «فهرست ارزها — ۱۲
+ * نماد» tells them that pressing this makes one alert that asks its question of twelve instruments,
+ * independently, each with its own firing state. That is a materially different thing from an alert
+ * on one symbol and the row has to say so before it is chosen, not after twelve notifications.
+ *
+ * [count] is a prose count and is rendered in Persian digits, unlike every price on this sheet. It
+ * is how many things there are, not a market figure.
+ */
+data class AlertListOption(val id: String, val name: String, val count: Int)
+
+/**
  * Everything the editor sheet holds while it is open.
  *
  * Immutable, and rebuilt by the controller on every change, so the sheet has no state of its own to
@@ -237,6 +279,36 @@ data class AlertDraft(
     val frequency: AlertFrequency = AlertFrequency.ONCE,
     val channels: Set<AlertChannel> = AlertChannel.DEFAULTS,
     val message: String = "",
+    /**
+     * The named list this alert covers, or null for [symbol] alone.
+     *
+     * Null is the default and the common case. A list id rather than a copy of its members, because
+     * `AlertScope.Watchlist` resolves membership at evaluation time on purpose — a symbol starred
+     * on Tuesday is covered from Tuesday, and nobody has to remember to re-make the alert.
+     */
+    val scopeListId: String? = null,
+    /**
+     * How loud this one alert is, from [AlertSound.MIN_LEVEL] to [AlertSound.MAX_LEVEL].
+     *
+     * Held on the draft rather than read off the existing alert at save, so that the control moves
+     * and the sentence under it changes as the reader presses it. It was the absence of any control
+     * at all that made `AlertSound.isLoud` permanently false and the loud notification channel dead
+     * code for a release.
+     */
+    val soundLevel: Float = AlertSound.DEFAULT_LEVEL,
+    /** Where this alert is decided. See [AlertVenue]; the editor only offers the second where it can. */
+    val venue: AlertVenue = AlertVenue.DEVICE,
+    /**
+     * The drawings on this symbol's chart, for the drawing picker.
+     *
+     * Loaded by the controller when the symbol is chosen rather than held by the sheet, for the same
+     * reason nothing else here is: the sheet has no state of its own to fall out of step with. Empty
+     * for a symbol the reader has never drawn on, and the drawing segment then says so instead of
+     * offering an empty picker.
+     */
+    val drawings: List<AlertDrawingOption> = emptyList(),
+    /** The reader's named watchlists, with how many symbols each covers. */
+    val lists: List<AlertListOption> = emptyList(),
     /** What the reader has typed into the symbol picker. Not part of the alert. */
     val query: String = "",
     /** Whether the picker is open. It opens itself for a new alert, which has no symbol yet. */
@@ -260,6 +332,36 @@ data class AlertDraft(
     val messageTooLong: Boolean get() = message.length > AlertMessageTemplate.MAX_LENGTH
 
     /**
+     * Whether this alert will go out on the alarm output rather than the notification one.
+     *
+     * Read by the editor so the loud setting can say what it does at the moment it is chosen, which
+     * is the only moment the reader is thinking about it. The threshold itself belongs to
+     * [AlertSound] and is not restated here.
+     */
+    val loud: Boolean get() = AlertSound.isLoud(soundLevel)
+
+    /**
+     * What the alert is about, as the model spells it.
+     *
+     * The one place [scopeListId] becomes an `AlertScope`, so the null-means-this-symbol rule is
+     * written once. A blank symbol answers null rather than throwing: `AlertScope.Symbol` requires
+     * a ticker and this is called while the reader is still choosing one.
+     */
+    fun scope(): AlertScope? {
+        scopeListId?.takeIf(String::isNotBlank)?.let { return AlertScope.Watchlist(it) }
+        return symbol.trim().uppercase().takeIf(String::isNotEmpty)?.let(AlertScope::Symbol)
+    }
+
+    /**
+     * What the server would be asked for, or null where it cannot be asked.
+     *
+     * Null is not a failure — it is most conditions. The editor offers the server venue only when
+     * this is non-null, so nobody is given a choice that would be refused at save; see
+     * [ServerAlertRows.requestOf] for the whole list of what the server cannot say.
+     */
+    fun serverRequest(): ServerAlertRequest? = ServerAlertRows.requestOf(this)
+
+    /**
      * The whole condition, or null while any row of it is incomplete.
      *
      * One condition stays a bare trigger rather than becoming a one-element AND. They evaluate the
@@ -271,9 +373,22 @@ data class AlertDraft(
         return if (built.size == 1) built.single() else AlertTrigger.MultiCondition(built)
     }
 
-    /** Whether the sheet's one action may run. */
+    /**
+     * Whether the sheet's one action may run.
+     *
+     * The symbol is required even for a watchlist alert, and that is not an oversight: the alert's
+     * row still carries one — `LocalPriceAlert.symbol` is not nullable and every evaluator written
+     * before scopes existed reads it — so the instrument the reader started from is what it holds,
+     * and the scope is what decides who is actually watched.
+     *
+     * A server alert is additionally required to be one the server can express. The venue control
+     * is hidden where it cannot be, so this is a guard rather than a state the reader can reach.
+     */
     val valid: Boolean
-        get() = symbol.isNotBlank() && !messageTooLong && trigger() != null
+        get() {
+            if (symbol.isBlank() || messageTooLong || trigger() == null) return false
+            return venue == AlertVenue.DEVICE || serverRequest() != null
+        }
 
     /**
      * The alert this draft describes.
@@ -307,11 +422,17 @@ data class AlertDraft(
             createdAtEpochMillis = existing?.createdAtEpochMillis ?: nowEpochMillis,
             lastFiredAtEpochMillis = null,
             trigger = trigger,
-            scope = AlertScope.Symbol(ticker),
+            // The reader's scope, not the ticker. Writing `Symbol(ticker)` unconditionally is what
+            // made `AlertScope.Watchlist` — evaluated, tested and per-symbol-stamped — impossible
+            // to create from anywhere in the app.
+            scope = scope() ?: AlertScope.Symbol(ticker),
             frequency = frequency,
             expiresAt = existing?.expiresAt,
             channels = channels,
-            soundLevel = existing?.soundLevel ?: AlertSound.DEFAULT_LEVEL,
+            // The reader's own, clamped. It used to be «whatever was already stored, or the
+            // default», which no control could change — so every alert this app had ever made sat
+            // at 0.7 and the loud channel had nothing to deliver.
+            soundLevel = AlertSound.coerce(soundLevel),
             message = message.trim().takeIf(String::isNotBlank),
         )
     }
@@ -321,9 +442,14 @@ data class AlertDraft(
         /**
          * The draft for an alert the reader has asked to change, or null where it cannot be shown.
          *
-         * Null is a real answer and the caller respects it: a drawing alert and a 24-hour-change
-         * alert are both perfectly valid alerts that this sheet cannot express, and the actions
-         * menu hides «ویرایش» for them rather than offering a sheet that would rewrite them.
+         * Null is a real answer and the caller respects it: a 24-hour-change alert and a nested
+         * compound one are both perfectly valid alerts that this sheet cannot express, and the
+         * actions menu hides «ویرایش» for them rather than offering a sheet that would rewrite
+         * them.
+         *
+         * The scope, the loudness and the delivery channels all come back as they were stored, so
+         * that opening an alert to change its level does not quietly reset the three things the
+         * reader chose the first time.
          */
         fun of(alert: LocalPriceAlert): AlertDraft? {
             val rows = conditionsOf(alert) ?: return null
@@ -334,6 +460,8 @@ data class AlertDraft(
                 frequency = alert.frequency ?: alert.repeat.asFrequency(),
                 channels = alert.channels,
                 message = alert.message.orEmpty(),
+                scopeListId = (alert.effectiveScope as? AlertScope.Watchlist)?.listId,
+                soundLevel = alert.effectiveSoundLevel,
                 pickingSymbol = false,
             )
         }

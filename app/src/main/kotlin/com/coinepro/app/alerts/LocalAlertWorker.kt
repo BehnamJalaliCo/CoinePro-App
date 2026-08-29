@@ -9,6 +9,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.coinepro.core.webhook.WebhookDispatcher
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.util.concurrent.TimeUnit
@@ -64,6 +65,14 @@ class LocalAlertWorker @AssistedInject constructor(
     market: GuestAlertMarketSource,
     audit: PreferencesAlertAuditLog,
     deliverer: AndroidAlertDeliverer,
+    /**
+     * The reader's webhooks, injected here rather than reached for inside the evaluator.
+     *
+     * This class is where Android's world and the alert engine meet, and a dispatcher is an Android
+     * dependency in every practical sense — it owns an HTTP client. The evaluator takes a function
+     * and stays testable without one.
+     */
+    webhooks: WebhookDispatcher,
 ) : CoroutineWorker(context, parameters) {
 
     private val evaluator = AlertEvaluator(
@@ -73,6 +82,7 @@ class LocalAlertWorker @AssistedInject constructor(
         market = market,
         audit = audit,
         deliverer = deliverer,
+        webhooks = webhooks::dispatch,
     )
 
     override suspend fun doWork(): Result =

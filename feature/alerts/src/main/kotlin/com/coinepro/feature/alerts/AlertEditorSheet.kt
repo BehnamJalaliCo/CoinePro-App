@@ -181,11 +181,14 @@ private fun EditorForm(draft: AlertDraft, refusal: AlertRefusal?, controller: Al
     ) {
         ChosenSymbol(symbol = draft.symbol, onChange = { controller.setPickingSymbol(true) })
 
+        ScopeRow(draft = draft, onSelect = controller::setScopeList)
+
         draft.conditions.forEachIndexed { index, condition ->
             ConditionBlock(
                 index = index,
                 condition = condition,
                 removable = draft.conditions.size > 1,
+                drawings = draft.drawings,
                 controller = controller,
             )
         }
@@ -202,17 +205,33 @@ private fun EditorForm(draft: AlertDraft, refusal: AlertRefusal?, controller: Al
             compact = true,
         )
 
+        VenueRow(
+            draft = draft,
+            serverOffered = controller.canUseServer(draft),
+            onSelect = controller::setVenue,
+        )
+
         FieldLabel(stringResource(R.string.alerts_channels))
         ChannelRow(selected = draft.channels, onToggle = controller::toggleChannel)
 
+        LoudnessRow(draft = draft, onSelect = controller::setLoudness)
+
         MessageField(draft = draft, controller = controller)
 
-        if (refusal == AlertRefusal.LIST_FULL) {
+        refusal?.let { reason ->
             Text(
-                text = stringResource(R.string.alerts_full),
+                text = stringResource(
+                    when (reason) {
+                        AlertRefusal.LIST_FULL -> R.string.alerts_full
+                        AlertRefusal.SERVER_REFUSED -> R.string.alerts_server_refused
+                    },
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.Sell,
-                modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
+                textAlign = TextAlign.Right,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = CoineProSpacing.Gutter),
             )
         }
 
@@ -260,6 +279,8 @@ private fun ConditionBlock(
     index: Int,
     condition: AlertConditionDraft,
     removable: Boolean,
+    /** This symbol's drawings, for the one kind that picks from them. */
+    drawings: List<AlertDrawingOption>,
     controller: AlertsController,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
@@ -378,7 +399,95 @@ private fun ConditionBlock(
                     onValueChange = { controller.setFirst(index, it) },
                 )
             }
+
+            AlertTriggerKind.DRAWING -> DrawingPicker(
+                drawings = drawings,
+                selectedId = condition.drawingId,
+                onPick = { controller.setDrawing(index, it) },
+            )
         }
+    }
+}
+
+/**
+ * The reader's own drawings on this symbol, as a list they can recognise.
+ *
+ * ### Why each row is a name and a price
+ *
+ * A drawing has no name. What the store holds is a numeric id, a tool id and a list of points, and
+ * a picker offering «1731059442» twice is not a choice anybody can make — that objection is what
+ * kept drawing alerts out of this sheet for a release, and it was right. What a reader *can* answer
+ * is «خط روند at 68,500» versus «خط روند at 71,200», because those are the two lines they drew and
+ * they remember where they put them.
+ *
+ * The level is Latin, right-aligned and isolated, like every other market figure here, and the line
+ * under the list says what the number is — the drawing's price at its last anchor — so that nobody
+ * reads it as the level the alert will fire at. A sloped line's level moves, which is the entire
+ * reason `AlertTrigger.DrawingTouch` resolves it again at every sample rather than storing one.
+ *
+ * ### Empty says what to do about it
+ *
+ * A reader who has drawn nothing on this symbol is not looking at a broken picker; they are one
+ * step earlier than this sheet. So the empty state names that step rather than saying «موردی نیست».
+ */
+@Composable
+private fun DrawingPicker(
+    drawings: List<AlertDrawingOption>,
+    selectedId: String,
+    onPick: (String) -> Unit,
+) {
+    if (drawings.isEmpty()) {
+        Text(
+            text = stringResource(R.string.alerts_drawing_none),
+            style = MaterialTheme.typography.bodySmall,
+            color = CoineProColors.TextMuted,
+            textAlign = TextAlign.Right,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = CoineProSpacing.Gutter),
+        )
+        return
+    }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        drawings.forEach { option ->
+            val chosen = option.id == selectedId
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onPick(option.id) }
+                    .background(
+                        if (chosen) CoineProColors.SurfaceElevated else CoineProColors.Stage,
+                    )
+                    .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = option.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (chosen) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    // A market figure: Latin digits, and Right rather than End — the run is Latin
+                    // inside a right-to-left row and End has already put one of these on the wrong
+                    // edge once in this app.
+                    text = AlertSentence.number(option.level),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (chosen) CoineProColors.TextPrimary else CoineProColors.TextMuted,
+                    textAlign = TextAlign.Right,
+                )
+            }
+        }
+        Text(
+            text = stringResource(R.string.alerts_drawing_note),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+            textAlign = TextAlign.Right,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.Half),
+        )
     }
 }
 
@@ -421,6 +530,176 @@ private fun AddConditionRow(draft: AlertDraft, onAdd: () -> Unit) {
         )
     }
 }
+
+/**
+ * What the alert is about: this instrument, or one of the reader's named lists.
+ *
+ * ### The count is on the row, in Persian digits
+ *
+ * «فهرست ارزها» is a name. «فهرست ارزها — ۱۲ نماد» is the thing the reader is agreeing to, and the
+ * difference matters more here than anywhere else on this sheet: a watchlist alert asks its question
+ * of every member independently, each with its own firing state, so twelve is twelve alerts' worth
+ * of notifications from one row. TradingView keeps this behind Premium; the least this app can do is
+ * say how big it is before it is chosen.
+ *
+ * The count is a prose count — how many things there are — so it is Persian, unlike every price on
+ * this sheet. That split is the app's rule and this is the one place on the sheet it applies.
+ *
+ * ### Absent where there is nothing to choose between
+ *
+ * A reader with no named lists sees no scope control at all rather than a control with one option
+ * in it. There is no question to ask them.
+ */
+@Composable
+private fun ScopeRow(draft: AlertDraft, onSelect: (String?) -> Unit) {
+    if (draft.lists.isEmpty()) return
+    FieldLabel(stringResource(R.string.alerts_scope))
+    CoineProChipRow(
+        options = buildList {
+            add(CoineProChip(id = SCOPE_SYMBOL, label = stringResource(R.string.alerts_scope_symbol)))
+            draft.lists.forEach { list ->
+                add(
+                    CoineProChip(
+                        id = list.id,
+                        label = stringResource(
+                            R.string.alerts_scope_list,
+                            list.name,
+                            list.count.toPersianDigits(),
+                        ),
+                    ),
+                )
+            }
+        },
+        selectedId = draft.scopeListId ?: SCOPE_SYMBOL,
+        onSelect = { id -> onSelect(id?.takeIf { it != SCOPE_SYMBOL }) },
+        compact = true,
+    )
+    if (draft.scopeListId != null) {
+        Note(stringResource(R.string.alerts_scope_list_note))
+    }
+}
+
+/**
+ * Where the alert is decided, with what each answer costs said underneath.
+ *
+ * ### The note is always there, and that is the point of this control
+ *
+ * The two venues are not better and worse, they fail differently: a device alert needs this app
+ * installed and the phone awake, and a server alert keeps watching with the app closed and needs an
+ * account. Neither of those is guessable from the word «سرور», and both are discovered at the worst
+ * possible moment — the one the alert was set for. So the sentence for whichever venue is selected
+ * is on screen the whole time rather than behind a «؟».
+ *
+ * ### The server chip is absent, not disabled, and the reason is stated
+ *
+ * The server's route takes one price against one level on one instrument it quotes. A channel, an
+ * indicator, a drawing touch, a compound condition and a watchlist scope have no server spelling at
+ * all — see [ServerAlertRows.requestOf]. Offering a dim chip would set the reader looking for what
+ * turns it on; the line under the row says plainly that there is nothing.
+ */
+@Composable
+private fun VenueRow(draft: AlertDraft, serverOffered: Boolean, onSelect: (AlertVenue) -> Unit) {
+    FieldLabel(stringResource(R.string.alerts_venue))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = CoineProSpacing.Gutter),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        TapChip(
+            label = stringResource(R.string.alerts_venue_device),
+            selected = draft.venue == AlertVenue.DEVICE,
+            onClick = { onSelect(AlertVenue.DEVICE) },
+        )
+        if (serverOffered) {
+            TapChip(
+                label = stringResource(R.string.alerts_venue_server),
+                selected = draft.venue == AlertVenue.SERVER,
+                onClick = { onSelect(AlertVenue.SERVER) },
+            )
+        }
+    }
+    Note(
+        stringResource(
+            when {
+                !serverOffered -> R.string.alerts_venue_server_unavailable
+                draft.venue == AlertVenue.SERVER -> R.string.alerts_venue_server_note
+                else -> R.string.alerts_venue_device_note
+            },
+        ),
+    )
+}
+
+/**
+ * How loud this one alert is.
+ *
+ * ### Why there is a control here at all
+ *
+ * There was not, for a release. `LocalPriceAlert.soundLevel` existed, `AlertSound.isLoud` existed,
+ * and a whole Android notification channel on the alarm output existed — and every alert this app
+ * had ever written sat at the default, below the threshold, so none of it ever ran. The review that
+ * shaped it is *a beep is not enough to alert someone busy at work*, and until this row existed the
+ * app's answer to that person was a beep.
+ *
+ * ### Three words, and the loud one explains itself
+ *
+ * See [AlertLoudness] for why steps rather than a slider. The note changes with the selection, so
+ * the escalation — a different output, at the alarm volume, which is the volume people leave up —
+ * is described at the moment it is chosen rather than discovered at four in the morning.
+ */
+@Composable
+private fun LoudnessRow(draft: AlertDraft, onSelect: (AlertLoudness) -> Unit) {
+    val current = AlertLoudness.of(draft.soundLevel)
+    FieldLabel(stringResource(R.string.alerts_sound))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = CoineProSpacing.Gutter),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        AlertLoudness.entries.forEach { step ->
+            TapChip(
+                label = stringResource(step.labelRes()),
+                selected = step == current,
+                onClick = { onSelect(step) },
+            )
+        }
+    }
+    Note(
+        stringResource(
+            if (draft.loud) R.string.alerts_sound_loud_note else R.string.alerts_sound_normal_note,
+        ),
+    )
+}
+
+/** A supporting line under a group of controls. Muted, small, and always the same shape. */
+@Composable
+private fun Note(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = CoineProColors.TextMuted,
+        textAlign = TextAlign.Right,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = CoineProSpacing.Gutter),
+    )
+}
+
+/** The Persian name of a loudness step. */
+private fun AlertLoudness.labelRes(): Int = when (this) {
+    AlertLoudness.QUIET -> R.string.alerts_sound_quiet
+    AlertLoudness.NORMAL -> R.string.alerts_sound_normal
+    AlertLoudness.LOUD -> R.string.alerts_sound_loud
+}
+
+/**
+ * The chip id standing for «this symbol».
+ *
+ * A sentinel rather than null because [CoineProChipRow] treats null as "nothing selected" and would
+ * draw no chip at all for the default scope — which is the scope almost every alert has.
+ */
+private const val SCOPE_SYMBOL = "__symbol"
 
 /**
  * The delivery channels, as an independent set rather than a scale.
@@ -575,6 +854,7 @@ private fun AlertTriggerKind.labelRes(): Int = when (this) {
     AlertTriggerKind.CHANNEL -> R.string.alerts_kind_channel
     AlertTriggerKind.MOVE -> R.string.alerts_kind_move
     AlertTriggerKind.INDICATOR -> R.string.alerts_kind_indicator
+    AlertTriggerKind.DRAWING -> R.string.alerts_kind_drawing
 }
 
 /**

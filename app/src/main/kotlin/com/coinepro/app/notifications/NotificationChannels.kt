@@ -9,6 +9,8 @@ import android.os.Build
 import android.provider.Settings
 import androidx.annotation.StringRes
 import com.coinepro.app.R
+import com.coinepro.core.notifications.AlertChannel
+import com.coinepro.core.notifications.AlertSound
 import com.coinepro.core.notifications.NotificationCategory
 
 /**
@@ -256,6 +258,32 @@ object NotificationChannels {
 
         NotificationCategory.MARKETING -> GROUP_OTHER
     }
+}
+
+/**
+ * Which of the three price-alert channels one fired alert arrives on.
+ *
+ * ### Why this is a free function rather than a private method on the deliverer
+ *
+ * It is the whole of the [com.coinepro.core.notifications.AlertSound] feature's observable effect,
+ * and it is pure: a set of channels and a number in, a channel id out. As a private method it could
+ * only be exercised by posting a real notification on a device, which is precisely how the loud
+ * channel came to be dead code — the level had no control, `isLoud` was never true, and nothing
+ * anywhere could have noticed. Out here it is three lines and a unit test.
+ *
+ * The loud channel is reached only where the reader pushed *this* alert past
+ * [AlertSound.LOUD_THRESHOLD] themselves and asked for sound at all; it plays on the alarm output, which is a real escalation and not something to infer.
+ * Vibrate-without-sound needs its own channel because from Android 8 both belong to the channel
+ * rather than to the notification, and there is no other way to express the combination.
+ */
+fun priceAlertChannelId(channels: Set<AlertChannel>, soundLevel: Float): String = when {
+    AlertChannel.SOUND in channels && AlertSound.isLoud(soundLevel) ->
+        NotificationChannels.PRICE_ALERT_LOUD
+
+    AlertChannel.SOUND !in channels && AlertChannel.VIBRATE in channels ->
+        NotificationChannels.PRICE_ALERT_VIBRATE
+
+    else -> NotificationChannels.channelId(NotificationCategory.PRICE_ALERT)
 }
 
 /** The reader-facing name of a category, shared by the channel and the settings screen. */

@@ -12,11 +12,10 @@ import kotlinx.coroutines.flow.map
 /**
  * A saved chart setup, under a name the reader chose.
  *
- * Not the drawings. Drawings are anchored to one instrument's price and time and mean nothing on
- * another; a layout is the *apparatus* a reader looks through, and the whole point is that it
- * carries from symbol to symbol. Saving drawings into a layout would paste last week's trend lines
- * onto whatever chart it was applied to. [ChartDrawingStore] makes the opposite decision for the
- * opposite reason.
+ * Mostly not the drawings. A layout is the *apparatus* a reader looks through and the whole point
+ * is that it carries from symbol to symbol, while a drawing is anchored to one instrument's price
+ * and time and means nothing on another. [ChartDrawingStore] makes the opposite decision for the
+ * opposite reason, and [drawings] is the one deliberate crossing between them — see its own note.
  *
  * [symbol] is here anyway, and it is not a contradiction of that. It records the chart the layout
  * was *built on*, so a list of layouts can say what each one came from and so [ChartLayoutStore]
@@ -47,6 +46,21 @@ data class ChartLayout(
     val createdAt: Long = 0L,
     /** Epoch milliseconds. What [ChartLayoutStore.layouts] orders by — newest first. */
     val updatedAt: Long = 0L,
+    /**
+     * The marks that were on the chart when this layout was saved.
+     *
+     * The crossing the class note warns about, and it is a reader's explicit act rather than a
+     * side effect: `DrawingActions.savedWithLayout` hands over only the drawings whose own
+     * `DrawingSync` says they travel, so a scribble made while thinking stays on the chart it was
+     * made on and a marked-up setup comes back marked up. Before this field the filter ran, chose
+     * correctly, and had nowhere to put its answer — the layout saved and the drawings were gone.
+     *
+     * Written into the layout record with [ChartDrawingCodec]'s nested separators, because this
+     * record already spends the ordinary three on its own structure. Anything the codec refuses —
+     * a demonstration mark, a note carrying a separator — is dropped rather than taking the layout
+     * with it: a layout that will not save because of one mark is the worse failure.
+     */
+    val drawings: List<StoredDrawing> = emptyList(),
 )
 
 /**
@@ -351,6 +365,7 @@ class ChartLayoutStore(private val dataStore: DataStore<Preferences>) {
                 blankIfSeparated(layout.colourTemplate.orEmpty()),
                 layout.createdAt.toString(),
                 layout.updatedAt.toString(),
+                ChartDrawingCodec.encodeNested(layout.drawings),
             ).joinToString(RECORD)
         }
 
@@ -387,6 +402,9 @@ class ChartLayoutStore(private val dataStore: DataStore<Preferences>) {
                 colourTemplate = parts.getOrNull(8)?.takeIf(String::isNotBlank),
                 createdAt = parts.getOrNull(9)?.toLongOrNull() ?: 0L,
                 updatedAt = parts.getOrNull(10)?.toLongOrNull() ?: 0L,
+                // Absent on every layout saved before drawings could travel with one, and an empty
+                // list is the truth about those: nothing was filed with them.
+                drawings = ChartDrawingCodec.decodeNested(parts.getOrNull(11).orEmpty()),
             )
         }
 

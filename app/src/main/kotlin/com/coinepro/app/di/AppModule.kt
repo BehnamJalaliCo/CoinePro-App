@@ -6,40 +6,14 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.coinepro.app.BuildConfig
 import com.coinepro.app.alerts.AlertFireStateStore
+import com.coinepro.app.alerts.GatewayServerAlerts
+import com.coinepro.app.auth.RegistrationStore
+import com.coinepro.core.academy.AcademyController
+import com.coinepro.core.academy.AcademyGateway
+import com.coinepro.core.academy.NetworkAcademyGateway
 import com.coinepro.core.account.AccountController
 import com.coinepro.core.account.AccountGateway
 import com.coinepro.core.account.NetworkAccountGateway
-import com.coinepro.core.datastore.AlertAuditStore
-import com.coinepro.core.datastore.ChartDrawingStore
-import com.coinepro.core.datastore.ChartEventPrefsStore
-import com.coinepro.core.datastore.DrawingSyncStore
-import com.coinepro.core.datastore.DrawingTemplateStore
-import com.coinepro.core.datastore.IndicatorTemplateStore
-import com.coinepro.core.datastore.IntervalFavouritesStore
-import com.coinepro.core.datastore.ChartLayoutStore
-import com.coinepro.core.datastore.SymbolChartStateStore
-import com.coinepro.feature.chart.ChartWorkspaceStore
-import com.coinepro.feature.screener.CandleScreenerBarSource
-import com.coinepro.feature.screener.ScreenerController
-import com.coinepro.feature.screener.ScreenerStore
-import com.coinepro.core.datastore.UserPreferencesStore
-import com.coinepro.core.database.RoomCandleCache
-import com.coinepro.core.datastore.WidgetSnapshotStore
-import com.coinepro.core.marketdata.CandleCache
-import com.coinepro.core.network.NetworkStatus
-import com.coinepro.core.datastore.LocalAlertStore
-import com.coinepro.core.datastore.NotificationSettingsStore
-import com.coinepro.core.datastore.ProfileStore
-import com.coinepro.core.datastore.TimeZonePrefStore
-import com.coinepro.core.datastore.WatchlistStore
-import com.coinepro.core.webhook.WebhookDispatcher
-import com.coinepro.core.webhook.WebhookStore
-import com.coinepro.core.guest.GuestController
-import com.coinepro.core.journal.JournalController
-import com.coinepro.core.papertrade.PaperTradeController
-import com.coinepro.core.script.ScriptController
-import com.coinepro.core.guest.GuestGateway
-import com.coinepro.core.guest.NetworkGuestGateway
 import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aiassistant.AiAssistantGateway
 import com.coinepro.core.aiassistant.NetworkAiAssistantGateway
@@ -51,77 +25,105 @@ import com.coinepro.core.aivision.AiVisionGateway
 import com.coinepro.core.aivision.NetworkAiVisionGateway
 import com.coinepro.core.auth.AuthGateway
 import com.coinepro.core.auth.EmailAuthController
-import com.coinepro.app.auth.RegistrationStore
-import com.coinepro.core.auth.FederatedEmailAuthGateway
 import com.coinepro.core.auth.EmailAuthGateway
-import com.coinepro.core.auth.NetworkEmailAuthGateway
+import com.coinepro.core.auth.FederatedEmailAuthGateway
 import com.coinepro.core.auth.NetworkAuthGateway
-import com.coinepro.core.auth.SessionController
-import com.coinepro.core.auth.SessionMemory
+import com.coinepro.core.auth.NetworkEmailAuthGateway
 import com.coinepro.core.auth.PlatformCapabilities
 import com.coinepro.core.auth.PlatformSessions
+import com.coinepro.core.auth.SessionController
+import com.coinepro.core.auth.SessionMemory
 import com.coinepro.core.auth.SessionTokenStorage
+import com.coinepro.core.copytrade.CopyTradeController
+import com.coinepro.core.copytrade.CopyTradeGateway
+import com.coinepro.core.copytrade.NetworkCopyTradeGateway
 import com.coinepro.core.database.CoineProDatabase
 import com.coinepro.core.database.CoineProDatabaseFactory
+import com.coinepro.core.database.RoomCandleCache
 import com.coinepro.core.database.RoomMarketDataCache
 import com.coinepro.core.database.RoomSignalHistoryCache
 import com.coinepro.core.datastore.ActivePlatformSelector
 import com.coinepro.core.datastore.ActivePlatformStore
+import com.coinepro.core.datastore.AlertAuditStore
+import com.coinepro.core.datastore.ChartDrawingStore
+import com.coinepro.core.datastore.ChartEventPrefsStore
+import com.coinepro.core.datastore.ChartLayoutStore
+import com.coinepro.core.datastore.DrawingSyncStore
+import com.coinepro.core.datastore.DrawingTemplateStore
+import com.coinepro.core.datastore.IndicatorTemplateStore
 import com.coinepro.core.datastore.InstallIdStore
+import com.coinepro.core.datastore.IntervalFavouritesStore
+import com.coinepro.core.datastore.LocalAlertStore
+import com.coinepro.core.datastore.NotificationSettingsStore
+import com.coinepro.core.datastore.ProfileStore
+import com.coinepro.core.datastore.SymbolChartStateStore
+import com.coinepro.core.datastore.TimeZonePrefStore
+import com.coinepro.core.datastore.UserPreferencesStore
+import com.coinepro.core.datastore.WatchlistStore
+import com.coinepro.core.datastore.WidgetSnapshotStore
 import com.coinepro.core.diagnostics.AdminBuildInfo
 import com.coinepro.core.diagnostics.AdminController
+import com.coinepro.core.diagnostics.AppLog
 import com.coinepro.core.diagnostics.EndpointProber
 import com.coinepro.core.diagnostics.PlatformBuildInfo
-import com.coinepro.core.diagnostics.AppLog
 import com.coinepro.core.diagnostics.RequestLog
 import com.coinepro.core.diagnostics.RequestLogInterceptor
-import com.coinepro.core.copytrade.CopyTradeController
-import com.coinepro.core.copytrade.CopyTradeGateway
-import com.coinepro.core.copytrade.NetworkCopyTradeGateway
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.ExecutionGateway
 import com.coinepro.core.execution.NetworkExecutionGateway
+import com.coinepro.core.guest.GuestController
+import com.coinepro.core.guest.GuestGateway
+import com.coinepro.core.guest.NetworkGuestGateway
+import com.coinepro.core.journal.JournalController
 import com.coinepro.core.marketdata.AcademyTokenStore
+import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.CoineProFxCandleGateway
-import com.coinepro.core.marketdata.MarketDataCache
-import com.coinepro.core.marketdata.NetworkAcademyTokenStore
-import com.coinepro.core.marketdata.TradeYarCandleGateway
-import com.coinepro.core.orderbook.DepthUnavailableReason
-import com.coinepro.core.orderbook.NoDepthGateway
-import com.coinepro.core.orderbook.OrderBookGateway
-import com.coinepro.core.orderbook.TradeYarOrderBookGateway
-import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.marketdata.MarketCatalogGateway
+import com.coinepro.core.marketdata.MarketDataCache
 import com.coinepro.core.marketdata.MarketDataController
 import com.coinepro.core.marketdata.MarketSearchController
-import com.coinepro.core.marketdata.NetworkMarketCatalogGateway
 import com.coinepro.core.marketdata.MarketSnapshotGateway
+import com.coinepro.core.marketdata.NetworkAcademyTokenStore
+import com.coinepro.core.marketdata.NetworkMarketCatalogGateway
 import com.coinepro.core.marketdata.NetworkMarketSnapshotGateway
+import com.coinepro.core.marketdata.TradeYarCandleGateway
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.marketintel.MarketIntelGateway
 import com.coinepro.core.marketintel.NetworkMarketIntelGateway
 import com.coinepro.core.membership.MembershipController
 import com.coinepro.core.membership.MembershipGateway
 import com.coinepro.core.membership.NetworkMembershipGateway
-import com.coinepro.core.academy.AcademyController
-import com.coinepro.feature.terminal.TerminalController
-import com.coinepro.core.academy.AcademyGateway
-import com.coinepro.core.academy.NetworkAcademyGateway
+import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.network.NetworkFactory
-import com.coinepro.core.portfolio.PortfolioController
-import com.coinepro.core.portfolio.PortfolioGateway
-import com.coinepro.core.portfolio.PortfolioGatewayFactory
+import com.coinepro.core.network.NetworkStatus
 import com.coinepro.core.notifications.NetworkNotificationGateway
 import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.notifications.NotificationGateway
+import com.coinepro.core.orderbook.DepthUnavailableReason
+import com.coinepro.core.orderbook.NoDepthGateway
+import com.coinepro.core.orderbook.OrderBookGateway
+import com.coinepro.core.orderbook.TradeYarOrderBookGateway
+import com.coinepro.core.papertrade.PaperTradeController
+import com.coinepro.core.portfolio.PortfolioController
+import com.coinepro.core.portfolio.PortfolioGateway
+import com.coinepro.core.portfolio.PortfolioGatewayFactory
+import com.coinepro.core.script.ScriptController
 import com.coinepro.core.security.KeystoreSessionTokenStorage
-import com.coinepro.core.symbols.SymbolMeta
-import com.coinepro.feature.alerts.AlertsController
 import com.coinepro.core.signals.NetworkSignalGateway
 import com.coinepro.core.signals.SignalController
 import com.coinepro.core.signals.SignalGateway
 import com.coinepro.core.signals.SignalHistoryCache
+import com.coinepro.core.symbols.SymbolMeta
+import com.coinepro.core.webhook.WebhookDispatcher
+import com.coinepro.core.webhook.WebhookStore
+import com.coinepro.feature.alerts.AlertsController
+import com.coinepro.feature.alerts.StoredWebhooks
+import com.coinepro.feature.chart.ChartWorkspaceStore
+import com.coinepro.feature.screener.CandleScreenerBarSource
+import com.coinepro.feature.screener.ScreenerController
+import com.coinepro.feature.screener.ScreenerStore
+import com.coinepro.feature.terminal.TerminalController
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -132,6 +134,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -640,6 +643,11 @@ object AppModule {
         marketCache: MarketDataCache,
         @ForexPlatform forexCatalog: MarketCatalogGateway,
         @CryptoPlatform cryptoCatalog: MarketCatalogGateway,
+        drawings: ChartDrawingStore,
+        watchlist: WatchlistStore,
+        serverAlerts: GatewayServerAlerts,
+        webhookStore: WebhookStore,
+        webhookDispatcher: WebhookDispatcher,
         scope: CoroutineScope,
     ): AlertsController {
         val catalogue = AlertSymbolCatalogue(
@@ -655,6 +663,14 @@ object AppModule {
             scope = scope,
             timeframeOf = { alert -> timeframes.of(alert.symbol) },
             forgetFireState = fireStates::forget,
+            // Four features are built and dark without these four lines. A drawing alert has a
+            // trigger, a codec and a level resolver and no way to be created; a watchlist alert
+            // has an evaluator that expands it per symbol and a draft that always writes a single
+            // ticker; the venue control shows one venue; and the webhook sheet lists nothing.
+            drawingsOf = { symbol -> drawings.drawings(symbol).first() },
+            watchlists = watchlist.lists(),
+            server = serverAlerts,
+            webhooks = StoredWebhooks(webhookStore, webhookDispatcher),
         )
     }
 

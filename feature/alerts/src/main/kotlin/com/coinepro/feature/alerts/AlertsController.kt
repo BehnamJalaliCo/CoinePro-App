@@ -2,6 +2,8 @@ package com.coinepro.feature.alerts
 
 import com.coinepro.core.datastore.AlertAuditStore
 import com.coinepro.core.datastore.LocalAlertStore
+import com.coinepro.core.datastore.StoredDrawing
+import com.coinepro.core.datastore.Watchlist
 import com.coinepro.core.notifications.AlertAuditEntry
 import com.coinepro.core.notifications.AlertChannel
 import com.coinepro.core.notifications.AlertFrequency
@@ -9,18 +11,23 @@ import com.coinepro.core.notifications.AlertMessageTemplate
 import com.coinepro.core.notifications.ChannelOp
 import com.coinepro.core.notifications.LocalPriceAlert
 import com.coinepro.core.notifications.MoveOp
+import com.coinepro.core.notifications.PriceAlert
 import com.coinepro.core.notifications.PriceOp
 import com.coinepro.core.symbols.SymbolArtwork
 import com.coinepro.core.symbols.SymbolClassifier
 import com.coinepro.core.symbols.SymbolMeta
 import com.coinepro.core.symbols.SymbolSearch
+import com.coinepro.core.webhook.WebhookAttempt
+import com.coinepro.core.webhook.WebhookTarget
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -40,9 +47,21 @@ data class AlertRow(
     /** The bar this alert is evaluated on, where anything knows one. Null hides the label. */
     val timeframe: String?,
     val kind: AlertSectionKind,
+    /**
+     * Where this alert is decided.
+     *
+     * On the row rather than inferred at the call site, because every action the reader takes has
+     * to go somewhere different for the two — pause reaches a preferences file for one and an HTTP
+     * route for the other — and a screen that worked it out from the id each time would have five
+     * places to get it wrong.
+     */
+    val venue: AlertVenue = AlertVenue.DEVICE,
 ) {
     /** Whether the reader has switched this one off. Drawn as a mark, not as its own section. */
     val paused: Boolean get() = !alert.active && kind == AlertSectionKind.ARMED
+
+    /** The server's own id for a server alert, or null for one this phone decides. */
+    val serverId: String? get() = ServerAlertRows.serverIdOf(alert.id)
 }
 
 /** One heading of the list, with its rows already ordered by [AlertGrouping]. */
@@ -53,7 +72,24 @@ data class AlertAuditView(
     val alert: LocalPriceAlert,
     val sentence: String,
     val entries: List<AlertAuditEntry> = emptyList(),
+    /**
+     * What this alert's webhooks did, newest first.
+     *
+     * Beside the notification's own log rather than on a screen of its own, because a reader whose
+     * bot did nothing looks at the alert first. The two answer the same question about two
+     * different recipients, and «اعلان رسید / گیرنده نپذیرفت» is one story on one sheet.
+     */
+    val deliveries: List<WebhookAttempt> = emptyList(),
     val loading: Boolean = true,
+    /**
+     * Where the alert is decided.
+     *
+     * The sheet needs it because the log is written by *this* app's evaluator and nothing else. A
+     * server alert has no lines in it and never will, and an empty history under «هنوز چیزی ثبت
+     * نشده» would read as an alert that has done nothing — when in fact it is being watched
+     * somewhere this phone cannot see. The sheet says which.
+     */
+    val venue: AlertVenue = AlertVenue.DEVICE,
 )
 
 /**
@@ -65,6 +101,17 @@ data class AlertAuditView(
 enum class AlertRefusal {
     /** The phone already holds [LocalPriceAlert.MAX_ALERTS] of them. */
     LIST_FULL,
+
+    /**
+     * The server would not take it.
+     *
+     * One refusal rather than a transcription of the server's own error, because from this sheet
+     * there is exactly one thing the reader can do about any of them: the route needs an account,
+     * and a signed-out reader is the overwhelming case. The sheet stays open with what they typed,
+     * and the device venue is still there and still works without an account — which is the whole
+     * reason local alerts exist. See `LocalPriceAlert` for that argument.
+     */
+    SERVER_REFUSED,
 }
 
 /** Everything the three surfaces draw, in one immutable value. */
@@ -81,6 +128,14 @@ data class AlertsUiState(
     val confirmingDelete: AlertRow? = null,
     val audit: AlertAuditView? = null,
     val refusal: AlertRefusal? = null,
+    /** Whether the webhook sheet is open. */
+    val webhooksOpen: Boolean = false,
+    /** The reader's webhook targets, for that sheet. */
+    val webhookTargets: List<WebhookTarget> = emptyList(),
+    /** The target being made or changed, or null while the sheet is only listing them. */
+    val webhookDraft: WebhookDraft? = null,
+    /** What the last «آزمایش» came back with. Cleared when the editor is opened or closed. */
+    val webhookTest: WebhookAttempt? = null,
 ) {
     /** Whether the list has nothing in it at all, as against having nothing in one section. */
     val empty: Boolean get() = !loading && sections.isEmpty()
@@ -143,6 +198,40 @@ class AlertsController(
      * Defaults to doing nothing, so a test that does not care about the evaluator need not fake it.
      */
     private val forgetFireState: suspend (String) -> Unit = {},
+    /**
+     * The drawings on one symbol's chart, read when the editor needs them.
+     *
+     * A suspending supplier rather than the store itself, and read on demand rather than followed:
+     * the drawing picker is open for a few seconds inside a sheet, and collecting every symbol's
+     * drawings for the life of the screen would be following a preference file nobody is looking at.
+     *
+     * Defaults to nothing, and the editor then says the chart has no drawings rather than showing
+     * an empty picker — which is also the honest answer for a reader who has never drawn on it.
+     */
+    private val drawingsOf: suspend (String) -> List<StoredDrawing> = { emptyList() },
+    /**
+     * The reader's named watchlists.
+     *
+     * A `Flow`, unlike the catalogue, because a list can be renamed or gain a symbol while the
+     * editor is open — and the count on the scope row is the whole reason that row is answerable,
+     * so it must not be a snapshot taken when the sheet opened.
+     */
+    private val watchlists: Flow<List<Watchlist>> = flowOf(emptyList()),
+    /**
+     * The server's alerts, or [NoServerAlerts] where there is no account layer.
+     *
+     * Present so that this screen is the *only* alert screen. See [AlertVenue] for why two of them
+     * was a bug in itself rather than two features.
+     */
+    private val server: ServerAlerts = NoServerAlerts,
+    /**
+     * The reader's webhooks, or [NoWebhooks] where the module is not wired.
+     *
+     * Here rather than on a settings screen because a webhook is a delivery channel for an alert:
+     * it is created next to the alerts it serves, and its failures are read on the alert's own
+     * history sheet — which is the only place somebody thinks to look when a bot did nothing.
+     */
+    private val webhooks: AlertWebhooks = NoWebhooks,
     /** Injected so the grouping boundaries are testable without waiting a day. */
     private val now: () -> Long = System::currentTimeMillis,
     /** Hexadecimal, because the store's delimited format reserves `;` and `|`. */
@@ -168,8 +257,15 @@ class AlertsController(
     private var auditJob: Job? = null
 
     val state: StateFlow<AlertsUiState> =
-        combine(store.alerts, ui) { alerts, extras -> compose(alerts, extras) }
+        combine(store.alerts, server.alerts, watchlists, webhooks.targets, ui, ::compose)
             .stateIn(scope, SharingStarted.Eagerly, AlertsUiState())
+
+    init {
+        // The server's list is asked for once, here, rather than by the screen. A composable that
+        // refreshed on first composition would refresh again on every rotation, and the alert
+        // centre is reached from four places; a controller that is a singleton asks once.
+        scope.launch { runCatching { server.refresh() } }
+    }
 
     // ── the list ────────────────────────────────────────────────────────────────────────────
 
@@ -195,6 +291,15 @@ class AlertsController(
         val id = row.alert.id
         val previous = row.alert.active
         closeActions()
+        // A server alert is switched off on the server. Routing it to the local store instead would
+        // write a row nothing reads and leave the alert armed on the backend — the reader would
+        // watch it go quiet on screen and then be woken by it.
+        val serverId = row.serverId
+        if (serverId != null) {
+            undoAction = { server.setActive(serverId, previous) }
+            scope.launch { server.setActive(serverId, !paused) }
+            return
+        }
         // Set before the write rather than after it, so an undo tapped in the second the toaster is
         // on screen is never dropped for arriving before the disk did.
         undoAction = { store.setActive(id, previous) }
@@ -217,6 +322,10 @@ class AlertsController(
      */
     fun duplicate(row: AlertRow) {
         closeActions()
+        // Guarded rather than routed. `AlertCenterActions` already hides «تکثیر» for a server
+        // alert — the server's route takes a create, not a copy, and a duplicate that quietly
+        // became a *device* alert would be a copy that stops working when the phone is asleep.
+        if (row.venue != AlertVenue.DEVICE) return
         val id = newId()
         val copy = row.alert.copy(
             id = id,
@@ -253,7 +362,12 @@ class AlertsController(
         val id = ui.value.confirmingDelete ?: return
         ui.update { it.copy(confirmingDelete = null, auditFor = null) }
         undoAction = null
+        val serverId = ServerAlertRows.serverIdOf(id)
         scope.launch {
+            if (serverId != null) {
+                server.delete(serverId)
+                return@launch
+            }
             store.remove(id)
             forgetFireState(id)
         }
@@ -289,9 +403,11 @@ class AlertsController(
             it.copy(
                 actionsFor = null,
                 refusal = null,
+                drawings = emptyList(),
                 draft = AlertDraft(symbol = ticker, pickingSymbol = ticker.isEmpty()),
             )
         }
+        loadDrawings(ticker)
     }
 
     /**
@@ -301,14 +417,16 @@ class AlertsController(
      * — see [AlertDraft.of] — so this is a guard rather than a path a reader can reach.
      */
     fun editAlert(row: AlertRow) {
+        if (row.venue != AlertVenue.DEVICE) return
         val draft = AlertDraft.of(row.alert) ?: return
         closeAudit()
-        ui.update { it.copy(actionsFor = null, refusal = null, draft = draft) }
+        ui.update { it.copy(actionsFor = null, refusal = null, draft = draft, drawings = emptyList()) }
+        loadDrawings(draft.symbol)
     }
 
     /** Abandons the sheet. What was typed is dropped; nothing is written until save. */
     fun closeEditor() {
-        ui.update { it.copy(draft = null, refusal = null) }
+        ui.update { it.copy(draft = null, refusal = null, drawings = emptyList()) }
     }
 
     /** Opens or closes the symbol picker inside the sheet. */
@@ -321,10 +439,120 @@ class AlertsController(
         editDraft { it.copy(query = query) }
     }
 
-    /** Chooses the instrument and closes the picker, which has done its job. */
+    /**
+     * Chooses the instrument and closes the picker, which has done its job.
+     *
+     * The drawings go with it. They belong to one symbol — a trend line on another instrument is a
+     * line through unrelated numbers, which is why `ChartDrawingStore` keys them by symbol — so a
+     * picker still holding the previous symbol's lines would offer an alert that can never resolve
+     * a level and would therefore simply never fire.
+     *
+     * A drawing condition already chosen is cleared for the same reason, rather than left pointing
+     * at an id this symbol has no drawing for.
+     */
     fun setSymbol(symbol: String) {
-        editDraft { it.copy(symbol = symbol.trim().uppercase(), pickingSymbol = false, query = "") }
+        val ticker = symbol.trim().uppercase()
+        editDraft { draft ->
+            draft.copy(
+                symbol = ticker,
+                pickingSymbol = false,
+                query = "",
+                conditions = draft.conditions.map { row ->
+                    if (row.kind == AlertTriggerKind.DRAWING) row.copy(drawingId = "") else row
+                },
+                // The scope is left alone on purpose: somebody who picked a named list has said
+                // what the alert is about, and which instrument they arrived from is not it.
+                // The venue is not left alone, because the server quotes some markets and not
+                // others — an alert silently left pointing at a server that cannot see the new
+                // symbol would be refused at save with nothing on screen having changed.
+                venue = if (draft.venue == AlertVenue.SERVER && !server.supports(ticker)) {
+                    AlertVenue.DEVICE
+                } else {
+                    draft.venue
+                },
+            )
+        }
+        ui.update { it.copy(drawings = emptyList()) }
+        loadDrawings(ticker)
     }
+
+    /**
+     * Reads the chosen symbol's drawings into the sheet.
+     *
+     * Fire and forget into [scope], and the result is dropped where the reader has since chosen a
+     * different symbol — a slow preferences read finishing after the reader moved on must not
+     * repopulate the picker with the previous instrument's lines.
+     */
+    private fun loadDrawings(symbol: String) {
+        val ticker = symbol.trim().uppercase()
+        if (ticker.isEmpty()) return
+        scope.launch {
+            val options = runCatching { AlertDrawings.optionsOf(drawingsOf(ticker)) }.getOrDefault(emptyList())
+            ui.update { extras ->
+                if (extras.draft?.symbol != ticker) extras else extras.copy(drawings = options)
+            }
+        }
+    }
+
+    /**
+     * Chooses which of the reader's drawings this condition watches.
+     *
+     * By id, and the id is the store's own — see [AlertDrawingOption.id] for why the spelling has
+     * to match what the evaluator keys its resolved levels by.
+     */
+    fun setDrawing(index: Int, drawingId: String) {
+        editCondition(index) { it.copy(drawingId = drawingId) }
+    }
+
+    /**
+     * Chooses what the alert is about: this symbol, or one named list.
+     *
+     * Null is «همین نماد». A list scope forces the device venue, because the server's route takes
+     * one ticker and has no concept of a list — offering the pair together would let the reader
+     * build something that silently became an alert on one symbol.
+     */
+    fun setScopeList(listId: String?) {
+        editDraft { draft ->
+            val chosen = listId?.takeIf(String::isNotBlank)
+            draft.copy(
+                scopeListId = chosen,
+                venue = if (chosen == null) draft.venue else AlertVenue.DEVICE,
+            )
+        }
+    }
+
+    /**
+     * Sets how loud this one alert is.
+     *
+     * The step, not a raw float, so the one position that changes the notification's output channel
+     * is a named choice rather than a place on a slider. See [AlertLoudness].
+     */
+    fun setLoudness(loudness: AlertLoudness) {
+        editDraft { it.copy(soundLevel = loudness.level) }
+    }
+
+    /**
+     * Moves the alert between the device and the server.
+     *
+     * Refuses the server where the draft could not be expressed as one — the control is hidden in
+     * that case, so this is a guard rather than a reachable state, and refusing is better than
+     * accepting a venue the save would then have to undo.
+     */
+    fun setVenue(venue: AlertVenue) {
+        editDraft { draft ->
+            if (venue == AlertVenue.SERVER && !canUseServer(draft)) draft else draft.copy(venue = venue)
+        }
+    }
+
+    /**
+     * Whether the server venue may be offered for this draft.
+     *
+     * Three things at once, and all three are the reader's own doing rather than a failure: the
+     * server has to quote the instrument, the condition has to be one it can state, and a watchlist
+     * scope has no server spelling at all.
+     */
+    fun canUseServer(draft: AlertDraft): Boolean =
+        server.supports(draft.symbol.trim().uppercase()) && ServerAlertRows.requestOf(draft) != null
 
     /**
      * Changes what kind of condition a row is.
@@ -456,6 +684,10 @@ class AlertsController(
     fun save() {
         val draft = ui.value.draft ?: return
         if (!draft.valid) return
+        if (draft.venue == AlertVenue.SERVER) {
+            saveOnServer(draft)
+            return
+        }
         val existing = draft.editingId?.let { id -> currentAlerts().firstOrNull { it.id == id } }
         val alert = draft.toAlert(existing = existing, id = newId(), nowEpochMillis = now()) ?: return
         undoAction = null
@@ -467,12 +699,43 @@ class AlertsController(
             // the symbols it had already spoken about.
             if (written && existing != null) forgetFireState(alert.id)
             if (written) {
-                ui.update { it.copy(draft = null, refusal = null) }
+                ui.update { it.copy(draft = null, refusal = null, drawings = emptyList()) }
             } else {
                 // Replacing an alert that is already stored cannot fail, so this is only reachable
                 // for a new alert on a full list. The sheet stays open with what the reader typed
                 // still in it.
                 ui.update { it.copy(refusal = AlertRefusal.LIST_FULL) }
+            }
+        }
+    }
+
+    /**
+     * Hands the alert to the server instead of to this phone.
+     *
+     * ### Only a creation, and that is the server's shape rather than a shortcut
+     *
+     * Its route has a create, a pause and a delete, and no update. So the editor makes server
+     * alerts and the actions menu hides «ویرایش» for them — see [AlertCenterActions.forRow]. An
+     * edit built out of a delete and a create would leave the reader with neither if the second
+     * call failed, and it would fail exactly when the network is bad, which is exactly when
+     * somebody is re-checking their alerts.
+     *
+     * ### A refusal keeps the sheet open
+     *
+     * With what they typed still in it, and with the device venue one tap away — which needs no
+     * account and is the whole reason local alerts exist.
+     */
+    private fun saveOnServer(draft: AlertDraft) {
+        val request = draft.serverRequest() ?: return
+        undoAction = null
+        scope.launch {
+            val written = runCatching { server.create(request) }.getOrDefault(false)
+            ui.update {
+                if (written) {
+                    it.copy(draft = null, refusal = null, drawings = emptyList())
+                } else {
+                    it.copy(refusal = AlertRefusal.SERVER_REFUSED)
+                }
             }
         }
     }
@@ -489,11 +752,32 @@ class AlertsController(
     fun openAudit(row: AlertRow) {
         val id = row.alert.id
         auditJob?.cancel()
-        ui.update { it.copy(actionsFor = null, auditFor = id, auditEntries = emptyList(), auditLoading = true) }
+        ui.update {
+            it.copy(
+                actionsFor = null,
+                auditFor = id,
+                auditEntries = emptyList(),
+                auditDeliveries = emptyList(),
+                auditLoading = true,
+            )
+        }
         auditJob = scope.launch {
-            audit.entriesFor(id).collect { entries ->
+            // Two collectors under one job, because they are two halves of one answer: what the
+            // notification did, and what the webhooks did. Cancelling the sheet cancels both.
+            launch {
+                audit.entriesFor(id).collect { entries ->
+                    ui.update { current ->
+                        if (current.auditFor != id) {
+                            current
+                        } else {
+                            current.copy(auditEntries = entries, auditLoading = false)
+                        }
+                    }
+                }
+            }
+            webhooks.deliveriesFor(id).collect { deliveries ->
                 ui.update { current ->
-                    if (current.auditFor != id) current else current.copy(auditEntries = entries, auditLoading = false)
+                    if (current.auditFor != id) current else current.copy(auditDeliveries = deliveries)
                 }
             }
         }
@@ -503,7 +787,141 @@ class AlertsController(
     fun closeAudit() {
         auditJob?.cancel()
         auditJob = null
-        ui.update { it.copy(auditFor = null, auditEntries = emptyList(), auditLoading = false) }
+        ui.update {
+            it.copy(
+                auditFor = null,
+                auditEntries = emptyList(),
+                auditDeliveries = emptyList(),
+                auditLoading = false,
+            )
+        }
+    }
+
+    // ── webhooks ────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Opens the list of webhook targets.
+     *
+     * From the alert centre's own header, because that is where the alerts they serve are. A
+     * webhook has no meaning apart from an alert firing, and a settings screen for it would put it
+     * three taps away from the only thing that makes it do anything.
+     */
+    fun openWebhooks() {
+        closeAudit()
+        ui.update { it.copy(actionsFor = null, webhooksOpen = true, webhookDraft = null, webhookTest = null) }
+    }
+
+    /** Closes the sheet and everything inside it. */
+    fun closeWebhooks() {
+        ui.update { it.copy(webhooksOpen = false, webhookDraft = null, webhookTest = null) }
+    }
+
+    /** Opens an empty target editor inside the sheet. */
+    fun newWebhook() {
+        ui.update { it.copy(webhooksOpen = true, webhookDraft = WebhookDraft(), webhookTest = null) }
+    }
+
+    /**
+     * Opens an existing target for editing.
+     *
+     * Its secret is deliberately not loaded; see [WebhookDraft.of]. The field opens empty and an
+     * untouched empty field means «leave it as it was».
+     */
+    fun editWebhook(target: WebhookTarget) {
+        ui.update { it.copy(webhooksOpen = true, webhookDraft = WebhookDraft.of(target), webhookTest = null) }
+    }
+
+    /** Leaves the editor without writing anything, back to the list of targets. */
+    fun closeWebhookEditor() {
+        ui.update { it.copy(webhookDraft = null, webhookTest = null) }
+    }
+
+    /** The reader's own name for the target. What a failed delivery is identified by in the log. */
+    fun setWebhookName(name: String) {
+        editWebhookDraft { it.copy(name = name) }
+    }
+
+    /** The URL, judged by `WebhookUrl` on every keystroke so the refusal sits under the field. */
+    fun setWebhookUrl(url: String) {
+        editWebhookDraft { it.copy(url = url) }
+    }
+
+    /**
+     * The shared secret.
+     *
+     * [WebhookDraft.secretTouched] is set here and nowhere else, and it is what tells a blank field
+     * on an edit apart from a request to remove the secret. Nothing reads the value back out to a
+     * screen.
+     */
+    fun setWebhookSecret(secret: String) {
+        editWebhookDraft { it.copy(secret = secret, secretTouched = true) }
+    }
+
+    /** Whether this target is posted to at all. Kept rather than deleted; see `WebhookTarget`. */
+    fun setWebhookEnabled(enabled: Boolean) {
+        editWebhookDraft { it.copy(enabled = enabled) }
+    }
+
+    /**
+     * Writes the target and returns to the list.
+     *
+     * The store refuses a URL it will not post to, as a second gate behind the field's own — so a
+     * refusal here leaves the sheet open rather than storing something that would silently never
+     * fire.
+     */
+    fun saveWebhook() {
+        val draft = ui.value.webhookDraft ?: return
+        if (!draft.valid) return
+        val existing = draft.editingId?.let { id -> state.value.webhookTargets.firstOrNull { it.id == id } }
+        val target = draft.toTarget(existing = existing, id = newId(), nowEpochMillis = now()) ?: return
+        scope.launch {
+            if (webhooks.save(target)) {
+                ui.update { it.copy(webhookDraft = null, webhookTest = null) }
+            }
+        }
+    }
+
+    /** Removes one target. Its delivery history stays, so past failures remain explicable. */
+    fun deleteWebhook(id: String) {
+        scope.launch { webhooks.delete(id) }
+    }
+
+    /** Switches one target on or off from the list, without opening it. */
+    fun toggleWebhook(target: WebhookTarget) {
+        scope.launch { webhooks.setEnabled(target.id, !target.enabled) }
+    }
+
+    /**
+     * Posts one test event to the target as the sheet currently describes it.
+     *
+     * ### Tested as typed, not as stored
+     *
+     * The point of the button is to find out whether a URL somebody has just pasted works — *now*,
+     * rather than the next time a market happens to reach a price. Testing the stored version would
+     * answer a question about the previous URL.
+     *
+     * An edit with the secret field untouched still signs with the stored secret, because that is
+     * what a real delivery would do and a test that signed differently would prove nothing.
+     */
+    fun testWebhook() {
+        val draft = ui.value.webhookDraft ?: return
+        if (!draft.valid) return
+        val existing = draft.editingId?.let { id -> state.value.webhookTargets.firstOrNull { it.id == id } }
+        val target = draft.toTarget(existing = existing, id = TEST_TARGET_ID, nowEpochMillis = now()) ?: return
+        ui.update { it.copy(webhookTest = null) }
+        scope.launch {
+            val attempt = runCatching { webhooks.test(target) }.getOrNull()
+            ui.update { current ->
+                if (current.webhookDraft == null) current else current.copy(webhookTest = attempt)
+            }
+        }
+    }
+
+    private fun editWebhookDraft(transform: (WebhookDraft) -> WebhookDraft) {
+        ui.update { extras ->
+            val draft = extras.webhookDraft ?: return@update extras
+            extras.copy(webhookDraft = transform(draft), webhookTest = null)
+        }
     }
 
     // ── internals ───────────────────────────────────────────────────────────────────────────
@@ -533,28 +951,60 @@ class AlertsController(
         }
     }
 
-    private fun compose(alerts: List<LocalPriceAlert>, extras: Extras): AlertsUiState {
+    /**
+     * The whole screen, from the two lists and the sheet state.
+     *
+     * ### The two venues are grouped together, not stacked
+     *
+     * Server alerts are converted to rows and then handed to [AlertGrouping] with the device ones,
+     * so an alert that fired an hour ago is under «تازه اجرا شده» whichever thing decided it. That
+     * is the point of unifying the surface: the reader's question after a move is "did any of my
+     * alerts go off", and a screen that answered it twice, in two orders, would be the old two
+     * screens with one title on top.
+     *
+     * ### Only device alerts count towards the cap
+     *
+     * [LocalPriceAlert.MAX_ALERTS] is a limit on one preferences file — see the constant for why —
+     * and the server's list is not in it. Counting server rows towards it would refuse a local
+     * alert because of storage nobody on this phone is using.
+     */
+    private fun compose(
+        alerts: List<LocalPriceAlert>,
+        serverAlerts: List<PriceAlert>,
+        lists: List<Watchlist>,
+        targets: List<WebhookTarget>,
+        extras: Extras,
+    ): AlertsUiState {
         val stamp = now()
-        val sections = AlertGrouping.group(alerts, stamp).map { section ->
+        val venues = HashMap<String, AlertVenue>(alerts.size + serverAlerts.size)
+        alerts.forEach { venues[it.id] = AlertVenue.DEVICE }
+        val converted = serverAlerts.map { alert ->
+            ServerAlertRows.asLocal(alert).also { venues[it.id] = AlertVenue.SERVER }
+        }
+        val sections = AlertGrouping.group(alerts + converted, stamp).map { section ->
             AlertRowSection(
                 kind = section.kind,
                 rows = section.alerts.map { alert ->
                     AlertRow(
                         alert = alert,
-                        sentence = AlertSentence.render(alert),
+                        sentence = AlertSentence.render(alert) { id -> lists.firstOrNull { it.id == id }?.name },
                         timeframe = timeframeOf(alert),
                         kind = section.kind,
+                        venue = venues[alert.id] ?: AlertVenue.DEVICE,
                     )
                 },
             )
         }
         val rows = sections.flatMap(AlertRowSection::rows)
         val byId = rows.associateBy { it.alert.id }
-        val draft = extras.draft
+        val draft = extras.draft?.copy(
+            drawings = extras.drawings,
+            lists = lists.map { AlertListOption(id = it.id, name = it.name, count = it.symbols.size) },
+        )
         return AlertsUiState(
             loading = false,
             sections = sections,
-            total = alerts.size,
+            total = rows.size,
             full = alerts.size >= LocalPriceAlert.MAX_ALERTS,
             draft = draft,
             symbolMatches = if (draft == null) emptyList() else matches(draft.query),
@@ -565,10 +1015,16 @@ class AlertsController(
                     alert = row.alert,
                     sentence = row.sentence,
                     entries = extras.auditEntries,
+                    deliveries = extras.auditDeliveries,
                     loading = extras.auditLoading,
+                    venue = row.venue,
                 )
             },
             refusal = extras.refusal,
+            webhooksOpen = extras.webhooksOpen,
+            webhookTargets = targets,
+            webhookDraft = extras.webhookDraft,
+            webhookTest = extras.webhookTest,
         )
     }
 
@@ -599,12 +1055,18 @@ class AlertsController(
      */
     private data class Extras(
         val draft: AlertDraft? = null,
+        /** The drawings loaded for the draft's current symbol. Cleared when the symbol changes. */
+        val drawings: List<AlertDrawingOption> = emptyList(),
         val actionsFor: String? = null,
         val confirmingDelete: String? = null,
         val auditFor: String? = null,
         val auditEntries: List<AlertAuditEntry> = emptyList(),
+        val auditDeliveries: List<WebhookAttempt> = emptyList(),
         val auditLoading: Boolean = false,
         val refusal: AlertRefusal? = null,
+        val webhooksOpen: Boolean = false,
+        val webhookDraft: WebhookDraft? = null,
+        val webhookTest: WebhookAttempt? = null,
     )
 
     private companion object {
@@ -618,5 +1080,13 @@ class AlertsController(
          * anybody scrolls before they type, and typing is what the search field is for.
          */
         const val PICKER_LIMIT = 50
+
+        /**
+         * The id a target carries while it is only being tested.
+         *
+         * Never written to the store — [saveWebhook] takes a fresh one — so a test send cannot
+         * leave a half-made target behind if the reader walks away from the sheet.
+         */
+        const val TEST_TARGET_ID = "webhook-draft"
     }
 }

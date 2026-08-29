@@ -69,6 +69,9 @@ import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.datastore.DrawingTemplateStore
+import com.coinepro.core.datastore.IndicatorTemplateStore
+import com.coinepro.core.datastore.DrawingSyncStore
+import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
@@ -425,6 +428,9 @@ fun CoineProApp(
      * works, and hoisting either would put the screen's own state up here.
      */
     drawingTemplateStore: DrawingTemplateStore,
+    indicatorTemplateStore: IndicatorTemplateStore,
+    drawingSyncStore: DrawingSyncStore,
+    intervalFavouritesStore: IntervalFavouritesStore,
     /**
      * How the chart screen itself is arranged: the split with the watchlist, and what the two
      * panes tie together. Without it a drag on the divider is forgotten the moment the chart is
@@ -818,6 +824,9 @@ fun CoineProApp(
                 chartLayoutStore = chartLayoutStore,
                 symbolChartStateStore = symbolChartStateStore,
                 drawingTemplateStore = drawingTemplateStore,
+                indicatorTemplateStore = indicatorTemplateStore,
+                drawingSyncStore = drawingSyncStore,
+                intervalFavouritesStore = intervalFavouritesStore,
                 chartWorkspaceStore = chartWorkspaceStore,
                 portfolioController = portfolioControllers.getValue(activePlatform),
                 academyController = academyController,
@@ -994,6 +1003,9 @@ fun CoineProApp(
                         chartLayoutStore = chartLayoutStore,
                         symbolChartStateStore = symbolChartStateStore,
                         drawingTemplateStore = drawingTemplateStore,
+                        indicatorTemplateStore = indicatorTemplateStore,
+                        drawingSyncStore = drawingSyncStore,
+                        intervalFavouritesStore = intervalFavouritesStore,
                         chartWorkspaceStore = chartWorkspaceStore,
                         portfolioController = portfolioControllers.getValue(activePlatform),
                         academyController = academyController,
@@ -1169,6 +1181,9 @@ private fun MainShell(
      * works, and hoisting either would put the screen's own state up here.
      */
     drawingTemplateStore: DrawingTemplateStore,
+    indicatorTemplateStore: IndicatorTemplateStore,
+    drawingSyncStore: DrawingSyncStore,
+    intervalFavouritesStore: IntervalFavouritesStore,
     /**
      * How the chart screen itself is arranged: the split with the watchlist, and what the two
      * panes tie together. Without it a drag on the divider is forgotten the moment the chart is

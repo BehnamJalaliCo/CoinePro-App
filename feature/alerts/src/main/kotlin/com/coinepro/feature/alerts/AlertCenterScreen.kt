@@ -77,6 +77,17 @@ import java.time.Instant
  * long press, because they are things done to a particular alert rather than things the screen
  * offers. Of those four only delete asks first; the rest are undone from the toaster, which is
  * cheaper for the reader than a dialog in front of every reversible act.
+ *
+ * Both sets are declared in [AlertCenterActions] rather than in the source of the composables that
+ * draw them, and pinned by a test. A menu whose order changes between releases is the most repeated
+ * complaint in this market's negative reviews, and an order that lives only in the layout is one
+ * nothing can hold on to.
+ *
+ * ### One list, two venues
+ *
+ * Device alerts and server alerts are in the same three sections, grouped by the same rules, and a
+ * server one carries a mark. The app used to have two alert screens with two models; see
+ * [AlertVenue] for why that was a bug rather than two features.
  */
 @Composable
 fun AlertCenterScreen(controller: AlertsController, initialSymbol: String? = null) {
@@ -99,10 +110,16 @@ fun AlertCenterScreen(controller: AlertsController, initialSymbol: String? = nul
             title = stringResource(R.string.alerts_centre_title),
             subtitle = if (state.total == 0) null else state.subtitleText(),
             actions = {
+                // Two, in `AlertCenterActions.PRIMARY`'s order and no other. See that file.
                 CoineProHeaderAction(
                     icon = CoineProIcons.Add,
                     label = stringResource(R.string.alerts_new),
                     onClick = { controller.openEditor() },
+                )
+                CoineProHeaderAction(
+                    icon = CoineProIcons.Link,
+                    label = stringResource(R.string.webhooks_title),
+                    onClick = controller::openWebhooks,
                 )
             },
         )
@@ -204,6 +221,15 @@ fun AlertCenterScreen(controller: AlertsController, initialSymbol: String? = nul
 
     state.audit?.let { view ->
         AlertAuditSheet(view = view, onDismiss = controller::closeAudit)
+    }
+
+    if (state.webhooksOpen) {
+        WebhookSheet(
+            targets = state.webhookTargets,
+            draft = state.webhookDraft,
+            test = state.webhookTest,
+            controller = controller,
+        )
     }
 }
 
@@ -315,6 +341,9 @@ private fun AlertListRow(row: AlertRow, onOpen: () -> Unit, onActions: () -> Uni
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+            if (row.venue == AlertVenue.SERVER) {
+                VenuePill()
+            }
             if (row.paused) {
                 PausedPill()
             }
@@ -373,6 +402,27 @@ private fun AlertMark(scope: AlertScope, size: Dp = 34.dp) {
     }
 }
 
+/**
+ * The mark on a row the server decides.
+ *
+ * Only on the server rows. A badge on both venues would be two badges on every row saying nothing,
+ * and the device alert is what this app is: the marked case is the exception. What the reader gets
+ * from it is the answer to the question they ask when an alert did not arrive — whether the silence
+ * could have been this phone being asleep — and the editor spells that out when the alert is made.
+ */
+@Composable
+private fun VenuePill() {
+    Text(
+        text = stringResource(R.string.alerts_venue_badge),
+        style = MaterialTheme.typography.labelSmall,
+        color = CoineProColors.TextSecondary,
+        modifier = Modifier
+            .clip(CoineProPillShape)
+            .background(CoineProColors.SurfaceElevated)
+            .padding(horizontal = CoineProSpacing.One, vertical = 3.dp),
+    )
+}
+
 /** The mark on a row the reader switched off. A word, because a dimmed row alone is ambiguous. */
 @Composable
 private fun PausedPill() {
@@ -390,9 +440,9 @@ private fun PausedPill() {
 /**
  * The long-press menu.
  *
- * «ویرایش» is absent for an alert this app's editor cannot express — one made by pressing a drawing
- * on the chart, or one of the two 24-hour-change conditions. Hidden rather than dimmed: a disabled
- * row invites the reader to work out what would enable it, and nothing would.
+ * Its contents and their order are [AlertCenterActions]', not this composable's — that is the whole
+ * point of that file, and the reason it exists is in its own KDoc. What is decided here is only how
+ * each row is drawn.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -412,20 +462,22 @@ private fun AlertActionsSheet(
         onDismiss = onDismiss,
     ) {
         Column(modifier = Modifier.padding(bottom = CoineProSpacing.Two)) {
-            ActionRow(stringResource(R.string.alerts_action_history), onHistory)
-            ActionRow(
-                label = stringResource(
-                    if (row.alert.active) R.string.alerts_action_pause else R.string.alerts_action_resume,
-                ),
-                onClick = onPause,
-            )
-            if (AlertDraft.of(row.alert) != null) {
-                ActionRow(stringResource(R.string.alerts_action_edit), onEdit)
+            // Rendered from `AlertCenterActions`, in its order, rather than written out here. The
+            // order of this menu is a promise to somebody's thumb — see that file for the review
+            // evidence — and a list written out in a composable is an order nothing can assert.
+            AlertCenterActions.forRow(row = row, canDuplicate = canDuplicate).forEach { action ->
+                ActionRow(
+                    label = stringResource(action.labelRes(paused = !row.alert.active)),
+                    onClick = when (action) {
+                        AlertCenterAction.HISTORY -> onHistory
+                        AlertCenterAction.PAUSE -> onPause
+                        AlertCenterAction.EDIT -> onEdit
+                        AlertCenterAction.DUPLICATE -> onDuplicate
+                        AlertCenterAction.DELETE -> onDelete
+                    },
+                    destructive = action == AlertCenterAction.DELETE,
+                )
             }
-            if (canDuplicate) {
-                ActionRow(stringResource(R.string.alerts_action_duplicate), onDuplicate)
-            }
-            ActionRow(stringResource(R.string.alerts_action_delete), onDelete, destructive = true)
         }
     }
 }
@@ -442,6 +494,22 @@ private fun ActionRow(label: String, onClick: () -> Unit, destructive: Boolean =
             .clickable(onClick = onClick)
             .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.OneHalf),
     )
+}
+
+/**
+ * What each action is called.
+ *
+ * «توقف» and «ادامه» are the same action with two labels, which is why this takes the alert's state
+ * rather than being a property of the enum: the menu offers one row there, and whether it says stop
+ * or resume is a fact about this alert rather than about the menu.
+ */
+private fun AlertCenterAction.labelRes(paused: Boolean): Int = when (this) {
+    AlertCenterAction.HISTORY -> R.string.alerts_action_history
+    AlertCenterAction.PAUSE ->
+        if (paused) R.string.alerts_action_resume else R.string.alerts_action_pause
+    AlertCenterAction.EDIT -> R.string.alerts_action_edit
+    AlertCenterAction.DUPLICATE -> R.string.alerts_action_duplicate
+    AlertCenterAction.DELETE -> R.string.alerts_action_delete
 }
 
 /** The heading each section carries. */

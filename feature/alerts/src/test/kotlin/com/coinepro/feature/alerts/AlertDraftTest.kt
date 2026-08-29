@@ -126,13 +126,6 @@ class AlertDraftTest {
 
     @Test
     fun `an alert this sheet cannot express is not opened in it`() {
-        val drawn = LocalPriceAlert(
-            id = "a",
-            symbol = "BTCUSDT",
-            condition = LocalAlertCondition.ABOVE,
-            value = 1.0,
-            trigger = AlertTrigger.DrawingTouch("line-1"),
-        )
         val daily = LocalPriceAlert(
             id = "b",
             symbol = "BTCUSDT",
@@ -140,8 +133,26 @@ class AlertDraftTest {
             value = 5.0,
         )
 
-        assertNull("a drawing alert is made on the chart, not here", AlertDraft.of(drawn))
         assertNull("no trigger measures the feed's own daily change", AlertDraft.of(daily))
+    }
+
+    @Test
+    fun `a drawing alert does open in it, now that the sheet can make one`() {
+        // It could not, and nothing else could make one either, so `AlertTrigger.DrawingTouch` was
+        // reachable by no path in the app. Re-opening one is also how somebody moves an alert off a
+        // line they have since deleted; see `AlertDrawings` for how the picker names them.
+        val drawn = LocalPriceAlert(
+            id = "a",
+            symbol = "BTCUSDT",
+            condition = LocalAlertCondition.ABOVE,
+            value = 1.0,
+            trigger = AlertTrigger.DrawingTouch("line-1"),
+        )
+
+        val draft = AlertDraft.of(drawn)
+
+        assertEquals(AlertTriggerKind.DRAWING, draft?.conditions?.single()?.kind)
+        assertEquals(AlertTrigger.DrawingTouch("line-1"), draft?.trigger())
     }
 
     @Test

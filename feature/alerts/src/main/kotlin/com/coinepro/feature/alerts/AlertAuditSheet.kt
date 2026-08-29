@@ -39,6 +39,7 @@ import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.notifications.AlertAuditEntry
 import com.coinepro.core.notifications.AuditEvent
+import com.coinepro.core.webhook.WebhookAttempt
 import java.time.Instant
 
 /**
@@ -81,7 +82,17 @@ internal fun AlertAuditSheet(view: AlertAuditView, onDismiss: () -> Unit) {
         onDismiss = onDismiss,
     ) {
         Text(
-            text = stringResource(R.string.alerts_audit_lead),
+            // A server alert has no lines here and never will: this log is written by the device
+            // evaluator. An empty timeline under «هنوز چیزی ثبت نشده» would read as an alert that
+            // has done nothing, when in fact it is being watched somewhere this phone cannot see —
+            // which is the opposite of what this sheet exists to tell people.
+            text = stringResource(
+                if (view.venue == AlertVenue.SERVER) {
+                    R.string.alerts_audit_server
+                } else {
+                    R.string.alerts_audit_lead
+                },
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextSecondary,
             textAlign = TextAlign.Right,
@@ -90,9 +101,13 @@ internal fun AlertAuditSheet(view: AlertAuditView, onDismiss: () -> Unit) {
                 .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
         )
 
+        WebhookDeliveries(view.deliveries)
+
         val entries = view.entries.sortedBy(AlertAuditEntry::at)
         if (entries.isEmpty()) {
-            if (!view.loading) {
+            // The sentence above has already said why a server alert's log is empty, so the empty
+            // state that would say it again in different words is left off rather than repeated.
+            if (!view.loading && view.venue == AlertVenue.DEVICE) {
                 CoineProEmptyState(
                     message = stringResource(R.string.alerts_audit_empty),
                     icon = CoineProIcons.Pending,
@@ -113,6 +128,67 @@ internal fun AlertAuditSheet(view: AlertAuditView, onDismiss: () -> Unit) {
         ) {
             itemsIndexed(entries, key = { index, entry -> "$index-${entry.at}-${entry.event.id}" }) { index, entry ->
                 AuditRow(entry = entry, last = index == entries.lastIndex)
+            }
+        }
+    }
+}
+
+/**
+ * What this alert's webhooks did, above the notification's own timeline.
+ *
+ * ### Why it is on this sheet at all
+ *
+ * Somebody who wires an alert to a bot stops watching twice over — once because the alert will tell
+ * them, and once because the bot will act. When the POST quietly 404s they learn neither. The
+ * delivery log is the only record that exists of that, and the place a person looks for it is the
+ * alert they think should have caused it.
+ *
+ * ### A failure is the loudest thing here
+ *
+ * The same rule the audit rows follow: a delivery that did not arrive is drawn in the refusal
+ * colour, and a delivery that did is muted. What a reader is scanning for on this sheet is the line
+ * that explains a silence, and it must not be possible to scroll past it.
+ *
+ * Absent entirely where there are no deliveries, rather than shown as an empty section. A reader
+ * with no webhooks has no question about them, and a heading over a blank space reads as a fault.
+ */
+@Composable
+private fun WebhookDeliveries(deliveries: List<WebhookAttempt>) {
+    if (deliveries.isEmpty()) return
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.Half),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        Text(
+            text = stringResource(R.string.alerts_audit_webhooks, deliveryCount(deliveries.size)),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextSecondary,
+            textAlign = TextAlign.Right,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        deliveries.forEach { attempt ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            ) {
+                Text(
+                    text = attempt.targetName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextMuted,
+                    textAlign = TextAlign.Right,
+                    maxLines = 1,
+                )
+                Text(
+                    // Never the body and never the secret; `WebhookAttempt` cannot carry either.
+                    text = attempt.summary(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (attempt.delivered) CoineProColors.TextMuted else CoineProColors.Sell,
+                    fontWeight = if (attempt.delivered) FontWeight.Normal else FontWeight.Bold,
+                    textAlign = TextAlign.Right,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }

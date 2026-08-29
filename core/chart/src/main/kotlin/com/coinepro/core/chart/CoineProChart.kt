@@ -278,6 +278,24 @@ fun CoineProChart(
      * inside the axis strip only, so nothing on the plot changes meaning.
      */
     onEventMark: ((EventMark) -> Unit)? = null,
+    /**
+     * Put a particular bar on screen — what «برو به تاریخ» actually does.
+     *
+     * The index into the *displayed* series, counted from the oldest bar, or null to leave the view
+     * where the reader put it. `ChartController.focusBar` has held this number and
+     * `ChartUiState.focusIndex` has carried it since go-to-date was built; the canvas had no
+     * parameter to hand it to, so a reader could type a date, watch the field accept it, and see
+     * the chart stay exactly where it was. A resolved date that moves nothing is worse than no
+     * field at all, because it teaches the reader that their chart has no history there.
+     *
+     * The pan is a one-shot keyed on the value, not a lock: the reader may pan straight off it
+     * again, and asking for the same bar twice does nothing — which is why the caller clears it
+     * back to null after a jump. It writes through the same [ChartViewport.atOffset] every gesture
+     * uses, so the saved zoom and the saved offset are updated by the effect below exactly as they
+     * are after a drag, and an index past either end of the series lands on that end rather than
+     * throwing.
+     */
+    focusIndex: Int? = null,
 ) {
     val display = remember(series, type, typeConfig) { ChartTransforms.apply(series, type, typeConfig) }
     // Unkeyed, and that is the whole point. Keyed on `display`, this reset to the default 120 bars
@@ -351,6 +369,14 @@ fun CoineProChart(
         savedZoom = viewport.barsPerView
         savedOffset = viewport.offset
         savedPriceZoom = viewport.priceZoom
+    }
+
+    // Pan to the bar the caller asked for. After the saved-state block above rather than inside
+    // it, so a jump is one more move of the same viewport — the restoration still runs first on a
+    // fresh composition, and what it restores is then overridden only when a date was actually
+    // asked for.
+    LaunchedEffect(focusIndex) {
+        if (focusIndex != null) viewport = viewport.atOffset(focusOffset(display.size, focusIndex))
     }
 
     // Ask for history when the reader gets near the edge of it. Keyed on the first visible bar, so
@@ -3411,6 +3437,20 @@ internal fun axisStyle(
  * `PathEffect.dashPathEffect` with an empty array throws. Every caller would otherwise need the
  * same guard, and the one that forgot it would crash inside a draw pass.
  */
+/**
+ * How far back the viewport sits when a given bar is the one being looked at.
+ *
+ * [ChartViewport.offset] counts *back from the live edge*, and a go-to-date result counts forward
+ * from the oldest bar, so the two are mirror images of each other and getting the mirror wrong
+ * lands the reader the same distance the wrong side of the chart. Its own function because that is
+ * the whole of the arithmetic and it is worth a test that does not need a composition.
+ *
+ * Clamped at zero here, and at the far end by [ChartViewport.atOffset], which knows how many bars
+ * there are to be short of: a date past the last bar is the live edge, and one before the first is
+ * as far back as the series goes.
+ */
+internal fun focusOffset(size: Int, index: Int): Int = (size - 1 - index).coerceAtLeast(0)
+
 internal fun dashEffect(style: LineStyleKind, lineWidth: Float): PathEffect? {
     val intervals = dashIntervals(style, lineWidth)
     return if (intervals.isEmpty()) null else PathEffect.dashPathEffect(intervals)

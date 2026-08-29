@@ -62,13 +62,56 @@ enum class ToolGroup(val label: String) {
     VOLUME("حجم"),
 }
 
-/** One placed drawing: which tool, where, and in what colour. */
+/**
+ * One placed drawing: which tool, where, and in what colours.
+ *
+ * Colours, plural, since the selection toolbar shipped: [colour] strokes it, [textColour] writes on
+ * it and [fillColour] washes inside it, with the last two null until the reader says otherwise so
+ * that every mark keeps following the one colour it was drawn in.
+ */
 data class Drawing(
     val id: Long,
     val toolId: String,
     val points: List<ChartPoint>,
     val colour: Long = DEFAULT_DRAWING_COLOUR,
     val widthDp: Float = 1.6f,
+    /**
+     * The colour a drawing's *words* are drawn in, or null to follow [colour].
+     *
+     * Three colours rather than one, because that is what the selection toolbar offers and what a
+     * mark actually needs: a callout whose box is drawn in the reader's own gold is unreadable if
+     * its text is gold too, and a rectangle marking a range wants a wash that is not the colour of
+     * its own edge. One colour for all three forced every tool to derive the other two from it by
+     * alpha, which is why every fill in this app is the line colour at ten percent.
+     *
+     * Null and not a copy of [colour], and that distinction is load-bearing: null means «follow the
+     * line», so a reader who later recolours the drawing gets its text recoloured with it, and every
+     * mark drawn before this field existed keeps looking exactly as it does now. A stored null is
+     * the absence of a choice, which is not the same fact as a stored gold.
+     */
+    val textColour: Long? = null,
+    /**
+     * The colour washed inside a shape, a channel or a pattern, or null to follow [colour].
+     *
+     * Only the *hue* is the reader's. Every tool that fills picks its own alpha — six percent behind
+     * a harmonic pattern, ten inside a rectangle, twelve under a risk band — and those numbers are
+     * what keep a filled drawing from burying the candles it is drawn over. A fill colour that
+     * arrived at full opacity would do exactly that, so [DrawingRenderer] swaps the hue and keeps
+     * the tool's own transparency.
+     */
+    val fillColour: Long? = null,
+    /**
+     * Solid, dotted, dashed. See [LineStyleKind].
+     *
+     * The enum from `ChartPixels.kt` rather than a second one of this layer's own: [dashIntervals]
+     * already derives every pattern from the stroke's own width, and two enums naming the same five
+     * styles would drift the moment one of them gained a sixth.
+     *
+     * [LineStyleKind.SOLID] is the default and means «whatever the tool draws by default», which is
+     * not always a solid line — a price label and a forecast are dashed by construction, and a
+     * reader who has not chosen a style must keep seeing them that way.
+     */
+    val lineStyle: LineStyleKind = LineStyleKind.SOLID,
     /** Set while the reader is still tapping out the points. */
     val complete: Boolean = true,
     /**

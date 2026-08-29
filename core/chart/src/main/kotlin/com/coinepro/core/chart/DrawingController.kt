@@ -635,6 +635,40 @@ object DrawingActions {
     }
 
     /**
+     * The words on one drawing, in their own colour — or back to following the line.
+     *
+     * Null is a real argument and not a way of saying «no change»: it puts the drawing back to
+     * following [Drawing.colour], which is the only way out of a text colour a reader regrets. A
+     * setter that treated null as a no-op would make the toolbar's «پیش‌فرض» button do nothing.
+     *
+     * Locked drawings are skipped, on the same reading [restyle] takes: colour is an edit.
+     */
+    fun setTextColour(state: DrawingState, id: Long, colour: Long?): DrawingState = state.copy(
+        drawings = state.drawings.map {
+            if (it.id == id && !it.locked) it.copy(textColour = colour) else it
+        },
+    )
+
+    /** The wash inside one drawing, or null to follow the line. See [Drawing.fillColour]. */
+    fun setFillColour(state: DrawingState, id: Long, colour: Long?): DrawingState = state.copy(
+        drawings = state.drawings.map {
+            if (it.id == id && !it.locked) it.copy(fillColour = colour) else it
+        },
+    )
+
+    /**
+     * Solid, dotted or dashed, on one drawing — see [Drawing.lineStyle].
+     *
+     * [LineStyleKind.SOLID] restores the tool's own default rather than forcing a solid line, which
+     * is why the tools that are dashed by construction keep their dashes at this setting.
+     */
+    fun setLineStyle(state: DrawingState, id: Long, style: LineStyleKind): DrawingState = state.copy(
+        drawings = state.drawings.map {
+            if (it.id == id && !it.locked) it.copy(lineStyle = style) else it
+        },
+    )
+
+    /**
      * The thinnest a drawing may be, in dp.
      *
      * Clamped rather than trusted, because a width arrives from a stored template and a row on disk

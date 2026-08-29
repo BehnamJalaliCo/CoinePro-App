@@ -2,9 +2,9 @@ package com.coinepro.feature.chart
 
 import com.coinepro.core.chart.Candle
 import com.coinepro.core.common.JalaliDate
+import com.coinepro.core.export.Csv
+import com.coinepro.core.export.Numbers
 import com.coinepro.core.marketdata.ChartInterval
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -20,24 +20,18 @@ import java.util.Locale
  * accusation that the broker draws its own prices. Somebody who can export the bars and hold them
  * against the exchange's own can settle the question themselves in a minute.
  *
- * ### The three rules, taken from `feature:portfolio`'s trade export
+ * ### What this file is and is not
  *
- * They are the same rules and they are here in full rather than by reference, because that module
- * is a sibling and a feature reaching into another feature is how two screens end up owning one
- * file. `TradeExport` states the reasoning at length; the short of it:
+ * It is a row shape: the columns, which of them hold prices, and how a candle becomes text. The
+ * writing belongs to `core:export` — the byte-order mark Persian Excel needs, the Latin-digit rule,
+ * the CRLF and the quoting. All three used to be copied into this file, with a comment saying that
+ * `feature:portfolio`'s writer was a sibling this one could not reach. It is a shared module now,
+ * and the copy is gone; do not bring it back.
  *
- * **The file starts with a UTF-8 byte-order mark.** Excel on a Persian Windows machine does not
- * sniff UTF-8 from content, and without the mark every Persian heading arrives as mojibake. Three
- * bytes, and every other tool ignores them.
- *
- * **Every number is Latin-digit, `Locale.US`, ungrouped.** The device locale here is Persian, so an
- * unqualified format produces «۲۶۴۳٫۱۷» — which a spreadsheet reads as text, sums to zero, and
- * displays looking exactly correct. This is the failure that is invisible until somebody's
- * arithmetic is wrong.
- *
- * **Every timestamp gets two columns.** The ISO instant is what a spreadsheet sorts and subtracts;
- * the Jalali date is what a Persian trader reconciles against their own notes. Printing one and
- * calling it the date makes the file useless to whichever of the two is reading it.
+ * The rule that stays here because it is about candles rather than about files: **every timestamp
+ * gets two columns.** The ISO instant is what a spreadsheet sorts and subtracts; the Jalali date is
+ * what a Persian trader reconciles against their own notes. Printing one and calling it the date
+ * makes the file useless to whichever of the two is reading it.
  *
  * ### What is exported is what is on the chart
  *
@@ -79,17 +73,16 @@ object ChartExport {
     val NUMERIC_COLUMNS: Set<Int> = setOf(3, 4, 5, 6, 7)
 
     /**
-     * The bars as comma-separated text, byte-order mark first.
-     *
-     * CRLF line endings, which is what the CSV specification says and what Excel expects. Every
-     * field is quoted and inner quotes are doubled — a symbol or a venue name is not free text in
-     * theory and repeatedly is in practice, and one unquoted comma shifts every column after it
-     * without any error being raised anywhere.
+     * The bars as comma-separated text.
      *
      * The first row is [provenance] — the instrument, the bar length and the venue — rather than
      * the column names. It is prefixed with `#`, which every spreadsheet imports as an ordinary
      * first row and every script skips, and it is what stops an exported file being an anonymous
-     * grid of numbers three weeks later.
+     * grid of numbers three weeks later. It goes in ahead of the headings as `core:export`'s
+     * preamble, which is the same slot the backtest report puts its summary in.
+     *
+     * Oldest bar first whatever order they arrived in, because a chart holds its series in the
+     * order the feed filled it and a reader plotting the export expects time to run downwards.
      */
     fun toCsv(
         bars: List<Candle>,
@@ -97,19 +90,11 @@ object ChartExport {
         interval: ChartInterval,
         source: String,
         zone: ZoneId = ZoneId.systemDefault(),
-    ): String {
-        val rows = StringBuilder()
-        rows.append(BOM)
-        rows.append(quote(provenance(symbol, interval, source)))
-        rows.append(LINE_BREAK)
-        rows.append(HEADERS.joinToString(",") { quote(it) })
-        for (bar in bars.sortedBy { it.t }) {
-            rows.append(LINE_BREAK)
-            rows.append(fieldsOf(bar, zone).joinToString(",") { quote(it) })
-        }
-        rows.append(LINE_BREAK)
-        return rows.toString()
-    }
+    ): String = Csv.build(
+        preamble = listOf(listOf(provenance(symbol, interval, source))),
+        header = HEADERS,
+        rows = bars.sortedBy { it.t }.map { fieldsOf(it, zone) },
+    )
 
     /**
      * The one line that says what these numbers are.
@@ -168,13 +153,12 @@ object ChartExport {
     /**
      * A price as the export writes it, or the empty string for an absent or non-finite one.
      *
-     * Eight decimal places at most, which covers a token quoted at 0.00000042 without printing
-     * gold's two as `2643.17000000`. `DecimalFormat` trims what it does not need.
+     * [Numbers.cell] does the formatting, so a price in this file and a price in the trade history
+     * are the same shape. Volume in particular is blank rather than nought on a feed that carries
+     * none: nought is a value a bar can genuinely have, and writing it where the feed said nothing
+     * turns "this venue does not report volume" into "nobody traded".
      */
-    internal fun number(value: Double?): String {
-        if (value == null || !value.isFinite()) return ""
-        return DecimalFormat("0.########", DecimalFormatSymbols(Locale.US)).format(value)
-    }
+    internal fun number(value: Double?): String = Numbers.cell(value)
 
     /**
      * A suggested filename, in Latin digits and hyphens.
@@ -199,10 +183,4 @@ object ChartExport {
     private fun sanitise(text: String): String =
         text.map { if (it.isLetterOrDigit() || it == '.' || it == '-') it else '-' }.joinToString("")
 
-    private fun quote(field: String): String = "\"" + field.replace("\"", "\"\"") + "\""
-
-    /** U+FEFF. Three bytes in UTF-8, and the reason the file opens correctly on a Persian machine. */
-    private const val BOM = "\uFEFF"
-
-    private const val LINE_BREAK = "\r\n"
 }

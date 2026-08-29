@@ -35,6 +35,9 @@ import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.datastore.DrawingTemplateStore
+import com.coinepro.core.datastore.IndicatorTemplateStore
+import com.coinepro.core.datastore.DrawingSyncStore
+import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.feature.chart.ChartWorkspaceStore
 import com.coinepro.feature.alerts.AlertsController
 import com.coinepro.feature.screener.ScreenerController
@@ -69,6 +72,7 @@ import com.coinepro.core.marketdata.MarketDataController
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.model.MarketPlatform
+import com.coinepro.core.orderbook.OrderBookGateway
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.portfolio.PortfolioController
@@ -109,6 +113,9 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var chartDrawingStore: ChartDrawingStore
     @Inject lateinit var symbolChartStateStore: SymbolChartStateStore
     @Inject lateinit var drawingTemplateStore: DrawingTemplateStore
+    @Inject lateinit var indicatorTemplateStore: IndicatorTemplateStore
+    @Inject lateinit var drawingSyncStore: DrawingSyncStore
+    @Inject lateinit var intervalFavouritesStore: IntervalFavouritesStore
     @Inject lateinit var chartWorkspaceStore: ChartWorkspaceStore
     @Inject lateinit var journalController: JournalController
     @Inject lateinit var paperTradeController: PaperTradeController
@@ -118,6 +125,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var screenerControllers: Map<MarketPlatform, @JvmSuppressWildcards ScreenerController>
     @Inject lateinit var screenerStore: ScreenerStore
     @Inject lateinit var candleGateways: Map<MarketPlatform, @JvmSuppressWildcards CandleGateway>
+    @Inject lateinit var orderBookGateways: Map<MarketPlatform, @JvmSuppressWildcards OrderBookGateway>
     @Inject lateinit var portfolioControllers: Map<MarketPlatform, @JvmSuppressWildcards PortfolioController>
     @Inject lateinit var academyController: AcademyController
     @Inject lateinit var terminalController: TerminalController
@@ -202,6 +210,9 @@ class MainActivity : FragmentActivity() {
                 chartDrawingStore = chartDrawingStore,
                 symbolChartStateStore = symbolChartStateStore,
                 drawingTemplateStore = drawingTemplateStore,
+                indicatorTemplateStore = indicatorTemplateStore,
+                drawingSyncStore = drawingSyncStore,
+                intervalFavouritesStore = intervalFavouritesStore,
                 chartWorkspaceStore = chartWorkspaceStore,
                 journalController = journalController,
                 paperTradeController = paperTradeController,
@@ -211,6 +222,7 @@ class MainActivity : FragmentActivity() {
                 screenerControllers = screenerControllers,
                 screenerStore = screenerStore,
                 candleGateways = candleGateways,
+                orderBookGateways = orderBookGateways,
                 portfolioControllers = portfolioControllers,
                 academyController = academyController,
                 terminalController = terminalController,

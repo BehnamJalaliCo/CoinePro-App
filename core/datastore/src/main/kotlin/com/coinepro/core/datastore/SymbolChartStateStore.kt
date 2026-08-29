@@ -67,6 +67,51 @@ data class SymbolChartState(
      * first one to throw away.
      */
     val updatedAt: Long = 0L,
+    /**
+     * How hard a drawing tap was pulled onto a bar's open, high, low or close: `OFF`, `WEAK`,
+     * `STRONG`.
+     *
+     * A string and not `core:chart`'s `MagnetMode`, for the reason the class note gives above and
+     * for one more that is specific to this field: the magnet shipped with an enum, snap maths,
+     * persistence and a rail control, and no call site passed the callback — so it was off for the
+     * life of the app. A stored mode that the mapper resolves is what makes the rail control mean
+     * something the next time the reader opens this symbol.
+     */
+    val magnetMode: String? = null,
+    /**
+     * Whether the drawing tool stays armed after a mark is finished.
+     *
+     * A Boolean rather than an id string, because unlike everything around it this is not a name
+     * from another module's enum — it is a switch, and [logScale] already establishes how a switch
+     * is stored here. False is both the default and what a row written before the field existed
+     * reads back as, which is the behaviour every earlier build had.
+     */
+    val keepDrawing: Boolean = false,
+    /**
+     * The drawing tools the reader starred, by tool id.
+     *
+     * Per symbol like everything else in this row, and that is the honest reading of the request:
+     * the tools somebody reaches for on gold are not the ones they reach for on a small cap. Ids,
+     * so a tool this build no longer ships is ignored rather than crashing a reader who downgraded.
+     */
+    val toolFavourites: List<String> = emptyList(),
+    /**
+     * The candlestick patterns switched on for this symbol, by pattern id.
+     *
+     * Stored rather than recomputed from a global setting, because pattern detection is noisy on
+     * some instruments and quiet on others, and a reader who turned the engulfing marks off on one
+     * chart has not asked for them off everywhere.
+     */
+    val patterns: List<String> = emptyList(),
+    /**
+     * Which series each indicator reads, keyed by indicator id, and sparse.
+     *
+     * Only the indicators the reader redirected are in here — an absent entry means the indicator
+     * reads the candles, which is what all of them do until somebody says otherwise. Both halves
+     * are opaque strings: the source is an id the feature module resolves, on the same boundary
+     * [indicators] is on.
+     */
+    val chainSources: Map<String, String> = emptyMap(),
 )
 
 /**
@@ -191,6 +236,12 @@ class SymbolChartStateStore(private val dataStore: DataStore<Preferences>) {
             val periods = state.indicatorPeriods
                 .filterKeys { !hasSeparator(it) }
                 .flatMap { (id, period) -> listOf(id, period.toString()) }
+            // Alternating id and source, the same shape the periods take, so one decoder pattern
+            // covers both and neither can grow a second way of being read.
+            val sources = state.chainSources
+                .filterKeys { !hasSeparator(it) }
+                .filterValues { !hasSeparator(it) }
+                .flatMap { (id, source) -> listOf(id, source) }
             return listOf(
                 symbol,
                 blankIfSeparated(state.timeframe.orEmpty()),
@@ -200,6 +251,11 @@ class SymbolChartStateStore(private val dataStore: DataStore<Preferences>) {
                 blankIfSeparated(state.scaleMode.orEmpty()),
                 if (state.logScale) "1" else "0",
                 state.updatedAt.toString(),
+                blankIfSeparated(state.magnetMode.orEmpty()),
+                if (state.keepDrawing) "1" else "0",
+                state.toolFavourites.filterNot { hasSeparator(it) }.joinToString(UNIT),
+                state.patterns.filterNot { hasSeparator(it) }.joinToString(UNIT),
+                sources.joinToString(UNIT),
             ).joinToString(RECORD)
         }
 
@@ -215,6 +271,7 @@ class SymbolChartStateStore(private val dataStore: DataStore<Preferences>) {
             // field it does not recognise, written by a newer build, is simply never read.
             val symbol = parts.getOrNull(0)?.takeIf(String::isNotBlank)?.uppercase() ?: return null
             val periodParts = parts.getOrNull(4).orEmpty().split(UNIT).filter(String::isNotBlank)
+            val sourceParts = parts.getOrNull(12).orEmpty().split(UNIT).filter(String::isNotBlank)
             return SymbolChartState(
                 symbol = symbol,
                 timeframe = parts.getOrNull(1)?.takeIf(String::isNotBlank),
@@ -234,6 +291,16 @@ class SymbolChartStateStore(private val dataStore: DataStore<Preferences>) {
                 scaleMode = parts.getOrNull(5)?.takeIf(String::isNotBlank),
                 logScale = parts.getOrNull(6) == "1",
                 updatedAt = parts.getOrNull(7)?.toLongOrNull() ?: 0L,
+                magnetMode = parts.getOrNull(8)?.takeIf(String::isNotBlank),
+                keepDrawing = parts.getOrNull(9) == "1",
+                toolFavourites = parts.getOrNull(10).orEmpty().split(UNIT).filter(String::isNotBlank),
+                patterns = parts.getOrNull(11).orEmpty().split(UNIT).filter(String::isNotBlank),
+                chainSources = sourceParts
+                    // Alternating id and source. A trailing id with no source drops that entry
+                    // rather than shifting every pair after it by one.
+                    .chunked(2)
+                    .mapNotNull { pair -> if (pair.size == 2) pair[0] to pair[1] else null }
+                    .toMap(),
             )
         }
 

@@ -6,6 +6,8 @@ import com.coinepro.core.notifications.AlertMessageTemplate
 import com.coinepro.core.notifications.AlertScope
 import com.coinepro.core.notifications.AuditEvent
 import com.coinepro.core.notifications.LocalPriceAlert
+import com.coinepro.core.webhook.WebhookAttempt
+import com.coinepro.core.webhook.WebhookEvent
 
 /**
  * The alert list, as the evaluator needs it.
@@ -200,6 +202,20 @@ class AlertEvaluator(
     private val market: AlertMarketSource,
     private val audit: AlertAuditLog,
     private val deliverer: AlertDeliverer,
+    /**
+     * Posts a firing to the reader's webhooks and says what became of each.
+     *
+     * A function rather than `WebhookDispatcher` itself, for the reason every other seam in this
+     * class is a function: the evaluator is the most delicate code in the app and the last thing it
+     * should grow is knowledge of a delivery channel. `WebhookDispatcher` already answers with the
+     * records rather than only writing them, which is exactly what this needs — a webhook that
+     * failed has to reach the alert's *own* audit log, or the reader is looking at a log that says
+     * the alert fired and nothing about the bot that never heard.
+     *
+     * Defaults to no webhooks, so a test that is not about them need not fake one, and so a build
+     * without the module still evaluates alerts.
+     */
+    private val webhooks: suspend (WebhookEvent) -> List<WebhookAttempt> = { emptyList() },
 ) {
 
     /**
@@ -242,6 +258,7 @@ class AlertEvaluator(
         audit.record(fired.map { entry(it, AuditEvent.FIRED) })
         stampFirings(fired, states, nowEpochMillis)
         deliver(fired)
+        postWebhooks(fired)
         return AlertPassResult.Completed(fired = fired.size, expired = expired)
     }
 
@@ -396,6 +413,70 @@ class AlertEvaluator(
         audit.record(outcomes)
     }
 
+    /**
+     * Posts each firing to the reader's webhooks, and writes down the ones that did not arrive.
+     *
+     * ### Why a failed webhook is a line in the *alert's* log
+     *
+     * `WebhookStore` already keeps the full delivery record — status, latency, error — and the
+     * history sheet shows it. But somebody whose bot did not act opens the alert's own history
+     * first, and a log reading «شرط برقرار شد / اعلان رسید» with nothing after it says the alert
+     * worked, which is true and useless. The failure belongs beside the firing it belongs to.
+     *
+     * A *successful* webhook is deliberately not written here. It would double the length of every
+     * log for a reader with three targets, and «تحویل شد» already has a home on the same sheet.
+     * The rule this file follows throughout: the log records what went wrong at the length it takes
+     * to act on it, and what went right at the length it takes to confirm it.
+     *
+     * ### Nothing here can fail the pass
+     *
+     * The alert has already fired, been stamped and been delivered by the time this runs. A webhook
+     * that throws — a receiver that resets the connection in a way the poster did not model — must
+     * not undo any of that, so the whole thing is caught. The alert reaching the reader is the
+     * promise; the webhook is the extra.
+     */
+    private suspend fun postWebhooks(fired: List<FiredAlert>) {
+        val failures = fired.flatMap { firing ->
+            val attempts = runCatching {
+                webhooks(
+                    WebhookEvent(
+                        alertId = firing.alert.id,
+                        symbol = firing.symbol,
+                        firedAt = firing.atEpochMillis,
+                        // What the reader wrote, already rendered with the facts filled in. Blank
+                        // where they wrote nothing, and `WebhookEvent` then composes its own JSON
+                        // envelope rather than sending this app's Persian prose to a bot.
+                        message = firing.alert.message?.let { firing.body }.orEmpty(),
+                        price = firing.price,
+                        timeframe = firing.timeframe,
+                    ),
+                )
+            }.getOrDefault(emptyList())
+            attempts.filterNot(WebhookAttempt::delivered).map { attempt ->
+                entry(
+                    fired = firing,
+                    event = AuditEvent.DELIVERY_FAILED,
+                    note = webhookNote(attempt),
+                )
+            }
+        }
+        if (failures.isNotEmpty()) audit.record(failures)
+    }
+
+    /**
+     * One failed webhook as a line the reader can act on.
+     *
+     * The target's name first, because a reader with three webhooks has to know *which* one, and
+     * then the outcome and whatever the receiver actually said. `WebhookAttempt.error` is already
+     * short Persian prose rather than an exception's own text — that is the store's rule, and this
+     * does not second-guess it.
+     */
+    private fun webhookNote(attempt: WebhookAttempt): String = listOfNotNull(
+        attempt.targetName.takeIf(String::isNotBlank),
+        attempt.outcome.label,
+        attempt.error?.takeIf { it.isNotBlank() && it != attempt.outcome.label },
+    ).joinToString(WEBHOOK_NOTE_SEPARATOR)
+
     private fun entry(fired: FiredAlert, event: AuditEvent, note: String? = null) = AlertAuditEntry(
         alertId = fired.alert.id,
         event = event,
@@ -405,4 +486,9 @@ class AlertEvaluator(
         timeframe = fired.timeframe,
         note = note,
     )
+
+    private companion object {
+        /** Between the parts of a failed webhook's note. The same one the deliverer's refusals use. */
+        const val WEBHOOK_NOTE_SEPARATOR = "، "
+    }
 }

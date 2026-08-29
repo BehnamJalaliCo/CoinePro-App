@@ -12,8 +12,8 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.coinepro.app.MainActivity
 import com.coinepro.app.R
-import com.coinepro.app.notifications.NotificationChannels
 import com.coinepro.app.notifications.minuteOfDay
+import com.coinepro.app.notifications.priceAlertChannelId
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.notifications.AlertChannel
@@ -108,7 +108,9 @@ class AndroidAlertDeliverer @Inject constructor(
     private fun notify(fired: FiredAlert) {
         val intent = Intent(context, MainActivity::class.java).apply {
             action = Intent.ACTION_VIEW
-            data = Uri.parse(ALERT_DEEP_LINK)
+            // The chart for *this* symbol, not the activity list. See `AlertDeepLink` for why the
+            // difference is the whole feature: the reader was woken in order to look at a chart.
+            data = Uri.parse(AlertDeepLink.chart(fired.symbol, fired.timeframe))
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
         val identity = notificationId(fired)
@@ -165,16 +167,8 @@ class AndroidAlertDeliverer @Inject constructor(
      * Android 8 and later there is no other way to express it. Everything else is the ordinary
      * price-alert channel, which the reader already controls from the notification itself.
      */
-    private fun channelFor(fired: FiredAlert): String {
-        val channels = fired.alert.channels
-        return when {
-            AlertChannel.SOUND in channels && AlertSound.isLoud(fired.alert.effectiveSoundLevel) ->
-                NotificationChannels.PRICE_ALERT_LOUD
-            AlertChannel.SOUND !in channels && AlertChannel.VIBRATE in channels ->
-                NotificationChannels.PRICE_ALERT_VIBRATE
-            else -> NotificationChannels.channelId(NotificationCategory.PRICE_ALERT)
-        }
-    }
+    private fun channelFor(fired: FiredAlert): String =
+        priceAlertChannelId(fired.alert.channels, fired.alert.effectiveSoundLevel)
 
     /**
      * One notification per alert **per symbol**.
@@ -186,7 +180,6 @@ class AndroidAlertDeliverer @Inject constructor(
     private fun notificationId(fired: FiredAlert): Int = (fired.alert.id + ID_SEPARATOR + fired.symbol).hashCode()
 
     private companion object {
-        const val ALERT_DEEP_LINK = "coinepro://activity"
         const val ID_SEPARATOR = "|"
 
         /** Between two refusal sentences in one audit note. */

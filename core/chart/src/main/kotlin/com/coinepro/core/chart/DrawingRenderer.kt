@@ -72,8 +72,7 @@ fun DrawScope.drawDrawing(
     // label, and every one of them would paint over the price at full strength.
     if (fade <= 0f) return true
     val p = chart.map { Offset(view.xOfTime(it.time), view.yOf(it.price)) }
-    val base = Color(drawing.colour.toInt())
-    val colour = if (fade < 1f) base.copy(alpha = base.alpha * fade) else base
+    val colour = faded(drawing.colour, fade)
     val width = max(1f, drawing.widthDp.dp.toPx())
     val w = view.plotWidth
     val h = view.plotHeight
@@ -81,6 +80,61 @@ fun DrawScope.drawDrawing(
     // its five points is a three-point polyline, not a guess at where D will land.
     val a = p[0]
     val b = p.getOrNull(1)
+
+    /**
+     * The drawing's three colours and its dash, resolved once.
+     *
+     * Faded here rather than at each use, so a mark's text and its wash go out with its line.
+     */
+    val paint = DrawingPaint(
+        line = colour,
+        textOverride = drawing.textColour?.let { faded(it, fade) },
+        fillOverride = drawing.fillColour?.let { faded(it, fade) },
+        dash = dashEffect(drawing.lineStyle, width),
+    )
+
+    // The ten primitives below shadow the file-level ones of the same names, so that every one of
+    // the hundred-odd calls in the `when` picks up the reader's dash, text colour and fill without
+    // being rewritten — and so that a tool added later gets them for free instead of being the one
+    // that quietly ignores them. Kotlin resolves a local function ahead of a member and ahead of a
+    // top-level extension, which is exactly why the file-level ones are named `stroke*`/`paint*`:
+    // two callables with the same name and the same signature would be a silent recursion.
+    fun drawLine(colour: Color, from: Offset, to: Offset, width: Float) =
+        strokeSegment(colour, from, to, width, paint.dash)
+
+    fun dashed(from: Offset, to: Offset, colour: Color, width: Float) =
+        strokeDashed(from, to, colour, width, paint.dash)
+
+    fun ray(from: Offset, to: Offset, colour: Color, width: Float, w: Float, h: Float, both: Boolean) =
+        strokeRay(from, to, colour, width, w, h, both, paint.dash)
+
+    fun polyline(points: List<Offset>, colour: Color, width: Float): Boolean =
+        strokeChain(points, colour, width, paint.dash)
+
+    fun oval(centre: Offset, rx: Float, ry: Float, startAngle: Float, sweep: Float, colour: Color, width: Float) =
+        strokeOval(centre, rx, ry, startAngle, sweep, colour, width, paint.dash)
+
+    fun fillQuad(a: Offset, b: Offset, c: Offset, d: Offset, colour: Color) =
+        fillPolygon(a, b, c, d, paint.wash(colour))
+
+    fun band(left: Float, right: Float, y0: Float, y1: Float, colour: Color) =
+        fillBand(left, right, y0, y1, paint.wash(colour))
+
+    fun label(measurer: TextMeasurer, text: String, x: Float, y: Float, colour: Color) =
+        paintLabel(measurer, text, x, y, paint.words(colour))
+
+    fun labelAbove(measurer: TextMeasurer, text: String, x: Float, y: Float, colour: Color) =
+        paintLabelAbove(measurer, text, x, y, paint.words(colour))
+
+    fun boxLabel(
+        measurer: TextMeasurer,
+        text: String,
+        x: Float,
+        y: Float,
+        colour: Color,
+        anchor: Anchor = Anchor.START,
+    ): Boolean = paintBoxLabel(measurer, text, x, y, colour, paint.words(Color.White), anchor)
+
     val handled = when (drawing.toolId) {
 
         // ── Lines ───────────────────────────────────────────────────────────────────
@@ -178,6 +232,7 @@ fun DrawScope.drawDrawing(
                 view = view,
                 colour = colour,
                 width = width,
+                paint = paint,
             )
         } != null
         "fibext" -> b?.let {
@@ -191,6 +246,7 @@ fun DrawScope.drawDrawing(
                 view = view,
                 colour = colour,
                 width = width,
+                paint = paint,
             )
         } != null
         "fib3" -> p.getOrNull(2)?.let { third ->
@@ -208,11 +264,12 @@ fun DrawScope.drawDrawing(
                 view = view,
                 colour = colour,
                 width = width,
+                paint = paint,
             )
         } != null
         "fibfan" -> b?.let { end ->
             drawRect(
-                color = colour.copy(alpha = 0.25f),
+                color = paint.wash(colour.copy(alpha = 0.25f)),
                 topLeft = Offset(min(a.x, end.x), min(a.y, end.y)),
                 size = Size(abs(end.x - a.x), abs(end.y - a.y)),
                 style = Stroke(width),
@@ -295,7 +352,7 @@ fun DrawScope.drawDrawing(
             val y = min(a.y, end.y)
             val boxWidth = abs(end.x - a.x)
             val boxHeight = abs(end.y - a.y)
-            drawRect(colour, Offset(x, y), Size(boxWidth, boxHeight), style = Stroke(width))
+            drawRect(colour, Offset(x, y), Size(boxWidth, boxHeight), style = Stroke(width, pathEffect = paint.dash))
             for (ratio in GANN_RATIOS) {
                 if (ratio == 0.0 || ratio == 1.0) continue
                 val faint = colour.copy(alpha = 0.45f)
@@ -317,12 +374,12 @@ fun DrawScope.drawDrawing(
         } != null
 
         // ── Patterns and Elliott ────────────────────────────────────────────────────
-        "xabcd" -> pattern(p, chart, XABCD_LABELS, ratios = true, measurer, colour, width)
-        "abcd" -> pattern(p, chart, ABCD_LABELS, ratios = true, measurer, colour, width)
-        "cypher" -> pattern(p, chart, XABCD_LABELS, ratios = true, measurer, colour, width)
-        "hns" -> pattern(p, chart, HNS_LABELS, ratios = false, measurer, colour, width)
-        "ell_impulse" -> pattern(p, chart, IMPULSE_LABELS, ratios = false, measurer, colour, width)
-        "ell_abc" -> pattern(p, chart, ABC_LABELS, ratios = false, measurer, colour, width)
+        "xabcd" -> pattern(p, chart, XABCD_LABELS, ratios = true, measurer, colour, width, paint)
+        "abcd" -> pattern(p, chart, ABCD_LABELS, ratios = true, measurer, colour, width, paint)
+        "cypher" -> pattern(p, chart, XABCD_LABELS, ratios = true, measurer, colour, width, paint)
+        "hns" -> pattern(p, chart, HNS_LABELS, ratios = false, measurer, colour, width, paint)
+        "ell_impulse" -> pattern(p, chart, IMPULSE_LABELS, ratios = false, measurer, colour, width, paint)
+        "ell_abc" -> pattern(p, chart, ABC_LABELS, ratios = false, measurer, colour, width, paint)
         "tripattern", "triangle" -> p.getOrNull(2)?.let { third ->
             fillQuad(a, b!!, third, third, colour.copy(alpha = FILL_SOFT))
             polyline(listOf(a, b, third, a), colour, width)
@@ -332,8 +389,8 @@ fun DrawScope.drawDrawing(
         "rect" -> b?.let { end ->
             val topLeft = Offset(min(a.x, end.x), min(a.y, end.y))
             val size = Size(abs(end.x - a.x), abs(end.y - a.y))
-            drawRect(colour.copy(alpha = FILL_SOFT), topLeft, size, style = Fill)
-            drawRect(colour, topLeft, size, style = Stroke(width))
+            drawRect(paint.wash(colour.copy(alpha = FILL_SOFT)), topLeft, size, style = Fill)
+            drawRect(colour, topLeft, size, style = Stroke(width, pathEffect = paint.dash))
             true
         } != null
         "rotrect" -> p.getOrNull(2)?.let { third ->
@@ -349,15 +406,15 @@ fun DrawScope.drawDrawing(
         } != null
         "circle" -> b?.let { end ->
             val radius = hypot(end.x - a.x, end.y - a.y)
-            drawCircle(colour.copy(alpha = FILL_SOFT), radius, a)
-            drawCircle(colour, radius, a, style = Stroke(width))
+            drawCircle(paint.wash(colour.copy(alpha = FILL_SOFT)), radius, a)
+            drawCircle(colour, radius, a, style = Stroke(width, pathEffect = paint.dash))
             true
         } != null
         "ellipse" -> b?.let { end ->
             val centre = Offset((a.x + end.x) / 2, (a.y + end.y) / 2)
             val rx = abs(end.x - a.x) / 2
             val ry = abs(end.y - a.y) / 2
-            drawOval(colour.copy(alpha = FILL_SOFT), Offset(centre.x - rx, centre.y - ry), Size(rx * 2, ry * 2))
+            drawOval(paint.wash(colour.copy(alpha = FILL_SOFT)), Offset(centre.x - rx, centre.y - ry), Size(rx * 2, ry * 2))
             oval(centre, rx, ry, 0f, 360f, colour, width)
             true
         } != null
@@ -397,9 +454,9 @@ fun DrawScope.drawDrawing(
             // Latin digits on the multiple: it is a market figure sitting on the chart's own
             // canvas beside prices, and «هدف ۲٫۵R» in a column of Latin numbers reads as a
             // different kind of thing from what it is.
-            level(measurer, left, right, view.yOf(target), buyColour(), "هدف " + fixed(reward, 1) + "R")
-            level(measurer, left, right, view.yOf(entry), colour, "ورود")
-            level(measurer, left, right, view.yOf(stop), sellColour(), "حد ضرر")
+            level(measurer, left, right, view.yOf(target), buyColour(), "هدف " + fixed(reward, 1) + "R", paint)
+            level(measurer, left, right, view.yOf(entry), colour, "ورود", paint)
+            level(measurer, left, right, view.yOf(stop), sellColour(), "حد ضرر", paint)
             true
         } != null
 
@@ -425,8 +482,8 @@ fun DrawScope.drawDrawing(
         "dprange" -> b?.let { end ->
             val topLeft = Offset(min(a.x, end.x), min(a.y, end.y))
             val size = Size(abs(end.x - a.x), abs(end.y - a.y))
-            drawRect(colour.copy(alpha = FILL_SOFT), topLeft, size, style = Fill)
-            drawRect(colour, topLeft, size, style = Stroke(width))
+            drawRect(paint.wash(colour.copy(alpha = FILL_SOFT)), topLeft, size, style = Fill)
+            drawRect(colour, topLeft, size, style = Stroke(width, pathEffect = paint.dash))
             val delta = chart[1].price - chart[0].price
             val percent = if (chart[0].price != 0.0) delta / chart[0].price * 100 else 0.0
             val bars = abs((size.width / max(1f, view.barWidth)).roundToInt())
@@ -521,7 +578,7 @@ fun DrawScope.drawDrawing(
         // reader loses their place in it, and the new tools all share a shape — chart-space
         // geometry from [DrawingGeometryA]/[DrawingGeometryB], projected and stroked — that has
         // nothing to do with the hand-rolled arithmetic above.
-        else -> drawExtendedDrawing(drawing, view, measurer, chart, p, colour, width)
+        else -> drawExtendedDrawing(drawing, view, measurer, chart, p, colour, width, paint)
     }
 
     // The interval the mark was drawn on, as a small tag beside its first anchor. Only on a
@@ -545,19 +602,108 @@ fun DrawScope.drawDrawing(
 /** Which way a standalone arrow marker points. */
 enum class ArrowDirection { UP, DOWN, LEFT, RIGHT }
 
-// ---------------------------------------------------------------------------- primitives
-
-private fun DrawScope.drawLine(colour: Color, from: Offset, to: Offset, width: Float) {
-    drawLine(color = colour, start = from, end = to, strokeWidth = width)
+/**
+ * A stored ARGB colour as a Compose colour, already carrying the mark's fade.
+ *
+ * One function rather than the same two lines at four sites, because the fade has to reach all
+ * three of a drawing's colours the same way: a demonstration mark whose line fades while its text
+ * stays solid does not read as fading, it reads as broken.
+ */
+private fun faded(argb: Long, fade: Float): Color {
+    val colour = Color(argb.toInt())
+    return if (fade < 1f) colour.copy(alpha = colour.alpha * fade) else colour
 }
 
-private fun DrawScope.dashed(from: Offset, to: Offset, colour: Color, width: Float) {
+/**
+ * The four brushes one drawing is painted with, resolved once per frame.
+ *
+ * [Drawing] carries three colours and a line style, and a renderer that reads only the first of
+ * them is the defect this whole layer keeps producing: the field exists, the toolbar sets it, and
+ * the picture never changes. Resolving them into one object here means every painter below takes
+ * *one* extra argument instead of four, and there is a single place where "null means follow the
+ * line" is decided rather than one per tool.
+ *
+ * The fade is already folded into [line], [words] and the wash, so nothing downstream asks the
+ * clock a second time and no two painters can disagree about how far gone a demonstration mark is.
+ */
+private class DrawingPaint(
+    /** The stroke colour, faded. What every tool draws its own geometry in. */
+    val line: Color,
+    private val textOverride: Color?,
+    private val fillOverride: Color?,
+    /** The reader's dash, or null for [LineStyleKind.SOLID] — which means "the tool's own look". */
+    val dash: PathEffect?,
+) {
+    /**
+     * The colour a piece of text is written in.
+     *
+     * The override is applied to the drawing's *own* voice only: text already in the drawing's
+     * colour, and the white a boxed label defaults to. A position tool's green target and red stop
+     * are the market speaking rather than the reader, and they keep their colours — the same
+     * decision [markColour] makes for the arrow marks, and for the same reason.
+     *
+     * The override's alpha is multiplied by the fallback's rather than replacing it, so a fading
+     * demonstration mark takes its text with it.
+     */
+    fun words(fallback: Color): Color {
+        val over = textOverride ?: return fallback
+        if (!isOwn(fallback)) return fallback
+        return over.copy(alpha = over.alpha * fallback.alpha)
+    }
+
+    /**
+     * The colour a fill is washed in, keeping the alpha the tool asked for.
+     *
+     * The alpha and not the hue is the tool's, and that is the whole rule: a pattern fills at six
+     * percent and a risk band at twelve, and those numbers are what stop a filled drawing burying
+     * the candles under it. A reader's fill colour arriving at full opacity would do exactly that.
+     */
+    fun wash(tint: Color): Color {
+        val over = fillOverride ?: return tint
+        if (!isOwn(tint)) return tint
+        return over.copy(alpha = over.alpha * tint.alpha)
+    }
+
+    /**
+     * Whether a colour is the drawing's own, at whatever alpha the tool chose.
+     *
+     * Compared on the three channels and not on the whole value, because every tool derives its
+     * ghosts and washes with `copy(alpha = …)`, which leaves the hue untouched. White is counted as
+     * the drawing's own because that is what a boxed label's text defaults to, and boxed text is
+     * exactly the text a reader means when they set a text colour.
+     */
+    private fun isOwn(colour: Color): Boolean =
+        (colour.red == line.red && colour.green == line.green && colour.blue == line.blue) ||
+            (colour.red == 1f && colour.green == 1f && colour.blue == 1f)
+}
+
+// ---------------------------------------------------------------------------- primitives
+
+/**
+ * One straight stroke, with the drawing's dash on it.
+ *
+ * Named away from `drawLine` deliberately. `DrawScope` has a member of that name, and a member wins
+ * overload resolution against a top-level extension — so the private `drawLine` this file used to
+ * carry was never once called, and every "dashed" line went out solid. The local shadows in
+ * [drawDrawing] rely on that same rule from the other side: a *local* function does beat a member.
+ */
+private fun DrawScope.strokeSegment(colour: Color, from: Offset, to: Offset, width: Float, dash: PathEffect?) {
+    drawLine(color = colour, start = from, end = to, strokeWidth = width, pathEffect = dash)
+}
+
+/**
+ * The dashed stroke a handful of tools use whatever the reader chose.
+ *
+ * [dash] wins when it is set, so a reader who picks dotted gets dotted here too; null keeps the
+ * tool's own six-on-four, which is what a price label and a forecast have always looked like.
+ */
+private fun DrawScope.strokeDashed(from: Offset, to: Offset, colour: Color, width: Float, dash: PathEffect?) {
     drawLine(
         color = colour,
         start = from,
         end = to,
         strokeWidth = width,
-        pathEffect = PathEffect.dashPathEffect(floatArrayOf(DASH_ON.toPx(), DASH_OFF.toPx())),
+        pathEffect = dash ?: PathEffect.dashPathEffect(floatArrayOf(DASH_ON.toPx(), DASH_OFF.toPx())),
     )
 }
 
@@ -568,7 +714,7 @@ private fun DrawScope.dashed(from: Offset, to: Offset, colour: Color, width: Flo
  * tablet or wastes most of its length on a phone, and a ray that stops short reads as a trend line
  * that someone drew badly.
  */
-private fun DrawScope.ray(
+private fun DrawScope.strokeRay(
     from: Offset,
     to: Offset,
     colour: Color,
@@ -576,6 +722,7 @@ private fun DrawScope.ray(
     w: Float,
     h: Float,
     both: Boolean,
+    dash: PathEffect?,
 ) {
     val dx = to.x - from.x
     val dy = to.y - from.y
@@ -583,20 +730,25 @@ private fun DrawScope.ray(
     val reach = max(w, h) * RAY_REACH
     val unit = Offset(dx / length, dy / length)
     val start = if (both) from - unit * reach else from
-    drawLine(colour, start, from + unit * reach, width)
+    strokeSegment(colour, start, from + unit * reach, width, dash)
 }
 
-private fun DrawScope.polyline(points: List<Offset>, colour: Color, width: Float): Boolean {
+private fun DrawScope.strokeChain(
+    points: List<Offset>,
+    colour: Color,
+    width: Float,
+    dash: PathEffect?,
+): Boolean {
     if (points.size < 2) return false
     val path = Path().apply {
         moveTo(points[0].x, points[0].y)
         for (index in 1 until points.size) lineTo(points[index].x, points[index].y)
     }
-    drawPath(path, colour, style = Stroke(width))
+    drawPath(path, colour, style = Stroke(width, pathEffect = dash))
     return true
 }
 
-private fun DrawScope.fillQuad(a: Offset, b: Offset, c: Offset, d: Offset, colour: Color) {
+private fun DrawScope.fillPolygon(a: Offset, b: Offset, c: Offset, d: Offset, colour: Color) {
     val path = Path().apply {
         moveTo(a.x, a.y)
         lineTo(b.x, b.y)
@@ -607,7 +759,7 @@ private fun DrawScope.fillQuad(a: Offset, b: Offset, c: Offset, d: Offset, colou
     drawPath(path, colour)
 }
 
-private fun DrawScope.oval(
+private fun DrawScope.strokeOval(
     centre: Offset,
     rx: Float,
     ry: Float,
@@ -615,6 +767,7 @@ private fun DrawScope.oval(
     sweep: Float,
     colour: Color,
     width: Float,
+    dash: PathEffect?,
 ) {
     if (rx <= 0f || ry <= 0f) return
     drawArc(
@@ -624,11 +777,11 @@ private fun DrawScope.oval(
         useCenter = false,
         topLeft = Offset(centre.x - rx, centre.y - ry),
         size = Size(rx * 2, ry * 2),
-        style = Stroke(width),
+        style = Stroke(width, pathEffect = dash),
     )
 }
 
-private fun DrawScope.band(left: Float, right: Float, y0: Float, y1: Float, colour: Color) {
+private fun DrawScope.fillBand(left: Float, right: Float, y0: Float, y1: Float, colour: Color) {
     drawRect(colour, Offset(left, min(y0, y1)), Size(max(0f, right - left), abs(y1 - y0)))
 }
 
@@ -648,7 +801,7 @@ private fun DrawScope.arrowHead(from: Offset, to: Offset, colour: Color, size: F
 
 private enum class Anchor { START, CENTER, ABOVE }
 
-private fun DrawScope.label(measurer: TextMeasurer, text: String, x: Float, y: Float, colour: Color) {
+private fun DrawScope.paintLabel(measurer: TextMeasurer, text: String, x: Float, y: Float, colour: Color) {
     val measured = measurer.measure(text, boxStyle(colour))
     drawText(measured, topLeft = Offset(x, y))
 }
@@ -661,7 +814,7 @@ private fun DrawScope.label(measurer: TextMeasurer, text: String, x: Float, y: F
  * with a blue rule struck through the middle of it, which the screenshot caught and no amount of
  * reading the code would have.
  */
-private fun DrawScope.labelAbove(
+private fun DrawScope.paintLabelAbove(
     measurer: TextMeasurer,
     text: String,
     x: Float,
@@ -679,15 +832,23 @@ private fun DrawScope.labelAbove(
  * exists to report and the background behind them is candles. Unboxed text over a wick is text
  * nobody can read at exactly the moment they need it.
  */
-private fun DrawScope.boxLabel(
+private fun DrawScope.paintBoxLabel(
     measurer: TextMeasurer,
     text: String,
     x: Float,
     y: Float,
     colour: Color,
+    /**
+     * What the words inside the box are written in.
+     *
+     * Separate from [colour], which is the border: the box is the drawing's frame and the text is
+     * the drawing's voice, and a reader who picks a text colour means the second. White is the
+     * default because the box is filled with [BOX_BACKGROUND] and nothing else reads on it.
+     */
+    ink: Color = Color.White,
     anchor: Anchor = Anchor.START,
 ): Boolean {
-    val measured = measurer.measure(text, boxStyle(Color.White))
+    val measured = measurer.measure(text, boxStyle(ink))
     val boxWidth = measured.size.width + BOX_PADDING_X.toPx() * 2
     val boxHeight = measured.size.height + BOX_PADDING_Y.toPx() * 2
     val origin = when (anchor) {
@@ -734,9 +895,10 @@ private fun DrawScope.level(
     y: Float,
     colour: Color,
     text: String,
+    paint: DrawingPaint,
 ) {
-    drawLine(colour, Offset(left, y), Offset(right, y), 1.5f)
-    labelAbove(measurer, text, left + LABEL_INSET.toPx(), y, colour)
+    strokeSegment(colour, Offset(left, y), Offset(right, y), 1.5f, paint.dash)
+    paintLabelAbove(measurer, text, left + LABEL_INSET.toPx(), y, paint.words(colour))
 }
 
 /**
@@ -755,11 +917,18 @@ private fun DrawScope.fibRows(
     view: ChartViewport,
     colour: Color,
     width: Float,
+    paint: DrawingPaint,
 ): Boolean {
     for ((ratio, price) in levels) {
         val y = view.yOf(price)
-        drawLine(colour.copy(alpha = 0.85f), Offset(fromX, y), Offset(toX, y), width)
-        labelAbove(measurer, "${fixed(ratio * 100, 1)}٪  ${priceText(price)}", fromX + LABEL_INSET.toPx(), y, colour)
+        strokeSegment(colour.copy(alpha = 0.85f), Offset(fromX, y), Offset(toX, y), width, paint.dash)
+        paintLabelAbove(
+            measurer,
+            "${fixed(ratio * 100, 1)}٪  ${priceText(price)}",
+            fromX + LABEL_INSET.toPx(),
+            y,
+            paint.words(colour),
+        )
     }
     return true
 }
@@ -779,17 +948,24 @@ private fun DrawScope.pattern(
     measurer: TextMeasurer,
     colour: Color,
     width: Float,
+    paint: DrawingPaint,
 ): Boolean {
     if (screen.size < 2) return false
-    polyline(screen, colour, width)
+    strokeChain(screen, colour, width, paint.dash)
     for (index in 0 until screen.size - 2) {
-        fillQuad(screen[index], screen[index + 1], screen[index + 2], screen[index], colour.copy(alpha = PATTERN_FILL))
+        fillPolygon(
+            screen[index],
+            screen[index + 1],
+            screen[index + 2],
+            screen[index],
+            paint.wash(colour.copy(alpha = PATTERN_FILL)),
+        )
     }
     for ((index, point) in screen.withIndex()) {
         val text = labels.getOrNull(index)?.takeIf { it.isNotEmpty() } ?: continue
         drawCircle(Color.White, VERTEX_RADIUS.toPx(), point)
         drawCircle(colour, VERTEX_RADIUS.toPx(), point, style = Stroke(1.5f))
-        val measured = measurer.measure(text, boxStyle(colour))
+        val measured = measurer.measure(text, boxStyle(paint.words(colour)))
         drawText(measured, topLeft = Offset(point.x - measured.size.width / 2f, point.y - measured.size.height / 2f))
     }
     if (ratios) {
@@ -809,7 +985,7 @@ private fun DrawScope.pattern(
                 hypot(midpoint.x - it.x, midpoint.y - it.y) >= RATIO_LABEL_WIDTH.toPx()
             } ?: true
             if (!clear) continue
-            label(measurer, fixed(ratio, 3), midpoint.x + 4, midpoint.y, colour)
+            paintLabel(measurer, fixed(ratio, 3), midpoint.x + 4, midpoint.y, paint.words(colour))
             lastLabel = midpoint
         }
     }
@@ -987,6 +1163,7 @@ private fun DrawScope.drawExtendedDrawing(
     screen: List<Offset>,
     colour: Color,
     width: Float,
+    paint: DrawingPaint,
 ): Boolean {
     val w = view.plotWidth
     val h = view.plotHeight
@@ -996,10 +1173,10 @@ private fun DrawScope.drawExtendedDrawing(
     val a = screen[0]
 
     fun runs(list: List<GeoSegment>): Boolean =
-        paintRuns(list.map { view.runOf(it) }, measurer, colour, width, w, h)
+        paintRuns(list.map { view.runOf(it) }, measurer, colour, width, w, h, paint)
 
     fun runsB(list: List<GeoSegmentB>): Boolean =
-        paintRuns(list.map { view.runOf(it) }, measurer, colour, width, w, h)
+        paintRuns(list.map { view.runOf(it) }, measurer, colour, width, w, h, paint)
 
     return when (drawing.toolId) {
 
@@ -1030,13 +1207,13 @@ private fun DrawScope.drawExtendedDrawing(
         "pitchfan" -> { runs(DrawingGeometryA.pitchfan(geo)); true }
 
         // ── Fibonacci curves ────────────────────────────────────────────────────────
-        "fibspiral" -> { paintArcs(DrawingGeometryA.fibonacciSpiral(geo), view, measurer, colour, width); true }
+        "fibspiral" -> { paintArcs(DrawingGeometryA.fibonacciSpiral(geo), view, measurer, colour, width, paint); true }
         "fibwedge" -> {
             // The two rays the arcs are swept between, faint. Without them the wedge is a stack of
             // arcs with nothing saying where the angle came from.
-            screen.getOrNull(1)?.let { drawLine(colour.copy(alpha = GHOST), a, it, width) }
-            screen.getOrNull(2)?.let { drawLine(colour.copy(alpha = GHOST), a, it, width) }
-            paintArcs(DrawingGeometryA.fibonacciWedge(geo), view, measurer, colour, width)
+            screen.getOrNull(1)?.let { strokeSegment(colour.copy(alpha = GHOST), a, it, width, paint.dash) }
+            screen.getOrNull(2)?.let { strokeSegment(colour.copy(alpha = GHOST), a, it, width, paint.dash) }
+            paintArcs(DrawingGeometryA.fibonacciWedge(geo), view, measurer, colour, width, paint)
             true
         }
 
@@ -1062,15 +1239,15 @@ private fun DrawScope.drawExtendedDrawing(
         "ell_triple" -> { runsB(DrawingGeometryB.elliottTripleCombo(geoB)); true }
 
         // ── Free-form shapes ────────────────────────────────────────────────────────
-        "path" -> { paintPoly(DrawingGeometryB.path(geoB), view, colour, width); true }
+        "path" -> { paintPoly(DrawingGeometryB.path(geoB), view, colour, width, paint); true }
         "polyline" -> {
-            paintPoly(DrawingGeometryB.polyline(geoB, closed = isClosedRing(chart)), view, colour, width)
+            paintPoly(DrawingGeometryB.polyline(geoB, closed = isClosedRing(chart)), view, colour, width, paint)
             true
         }
-        "arc" -> { paintPoly(DrawingGeometryB.arc(geoB), view, colour, width); true }
-        "curve" -> { paintPoly(DrawingGeometryB.curve(geoB), view, colour, width); true }
-        "doublecurve" -> { paintPoly(DrawingGeometryB.doubleCurve(geoB), view, colour, width); true }
-        "sector" -> { paintPoly(DrawingGeometryB.sector(geoB), view, colour, width); true }
+        "arc" -> { paintPoly(DrawingGeometryB.arc(geoB), view, colour, width, paint); true }
+        "curve" -> { paintPoly(DrawingGeometryB.curve(geoB), view, colour, width, paint); true }
+        "doublecurve" -> { paintPoly(DrawingGeometryB.doubleCurve(geoB), view, colour, width, paint); true }
+        "sector" -> { paintPoly(DrawingGeometryB.sector(geoB), view, colour, width, paint); true }
 
         // ── Measure ─────────────────────────────────────────────────────────────────
         "timecycles" -> { runsB(DrawingGeometryB.timeCycles(geoB)); true }
@@ -1087,7 +1264,7 @@ private fun DrawScope.drawExtendedDrawing(
                 toIndex = max(from, to),
                 anchor = anchor,
             )
-            paintBarOffsetRuns(copy, view, anchor, colour, max(width, view.bodyWidth * BAR_COPY_RATIO))
+            paintBarOffsetRuns(copy, view, anchor, colour, max(width, view.bodyWidth * BAR_COPY_RATIO), paint)
             true
         }
         "ghostfeed" -> {
@@ -1102,24 +1279,26 @@ private fun DrawScope.drawExtendedDrawing(
                 anchor = anchor,
                 bars = window,
             )
-            paintBarOffsetPoly(ghost, view, anchor, colour.copy(alpha = GHOST_FEED_ALPHA), width)
+            paintBarOffsetPoly(ghost, view, anchor, colour.copy(alpha = GHOST_FEED_ALPHA), width, paint)
             true
         }
 
         // ── Annotation ──────────────────────────────────────────────────────────────
         "arrowmarks" -> { runsB(DrawingGeometryB.arrowMarks(geoB)); true }
         "pricenote" -> {
-            dashed(a, Offset(w, a.y), colour, width)
+            strokeDashed(a, Offset(w, a.y), colour, width, paint.dash)
             val text = listOfNotNull(drawing.text, priceText(chart[0].price)).joinToString("  ")
-            boxLabel(measurer, text, a.x + LABEL_INSET.toPx(), a.y, colour, Anchor.ABOVE)
+            paintBoxLabel(measurer, text, a.x + LABEL_INSET.toPx(), a.y, colour, paint.words(Color.White), Anchor.ABOVE)
             true
         }
         "pin" -> {
             val head = Offset(a.x, a.y - PIN_HEIGHT.toPx())
-            drawLine(colour, head, a, width)
+            strokeSegment(colour, head, a, width, paint.dash)
             drawCircle(colour, PIN_RADIUS.toPx(), head)
             drawCircle(BOX_BACKGROUND, PIN_RADIUS.toPx() / 2, head)
-            drawing.text?.let { boxLabel(measurer, it, head.x + PIN_RADIUS.toPx() + 4, head.y, colour, Anchor.ABOVE) }
+            drawing.text?.let {
+                paintBoxLabel(measurer, it, head.x + PIN_RADIUS.toPx() + 4, head.y, colour, paint.words(Color.White), Anchor.ABOVE)
+            }
             true
         }
         // `tabledraw`, not `table`: the shipped help catalogue keys `table` to the scripting
@@ -1127,7 +1306,7 @@ private fun DrawScope.drawExtendedDrawing(
         // apart. The renderer is where a rename like that goes unnoticed — the tool stays in the
         // rail, arms, places its point and then draws nothing.
         "tabledraw" -> {
-            panel(measurer, drawing.text ?: DEFAULT_TABLE, a, colour, rule = true)
+            panel(measurer, drawing.text ?: DEFAULT_TABLE, a, colour, rule = true, paint = paint)
             true
         }
         "comment" -> {
@@ -1142,14 +1321,14 @@ private fun DrawScope.drawExtendedDrawing(
             }
             drawPath(tail, BOX_BACKGROUND)
             drawPath(tail, colour, style = Stroke(1f))
-            panel(measurer, drawing.text ?: DEFAULT_NOTE, Offset(a.x, body.y), colour, rule = false, above = true)
+            panel(measurer, drawing.text ?: DEFAULT_NOTE, Offset(a.x, body.y), colour, rule = false, paint = paint, above = true)
             true
         }
         "signpost" -> {
             val top = Offset(a.x, a.y - POST_HEIGHT.toPx())
-            drawLine(colour, a, top, width)
+            strokeSegment(colour, a, top, width, paint.dash)
             drawCircle(colour, POST_FOOT.toPx(), a)
-            panel(measurer, drawing.text ?: DEFAULT_SIGN, top, colour, rule = false, above = true)
+            panel(measurer, drawing.text ?: DEFAULT_SIGN, top, colour, rule = false, paint = paint, above = true)
             true
         }
         "icon" -> {
@@ -1161,13 +1340,13 @@ private fun DrawScope.drawExtendedDrawing(
                 lineTo(a.x - reach, a.y)
                 close()
             }
-            drawPath(diamond, colour.copy(alpha = FILL_SOFT))
-            drawPath(diamond, colour, style = Stroke(width))
+            drawPath(diamond, paint.wash(colour.copy(alpha = FILL_SOFT)))
+            drawPath(diamond, colour, style = Stroke(width, pathEffect = paint.dash))
             // The glyph goes *inside* the diamond, because that is what an icon is. It used to be
             // set beside it as a caption, which was the only shape available while nothing could
             // set `Drawing.text` at all — the tool drew an empty diamond for every reader.
             val glyph = drawing.text?.take(1) ?: DrawingActions.DEFAULT_ICON_GLYPH
-            val measured = measurer.measure(glyph, boxStyle(colour))
+            val measured = measurer.measure(glyph, boxStyle(paint.words(colour)))
             drawText(
                 measured,
                 topLeft = Offset(a.x - measured.size.width / 2f, a.y - measured.size.height / 2f),
@@ -1179,18 +1358,30 @@ private fun DrawScope.drawExtendedDrawing(
             // not the chart layer's business — nothing here can load a file — so what this tool
             // places is the frame the reader positions, and the caption under it.
             val size = Size(IMAGE_WIDTH.toPx(), IMAGE_HEIGHT.toPx())
-            drawRect(colour.copy(alpha = FILL_SOFT), a, size)
-            drawRect(colour, a, size, style = Stroke(width))
+            drawRect(paint.wash(colour.copy(alpha = FILL_SOFT)), a, size)
+            drawRect(colour, a, size, style = Stroke(width, pathEffect = paint.dash))
             val floor = a.y + size.height * IMAGE_HORIZON
-            drawLine(colour, Offset(a.x + size.width * 0.12f, floor), Offset(a.x + size.width * 0.42f, a.y + size.height * 0.42f), width)
-            drawLine(colour, Offset(a.x + size.width * 0.42f, a.y + size.height * 0.42f), Offset(a.x + size.width * 0.88f, floor), width)
+            strokeSegment(
+                colour,
+                Offset(a.x + size.width * 0.12f, floor),
+                Offset(a.x + size.width * 0.42f, a.y + size.height * 0.42f),
+                width,
+                paint.dash,
+            )
+            strokeSegment(
+                colour,
+                Offset(a.x + size.width * 0.42f, a.y + size.height * 0.42f),
+                Offset(a.x + size.width * 0.88f, floor),
+                width,
+                paint.dash,
+            )
             drawCircle(colour, size.height * 0.09f, Offset(a.x + size.width * 0.74f, a.y + size.height * 0.26f), style = Stroke(width))
-            label(
+            paintLabel(
                 measurer,
                 drawing.text ?: DEFAULT_IMAGE_CAPTION,
                 a.x,
                 a.y + size.height + LABEL_INSET.toPx(),
-                colour,
+                paint.words(colour),
             )
             true
         }
@@ -1198,7 +1389,7 @@ private fun DrawScope.drawExtendedDrawing(
         // ── Volume ──────────────────────────────────────────────────────────────────
         "avwap" -> {
             if (!volumeToolDrawable(drawing.toolId, series)) return true
-            drawAnchoredVwap(view, measurer, barIndexOf(series, chart[0].time), colour, width)
+            drawAnchoredVwap(view, measurer, barIndexOf(series, chart[0].time), colour, width, paint)
             true
         }
         "volumeprofile" -> {
@@ -1215,6 +1406,7 @@ private fun DrawScope.drawExtendedDrawing(
                 rightX = max(a.x, end.x),
                 colour = colour,
                 width = width,
+                paint = paint,
             )
             true
         }
@@ -1231,6 +1423,7 @@ private fun DrawScope.drawExtendedDrawing(
                 rightX = min(w, view.xOf(series.size - 1)),
                 colour = colour,
                 width = width,
+                paint = paint,
             )
             true
         }
@@ -1298,10 +1491,11 @@ private fun DrawScope.paintRuns(
     width: Float,
     w: Float,
     h: Float,
+    paint: DrawingPaint,
 ): Boolean {
     if (runs.isEmpty()) return false
     for (run in runs) {
-        strokeRun(run, markColour(run.label, colour), width, w, h)
+        strokeRun(run, markColour(run.label, colour), width, w, h, paint.dash)
     }
     val lane = LabelLane(RATIO_LABEL_WIDTH.toPx(), LABEL_MIN_GAP.toPx())
     for (run in runs) {
@@ -1310,7 +1504,7 @@ private fun DrawScope.paintRuns(
         val at = labelAnchorOf(run)
         if (at.x < -w || at.x > w * 2) continue
         if (!lane.claim(at.x, at.y)) continue
-        label(measurer, text, at.x + LABEL_INSET.toPx(), at.y, colour)
+        paintLabel(measurer, text, at.x + LABEL_INSET.toPx(), at.y, paint.words(colour))
     }
     return true
 }
@@ -1338,9 +1532,18 @@ private fun isDegenerate(run: ScreenRun): Boolean =
  * library with no viewport cannot express "as tall as the plot" any other way. Skipping it as an
  * empty segment would silently drop every line of the time-cycles tool.
  */
-private fun DrawScope.strokeRun(run: ScreenRun, colour: Color, width: Float, w: Float, h: Float) {
+private fun DrawScope.strokeRun(
+    run: ScreenRun,
+    colour: Color,
+    width: Float,
+    w: Float,
+    h: Float,
+    dash: PathEffect?,
+) {
     if (isDegenerate(run)) {
-        if (run.extendA || run.extendB) drawLine(colour, Offset(run.from.x, 0f), Offset(run.from.x, h), width)
+        if (run.extendA || run.extendB) {
+            strokeSegment(colour, Offset(run.from.x, 0f), Offset(run.from.x, h), width, dash)
+        }
         return
     }
     val dx = run.to.x - run.from.x
@@ -1350,7 +1553,7 @@ private fun DrawScope.strokeRun(run: ScreenRun, colour: Color, width: Float, w: 
     val reach = max(w, h) * RAY_REACH
     val start = if (run.extendA) run.from - unit * reach else run.from
     val end = if (run.extendB) run.to + unit * reach else run.to
-    drawLine(colour, start, end, width)
+    strokeSegment(colour, start, end, width, dash)
 }
 
 /**
@@ -1370,6 +1573,7 @@ private fun DrawScope.paintArcs(
     measurer: TextMeasurer,
     colour: Color,
     width: Float,
+    paint: DrawingPaint,
 ): Boolean {
     if (arcs.isEmpty()) return false
     val lane = LabelLane(RATIO_LABEL_WIDTH.toPx(), LABEL_MIN_GAP.toPx())
@@ -1377,7 +1581,16 @@ private fun DrawScope.paintArcs(
         val centre = view.screenOf(arc.centre)
         val rx = abs(view.xOfTime((arc.centre.t + arc.radiusT).roundToLong()) - centre.x)
         val ry = abs(view.yOf(arc.centre.p + arc.radiusP) - centre.y)
-        oval(centre, rx, ry, (-arc.startDeg).toFloat(), (-arc.sweepDeg).toFloat(), colour.copy(alpha = 0.85f), width)
+        strokeOval(
+            centre,
+            rx,
+            ry,
+            (-arc.startDeg).toFloat(),
+            (-arc.sweepDeg).toFloat(),
+            colour.copy(alpha = 0.85f),
+            width,
+            paint.dash,
+        )
         val text = arc.label ?: continue
         val radians = arc.startDeg * Math.PI / 180.0
         val at = Offset(
@@ -1385,7 +1598,7 @@ private fun DrawScope.paintArcs(
             (centre.y - ry * sin(radians)).toFloat(),
         )
         if (!lane.claim(at.x, at.y)) continue
-        label(measurer, text, at.x + LABEL_INSET.toPx(), at.y, colour)
+        paintLabel(measurer, text, at.x + LABEL_INSET.toPx(), at.y, paint.words(colour))
     }
     return true
 }
@@ -1403,6 +1616,7 @@ private fun DrawScope.paintPoly(
     view: ChartViewport,
     colour: Color,
     width: Float,
+    paint: DrawingPaint,
 ): Boolean {
     if (poly.points.size < 2) return false
     val points = poly.points.map { view.screenOf(it) }
@@ -1412,11 +1626,11 @@ private fun DrawScope.paintPoly(
             for (index in 1 until points.size) lineTo(points[index].x, points[index].y)
             close()
         }
-        drawPath(path, colour.copy(alpha = FILL_SOFT))
-        drawPath(path, colour, style = Stroke(width))
+        drawPath(path, paint.wash(colour.copy(alpha = FILL_SOFT)))
+        drawPath(path, colour, style = Stroke(width, pathEffect = paint.dash))
         return true
     }
-    polyline(points, colour, width)
+    strokeChain(points, colour, width, paint.dash)
     if (poly.label == DrawingGeometryB.ARROW_HEAD) {
         arrowHead(points[points.size - 2], points.last(), colour, ARROW_HEAD.toPx())
     }
@@ -1438,15 +1652,16 @@ private fun DrawScope.paintBarOffsetRuns(
     anchor: GeoPointB,
     colour: Color,
     width: Float,
+    paint: DrawingPaint,
 ) {
     val originX = view.xOfTime(anchor.t.roundToLong())
     for (run in runs) {
-        val ink = markColour(run.label, colour)
-        drawLine(
-            ink,
+        strokeSegment(
+            markColour(run.label, colour),
             Offset(originX + ((run.a.t - anchor.t) * view.barWidth).toFloat(), view.yOf(run.a.p)),
             Offset(originX + ((run.b.t - anchor.t) * view.barWidth).toFloat(), view.yOf(run.b.p)),
             width,
+            paint.dash,
         )
     }
 }
@@ -1457,13 +1672,15 @@ private fun DrawScope.paintBarOffsetPoly(
     anchor: GeoPointB,
     colour: Color,
     width: Float,
+    paint: DrawingPaint,
 ) {
     if (poly.points.size < 2) return
     val originX = view.xOfTime(anchor.t.roundToLong())
-    polyline(
+    strokeChain(
         poly.points.map { Offset(originX + ((it.t - anchor.t) * view.barWidth).toFloat(), view.yOf(it.p)) },
         colour,
         width,
+        paint.dash,
     )
 }
 
@@ -1487,9 +1704,10 @@ private fun DrawScope.panel(
     at: Offset,
     colour: Color,
     rule: Boolean,
+    paint: DrawingPaint,
     above: Boolean = false,
 ): Boolean {
-    val measured = measurer.measure(text, boxStyle(Color.White))
+    val measured = measurer.measure(text, boxStyle(paint.words(Color.White)))
     val boxWidth = measured.size.width + BOX_PADDING_X.toPx() * 2
     val boxHeight = measured.size.height + BOX_PADDING_Y.toPx() * 2
     val origin = if (above) Offset(at.x, at.y - boxHeight) else at
@@ -1497,7 +1715,7 @@ private fun DrawScope.panel(
     drawRect(colour, origin, Size(boxWidth, boxHeight), style = Stroke(1f))
     if (rule && measured.lineCount > 1) {
         val y = origin.y + BOX_PADDING_Y.toPx() + measured.getLineBottom(0)
-        drawLine(colour.copy(alpha = GHOST), Offset(origin.x, y), Offset(origin.x + boxWidth, y), 1f)
+        strokeSegment(colour.copy(alpha = GHOST), Offset(origin.x, y), Offset(origin.x + boxWidth, y), 1f, null)
     }
     drawText(measured, topLeft = Offset(origin.x + BOX_PADDING_X.toPx(), origin.y + BOX_PADDING_Y.toPx()))
     return true
@@ -1614,6 +1832,7 @@ private fun DrawScope.drawAnchoredVwap(
     fromIndex: Int,
     colour: Color,
     width: Float,
+    paint: DrawingPaint,
 ): Boolean {
     val series = view.series
     if (series.isEmpty || fromIndex < 0) return false
@@ -1623,9 +1842,15 @@ private fun DrawScope.drawAnchoredVwap(
     val points = values.indices.map { step ->
         Offset(view.xOf(fromIndex + step), view.yOf(values[step]))
     }
-    polyline(points, colour, max(width, VWAP_WIDTH.toPx()))
+    strokeChain(points, colour, max(width, VWAP_WIDTH.toPx()), paint.dash)
     drawCircle(colour, HANDLE_RADIUS.toPx() / 2, points.first())
-    labelAbove(measurer, "VWAP  ${priceText(values.last())}", points.last().x - VWAP_LABEL_BACK.toPx(), points.last().y, colour)
+    paintLabelAbove(
+        measurer,
+        "VWAP  ${priceText(values.last())}",
+        points.last().x - VWAP_LABEL_BACK.toPx(),
+        points.last().y,
+        paint.words(colour),
+    )
     return true
 }
 
@@ -1655,6 +1880,7 @@ private fun DrawScope.drawVolumeProfile(
     rightX: Float,
     colour: Color,
     width: Float,
+    paint: DrawingPaint,
 ): Boolean {
     val series = view.series
     if (series.isEmpty || fromIndex < 0 || toIndex < fromIndex) return false
@@ -1676,12 +1902,12 @@ private fun DrawScope.drawVolumeProfile(
     val span = max(MIN_PROFILE_SPAN.toPx(), rightX - leftX)
     val split = span >= SPLIT_PROFILE_SPAN.toPx()
     if (profile.valueAreaLow in profile.rowLow.indices && profile.valueAreaHigh in profile.rowHigh.indices) {
-        band(
+        fillBand(
             leftX,
             rightX,
             view.yOf(profile.rowLow[profile.valueAreaLow]),
             view.yOf(profile.rowHigh[profile.valueAreaHigh]),
-            colour.copy(alpha = ZONE),
+            paint.wash(colour.copy(alpha = ZONE)),
         )
     }
     for (row in profile.volume.indices) {
@@ -1702,13 +1928,13 @@ private fun DrawScope.drawVolumeProfile(
             )
         } else {
             val full = (profile.volume[row] / peak).toFloat() * span
-            drawRect(colour.copy(alpha = PROFILE_FILL), Offset(rightX - full, y), Size(max(0f, full), height))
+            drawRect(paint.wash(colour.copy(alpha = PROFILE_FILL)), Offset(rightX - full, y), Size(max(0f, full), height))
         }
     }
     val control = (profile.rowLow[profile.pocIndex] + profile.rowHigh[profile.pocIndex]) / 2
     val pocY = view.yOf(control)
-    drawLine(colour, Offset(leftX, pocY), Offset(rightX, pocY), max(width, POC_WIDTH.toPx()))
-    labelAbove(measurer, "POC  ${priceText(control)}", leftX + LABEL_INSET.toPx(), pocY, colour)
+    strokeSegment(colour, Offset(leftX, pocY), Offset(rightX, pocY), max(width, POC_WIDTH.toPx()), paint.dash)
+    paintLabelAbove(measurer, "POC  ${priceText(control)}", leftX + LABEL_INSET.toPx(), pocY, paint.words(colour))
     return true
 }
 

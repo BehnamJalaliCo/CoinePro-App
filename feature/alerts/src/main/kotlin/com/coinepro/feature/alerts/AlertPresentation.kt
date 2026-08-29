@@ -5,6 +5,7 @@ import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.notifications.AlertChannel
 import com.coinepro.core.notifications.AlertFrequency
 import com.coinepro.core.notifications.AlertScope
+import com.coinepro.core.notifications.AlertSound
 import com.coinepro.core.notifications.AlertTrigger
 import com.coinepro.core.notifications.AuditEvent
 import com.coinepro.core.notifications.ChannelOp
@@ -126,6 +127,56 @@ object AlertVocabulary {
         AuditEvent.SNOOZED -> "به تعویق افتاد"
         AuditEvent.EXPIRED -> "منقضی شد"
         AuditEvent.DELETED -> "حذف شد"
+    }
+}
+
+/**
+ * How loud one alert is, as three named choices rather than a slider.
+ *
+ * ### Why three steps and not a continuous control
+ *
+ * `AlertSound` is a fraction from silent to full and the delivery layer changes *output* — from the
+ * notification stream to the alarm stream — at one documented threshold. A slider over that is a
+ * control whose one meaningful position is invisible: the reader drags, the number moves, and
+ * somewhere near the end the behaviour changes with nothing on screen to say where. Three named
+ * steps put the escalation where it belongs, in a word the reader chooses.
+ *
+ * ### And why the loud one is at the very top
+ *
+ * [LOUD] is [AlertSound.MAX_LEVEL], comfortably past [AlertSound.LOUD_THRESHOLD], because a step
+ * that sat *at* the threshold would depend on whether the comparison is inclusive — and this is the
+ * one setting in the app where getting that wrong is silent: the alert fires, the notification
+ * posts, and it goes out on the ordinary channel at the ordinary volume. The review this whole area
+ * answers is *a beep is not enough to alert someone busy at work*, and that failure is exactly a
+ * beep.
+ */
+enum class AlertLoudness(val level: Float) {
+    /** Audible if the phone is in your hand. For an alert the reader wants recorded, not announced. */
+    QUIET(0.35f),
+
+    /** What every alert has always been, and still the default. Behaves like the app's other notifications. */
+    NORMAL(AlertSound.DEFAULT_LEVEL),
+
+    /** Full, on the alarm output. The one the reader picks for the level they have waited weeks for. */
+    LOUD(AlertSound.MAX_LEVEL),
+    ;
+
+    /** Whether this step reaches the alarm output. True for exactly one of the three. */
+    val isLoud: Boolean get() = AlertSound.isLoud(level)
+
+    companion object {
+
+        /**
+         * The step nearest a stored level.
+         *
+         * Nearest rather than exact, because a level can arrive from a build that offered different
+         * steps, or from a hand-edited preference. Answering with the closest named step is what
+         * lets the control show a position for any number instead of showing none for most of them.
+         */
+        fun of(level: Float): AlertLoudness {
+            val clamped = AlertSound.coerce(level)
+            return entries.minByOrNull { kotlin.math.abs(it.level - clamped) } ?: NORMAL
+        }
     }
 }
 
