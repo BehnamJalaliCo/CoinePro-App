@@ -96,6 +96,58 @@ data class DrawingState(
      * no longer matches anything is harmless — it costs a set entry and hides nothing.
      */
     val hiddenIds: Set<Long> = emptySet(),
+    /**
+     * Which of the rail's [ToolGroup.MODES] entries is on.
+     *
+     * The home those entries never had. [DrawingActions.arm] refuses anything in that group — a
+     * mode places no points, so arming it as a tool would be arming a tool that cannot commit —
+     * and for a long time "refuse" meant "discard": tapping «نشانگر نقطه‌ای» or «نشانگر پیکانی»
+     * did nothing at all, and the eraser only worked because the feature layer kept a second
+     * boolean of its own beside this state and passed it to the canvas by hand.
+     *
+     * One field instead of that. The eraser is [DrawingMode.ERASER] like everything else, and
+     * [eraser] reads it, so a screen that wants to know cannot get a different answer from the
+     * one the placement machine is acting on.
+     */
+    val mode: DrawingMode = DrawingMode.CURSOR,
+    /**
+     * Whether the magnet is being held on for this one placement.
+     *
+     * Item 38, and the thing readers of the web terminal single out about its magnet: the setting
+     * they want is almost never a setting. Snapping to a low is what somebody wants for *this*
+     * anchor, and having to visit the rail before and after is two taps around a one-tap decision.
+     * Held down — a modifier key, a second finger on the canvas — the magnet is on; released, it is
+     * off again, and [DrawingActions.commit] releases it too so a hold that outlives the placement
+     * does not carry into the next one.
+     */
+    val momentaryMagnet: Boolean = false,
+    /**
+     * Whether the current drag is being constrained to an axis, a diagonal, a square or a circle.
+     *
+     * Item 48. Set while the reader holds the modifier and read by [DrawingActions.constrain],
+     * which is the only thing that acts on it — the canvas asks, it does not decide.
+     */
+    val constrainAngle: Boolean = false,
+    /**
+     * The interval the chart is on, stamped onto whatever is placed next. See [Drawing.timeframe].
+     *
+     * On the state rather than passed to every placement call, because it is a property of the
+     * chart and not of the gesture: every one of the six entry points that can commit a drawing
+     * would otherwise have to carry it, and the one that was forgotten would silently write
+     * unlabelled marks.
+     */
+    val timeframe: String? = null,
+    /** The layout on screen, stamped onto whatever is placed next. See [Drawing.layoutId]. */
+    val layoutId: String? = null,
+    /**
+     * How far the next drawing travels between layouts.
+     *
+     * A default the reader sets once rather than a question asked per mark, in the same spirit as
+     * [colour] and [widthDp]: somebody who works in one layout never touches it, and somebody who
+     * keeps three layouts of the same instrument sets it to [DrawingSync.GLOBAL] and stops thinking
+     * about it.
+     */
+    val sync: DrawingSync = DrawingSync.LAYOUT,
 ) {
     /**
      * What the chart should render: the placed drawings plus the one being built, less what is
@@ -106,7 +158,8 @@ data class DrawingState(
      */
     val visible: List<Drawing>
         get() {
-            val shown = drawings.filter { isShown(it) }
+            val now = System.currentTimeMillis()
+            val shown = drawings.filter { isShown(it) && !it.hasFaded(now) }
             return if (pending.isEmpty() || tool == null) {
                 shown
             } else {
@@ -125,9 +178,38 @@ data class DrawingState(
      * Whether the magnet is on at all.
      *
      * Kept as a property so the call sites that only need the yes/no — the gesture handler that
-     * decides whether to snap a touch — read the same way they did when this was a boolean.
+     * decides whether to snap a touch — read the same way they did when this was a boolean. It
+     * answers for [effectiveMagnetMode] rather than for [magnetMode], so a held magnet is a magnet
+     * everywhere and not only on the code path that happened to remember the hold.
      */
-    val magnet: Boolean get() = magnetMode != MagnetMode.OFF
+    val magnet: Boolean get() = effectiveMagnetMode != MagnetMode.OFF
+
+    /**
+     * The magnet that is actually in force, hold included.
+     *
+     * A held magnet on a chart whose magnet is already on leaves the reader's own choice alone: a
+     * hold is «snap this one», not «snap this one harder», and silently promoting a weak magnet to
+     * a strong one would drag a text label onto a wick in the one gesture where the reader was
+     * being careful. From off, the hold is [MagnetMode.STRONG], because somebody reaching for a
+     * modifier mid-placement is reaching for a low, not for a suggestion.
+     */
+    val effectiveMagnetMode: MagnetMode
+        get() = when {
+            !momentaryMagnet -> magnetMode
+            magnetMode == MagnetMode.OFF -> MagnetMode.STRONG
+            else -> magnetMode
+        }
+
+    /**
+     * Whether the eraser is the mode in force.
+     *
+     * The read that replaces the feature layer's own boolean. Two sources for one fact is how the
+     * canvas ends up erasing while the rail shows a trend line armed.
+     */
+    val eraser: Boolean get() = mode == DrawingMode.ERASER
+
+    /** Whether marks placed now are temporary. See [DrawingMode.DEMONSTRATION]. */
+    val demonstrating: Boolean get() = mode == DrawingMode.DEMONSTRATION
 
     /** Whether a layer is currently hidden. */
     fun isHidden(layer: DrawingLayer): Boolean = layer in hidden
@@ -199,14 +281,58 @@ data class DrawingState(
  */
 object DrawingActions {
 
-    /** Arm a tool, or pass null for the cursor. Clears anything half-placed. */
-    fun arm(state: DrawingState, tool: DrawingTool?): DrawingState = state.copy(
-        tool = tool?.takeUnless { it.group == ToolGroup.MODES },
-        pending = emptyList(),
-        pendingChannels = emptyList(),
-        selectedId = null,
-        selection = emptySet(),
+    /**
+     * Arm a tool, a mode, or pass null for the cursor. Clears anything half-placed.
+     *
+     * The [ToolGroup.MODES] half is the part that used to be missing. Those six entries place no
+     * points, so they cannot be armed as tools, and this function used to answer that by dropping
+     * them on the floor: «نشانگر نقطه‌ای» and «نشانگر پیکانی» were rail buttons that did nothing,
+     * and the eraser worked only because the feature layer kept a private boolean beside this
+     * state. Now a mode entry sets [DrawingState.mode] and a magnet entry advances the magnet,
+     * which is the one mode whose state already had a home.
+     *
+     * Arming a real tool clears the mode back to the cursor, with one exception: demonstration mode
+     * survives, because it says how long what you draw lasts rather than what a tap does, and a
+     * reader who turned it on then picked the highlighter meant both.
+     */
+    fun arm(state: DrawingState, tool: DrawingTool?): DrawingState {
+        val cleared = state.copy(
+            pending = emptyList(),
+            pendingChannels = emptyList(),
+            selectedId = null,
+            selection = emptySet(),
+        )
+        if (tool != null && tool.group == ToolGroup.MODES) {
+            // The magnet is the one entry that must not disturb a placement in progress: a reader
+            // three anchors into a pattern who reaches for it wants the fourth anchor snapped, not
+            // the first three thrown away.
+            if (tool.id == MAGNET_TOOL) return cycleMagnet(state)
+            val mode = DrawingMode.of(tool.id) ?: return cleared.copy(tool = null)
+            return cleared.copy(tool = null, mode = mode)
+        }
+        return cleared.copy(
+            tool = tool,
+            mode = if (state.mode.survivesArming) state.mode else DrawingMode.CURSOR,
+        )
+    }
+
+    /**
+     * Set the mode outright, without going through the rail.
+     *
+     * The entry point a keyboard shortcut or a toolbar button uses. [arm] is the reader's route;
+     * this is for a screen that already knows which mode it wants.
+     */
+    fun setMode(state: DrawingState, mode: DrawingMode): DrawingState = state.copy(
+        mode = mode,
+        // A mode that changes what a tap *does* cannot coexist with a half-placed drawing: the
+        // next tap would be read by the new mode and the anchors already down would be orphaned.
+        tool = if (mode.survivesArming) state.tool else null,
+        pending = if (mode.survivesArming) state.pending else emptyList(),
+        pendingChannels = if (mode.survivesArming) state.pendingChannels else emptyList(),
     )
+
+    /** The rail entry that advances the magnet rather than setting a mode. */
+    private const val MAGNET_TOOL = "magnet"
 
     /**
      * A tap in chart space.
@@ -219,18 +345,28 @@ object DrawingActions {
         point: ChartPoint,
         nearest: Long? = null,
         channel: PriceChannel? = null,
+        /**
+         * The viewport, where the caller has one.
+         *
+         * Only the directed tools read it, and only to decide which of four ways an arrow faces:
+         * "up" is a screen direction, and a time delta and a price delta cannot be compared without
+         * knowing how many pixels each is worth. With no viewport the answer falls back to the price
+         * axis alone, which is up or down and is the honest half of the question.
+         */
+        view: ChartViewport? = null,
     ): DrawingState {
         val tool = state.tool ?: return select(state, nearest, additive = false)
         val points = state.pending + point
         val channels = state.pendingChannels + channel
-        // A path or a polyline has no tap count to reach — it ends when the reader says so, with a
-        // double tap or a tap back on the first anchor — so every tap simply extends it.
+        // A path, a polyline or a row of arrow marks has no tap count to reach — it ends when the
+        // reader says so, with a double tap or a tap back on the first anchor — so every tap simply
+        // extends it.
         if (isVariablePoint(tool.id)) {
             return state.copy(pending = points, pendingChannels = channels)
         }
         if (tool.points <= 0) return state
         if (points.size < tool.points) return state.copy(pending = points, pendingChannels = channels)
-        return commit(state, tool, points, channels)
+        return commit(state, tool, points, channels, view)
     }
 
     /**
@@ -245,9 +381,12 @@ object DrawingActions {
         point: ChartPoint,
         series: CandleSeries,
         nearest: Long? = null,
+        view: ChartViewport? = null,
     ): DrawingState {
-        val snapped = snap(point, series, state.magnetMode)
-        return tap(state, snapped.point, nearest, snapped.channel)
+        // The *effective* mode, not the stored one: a magnet held for this placement has to reach
+        // the snap, and this is the call every tap goes through.
+        val snapped = snap(point, series, state.effectiveMagnetMode)
+        return tap(state, snapped.point, nearest, snapped.channel, view)
     }
 
     /**
@@ -274,6 +413,39 @@ object DrawingActions {
     }
 
     /**
+     * Which way an arrow placed by these two points faces.
+     *
+     * Screen space when a [view] is available, and that is not a nicety: a drag of three bars and
+     * two dollars is mostly sideways on one chart and mostly vertical on the next, and comparing
+     * seconds against dollars answers neither. Without a viewport the price axis decides, which
+     * gives up or down — the two a reader marking a bar almost always means.
+     *
+     * A drag that went nowhere reports [ArrowDirection.UP], the same as a plain tap: an arrow with
+     * no direction is still an arrow, and it has to point somewhere.
+     */
+    fun directionOf(from: ChartPoint, to: ChartPoint, view: ChartViewport?): ArrowDirection {
+        val risen = to.price >= from.price
+        if (view == null) return if (risen) ArrowDirection.UP else ArrowDirection.DOWN
+        val dx = view.xOfTime(to.time) - view.xOfTime(from.time)
+        // Screen y grows downward, so a drag that raises the price has a negative dy. The arrow
+        // points the way the finger went.
+        val dy = view.yOf(to.price) - view.yOf(from.price)
+        if (kotlin.math.abs(dx) <= kotlin.math.abs(dy)) {
+            return if (dy <= 0f) ArrowDirection.UP else ArrowDirection.DOWN
+        }
+        return if (dx >= 0f) ArrowDirection.RIGHT else ArrowDirection.LEFT
+    }
+
+    /**
+     * The tools whose second tap is a direction rather than an anchor.
+     *
+     * One of them today. It is a set rather than an `==` because the shape generalises — any
+     * fixed-size marker that faces somewhere belongs here — and because `commit` has to ask the
+     * question in one place or a second directed tool would silently store a second point.
+     */
+    private val DIRECTED_TOOLS = setOf("arrowdir")
+
+    /**
      * End a polyline by tapping its first anchor again, which closes it.
      *
      * Closure is recorded by repeating the first anchor at the end rather than by a flag on the
@@ -284,6 +456,10 @@ object DrawingActions {
     fun closeShape(state: DrawingState): DrawingState {
         val tool = state.tool ?: return state
         if (!isVariablePoint(tool.id)) return state
+        // A row of arrow marks is a variable-point tool that is not a ring: repeating its first
+        // anchor would place a second mark on top of the first rather than closing anything, so a
+        // tap back on the start simply ends it.
+        if (tool.id !in RING_TOOLS) return finish(state)
         if (state.pending.size < 3) return finish(state)
         val points = state.pending + state.pending.first()
         val channels = state.pendingChannels + state.pendingChannels.firstOrNull()
@@ -296,10 +472,15 @@ object DrawingActions {
      * Only for two-point tools: a three-point channel cannot be dragged out because its third point
      * is not a corner of anything the first two describe.
      */
-    fun drag(state: DrawingState, from: ChartPoint, to: ChartPoint): DrawingState {
+    fun drag(
+        state: DrawingState,
+        from: ChartPoint,
+        to: ChartPoint,
+        view: ChartViewport? = null,
+    ): DrawingState {
         val tool = state.tool ?: return state
         if (tool.points != 2) return state
-        return commit(state, tool, listOf(from, to), listOf(null, null))
+        return commit(state, tool, listOf(from, to), listOf(null, null), view)
     }
 
     /** A freehand stroke, already sampled. */
@@ -486,12 +667,75 @@ object DrawingActions {
     /**
      * Whether this tool holds text at all.
      *
-     * Four of them do. Asking a trend line for a label would be offering a keyboard on a tool that
-     * has nowhere to draw the answer.
+     * Eleven of them do, and seven of those were unreachable until now. Every one of the seven
+     * renders `drawing.text ?: DEFAULT` — a pin, a table, a comment bubble, a signpost, a price
+     * note, an icon, an image frame — and none of them was in this set, so the keyboard never
+     * opened and the placeholder was the label for the life of the app. A note tool that cannot
+     * hold a note is a tool that places a circle; a signpost that always reads «تابلو» is worse,
+     * because it looks deliberate.
+     *
+     * Asking a trend line for a label would still be offering a keyboard on a tool that has nowhere
+     * to draw the answer, which is why this is a set and not a yes.
      */
     fun holdsText(toolId: String): Boolean = toolId in TEXT_TOOLS
 
-    private val TEXT_TOOLS = setOf("text", "callout", "pricelabel", "note")
+    private val TEXT_TOOLS = setOf(
+        "text",
+        "callout",
+        "pricelabel",
+        "note",
+        "pricenote",
+        "pin",
+        "tabledraw",
+        "comment",
+        "signpost",
+        ICON_TOOL,
+        IMAGE_TOOL,
+    )
+
+    /**
+     * Whether this tool's text is chosen from [ICON_GLYPHS] rather than typed.
+     *
+     * The icon tool is the one entry whose «text» is not prose: it is one mark, and a free keyboard
+     * on it produces an icon tool holding a sentence — which the renderer then draws at label size
+     * inside a diamond meant for a single glyph.
+     */
+    fun holdsIcon(toolId: String): Boolean = toolId == ICON_TOOL
+
+    /**
+     * The marks the icon tool offers.
+     *
+     * A real set rather than a keyboard, and a small one: ten is the number that fits a phone's
+     * width in two rows of five at a tappable size, and every one of them reads at the eight-point
+     * size the chart draws labels in. They are text rather than drawables on purpose — an icon is
+     * stored in [Drawing.text], so it persists, restyles and recolours through the paths that
+     * already exist rather than needing a parallel field and a parallel codec.
+     */
+    val ICON_GLYPHS: List<String> = listOf("★", "●", "◆", "▲", "▼", "✚", "✖", "⚑", "❗", "◉")
+
+    /** The glyph an icon carries before the reader picks one. */
+    const val DEFAULT_ICON_GLYPH = "★"
+
+    /**
+     * A plain sentence about what a tool actually does, or null where the label is the whole truth.
+     *
+     * One tool needs it. The image tool draws a frame and a caption and **cannot draw a picture**:
+     * nothing in the chart layer can open a file, and nothing above it hands one down. Left
+     * unexplained that is a tool a reader arms expecting a photo and gets an empty rectangle from,
+     * which reads as a bug rather than as a boundary. Saying so where the tool is armed is the
+     * cheapest honest answer, and it costs nothing on the ninety tools that need no note.
+     */
+    fun toolNote(toolId: String): String? = when (toolId) {
+        IMAGE_TOOL -> "این ابزار قاب و زیرنویس می‌کشد؛ بارگذاری فایل تصویر روی چارت پشتیبانی نمی‌شود."
+        ICON_TOOL -> "یکی از نشانه‌های آماده را برای این ابزار انتخاب کن."
+        else -> null
+    }
+
+    /** The tool whose text is one glyph out of [ICON_GLYPHS]. */
+    const val ICON_TOOL = "icon"
+
+    /** The tool that frames a picture it cannot load. See [toolNote]. */
+    const val IMAGE_TOOL = "image"
 
     /**
      * As long as a label can be before it stops being a label.
@@ -706,8 +950,240 @@ object DrawingActions {
         },
     )
 
+    /**
+     * Hold the magnet on for this one placement — item 38.
+     *
+     * The gesture behind it belongs to the canvas: a second finger resting on the plot, or a
+     * modifier key on a keyboard. What this owns is the latch, and the rule that it is a latch at
+     * all — [commit] drops it, so a hold cannot survive the drawing it was held for.
+     */
+    fun holdMagnet(state: DrawingState): DrawingState =
+        if (state.momentaryMagnet) state else state.copy(momentaryMagnet = true)
+
+    /** Let a held magnet go without placing anything: the finger lifted, or the key came up. */
+    fun releaseMagnet(state: DrawingState): DrawingState =
+        if (state.momentaryMagnet) state.copy(momentaryMagnet = false) else state
+
+    /**
+     * Hold or release the angle constraint — item 48.
+     *
+     * Stored rather than passed per frame because the constraint has to survive the whole drag: the
+     * modifier goes down once and every move event afterwards has to know about it, and a flag
+     * threaded through the pointer callbacks would be a flag one of them forgot.
+     */
+    fun setConstrainAngle(state: DrawingState, held: Boolean): DrawingState =
+        if (state.constrainAngle == held) state else state.copy(constrainAngle = held)
+
+    /**
+     * Constrain the moving end of a two-point drag — item 48.
+     *
+     * Pure geometry, and it has to be done in **pixels**: forty-five degrees is a screen angle, a
+     * square is square on the glass, and a circle drawn in chart space is an ellipse whose
+     * eccentricity changes with the zoom. So the pair is projected, constrained, and read back
+     * through the same viewport, which is also why this takes one.
+     *
+     * Three families, and each gets what the reader means by "hold it straight":
+     *
+     * * A line snaps its angle to the nearest multiple of forty-five degrees, keeping the length
+     *   the finger travelled. Horizontal, vertical and both diagonals, and nothing between.
+     * * A box becomes a square — the shorter side wins, so the shape stays inside the drag rather
+     *   than jumping past the finger.
+     * * An ellipse becomes a circle, by the same rule.
+     *
+     * Anything else is returned untouched: a five-point pattern has no second point to constrain,
+     * and quietly moving one would be worse than doing nothing.
+     */
+    fun constrain(
+        toolId: String,
+        from: ChartPoint,
+        to: ChartPoint,
+        view: ChartViewport,
+    ): ChartPoint {
+        val family = constraintOf(toolId) ?: return to
+        val ax = view.xOfTime(from.time)
+        val ay = view.yOf(from.price)
+        val bx = view.xOfTime(to.time)
+        val by = view.yOf(to.price)
+        val dx = bx - ax
+        val dy = by - ay
+        val end = when (family) {
+            Constraint.ANGLE -> {
+                val length = kotlin.math.hypot(dx, dy)
+                if (length == 0f) return to
+                // Rounded to the nearest eighth turn, which is the four axes and the four
+                // diagonals. `atan2` is measured from the positive x axis and screen y grows
+                // downward, so no sign correction is needed: the same rotation is applied back.
+                val step = (kotlin.math.PI / 4).toFloat()
+                val angle = kotlin.math.round(kotlin.math.atan2(dy, dx) / step) * step
+                Pair(ax + length * kotlin.math.cos(angle), ay + length * kotlin.math.sin(angle))
+            }
+            Constraint.SQUARE -> {
+                val side = kotlin.math.min(kotlin.math.abs(dx), kotlin.math.abs(dy))
+                if (side == 0f) return to
+                Pair(ax + side * signOf(dx), ay + side * signOf(dy))
+            }
+        }
+        return ChartPoint(view.timeAt(end.first), view.priceAt(end.second))
+    }
+
+    /** Which constraint a tool takes, or null for the ones the modifier leaves alone. */
+    private fun constraintOf(toolId: String): Constraint? = when (toolId) {
+        in ANGLE_CONSTRAINED -> Constraint.ANGLE
+        in SQUARE_CONSTRAINED -> Constraint.SQUARE
+        else -> null
+    }
+
+    /** What holding the modifier does to a drag. */
+    private enum class Constraint { ANGLE, SQUARE }
+
+    /** −1, 0 or 1, so a zero-length side does not become a negative one. */
+    private fun signOf(value: Float): Float = if (value < 0f) -1f else 1f
+
+    /**
+     * The two-point tools whose drag is a *direction*, and so snap to eighths of a turn.
+     *
+     * The measure tools are in it as well as the line tools, because a date range held horizontal
+     * and a price range held vertical are exactly what a reader holds the modifier to get.
+     */
+    private val ANGLE_CONSTRAINED = setOf(
+        "trend",
+        "ray",
+        "extline",
+        "arrow",
+        "infoline",
+        "angle",
+        "ruler",
+        "forecast",
+        "pricerange",
+        "daterange",
+        "dprange",
+    )
+
+    /** The two-point tools whose drag is an *extent*, and so snap to a square or a circle. */
+    private val SQUARE_CONSTRAINED = setOf("rect", "circle", "ellipse", "gannbox", "fibcircles")
+
     /** Keep the tool armed after a drawing completes, or let it fall back to the cursor. */
     fun setKeepDrawing(state: DrawingState, keep: Boolean): DrawingState = state.copy(keepDrawing = keep)
+
+    /**
+     * The interval the next drawing records. See [Drawing.timeframe].
+     *
+     * Blank is stored as nothing rather than as an empty string, so a mark placed before the chart
+     * knew its interval carries "nothing said" rather than a tag that renders as an empty box.
+     */
+    fun setTimeframe(state: DrawingState, timeframe: String?): DrawingState =
+        state.copy(timeframe = timeframe?.trim()?.takeIf { it.isNotEmpty() })
+
+    /** The layout the next drawing belongs to. See [Drawing.layoutId]. */
+    fun setLayout(state: DrawingState, layoutId: String?): DrawingState =
+        state.copy(layoutId = layoutId?.takeIf { it.isNotBlank() })
+
+    /** How far the next drawing travels. See [DrawingSync]. */
+    fun setSyncDefault(state: DrawingState, sync: DrawingSync): DrawingState = state.copy(sync = sync)
+
+    /**
+     * Change one placed drawing's reach — items 51 and 188.
+     *
+     * Locked drawings are changed anyway, and that is deliberate: the lock guards a drawing's
+     * *geometry* from a stray thumb, and where a mark is visible is not geometry. A reader who
+     * locked a level so they would stop nudging it has not said they never want to see it on their
+     * other layout.
+     */
+    fun setSync(state: DrawingState, id: Long, sync: DrawingSync): DrawingState = state.copy(
+        drawings = state.drawings.map { if (it.id == id) it.copy(sync = sync) else it },
+    )
+
+    /**
+     * The drawings that belong on screen under a given layout — items 51 and 188.
+     *
+     * [DrawingSync.GLOBAL] ignores the layout entirely, which is the whole request: a level on gold
+     * is a fact about gold, not about the apparatus somebody happened to be looking through when
+     * they drew it. The other two are shown under the layout they were placed on, including the
+     * plain working chart, which is what a null [layoutId] on both sides means.
+     */
+    fun syncedInto(drawings: List<Drawing>, layoutId: String?): List<Drawing> = drawings.filter {
+        it.sync == DrawingSync.GLOBAL || it.layoutId == layoutId
+    }
+
+    /** The drawings a layout should be saved with. See [DrawingSync.travels]. */
+    fun savedWithLayout(drawings: List<Drawing>, layoutId: String?): List<Drawing> =
+        syncedInto(drawings, layoutId).filter { it.sync.travels }
+
+    /**
+     * How wide one regression channel's rails sit, in standard deviations — item 8.
+     *
+     * Clamped rather than trusted. Zero collapses the three lines onto each other and reads as a
+     * broken tool; past five the rails leave the plot and the reader is looking at a trend line
+     * with two invisible friends. A locked drawing is skipped, the same as every other restyle.
+     */
+    fun setDeviations(state: DrawingState, id: Long, deviations: Double): DrawingState {
+        val value = deviations.coerceIn(MIN_DEVIATIONS, MAX_DEVIATIONS)
+        return state.copy(
+            drawings = state.drawings.map {
+                if (it.id == id && !it.locked) it.copy(deviations = value) else it
+            },
+        )
+    }
+
+    /** The narrowest a regression channel may be: below this the three lines are one line. */
+    const val MIN_DEVIATIONS = 0.25
+
+    /** The widest: past this the rails are off the plot and say nothing. */
+    const val MAX_DEVIATIONS = 5.0
+
+    /**
+     * Drop the demonstration marks whose time is up — item 41.
+     *
+     * The model-level reaper, separate from the fade the renderer applies. Both read the same
+     * [Drawing.fadesAtMillis] against the same clock, so they cannot disagree about whether a mark
+     * is gone; what this adds is that the mark leaves the *list*, which is what stops a session of
+     * pointing at things filling the reader's saved drawings with invisible rows.
+     *
+     * Returns the state unchanged when nothing expired, so a caller can run it on a timer without
+     * pushing a new state — and a new state on this path is a write to disk.
+     */
+    fun expire(state: DrawingState, nowMillis: Long): DrawingState {
+        val gone = state.drawings.filter { it.hasFaded(nowMillis) }.map { it.id }.toSet()
+        if (gone.isEmpty()) return state
+        val alive = state.drawings.filterNot { it.id in gone }
+        return state.copy(
+            drawings = alive,
+            selectedId = state.selectedId?.takeUnless { it in gone },
+            selection = state.selection - gone,
+            bindings = state.bindings.filterKeys { it.drawingId !in gone },
+            hiddenIds = state.hiddenIds - gone,
+        )
+    }
+
+    /**
+     * How opaque a demonstration mark is right now — item 41.
+     *
+     * One over its life, then a straight ramp to nothing over the last [DEMONSTRATION_FADE_MS], and
+     * exactly zero once its moment has passed. Finite and state-driven by construction: there is no
+     * animation to run and nothing to stop, so a device with animations turned off gets the same
+     * marks at the same opacities and simply sees fewer intermediate frames.
+     *
+     * A permanent drawing is 1 and never asks the clock.
+     */
+    fun fadeAlpha(drawing: Drawing, nowMillis: Long): Float {
+        val fadesAt = drawing.fadesAtMillis ?: return 1f
+        val left = fadesAt - nowMillis
+        if (left <= 0L) return 0f
+        if (left >= DEMONSTRATION_FADE_MS) return 1f
+        return (left.toDouble() / DEMONSTRATION_FADE_MS).toFloat()
+    }
+
+    /**
+     * How long a demonstration mark lives, in milliseconds.
+     *
+     * Eight seconds, of which the last three are the fade. Long enough to say «this level here»
+     * out loud and be understood, short enough that the chart is clean again before the reader has
+     * to think about tidying it — which is the whole point of a mode that draws things that leave.
+     */
+    const val DEMONSTRATION_LIFETIME_MS = 8_000L
+
+    /** The tail of that life spent fading out. See [fadeAlpha]. */
+    const val DEMONSTRATION_FADE_MS = 3_000L
 
     /**
      * Lock or unlock every drawing at once, and remember which way the switch is.
@@ -898,9 +1374,12 @@ object DrawingActions {
         tool: DrawingTool,
         points: List<ChartPoint>,
         channels: List<PriceChannel?>,
+        view: ChartViewport? = null,
+        nowMillis: Long = System.currentTimeMillis(),
     ): DrawingState {
         val id = (state.drawings.maxOfOrNull { it.id } ?: 0L) + 1
-        val placed = withTarget(tool, points)
+        val directed = tool.id in DIRECTED_TOOLS && points.size >= 2
+        val placed = if (directed) listOf(points[0]) else withTarget(tool, points)
         val drawing = Drawing(
             id = id,
             toolId = tool.id,
@@ -908,14 +1387,24 @@ object DrawingActions {
             colour = state.colour,
             widthDp = state.widthDp,
             locked = state.lockedAll,
+            direction = if (directed) directionOf(points[0], points[1], view) else ArrowDirection.UP,
+            timeframe = state.timeframe,
+            sync = state.sync,
+            layoutId = state.layoutId,
+            fadesAtMillis = if (state.demonstrating) nowMillis + DEMONSTRATION_LIFETIME_MS else null,
         )
-        val bound = channels.withIndex().mapNotNull { (index, channel) ->
+        val bound = channels.take(placed.size).withIndex().mapNotNull { (index, channel) ->
             channel?.let { PointRef(id, index) to it }
         }
         return state.copy(
             drawings = state.drawings + drawing,
             pending = emptyList(),
             pendingChannels = emptyList(),
+            // A held magnet is held for *one* placement. Releasing it here rather than waiting for
+            // the finger to lift is what makes it momentary: a modifier that stayed latched because
+            // nothing cleared it is a magnet the reader turned on by accident and cannot find the
+            // switch for.
+            momentaryMagnet = false,
             // Disarm after placing, unless the reader asked for the opposite. A rail that stays
             // armed by default draws a second trend line the moment they tap the chart to look at
             // something, which is the single most reported complaint about every terminal that does
@@ -928,8 +1417,19 @@ object DrawingActions {
         )
     }
 
-    /** The two tools a reader ends by saying so rather than by running out of taps. */
-    private val VARIABLE_POINT_TOOLS = setOf("path", "polyline")
+    /**
+     * The tools a reader ends by saying so rather than by running out of taps.
+     *
+     * `arrowmarks` joined them because it had no working count at all: the registry said zero
+     * points, `tap` refuses a zero-point tool outright, and the renderer's geometry needs at least
+     * two anchors before it returns a single mark — so the tool armed, took taps and placed
+     * nothing, for every reader, forever. A row of marks is exactly the shape this set describes:
+     * however many bars the reader wants to flag.
+     */
+    private val VARIABLE_POINT_TOOLS = setOf("path", "polyline", "arrowmarks")
+
+    /** The variable-point tools that can be *closed* into a ring by tapping the first anchor. */
+    private val RING_TOOLS = setOf("path", "polyline")
 
     /** The tools whose points are a chain, and so can have one leg erased out of the middle. */
     private val CHAIN_TOOLS = setOf("path", "polyline", "brush", "highlighter")
@@ -942,6 +1442,87 @@ object DrawingActions {
      * from the magnet being off.
      */
     const val WEAK_TOLERANCE = 0.25
+}
+
+/**
+ * Whether a mark's moment has passed.
+ *
+ * A permanent drawing never has one, which is why this is written as "has a deadline and it is
+ * behind us" rather than as a comparison against a default: a default deadline would make every
+ * ordinary trend line an expiry question.
+ */
+fun Drawing.hasFaded(nowMillis: Long): Boolean {
+    val fadesAt = fadesAtMillis ?: return false
+    return nowMillis >= fadesAt
+}
+
+/**
+ * What the rail's [ToolGroup.MODES] entries actually set.
+ *
+ * Those six entries were the rail's oldest hole. They are not tools — none of them places a point —
+ * so `DrawingActions.arm` refused them, and refusing meant discarding: two of them did nothing at
+ * all when tapped, one worked only through a private boolean the feature layer kept beside the
+ * state, and the sixth did not exist. This is the field they set instead, and folding the eraser
+ * into it is the point: one source for "what does a tap do right now" rather than two that can
+ * disagree.
+ *
+ * The magnet is deliberately **not** here. It has three values rather than two and already had a
+ * home in [DrawingState.magnetMode]; the rail's magnet entry advances that instead.
+ */
+enum class DrawingMode(
+    /** The `DrawingTools` id that selects this mode, so the rail and this enum cannot drift. */
+    val toolId: String,
+    /**
+     * Whether this mode outlives arming a drawing tool.
+     *
+     * True for exactly one of them. Demonstration mode says *how long what you draw lasts*, which
+     * is a question about the mark and not about the tap, so arming the highlighter to demonstrate
+     * with has to keep it. The other three change what a tap means, and a tap cannot mean two
+     * things — arming a trend line while the eraser is on would be a reader who cannot tell whether
+     * the next tap draws or deletes.
+     */
+    val survivesArming: Boolean = false,
+) {
+    /** The plain crosshair. What every chart starts in and what «بستن» returns to. */
+    CURSOR("cursor"),
+
+    /** Tap to select rather than to place. The way to pick a mark up without disarming a tool. */
+    SELECT("select"),
+
+    /** An arrow pointer instead of a crosshair, for a reader who finds the full-width lines busy. */
+    ARROW_CURSOR("arrowcursor"),
+
+    /** A dot pointer: the smallest of the three, for placing anchors on a crowded chart. */
+    DOT("dot"),
+
+    /**
+     * A tap removes what is under it.
+     *
+     * The one mode that already worked, and it worked by being special-cased: the feature layer
+     * carried `eraser: Boolean` beside this state and handed it to the canvas by hand, because
+     * there was nowhere here to put it. There is now.
+     */
+    ERASER("eraser"),
+
+    /**
+     * Marks placed now fade out and remove themselves — item 41.
+     *
+     * For pointing at something while somebody is watching: a screen share, a lesson, a message
+     * about a level. The alternative readers actually use is drawing a line and then remembering to
+     * delete it, and the line they forget is the one that is still on the chart a week later
+     * claiming something that was true on Tuesday.
+     *
+     * The fade is finite and computed from a deadline, not animated: see
+     * [DrawingActions.fadeAlpha]. There is no loop to run and nothing to stop when a device has
+     * animations turned off.
+     */
+    DEMONSTRATION(DrawingTools.DEMONSTRATION_TOOL, survivesArming = true),
+    ;
+
+    companion object {
+        /** The mode a rail entry selects, or null if that id is not a mode. */
+        fun of(toolId: String): DrawingMode? = entries.firstOrNull { it.toolId == toolId }
+    }
 }
 
 /**

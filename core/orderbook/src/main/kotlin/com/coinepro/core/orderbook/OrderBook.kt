@@ -1,0 +1,235 @@
+package com.coinepro.core.orderbook
+
+/**
+ * One resting price level: everything queued at [price], on one side of the book.
+ *
+ * [quantity] is in the instrument's own unit — base coin for a crypto pair, lots for a broker's
+ * market book — and is deliberately **not** normalised to a currency value here. Multiplying by the
+ * price to get a notional is a decision about what the reader is looking for, and a ladder scaled
+ * by notional and one scaled by size disagree about which wall is the big one. The screen picks;
+ * this type carries what the venue sent.
+ */
+data class DepthLevel(val price: Double, val quantity: Double)
+
+/** Which half of the book. Bids are resting buyers, asks are resting sellers. */
+enum class BookSide {
+    BID,
+    ASK,
+}
+
+/**
+ * A level with the volume standing between it and the touch, for the depth curve.
+ *
+ * [total] includes this level's own [quantity]. That is the convention every depth chart uses —
+ * the curve at a price answers "how much would I have to lift to reach here", and the level you
+ * stop on is part of what you lifted.
+ */
+data class CumulativeDepth(val price: Double, val quantity: Double, val total: Double)
+
+/**
+ * The resting liquidity on both sides of one market at one instant.
+ *
+ * ### Why the ordering is enforced rather than assumed
+ *
+ * [bids] descend from the best bid, [asks] ascend from the best ask, and [init] refuses anything
+ * else. This looks pedantic and it is the single most important line in the file. A ladder is read
+ * by *shape*: the reader's eye takes the long bars as the walls and decides which side is heavy
+ * from where they sit relative to the spread. Hand it a book sorted the wrong way and it still
+ * draws — same rows, same bars, same colours — and it says the opposite of what is true. There is
+ * no visible symptom, which is exactly why it has to be a thrown exception at the boundary rather
+ * than a convention in a comment.
+ *
+ * Producers do not construct this directly. [of] sorts, merges duplicate prices and drops the rows
+ * a feed could not fill; the constructor then re-checks its work, so a future producer that forgets
+ * [of] fails loudly on its first response rather than quietly for the life of the release.
+ *
+ * [at] is the venue's own timestamp in epoch milliseconds. A book is only ever a claim about an
+ * instant that has already passed, and a ladder that cannot say how stale it is cannot be acted on.
+ *
+ * [truncated] says the venue holds more levels than these. It is not an error: twenty levels is
+ * what a phone can show and what both feeds are asked for. It exists so the deepest row can be
+ * marked as an edge of the request rather than read as the end of the book — a reader who takes a
+ * truncated bottom row for the last resting order has drawn a conclusion about liquidity that the
+ * data does not support.
+ */
+data class OrderBook(
+    val symbol: String,
+    val bids: List<DepthLevel>,
+    val asks: List<DepthLevel>,
+    val at: Long,
+    val truncated: Boolean,
+) {
+    init {
+        require(bids.zipWithNext().all { (a, b) -> a.price > b.price }) {
+            "bids must descend from the best bid: $bids"
+        }
+        require(asks.zipWithNext().all { (a, b) -> a.price < b.price }) {
+            "asks must ascend from the best ask: $asks"
+        }
+    }
+
+    /** The highest price a resting buyer will pay, or null on an empty side. */
+    val bestBid: Double? get() = bids.firstOrNull()?.price
+
+    /** The lowest price a resting seller will take, or null on an empty side. */
+    val bestAsk: Double? get() = asks.firstOrNull()?.price
+
+    /**
+     * Ask minus bid — the cost of crossing, which is the number a scalper is actually here for.
+     *
+     * Null when either side is empty, because a spread against nothing is not zero, it is unknown,
+     * and a zero would read on the ladder as a perfectly tight market.
+     */
+    val spread: Double? get() {
+        val bid = bestBid ?: return null
+        val ask = bestAsk ?: return null
+        return ask - bid
+    }
+
+    /**
+     * The midpoint, which is the price a ladder centres on.
+     *
+     * Not the last trade: a book has no last trade in it, and centring on one that came from
+     * somewhere else puts the spread row off-centre whenever the two feeds disagree by a tick.
+     */
+    val midPrice: Double? get() {
+        val bid = bestBid ?: return null
+        val ask = bestAsk ?: return null
+        return (bid + ask) / 2.0
+    }
+
+    /**
+     * A book whose best bid is at or above its best ask, which cannot happen in a real market.
+     *
+     * It happens in a *relayed* one all the time: two sides of a snapshot assembled a few
+     * milliseconds apart, or a stale side left in place through a fast move. The ladder must not
+     * present a negative spread as a trading opportunity, so it asks this first and says the book
+     * is momentarily inconsistent instead.
+     */
+    val crossed: Boolean get() {
+        val bid = bestBid ?: return false
+        val ask = bestAsk ?: return false
+        return bid >= ask
+    }
+
+    /** Everything resting on the buy side, summed. */
+    val bidVolume: Double get() = bids.sumOf { it.quantity }
+
+    /** Everything resting on the sell side, summed. */
+    val askVolume: Double get() = asks.sumOf { it.quantity }
+
+    /**
+     * Buy volume as a share of all volume shown, in `0.0..1.0`.
+     *
+     * `1.0` is bids only, `0.0` is asks only, `0.5` is parity. Null when there is no volume at all,
+     * which is not the same as balance: an empty book and a perfectly matched one look identical
+     * as a number and mean opposite things, and a meter parked at the centre for an empty book is
+     * the more misleading of the two.
+     *
+     * It is a share of the **visible** levels, so it moves with the requested depth. That is
+     * inherent to the measure rather than a defect here — imbalance over twenty levels and over the
+     * full book are different quantities — and it is why the screen prints the depth beside it.
+     */
+    val imbalance: Double? get() {
+        val total = bidVolume + askVolume
+        return if (total <= 0.0) null else bidVolume / total
+    }
+
+    /**
+     * The largest single resting level on either side, which is what a per-row bar is scaled
+     * against.
+     *
+     * Deliberately shared across the two sides rather than one maximum per side. Scaling each side
+     * to its own largest bar makes the biggest bid and the biggest ask the same length whatever
+     * their sizes are, so the one picture the ladder exists to draw — which side is heavier — is
+     * flattened out of it.
+     */
+    val largestQuantity: Double
+        get() = maxOf(
+            bids.maxOfOrNull { it.quantity } ?: 0.0,
+            asks.maxOfOrNull { it.quantity } ?: 0.0,
+        )
+
+    /** The larger of the two sides' totals, for scaling the cumulative area behind the bars. */
+    val largestCumulative: Double get() = maxOf(bidVolume, askVolume)
+
+    /**
+     * The depth curve for one side: each level with everything between it and the touch.
+     *
+     * Walks outwards from the best price, which is the direction the list is already in, so the
+     * running total is monotonic and the area drawn behind the bars only ever grows away from the
+     * spread. Reversing either side to draw it would produce a curve that falls as it leaves the
+     * touch, which is the shape of a book that does not exist.
+     */
+    fun cumulative(side: BookSide): List<CumulativeDepth> {
+        val levels = when (side) {
+            BookSide.BID -> bids
+            BookSide.ASK -> asks
+        }
+        var running = 0.0
+        return levels.map { level ->
+            running += level.quantity
+            CumulativeDepth(price = level.price, quantity = level.quantity, total = running)
+        }
+    }
+
+    /**
+     * The [levels] rows nearest the spread on each side.
+     *
+     * The ladder shows fewer rows than it loads — a phone fits eight or ten a side, and the request
+     * asks for twenty so that the imbalance is measured over something wider than the screen. This
+     * is how the screen narrows the book without recomputing the loaded one, and it carries
+     * [truncated] forward: cutting rows off here means the deepest visible row is an edge of the
+     * *view*, on top of any edge of the request, and both mean the same thing to a reader.
+     */
+    fun top(levels: Int): OrderBook {
+        require(levels > 0) { "levels must be positive: $levels" }
+        if (bids.size <= levels && asks.size <= levels) return this
+        return copy(
+            bids = bids.take(levels),
+            asks = asks.take(levels),
+            truncated = true,
+        )
+    }
+
+    companion object {
+        /**
+         * Builds a book from whatever a feed sent, in whatever order it sent it.
+         *
+         * Four things happen here and every one of them exists because a real feed has done it:
+         *
+         * * **Rows that could not be filled are dropped.** A level with a non-finite or
+         *   non-positive price is not a level at zero, it is a row the relay could not parse, and
+         *   carrying it puts a bar at the bottom of the ladder that no order rests behind.
+         * * **Zero quantities are dropped.** A depth feed publishes a zero to say a level has been
+         *   *removed*, which is an instruction about a book you already hold, not a level in a
+         *   snapshot. Drawn as a row it is an empty rung on the ladder.
+         * * **Duplicate prices are summed.** Two rows at one price is one price with two orders on
+         *   it. Kept as two rows the ladder shows the same rung twice and halves the apparent wall.
+         * * **Both sides are sorted.** See the note on the class for why this is not left to the
+         *   sender's promise.
+         */
+        fun of(
+            symbol: String,
+            bids: List<DepthLevel>,
+            asks: List<DepthLevel>,
+            at: Long,
+            truncated: Boolean = false,
+        ): OrderBook = OrderBook(
+            symbol = symbol.uppercase(),
+            bids = bids.normalise().sortedByDescending { it.price },
+            asks = asks.normalise().sortedBy { it.price },
+            at = at,
+            truncated = truncated,
+        )
+
+        /** An honest nothing: the symbol is known, the book is not. Never shown as a market. */
+        fun empty(symbol: String, at: Long = 0L): OrderBook =
+            OrderBook(symbol.uppercase(), emptyList(), emptyList(), at, truncated = false)
+
+        private fun List<DepthLevel>.normalise(): List<DepthLevel> = this
+            .filter { it.price.isFinite() && it.price > 0.0 && it.quantity.isFinite() && it.quantity > 0.0 }
+            .groupBy { it.price }
+            .map { (price, rows) -> DepthLevel(price, rows.sumOf { it.quantity }) }
+    }
+}

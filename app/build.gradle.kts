@@ -419,6 +419,7 @@ dependencies {
     implementation(project(":feature:admin"))
     implementation(project(":feature:auth"))
     implementation(project(":feature:home"))
+    implementation(project(":feature:dom"))
     implementation(project(":feature:heatmap"))
     implementation(project(":feature:search"))
     implementation(project(":feature:chart"))

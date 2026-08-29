@@ -11,17 +11,20 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -36,6 +39,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
@@ -49,6 +53,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.unit.sp
 import com.coinepro.core.designsystem.CoineProColors
 import java.time.Instant
@@ -188,10 +193,82 @@ fun CoineProChart(
      *
      * Carried onto the viewport so that it is one value rather than two that can disagree, and so
      * anything reading the viewport — a drawing, an alert composer, a screenshot — sees the reader's
-     * choice. The gutter this file paints is still the right-hand one; moving it is plot geometry
-     * and every gesture that measures against `size.width` has to move with it.
+     * choice. It is honoured for real: [plotFrame] decides the plot rectangle from it, the ladder is
+     * painted into whichever gutters it asks for, and every gesture that used to measure against
+     * `size.width` now measures against that rectangle. [ScaleSide.MERGED] draws the right-hand
+     * gutter, because this canvas puts every series it draws on the one price axis already.
      */
     scaleSide: ScaleSide = ScaleSide.RIGHT,
+    /**
+     * Merge points that would land in the same half-pixel column into one vertical stroke.
+     *
+     * Off by default, which is what TradingView ships and is the right default here for the same
+     * reason: at ordinary zooms no two bars share a column, so every comparison it makes is one that
+     * fails, and the cost is a comparison per bar for a picture that is identical. Panned out past a
+     * screenful of bars it is the difference between six vertices a pixel and one. See
+     * [ColumnConflator] for why it keeps each column's extremes rather than one point.
+     */
+    conflate: Boolean = false,
+    /**
+     * The zone the dates along the bottom are read in, and the one the bold month boundary uses.
+     *
+     * A parameter because it is a reader's setting everywhere else in this category of app — a
+     * trader in Tehran reading a New York session wants the session's own clock — and because the
+     * two things that print a date here have to be told the *same* zone or they disagree with each
+     * other. They did: the labels and the boundary both took the device's zone while the bars
+     * themselves are bucketed in [CHART_ZONE], so on a phone outside Tehran the bold label landed on
+     * a different bar than the month it was naming.
+     *
+     * Resolved by the caller and passed in already built. [ZoneId.of] is a lookup and a parse, and
+     * the one place it must never happen is inside the draw pass — a zone per label, per frame.
+     */
+    zone: ZoneId = CHART_ZONE,
+    /** The instrument's name for the legend's first row, or null to leave it as the four prices. */
+    seriesLabel: String? = null,
+    /**
+     * Which legend rows are switched off, as the caller last stored them.
+     *
+     * The chart honours this itself — a hidden overlay is not drawn, a hidden pane takes no height —
+     * rather than only reporting the tap, because a visibility toggle that draws the same chart is
+     * the defect this whole wave is about. A tap toggles the row here *and* reports it through
+     * [onToggleSeriesVisibility]; a caller that stores the answer and passes it back finds the chart
+     * already in that state, and a caller that only listens still gets a working control.
+     */
+    hiddenSeries: Set<ChartLegendTarget> = emptySet(),
+    /** A legend row's eye was tapped. See [hiddenSeries]. */
+    onToggleSeriesVisibility: ((ChartLegendTarget) -> Unit)? = null,
+    /** A legend row's settings were asked for. Null hides the affordance rather than disabling it. */
+    onSeriesSettings: ((ChartLegendTarget) -> Unit)? = null,
+    /** A legend row's remove was tapped. Null hides the affordance rather than disabling it. */
+    onRemoveSeries: ((ChartLegendTarget) -> Unit)? = null,
+    /**
+     * Where the crosshair went, every time it moved or was dismissed.
+     *
+     * Hoisted so two panes can share one. It was private `remember` state, which is exactly why the
+     * panes screen shipped with its crosshair-sync switch disabled: there was no way for one chart
+     * to tell the other what the reader was pointing at. Appended with a default, so no existing
+     * call site changes.
+     */
+    onCrosshairMove: ((Crosshair?) -> Unit)? = null,
+    /**
+     * A crosshair placed by something other than this chart's own finger.
+     *
+     * Drawn instead of the local one when it is non-null, and it does not disturb the local one —
+     * the second pane keeps whatever its own reader last did, so releasing the sync puts both back
+     * where they were rather than leaving one of them holding the other's bar.
+     */
+    crosshairOverride: Crosshair? = null,
+    /** Where the reader is looking, every time it changes. The other half of pane sync. */
+    onViewportChange: ((ChartViewport) -> Unit)? = null,
+    /**
+     * A window donated by another pane: how far zoomed in, how far panned back, how stretched.
+     *
+     * Those three numbers and not the whole viewport, because the other pane is a different
+     * instrument with a different price range and a different series — adopting its geometry whole
+     * would put this chart's bars on that chart's prices. Three numbers are what "the same window"
+     * actually means.
+     */
+    viewportOverride: ChartViewport? = null,
 ) {
     val display = remember(series, type, typeConfig) { ChartTransforms.apply(series, type, typeConfig) }
     // Unkeyed, and that is the whole point. Keyed on `display`, this reset to the default 120 bars
@@ -542,6 +619,43 @@ fun CoineProChart(
         crosshair = CoineProColors.TextSecondary,
         stage = CoineProColors.Stage,
     )
+    /**
+     * Which legend rows the reader has switched off.
+     *
+     * Seeded from the caller and toggled here, which is the one place a controlled/uncontrolled
+     * mix is the right answer: a caller that stores the set gets it back through
+     * [onToggleSeriesVisibility] and passes it in, and the `remember` key adopts it; a caller that
+     * only listens still gets a control that works. The alternative — reporting the tap and
+     * drawing the same chart — is the exact defect this wave is about.
+     */
+    var hidden by remember(hiddenSeries) { mutableStateOf(hiddenSeries) }
+
+    /**
+     * The decoration with the hidden rows taken out, which is what actually gets drawn.
+     *
+     * Taken out rather than skipped at each draw call, because a hidden pane must not go on
+     * claiming its share of the canvas' height — a reader who hides an oscillator expects the
+     * candles to grow back into the space.
+     *
+     * The legend is built from the *unfiltered* decoration, so a hidden row keeps its place, its
+     * index and its eye. A legend that drops the row it just hid gives the reader no way back.
+     */
+    val shown = if (hidden.isEmpty()) {
+        decoration
+    } else {
+        decoration.copy(
+            overlays = decoration.overlays.filterIndexed { index, _ ->
+                ChartLegendTarget.Overlay(index) !in hidden
+            },
+            panes = decoration.panes.filterIndexed { index, _ ->
+                ChartLegendTarget.Pane(index) !in hidden
+            },
+            comparisons = decoration.comparisons.filterIndexed { index, _ ->
+                ChartLegendTarget.Comparison(index) !in hidden
+            },
+        )
+    }
+
     val palette = decoration.colours?.let { chosen ->
         ChartPalette(
             up = chartColour(chosen.up),
@@ -558,6 +672,128 @@ fun CoineProChart(
             stage = chartColour(chosen.background),
         )
     } ?: themePalette
+
+    // ------------------------------------------------------------------ what each type needs
+    //
+    // Worked out here and not in the draw pass. Every one of these walks the series, and a draw
+    // pass runs on every frame of a drag: keyed on the window instead, they run when the window
+    // moves, which is once per pan step rather than sixty times a second.
+
+    /**
+     * The level a baseline chart splits its fill at.
+     *
+     * The reader's own when they set one, and otherwise the *window's* opening close — which is what
+     * makes the two fills read as "up on the period shown" and "down on it", and what keeps the base
+     * on screen as the reader pans. A series-wide default would leave the base off the top of the
+     * plot on any panned view and paint the whole chart one colour.
+     */
+    val baseLevel = remember(display, typeConfig.baseLevel, viewport.firstVisible, viewport.lastVisible) {
+        typeConfig.baseLevel ?: if (display.isEmpty) {
+            0.0
+        } else {
+            ChartTransforms.defaultBaseLevel(
+                CandleSeries(
+                    display.bars.subList(
+                        viewport.firstVisible.coerceIn(0, display.size - 1),
+                        (viewport.lastVisible + 1).coerceIn(1, display.size),
+                    ),
+                ),
+            )
+        }
+    }
+    val baselineHalves = remember(display, baseLevel, type) {
+        if (type == ChartType.BASELINE) {
+            ChartTransforms.baselineSplit(display, baseLevel)
+        } else {
+            EMPTY_SPLIT
+        }
+    }
+    val stepHeld = remember(display, type) {
+        if (type == ChartType.STEP_LINE) ChartTransforms.stepLine(display) else DoubleArray(0)
+    }
+    val barWidths = remember(display, type) {
+        if (type == ChartType.VOLUME_CANDLES) ChartTransforms.volumeWidths(display) else DoubleArray(0)
+    }
+
+    // Rebased once and spent three ways: by the comparison lines, by the legend rows that name them
+    // and by the reading under the crosshair. Doing it in each would run the same pass over the same
+    // arrays and give them a way to disagree about what a comparison is currently reading.
+    val rebased = remember(decoration.comparisons, decoration.comparisonBasis, viewport.firstVisible, display) {
+        decoration.comparisons.map {
+            rebase(it, decoration.comparisonBasis, viewport.firstVisible, display.close)
+        }
+    }
+    val shownRebased = if (hidden.isEmpty()) {
+        rebased
+    } else {
+        rebased.filterIndexed { index, _ -> ChartLegendTarget.Comparison(index) !in hidden }
+    }
+
+    /** Half a pixel, or nothing at all. See the `conflate` parameter. */
+    val conflateGap = if (conflate) CONFLATION_GAP_PX else 0f
+
+    /**
+     * Measured axis labels, kept between frames. See [TextWidthCache].
+     *
+     * Rebuilt whenever the measurer or the density changes, because a layout measured at one
+     * density is the wrong size at another and nothing in the key would say so.
+     */
+    val textCache = remember(measurer, density) { TextWidthCache<TextLayoutResult>() }
+
+    /** The plot rectangle the last draw published, for the overlays stacked on top of it. */
+    val frames = remember { arrayOfNulls<PlotFrame>(1) }
+
+    // Kept fresh for the gesture handlers, which start once and then run across recompositions: a
+    // block that captured `scaleSide` would go on measuring against the gutter the reader moved
+    // away from until something else restarted it.
+    val currentSide = rememberUpdatedState(scaleSide)
+    val currentAxes = rememberUpdatedState(decoration.showAxes)
+    val currentAxisWidth = rememberUpdatedState(axisWidth)
+    fun frameOf(canvasWidth: Float): PlotFrame =
+        plotFrame(canvasWidth, currentAxisWidth.value, currentSide.value, currentAxes.value)
+
+    /**
+     * Where a pointer is resting in the price gutter, and how long the `+` stays after it leaves.
+     *
+     * Null means the chip is not offered. See [PriceAxisAlertAffordance] for why it lingers rather
+     * than vanishing with the finger.
+     */
+    val alertPointer = remember { mutableStateOf<Float?>(null) }
+    val alertHeld = remember { mutableStateOf(false) }
+    // Through `snapshotFlow` rather than as effect keys, and that is not a style choice: an effect
+    // keyed on the value would read it *in composition*, so a pointer sliding down the gutter would
+    // recompose the whole chart to restart a timer.
+    LaunchedEffect(Unit) {
+        snapshotFlow { alertPointer.value to alertHeld.value }.collectLatest { (y, held) ->
+            if (y == null || held) return@collectLatest
+            delay(ALERT_LINGER_MILLIS)
+            alertPointer.value = null
+        }
+    }
+
+    // The crosshair, reported outward. One effect rather than a call at each of the five places it
+    // is written, so a new gesture cannot forget to tell the other pane — and read through a
+    // snapshot flow for the same reason the alert is: reading it in composition would undo the
+    // second layer's whole point.
+    val emitCrosshair = rememberUpdatedState(onCrosshairMove)
+    LaunchedEffect(Unit) {
+        snapshotFlow { crosshair }.collect { emitCrosshair.value?.invoke(it) }
+    }
+
+    // And the window, reported outward on the same three numbers that are saved for a restart.
+    val emitViewport = rememberUpdatedState(onViewportChange)
+    LaunchedEffect(viewport.barsPerView, viewport.offset, viewport.priceZoom) {
+        emitViewport.value?.invoke(viewport)
+    }
+
+    // A window donated by another pane. Three numbers, not the whole viewport — see the parameter.
+    remember(viewportOverride?.barsPerView, viewportOverride?.offset, viewportOverride?.priceZoom) {
+        viewportOverride?.let { other ->
+            viewport = viewport
+                .copy(barsPerView = other.barsPerView, priceZoom = other.priceZoom)
+                .atOffset(other.offset)
+        }
+    }
 
     Box(modifier = modifier) {
         Canvas(
@@ -691,10 +927,43 @@ fun CoineProChart(
                                     // should coast.
                                     val axisTop = timeAxisTop[0]
                                     val onPlot = (axisTop <= 0f || down.position.y < axisTop) &&
-                                        down.position.x < size.width - axisWidth
+                                        frameOf(size.width.toFloat()).onPlot(down.position.x)
                                     if (flingable && onPlot && !tracking) {
                                         kinetic.start(tracker.calculateVelocity().x)
                                         flinging = kinetic.isRunning
+                                    }
+                                }
+                            }
+                            .pointerInput(onRequestAlertAt != null) {
+                                // The `+` on the price axis: a watcher, not a gesture.
+                                //
+                                // The same shape as the fling observer above and for the same
+                                // reason. It consumes nothing and decides nothing, and runs on the
+                                // final pass after every other handler has had the event — so the
+                                // drag that stretches the gutter and the long press that opens its
+                                // menu both go on working exactly as they did. All it adds is
+                                // *where a pointer is resting in the gutter*, which is the one
+                                // thing no existing handler reports and the thing an alert needs.
+                                //
+                                // The strip is the gutter proper, with none of the twelve pixels of
+                                // reach the drag gets: a pan that ends near the right edge must not
+                                // summon a button over the reader's chart.
+                                if (onRequestAlertAt == null) return@pointerInput
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        val event = awaitPointerEvent(PointerEventPass.Final)
+                                        val frame = frameOf(size.width.toFloat())
+                                        val position = event.changes.firstOrNull()?.position
+                                        val inside = position != null &&
+                                            event.type != PointerEventType.Exit &&
+                                            frame.inGutter(position.x, 0f) &&
+                                            position.y in 0f..size.height.toFloat()
+                                        if (inside) {
+                                            alertPointer.value = position.y
+                                            alertHeld.value = true
+                                        } else {
+                                            alertHeld.value = false
+                                        }
                                     }
                                 }
                             }
@@ -709,10 +978,12 @@ fun CoineProChart(
                                 detectDragGestures(
                                     onDragStart = { position ->
                                         samples.clear()
-                                        lastView[0]?.let { samples += it.chartPointAt(position, display, drawing.magnetMode) }
+                                        val plot = frameOf(size.width.toFloat()).toPlot(position)
+                                        lastView[0]?.let { samples += it.chartPointAt(plot, display, drawing.magnetMode) }
                                     },
                                     onDrag = { change, _ ->
-                                        lastView[0]?.let { samples += it.chartPointAt(change.position, display, drawing.magnetMode) }
+                                        val plot = frameOf(size.width.toFloat()).toPlot(change.position)
+                                        lastView[0]?.let { samples += it.chartPointAt(plot, display, drawing.magnetMode) }
                                     },
                                     onDragEnd = { onDrawing(DrawingActions.stroke(drawing, samples.toList())) },
                                     onDragCancel = { samples.clear() },
@@ -744,12 +1015,13 @@ fun CoineProChart(
                                         // handles are ignored: the gesture is "put this line at
                                         // that price", and grabbing an endpoint would rotate the
                                         // line instead of translating it.
+                                        val plot = frameOf(size.width.toFloat()).toPlot(position)
                                         handle = if (lineMove) -1 else target.points.indexOfFirst { point ->
-                                            val dx = view.xOfTime(point.time) - position.x
-                                            val dy = view.yOf(point.price) - position.y
+                                            val dx = view.xOfTime(point.time) - plot.x
+                                            val dy = view.yOf(point.price) - plot.y
                                             dx * dx + dy * dy <= tolerancePx * tolerancePx
                                         }
-                                        origin = view.chartPointAt(position, display, state.magnetMode)
+                                        origin = view.chartPointAt(plot, display, state.magnetMode)
                                     },
                                     onDrag = { change, _ ->
                                         val state = drawing ?: return@detectDragGestures
@@ -757,7 +1029,11 @@ fun CoineProChart(
                                         val id = state.selectedId ?: return@detectDragGestures
                                         val view = lastView[0] ?: return@detectDragGestures
                                         val from = origin ?: return@detectDragGestures
-                                        val to = view.chartPointAt(change.position, display, state.magnetMode)
+                                        val to = view.chartPointAt(
+                                            frameOf(size.width.toFloat()).toPlot(change.position),
+                                            display,
+                                            state.magnetMode,
+                                        )
                                         change.consume()
                                         if (handle >= 0) {
                                             emit(DrawingActions.movePoint(state, id, handle, to))
@@ -838,7 +1114,8 @@ fun CoineProChart(
                                 // the left.
                                 detectVerticalDragGestures(
                                     onDragStart = { position ->
-                                        gutterDrag = position.x >= size.width - axisWidth - GUTTER_REACH_DP.toPx()
+                                        gutterDrag = frameOf(size.width.toFloat())
+                                            .inGutter(position.x, GUTTER_REACH_DP.toPx())
                                     },
                                     onDragEnd = { gutterDrag = false },
                                     onDragCancel = { gutterDrag = false },
@@ -921,22 +1198,23 @@ fun CoineProChart(
                                 detectDragGesturesAfterLongPress(
                                     onDragStart = { position ->
                                         val view = lastView[0]
-                                        val inGutter =
-                                            position.x >= size.width - axisWidth - GUTTER_REACH_DP.toPx()
+                                        val frame = frameOf(size.width.toFloat())
+                                        val plot = frame.toPlot(position)
+                                        val inGutter = frame.inGutter(position.x, GUTTER_REACH_DP.toPx())
                                         val alert = currentAlert.value
                                         val axisMenu = currentAxisMenu.value
                                         val erasing = eraser && drawing != null &&
                                             onDrawing != null && view != null && !inGutter
                                         val level = view?.let { placed ->
                                             currentLevels.value.firstOrNull {
-                                                abs(placed.yOf(it.price) - position.y) <= tolerancePx
+                                                abs(placed.yOf(it.price) - plot.y) <= tolerancePx
                                             }
                                         }
                                         when {
                                             erasing -> eraseAt(
                                                 state = drawing!!,
-                                                x = position.x,
-                                                y = position.y,
+                                                x = plot.x,
+                                                y = plot.y,
                                                 view = view!!,
                                                 tolerancePx = tolerancePx,
                                                 whole = true,
@@ -946,14 +1224,15 @@ fun CoineProChart(
                                                 alert(level.price)
                                             view != null -> {
                                                 tracking = true
-                                                crosshair = view.crosshairAt(position)
+                                                crosshair = view.crosshairAt(plot)
                                                 invalidate(Invalidation.CURSOR)
                                             }
                                         }
                                     },
                                     onDrag = { change, _ ->
                                         if (!tracking) return@detectDragGesturesAfterLongPress
-                                        lastView[0]?.let { crosshair = it.crosshairAt(change.position) }
+                                        val plot = frameOf(size.width.toFloat()).toPlot(change.position)
+                                        lastView[0]?.let { crosshair = it.crosshairAt(plot) }
                                         invalidate(Invalidation.CURSOR)
                                     },
                                     // Nothing on release: the crosshair is the reading, and the
@@ -995,7 +1274,8 @@ fun CoineProChart(
                                             editing -> lineMove = !lineMove
                                             else -> {
                                                 viewport = if (
-                                                    position.x >= size.width - axisWidth - GUTTER_REACH_DP.toPx()
+                                                    frameOf(size.width.toFloat())
+                                                        .inGutter(position.x, GUTTER_REACH_DP.toPx())
                                                 ) {
                                                     viewport.autoPriceScale()
                                                 } else {
@@ -1022,13 +1302,14 @@ fun CoineProChart(
                                         val state = drawing ?: return@detectTapGestures
                                         val emit = onDrawing ?: return@detectTapGestures
                                         val view = lastView[0] ?: return@detectTapGestures
+                                        val plot = frameOf(size.width.toFloat()).toPlot(position)
                                         // The eraser takes the tap whole. It is not a tool that
                                         // places anything, so nothing below this would be right.
                                         if (eraser) {
                                             eraseAt(
                                                 state = state,
-                                                x = position.x,
-                                                y = position.y,
+                                                x = plot.x,
+                                                y = plot.y,
                                                 view = view,
                                                 tolerancePx = tolerancePx,
                                                 whole = false,
@@ -1038,7 +1319,7 @@ fun CoineProChart(
                                         // Tapping the first anchor again closes a path or a
                                         // polyline. Measured in pixels, because "on the anchor" is
                                         // a finger's width and a finger is not a number of bars.
-                                        if (closesPendingShape(state, position.x, position.y, view, tolerancePx)) {
+                                        if (closesPendingShape(state, plot.x, plot.y, view, tolerancePx)) {
                                             emit(DrawingActions.closeShape(state))
                                             return@detectTapGestures
                                         }
@@ -1049,8 +1330,8 @@ fun CoineProChart(
                                         val hit = if (state.tool == null) {
                                             DrawingHitTest.at(
                                                 drawings = state.drawings,
-                                                x = position.x,
-                                                y = position.y,
+                                                x = plot.x,
+                                                y = plot.y,
                                                 view = view,
                                                 tolerancePx = tolerancePx,
                                             )?.id
@@ -1065,7 +1346,7 @@ fun CoineProChart(
                                         emit(
                                             DrawingActions.tapSnapped(
                                                 state = state,
-                                                point = view.rawChartPointAt(position),
+                                                point = view.rawChartPointAt(plot),
                                                 series = display,
                                                 nearest = hit,
                                             ),
@@ -1085,7 +1366,13 @@ fun CoineProChart(
             if (decoration.colours != null) {
                 drawRect(color = palette.stage, size = size)
             }
-            val plotWidth = max(0f, size.width - if (decoration.showAxes) axisWidth else 0f)
+            // Where the plot sits once the gutters have been taken off it. One rectangle, computed
+            // here and published for the gestures and the overlays, so that nothing anywhere else
+            // measures the canvas edge for itself — which is how `ScaleSide` came to be stored and
+            // never read.
+            val frame = plotFrame(size.width, axisWidth, scaleSide, decoration.showAxes)
+            frames[0] = frame
+            val plotWidth = frame.width
             val timeAxis = if (decoration.showAxes && decoration.showTimeAxis) timeHeight else 0f
             // Panes eat into the price's height, never into each other or the axis. Clamped in
             // total, because four oscillators at 18% each would leave the candles a sliver — and
@@ -1094,13 +1381,16 @@ fun CoineProChart(
             // `PANE_BUDGET`. The cap is what stops the candles — which are the subject — being
             // squeezed out by three oscillators; the scale is what lets somebody reading
             // divergence give the RSI real height without switching the others off.
+            //
+            // Counted over the *shown* panes, so hiding one from the legend gives its height back
+            // to the candles rather than leaving a gap where it used to be.
             val paneRatio = min(
                 PANE_BUDGET,
-                decoration.panes.sumOf { it.heightRatio.toDouble() }.toFloat() *
+                shown.panes.sumOf { it.heightRatio.toDouble() }.toFloat() *
                     decoration.paneScale.coerceIn(MIN_PANE_SCALE, MAX_PANE_SCALE),
             )
             val available = max(0f, size.height - timeAxis)
-            val paneHeight = if (decoration.panes.isEmpty()) 0f else available * paneRatio
+            val paneHeight = if (shown.panes.isEmpty()) 0f else available * paneRatio
             val plotHeight = max(0f, available - paneHeight)
             // Published for the divider gesture. See `paneTop`.
             paneTop[0] = if (paneHeight > 0f) plotHeight else 0f
@@ -1129,136 +1419,333 @@ fun CoineProChart(
             scaleCache.ticks = ticks
             lastView[0] = view
 
-            if (view.visibleCount == 0) {
-                // Nothing to draw, and the axis is *cleared* rather than left holding the last
-                // series' numbers. A price scale that keeps its labels after a failed load is the
-                // most dangerous thing this file could render: it says the market is at a price
-                // nobody has quoted.
-                if (decoration.showAxes) drawEmptyAxis(plotWidth, axisWidth, palette, measurer)
-                return@Canvas
-            }
-
-            // Candle geometry, resolved once for the frame. Everything that draws a bar-shaped
-            // thing — candles, OHLC ticks, volume, a histogram — takes its width from here, so the
-            // four cannot drift apart by a pixel and make the chart look mis-registered.
-            val ratio = density.density
-            val spacing = if (ratio > 0f) view.barWidth / ratio else view.barWidth
-            val body = optimalBarWidth(spacing, ratio)
-            val metrics = CandleMetrics(
-                body = body,
-                wick = wickWidth(body, spacing, ratio),
-                border = borderWidth(body, ratio),
-                outlined = drawBorder(body, borderWidth(body, ratio)),
-            )
-
-            if (decoration.showAxes) drawGrid(view, plotWidth, palette, ticks)
-            // The setup goes *under* the price. It is context for the bars, and drawn over them it
-            // tints every candle it covers — which on a full-height risk band is most of them.
-            decoration.signal?.let { drawSignal(view, it, plotWidth, palette, measurer) }
-            // Volume sits in the foot of the price pane rather than in a band of its own — the way
-            // every terminal draws it. A separate band cost a fifth of the canvas to say something
-            // the reader glances at, and on a chart with three oscillators the volume bars ended up
-            // taller than the candles above them.
-            if (decoration.showVolume && series.hasVolume) {
-                clipRect(0f, 0f, plotWidth, plotHeight) {
-                    drawVolume(view, plotHeight, palette, metrics.body)
+            // Everything below is in *plot* space: x zero is the plot's left edge, which is where
+            // `ChartViewport.xOf` has always put the first bar. The gutters are painted at negative
+            // x or past `plotWidth`, and the gestures come back the other way through
+            // `PlotFrame.toPlot`.
+            translate(left = frame.left) {
+                if (view.visibleCount == 0) {
+                    // Nothing to draw, and the axis is *cleared* rather than left holding the last
+                    // series' numbers. A price scale that keeps its labels after a failed load is
+                    // the most dangerous thing this file could render: it says the market is at a
+                    // price nobody has quoted.
+                    if (decoration.showAxes) {
+                        if (frame.rightGutter > 0f) drawEmptyAxis(plotWidth, frame.rightGutter, palette, measurer)
+                        if (frame.leftGutter > 0f) drawEmptyAxis(-frame.leftGutter, frame.leftGutter, palette, measurer)
+                    }
+                    return@Canvas
                 }
-            }
-            when {
-                type.isLine -> drawLineSeries(view, palette, filled = type == ChartType.AREA)
-                type == ChartType.BARS -> drawOhlcBars(view, palette, metrics)
-                else -> drawCandles(view, palette, hollow = type == ChartType.HOLLOW, metrics = metrics)
-            }
-            // Clipped, like the drawings below and for the same reason. An overlay is a value per
-            // bar and most of them stay near the price — but a pivot ladder, a SuperTrend after a
-            // flip, or a Bollinger band on a spike all resolve to a y outside the plot, and an
-            // unclipped Canvas paints them over the header and the axis. The first render of the
-            // chart screen had a pivot line drawn across the symbol name.
-            // Rebased once for the frame and spent twice: by the lines and by the legend rows that
-            // name them. Doing it in each would run the same pass over the same arrays and give the
-            // two a way to disagree about what a comparison is currently reading.
-            val rebased = if (decoration.comparisons.isEmpty()) {
-                emptyList()
-            } else {
-                decoration.comparisons.map {
-                    rebase(it, decoration.comparisonBasis, view.firstVisible, view.series.close)
-                }
-            }
-            clipRect(0f, 0f, plotWidth, plotHeight) {
-                decoration.overlays.forEach { drawOverlay(view, it, density.density) }
-                // Over the overlays and under the levels: a comparison is a second instrument's
-                // price and belongs in the same layer as the first's moving averages, while a level
-                // is a line the reader has to be able to see across everything.
-                drawComparisons(
-                    view = view,
-                    comparisons = decoration.comparisons,
-                    rebased = rebased,
-                    basis = decoration.comparisonBasis,
-                    palette = palette,
-                    measurer = measurer,
+
+                // Candle geometry, resolved once for the frame. Everything that draws a bar-shaped
+                // thing — candles, OHLC ticks, volume, a histogram — takes its width from here, so
+                // the four cannot drift apart by a pixel and make the chart look mis-registered.
+                val ratio = density.density
+                val spacing = if (ratio > 0f) view.barWidth / ratio else view.barWidth
+                val body = optimalBarWidth(spacing, ratio)
+                val metrics = CandleMetrics(
+                    body = body,
+                    wick = wickWidth(body, spacing, ratio),
+                    border = borderWidth(body, ratio),
+                    outlined = drawBorder(body, borderWidth(body, ratio)),
                 )
-                decoration.levels.forEach { drawLevel(view, it, plotWidth, measurer) }
-                decoration.markers.forEach { drawMarker(view, it, density.density) }
-            }
-            // The reader's own drawings go *over* the price — the opposite of the signal band. They
-            // are annotations on the bars, and an annotation the bars cover is not one.
-            //
-            // Clipped to the plot, because a Compose Canvas does not clip itself and half these
-            // tools are unbounded by definition: a ray runs four screen-diagonals past its second
-            // point, and an unclipped one paints straight over the price axis, the volume pane and
-            // whatever composable sits below the chart.
-            //
-            // A live drawing layer wins over the decoration's static list, and carries the
-            // half-placed drawing with it — that is what lets a five-point pattern take shape as it
-            // is tapped out rather than appearing whole on the fifth tap.
-            val marks = drawing?.visible ?: decoration.drawings
-            val highlighted = drawing?.selectedId ?: decoration.selectedDrawingId
-            if (marks.isNotEmpty()) {
+
+                // Which type is going to be *drawn*, which is not always the one that was picked.
+                // A footprint and a profile are tables of numbers inside a bar: without volume they
+                // would be a grid of zeros, and below `FOOTPRINT_MIN_SLOT_DP` the numbers cannot be
+                // printed at all and what is left is grey mush a reader cannot tell from a fault.
+                // Both fall back to candles, which is the honest picture of the same bars.
+                val drawnType = when {
+                    type == ChartType.FOOTPRINT &&
+                        (!view.series.hasVolume || view.barWidth < FOOTPRINT_MIN_SLOT_DP.toPx()) ->
+                        ChartType.CANDLES
+                    type == ChartType.TPO && !view.series.hasVolume -> ChartType.CANDLES
+                    else -> type
+                }
+
+                if (decoration.showAxes) drawGrid(view, plotWidth, palette, ticks)
+                // The setup goes *under* the price. It is context for the bars, and drawn over them
+                // it tints every candle it covers — which on a full-height risk band is most of them.
+                decoration.signal?.let { drawSignal(view, it, plotWidth, palette, measurer) }
+                // Volume sits in the foot of the price pane rather than in a band of its own — the
+                // way every terminal draws it. A separate band cost a fifth of the canvas to say
+                // something the reader glances at, and on a chart with three oscillators the volume
+                // bars ended up taller than the candles above them.
+                //
+                // Never under a footprint or a profile: those two already draw volume per price row
+                // inside the bar, and a second reading of the same number behind them is noise.
+                val volumeBand = decoration.showVolume && series.hasVolume &&
+                    drawnType != ChartType.FOOTPRINT && drawnType != ChartType.TPO
+                if (volumeBand) {
+                    clipRect(0f, 0f, plotWidth, plotHeight) {
+                        drawVolume(view, plotHeight, palette, metrics.body)
+                    }
+                }
                 clipRect(0f, 0f, plotWidth, plotHeight) {
-                    marks.forEach { mark ->
-                        drawDrawing(
-                            drawing = mark,
+                    when {
+                        drawnType == ChartType.BASELINE -> drawBaseline(
                             view = view,
+                            palette = palette,
+                            base = baseLevel,
+                            above = baselineHalves.first,
+                            below = baselineHalves.second,
+                            conflateGap = conflateGap,
+                        )
+                        drawnType == ChartType.HLC_AREA -> drawHlcArea(view, palette, conflateGap)
+                        drawnType == ChartType.STEP_LINE -> drawStepLine(view, palette, stepHeld, conflateGap)
+                        drawnType == ChartType.LINE_MARKERS -> drawLineMarkers(view, palette, conflateGap)
+                        drawnType == ChartType.VOLUME_CANDLES ->
+                            drawVolumeCandles(view, palette, metrics, barWidths)
+                        drawnType == ChartType.FOOTPRINT -> drawFootprint(
+                            view = view,
+                            palette = palette,
+                            rows = footprintRows(view, typeConfig),
                             measurer = measurer,
-                            selected = mark.id == highlighted,
+                            cache = textCache,
+                        )
+                        drawnType == ChartType.TPO -> drawTpo(
+                            view = view,
+                            palette = palette,
+                            rows = legibleRows(
+                                requested = typeConfig.tpoRows
+                                    ?: ChartTransforms.defaultRows(view.series, view.firstVisible, view.lastVisible),
+                                plotHeight = view.plotHeight,
+                                minRowPx = MIN_CELL_HEIGHT_DP.toPx(),
+                            ),
+                            bracketBars = tpoBracketBars(
+                                visibleCount = view.visibleCount,
+                                barSeconds = barIntervalSeconds(view.series),
+                                bracketMinutes = typeConfig.tpoBracketMinutes,
+                            ),
+                        )
+                        drawnType.isLine ->
+                            drawLineSeries(view, palette, filled = drawnType == ChartType.AREA, conflateGap = conflateGap)
+                        drawnType == ChartType.BARS -> drawOhlcBars(view, palette, metrics)
+                        else -> drawCandles(
+                            view = view,
+                            palette = palette,
+                            hollow = drawnType == ChartType.HOLLOW,
+                            metrics = metrics,
                         )
                     }
                 }
-            }
-            if (paneHeight > 0f) {
-                var top = plotHeight
-                val share = paneHeight / decoration.panes.sumOf { it.heightRatio.toDouble() }.toFloat()
-                for (pane in decoration.panes) {
-                    val height = pane.heightRatio * share
-                    drawPane(view, pane, top, height, plotWidth, palette, measurer, density.density, metrics.body)
-                    top += height
+                // Clipped, like the drawings below and for the same reason. An overlay is a value
+                // per bar and most of them stay near the price — but a pivot ladder, a SuperTrend
+                // after a flip, or a Bollinger band on a spike all resolve to a y outside the plot,
+                // and an unclipped Canvas paints them over the header and the axis. The first render
+                // of the chart screen had a pivot line drawn across the symbol name.
+                clipRect(0f, 0f, plotWidth, plotHeight) {
+                    shown.overlays.forEach { drawOverlay(view, it, density.density, conflateGap) }
+                    // Over the overlays and under the levels: a comparison is a second instrument's
+                    // price and belongs in the same layer as the first's moving averages, while a
+                    // level is a line the reader has to be able to see across everything.
+                    drawComparisons(
+                        view = view,
+                        comparisons = shown.comparisons,
+                        rebased = shownRebased,
+                        basis = decoration.comparisonBasis,
+                        palette = palette,
+                        measurer = measurer,
+                    )
+                    decoration.levels.forEach { drawLevel(view, it, plotWidth, measurer) }
+                    decoration.markers.forEach { drawMarker(view, it, density.density) }
+                }
+                // The reader's own drawings go *over* the price — the opposite of the signal band.
+                // They are annotations on the bars, and an annotation the bars cover is not one.
+                //
+                // Clipped to the plot, because a Compose Canvas does not clip itself and half these
+                // tools are unbounded by definition: a ray runs four screen-diagonals past its
+                // second point, and an unclipped one paints straight over the price axis, the volume
+                // pane and whatever composable sits below the chart.
+                //
+                // A live drawing layer wins over the decoration's static list, and carries the
+                // half-placed drawing with it — that is what lets a five-point pattern take shape as
+                // it is tapped out rather than appearing whole on the fifth tap.
+                val marks = drawing?.visible ?: decoration.drawings
+                val highlighted = drawing?.selectedId ?: decoration.selectedDrawingId
+                if (marks.isNotEmpty()) {
+                    clipRect(0f, 0f, plotWidth, plotHeight) {
+                        marks.forEach { mark ->
+                            drawDrawing(
+                                drawing = mark,
+                                view = view,
+                                measurer = measurer,
+                                selected = mark.id == highlighted,
+                            )
+                        }
+                    }
+                }
+                if (paneHeight > 0f) {
+                    var top = plotHeight
+                    val share = paneHeight / shown.panes.sumOf { it.heightRatio.toDouble() }.toFloat()
+                    for (pane in shown.panes) {
+                        val height = pane.heightRatio * share
+                        drawPane(view, pane, top, height, plotWidth, palette, measurer, density.density, metrics.body)
+                        top += height
+                    }
+                }
+                // The live edge, and its price against the axis. This is the one number on the chart
+                // a reader looks for without being asked, and before this it was only in the header —
+                // where it says nothing about *where* on the scale the market currently is.
+                val lastPriceY = if (decoration.showLastPrice) lastPriceTagY(view, measurer) else null
+                if (decoration.showAxes) {
+                    // The ladder goes in every gutter the reader asked for; the tags go in one of
+                    // them. Two live-price tags saying the same number is not two readings, and the
+                    // one that is worth having is the one nearest the live edge.
+                    if (frame.rightGutter > 0f) {
+                        drawPriceAxis(
+                            view = view,
+                            gutterX = plotWidth,
+                            gutterWidth = frame.rightGutter,
+                            palette = palette,
+                            measurer = measurer,
+                            suppressNear = if (frame.tagsOnRight) lastPriceY else null,
+                            ticks = ticks,
+                            cache = textCache,
+                        )
+                    }
+                    if (frame.leftGutter > 0f) {
+                        drawPriceAxis(
+                            view = view,
+                            gutterX = -frame.leftGutter,
+                            gutterWidth = frame.leftGutter,
+                            palette = palette,
+                            measurer = measurer,
+                            suppressNear = if (frame.tagsOnRight) null else lastPriceY,
+                            ticks = ticks,
+                            cache = textCache,
+                        )
+                    }
+                    if (decoration.showTimeAxis) {
+                        drawTimeAxis(view, plotHeight + paneHeight, plotWidth, type, palette, measurer, zone)
+                    }
+                }
+                if (decoration.showLastPrice) {
+                    drawLastPrice(view, plotWidth, frame, palette, measurer, decoration.showAxes)
+                }
+                if (countdownLive && decoration.showAxes && nowSeconds > 0L) {
+                    drawCountdown(view, frame, nowSeconds, palette, measurer)
                 }
             }
-            // The live edge, and its price against the axis. This is the one number on the chart a
-            // reader looks for without being asked, and before this it was only in the header —
-            // where it says nothing about *where* on the scale the market currently is.
-            val lastPriceY = if (decoration.showLastPrice) lastPriceTagY(view, measurer) else null
-            if (decoration.showAxes) {
-                drawPriceAxis(view, plotWidth, axisWidth, palette, measurer, lastPriceY, ticks)
-                if (decoration.showTimeAxis) {
-                    drawTimeAxis(view, plotHeight + paneHeight, plotWidth, type, palette, measurer)
-                }
+        }
+
+        // ------------------------------------------------------------------ the second layer
+        //
+        // The crosshair on its own canvas, stacked over the bars.
+        //
+        // `Invalidation` was honest that a Compose `Canvas` repaints everything it draws, and that
+        // has not changed — but *what* it draws can be split. The bars, the axes and the panes are
+        // one draw lambda that reads none of the crosshair's state; the crosshair is a second one
+        // that reads it. A pointer moving therefore re-runs this lambda alone: the price range is
+        // not re-walked, the ticks are not rebuilt, and the several hundred rectangles underneath
+        // are not re-issued. That is the two-layer repaint every terminal has, in the one form
+        // Compose offers.
+        //
+        // The geometry comes from what the layer below published rather than from a second
+        // calculation, so the two can never disagree about where a bar is.
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val frame = frames[0] ?: return@Canvas
+            val view = lastView[0] ?: return@Canvas
+            val mark = crosshairOverride ?: crosshair ?: return@Canvas
+            if (view.visibleCount == 0) return@Canvas
+            val timeAxis = if (decoration.showAxes && decoration.showTimeAxis) timeHeight else 0f
+            translate(left = frame.left) {
+                drawCrosshair(
+                    view = view,
+                    crosshair = mark,
+                    plotWidth = frame.width,
+                    frame = frame,
+                    fullHeight = max(0f, size.height - timeAxis),
+                    palette = palette,
+                    measurer = measurer,
+                    decoration = decoration,
+                    zone = zone,
+                )
             }
-            if (decoration.showLastPrice) {
-                drawLastPrice(view, plotWidth, axisWidth, palette, measurer, decoration.showAxes)
-            }
-            if (countdownLive && decoration.showAxes && nowSeconds > 0L) {
-                drawCountdown(view, plotWidth, axisWidth, nowSeconds, palette, measurer)
-            }
-            if (decoration.showLegend) {
-                drawLegend(view, decoration, rebased, crosshair, palette, measurer, tracking)
-            }
-            crosshair?.let {
-                drawCrosshair(view, it, plotWidth, axisWidth, plotHeight + paneHeight, palette, measurer, decoration)
-            }
+        }
+
+        if (decoration.showLegend) {
+            ChartLegendOverlay(
+                decoration = decoration,
+                series = display,
+                viewport = viewport,
+                rebased = rebased,
+                crosshair = { crosshairOverride ?: crosshair },
+                seriesLabel = seriesLabel,
+                palette = palette,
+                hidden = hidden,
+                measurer = measurer,
+                tracking = tracking,
+                onToggleVisibility = { target ->
+                    hidden = if (target in hidden) hidden - target else hidden + target
+                    onToggleSeriesVisibility?.invoke(target)
+                },
+                onOpenSettings = onSeriesSettings,
+                onRemove = onRemoveSeries,
+                // Inset past the gutter it sits beside, so a left-hand axis does not have the
+                // legend printed over its numbers.
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        start = if (decoration.showAxes && scaleSide != ScaleSide.RIGHT &&
+                            scaleSide != ScaleSide.MERGED
+                        ) {
+                            with(density) { axisWidth.toDp() }
+                        } else {
+                            0.dp
+                        },
+                        end = if (decoration.showAxes && scaleSide != ScaleSide.LEFT) {
+                            with(density) { axisWidth.toDp() }
+                        } else {
+                            0.dp
+                        },
+                    ),
+            )
+        }
+
+        onRequestAlertAt?.let { request ->
+            AlertGutterAffordance(
+                pointer = alertPointer,
+                frames = frames,
+                lastView = lastView,
+                palette = palette,
+                onRequestAlertAt = request,
+            )
         }
     }
 }
+
+/**
+ * The `+` in the gutter, with its state read here rather than in the chart's own body.
+ *
+ * A composable of its own for one reason, and it is the same reason the crosshair got its own
+ * canvas: reading [pointer] in [CoineProChart] would recompose the entire chart — every gesture
+ * handler, the whole draw lambda — because a pointer moved a few pixels down the price axis.
+ */
+@Composable
+private fun AlertGutterAffordance(
+    pointer: MutableState<Float?>,
+    frames: Array<PlotFrame?>,
+    lastView: Array<ChartViewport?>,
+    palette: ChartPalette,
+    onRequestAlertAt: (Double) -> Unit,
+) {
+    val y = pointer.value ?: return
+    val view = lastView[0] ?: return
+    val price = view.priceAt(y)
+    if (!price.isFinite()) return
+    PriceAxisAlertAffordance(
+        frame = frames[0],
+        pointerY = y,
+        price = price,
+        label = view.axisText(price),
+        palette = palette,
+        onRequestAlertAt = {
+            onRequestAlertAt(it)
+            pointer.value = null
+        },
+    )
+}
+
 
 /**
  * A stored ARGB long as a Compose colour.
@@ -1284,6 +1771,45 @@ private fun chartColour(argb: Long): Color = Color(opaqueArgb(argb))
 internal fun opaqueArgb(argb: Long): Long =
     if ((argb ushr ALPHA_SHIFT) == 0L) argb or ALPHA_MASK else argb
 
+/**
+ * The zone this chart reads times in unless the caller says otherwise.
+ *
+ * The same zone `core:marketdata` cuts its buckets in — its `CHART_TIME_ZONE` — written out again
+ * here because `core:chart` does not depend on that module and a chart is not going to gain a
+ * dependency on the feed layer to learn what a day is. If one of the two ever moves, the other has
+ * to move with it: the whole bug this fixes was two halves of the same picture using two zones.
+ *
+ * A top-level `val`, so the lookup and the parse happen once for the process rather than once per
+ * label per frame.
+ */
+val CHART_ZONE: ZoneId = ZoneId.of("Asia/Tehran")
+
+/** The two halves of a baseline split when there is no baseline to split. Allocated once. */
+private val EMPTY_SPLIT: Pair<DoubleArray, DoubleArray> = DoubleArray(0) to DoubleArray(0)
+
+/**
+ * How many price rows one footprint bar is cut into.
+ *
+ * Two constraints meet here and neither one alone is enough. [ChartTransforms.defaultRows] answers
+ * in price — a row is an eighth of an average bar's range — and knows nothing about pixels; the plot
+ * knows pixels and nothing about what a row means. So the row count is derived from the data and
+ * then capped by how tall an *average bar* actually is on screen, because that is the box the rows
+ * have to fit inside. Capping against the whole plot instead would allow sixty-four rows in a bar a
+ * centimetre high.
+ */
+private fun DrawScope.footprintRows(view: ChartViewport, config: ChartTypeConfig): Int {
+    val requested = config.footprintRows
+        ?: ChartTransforms.defaultRows(view.series, view.firstVisible, view.lastVisible)
+    val span = view.priceRange.endInclusive - view.priceRange.start
+    val average = ChartTransforms.averageRange(view.series.bars)
+    val barPixels = if (span > 0.0 && average > 0.0) {
+        (average / span * view.plotHeight).toFloat()
+    } else {
+        view.plotHeight
+    }
+    return legibleRows(requested, barPixels, MIN_CELL_HEIGHT_DP.toPx())
+}
+
 /** The alpha byte of a fully opaque ARGB value. See [chartColour]. */
 private const val ALPHA_MASK = 0xFF000000L
 
@@ -1291,7 +1817,7 @@ private const val ALPHA_MASK = 0xFF000000L
 private const val ALPHA_SHIFT = 24
 
 /** The colours the chart draws with, resolved once per composition rather than per bar. */
-private data class ChartPalette(
+internal data class ChartPalette(
     val up: Color,
     val down: Color,
     val grid: Color,
@@ -1358,7 +1884,7 @@ private fun DrawScope.drawCandles(
  * call sites each doing their own arithmetic is four chances for the volume bars to be a pixel
  * wider than the candles above them, which reads as a chart that has not been assembled properly.
  */
-private data class CandleMetrics(
+internal data class CandleMetrics(
     /** The candle body, and the width of a volume bar and a histogram column. */
     val body: Float,
     /** The high-to-low line, never wider than [body]. */
@@ -1492,7 +2018,7 @@ private fun DrawScope.drawComparisons(
  * figure on this canvas carries it: the device locale is Persian and would otherwise render this one
  * number in a Latin column in Persian digits.
  */
-private fun comparisonReading(value: Double, basis: ComparisonBasis): String = when {
+internal fun comparisonReading(value: Double, basis: ComparisonBasis): String = when {
     !value.isFinite() -> NO_VALUE
     basis == ComparisonBasis.PERCENT ->
         (if (value > 0.0) "+" else "") + formatPrice(value, SCALE_VALUE_DECIMALS) + "%"
@@ -1525,17 +2051,24 @@ private fun DrawScope.drawOhlcBars(view: ChartViewport, palette: ChartPalette, m
     }
 }
 
-private fun DrawScope.drawLineSeries(view: ChartViewport, palette: ChartPalette, filled: Boolean) {
-    val path = Path()
-    for (index in view.firstVisible..view.lastVisible) {
-        val point = Offset(view.xOf(index), view.yOf(view.series.close[index]))
-        if (index == view.firstVisible) path.moveTo(point.x, point.y) else path.lineTo(point.x, point.y)
-    }
+/**
+ * The closes as a line, and optionally the area under it.
+ *
+ * The fill is a shallow vertical ramp rather than a flat wash — see [areaBrush] for the numbers and
+ * for why the gate allows this one gradient. Flat at `0.16` it read as a printed block; ramped from
+ * the line down it reads as the edge of something lit, which is what every terminal's area chart
+ * looks like and what a reader's eye takes as "under the price".
+ */
+private fun DrawScope.drawLineSeries(
+    view: ChartViewport,
+    palette: ChartPalette,
+    filled: Boolean,
+    conflateGap: Float,
+) {
+    val path = closePath(view, conflateGap)
     // Colour by the direction of the visible window, so a line chart still says up or down at a
     // glance the way a candle chart does.
-    val first = view.series.close[view.firstVisible]
-    val last = view.series.close[view.lastVisible]
-    val colour = if (last >= first) palette.up else palette.down
+    val colour = directionColour(view, palette)
 
     if (filled) {
         val fill = Path().apply {
@@ -1544,14 +2077,24 @@ private fun DrawScope.drawLineSeries(view: ChartViewport, palette: ChartPalette,
             lineTo(view.xOf(view.firstVisible), view.plotHeight)
             close()
         }
-        drawPath(fill, color = colour.copy(alpha = AREA_ALPHA))
+        drawPath(fill, brush = areaBrush(colour, 0f, view.plotHeight))
     }
     drawPath(path, color = colour, style = Stroke(width = LINE_WIDTH_DP.toPx()))
 }
 
-private fun DrawScope.drawOverlay(view: ChartViewport, overlay: ChartLine, density: Float) {
+private fun DrawScope.drawOverlay(
+    view: ChartViewport,
+    overlay: ChartLine,
+    density: Float,
+    conflateGap: Float,
+) {
     val path = Path()
     var started = false
+    // The conflator holds a column open, so the pen has to be lifted through it as well: a gap that
+    // bypassed it would leave the previous column unflushed and join the two sides of the gap.
+    val conflator = ColumnConflator(conflateGap) { x, y ->
+        if (started) path.lineTo(x, y) else { path.moveTo(x, y); started = true }
+    }
     for (index in view.firstVisible..view.lastVisible) {
         val value = overlay.values[index]
         if (value == null) {
@@ -1559,17 +2102,15 @@ private fun DrawScope.drawOverlay(view: ChartViewport, overlay: ChartLine, densi
             // rather than drawing a straight line across it, which would read as a real move.
             // Unless the study is one whose gaps are the point: a zigzag names only its turns and
             // the join between them is the whole shape.
-            if (!overlay.connectNulls) started = false
+            if (!overlay.connectNulls) {
+                conflator.flush()
+                started = false
+            }
             continue
         }
-        val point = Offset(view.xOf(index), view.yOf(value))
-        if (!started) {
-            path.moveTo(point.x, point.y)
-            started = true
-        } else {
-            path.lineTo(point.x, point.y)
-        }
+        conflator.add(view.xOf(index), view.yOf(value))
     }
+    conflator.flush()
     drawPath(
         path = path,
         color = Color(overlay.colour),
@@ -1969,12 +2510,14 @@ private fun timeLabelIndices(view: ChartViewport): List<Int> {
  */
 private fun DrawScope.drawPriceAxis(
     view: ChartViewport,
-    plotWidth: Float,
-    axisWidth: Float,
+    /** The gutter's left edge in plot space — past the plot on the right, negative on the left. */
+    gutterX: Float,
+    gutterWidth: Float,
     palette: ChartPalette,
     measurer: TextMeasurer,
     suppressNear: Float?,
     ticks: PriceTicks,
+    cache: TextWidthCache<TextLayoutResult>,
 ) {
     if (ticks.isEmpty()) return
     // From the *span*, not from the top of the range. `decimalsFor(2643.18)` gives one decimal
@@ -1991,7 +2534,14 @@ private fun DrawScope.drawPriceAxis(
         .minOrNull()
         ?: abs(ticks.step)
     val decimals = decimalsForStep(gap)
-    val labels = ticks.map { measurer.measure(view.axisText(it, decimals), axisStyle(palette.text)) }
+    // Through the cache, and this is where it earns its keep: the ladder is anchored to round
+    // prices, so panning slides the same five to twenty-four strings across the gutter rather than
+    // renumbering them, and every one of them was being laid out again on every frame of the drag.
+    val style = axisStyle(palette.text)
+    val labels = ticks.map { price ->
+        val text = view.axisText(price, decimals)
+        cache.measure(text to style) { measurer.measure(text, style) }
+    }
     val lineHeight = labels.maxOf { it.size.height }.toFloat()
     val placed = separateLabels(
         centres = FloatArray(ticks.size) { view.yOf(ticks[it]) },
@@ -2001,7 +2551,7 @@ private fun DrawScope.drawPriceAxis(
     )
     // Cropped rather than dropped: the clip is the whole gutter, so a label pushed against either
     // end loses the part that falls outside and keeps the rest.
-    clipRect(plotWidth, 0f, plotWidth + axisWidth, view.plotHeight) {
+    clipRect(gutterX, 0f, gutterX + gutterWidth, view.plotHeight) {
         labels.forEachIndexed { index, label ->
             val top = placed[index] - label.size.height / 2
             if (top + label.size.height < 0f || top > view.plotHeight) return@forEachIndexed
@@ -2010,7 +2560,7 @@ private fun DrawScope.drawPriceAxis(
             }
             drawText(
                 textLayoutResult = label,
-                topLeft = Offset(plotWidth + AXIS_PADDING_DP.toPx(), top),
+                topLeft = Offset(gutterX + AXIS_PADDING_DP.toPx(), top),
             )
         }
     }
@@ -2029,24 +2579,27 @@ private fun DrawScope.drawPriceAxis(
  * is about to place an order from.
  */
 private fun DrawScope.drawEmptyAxis(
-    plotWidth: Float,
-    axisWidth: Float,
+    gutterX: Float,
+    gutterWidth: Float,
     palette: ChartPalette,
     measurer: TextMeasurer,
 ) {
-    val width = max(0f, axisWidth)
-    drawRect(color = palette.stage, topLeft = Offset(plotWidth, 0f), size = Size(width, size.height))
+    val width = max(0f, gutterWidth)
+    drawRect(color = palette.stage, topLeft = Offset(gutterX, 0f), size = Size(width, size.height))
+    // The hairline goes on the edge the plot is on, so the chart still has a boundary rather than a
+    // strip of stage colour floating against it.
+    val edge = if (gutterX < 0f) gutterX + width else gutterX
     drawLine(
         color = palette.grid.copy(alpha = GRID_ALPHA),
-        start = Offset(plotWidth, 0f),
-        end = Offset(plotWidth, size.height),
+        start = Offset(edge, 0f),
+        end = Offset(edge, size.height),
         strokeWidth = HAIRLINE_DP.toPx(),
     )
     val mark = measurer.measure(NO_VALUE, axisStyle(palette.text))
     drawText(
         textLayoutResult = mark,
         topLeft = Offset(
-            plotWidth + max(0f, (width - mark.size.width) / 2),
+            gutterX + max(0f, (width - mark.size.width) / 2),
             max(0f, (size.height - mark.size.height) / 2),
         ),
     )
@@ -2080,7 +2633,7 @@ private fun DrawScope.lastPriceTagY(view: ChartViewport, measurer: TextMeasurer)
 private fun DrawScope.drawLastPrice(
     view: ChartViewport,
     plotWidth: Float,
-    axisWidth: Float,
+    frame: PlotFrame,
     palette: ChartPalette,
     measurer: TextMeasurer,
     withAxis: Boolean,
@@ -2096,12 +2649,11 @@ private fun DrawScope.drawLastPrice(
         strokeWidth = HAIRLINE_DP.toPx(),
         pathEffect = dashEffect(LineStyleKind.LARGE_DASHED, HAIRLINE_DP.toPx()),
     )
-    if (!withAxis) return
+    if (!withAxis || frame.tagGutterWidth <= 0f) return
     drawAxisTag(
         text = view.axisText(bar.c),
         y = y,
-        plotWidth = plotWidth,
-        axisWidth = axisWidth,
+        frame = frame,
         fill = colour,
         textColour = palette.stage,
         measurer = measurer,
@@ -2130,8 +2682,7 @@ private fun DrawScope.drawLastPrice(
  */
 private fun DrawScope.drawCountdown(
     view: ChartViewport,
-    plotWidth: Float,
-    axisWidth: Float,
+    frame: PlotFrame,
     nowSeconds: Long,
     palette: ChartPalette,
     measurer: TextMeasurer,
@@ -2153,10 +2704,10 @@ private fun DrawScope.drawCountdown(
     val priceTagHeight = measurer.measure("0", axisStyle(Color.White)).size.height + TAG_PADDING_DP.toPx() * 2
     val top = (priceY + priceTagHeight / 2 + COUNTDOWN_GAP_DP.toPx())
         .coerceIn(0f, max(0f, view.plotHeight - height))
-    drawAxisChip(plotWidth, top, axisWidth, height, palette.stage)
+    drawAxisChip(frame, top, height, palette.stage)
     drawText(
         textLayoutResult = label,
-        topLeft = Offset(plotWidth + AXIS_PADDING_DP.toPx(), top + TAG_PADDING_DP.toPx()),
+        topLeft = Offset(frame.tagGutterX + AXIS_PADDING_DP.toPx(), top + TAG_PADDING_DP.toPx()),
     )
 }
 
@@ -2173,20 +2724,23 @@ private fun DrawScope.drawCountdown(
  * it and large enough to be visible as a decision rather than as an artefact.
  */
 private fun DrawScope.drawAxisChip(
-    plotWidth: Float,
+    frame: PlotFrame,
     top: Float,
-    axisWidth: Float,
     height: Float,
     fill: Color,
 ) {
     val radius = TAG_RADIUS_DP.toPx()
-    val radii = labelChipRadii(rightAligned = true, radius = radius)
+    // Square against the canvas edge and rounded towards the plot, whichever side the gutter is on.
+    // Hard-coding the right-aligned form was one of the several ways the axis could only ever be on
+    // the right: on a left-hand gutter it rounded the corners that are flush with the screen.
+    val radii = labelChipRadii(rightAligned = frame.tagsOnRight, radius = radius)
+    val gutterX = frame.tagGutterX
     val chip = Path().apply {
         addRoundRect(
             RoundRect(
-                left = plotWidth + 1f,
+                left = gutterX + 1f,
                 top = top,
-                right = plotWidth + max(1f, axisWidth - 1f),
+                right = gutterX + max(1f, frame.tagGutterWidth - 1f),
                 bottom = top + height,
                 topLeftCornerRadius = CornerRadius(radii[0], radii[1]),
                 topRightCornerRadius = CornerRadius(radii[2], radii[3]),
@@ -2231,8 +2785,7 @@ internal fun formatCountdown(seconds: Long): String {
 private fun DrawScope.drawAxisTag(
     text: String,
     y: Float,
-    plotWidth: Float,
-    axisWidth: Float,
+    frame: PlotFrame,
     fill: Color,
     textColour: Color,
     measurer: TextMeasurer,
@@ -2241,143 +2794,13 @@ private fun DrawScope.drawAxisTag(
     val label = measurer.measure(text, axisStyle(textColour))
     val height = label.size.height + TAG_PADDING_DP.toPx() * 2
     val top = (y - height / 2).coerceIn(0f, max(0f, plotHeight - height))
-    drawAxisChip(plotWidth, top, axisWidth, height, fill)
+    drawAxisChip(frame, top, height, fill)
     drawText(
         textLayoutResult = label,
-        topLeft = Offset(plotWidth + AXIS_PADDING_DP.toPx(), top + TAG_PADDING_DP.toPx()),
+        topLeft = Offset(frame.tagGutterX + AXIS_PADDING_DP.toPx(), top + TAG_PADDING_DP.toPx()),
     )
 }
 
-/**
- * The corner readout.
- *
- * The bar's four prices, then one line per overlay in that overlay's own colour. Which bar it
- * reads is the crosshair's when there is one and the last otherwise — so putting a finger on the
- * chart turns the legend into a scrubber over history rather than a second copy of the header.
- *
- * Capped at [LEGEND_LINES] rows. A chart with nine overlays would otherwise print a paragraph over
- * its own candles, and the overflow is stated rather than silently dropped.
- *
- * In tracking mode it becomes the reading line proper: the cap and the height budget both go up,
- * and every *pane* line joins the overlays, so an RSI and a MACD signal read against the same bar
- * the crosshair is on. That is the whole point of the mode — a reader holding a crosshair on a
- * divergence wants the oscillator's number, and it is otherwise nowhere on the screen.
- */
-private fun DrawScope.drawLegend(
-    view: ChartViewport,
-    decoration: ChartDecoration,
-    /** The comparisons already rebased, aligned with [ChartDecoration.comparisons]. */
-    rebased: List<DoubleArray>,
-    crosshair: Crosshair?,
-    palette: ChartPalette,
-    measurer: TextMeasurer,
-    tracking: Boolean,
-) {
-    val index = (crosshair?.index ?: view.lastVisible).coerceIn(view.firstVisible, view.lastVisible)
-    val bar = view.series.bars.getOrNull(index) ?: return
-    val decimals = decimalsFor(bar.c)
-    val available = view.plotWidth - LEGEND_INSET_DP.toPx() * 2 - LEGEND_PLATE_PADDING_DP.toPx() * 2
-
-    // Measured before anything is drawn, because the plate behind the block has to be sized to the
-    // block and a plate cannot be drawn after the text it is supposed to sit behind.
-    val lines = mutableListOf<TextLayoutResult>()
-
-    // The head line is fitted rather than truncated. Four prices at four decimals on a narrow
-    // phone will not fit at any spacing, and «O 2571.2  H 2575.7  L 2570.1  C 2…» is the one
-    // number a reader came for, cut off. So the separator tightens, then the labels go, and only
-    // then does it fall back to the close alone — which is still true and still useful.
-    val headColour = axisStyle(if (bar.up) palette.up else palette.down)
-    val heads = listOf(
-        "O ${formatPrice(bar.o, decimals)}   H ${formatPrice(bar.h, decimals)}   " +
-            "L ${formatPrice(bar.l, decimals)}   C ${formatPrice(bar.c, decimals)}",
-        "O ${formatPrice(bar.o, decimals)} H ${formatPrice(bar.h, decimals)} " +
-            "L ${formatPrice(bar.l, decimals)} C ${formatPrice(bar.c, decimals)}",
-        "${formatPrice(bar.o, decimals)} ${formatPrice(bar.h, decimals)} " +
-            "${formatPrice(bar.l, decimals)} ${formatPrice(bar.c, decimals)}",
-        "C ${formatPrice(bar.c, decimals)}",
-    )
-    lines += heads.map { measurer.measure(it, headColour) }
-        .let { measured -> measured.firstOrNull { it.size.width <= available } ?: measured.last() }
-
-    // The legend may take a quarter of the plot and no more. On a full-height chart that is every
-    // row it wants; on a card two hundred pixels tall it is the OHLC line and one overlay, which is
-    // the difference between a legend and a chart with writing over it.
-    val budget = view.plotHeight * if (tracking) TRACKING_LEGEND_BUDGET else LEGEND_BUDGET
-    // The overlays share the price's precision, because they are prices. A pane line does not — an
-    // RSI at two decimals and a MACD at two decimals are two different mistakes — so each one is
-    // formatted from its own magnitude.
-    val named = buildList<Pair<ChartLine, Int>> {
-        decoration.overlays.filter { !it.label.isNullOrBlank() }.forEach { add(it to decimals) }
-        if (tracking) {
-            decoration.panes.forEach { pane ->
-                (pane.lines + listOfNotNull(pane.histogram))
-                    .filter { !it.label.isNullOrBlank() }
-                    .forEach { add(it to VALUE_OWN_DECIMALS) }
-            }
-        }
-    }
-    var height = lines[0].size.height.toFloat()
-    var drawn = 0
-    for ((overlay, places) in named.take(if (tracking) TRACKING_LEGEND_LINES else LEGEND_LINES)) {
-        val value = overlay.values[index]
-        val reading = when {
-            // Not "N/A" and not a dash. A dash is a minus sign in a column of signed numbers and it
-            // has already been read as one; «N/A» is English on a Persian screen. The empty set is
-            // neither a number nor a word, and it means exactly what it looks like.
-            value == null -> "  $NO_VALUE"
-            places == VALUE_OWN_DECIMALS -> "  " + formatPrice(value, decimalsFor(value))
-            else -> "  " + formatPrice(value, places)
-        }
-        val line = measurer.measure(overlay.label + reading, axisStyle(Color(overlay.colour)))
-        if (height + LEGEND_GAP_DP.toPx() + line.size.height > budget) break
-        lines += line
-        height += LEGEND_GAP_DP.toPx() + line.size.height
-        drawn++
-    }
-    if (named.size > drawn) {
-        val more = measurer.measure("+${named.size - drawn}", axisStyle(palette.text))
-        if (height + LEGEND_GAP_DP.toPx() + more.size.height <= budget) {
-            lines += more
-            height += LEGEND_GAP_DP.toPx() + more.size.height
-        }
-    }
-
-    // One row per compared instrument, in the colour its line is drawn in. Unlike the overlays
-    // these are not capped: there are at most [MAX_COMPARISONS] of them by construction, and a
-    // comparison line with no legend row is an unexplained coloured line on somebody's chart —
-    // which is the one thing that makes a comparison worse than opening the second chart.
-    decoration.comparisons.forEachIndexed { position, comparison ->
-        val value = rebased.getOrNull(position)?.getOrNull(index) ?: Double.NaN
-        val row = comparison.label + "  " + comparisonReading(value, decoration.comparisonBasis)
-        val line = measurer.measure(row, axisStyle(Color(comparison.colour)))
-        if (height + LEGEND_GAP_DP.toPx() + line.size.height > budget) return@forEachIndexed
-        lines += line
-        height += LEGEND_GAP_DP.toPx() + line.size.height
-    }
-
-    // The plate. Without it the legend is drawn *over* the candles, the moving averages and the
-    // dashed levels, and every stroke that crosses a glyph takes a bite out of it — which is how a
-    // five-line legend on a busy chart stops being readable at all. It is the stage colour rather
-    // than black so it disappears into the chart on either theme, and it is not opaque, because the
-    // reader is entitled to see roughly what is behind the writing.
-    val width = lines.maxOf { it.size.width }.toFloat()
-    drawRoundRect(
-        color = palette.stage,
-        topLeft = Offset(LEGEND_INSET_DP.toPx(), LEGEND_INSET_DP.toPx()),
-        size = Size(
-            width + LEGEND_PLATE_PADDING_DP.toPx() * 2,
-            height + LEGEND_PLATE_PADDING_DP.toPx() * 2,
-        ),
-        cornerRadius = CornerRadius(LEGEND_PLATE_RADIUS_DP.toPx(), LEGEND_PLATE_RADIUS_DP.toPx()),
-        alpha = LEGEND_PLATE_ALPHA,
-    )
-
-    var y = LEGEND_INSET_DP.toPx() + LEGEND_PLATE_PADDING_DP.toPx()
-    for (line in lines) {
-        drawText(line, topLeft = Offset(LEGEND_INSET_DP.toPx() + LEGEND_PLATE_PADDING_DP.toPx(), y))
-        y += line.size.height + LEGEND_GAP_DP.toPx()
-    }
-}
 
 private fun DrawScope.drawTimeAxis(
     view: ChartViewport,
@@ -2386,6 +2809,7 @@ private fun DrawScope.drawTimeAxis(
     type: ChartType,
     palette: ChartPalette,
     measurer: TextMeasurer,
+    zone: ZoneId,
 ) {
     val labels = TIME_LABELS
     // How much time the plot is showing, which is what decides whether a label is a clock or a
@@ -2404,7 +2828,7 @@ private fun DrawScope.drawTimeAxis(
         if (index > view.lastVisible) continue
         // A price-driven type has no clock, so its axis is numbered by bar. Printing a date there
         // would be a fabricated one — Renko bars carry synthetic timestamps.
-        val text = if (type.isTimeBased) formatTime(view.series.time[index], span) else "#${index + 1}"
+        val text = if (type.isTimeBased) formatTime(view.series.time[index], span, zone) else "#${index + 1}"
         // A tick that opens a new month or a new year is set bold; an ordinary day is not.
         //
         // It costs one font weight and it does most of the wayfinding on this axis. Five labels
@@ -2413,7 +2837,7 @@ private fun DrawScope.drawTimeAxis(
         // reading anything at all. It is the same reason a calendar rules a line at the end of a
         // month rather than numbering the weeks harder.
         val moment = view.series.time.getOrNull(index)
-        val boundary = type.isTimeBased && startsAPeriod(moment, previousLabel)
+        val boundary = type.isTimeBased && startsAPeriod(moment, previousLabel, zone)
         val label = measurer.measure(
             text,
             axisStyle(palette.text, axisFontSizeSp(isPriceAxis = false), bold = boundary),
@@ -2440,12 +2864,16 @@ private fun DrawScope.drawTimeAxis(
  * wrong label for a reader in Tehran on every boundary that falls in the three and a half hours
  * either side of midnight.
  *
+ * It is a parameter and not [ZoneId.systemDefault] any more, which is the bug this had. The bars
+ * are cut into buckets in [CHART_ZONE] and the label under them was being read in the *device's*
+ * zone, so on a phone set to anything but Tehran the bold label and the month it was naming were
+ * different bars. Both readings now take the same zone from the one caller that knows it.
+ *
  * The first label has nothing before it and is never a boundary. It is the start of the *view*,
  * which is not the same claim as the start of a period.
  */
-private fun startsAPeriod(time: Long?, previous: Long?): Boolean {
+internal fun startsAPeriod(time: Long?, previous: Long?, zone: ZoneId): Boolean {
     if (time == null || previous == null) return false
-    val zone = ZoneId.systemDefault()
     val now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(time), zone)
     val before = ZonedDateTime.ofInstant(Instant.ofEpochSecond(previous), zone)
     return now.year != before.year || now.monthValue != before.monthValue
@@ -2601,11 +3029,12 @@ private fun DrawScope.drawCrosshair(
     view: ChartViewport,
     crosshair: Crosshair,
     plotWidth: Float,
-    axisWidth: Float,
+    frame: PlotFrame,
     fullHeight: Float,
     palette: ChartPalette,
     measurer: TextMeasurer,
     decoration: ChartDecoration,
+    zone: ZoneId,
 ) {
     val index = crosshair.index.coerceIn(view.firstVisible, view.lastVisible)
     val bar = view.series[index]
@@ -2618,12 +3047,11 @@ private fun DrawScope.drawCrosshair(
     drawLine(palette.crosshair, Offset(x, 0f), Offset(x, fullHeight), HAIRLINE_DP.toPx(), pathEffect = dash)
     drawLine(palette.crosshair, Offset(0f, y), Offset(plotWidth, y), HAIRLINE_DP.toPx(), pathEffect = dash)
 
-    if (!decoration.showAxes) return
+    if (!decoration.showAxes || frame.tagGutterWidth <= 0f) return
     drawAxisTag(
         text = view.axisText(crosshair.price),
         y = y,
-        plotWidth = plotWidth,
-        axisWidth = axisWidth,
+        frame = frame,
         fill = palette.crosshair,
         textColour = palette.stage,
         measurer = measurer,
@@ -2635,7 +3063,7 @@ private fun DrawScope.drawCrosshair(
     // The crosshair reads one bar, so it always wants the clock — a reader holding a finger on a
     // candle is asking which candle, and «12 Mar» does not answer that on an hourly chart.
     val stamp = measurer.measure(
-        formatTime(bar.t),
+        formatTime(bar.t, zone = zone),
         axisStyle(palette.stage, axisFontSizeSp(isPriceAxis = false)),
     )
     val width = stamp.size.width + TAG_PADDING_DP.toPx() * 4
@@ -2822,7 +3250,7 @@ private fun ChartViewport.chartPointAt(
  * [bold] is for the one thing on this canvas that earns a second weight: a time-axis tick that
  * opens a new month or year.
  */
-private fun axisStyle(
+internal fun axisStyle(
     colour: Color,
     sizeSp: Float = axisFontSizeSp(isPriceAxis = true),
     bold: Boolean = false,
@@ -2840,7 +3268,7 @@ private fun axisStyle(
  * `PathEffect.dashPathEffect` with an empty array throws. Every caller would otherwise need the
  * same guard, and the one that forgot it would crash inside a draw pass.
  */
-private fun dashEffect(style: LineStyleKind, lineWidth: Float): PathEffect? {
+internal fun dashEffect(style: LineStyleKind, lineWidth: Float): PathEffect? {
     val intervals = dashIntervals(style, lineWidth)
     return if (intervals.isEmpty()) null else PathEffect.dashPathEffect(intervals)
 }
@@ -2891,9 +3319,17 @@ fun formatPrice(value: Double, decimals: Int): String =
  * daily chart zoomed into a week and zoomed out to five years wants different labels.
  *
  * Latin digits, for the same reason [formatPrice] uses them: this is a market figure.
+ *
+ * [zone] defaults to the device's, which is the only honest answer for a caller that has no chart to
+ * take a zone from. The canvas always passes its own — see the composable's `zone` parameter — so
+ * the label and the bold month boundary above it can never be read in two different zones again.
  */
-internal fun formatTime(epochSeconds: Long, spanSeconds: Long = 0L): String {
-    val zoned = Instant.ofEpochSecond(epochSeconds).atZone(ZoneId.systemDefault())
+internal fun formatTime(
+    epochSeconds: Long,
+    spanSeconds: Long = 0L,
+    zone: ZoneId = ZoneId.systemDefault(),
+): String {
+    val zoned = Instant.ofEpochSecond(epochSeconds).atZone(zone)
     val pattern = when {
         spanSeconds >= SPAN_MULTI_YEAR -> "MMM yy"
         spanSeconds >= SPAN_MULTI_DAY -> "d MMM"
@@ -2986,7 +3422,7 @@ private const val MAX_COUNTDOWN_SECONDS = 2L * 86_400
  * one more than once. `∅` is neither a number nor a word in any of this app's languages, it is the
  * same glyph in Persian and Latin runs, and it means exactly what it looks like.
  */
-private const val NO_VALUE = "∅"
+internal const val NO_VALUE = "∅"
 
 /** What the countdown says when the new bar is late. Never a negative number. */
 private const val COUNTDOWN_UNKNOWN = NO_VALUE
@@ -3048,7 +3484,7 @@ private const val MAX_PANE_SCALE = 3f
 private const val LAST_PRICE_ALPHA = 0.75f
 
 /** Rows the corner legend will print before it starts counting instead. */
-private const val LEGEND_LINES = 4
+internal const val LEGEND_LINES = 4
 
 /**
  * And how many it will print in tracking mode.
@@ -3058,13 +3494,10 @@ private const val LEGEND_LINES = 4
  * with the first four of them and a «+5» is answering a different question. Ten is where a phone
  * runs out of height anyway, and the budget below stops it before that on a short chart.
  */
-private const val TRACKING_LEGEND_LINES = 10
+internal const val TRACKING_LEGEND_LINES = 10
 
 /** The share of the plot the reading may occupy while the crosshair is down. See [LEGEND_BUDGET]. */
-private const val TRACKING_LEGEND_BUDGET = 0.5f
-
-/** Marks a legend row whose precision comes from the value rather than from the price. */
-private const val VALUE_OWN_DECIMALS = -1
+internal const val TRACKING_LEGEND_BUDGET = 0.5f
 
 /**
  * Clear space between two price-axis labels before they count as colliding.
@@ -3077,7 +3510,7 @@ private const val VALUE_OWN_DECIMALS = -1
 private val LABEL_SEPARATION_DP = 2.dp
 
 /** Between two rows of the corner legend. */
-private val LEGEND_GAP_DP = 2.dp
+internal val LEGEND_GAP_DP = 2.dp
 
 /**
  * How far the corner legend sits from the canvas edge.
@@ -3085,19 +3518,19 @@ private val LEGEND_GAP_DP = 2.dp
  * Wider than the axis padding: the legend's first glyph is a letter and the axis's is a digit, and
  * four pixels that read as tight beside a number read as clipped beside an «O».
  */
-private val LEGEND_INSET_DP = 8.dp
+internal val LEGEND_INSET_DP = 8.dp
 
 /** The share of the plot's height the corner legend may occupy before it stops adding rows. */
-private const val LEGEND_BUDGET = 0.25f
+internal const val LEGEND_BUDGET = 0.25f
 
 /** Breathing room between the legend's text and the edge of the plate behind it. */
-private val LEGEND_PLATE_PADDING_DP = 5.dp
+internal val LEGEND_PLATE_PADDING_DP = 5.dp
 
 /** How much of the chart shows through the legend's plate. */
-private const val LEGEND_PLATE_ALPHA = 0.82f
+internal const val LEGEND_PLATE_ALPHA = 0.82f
 
 /** The plate's corner. Softer than a tag's, because it is a panel rather than a marker. */
-private val LEGEND_PLATE_RADIUS_DP = 6.dp
+internal val LEGEND_PLATE_RADIUS_DP = 6.dp
 
 /** Padding inside the last-price and crosshair tags. */
 private val TAG_PADDING_DP = 3.dp
@@ -3129,11 +3562,10 @@ private const val LABEL_GAP = 12f
  * The hairline is 0.8dp rather than 1: a full point is heavier than a gridline should be against
  * candles, and Compose resolves the fraction to a real subpixel rather than rounding it away.
  */
-private val HAIRLINE_DP = 0.8.dp
-private val LINE_WIDTH_DP = 1.6.dp
-private val AXIS_PADDING_DP = 4.dp
+internal val HAIRLINE_DP = 0.8.dp
+internal val LINE_WIDTH_DP = 1.6.dp
+internal val AXIS_PADDING_DP = 4.dp
 private const val GRID_ALPHA = 0.35f
-private const val AREA_ALPHA = 0.16f
 private const val VOLUME_ALPHA = 0.30f
 private const val ZONE_ALPHA = 0.12f
 

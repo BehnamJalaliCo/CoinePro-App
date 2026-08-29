@@ -117,6 +117,48 @@ data class StructureOverlay(
     val isEmpty: Boolean get() = lines.isEmpty() && levels.isEmpty() && markers.isEmpty()
 }
 
+/**
+ * Which bars a window-scoped study measures over.
+ *
+ * ### Why this type exists at all
+ *
+ * A volume profile answers "where did the trading happen in *this* stretch of chart". Computed over
+ * every bar the app happens to have loaded, it answers a question nobody asked: the reader is
+ * looking at four hours of a coin and the point of control comes from a week they cannot see, drawn
+ * as a line across the part they can. That is what `volumeprofile_ind` did — three flat lines from
+ * the whole series — and it is what [Visible] fixes.
+ *
+ * ### Why the default is still the whole series
+ *
+ * Because a caller with no viewport must say something, and silence is worse. [WHOLE_SERIES] is
+ * spelled out at every call site that takes it, so a profile over everything is a decision in the
+ * code rather than an omission — and a grep for it finds the callers that still have to be given a
+ * viewport.
+ */
+data class BarWindow(val firstIndex: Int, val lastIndex: Int) {
+
+    /**
+     * This window as real indices into a series of [size] bars, or null when it selects nothing.
+     *
+     * Clamped rather than validated: a viewport is a live thing, and a range that briefly runs past
+     * the end of a series that has just been replaced must not throw in the middle of a frame.
+     */
+    fun clampedTo(size: Int): IntRange? {
+        if (size <= 0) return null
+        val first = firstIndex.coerceIn(0, size - 1)
+        val last = lastIndex.coerceIn(0, size - 1)
+        return if (first > last) null else first..last
+    }
+
+    companion object {
+        /** Every bar loaded. A fallback, and named so that choosing it is visible in the diff. */
+        val WHOLE_SERIES = BarWindow(0, Int.MAX_VALUE)
+
+        /** The bars on screen — `ChartViewport.firstVisible` and `lastVisible`. */
+        fun visible(firstIndex: Int, lastIndex: Int) = BarWindow(firstIndex, lastIndex)
+    }
+}
+
 object ChartCatalog {
 
     /**
@@ -835,22 +877,29 @@ object ChartCatalog {
      * Null where there is nothing to draw: an empty series, a feed with no volume column, or a
      * window in which nothing traded. A profile of zeros would be drawn as equal bars at every
      * price, which is a claim that the market traded evenly across its whole range.
+     *
+     * [window] is the point of the whole study. A visible-range profile measured over bars the
+     * reader cannot see is not a visible-range profile; see [BarWindow].
      */
     fun volumeProfileFor(
         series: CandleSeries,
-        fromIndex: Int = 0,
-        toIndex: Int = series.size - 1,
+        /**
+         * Which bars to measure. Hand it the viewport's own range and the profile follows the
+         * reader's screen; [BarWindow.WHOLE_SERIES] measures everything loaded.
+         */
+        window: BarWindow = BarWindow.WHOLE_SERIES,
         rows: Int = VOLUME_PROFILE_ROWS,
     ): VolumeProfile? {
         if (series.isEmpty || !series.hasVolume) return null
+        val range = window.clampedTo(series.size) ?: return null
         val profile = IndicatorsExtC.volumeProfile(
             high = series.high,
             low = series.low,
             close = series.close,
             open = series.open,
             volume = series.volume,
-            fromIndex = fromIndex,
-            toIndex = toIndex,
+            fromIndex = range.first,
+            toIndex = range.last,
             rows = rows,
         )
         return profile.takeIf {
@@ -993,6 +1042,16 @@ object ChartCatalog {
         series: CandleSeries,
         /** The reader's lookback, or null for this indicator's own default. See [PERIODS]. */
         period: Int? = null,
+        /**
+         * The bars a window-scoped study measures over.
+         *
+         * Read by `volumeprofile_ind` and by nothing else, because it is the only entry here whose
+         * answer depends on what is on screen rather than on the series. A caller that draws a
+         * chart passes its viewport's range; one that has no viewport — the alert engine scanning a
+         * series in the background — leaves the default, and gets a profile over everything, which
+         * is the right answer for a question asked with no screen attached.
+         */
+        window: BarWindow = BarWindow.WHOLE_SERIES,
     ): List<ChartLine> {
         if (option.pane != IndicatorPane.PRICE || series.isEmpty) return emptyList()
         // Same rule as [paneFor]: no volume column, no volume-weighted line. See
@@ -1147,7 +1206,7 @@ object ChartCatalog {
                 }
                 listOf(ChartLine(split, option.colour, widthDp = 1.4f, label = "Volatility Stop $n"))
             }
-            "volumeprofile_ind" -> volumeProfileFor(series).let { profile ->
+            "volumeprofile_ind" -> volumeProfileFor(series, window).let { profile ->
                 // Three prices, not a histogram.
                 //
                 // The profile itself is a set of bars measured *across* the price axis, and a
@@ -1159,8 +1218,14 @@ object ChartCatalog {
                     emptyList()
                 } else {
                     val control = (profile.rowLow[profile.pocIndex] + profile.rowHigh[profile.pocIndex]) / 2
+                    // The label names the window when it is the reader's screen, because a profile
+                    // over the visible range and one over the whole series are different answers
+                    // and a reader looking at one flat line has no other way to tell which they
+                    // have. Left as a bare "POC" for the whole series, which is what the study was
+                    // before it learned about the viewport.
+                    val label = if (window == BarWindow.WHOLE_SERIES) "POC" else "POC · محدودهٔ دید"
                     listOf(
-                        ChartLine(flat(series.size, control), option.colour, widthDp = 1.4f, label = "POC"),
+                        ChartLine(flat(series.size, control), option.colour, widthDp = 1.4f, label = label),
                         ChartLine(flat(series.size, profile.rowHigh[profile.valueAreaHigh]), option.colour, widthDp = 0.9f, dashed = true),
                         ChartLine(flat(series.size, profile.rowLow[profile.valueAreaLow]), option.colour, widthDp = 0.9f, dashed = true),
                     )

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="chart_events_sheet_title">Events on this bar</string>
+    <string name="chart_events_sheet_one">One event inside this bar</string>
+    <string name="chart_events_sheet_many">%1$s events inside this bar, in order</string>
+    <string name="chart_events_settings_title">Events on the chart</string>
+    <string name="chart_events_settings_note">A mark is drawn only on the bar whose interval contains the event. An event outside the visible range is not drawn at all.</string>
+    <string name="chart_events_note_news">Headlines tagged for this symbol, and general market news.</string>
+    <string name="chart_events_note_economic">Macro releases, which move both markets.</string>
+    <string name="chart_events_note_unserved">The current feed does not send this kind.</string>
+    <string name="chart_events_importance">%1$s impact</string>
+</resources>

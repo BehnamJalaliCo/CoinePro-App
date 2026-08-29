@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dom_title">Depth of market</string>
+    <string name="dom_source">Source: %1$s</string>
+    <string name="dom_column_bid">Bid size</string>
+    <string name="dom_column_price">Price</string>
+    <string name="dom_column_ask">Ask size</string>
+    <string name="dom_spread">Spread</string>
+    <string name="dom_mid">Mid</string>
+    <string name="dom_imbalance">Bid share</string>
+    <string name="dom_imbalance_note">Bid share is measured over the whole book the server sent, not only the rows on screen.</string>
+    <string name="dom_truncated">Only the levels nearest the spread are shown; the book continues below them.</string>
+    <string name="dom_crossed">The book is momentarily inconsistent: the best bid is above the best ask. Do not read the spread.</string>
+    <string name="dom_updated">Book time %1$s</string>
+    <string name="dom_loading">Loading the order book…</string>
+
+    <string name="dom_unavailable_feed">This feed does not publish order-book data.</string>
+    <string name="dom_unavailable_feed_hint">The MetaTrader 5 broker does not publish Level II. Until it does, there is no order book for this market.</string>
+    <string name="dom_unavailable_endpoint">The order book for this market is not served yet.</string>
+    <string name="dom_unavailable_endpoint_hint">The exchange publishes it and the server does not relay it yet.</string>
+    <string name="dom_failed">The order book is unavailable.</string>
+    <string name="dom_failed_hint">Check the connection and load it again.</string>
+    <string name="dom_retry">Try again</string>
+    <string name="dom_empty">There are no resting orders right now.</string>
+    <string name="dom_empty_hint">The market is closed or halted.</string>
+
+    <string name="dom_pick_price">Put %1$s into the order form</string>
+</resources>

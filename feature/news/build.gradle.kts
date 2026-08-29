@@ -17,6 +17,9 @@ android {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:marketintel"))
+    // The market-to-instrument table, shared with the chart so a story and a mark cannot
+    // disagree about which chart a gold headline opens.
+    implementation(project(":core:chartevents"))
     implementation(project(":core:designsystem"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.animation)

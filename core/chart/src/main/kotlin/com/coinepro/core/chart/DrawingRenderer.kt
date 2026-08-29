@@ -53,11 +53,27 @@ fun DrawScope.drawDrawing(
     view: ChartViewport,
     measurer: TextMeasurer,
     selected: Boolean = false,
+    /**
+     * The moment this frame is being drawn at, for the marks that expire.
+     *
+     * Defaulted rather than required, because only demonstration marks read it and every other
+     * caller would be passing a clock to be ignored. The trap it hides is worth naming: a fade
+     * computed at draw time only advances when something repaints, so a chart sitting perfectly
+     * still shows a mark at the opacity it had on the last frame. On a live feed that is a tick
+     * away; on a frozen one the mark is still removed by `DrawingActions.expire`, which is the
+     * model's own answer and does not wait for a frame.
+     */
+    nowMillis: Long = System.currentTimeMillis(),
 ): Boolean {
     val chart = drawing.points
     if (chart.isEmpty()) return false
+    val fade = DrawingActions.fadeAlpha(drawing, nowMillis)
+    // Gone rather than drawn at zero: a fully faded mark still has handles, a timeframe tag and a
+    // label, and every one of them would paint over the price at full strength.
+    if (fade <= 0f) return true
     val p = chart.map { Offset(view.xOfTime(it.time), view.yOf(it.price)) }
-    val colour = Color(drawing.colour.toInt())
+    val base = Color(drawing.colour.toInt())
+    val colour = if (fade < 1f) base.copy(alpha = base.alpha * fade) else base
     val width = max(1f, drawing.widthDp.dp.toPx())
     val w = view.plotWidth
     val h = view.plotHeight
@@ -508,6 +524,13 @@ fun DrawScope.drawDrawing(
         else -> drawExtendedDrawing(drawing, view, measurer, chart, p, colour, width)
     }
 
+    // The interval the mark was drawn on, as a small tag beside its first anchor. Only on a
+    // finished drawing that carries one: a half-placed pattern already has an anchor count on the
+    // toolbar, and a second label following the finger is noise on top of it.
+    if (handled && drawing.complete && drawing.timeframe != null) {
+        timeframeTag(measurer, drawing.timeframe, a, colour)
+    }
+
     // The handles come last so they sit over whatever the tool drew, and only on the selected one:
     // eight white dots on every drawing would bury the chart under its own annotations.
     if (handled && selected) {
@@ -676,6 +699,32 @@ private fun DrawScope.boxLabel(
     drawRect(colour, origin, Size(boxWidth, boxHeight), style = Stroke(1f))
     drawText(measured, topLeft = Offset(origin.x + BOX_PADDING_X.toPx(), origin.y + BOX_PADDING_Y.toPx()))
     return true
+}
+
+/**
+ * The interval a mark was drawn on, as a small chip above and left of its first anchor — item 52.
+ *
+ * Latin digits and the raw interval code, because "H1" and "M15" are market notation rather than
+ * prose: they are the same characters on the timeframe picker, on the header and here, and
+ * translating the digits in one of the three would make the reader match them by eye.
+ *
+ * Muted rather than in the drawing's own colour. This is provenance, not part of the mark, and a
+ * tag as loud as the trend line it labels turns twenty marks into forty things to read.
+ */
+private fun DrawScope.timeframeTag(
+    measurer: TextMeasurer,
+    timeframe: String,
+    at: Offset,
+    colour: Color,
+) {
+    val faded = colour.copy(alpha = colour.alpha * TAG_ALPHA)
+    val measured = measurer.measure(timeframe, boxStyle(faded))
+    val width = measured.size.width + TAG_PADDING.toPx()
+    val height = measured.size.height + 2f
+    val origin = Offset(at.x - width - TAG_GAP.toPx(), at.y - height - TAG_GAP.toPx())
+    drawRect(BOX_BACKGROUND, origin, Size(width, height))
+    drawRect(faded, origin, Size(width, height), style = Stroke(1f))
+    drawText(measured, topLeft = Offset(origin.x + TAG_PADDING.toPx() / 2, origin.y + 1f))
 }
 
 private fun DrawScope.level(
@@ -864,6 +913,12 @@ private val NOTE_RADIUS = 7.dp
 /** Breathing room inside the price-axis tag, which is a filled chip rather than plain text. */
 private val TAG_PADDING = 6.dp
 
+/** How far the timeframe chip sits off the anchor it labels, on both axes. */
+private val TAG_GAP = 3.dp
+
+/** How much of the drawing's own colour the timeframe chip keeps. Provenance, not the mark. */
+private const val TAG_ALPHA = 0.7f
+
 private val VERTEX_RADIUS = 8.dp
 
 private val HANDLE_RADIUS = 5.dp
@@ -958,6 +1013,11 @@ private fun DrawScope.drawExtendedDrawing(
                     closes = series.close,
                     fromIndex = min(from, to),
                     toIndex = max(from, to),
+                    // The drawing's own value, not the geometry's default. This call omitted the
+                    // argument for the life of the tool, so every regression channel in the app sat
+                    // at exactly two standard deviations and nothing could say otherwise — the
+                    // parameter existed, was documented, and had no way to be reached.
+                    deviations = drawing.deviations,
                 ),
             )
             true
@@ -1103,7 +1163,15 @@ private fun DrawScope.drawExtendedDrawing(
             }
             drawPath(diamond, colour.copy(alpha = FILL_SOFT))
             drawPath(diamond, colour, style = Stroke(width))
-            drawing.text?.let { label(measurer, it, a.x + reach + 4, a.y - reach, colour) }
+            // The glyph goes *inside* the diamond, because that is what an icon is. It used to be
+            // set beside it as a caption, which was the only shape available while nothing could
+            // set `Drawing.text` at all — the tool drew an empty diamond for every reader.
+            val glyph = drawing.text?.take(1) ?: DrawingActions.DEFAULT_ICON_GLYPH
+            val measured = measurer.measure(glyph, boxStyle(colour))
+            drawText(
+                measured,
+                topLeft = Offset(a.x - measured.size.width / 2f, a.y - measured.size.height / 2f),
+            )
             true
         }
         "image" -> {
@@ -1117,7 +1185,13 @@ private fun DrawScope.drawExtendedDrawing(
             drawLine(colour, Offset(a.x + size.width * 0.12f, floor), Offset(a.x + size.width * 0.42f, a.y + size.height * 0.42f), width)
             drawLine(colour, Offset(a.x + size.width * 0.42f, a.y + size.height * 0.42f), Offset(a.x + size.width * 0.88f, floor), width)
             drawCircle(colour, size.height * 0.09f, Offset(a.x + size.width * 0.74f, a.y + size.height * 0.26f), style = Stroke(width))
-            drawing.text?.let { label(measurer, it, a.x, a.y + size.height + LABEL_INSET.toPx(), colour) }
+            label(
+                measurer,
+                drawing.text ?: DEFAULT_IMAGE_CAPTION,
+                a.x,
+                a.y + size.height + LABEL_INSET.toPx(),
+                colour,
+            )
             true
         }
 
@@ -1736,3 +1810,13 @@ private const val DEFAULT_TABLE = "عنوان\nمقدار"
 
 /** What a signpost with nothing typed into it yet shows. */
 private const val DEFAULT_SIGN = "نشانه"
+
+/**
+ * What an image frame with no caption says, and it says what the tool is.
+ *
+ * The chart layer cannot open a file and nothing above it hands one down, so this tool places a
+ * frame and a caption and never a picture. An unlabelled empty rectangle reads as a bitmap that
+ * failed to load; a labelled one reads as what it is. `DrawingActions.toolNote` says the same thing
+ * in longer form where the tool is armed.
+ */
+private const val DEFAULT_IMAGE_CAPTION = "قاب تصویر"

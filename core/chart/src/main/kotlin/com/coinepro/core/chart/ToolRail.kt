@@ -54,7 +54,7 @@ import com.coinepro.core.designsystem.R as DesignR
 /**
  * The drawing tools.
  *
- * Ninety-one of them in twelve groups, which is the number that decides the whole layout. Three
+ * Ninety-odd of them in twelve groups, and that scale is what decides the whole layout. Three
  * arrangements were available and only one survives contact with a phone:
  *
  * * The web terminal's **vertical rail** becomes a four-screen scroll of 24dp targets here. It works
@@ -66,10 +66,10 @@ import com.coinepro.core.designsystem.R as DesignR
  * * A **chip row over a grid** keeps every group name visible, costs one tap, and carries a search
  *   field for the reader who knows the name. That is this.
  *
- * Three things were added when the list grew from fifty-two to ninety-one, and each of them exists
- * because that grid stopped being scannable at about sixty:
+ * Three things were added as the list roughly doubled, and each of them exists because that grid
+ * stopped being scannable at about sixty:
  *
- * * A **favourites row** the reader fills themselves. Nobody uses ninety-one tools; everybody uses
+ * * A **favourites row** the reader fills themselves. Nobody uses ninety tools; everybody uses
  *   six, and which six is personal enough that no default is right. The star acts on whatever is
  *   armed, so pinning is one tap after using a tool rather than a mode of its own.
  * * A **pinned group heading**, so a reader four screens down still knows whether they are looking
@@ -80,7 +80,7 @@ import com.coinepro.core.designsystem.R as DesignR
  *   be honest too, but three permanently dead cells in a rail this long is three cells a reader
  *   scans past forever; the group's own «؟» is where the explanation belongs.
  *
- * The search earns its place: with ninety-one tools, typing «فیب» beats any amount of scanning, and
+ * The search earns its place: at this many tools, typing «فیب» beats any amount of scanning, and
  * it is the only path that works for somebody who knows a tool by name but not by glyph.
  */
 @Composable
@@ -94,8 +94,15 @@ fun ToolRail(
      *
      * False on the MT5 forex side, and the whole volume group is dropped rather than offered as
      * three tools that would draw nothing.
+     *
+     * The default is **false**, and that is a deliberate reversal. It defaulted to true and neither
+     * call site passed anything, so the KDoc above promised a gate that had never once closed: on a
+     * forex feed a reader could arm «VWAP لنگرانداخته», tap, and watch the renderer return without
+     * drawing — a tool that fails silently is worse than a tool that is not offered. A default of
+     * false makes the promise true for a caller that says nothing, and a caller that knows its feed
+     * has volume says so.
      */
-    hasVolume: Boolean = true,
+    hasVolume: Boolean = false,
     /** Tool ids pinned to the top of the rail. See [DrawingState.favourites]. */
     favourites: Set<String> = emptySet(),
     onToggleFavourite: ((DrawingTool) -> Unit)? = null,
@@ -276,7 +283,7 @@ private fun railRows(tools: List<DrawingTool>, grouped: Boolean): List<RailRow> 
  * The modes that sit above the tool grid rather than inside it.
  *
  * Magnet, keep-drawing, lock-all and the four visibility switches are not tools — arming them draws
- * nothing — and putting them in the grid beside ninety-one things that do draw is how a reader ends
+ * nothing — and putting them in the grid beside ninety things that do draw is how a reader ends
  * up with a trend line they did not ask for. They are actions, they live in an action row, and the
  * row disappears entirely when the caller offers none of them.
  */
@@ -531,6 +538,19 @@ fun ActiveToolBar(
                     color = CoineProColors.TextMuted,
                 )
             }
+            // What the tool cannot do, where that is not obvious from its name. One tool needs it
+            // today: the image frame, which cannot load a picture because nothing in the chart
+            // layer can open a file. Said here, where the reader has just armed it and is about to
+            // find out, rather than left for them to conclude from an empty rectangle.
+            DrawingActions.toolNote(tool.id)?.let { note ->
+                Text(
+                    text = note,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextMuted,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         if (onUndo != null && placed > 0) {
             RailAction(DesignR.drawable.icon_arrows_clockwise, "واگرد", onClick = onUndo)
@@ -539,6 +559,53 @@ fun ActiveToolBar(
             onHelp?.let { RailAction(DesignR.drawable.tv_help_circle, "راهنما") { it(id) } }
         }
         RailAction(DesignR.drawable.icon_x, "بستن", onClick = onCancel)
+    }
+}
+
+/**
+ * The marks the icon tool offers, as a row a thumb picks one from.
+ *
+ * The icon tool stores its glyph in [Drawing.text], so this is a text field with ten answers rather
+ * than a parallel field and a parallel codec — see [DrawingActions.ICON_GLYPHS]. A free keyboard is
+ * the wrong shape for it: an icon is one mark, and a sentence typed into an icon tool is drawn at
+ * label size inside a diamond built for a single glyph.
+ *
+ * Shown beside the text field rather than instead of it, so a reader who wants a mark this row does
+ * not carry can still type one.
+ */
+@Composable
+fun DrawingIconPicker(
+    selected: String?,
+    onPick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyRow(
+        modifier = modifier.fillMaxWidth().padding(horizontal = CoineProSpacing.Half),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        items(DrawingActions.ICON_GLYPHS.size, key = { "glyph-$it" }) { index ->
+            val glyph = DrawingActions.ICON_GLYPHS[index]
+            val chosen = glyph == selected
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CoineProShapes.small)
+                    .background(if (chosen) CoineProColors.SurfaceElevated else Color.Transparent)
+                    .border(
+                        width = 1.dp,
+                        color = if (chosen) CoineProColors.Accent else CoineProColors.Border,
+                        shape = CoineProShapes.small,
+                    )
+                    .clickable { onPick(glyph) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = glyph,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (chosen) CoineProColors.Accent else CoineProColors.TextSecondary,
+                )
+            }
+        }
     }
 }
 

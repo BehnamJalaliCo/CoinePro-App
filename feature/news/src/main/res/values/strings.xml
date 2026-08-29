@@ -25,4 +25,5 @@
     <string name="news_sentiment_bearish">نزولی</string>
     <string name="news_sentiment_neutral">خنثی</string>
     <string name="news_sentiment_unknown">جهت نامشخص</string>
+    <string name="news_open_chart">نمایش روی نمودار</string>
 </resources>

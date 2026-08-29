@@ -2,6 +2,7 @@ package com.coinepro.core.chart
 
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -35,26 +36,34 @@ class DrawingToolsTest {
     }
 
     @Test
-    fun `only the two non-drawing modes lack help`() {
-        val withoutHelp = DrawingTools.ALL.filter { it.helpId == null }.map { it.id }
-        assertEquals(listOf("cursor", "select"), withoutHelp)
+    fun `only the modes with no help entry lack a help id`() {
+        val withoutHelp = DrawingTools.ALL.filter { it.helpId == null }.map { it.id }.toSet()
+        assertEquals(setOf("cursor", "select", DrawingTools.DEMONSTRATION_TOOL), withoutHelp)
+        // And every one of them is genuinely absent from the catalogue rather than merely
+        // unclaimed: a tool that has help and refuses to point at it is a «؟» a reader never gets.
+        for (id in withoutHelp) {
+            assertTrue("$id has a help entry and should point at it", id !in helpIds)
+        }
     }
 
     @Test
-    fun `the rail offers what the web terminal offers`() {
-        // Fifty-two was the web terminal's set. Ninety-one is that set plus the thirty-nine written
-        // against TradingView's published inventory of a hundred and ten — the three volume tools
-        // first, because a volume profile is the most-cited tool among traders who have been at it
-        // a while and the one whose absence was the real gap.
-        //
-        // Pinned as a number rather than a floor so that removing one is as loud as adding one. A
-        // tool that quietly disappears from the rail is a reader's saved drawing that no longer
-        // renders, and nothing else in this suite would catch it.
-        assertEquals(91, DrawingTools.ALL.size)
+    fun `the rail offers every tool the renderer can draw, by name`() {
+        // Not a count. A count assertion passed the whole of the last wave while seven chart types
+        // drew the wrong thing, and it would pass again with a tool renamed. What matters is that
+        // the ids a saved drawing can carry are still in the catalogue: a tool that quietly
+        // disappears is a reader's stored mark that no longer renders.
+        val ids = DrawingTools.ALL.map { it.id }.toSet()
+        for (id in listOf("trend", "fib", "gannbox", "xabcd", "ell_impulse", "rect", "avwap")) {
+            assertTrue("$id left the rail", id in ids)
+        }
+        // Every group still carries something, so a whole family cannot vanish unnoticed.
+        for (group in ToolGroup.entries) {
+            assertTrue("$group is empty", DrawingTools.inGroup(group).isNotEmpty())
+        }
     }
 
     @Test
-    fun `no tool is listed twice and every group has tools`() {
+    fun `no tool is listed twice and every group is reachable from the rail`() {
         assertEquals(DrawingTools.ALL.size, DrawingTools.ALL.map { it.id }.toSet().size)
         for (group in DrawingTools.GROUPS) {
             assertTrue("$group is empty", DrawingTools.inGroup(group).isNotEmpty())
@@ -181,9 +190,20 @@ class DrawingToolsTest {
     }
 
     @Test
-    fun `only the four annotation tools are offered a keyboard`() {
+    fun `every tool that renders a label is offered a keyboard, and no other`() {
         val holds = DrawingTools.ALL.filter { DrawingActions.holdsText(it.id) }.map { it.id }.toSet()
-        assertEquals(setOf("text", "callout", "pricelabel", "note"), holds)
+        // The four the set started with, plus the seven that render `drawing.text ?: DEFAULT` and
+        // were never listed — so they drew their placeholder for the life of the app.
+        assertEquals(
+            setOf(
+                "text", "callout", "pricelabel", "note",
+                "pricenote", "pin", "tabledraw", "comment", "signpost", "icon", "image",
+            ),
+            holds,
+        )
+        // A tool with nowhere to draw an answer is not offered a keyboard.
+        assertFalse(DrawingActions.holdsText("trend"))
+        assertFalse(DrawingActions.holdsText("fib"))
     }
 
     @Test

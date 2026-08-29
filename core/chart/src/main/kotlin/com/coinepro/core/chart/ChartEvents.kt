@@ -1,5 +1,7 @@
 package com.coinepro.core.chart
 
+import kotlin.math.abs
+
 /**
  * What sort of thing happened, which is also what shape the mark on the axis takes.
  *
@@ -41,6 +43,11 @@ enum class Importance(val label: String) {
  * [detail] is the sentence behind the headline — the previous figure, the forecast, the actual —
  * and is null when the source gave only a title. [title] is never null, because a mark a reader
  * opens to find nothing written is worse than a mark that was never drawn.
+ *
+ * [source] is who published it. It is nullable because not every feed carries one — an economic
+ * release is issued by a statistics office rather than reported by a wire — but where a feed does
+ * carry one it is not decoration: a headline with no attribution on a trading chart is a rumour,
+ * and a reader deciding whether to act on it is entitled to know who said it.
  */
 data class ChartEvent(
     val at: Long,
@@ -48,7 +55,92 @@ data class ChartEvent(
     val title: String,
     val detail: String?,
     val importance: Importance,
+    val source: String? = null,
 )
+
+/**
+ * Which kinds of event the reader has asked to see on the axis.
+ *
+ * News on and the other four off, which is [Default], and that is not timidity. All five at once on
+ * a daily chart of an index puts a glyph under most bars, and a row of marks that is always there
+ * stops being read at all — the reader learns to ignore the strip, which costs them the one purple
+ * mark that mattered. The reader turns the rest on deliberately, from Settings → Events, and a
+ * reader who has turned them on is a reader who is looking for them.
+ *
+ * ### Empty is a choice and must survive a restart
+ *
+ * [decode] tells "nothing stored yet" from "the reader switched all five off": null and a blank
+ * string are different answers, and collapsing them is how a setting silently un-sets itself. A
+ * reader who cleared every kind and came back the next morning to find news marks again would
+ * reasonably conclude the switches do not work.
+ */
+data class EventVisibility(val kinds: Set<EventKind>) {
+
+    /** Whether marks of this kind are drawn at all. */
+    fun isOn(kind: EventKind): Boolean = kind in kinds
+
+    /** Nothing is shown, so nothing needs placing. The caller can skip the whole pass. */
+    val isNothing: Boolean get() = kinds.isEmpty()
+
+    /** The same set with one kind switched. */
+    fun with(kind: EventKind, on: Boolean): EventVisibility = EventVisibility(
+        if (on) kinds + kind else kinds - kind,
+    )
+
+    /**
+     * The stored form: kind names in declaration order, comma separated.
+     *
+     * Names rather than ordinals, because an ordinal is a promise never to reorder [EventKind] and
+     * this file has no way to keep that promise. An unknown name on the way back in is dropped, so
+     * a build that removes a kind reads an older reader's setting rather than refusing it.
+     */
+    fun encode(): String = EventKind.entries.filter(::isOn).joinToString(",", transform = EventKind::name)
+
+    companion object {
+        /** News only. What a chart shows a reader who has never opened the settings. */
+        val Default: EventVisibility = EventVisibility(setOf(EventKind.NEWS))
+
+        /** Every kind. What a placement pass uses when the caller filters somewhere else. */
+        val Everything: EventVisibility = EventVisibility(EventKind.entries.toSet())
+
+        /** No kind at all — every switch off. */
+        val Nothing: EventVisibility = EventVisibility(emptySet())
+
+        /** Reads [encode]. Null — never stored — is [Default]; blank — all off — is [Nothing]. */
+        fun decode(stored: String?): EventVisibility {
+            if (stored == null) return Default
+            val names = stored.split(',').map(String::trim).filter(String::isNotEmpty)
+            return EventVisibility(names.mapNotNullTo(mutableSetOf()) { name ->
+                EventKind.entries.firstOrNull { it.name == name }
+            })
+        }
+    }
+}
+
+/**
+ * The mark's geometry, in density-independent pixels, shared so the canvas and the hit test agree.
+ *
+ * They have to agree or the feature is broken in the way that is hardest to report: a glyph a
+ * reader can see and cannot open. Sizes live here, next to the model, rather than in the renderer,
+ * because the renderer is not the only thing that needs them — whatever turns a touch into a mark
+ * needs the same radius, and two copies of one number is one copy that will be changed alone.
+ */
+object EventGlyphs {
+    /** The glyph's full width and height. Small: it sits in the axis strip, not on the price. */
+    const val SIZE_DP: Float = 12f
+
+    /** The gap between the top of the time-axis strip and the glyph, so it does not touch a date. */
+    const val AXIS_GAP_DP: Float = 3f
+
+    /**
+     * How far from a glyph's centre a touch still counts as hitting it.
+     *
+     * Twenty-four, which is a forty-eight point target — the platform's minimum — around a twelve
+     * point picture. A mark drawn at its true size and hit-tested at its true size is a mark only a
+     * stylus can open.
+     */
+    const val TOUCH_RADIUS_DP: Float = 24f
+}
 
 /**
  * One glyph on the time axis, and everything it stands for.
@@ -106,19 +198,27 @@ object ChartEvents {
      *
      * [fromIndex] and [toIndex] are the first and last visible bars, inclusive, in either order —
      * a caller that hands them over reversed gets the same window rather than nothing.
+     *
+     * [visibility] filters by kind *before* bucketing, which is the only place it can go without
+     * lying: filtering afterwards would leave a cluster of five drawing as an economic mark while
+     * only its one headline was on, and the reader would tap a glyph the settings say is hidden.
+     * The default is every kind, because a caller that has already filtered should not have to say
+     * so twice; the chart passes what the reader chose.
      */
     fun place(
         events: List<ChartEvent>,
         series: CandleSeries,
         fromIndex: Int,
         toIndex: Int,
+        visibility: EventVisibility = EventVisibility.Everything,
     ): List<EventMark> {
-        if (events.isEmpty() || series.isEmpty) return emptyList()
+        if (events.isEmpty() || series.isEmpty || visibility.isNothing) return emptyList()
         val last = series.size - 1
         val from = minOf(fromIndex, toIndex).coerceIn(0, last)
         val to = maxOf(fromIndex, toIndex).coerceIn(0, last)
         val buckets = LinkedHashMap<Int, MutableList<ChartEvent>>()
         for (event in events) {
+            if (!visibility.isOn(event.kind)) continue
             val index = barOf(series, event.at) ?: continue
             if (index < from || index > to) continue
             buckets.getOrPut(index) { mutableListOf() }.add(event)
@@ -157,6 +257,30 @@ object ChartEvents {
         if (found == times.size - 1 && at >= times[found] + lastWidth(times)) return null
         return found
     }
+
+    /**
+     * The mark a touch landed on, or null for a touch that landed on none.
+     *
+     * The nearest one within [radiusPixels], rather than the first within it, because two marks on
+     * adjacent bars have overlapping targets at any sensible radius and "the first in the list"
+     * would mean "the earlier bar", always — a reader tapping the right-hand of two glyphs would
+     * open the left one and have no way to reach the one they meant.
+     *
+     * [xOf] is the viewport's own bar-to-pixel mapping, passed in rather than recomputed, so a
+     * touch is tested against exactly the geometry the glyph was drawn at. Vertical position is
+     * deliberately not tested: the strip is a few points tall, and demanding the finger land inside
+     * it as well would reject most honest taps.
+     */
+    fun markAt(
+        marks: List<EventMark>,
+        xPixels: Float,
+        radiusPixels: Float,
+        xOf: (Int) -> Float,
+    ): EventMark? = marks
+        .map { mark -> mark to abs(xOf(mark.barIndex) - xPixels) }
+        .filter { (_, distance) -> distance <= radiusPixels }
+        .minByOrNull { (_, distance) -> distance }
+        ?.first
 
     /**
      * How wide to treat the final bar as being.

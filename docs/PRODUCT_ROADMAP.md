@@ -285,8 +285,10 @@ core:designsystem
 core:auth
 core:security
 core:marketdata
+core:orderbook
 core:membership
 core:chart
+core:chartevents
 core:script
 core:help
 core:symbols
@@ -328,6 +330,7 @@ feature:guest
 feature:membership
 feature:notifications
 feature:alerts
+feature:dom
 feature:heatmap
 feature:journal
 feature:papertrade

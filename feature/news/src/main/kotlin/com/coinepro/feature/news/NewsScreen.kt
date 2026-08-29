@@ -58,6 +58,7 @@ import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.designsystem.R as DesignR
+import com.coinepro.core.chartevents.ChartEventSymbols
 import com.coinepro.core.marketintel.MarketImpact
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.marketintel.MarketNewsItem
@@ -73,6 +74,18 @@ fun NewsScreen(
     controller: MarketIntelController,
     onOpenCalendar: () -> Unit,
     platform: MarketPlatform = MarketPlatform.TRADEYAR,
+    /**
+     * Open the chart at the instrument this story is about, scrolled to the second it broke.
+     *
+     * The other half of the marks on the chart's time axis, and the reason it is worth having: a
+     * reader who found the headline here should be able to see what the candle did about it, and a
+     * reader who tapped a mark on the axis is already able to read the headline. One direction
+     * without the other is a feature that only works if you happened to start on the right screen.
+     *
+     * Null where the host has no chart to send them to — the guest shell — and then no card offers
+     * the entry at all, rather than offering a button that does nothing.
+     */
+    onOpenChart: ((symbol: String, atSeconds: Long) -> Unit)? = null,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var relevance by remember { mutableStateOf<MarketRelevance?>(null) }
@@ -170,7 +183,7 @@ fun NewsScreen(
                             )
                         }
                         items(filtered, key = MarketNewsItem::id) { item ->
-                            NewsCard(item, Modifier.animateItem())
+                            NewsCard(item, onOpenChart, Modifier.animateItem())
                         }
                         item { androidx.compose.foundation.layout.Spacer(Modifier.padding(8.dp)) }
                     }
@@ -211,7 +224,11 @@ private fun FreshnessStrip(refreshing: Boolean, onRefresh: () -> Unit) {
 }
 
 @Composable
-private fun NewsCard(item: MarketNewsItem, modifier: Modifier = Modifier) {
+private fun NewsCard(
+    item: MarketNewsItem,
+    onOpenChart: ((symbol: String, atSeconds: Long) -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
     // A live high-impact story is the one card that gets an edge. Everything else is separated by
     // the gap, so the edge means "read this one" rather than "this is a card".
     val urgent = item.impact == MarketImpact.HIGH && !item.isStale
@@ -263,6 +280,16 @@ private fun NewsCard(item: MarketNewsItem, modifier: Modifier = Modifier) {
                         .ifBlank { stringResource(R.string.news_relevance_general) },
                     color = CoineProColors.TextMuted,
                     style = MaterialTheme.typography.labelSmall,
+                )
+            }
+            // Only where the story names a market. A general-market headline has no instrument to
+            // open, and sending the reader to an arbitrary chart would imply the story was about it.
+            val symbol = ChartEventSymbols.symbolFor(item.relevance)
+            if (onOpenChart != null && symbol != null) {
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.news_open_chart),
+                    icon = DesignR.drawable.nav_chart,
+                    onClick = { onOpenChart(symbol, item.publishedAt.epochSecond) },
                 )
             }
         }

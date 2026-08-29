@@ -30,4 +30,5 @@
     <string name="calendar_relevance_gold">Gold</string>
     <string name="calendar_relevance_silver">Silver</string>
     <string name="calendar_relevance_crypto">Crypto</string>
+    <string name="calendar_open_chart">Show on the chart</string>
 </resources>

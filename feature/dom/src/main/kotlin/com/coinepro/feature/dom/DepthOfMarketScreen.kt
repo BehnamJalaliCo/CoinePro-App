@@ -1,0 +1,541 @@
+package com.coinepro.feature.dom
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.coinepro.core.common.MarketNumberFormatter
+import com.coinepro.core.common.PersianDateTime
+import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProEmptyState
+import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.CoineProShapes
+import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.LtrDirection
+import com.coinepro.core.orderbook.BookSide
+import com.coinepro.core.orderbook.DepthUnavailableReason
+import com.coinepro.core.orderbook.OrderBook
+import com.coinepro.core.orderbook.OrderBookController
+import com.coinepro.core.orderbook.OrderBookGateway
+import com.coinepro.core.orderbook.OrderBookState
+import java.time.Instant
+
+/**
+ * Depth of market — the resting book, as a ladder.
+ *
+ * ### What it is for
+ *
+ * A price list says where the market is. This says what it would cost to move it. The reader is
+ * looking for two things and the layout exists to answer both at a glance: **where the walls are**,
+ * which is the long bars, and **which side is heavier**, which is the meter in the header and the
+ * asymmetry of the bars around the spread. Everything else on the screen is subordinate to those.
+ *
+ * ### Why the price column is a spine
+ *
+ * Sizes sit outside the prices — buys on one side, sells on the other — and the prices run down the
+ * middle in one unbroken column. That is what makes the spread legible: a reader finds the row
+ * where the two colours meet without reading a single number. It also means the ladder must not
+ * mirror with the rest of the app, so the whole block is [LtrDirection]. The screen around it is
+ * right-to-left Persian; the ladder is a table of market figures, and the *order of its columns*
+ * carries meaning that reversing would destroy.
+ *
+ * ### It hands a price up, it does not place an order
+ *
+ * Tapping a row calls [onPickPrice] and nothing else happens. This screen has no idea what an order
+ * is, deliberately: a ladder where a mis-tap sends a live order is the single most expensive
+ * interaction in trading software, and the tap targets here are twenty-eight points tall and packed
+ * sixteen to a screen. The caller decides what a picked price means.
+ */
+@Composable
+fun DepthOfMarketScreen(
+    controller: OrderBookController,
+    symbol: String,
+    /** Hands the tapped level's price to whoever owns the order form. Never places anything. */
+    onPickPrice: (Double) -> Unit,
+    modifier: Modifier = Modifier,
+    /** Rows per side. Eight is what a phone fits without the figures shrinking out of legibility. */
+    levels: Int = OrderBookGateway.VISIBLE_LEVELS,
+) {
+    LaunchedEffect(controller, symbol) { controller.start(symbol) }
+    // Stopped when the screen leaves, so a ladder nobody is looking at is not polling a venue once
+    // a second for the life of the process.
+    DisposableEffect(controller) { onDispose { controller.stop() } }
+
+    val state by controller.state.collectAsStateWithLifecycle()
+
+    DepthOfMarketBody(
+        state = state,
+        onPickPrice = onPickPrice,
+        onRetry = controller::refresh,
+        modifier = modifier,
+        levels = levels,
+    )
+}
+
+/**
+ * The screen without its controller, so every state it can be in is reachable from a render test.
+ *
+ * The four terminal states below are exhaustive and there is no fifth branch that keeps waiting.
+ * That is the property this whole feature is built around: on both platforms today the honest
+ * answer is one of the two refusals, and a screen that could still fall through to a spinner would
+ * show that spinner to every reader on every symbol.
+ */
+@Composable
+fun DepthOfMarketBody(
+    state: OrderBookState,
+    onPickPrice: (Double) -> Unit,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+    levels: Int = OrderBookGateway.VISIBLE_LEVELS,
+) {
+    val book = state.book
+    val unavailable = state.unavailable
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(CoineProColors.Terminal)
+            .verticalScroll(rememberScrollState()),
+    ) {
+        DepthHeader(state)
+        when {
+            unavailable != null -> DepthUnavailable(unavailable)
+            state.failed -> CoineProEmptyState(
+                message = stringResource(R.string.dom_failed),
+                icon = CoineProIcons.Markets,
+                hint = stringResource(R.string.dom_failed_hint),
+                action = stringResource(R.string.dom_retry),
+                onAction = onRetry,
+            )
+            book == null -> Text(
+                text = stringResource(R.string.dom_loading),
+                style = MaterialTheme.typography.bodySmall,
+                color = CoineProColors.TextMuted,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(CoineProSpacing.Gutter),
+                textAlign = TextAlign.Center,
+            )
+            !state.hasDepth -> CoineProEmptyState(
+                message = stringResource(R.string.dom_empty),
+                icon = CoineProIcons.Markets,
+                hint = stringResource(R.string.dom_empty_hint),
+            )
+            else -> DepthLadderTable(
+                ladder = remember(book, levels) { ladderRows(book, levels) },
+                onPickPrice = onPickPrice,
+            )
+        }
+    }
+}
+
+/**
+ * The sentence a reader gets when the feed has no book, which is most readers on most days.
+ *
+ * There is **no retry button** on either branch, and that is the whole design. A retry says
+ * "persistence might help". Neither of these conditions is helped by persistence: one is a broker
+ * that does not publish Level II and the other is a route that has not been written. Offering the
+ * button would be a more comfortable screen that tells the reader something untrue.
+ *
+ * The two reasons get different copy because they have different futures — "not possible here"
+ * against "not yet" — and a reader deciding whether this app will ever show them a book is entitled
+ * to know which one they are looking at.
+ */
+@Composable
+private fun DepthUnavailable(reason: DepthUnavailableReason) {
+    val message = when (reason) {
+        DepthUnavailableReason.FEED_PUBLISHES_NO_DEPTH -> R.string.dom_unavailable_feed
+        DepthUnavailableReason.ENDPOINT_NOT_SERVED -> R.string.dom_unavailable_endpoint
+    }
+    val hint = when (reason) {
+        DepthUnavailableReason.FEED_PUBLISHES_NO_DEPTH -> R.string.dom_unavailable_feed_hint
+        DepthUnavailableReason.ENDPOINT_NOT_SERVED -> R.string.dom_unavailable_endpoint_hint
+    }
+    CoineProEmptyState(
+        message = stringResource(message),
+        icon = CoineProIcons.Markets,
+        hint = stringResource(hint),
+    )
+}
+
+/**
+ * Symbol, venue, and the two figures that summarise the book.
+ *
+ * The imbalance meter is here rather than beside the ladder on purpose: it is measured over the
+ * whole book the server sent, and the ladder shows a window into it. Placed among the rows it would
+ * read as a total of the rows, which it is not — hence the note under it.
+ */
+@Composable
+private fun DepthHeader(state: OrderBookState) {
+    val book = state.book
+    val unavailable = state.unavailable
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.OneHalf),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.dom_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = CoineProColors.TextPrimary,
+            )
+            if (state.sourceName.isNotBlank()) {
+                Text(
+                    text = stringResource(R.string.dom_source, state.sourceName),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextMuted,
+                )
+            }
+        }
+
+        if (book != null && state.hasDepth) {
+            DepthSummary(book)
+            // A crossed book is called out before anything else is read off it. The spread on such
+            // a book is negative and the ladder's two colours overlap, and neither is a market
+            // event — it is two halves of a snapshot that were assembled a moment apart.
+            if (book.crossed) {
+                Text(
+                    text = stringResource(R.string.dom_crossed),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.Warning,
+                )
+            }
+            if (book.truncated) {
+                Text(
+                    text = stringResource(R.string.dom_truncated),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextMuted,
+                )
+            }
+            // Zero is "the relay sent no timestamp", not the epoch. An unknown age is left unstated
+            // rather than printed as 1970 or quietly replaced with the phone's own clock.
+            if (book.at > 0L) {
+                Text(
+                    text = stringResource(
+                        R.string.dom_updated,
+                        PersianDateTime.clock(Instant.ofEpochMilli(book.at)),
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextMuted,
+                )
+            }
+        }
+    }
+}
+
+/** Spread, mid and the bid share, with the meter under them. */
+@Composable
+private fun DepthSummary(book: OrderBook) {
+    val decimals = priceDecimalsFor(book.midPrice ?: 0.0)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
+    ) {
+        book.spread?.let { spread ->
+            SummaryFigure(stringResource(R.string.dom_spread), MarketNumberFormatter.price(spread, decimals))
+        }
+        book.midPrice?.let { mid ->
+            SummaryFigure(stringResource(R.string.dom_mid), MarketNumberFormatter.price(mid, decimals))
+        }
+        book.imbalance?.let { share ->
+            SummaryFigure(stringResource(R.string.dom_imbalance), percentLabel(share))
+        }
+    }
+    book.imbalance?.let { share ->
+        ImbalanceMeter(share)
+        Text(
+            text = stringResource(R.string.dom_imbalance_note),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+        )
+    }
+}
+
+@Composable
+private fun SummaryFigure(label: String, value: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.labelMedium,
+            color = CoineProColors.TextPrimary,
+        )
+    }
+}
+
+/**
+ * One bar split at the bid's share of the book.
+ *
+ * A flat fill of the buy colour over a flat fill of the sell colour, with no gradient between them:
+ * the reader is comparing two lengths, and a blend at the join makes the boundary — the one thing
+ * being measured — the least defined pixel on the meter.
+ */
+@Composable
+private fun ImbalanceMeter(share: Double) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(4.dp)
+            .clip(CoineProShapes.small)
+            .background(CoineProColors.Sell),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(share.toFloat().coerceIn(0f, 1f))
+                .fillMaxHeight()
+                .background(CoineProColors.Buy),
+        )
+    }
+}
+
+/**
+ * The ladder itself: sells above, the spread across the middle, buys below.
+ *
+ * Wrapped in [LtrDirection] so the size / price / size columns hold their places in a right-to-left
+ * app. Without it the whole table mirrors, the buy column lands where a reader has learned the sell
+ * column is, and the bars grow from the wrong edges — a picture that is wrong in the one way a
+ * ladder cannot afford, since its entire content is which side is which.
+ */
+@Composable
+private fun DepthLadderTable(ladder: DepthLadder, onPickPrice: (Double) -> Unit) {
+    LtrDirection {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            LadderHeaderRow()
+            ladder.asks.forEach { row ->
+                LadderRowView(row, ladder.priceDecimals, ladder.quantityDecimals, onPickPrice)
+            }
+            SpreadRow(ladder)
+            ladder.bids.forEach { row ->
+                LadderRowView(row, ladder.priceDecimals, ladder.quantityDecimals, onPickPrice)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LadderHeaderRow() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.Half),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ColumnLabel(stringResource(R.string.dom_column_bid), TextAlign.Left)
+        Text(
+            text = stringResource(R.string.dom_column_price),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextDisabled,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.width(PriceColumnWidth),
+        )
+        ColumnLabel(stringResource(R.string.dom_column_ask), TextAlign.Right)
+    }
+}
+
+@Composable
+private fun RowScope.ColumnLabel(text: String, align: TextAlign) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = CoineProColors.TextDisabled,
+        textAlign = align,
+        modifier = Modifier.weight(1f),
+    )
+}
+
+/**
+ * One rung.
+ *
+ * The whole row is the tap target, not the price cell: a ladder is used at speed and a reader
+ * aiming at a four-character number on a moving list will miss it. Twenty-eight points is under the
+ * usual forty-eight-point minimum and is the density this instrument is for — the rows are
+ * contiguous, so there is no dead space between targets to fall into, and the price picked is
+ * handed to a form the reader confirms rather than acted on here.
+ */
+@Composable
+private fun LadderRowView(
+    row: LadderRow,
+    priceDecimals: Int,
+    quantityDecimals: Int,
+    onPickPrice: (Double) -> Unit,
+) {
+    val colour = when (row.side) {
+        // Read from the palette, so the reader's own colour-direction preference is already
+        // applied: `CoineProTheme` exchanges `buy` and `sell` for a reader on the red-up
+        // convention, and every direction colour in the app resolves through those two fields.
+        BookSide.BID -> CoineProColors.Buy
+        BookSide.ASK -> CoineProColors.Sell
+    }
+    val price = MarketNumberFormatter.price(row.price, priceDecimals)
+    val pickDescription = stringResource(R.string.dom_pick_price, price)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(RowHeight)
+            .clickable { onPickPrice(row.price) }
+            .semantics { contentDescription = pickDescription }
+            .padding(horizontal = CoineProSpacing.Gutter),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        QuantityCell(
+            row = row.takeIf { it.side == BookSide.BID },
+            colour = colour,
+            barEdge = Alignment.CenterStart,
+            figureEdge = Alignment.CenterEnd,
+            decimals = quantityDecimals,
+        )
+        Text(
+            text = price,
+            style = MaterialTheme.typography.labelMedium,
+            color = colour,
+            textAlign = TextAlign.Right,
+            modifier = Modifier.width(PriceColumnWidth),
+        )
+        QuantityCell(
+            row = row.takeIf { it.side == BookSide.ASK },
+            colour = colour,
+            barEdge = Alignment.CenterEnd,
+            figureEdge = Alignment.CenterStart,
+            decimals = quantityDecimals,
+        )
+    }
+}
+
+/**
+ * One side's cell: the cumulative area, the level's own bar over it, and the figure on top.
+ *
+ * Both fills are flat and differ only in alpha. The faint one is the depth curve — everything
+ * between this level and the touch — and because it only ever grows away from the spread it reads
+ * as a shape running down the page rather than as a second bar per row. The solid one is this level
+ * alone. Drawing the curve as an outline instead would put a second set of edges into a table that
+ * is already sixteen horizontal rules tall.
+ *
+ * [row] is null on the side this rung does not belong to, and the cell then draws nothing at all —
+ * an empty half is what makes the ladder read as two columns of liquidity meeting at the spread.
+ */
+@Composable
+private fun RowScope.QuantityCell(
+    row: LadderRow?,
+    colour: Color,
+    barEdge: Alignment,
+    figureEdge: Alignment,
+    decimals: Int,
+) {
+    Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+        if (row != null) {
+            DepthFill(row.curveFraction, colour.copy(alpha = CurveAlpha), barEdge)
+            DepthFill(row.barFraction, colour.copy(alpha = BarAlpha), barEdge)
+            Text(
+                text = MarketNumberFormatter.price(row.quantity, decimals),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextSecondary,
+                textAlign = TextAlign.Right,
+                modifier = Modifier
+                    .align(figureEdge)
+                    .padding(horizontal = CoineProSpacing.Half),
+            )
+        }
+    }
+}
+
+@Composable
+private fun BoxScope.DepthFill(fraction: Float, colour: Color, edge: Alignment) {
+    Box(
+        modifier = Modifier
+            .align(edge)
+            .fillMaxHeight()
+            .fillMaxWidth(fraction)
+            .background(colour),
+    )
+}
+
+/**
+ * The seam, marked.
+ *
+ * A rule above and below and the spread across the middle, so the reader's eye lands on the one row
+ * that separates the two sides without counting rows. The spread is suppressed on a crossed book:
+ * the figure would be negative, and a negative spread printed in the place a reader expects the
+ * cost of crossing is a number that invites a trade that does not exist.
+ */
+@Composable
+private fun SpreadRow(ladder: DepthLadder) {
+    val spread = ladder.book.spread?.takeIf { !ladder.book.crossed }
+    HorizontalDivider(thickness = 1.dp, color = CoineProColors.BorderStrong)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(RowHeight)
+            .padding(horizontal = CoineProSpacing.Gutter),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = stringResource(R.string.dom_spread),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+        )
+        Text(
+            text = spread?.let { MarketNumberFormatter.price(it, ladder.priceDecimals) } ?: NoFigure,
+            style = MaterialTheme.typography.labelMedium,
+            color = CoineProColors.TextPrimary,
+            textAlign = TextAlign.Right,
+            modifier = Modifier.padding(start = CoineProSpacing.One),
+        )
+    }
+    HorizontalDivider(thickness = 1.dp, color = CoineProColors.BorderStrong)
+}
+
+/** Wide enough for eight significant digits at `labelMedium`, which covers every market quoted. */
+private val PriceColumnWidth = 96.dp
+
+/** Dense on purpose. See [LadderRowView] for why this is under the usual minimum target. */
+private val RowHeight = 28.dp
+
+/** The level's own bar: present enough to compare lengths, faint enough to read the figure over. */
+private const val BarAlpha = 0.28f
+
+/** The depth curve behind it. A third of the bar, so the two never read as one shape. */
+private const val CurveAlpha = 0.09f
+
+/** An em dash, for a figure that is genuinely absent rather than zero. */
+private const val NoFigure = "—"

@@ -136,6 +136,10 @@ import com.coinepro.feature.guest.GuestGate
 import com.coinepro.feature.guest.GuestGateScreen
 import com.coinepro.feature.guest.GuestScreen
 import com.coinepro.feature.guest.MembershipGate
+import com.coinepro.core.orderbook.DepthLevel
+import com.coinepro.core.orderbook.OrderBook
+import com.coinepro.core.orderbook.OrderBookState
+import com.coinepro.feature.dom.DepthOfMarketBody
 import com.coinepro.feature.heatmap.HeatmapScreen
 import com.coinepro.feature.home.HomeScreen
 import com.coinepro.feature.home.HomeSubscription
@@ -1316,6 +1320,35 @@ class ScreenshotRenderTest {
      * header and a dense result table can share a 411dp width without any of the three becoming
      * unreadable.
      */
+    /**
+     * The order-book ladder, with a book in it.
+     *
+     * Rendered because the ladder is the one screen in this app whose whole job is a proportion:
+     * a bar's length against the heaviest visible level. A bar that saturates, or one that never
+     * fills, reads as a market with no shape — and neither is visible in a unit test.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun depthOfMarket() {
+        val book = OrderBook.of(
+            symbol = "BTCUSDT",
+            bids = listOf(68_420.0 to 3.4, 68_410.0 to 11.2, 68_400.0 to 6.1, 68_390.0 to 1.8)
+                .map { (p, q) -> DepthLevel(p, q) },
+            asks = listOf(68_450.0 to 2.2, 68_460.0 to 8.7, 68_470.0 to 4.0, 68_480.0 to 12.9)
+                .map { (p, q) -> DepthLevel(p, q) },
+            at = 1_772_000_000_000L,
+        )
+        capture("36-dom-fa") {
+            DepthOfMarketBody(
+                state = OrderBookState(symbol = "BTCUSDT", book = book, sourceName = "LBank"),
+                onPickPrice = {},
+                onRetry = {},
+            )
+        }
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
     fun marketScreener() {

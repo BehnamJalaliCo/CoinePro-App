@@ -24,4 +24,5 @@
     <string name="news_sentiment_bearish">Bearish</string>
     <string name="news_sentiment_neutral">Neutral</string>
     <string name="news_sentiment_unknown">Sentiment unknown</string>
+    <string name="news_open_chart">Show on the chart</string>
 </resources>

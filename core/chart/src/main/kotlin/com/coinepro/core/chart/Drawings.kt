@@ -89,18 +89,112 @@ data class Drawing(
     val text: String? = null,
     /** Which way a standalone arrow marker points. Ignored by every other tool. */
     val direction: ArrowDirection = ArrowDirection.UP,
+    /**
+     * The interval this mark was drawn on — "H1", "D1" — or null when nothing said.
+     *
+     * A drawing's points are times and prices, so it renders on every interval; that is the whole
+     * reason [ChartPoint] is not a bar index. What it does *not* say, and what two independent
+     * readers of the web terminal asked for and never got, is which interval the reader was
+     * looking at when they drew it. A trend line that was right on the daily is a different claim
+     * from the same line drawn on the five-minute, and on a chart carrying twenty marks from three
+     * sessions there is otherwise no way to tell them apart.
+     *
+     * Null rather than a default of the current interval, because "nothing said" is the truth about
+     * every drawing saved before this field existed, and inventing an interval for one of those
+     * would put a confident wrong label on somebody's old work.
+     */
+    val timeframe: String? = null,
+    /** How far this drawing travels between layouts. See [DrawingSync]. */
+    val sync: DrawingSync = DrawingSync.LAYOUT,
+    /**
+     * The `ChartLayout.id` the mark was placed under, or null for the plain working chart.
+     *
+     * Half of what [sync] is read against: a drawing set to [DrawingSync.LAYOUT] shows where this
+     * matches the layout on screen, and a [DrawingSync.GLOBAL] one ignores it entirely.
+     */
+    val layoutId: String? = null,
+    /**
+     * How many standard deviations the regression channel's rails sit at.
+     *
+     * On the drawing rather than on the renderer, because it is a reader's choice about *one*
+     * channel. It sat as a hard 2.0 for the life of the tool — `DrawingGeometryA.regressionChannel`
+     * has taken the argument since it was written and the renderer never passed one — so two
+     * channels on the same chart could not disagree, which is most of what somebody comparing a
+     * one-sigma and a two-sigma channel is doing.
+     *
+     * Ignored by every tool but `regression`, and clamped by [DrawingActions.setDeviations] rather
+     * than trusted: a value off a stored row is not a number this build wrote.
+     */
+    val deviations: Double = DEFAULT_DEVIATIONS,
+    /**
+     * When this mark stops being drawn, in epoch milliseconds, or null for a permanent one.
+     *
+     * What makes demonstration mode temporary. Stored as the *moment it dies* rather than as an age
+     * plus a birthday, so nothing has to be ticked: every reader of it — the renderer's fade, the
+     * visible filter, the reaper — asks the same question of the same clock and gets the same
+     * answer, and a mark cannot half-expire because two places disagreed about how old it is.
+     */
+    val fadesAtMillis: Long? = null,
 ) {
     companion object {
         const val DEFAULT_DRAWING_COLOUR = 0xFFD8A848
+
+        /**
+         * The regression channel's rails, in standard deviations, before anybody chooses.
+         *
+         * Two, which is the value the web terminal shipped and the one every screenshot of this
+         * tool was taken against. Named here rather than left as a literal in three places, because
+         * this is now a value a reader can change and a default that drifted between the renderer
+         * and the store would move somebody's channel on a restart.
+         */
+        const val DEFAULT_DEVIATIONS = 2.0
     }
+}
+
+/**
+ * How far a drawing travels.
+ *
+ * Three states rather than a switch, and the middle one is the reason: readers do not want one
+ * answer for every mark. A support level on gold belongs to gold and should be there whichever
+ * layout is applied; a scribble made while thinking belongs to the chart it was made on and nowhere
+ * else; and the ordinary case is between them — the marks that are part of *this* setup.
+ *
+ * This is a top-25 all-time request on the web terminal's own subreddit and it is still not
+ * answered there, which is the whole reason it is modelled rather than assumed.
+ */
+enum class DrawingSync {
+    /**
+     * Stays on the chart it was drawn on and is not carried into a saved layout.
+     *
+     * The scratch setting. A mark at this setting is still shown while the reader is on the layout
+     * it was made under — hiding it the moment it is placed would be a tool that does nothing —
+     * but saving the layout leaves it behind.
+     */
+    NONE,
+
+    /** Belongs to one layout: shown under that layout, and saved with it. The ordinary case. */
+    LAYOUT,
+
+    /** Shown under every layout for this symbol. What a permanent level on an instrument is. */
+    GLOBAL,
+    ;
+
+    /**
+     * Whether a mark at this setting is written into a layout when one is saved.
+     *
+     * The one place [NONE] and [LAYOUT] differ, and the reason [NONE] is not simply "hidden": both
+     * are visible where they were drawn, and only one of them survives being filed.
+     */
+    val travels: Boolean get() = this != NONE
 }
 
 /**
  * The drawing tools, and the icons TradingView already draws them with.
  *
- * Fifty-two of them, which is the number the web terminal offers. Every icon here was already in
- * this repository — the `tv_tool_*` set converted earlier — and every one is a small picture of
- * what the tool produces, which is the only way a rail of ninety-one glyphs is usable at all.
+ * The web terminal's own set, plus what was written against TradingView's published inventory, plus
+ * the six rail entries that are modes rather than drawings. Every icon here was already in this
+ * repository — the `tv_tool_*` set converted earlier — and every one is a small picture of what the
+ * tool produces, which is the only way a rail of this length is usable at all.
  *
  * `DrawingToolsTest` asserts that every tool has an icon that exists and a help entry that exists.
  */
@@ -113,7 +207,7 @@ object DrawingTools {
      * order, so a set referenced by the list above it is still null when the list is built — which
      * fails as an `ExceptionInInitializerError` from every call site at once, naming nothing.
      */
-    private val MODES_WITHOUT_HELP = setOf("cursor", "select")
+    private val MODES_WITHOUT_HELP = setOf("cursor", "select", DEMONSTRATION_TOOL)
 
     val ALL: List<DrawingTool> = listOf(
         // ── Modes ───────────────────────────────────────────────────────────────────
@@ -123,6 +217,10 @@ object DrawingTools {
         tool("dot", "نشانگر نقطه‌ای", 0, ToolGroup.MODES, DesignR.drawable.tv_tool_dot),
         tool("magnet", "آهنربا", 0, ToolGroup.MODES, DesignR.drawable.tv_magnet),
         tool("eraser", "پاک‌کن", 0, ToolGroup.MODES, DesignR.drawable.tv_tool_eraser),
+        // The one mode that is not about what a tap does but about how long what it draws lasts.
+        // It carries no «؟» yet: the shipped help catalogue has no entry keyed `demonstration`, and
+        // pointing at a neighbouring one would open a page about a different thing.
+        tool(DEMONSTRATION_TOOL, "نمایش موقت", 0, ToolGroup.MODES, DesignR.drawable.tv_tool_projection),
 
         // ── Lines ───────────────────────────────────────────────────────────────────
         tool("trend", "خط روند", 2, ToolGroup.LINES, DesignR.drawable.tv_tool_trend),
@@ -217,11 +315,21 @@ object DrawingTools {
 
         // ── Annotation ──────────────────────────────────────────────────────────────
         tool("arrow", "پیکان", 2, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_arrow),
-        tool("arrowdir", "پیکان جهت‌دار", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_arrowdir),
+        // Two taps for a one-point marker, and the second tap is the whole feature: it is not
+        // another anchor, it is which way the arrow faces. `Drawing.direction` was stored,
+        // persisted and rendered from the day the tool shipped and **nothing set it**, so every
+        // «پیکان جهت‌دار» on every chart pointed up. `DrawingActions` collapses the pair back to
+        // one point on commit, so what is stored is still a single marker.
+        tool("arrowdir", "پیکان جهت‌دار", 2, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_arrowdir),
         tool("text", "متن", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_text),
         tool("callout", "بالن متن", 2, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_callout),
         tool("pricelabel", "برچسب قیمت", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_pricelabel),
         tool("note", "یادداشت", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_note),
+        // Zero here means "the reader says when", the same as `path` and `polyline` — see
+        // `DrawingActions.isVariablePoint`. It used to mean nothing at all: the registry said zero,
+        // the tap handler refuses a zero-point tool, and `DrawingGeometryB.arrowMarks` needs two
+        // anchors before it returns a single mark, so arming this tool and tapping placed nothing
+        // and reported nothing.
         tool("arrowmarks", "علامت پیکانی", 0, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_arrowmarks),
         tool("pricenote", "یادداشت قیمت", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_pricenote),
         tool("pin", "سنجاق", 1, ToolGroup.ANNOTATION, DesignR.drawable.tv_tool_note),
@@ -250,7 +358,7 @@ object DrawingTools {
      * Tools whose Persian name or id contains what was typed.
      *
      * A plain substring match rather than the ranked matcher `core:symbols` uses for markets, and
-     * deliberately: that one exists to order a thousand candidates, while this filters ninety-one
+     * deliberately: that one exists to order a thousand candidates, while this filters a rail
      * whose names a reader is choosing between by eye anyway. Ranking here would reorder the groups
      * out from under them for no gain.
      *
@@ -277,6 +385,15 @@ object DrawingTools {
      * «؟» pointed at nothing. Two entries have no help and are marked [needsHelp] = false: the
      * cursor and the selection mode, which draw nothing and are not tools in that sense.
      */
+    /**
+     * The rail entry for demonstration mode.
+     *
+     * Named rather than spelled out, because three places have to agree on it — the catalogue row,
+     * the set of modes with no «؟», and [DrawingMode.DEMONSTRATION] — and a mode whose id is
+     * mistyped in one of them is a rail button that silently does nothing.
+     */
+    const val DEMONSTRATION_TOOL = "demonstration"
+
     private fun tool(
         id: String,
         label: String,

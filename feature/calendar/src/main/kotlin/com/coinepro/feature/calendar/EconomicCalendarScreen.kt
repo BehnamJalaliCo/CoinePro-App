@@ -60,6 +60,7 @@ import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.designsystem.R as DesignR
+import com.coinepro.core.chartevents.ChartEventSymbols
 import com.coinepro.core.marketintel.EconomicEvent
 import com.coinepro.core.marketintel.MarketImpact
 import com.coinepro.core.marketintel.MarketIntelController
@@ -71,6 +72,17 @@ import java.time.ZoneId
 fun EconomicCalendarScreen(
     controller: MarketIntelController,
     onOpenNews: () -> Unit,
+    /**
+     * Open the chart at the market this release moves, scrolled to the minute it is due.
+     *
+     * The return leg of the marks on the chart's time axis. A reader planning around a rate
+     * decision wants to see where price was the last three times it happened, and the shortest path
+     * from a calendar row to that is one tap rather than a symbol search.
+     *
+     * Null where the host has no chart, and then no row offers the entry rather than offering a
+     * button that goes nowhere.
+     */
+    onOpenChart: ((symbol: String, atSeconds: Long) -> Unit)? = null,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var impact by remember { mutableStateOf<MarketImpact?>(null) }
@@ -150,7 +162,7 @@ fun EconomicCalendarScreen(
                             CalendarFreshnessStrip(state.refreshing, controller::refresh)
                         }
                         items(filtered, key = EconomicEvent::id) { event ->
-                            TimelineEventCard(event, Modifier.animateItem())
+                            TimelineEventCard(event, onOpenChart, Modifier.animateItem())
                         }
                         item { androidx.compose.foundation.layout.Spacer(Modifier.padding(8.dp)) }
                     }
@@ -191,7 +203,11 @@ private fun CalendarFreshnessStrip(refreshing: Boolean, onRefresh: () -> Unit) {
 }
 
 @Composable
-private fun TimelineEventCard(event: EconomicEvent, modifier: Modifier = Modifier) {
+private fun TimelineEventCard(
+    event: EconomicEvent,
+    onOpenChart: ((symbol: String, atSeconds: Long) -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
     val zone = ZoneId.systemDefault()
     val impactColor = when (event.impact) {
         MarketImpact.HIGH -> CoineProColors.Sell
@@ -276,6 +292,16 @@ private fun TimelineEventCard(event: EconomicEvent, modifier: Modifier = Modifie
                         text = stringResource(R.string.calendar_impact_unknown_note),
                         color = CoineProColors.TextMuted,
                         style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                // A release the server tagged with no market gets no button: the calendar is macro
+                // and moves everything, but "everything" is not a chart this app can open.
+                val symbol = ChartEventSymbols.symbolFor(event.relevance)
+                if (onOpenChart != null && symbol != null) {
+                    CoineProSecondaryButton(
+                        text = stringResource(R.string.calendar_open_chart),
+                        icon = DesignR.drawable.nav_chart,
+                        onClick = { onOpenChart(symbol, event.scheduledAt.epochSecond) },
                     )
                 }
             }

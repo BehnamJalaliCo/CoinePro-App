@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default language: Persian. -->
+<resources>
+    <string name="dom_title">عمق بازار</string>
+    <string name="dom_source">منبع: %1$s</string>
+    <string name="dom_column_bid">حجم خرید</string>
+    <string name="dom_column_price">قیمت</string>
+    <string name="dom_column_ask">حجم فروش</string>
+    <string name="dom_spread">اسپرد</string>
+    <string name="dom_mid">میانه</string>
+    <string name="dom_imbalance">سهم خرید</string>
+    <string name="dom_imbalance_note">سهم خرید روی کل عمقی که سرور فرستاده سنجیده می‌شود، نه فقط سطرهای روی صفحه.</string>
+    <string name="dom_truncated">فقط نزدیک‌ترین سطح‌ها به اسپرد نشان داده شده‌اند؛ دفتر از این پایین‌تر ادامه دارد.</string>
+    <string name="dom_crossed">دفتر در این لحظه ناسازگار است: بهترین خرید از بهترین فروش بالاتر رفته. اسپرد را نخوان.</string>
+    <string name="dom_updated">زمان دفتر %1$s</string>
+    <string name="dom_loading">در حال دریافت دفتر سفارش…</string>
+
+    <!-- The three honest answers. None of them is a spinner. -->
+    <string name="dom_unavailable_feed">این فید عمق بازار منتشر نمی‌کند.</string>
+    <string name="dom_unavailable_feed_hint">کارگزارِ متاتریدر ۵ سطح دوم را منتشر نکرده است. تا وقتی منتشر نشود، دفتر سفارشی برای این بازار وجود ندارد.</string>
+    <string name="dom_unavailable_endpoint">دفتر سفارش این بازار هنوز سرو نمی‌شود.</string>
+    <string name="dom_unavailable_endpoint_hint">صرافی دفتر را منتشر می‌کند و سرور هنوز آن را بازپخش نکرده است.</string>
+    <string name="dom_failed">دفتر سفارش در دسترس نیست.</string>
+    <string name="dom_failed_hint">اتصال را بررسی کن و دوباره بگیر.</string>
+    <string name="dom_retry">تلاش دوباره</string>
+    <string name="dom_empty">در این لحظه سفارشی در دفتر نیست.</string>
+    <string name="dom_empty_hint">بازار بسته یا متوقف است.</string>
+
+    <string name="dom_pick_price">گذاشتن قیمت %1$s در فرم سفارش</string>
+</resources>
