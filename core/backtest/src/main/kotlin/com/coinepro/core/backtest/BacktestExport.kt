@@ -1,13 +1,13 @@
 package com.coinepro.core.backtest
 
-import com.coinepro.core.common.JalaliDate
 import com.coinepro.core.chart.Trade as EngineTrade
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
+import com.coinepro.core.common.JalaliDate
+import com.coinepro.core.export.Csv
+import com.coinepro.core.export.Numbers
+import com.coinepro.core.export.Workbook
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 /**
  * The backtest report as a file the reader owns.
@@ -17,27 +17,18 @@ import java.util.Locale
  * candles is the reader's own work, and a report you cannot take out of the app is a report you
  * cannot check.
  *
- * ### Why this is not `feature:portfolio`'s `TradeExport`
+ * ### What this file is and is not
  *
- * It should be. `TradeExport` already writes both formats and already gets the three details below
- * right. It cannot be reached from here and the reasons are structural rather than stylistic:
- * it lives in `feature:portfolio`, so using it would need a feature-to-feature dependency the
- * module graph does not have; its `MinimalWorkbook` — the whole XLSX writer — is `internal` to that
- * module; and its rows are `core:portfolio`'s `ClosedTrade`, a broker fill carrying a balance, a
- * swap, a liquidation flag and a close reason, none of which a backtest trade has or could
- * honestly invent. The fix is to move both files down into a module both sides can depend on;
- * until that happens this writes CSV and there is no XLSX here. See the report's WIRING NEEDED.
+ * It is a row shape — the summary block, the trade columns, which of them hold numbers, and how an
+ * engine trade becomes text. The writing is `core:export`'s: the byte-order mark Persian Excel
+ * needs, the Latin-digit rule, the CRLF and the quoting, and the typed cells that make a workbook
+ * column summable. This file used to carry its own copy of all four, with a comment explaining that
+ * `feature:portfolio`'s writer could not be reached from here. It can now, and the copy is gone.
  *
- * ### The three rules copied deliberately, because they are the ones that break exports
+ * The XLSX below is the whole reason that mattered: it is the same call the trade history makes,
+ * over a different row shape.
  *
- * **A UTF-8 byte-order mark first.** Excel on a Persian Windows machine does not detect UTF-8 from
- * content; without the mark it decodes in the system code page and every Persian heading arrives as
- * mojibake. It costs three bytes and every other tool ignores it.
- *
- * **Every number Latin-digit, `Locale.US`, ungrouped.** A cell holding «۱۲٫۵» is text, and a
- * spreadsheet answers zero to every formula over the column while showing the reader something that
- * looks exactly right. The device locale here is Persian, so any unqualified format call produces
- * precisely that. Thousands separators fail the same way and are dropped for the same reason.
+ * ### The rule that is this file's own
  *
  * **Two columns per timestamp: the ISO instant and the Jalali date.** A spreadsheet sorts and
  * subtracts the first and can do neither with the second; a Persian trader reconciling against
@@ -78,44 +69,54 @@ object BacktestExport {
     /**
      * Which trade columns hold numbers, by index into [TRADE_HEADERS].
      *
-     * The rule the test enforces is "no Persian digit ever reaches a numeric column", and that rule
-     * needs a definition of which columns those are.
+     * Two contracts in one list: the workbook writes exactly these as number cells rather than as
+     * text, and the test enforces "no Persian digit ever reaches a numeric column" over them.
      */
     val NUMERIC_TRADE_COLUMNS: List<Int> = listOf(0, 2, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18)
 
     /**
-     * The whole report: the window, the metrics, then the trades.
+     * The whole report as comma-separated text: the window, the metrics, then the trades.
      *
      * One file with two sections rather than two files. A reader exporting a backtest wants the
      * evidence and the verdict together — a trade list with no Sharpe beside it invites the reader
      * to recompute one over a window they can no longer see, and the window is the number this
      * whole report exists to state plainly.
      *
-     * The sections are separated by an empty line, which every spreadsheet reads as a blank row and
+     * The sections are separated by an empty row, which every spreadsheet reads as a blank line and
      * no parser mistakes for a header.
      */
     fun toCsv(
         report: BacktestReport,
         symbol: String,
         zone: ZoneId = ZoneId.systemDefault(),
-    ): String {
-        val out = StringBuilder()
-        out.append(BOM)
-        summaryRows(report, symbol, zone).forEach { row ->
-            out.append(row.joinToString(",") { quote(it) })
-            out.append(LINE_BREAK)
-        }
-        out.append(LINE_BREAK)
-        out.append(TRADE_HEADERS.joinToString(",") { quote(it) })
-        var running = report.startingEquity
-        report.trades.forEachIndexed { index, trade ->
-            running += trade.pnl
-            out.append(LINE_BREAK)
-            out.append(tradeFields(index + 1, trade, running, zone).joinToString(",") { quote(it) })
-        }
-        out.append(LINE_BREAK)
-        return out.toString()
-    }
+    ): String = Csv.build(
+        preamble = summaryRows(report, symbol, zone) + listOf(emptyList()),
+        header = TRADE_HEADERS,
+        rows = tradeRows(report, zone),
+    )
+
+    /**
+     * The same report as a real spreadsheet.
+     *
+     * The difference that matters to a reader is the typing. A CSV is text all the way down and the
+     * spreadsheet that opens it has to guess which columns are numbers — the guess that goes wrong
+     * on a Persian machine, quietly, with every sum over the column returning zero. Here
+     * [NUMERIC_TRADE_COLUMNS] declares them, so the net-profit column adds up on the first attempt.
+     *
+     * The summary sits above the table exactly as it does in the CSV, so a reader who exports both
+     * finds the same file twice rather than two files that have to be reconciled.
+     */
+    fun toXlsx(
+        report: BacktestReport,
+        symbol: String,
+        zone: ZoneId = ZoneId.systemDefault(),
+    ): ByteArray = Workbook.build(
+        sheetName = SHEET_NAME,
+        preamble = summaryRows(report, symbol, zone),
+        header = TRADE_HEADERS,
+        rows = tradeRows(report, zone),
+        numericColumns = NUMERIC_TRADE_COLUMNS.toSet(),
+    )
 
     /**
      * The header block: what was run, over what, and what it produced.
@@ -171,6 +172,21 @@ object BacktestExport {
         )
     }
 
+    /**
+     * The trades, with the balance carried down the column.
+     *
+     * The running equity is computed here rather than read off each trade because the engine's
+     * trade knows its own profit and not the account it was one of; a reader checking the last row
+     * against the summary's net profit is checking exactly that sum.
+     */
+    private fun tradeRows(report: BacktestReport, zone: ZoneId): List<List<String>> {
+        var running = report.startingEquity
+        return report.trades.mapIndexed { index, trade ->
+            running += trade.pnl
+            tradeFields(index + 1, trade, running, zone)
+        }
+    }
+
     private fun tradeFields(
         ordinal: Int,
         trade: EngineTrade,
@@ -213,8 +229,7 @@ object BacktestExport {
      * zero while displaying it, which is the same wrong answer with a disguise. The screen shows a
      * dash for the same value; a file has no room for a typographic mark inside a numeric column.
      */
-    private fun number(value: Double): String =
-        if (!value.isFinite()) "" else DecimalFormat("0.########", DecimalFormatSymbols(Locale.US)).format(value)
+    private fun number(value: Double): String = Numbers.cell(value)
 
     private fun iso(epochSeconds: Long): String =
         if (epochSeconds <= 0) "" else DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(epochSeconds))
@@ -222,18 +237,6 @@ object BacktestExport {
     private fun jalali(epochSeconds: Long, zone: ZoneId): String =
         if (epochSeconds <= 0) "" else JalaliDate.fromInstant(Instant.ofEpochSecond(epochSeconds), zone).format()
 
-    /**
-     * Every field quoted, inner quotes doubled.
-     *
-     * A Persian heading contains no comma today. A symbol from a feed and a rule name typed by
-     * somebody later both can, and an unquoted comma shifts every column after it by one without
-     * any error being raised anywhere in the chain.
-     */
-    private fun quote(value: String): String = "\"" + value.replace("\"", "\"\"") + "\""
-
-    /** The byte-order mark Excel needs to read this as UTF-8 on a Persian Windows machine. */
-    private const val BOM = "\uFEFF"
-
-    /** CRLF, which is what the CSV specification says and what Excel expects. */
-    private const val LINE_BREAK = "\r\n"
+    /** Thirty-one characters is the sheet-name limit Excel enforces; this is well inside it. */
+    private const val SHEET_NAME = "بک‌تست"
 }

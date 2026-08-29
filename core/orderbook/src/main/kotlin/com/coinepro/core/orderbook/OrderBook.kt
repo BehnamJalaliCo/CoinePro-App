@@ -8,8 +8,20 @@ package com.coinepro.core.orderbook
  * price to get a notional is a decision about what the reader is looking for, and a ladder scaled
  * by notional and one scaled by size disagree about which wall is the big one. The screen picks;
  * this type carries what the venue sent.
+ *
+ * [orders] is how many separate resting orders make up that quantity, and it is the one figure a
+ * size column cannot express: one order of forty behaves nothing like fifty orders of eight-tenths.
+ * The first is a single participant who can withdraw the whole wall in one message; the second is a
+ * crowd that has to be lifted. A ladder that prints only the sum shows those two as the same bar,
+ * which is precisely the distinction a scalper is reading the ladder to find.
+ *
+ * It is **nullable and stays nullable**. LBank's futures book carries it and its spot book does
+ * not; MetaTrader 5's market book has no such concept at all and never will, because a broker's
+ * Level II is aggregated before it reaches the terminal. Null means "this venue did not say", and
+ * that must never be flattened to zero — a zero here would draw a level with no orders behind it
+ * standing next to a quantity that is plainly there.
  */
-data class DepthLevel(val price: Double, val quantity: Double)
+data class DepthLevel(val price: Double, val quantity: Double, val orders: Int? = null)
 
 /** Which half of the book. Bids are resting buyers, asks are resting sellers. */
 enum class BookSide {
@@ -43,8 +55,19 @@ data class CumulativeDepth(val price: Double, val quantity: Double, val total: D
  * a feed could not fill; the constructor then re-checks its work, so a future producer that forgets
  * [of] fails loudly on its first response rather than quietly for the life of the release.
  *
- * [at] is the venue's own timestamp in epoch milliseconds. A book is only ever a claim about an
- * instant that has already passed, and a ladder that cannot say how stale it is cannot be acted on.
+ * [at] is the **venue's** own timestamp in epoch milliseconds, or `0` when the venue publishes none.
+ * A book is only ever a claim about an instant that has already passed, and a ladder that cannot
+ * say how stale it is cannot be acted on. LBank's futures book is one of the venues that publishes
+ * none — its payload is `symbol`, `asks`, `bids` and nothing else — so on crypto this is `0` and
+ * stays `0`. It is never filled from a relay's clock or the phone's: a time that is not the venue's
+ * would read as freshness the data does not have, on the one screen where age is the whole subject.
+ *
+ * [maxAgeMillis] is the other half of that answer and is not interchangeable with it. It is an
+ * upper bound rather than an instant — "this book is at most this old, plus flight time" — declared
+ * by whatever cache the relay serves it from. Where [at] is absent this is the only honest thing a
+ * screen can say about staleness, and where both are present they answer different questions. Null
+ * means no bound was declared, which is weaker than a large bound and must not be shown as a small
+ * one.
  *
  * [truncated] says the venue holds more levels than these. It is not an error: twenty levels is
  * what a phone can show and what both feeds are asked for. It exists so the deepest row can be
@@ -58,6 +81,7 @@ data class OrderBook(
     val asks: List<DepthLevel>,
     val at: Long,
     val truncated: Boolean,
+    val maxAgeMillis: Long? = null,
 ) {
     init {
         require(bids.zipWithNext().all { (a, b) -> a.price > b.price }) {
@@ -112,27 +136,40 @@ data class OrderBook(
         return bid >= ask
     }
 
-    /** Everything resting on the buy side, summed. */
+    /** Everything resting on the buy side of the loaded book, summed. */
     val bidVolume: Double get() = bids.sumOf { it.quantity }
 
-    /** Everything resting on the sell side, summed. */
+    /** Everything resting on the sell side of the loaded book, summed. */
     val askVolume: Double get() = asks.sumOf { it.quantity }
 
     /**
-     * Buy volume as a share of all volume shown, in `0.0..1.0`.
+     * Buy volume as a share of all volume within [levels] of the touch, in `0.0..1.0`.
      *
-     * `1.0` is bids only, `0.0` is asks only, `0.5` is parity. Null when there is no volume at all,
-     * which is not the same as balance: an empty book and a perfectly matched one look identical
-     * as a number and mean opposite things, and a meter parked at the centre for an empty book is
-     * the more misleading of the two.
+     * `1.0` is bids only, `0.0` is asks only, `0.5` is parity. Null when there is no volume in the
+     * band at all, which is not the same as balance: an empty book and a perfectly matched one look
+     * identical as a number and mean opposite things, and a meter parked at the centre for an empty
+     * book is the more misleading of the two.
      *
-     * It is a share of the **visible** levels, so it moves with the requested depth. That is
-     * inherent to the measure rather than a defect here — imbalance over twenty levels and over the
-     * full book are different quantities — and it is why the screen prints the depth beside it.
+     * ### Why the band is a parameter and not a property of the book
+     *
+     * Imbalance is read as "which side is pressing **now**", and that reading only survives while
+     * the levels in it are levels that could actually trade. The app now loads a hundred a side so
+     * the depth curve can show where the size really sits, and folding all hundred into this number
+     * would quietly change what it means: orders resting a percent out get pulled and replaced
+     * constantly and rarely fill, so they smooth the figure and make it less true at exactly the
+     * moment it matters. Widening the fetch must not widen the reading.
+     *
+     * So the caller names its band. There is no default, deliberately — a default is how the wrong
+     * window gets chosen by nobody. `OrderBookGateway.IMBALANCE_LEVELS` is the band the screen uses
+     * and carries the reasoning for its size; a caller that genuinely wants the whole loaded book
+     * passes [bids] and [asks] sizes and has therefore said so out loud.
      */
-    val imbalance: Double? get() {
-        val total = bidVolume + askVolume
-        return if (total <= 0.0) null else bidVolume / total
+    fun imbalance(levels: Int): Double? {
+        require(levels > 0) { "levels must be positive: $levels" }
+        val bid = bids.take(levels).sumOf { it.quantity }
+        val ask = asks.take(levels).sumOf { it.quantity }
+        val total = bid + ask
+        return if (total <= 0.0) null else bid / total
     }
 
     /**
@@ -206,6 +243,9 @@ data class OrderBook(
          *   snapshot. Drawn as a row it is an empty rung on the ladder.
          * * **Duplicate prices are summed.** Two rows at one price is one price with two orders on
          *   it. Kept as two rows the ladder shows the same rung twice and halves the apparent wall.
+         *   [DepthLevel.orders] is summed with them, because merging two queues at one price makes
+         *   one queue holding both counts — and it stays null unless at least one row named a
+         *   count, so a feed that does not publish the field never acquires a fabricated one.
          * * **Both sides are sorted.** See the note on the class for why this is not left to the
          *   sender's promise.
          */
@@ -215,12 +255,14 @@ data class OrderBook(
             asks: List<DepthLevel>,
             at: Long,
             truncated: Boolean = false,
+            maxAgeMillis: Long? = null,
         ): OrderBook = OrderBook(
             symbol = symbol.uppercase(),
             bids = bids.normalise().sortedByDescending { it.price },
             asks = asks.normalise().sortedBy { it.price },
             at = at,
             truncated = truncated,
+            maxAgeMillis = maxAgeMillis,
         )
 
         /** An honest nothing: the symbol is known, the book is not. Never shown as a market. */
@@ -230,6 +272,15 @@ data class OrderBook(
         private fun List<DepthLevel>.normalise(): List<DepthLevel> = this
             .filter { it.price.isFinite() && it.price > 0.0 && it.quantity.isFinite() && it.quantity > 0.0 }
             .groupBy { it.price }
-            .map { (price, rows) -> DepthLevel(price, rows.sumOf { it.quantity }) }
+            .map { (price, rows) ->
+                DepthLevel(
+                    price = price,
+                    quantity = rows.sumOf { it.quantity },
+                    // `takeIf` before `sum`, not `sumOf { it.orders ?: 0 }`: the second turns a
+                    // side where nobody published a count into a column of zeroes, which reads as
+                    // "no orders rest here" beside a bar that is plainly there.
+                    orders = rows.mapNotNull { it.orders }.takeIf { it.isNotEmpty() }?.sum(),
+                )
+            }
     }
 }

@@ -2,6 +2,8 @@ package com.coinepro.core.orderbook
 
 import com.coinepro.core.common.AppResult
 import com.coinepro.core.common.ErrorKind
+import com.coinepro.core.network.ApiErrors
+import com.google.gson.annotations.SerializedName
 import java.io.IOException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -13,7 +15,16 @@ import retrofit2.http.GET
 import retrofit2.http.Query
 
 internal interface CryptoDepthApi {
-    @GET("market/depth")
+    /**
+     * `GET /api/mobile/v1/market/depth?symbol=&depth=`, live since 2026-08-29.
+     *
+     * The prefix is written out because TradeYar's base address is the bare host and every one of
+     * its mobile routes carries `api/mobile/v1/` itself — see `docs/BACKEND_ROUTE_MAP.md`. A
+     * relative `market/depth` against that base resolves to the host root, which is not a route on
+     * that server and answers `404`; this gateway would then read its own misspelling as
+     * [DepthUnavailableReason.ENDPOINT_NOT_SERVED] and tell every reader the relay had not shipped.
+     */
+    @GET("api/mobile/v1/market/depth")
     suspend fun depth(
         @Query("symbol") symbol: String,
         @Query("depth") depth: Int,
@@ -21,42 +32,91 @@ internal interface CryptoDepthApi {
 }
 
 /**
- * The wire shape asked of TradeYar in `docs/SERVER_ASKS_DOM.md`, and nothing beyond it.
+ * The wire shape TradeYar actually built, which is not in every respect the one asked for.
  *
- * Both sides arrive as `[price, quantity]` pairs because that is the shape LBank's own
- * `/v2/depth.do` uses, and the ask is for a relay rather than a re-modelling: every field the relay
- * invents is a field that can disagree with the exchange. Every property is nullable and every
- * default is empty — a route that is only specified and not yet built will answer something else
- * first, and a parser that throws on a missing field turns "not built yet" into a crash.
+ * Both sides arrive as numeric arrays rather than objects: the source is LBank's futures book,
+ * whose levels are `{"price", "volume", "orders"}` strings, and the relay flattens and converts
+ * them so the app holds numbers and not a re-modelling of a re-modelling. Every property is
+ * nullable and every default is empty, because a build in the field can meet a server older than
+ * the route and a parser that throws on a missing field turns "older server" into a crash.
+ *
+ * ### There is no `ts`, and there must never be one
+ *
+ * The ask said: send the exchange's own time, and if the exchange has none, send nothing rather
+ * than your own clock. LBank's futures book has none — its `data` object is exactly `symbol`,
+ * `asks`, `bids` at every depth — so the field is not here at all rather than here and always null.
+ * A nullable `ts` is an invitation: the next hand to touch this file fills it from
+ * [serverTimeMs] because the types line up, and the ladder starts claiming a freshness nothing
+ * measured.
+ *
+ * The two fields that did arrive are named so they cannot be swapped for it. See each below.
  */
 internal data class CryptoDepthDto(
     val symbol: String? = null,
-    val ts: Long? = null,
     val depth: Int? = null,
+    /**
+     * Measured by the relay, not guessed: it asks LBank for `depth + 1` and serves `depth`, so more
+     * than `depth` coming back means the book continues past the page. LBank honours the requested
+     * depth exactly and never truncates silently, which is what makes the extra level a real test
+     * rather than the "is the page full" inference this app used before it.
+     */
     val truncated: Boolean? = null,
+    /** `[price, quantity]`, or `[price, quantity, orders]` where the venue counted. */
     val bids: List<List<Double>> = emptyList(),
     val asks: List<List<Double>> = emptyList(),
+    /**
+     * The **relay's** clock at the moment it serialised this response, in epoch milliseconds.
+     *
+     * It is useful for one thing — measuring round-trip time against the phone's own clock — and it
+     * is not the age of the book. Nothing here or downstream may put it into [OrderBook.at] or into
+     * any staleness figure: it is later than the exchange snapshot by however long the relay's cache
+     * had been holding it, so shown as freshness it makes a half-second-old book look brand new
+     * every single time, on the one screen where age is the entire subject.
+     */
+    @SerializedName("server_time_ms")
+    val serverTimeMs: Long? = null,
+    /**
+     * The honest upper bound on staleness: this book is at most this many milliseconds old, plus
+     * flight time.
+     *
+     * TradeYar serves a 500 ms cache in front of LBank, so this is what a reader can be told when
+     * the venue publishes no timestamp of its own. It is the *only* number on this response that
+     * means anything about age, and [OrderBook.maxAgeMillis] is where it goes.
+     */
+    @SerializedName("cache_ttl_ms")
+    val cacheTtlMs: Long? = null,
 )
 
 /**
- * Crypto depth, relayed from LBank by TradeYar.
+ * Crypto depth, relayed from LBank's **perpetual futures** book by TradeYar.
  *
- * ### It is built against a route that does not answer yet
+ * ### Futures, not spot, and that is the whole point
  *
- * That is deliberate and it is the shape of the whole item. LBank publishes a public book, TradeYar
- * already relays that exchange's candles and quotes, and the depth relay is a small addition rather
- * than a new system — the ask is written out in `docs/SERVER_ASKS_DOM.md`. Until it lands, this
- * gateway's own 404 handling is what the reader sees, and it is the reason that handling is
- * specific: `404` and `501` here mean **the route is not served**, which is
- * [DepthUnavailableReason.ENDPOINT_NOT_SERVED] and reads on screen as "not yet", not as an outage.
- * Every other status is a real failure and is reported as one.
+ * The original ask was for a relay of `/v2/depth.do`, which is LBank's spot book. TradeYar declined
+ * it and was right to. This platform is not a spot venue: the `ws/prices` ticker and the
+ * `market/candles` history both come from LBank's perpetual futures (`/cfd/openApi/v1/pub/…`), and
+ * this book now comes from `/pub/marketOrder` on the same host. The reasoning is on
+ * [OrderBookGateway] with the two prices that settle it — 22.6 USDT between the two books at one
+ * instant, about 0.03%, on a screen whose subject is the distance from the ladder to the last price
+ * printed directly above it. Coverage agreed independently: 62 of the app's 441 crypto symbols have
+ * no spot pair at all.
  *
  * ### The book is rebuilt, not trusted
  *
  * Everything from the wire goes through [OrderBook.of], which sorts both sides, sums duplicate
- * prices and drops rows the relay could not fill. A relay that hands back LBank's own ordering is
- * doing the right thing and this changes nothing; a relay that ever reorders, pages or merges is
+ * prices and drops rows the relay could not fill. The relay already sorts and already drops zero
+ * volumes, and this changes nothing when it does; a relay that ever reorders, pages or merges is
  * caught here rather than on the ladder, where a mis-sorted book draws perfectly and lies.
+ *
+ * ### What the errors mean
+ *
+ * The route exists, so a failure now says something specific and each branch says a different true
+ * thing. `422`/`TYR-021` is the platform's scope gate — the app asked for a market this backend
+ * does not carry, which is a bug on this side and not a gap on theirs. `502`/`TYR-048` is LBank's
+ * `error_code 20156`, a delisted contract. A bare `502` is the exchange being unreachable and a
+ * `503` is the relay having no exchange host configured; both are outages that a retry can outlive,
+ * so both keep their button. `404`/`501` survives only for a build pointed at a server older than
+ * the route.
  */
 class TradeYarOrderBookGateway(
     retrofit: Retrofit,
@@ -65,9 +125,11 @@ class TradeYarOrderBookGateway(
 
     private val api = retrofit.create(CryptoDepthApi::class.java)
 
-    // The exchange, not the relay. See `OrderBookGateway.sourceName`: a reader who wants to check
-    // this ladder needs the name of the book it can be checked against.
-    override val sourceName: String = "LBank"
+    // The exchange and the half of it these levels are from, not the relay. "LBank" alone would be
+    // ambiguous now that the same exchange's spot book is 22.6 USDT away and a reader checking this
+    // ladder against the wrong one of the two would conclude the app was inventing prices. See
+    // `OrderBookGateway.sourceName`.
+    override val sourceName: String = "LBank Futures"
 
     override suspend fun load(symbol: String, depth: Int): AppResult<OrderBook> = try {
         val requested = depth.coerceIn(1, MAX_DEPTH)
@@ -80,20 +142,31 @@ class TradeYarOrderBookGateway(
                 symbol = response.symbol ?: symbol,
                 bids = response.bids.toLevels(),
                 asks = response.asks.toLevels(),
-                // No timestamp is not "now". A relay that omits it has told us nothing about the
-                // age of the snapshot, and stamping it with the phone's clock would present an
-                // unknown age as a fresh one — on the one screen where age is the whole question.
-                at = response.ts ?: 0L,
-                // Truncation is claimed by the server or inferred from the page being full. The
-                // inference is the weaker signal and it errs toward saying "there is more", which
-                // is the safe direction: a reader told the book continues has lost nothing.
+                at = NO_VENUE_TIME,
+                // Claimed by the server, which measures it. The old inference is kept behind it for
+                // a server that predates the flag, and it errs toward saying "there is more" —
+                // the safe direction, since a reader told the book continues has lost nothing.
                 truncated = response.truncated
                     ?: (response.bids.size >= requested || response.asks.size >= requested),
+                // A non-positive TTL is not a fresher book, it is a relay that did not answer the
+                // question. Left null, the screen says nothing about age rather than claiming zero.
+                maxAgeMillis = response.cacheTtlMs?.takeIf { it > 0L },
             ),
         )
     } catch (error: HttpException) {
         when (error.code()) {
             404, 501 -> depthUnavailable(DepthUnavailableReason.ENDPOINT_NOT_SERVED)
+            // `TYR-021`. The code is read for the log and not required for the branch: `symbol` is
+            // the only parameter this call sends that the app does not already clamp, so a 422 here
+            // can be about nothing else, and falling through would hand a reader a retry button
+            // over a symbol that will be out of scope every time it is pressed.
+            422 -> depthUnavailable(DepthUnavailableReason.SYMBOL_NOT_SERVED)
+            502 -> if (ApiErrors.from(error).code == DELISTED) {
+                depthUnavailable(DepthUnavailableReason.SYMBOL_DELISTED)
+            } else {
+                depthOutage(DepthOutageReason.EXCHANGE_UNREACHABLE)
+            }
+            503 -> depthOutage(DepthOutageReason.RELAY_NOT_CONFIGURED)
             401, 403 -> AppResult.Failure(ErrorKind.AUTH, cause = error)
             429 -> AppResult.Failure(ErrorKind.RATE_LIMIT, cause = error)
             in 500..599 -> AppResult.Failure(ErrorKind.SERVER, cause = error)
@@ -106,13 +179,32 @@ class TradeYarOrderBookGateway(
     }
 
     /**
-     * Polls, because a snapshot route is what is being asked for.
+     * Polls once a second, which is the cadence both ends have agreed to keep.
      *
-     * A socket would be better and is not what the ask requests: TradeYar's realtime channel is a
-     * quote fan-out, and putting a full book on it every tick is a different piece of work with a
-     * different bandwidth story. A second between snapshots is fast enough to watch a wall move and
-     * slow enough not to be the reason a phone is warm — the cadence is stated in the server ask so
-     * that both ends agree on it rather than discovering it under load.
+     * ### Why a second is not too fast, at a hundred levels
+     *
+     * TradeYar put no rate limiter on the route and found none on LBank's side either — sixty
+     * concurrent requests, sixty successes, in 0.7 s. LBank answers them from that host in 243–256
+     * milliseconds, and the page size barely moves it: 249 ms at depth 20, 255 ms at 100, 260 ms at
+     * 200, for gzipped bodies of 0.4, 1.1 and 2.1 KiB. Two requests a second at depth 100 held for
+     * fifteen seconds gave thirty successes at a 253 ms median. That is why
+     * [OrderBookGateway.DEFAULT_DEPTH] is a hundred and not twenty — the wide book the depth curve
+     * needs costs six milliseconds.
+     *
+     * In front of LBank sits a 500 ms cache and a single-flight lock, which together mean a phone
+     * asking once a second never receives a book older than about half a second, and a hundred
+     * phones on BTCUSDT collapse into two upstream calls a second rather than a hundred. They asked
+     * us to keep the one-second number rather than raise it, so it is kept.
+     *
+     * ### Why this is not a socket, and why that is not an oversight
+     *
+     * LBank does broadcast this book over WebSocket — topic `x=3`, 25 levels — so removing the poll
+     * is technically available. TradeYar recommend against it today and the reasoning is worth
+     * recording so nobody reopens it casually: their relay's live channel currently consumes only
+     * the ticker topic (`x=1`), and adding a second topic touches the platform's live price path —
+     * the same path signals and order execution sit on. Risking that for one screen a snapshot
+     * already serves is a bad trade. If this screen ever becomes heavily trafficked, it is worth
+     * asking again; until then the poll is the deliberate answer, not the unfinished one.
      *
      * Two rules keep this from lying when things go wrong. A depth-unavailable answer **ends** the
      * flow at once, so the screen stops waiting and says so. A run of [MAX_CONSECUTIVE_FAILURES]
@@ -141,7 +233,7 @@ class TradeYarOrderBookGateway(
     }.distinctUntilChanged()
 
     private companion object {
-        /** LBank's own ceiling for a public book page. Larger is truncated there, so it is clamped here. */
+        /** TradeYar's own ceiling for the `depth` parameter. Larger is rejected there, so it is clamped here. */
         const val MAX_DEPTH = 200
 
         /** One second between snapshots. See [stream]. */
@@ -150,16 +242,42 @@ class TradeYarOrderBookGateway(
         /** Roughly five seconds of silence at the default cadence before the stream gives up. */
         const val MAX_CONSECUTIVE_FAILURES = 5
 
+        /** `TYR-048` on a `502`: LBank's `error_code 20156`, a contract this exchange has retired. */
+        const val DELISTED = "TYR-048"
+
         /**
-         * `[price, quantity]` pairs to levels, dropping anything shorter than a pair.
+         * LBank's futures book publishes no time of its own, so [OrderBook.at] is zero here.
+         *
+         * Named rather than written as a bare `0L` at the call site so that it reads as a decision
+         * about the venue instead of a placeholder somebody forgot to fill. The staleness the
+         * screen can honestly show comes from `cache_ttl_ms` instead — see [CryptoDepthDto].
+         */
+        const val NO_VENUE_TIME = 0L
+
+        /**
+         * `[price, quantity]` or `[price, quantity, orders]` to levels, dropping anything shorter
+         * than a pair.
          *
          * A one-element row is not a level at quantity zero — it is a row that arrived malformed,
          * and reading its missing half as zero would put a rung on the ladder with nothing behind
          * it. [OrderBook.of] drops the zeroes that get through; this drops the rows that never had
          * two numbers to begin with.
+         *
+         * The third element is the resting-order count and is optional in both directions: absent
+         * on a server that predates it, and absent forever on any venue that does not count. A
+         * count that is not a positive whole number is treated as absent rather than shown, because
+         * "0 orders" printed beside a quantity that is plainly there is worse than no figure at all.
          */
         fun List<List<Double>>.toLevels(): List<DepthLevel> = mapNotNull { row ->
-            if (row.size < 2) null else DepthLevel(price = row[0], quantity = row[1])
+            if (row.size < 2) {
+                null
+            } else {
+                DepthLevel(
+                    price = row[0],
+                    quantity = row[1],
+                    orders = row.getOrNull(2)?.takeIf { it.isFinite() && it >= 1.0 }?.toInt(),
+                )
+            }
         }
     }
 }

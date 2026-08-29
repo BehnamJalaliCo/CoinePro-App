@@ -27,6 +27,9 @@ class OrderBookTest {
         truncated = truncated,
     )
 
+    /** The band the screen reads pressure over. Named here so the tests below say which one. */
+    private val band = OrderBookGateway.IMBALANCE_LEVELS
+
     @Test
     fun `bids come back descending however they arrived`() {
         val sorted = book(
@@ -99,28 +102,28 @@ class OrderBookTest {
     @Test
     fun `imbalance is one when only bids rest and zero when only asks do`() {
         val allBid = book(bids = listOf(100.0 to 5.0, 99.0 to 5.0), asks = emptyList())
-        assertEquals(1.0, allBid.imbalance!!, 1e-9)
+        assertEquals(1.0, allBid.imbalance(band)!!, 1e-9)
 
         val allAsk = book(bids = emptyList(), asks = listOf(101.0 to 5.0, 102.0 to 5.0))
-        assertEquals(0.0, allAsk.imbalance!!, 1e-9)
+        assertEquals(0.0, allAsk.imbalance(band)!!, 1e-9)
     }
 
     @Test
     fun `imbalance is a half at parity`() {
         val even = book(bids = listOf(100.0 to 3.0, 99.0 to 1.0), asks = listOf(101.0 to 2.0, 102.0 to 2.0))
-        assertEquals(0.5, even.imbalance!!, 1e-9)
+        assertEquals(0.5, even.imbalance(band)!!, 1e-9)
     }
 
     @Test
     fun `imbalance leans toward whichever side is heavier`() {
         val heavyBid = book(bids = listOf(100.0 to 9.0), asks = listOf(101.0 to 1.0))
-        assertEquals(0.9, heavyBid.imbalance!!, 1e-9)
+        assertEquals(0.9, heavyBid.imbalance(band)!!, 1e-9)
     }
 
     @Test
     fun `an empty book has no imbalance rather than a balanced one`() {
         // An empty book and a perfectly matched one are the same number and opposite facts.
-        assertNull(book(bids = emptyList(), asks = emptyList()).imbalance)
+        assertNull(book(bids = emptyList(), asks = emptyList()).imbalance(band))
     }
 
     @Test
@@ -196,5 +199,106 @@ class OrderBookTest {
         val narrowed = small.top(8)
         assertEquals(small, narrowed)
         assertFalse(narrowed.truncated)
+    }
+
+    @Test
+    fun `imbalance reads only the band it is given, so a deep wall cannot swing the meter`() {
+        // The reason the fetch got wider and the reading did not. Nine lots of resting bid sit
+        // three levels out; over two levels a side the market is balanced, and it is balanced,
+        // because nothing at 97 is going to trade in the next second.
+        val deepWall = book(
+            bids = listOf(100.0 to 1.0, 99.0 to 1.0, 98.0 to 9.0, 97.0 to 9.0),
+            asks = listOf(101.0 to 1.0, 102.0 to 1.0, 103.0 to 1.0, 104.0 to 1.0),
+        )
+        assertEquals(0.5, deepWall.imbalance(2)!!, 1e-9)
+        // Widened to everything loaded, the same book reads as heavily bid — a different claim,
+        // which is exactly why the band is a parameter the caller has to name.
+        assertEquals(20.0 / 24.0, deepWall.imbalance(8)!!, 1e-9)
+    }
+
+    @Test
+    fun `a band wider than the book is the whole book rather than an error`() {
+        val small = book(bids = listOf(100.0 to 3.0), asks = listOf(101.0 to 1.0))
+        assertEquals(0.75, small.imbalance(500)!!, 1e-9)
+    }
+
+    @Test
+    fun `a band of zero or fewer is refused, because a share of nothing is not a share`() {
+        var refused = false
+        try {
+            book(bids = listOf(100.0 to 1.0), asks = listOf(101.0 to 1.0)).imbalance(0)
+        } catch (error: IllegalArgumentException) {
+            refused = true
+        }
+        assertTrue("a non-positive band must not silently answer null", refused)
+    }
+
+    @Test
+    fun `an order count rides through with its level and is not invented where absent`() {
+        val counted = OrderBook.of(
+            symbol = "BTCUSDT",
+            bids = listOf(DepthLevel(100.0, 2.0, orders = 7)),
+            asks = listOf(DepthLevel(101.0, 1.0)),
+            at = 0L,
+        )
+        assertEquals(7, counted.bids.first().orders)
+        // The venue said nothing about this side, and nothing is what comes back — not zero, which
+        // would draw as a level with no orders behind a quantity that is plainly there.
+        assertNull(counted.asks.first().orders)
+    }
+
+    @Test
+    fun `two rows at one price merge their order counts along with their sizes`() {
+        val merged = OrderBook.of(
+            symbol = "BTCUSDT",
+            bids = listOf(DepthLevel(100.0, 2.0, orders = 3), DepthLevel(100.0, 3.0, orders = 4)),
+            asks = emptyList(),
+            at = 0L,
+        )
+        assertEquals(1, merged.bids.size)
+        assertEquals(5.0, merged.bids.first().quantity, 1e-9)
+        assertEquals(7, merged.bids.first().orders)
+    }
+
+    @Test
+    fun `merging a counted row with an uncounted one keeps the count it actually has`() {
+        // Summing with a zero for the silent row would understate nothing here, but reading the
+        // absence as zero on a book where nobody counts is how a column of zeroes appears.
+        val mixed = OrderBook.of(
+            symbol = "BTCUSDT",
+            bids = listOf(DepthLevel(100.0, 2.0, orders = 3), DepthLevel(100.0, 1.0)),
+            asks = emptyList(),
+            at = 0L,
+        )
+        assertEquals(3, mixed.bids.first().orders)
+    }
+
+    @Test
+    fun `the staleness bound is carried separately from the venue time and neither fills the other`() {
+        val bounded = OrderBook.of(
+            symbol = "BTCUSDT",
+            bids = listOf(DepthLevel(100.0, 1.0)),
+            asks = listOf(DepthLevel(101.0, 1.0)),
+            at = 0L,
+            maxAgeMillis = 500L,
+        )
+        // No venue timestamp, which is the crypto case: LBank's futures book publishes none.
+        assertEquals(0L, bounded.at)
+        assertEquals(500L, bounded.maxAgeMillis)
+
+        // And a book with no declared bound says so rather than claiming a small one.
+        assertNull(book(bids = listOf(100.0 to 1.0), asks = listOf(101.0 to 1.0)).maxAgeMillis)
+    }
+
+    @Test
+    fun `narrowing to the visible rows keeps the staleness bound, which belongs to the fetch`() {
+        val wide = OrderBook.of(
+            symbol = "BTCUSDT",
+            bids = listOf(DepthLevel(100.0, 1.0), DepthLevel(99.0, 1.0)),
+            asks = listOf(DepthLevel(101.0, 1.0), DepthLevel(102.0, 1.0)),
+            at = 0L,
+            maxAgeMillis = 500L,
+        )
+        assertEquals(500L, wide.top(1).maxAgeMillis)
     }
 }

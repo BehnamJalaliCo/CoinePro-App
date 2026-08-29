@@ -1340,15 +1340,13 @@ class ScreenshotRenderTest {
         )
         capture("36-dom-fa") {
             DepthOfMarketBody(
-                state = OrderBookState(symbol = "BTCUSDT", book = book, sourceName = "LBank"),
+                state = OrderBookState(symbol = "BTCUSDT", book = book, sourceName = "LBank Futures"),
                 onPickPrice = {},
                 onRetry = {},
             )
         }
     }
 
-    @Test
-    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
     fun marketScreener() {

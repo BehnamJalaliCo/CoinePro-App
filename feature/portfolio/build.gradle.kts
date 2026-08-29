@@ -16,6 +16,7 @@ android {
 
 dependencies {
     implementation(project(":core:common"))
+    implementation(project(":core:export"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:portfolio"))
     // The system document picker, for the CSV and XLSX exports. The alternative is a FileProvider

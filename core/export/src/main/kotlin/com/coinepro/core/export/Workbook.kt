@@ -1,33 +1,21 @@
-package com.coinepro.feature.portfolio
+package com.coinepro.core.export
 
 import java.io.ByteArrayOutputStream
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
-import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 /**
- * One value in a spreadsheet cell, with its type decided before it is written.
+ * A valid `.xlsx` file, written by hand, for whatever a caller can express as rows of text.
  *
- * The distinction is the whole reason this type exists. A number written as text sits in the cell
- * looking exactly like a number and silently answers zero to every `SUM` over the column, and there
- * is no visual difference to warn the reader — which is the same failure the Persian-digit rule
- * guards against from the other direction.
- */
-internal sealed interface SheetCell {
-    /** Anything a formula will never be run over: a symbol, a date, a reason, a yes or a no. */
-    data class Text(val value: String) : SheetCell
-
-    /** A real number, written as a bare numeric literal so a spreadsheet can add it up. */
-    data class Number(val value: Double) : SheetCell
-
-    /** A genuinely absent value. Written as no cell at all, rather than as a zero or an empty string. */
-    data object Blank : SheetCell
-}
-
-/**
- * A valid `.xlsx` file, written by hand.
+ * ### The rule this file exists for
+ *
+ * **A column the caller declares numeric is written as a real number cell, never as an inline
+ * string.** It is [Csv]'s rule two with a different mechanism and the same ending: a number written
+ * as text sits in the cell looking exactly like a number, and `SUM` over the column returns zero
+ * with nothing to warn the reader. In a CSV the trap is the digits; here the trap is the cell type,
+ * and a spreadsheet asked to guess a type on a Persian machine guesses wrong. So the caller
+ * declares which columns are numbers — see the `numericColumns` argument — and this writes those
+ * cells as bare `<v>` literals and every other cell as a declared inline string.
  *
  * ### Why there is no library here
  *
@@ -46,54 +34,106 @@ internal sealed interface SheetCell {
  * ### What is deliberately not used
  *
  * There is no `sharedStrings.xml`. The shared-string table is a size optimisation for spreadsheets
- * that repeat the same label thousands of times, and a trade history repeats almost nothing except
- * the symbol; inline strings cost a few more bytes and remove an entire part, its relationship, and
- * the index bookkeeping that is the usual source of a corrupt-file dialog.
+ * that repeat one label thousands of times, and these exports repeat almost nothing except a
+ * symbol; inline strings cost a few more bytes and remove an entire part, its relationship, and the
+ * index bookkeeping that is the usual source of a corrupt-file dialog.
  *
  * Dates are written as text rather than as Excel date serials. A serial needs a number format, the
- * 1900 leap-year bug, and a decision about which timezone midnight means — and the reader would be
- * shown a date that had quietly moved. [TradeExport] writes both an ISO instant and a Jalali date as
- * text instead, which sort correctly, mean exactly one thing, and can be read by a human.
+ * 1900 leap-year bug, and a decision about what timezone midnight means — and the reader would be
+ * shown a date that had quietly moved. Callers write both an ISO instant and a Jalali date as text
+ * instead, which sort correctly, mean exactly one thing, and can be read by a human.
  */
-internal object MinimalWorkbook {
+object Workbook {
 
     /**
      * Build the workbook.
      *
-     * [header] is written as row one in bold and frozen in place, because a twenty-column export
-     * scrolled past its own headings is a wall of unlabelled numbers. Rows shorter than the header
-     * are padded with blanks rather than rejected: a ragged row is a bug in the caller, and an
-     * exception thrown at the moment a reader presses "export" is a worse way to report it than a
-     * file with a gap in it.
+     * [header] is row one, bold and frozen in place, because a twenty-column export scrolled past
+     * its own headings is a wall of unlabelled numbers. [numericColumns] are indices into [header];
+     * a cell in one of them is written as a number when its text reads back as one, and as an
+     * inline string when it does not — a caller that declares a column numeric and then writes
+     * «خرید» into it gets a readable file rather than a workbook Excel refuses to open.
+     *
+     * An empty string is written as no cell at all rather than as a zero or as an empty string
+     * cell, for the reason [Numbers.cell] gives: absent and nought are different claims.
+     *
+     * Rows shorter than the header are padded with blanks rather than rejected. A ragged row is a
+     * bug in the caller, and an exception thrown at the moment a reader presses "export" is a worse
+     * way to report it than a file with a gap in it.
      */
-    fun build(sheetName: String, header: List<String>, rows: List<List<SheetCell>>): ByteArray {
+    fun build(
+        sheetName: String,
+        header: List<String>,
+        rows: List<List<String>>,
+        numericColumns: Set<Int>,
+    ): ByteArray = build(
+        sheetName = sheetName,
+        preamble = emptyList(),
+        header = header,
+        rows = rows,
+        numericColumns = numericColumns,
+    )
+
+    /**
+     * The same workbook with a block of rows above the table: a caption, or a summary.
+     *
+     * [preamble] rows are written first, then one blank row, then the header — the same shape
+     * [Csv.build] writes, so a reader who exports both formats of one report finds the same file
+     * twice rather than two files.
+     *
+     * Preamble cells are always text, including the ones that look like numbers. A preamble here is
+     * a key and its value on one line, not a column anything is summed over, and making it numeric
+     * would mean deciding a cell's type by parsing it — the guess this whole module exists to
+     * remove rather than relocate. Numbers that a formula will touch belong in [rows], where their
+     * column is declared.
+     */
+    fun build(
+        sheetName: String,
+        preamble: List<List<String>>,
+        header: List<String>,
+        rows: List<List<String>>,
+        numericColumns: Set<Int>,
+    ): ByteArray {
+        // The header sits below the preamble and the one blank row that separates them.
+        val headerRow = if (preamble.isEmpty()) 1 else preamble.size + 2
         val body = StringBuilder()
         body.append(XML_DECLARATION)
         body.append("<worksheet xmlns=\"$MAIN_NAMESPACE\">")
-        // Right-to-left, because this workbook's headings are Persian and a reader opening it in
-        // Excel should find column A on the right, where the rest of their documents put it.
+        // Right-to-left, because every export in this app has Persian headings and a reader opening
+        // one in Excel should find column A on the right, where the rest of their documents put it.
         body.append(
             "<sheetViews><sheetView rightToLeft=\"1\" workbookViewId=\"0\">" +
-                "<pane ySplit=\"1\" topLeftCell=\"A2\" activePane=\"bottomLeft\" state=\"frozen\"/>" +
+                "<pane ySplit=\"$headerRow\" topLeftCell=\"A${headerRow + 1}\" " +
+                "activePane=\"bottomLeft\" state=\"frozen\"/>" +
                 "</sheetView></sheetViews>",
         )
         body.append("<sheetData>")
-        body.append("<row r=\"1\">")
+        preamble.forEachIndexed { index, row ->
+            val rowNumber = index + 1
+            body.append("<row r=\"$rowNumber\">")
+            row.forEachIndexed { column, value ->
+                if (value.isNotEmpty()) {
+                    body.append(textCell(columnName(column) + rowNumber, value, bold = column == 0))
+                }
+            }
+            body.append("</row>")
+        }
+        body.append("<row r=\"$headerRow\">")
         header.forEachIndexed { column, label ->
-            body.append(textCell(columnName(column) + "1", label, bold = true))
+            body.append(textCell(columnName(column) + headerRow, label, bold = true))
         }
         body.append("</row>")
         rows.forEachIndexed { index, row ->
-            val rowNumber = index + 2
+            val rowNumber = headerRow + 1 + index
             body.append("<row r=\"$rowNumber\">")
             for (column in header.indices) {
-                when (val cell = row.getOrElse(column) { SheetCell.Blank }) {
-                    is SheetCell.Blank -> Unit
-                    is SheetCell.Text ->
-                        body.append(textCell(columnName(column) + rowNumber, cell.value, bold = false))
-                    is SheetCell.Number -> body.append(
-                        "<c r=\"${columnName(column)}$rowNumber\"><v>${number(cell.value)}</v></c>",
-                    )
+                val value = row.getOrElse(column) { "" }
+                val reference = columnName(column) + rowNumber
+                val number = if (column in numericColumns) Numbers.parse(value) else null
+                when {
+                    value.isEmpty() -> Unit
+                    number != null -> body.append("<c r=\"$reference\"><v>${Numbers.cell(number)}</v></c>")
+                    else -> body.append(textCell(reference, value, bold = false))
                 }
             }
             body.append("</row>")
@@ -115,9 +155,9 @@ internal object MinimalWorkbook {
     /**
      * A zip entry with a fixed timestamp.
      *
-     * Fixed so that exporting the same trades twice produces the same bytes. That is what makes the
+     * Fixed so that exporting the same rows twice produces the same bytes. That is what makes the
      * export testable at all — a test can assert on the file rather than only on its parts — and it
-     * means a reader who exports, re-exports and compares sees the trades change rather than the
+     * means a reader who exports, re-exports and compares sees their data change rather than the
      * clock. The constant is midday on the first of January 2000: the zip format cannot store a date
      * before 1980 and midday keeps it clear of that floor in every timezone on earth.
      */
@@ -137,17 +177,6 @@ internal object MinimalWorkbook {
         return "<c r=\"$reference\"$style t=\"inlineStr\"><is><t xml:space=\"preserve\">" +
             escape(value) + "</t></is></c>"
     }
-
-    /**
-     * A number as a bare literal.
-     *
-     * `Locale.US` symbols, no grouping, at most eight decimals. Grouping separators are the trap
-     * here rather than a nicety: `64,182.40` inside a spreadsheet cell is a string, and every sum
-     * over the column silently drops it. A device locale left to itself would supply both a Persian
-     * digit set and an Arabic decimal separator, which fails the same way while looking correct.
-     */
-    private fun number(value: Double): String =
-        if (!value.isFinite()) "0" else DecimalFormat("0.########", DecimalFormatSymbols(Locale.US)).format(value)
 
     /** Spreadsheet column letters: A, B, … Z, AA, AB. */
     private fun columnName(index: Int): String {

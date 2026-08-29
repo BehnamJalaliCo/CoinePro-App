@@ -2,6 +2,8 @@ package com.coinepro.core.backtest
 
 import com.coinepro.core.chart.Candle
 import com.coinepro.core.chart.CandleSeries
+import java.io.ByteArrayInputStream
+import java.util.zip.ZipInputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -96,6 +98,36 @@ class BacktestExportTest {
         val sharpe = rows.indexOfFirst { it.firstOrNull() == "شارپ سالانه" }
         assertTrue("the window must be stated before the ratio it qualifies", bars in 0 until sharpe)
         assertEquals("400", rows[bars][1])
+    }
+
+    @Test
+    fun `the same report also comes out as a workbook, which is what the shared writer bought`() {
+        val bytes = BacktestExport.toXlsx(report, "BTCUSDT", zone)
+        val sheet = part(bytes, "xl/worksheets/sheet1.xml")
+        val rows = rows(BacktestExport.toCsv(report, "BTCUSDT", zone))
+        val header = rows.indexOfFirst { it.firstOrNull() == BacktestExport.TRADE_HEADERS.first() }
+        val trade = rows[header + 1]
+
+        // The number a reader sums is a number cell, not an inline string that sums to zero.
+        assertTrue("the entry price must be a numeric cell", sheet.contains("<v>${trade[5]}</v>"))
+        // The Jalali date beside it is text, because a month name is not arithmetic.
+        assertTrue(sheet.contains(">${trade[4]}<"))
+        // And the summary is above the table here exactly as it is in the CSV, so a reader who
+        // exports both formats gets one report twice rather than two reports to reconcile.
+        assertTrue(sheet.contains("گزارش بک‌تست"))
+        assertTrue(sheet.contains(BacktestExport.TRADE_HEADERS.last()))
+    }
+
+    /** One part of the workbook, read back out of the zip the export wrote. */
+    private fun part(bytes: ByteArray, name: String): String {
+        ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
+            var entry = zip.nextEntry
+            while (entry != null) {
+                if (entry.name == name) return zip.readBytes().toString(Charsets.UTF_8)
+                entry = zip.nextEntry
+            }
+        }
+        throw AssertionError("part $name is not in the workbook")
     }
 
     /**

@@ -41,19 +41,45 @@ class NoDepthGatewayTest {
     }
 
     @Test
-    fun `the two reasons stay distinguishable, because they have different futures`() {
-        val notServed = depthUnavailable(DepthUnavailableReason.ENDPOINT_NOT_SERVED)
-        val noDepth = depthUnavailable(DepthUnavailableReason.FEED_PUBLISHES_NO_DEPTH)
-        assertEquals(DepthUnavailableReason.ENDPOINT_NOT_SERVED, notServed.depthUnavailableReason)
-        assertEquals(DepthUnavailableReason.FEED_PUBLISHES_NO_DEPTH, noDepth.depthUnavailableReason)
+    fun `every refusal stays distinguishable, because they have different futures`() {
+        // Four sentences on screen, four reasons here, and the screen picks by value. Collapsed to
+        // one they would all read as the most pessimistic of them.
+        DepthUnavailableReason.entries.forEach { reason ->
+            assertEquals(reason, depthUnavailable(reason).depthUnavailableReason)
+        }
+    }
+
+    @Test
+    fun `an outage is a failure with a retry, not a refusal, and never reads as one`() {
+        // The split the screen turns on. `SYMBOL_DELISTED` and `EXCHANGE_UNREACHABLE` both arrive
+        // as a 502 from the same route; one is permanent and one ends on its own, and reading the
+        // second as the first would tell a reader a live market had been removed from the exchange.
+        val outage = depthOutage(DepthOutageReason.EXCHANGE_UNREACHABLE)
+        assertEquals(DepthOutageReason.EXCHANGE_UNREACHABLE, outage.depthOutageReason)
+        assertNull("an outage must never be read as a refusal", outage.depthUnavailableReason)
+        assertEquals(ErrorKind.SERVER, outage.kind)
+
+        val refusal = depthUnavailable(DepthUnavailableReason.SYMBOL_DELISTED)
+        assertNull("a refusal must never be read as an outage", refusal.depthOutageReason)
+    }
+
+    @Test
+    fun `both outage reasons survive the round trip through the failure`() {
+        DepthOutageReason.entries.forEach { reason ->
+            assertEquals(reason, depthOutage(reason).depthOutageReason)
+        }
     }
 
     @Test
     fun `an ordinary failure carries no depth reason, so the two are never confused`() {
         val network = AppResult.Failure(ErrorKind.NETWORK)
         assertNull(network.depthUnavailableReason)
+        assertNull(network.depthOutageReason)
         // And a validation failure from somewhere else is not mistaken for a refusal either.
         assertNull(AppResult.Failure(ErrorKind.VALIDATION, message = "bad symbol").depthUnavailableReason)
+        // Nor a plain server failure for a named outage: an ordinary 500 has no upstream story and
+        // must keep the generic sentence rather than borrowing the exchange's.
+        assertNull(AppResult.Failure(ErrorKind.SERVER).depthOutageReason)
     }
 
     @Test

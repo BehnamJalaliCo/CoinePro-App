@@ -16,6 +16,7 @@ dependencies {
     api(project(":core:chart"))
     api(libs.kotlinx.coroutines.core)
     implementation(project(":core:common"))
+    implementation(project(":core:export"))
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
 }

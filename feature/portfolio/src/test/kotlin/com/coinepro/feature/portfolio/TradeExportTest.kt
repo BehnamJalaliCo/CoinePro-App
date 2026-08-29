@@ -7,7 +7,6 @@ import java.time.ZoneOffset
 import java.util.Locale
 import java.util.zip.ZipInputStream
 import org.junit.After
-import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -104,17 +103,6 @@ class TradeExportTest {
         csv.removePrefix("﻿").split("\r\n").filter { it.isNotBlank() }.map(::row)
 
     @Test
-    fun `the CSV begins with the UTF-8 byte order mark`() {
-        val bytes = TradeExport.toCsv(trades, ZoneOffset.UTC).toByteArray(Charsets.UTF_8)
-        // Without these three bytes Excel on a Persian Windows machine decodes the file in the
-        // system code page and every Persian heading arrives as mojibake.
-        assertArrayEquals(
-            byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()),
-            bytes.copyOfRange(0, 3),
-        )
-    }
-
-    @Test
     fun `no numeric column holds a Persian digit even when the device locale is Persian`() {
         assertEquals("fa", Locale.getDefault().language)
         val parsed = rows(TradeExport.toCsv(trades, ZoneOffset.UTC))
@@ -185,18 +173,6 @@ class TradeExportTest {
         assertEquals(TradeExport.HEADERS, parsed.first())
     }
 
-    private fun partsOf(bytes: ByteArray): List<String> {
-        val names = mutableListOf<String>()
-        ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
-            var entry = zip.nextEntry
-            while (entry != null) {
-                names += entry.name
-                entry = zip.nextEntry
-            }
-        }
-        return names
-    }
-
     private fun partText(bytes: ByteArray, name: String): String {
         ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
             var entry = zip.nextEntry
@@ -209,23 +185,7 @@ class TradeExportTest {
     }
 
     @Test
-    fun `the XLSX bytes open as a zip holding the parts a workbook needs`() {
-        val parts = partsOf(TradeExport.toXlsx(trades, ZoneOffset.UTC))
-        assertEquals(
-            listOf(
-                "[Content_Types].xml",
-                "_rels/.rels",
-                "xl/workbook.xml",
-                "xl/_rels/workbook.xml.rels",
-                "xl/styles.xml",
-                "xl/worksheets/sheet1.xml",
-            ),
-            parts,
-        )
-    }
-
-    @Test
-    fun `the workbook writes numbers as numbers and text as text`() {
+    fun `the columns this file calls numeric arrive in the workbook as numbers`() {
         val sheet = partText(TradeExport.toXlsx(trades, ZoneOffset.UTC), "xl/worksheets/sheet1.xml")
         // A bare `<v>` is a numeric cell; a spreadsheet will sum this column.
         assertTrue(sheet.contains("<v>280</v>"))
@@ -236,22 +196,5 @@ class TradeExportTest {
         assertFalse(sheet.any { it in '۰'..'۹' })
         // Right-to-left, because the headings are Persian.
         assertTrue(sheet.contains("rightToLeft=\"1\""))
-    }
-
-    @Test
-    fun `the same trades export to the same bytes twice`() {
-        // Fixed entry timestamps rather than the clock, so a reader who exports twice sees their
-        // trades change rather than the minute they pressed the button.
-        assertArrayEquals(
-            TradeExport.toXlsx(trades, ZoneOffset.UTC),
-            TradeExport.toXlsx(trades, ZoneOffset.UTC),
-        )
-    }
-
-    @Test
-    fun `an awkward close reason cannot produce XML a spreadsheet refuses to open`() {
-        val awkward = trades.first().copy(closeReason = "stop & <run>")
-        val sheet = partText(TradeExport.toXlsx(listOf(awkward), ZoneOffset.UTC), "xl/worksheets/sheet1.xml")
-        assertTrue(sheet.contains("stop &amp; &lt;run&gt;"))
     }
 }

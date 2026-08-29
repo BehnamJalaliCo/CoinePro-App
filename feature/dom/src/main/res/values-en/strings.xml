@@ -5,24 +5,38 @@
     <string name="dom_column_bid">Bid size</string>
     <string name="dom_column_price">Price</string>
     <string name="dom_column_ask">Ask size</string>
+    <string name="dom_column_bid_orders">Bid size · orders</string>
+    <string name="dom_column_ask_orders">Ask size · orders</string>
     <string name="dom_spread">Spread</string>
     <string name="dom_mid">Mid</string>
     <string name="dom_imbalance">Bid share</string>
-    <string name="dom_imbalance_note">Bid share is measured over the whole book the server sent, not only the rows on screen.</string>
+    <string name="dom_imbalance_note">Bid share is measured over the %1$s levels nearest the spread on each side — not over the whole book that was loaded, and not only the rows on screen.</string>
     <string name="dom_truncated">Only the levels nearest the spread are shown; the book continues below them.</string>
     <string name="dom_crossed">The book is momentarily inconsistent: the best bid is above the best ask. Do not read the spread.</string>
     <string name="dom_updated">Book time %1$s</string>
+    <string name="dom_max_age">This book is at most %1$s seconds old, plus network round trip.</string>
     <string name="dom_loading">Loading the order book…</string>
 
     <string name="dom_unavailable_feed">This feed does not publish order-book data.</string>
     <string name="dom_unavailable_feed_hint">The MetaTrader 5 broker does not publish Level II. Until it does, there is no order book for this market.</string>
     <string name="dom_unavailable_endpoint">The order book for this market is not served yet.</string>
-    <string name="dom_unavailable_endpoint_hint">The exchange publishes it and the server does not relay it yet.</string>
+    <string name="dom_unavailable_endpoint_hint">The server this build is pointed at is older than the depth route. Once it is updated this screen works with no change to the app.</string>
+    <string name="dom_unavailable_symbol">This market is not served on this platform.</string>
+    <string name="dom_unavailable_symbol_hint">The symbol requested is outside this platform\'s list of markets. Trying again will not help; open a different market from the list.</string>
+    <string name="dom_unavailable_delisted">This market has been removed by the exchange.</string>
+    <string name="dom_unavailable_delisted_hint">The exchange has delisted this contract, so there is no order book for it any more.</string>
+
     <string name="dom_failed">The order book is unavailable.</string>
     <string name="dom_failed_hint">Check the connection and load it again.</string>
+    <string name="dom_outage_exchange">The exchange is not responding right now.</string>
+    <string name="dom_outage_exchange_hint">Your connection and the server are both fine; it is the exchange that is unreachable. Try again shortly.</string>
+    <string name="dom_outage_relay">The server is not ready to relay the book yet.</string>
+    <string name="dom_outage_relay_hint">This is a server-side setting and there is nothing to do at your end. Try again shortly.</string>
     <string name="dom_retry">Try again</string>
+
     <string name="dom_empty">There are no resting orders right now.</string>
-    <string name="dom_empty_hint">The market is closed or halted.</string>
+    <string name="dom_empty_hint">The exchange returned the book and it was empty: a market with nothing waiting on it. This is not an error, and trying again will not change it.</string>
 
     <string name="dom_pick_price">Create an alert at %1$s</string>
+    <string name="dom_pick_price_orders">Create an alert at %1$s, %2$s orders at this level</string>
 </resources>

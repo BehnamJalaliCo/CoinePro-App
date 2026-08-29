@@ -133,4 +133,55 @@ class OrderBookControllerTest {
 
         assertEquals(1, gateway.loads)
     }
+
+    @Test
+    fun `a named outage keeps its retry and its own sentence`() = runTest {
+        val gateway = FakeOrderBookGateway(first = depthOutage(DepthOutageReason.EXCHANGE_UNREACHABLE))
+        val controller = OrderBookController(gateway, this)
+
+        controller.start("BTCUSDT")
+        testScheduler.runCurrent()
+
+        val state = controller.state.value
+        assertFalse(state.loading)
+        // Still a failure, so the button is there — the exchange comes back and the reader should
+        // be able to ask again.
+        assertTrue(state.failed)
+        assertNull(state.unavailable)
+        // And the screen knows whose fault it is, so it does not tell the reader to check a
+        // connection that is working.
+        assertEquals(DepthOutageReason.EXCHANGE_UNREACHABLE, state.outage)
+    }
+
+    @Test
+    fun `a refusal carries no outage, so no outage sentence appears under it`() = runTest {
+        val gateway = FakeOrderBookGateway(
+            first = depthUnavailable(DepthUnavailableReason.SYMBOL_NOT_SERVED),
+        )
+        val controller = OrderBookController(gateway, this)
+
+        controller.start("NOTACOIN")
+        testScheduler.runCurrent()
+
+        assertEquals(DepthUnavailableReason.SYMBOL_NOT_SERVED, controller.state.value.unavailable)
+        assertNull(controller.state.value.outage)
+        assertFalse(controller.state.value.failed)
+    }
+
+    @Test
+    fun `a successful retry clears the outage rather than leaving its sentence behind`() = runTest {
+        val gateway = FakeOrderBookGateway(first = depthOutage(DepthOutageReason.RELAY_NOT_CONFIGURED))
+        val controller = OrderBookController(gateway, this)
+        controller.start("BTCUSDT")
+        testScheduler.runCurrent()
+        assertEquals(DepthOutageReason.RELAY_NOT_CONFIGURED, controller.state.value.outage)
+
+        gateway.first = AppResult.Success(book(bid = 100.0, ask = 101.0))
+        controller.refresh()
+        testScheduler.runCurrent()
+
+        assertNull("a mended feed must not keep the outage line", controller.state.value.outage)
+        assertFalse(controller.state.value.failed)
+        assertTrue(controller.state.value.hasDepth)
+    }
 }

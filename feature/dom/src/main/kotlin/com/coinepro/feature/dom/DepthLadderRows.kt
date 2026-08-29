@@ -21,8 +21,22 @@ data class LadderRow(
     val side: BookSide,
     /** This level against the largest **visible** level on either side. */
     val barFraction: Float,
-    /** Everything between this level and the touch, against the heavier visible side's total. */
+    /**
+     * Everything between this level and the touch, against the heavier side of the **loaded** book.
+     *
+     * The one fraction on this row that is not scaled to the window, and the difference is what the
+     * curve is for. See [ladderRows].
+     */
     val curveFraction: Float,
+    /**
+     * How many separate orders make up [quantity], where the venue counts them.
+     *
+     * Carried straight through from [com.coinepro.core.orderbook.DepthLevel.orders] with no
+     * arithmetic on it, because there is none to do: it is a count, not a share, and scaling it
+     * against anything would answer a question nobody asked. Null on a venue that does not publish
+     * it — MT5 never will — and the renderer draws nothing at all rather than a zero.
+     */
+    val orders: Int? = null,
 )
 
 /**
@@ -53,6 +67,16 @@ data class DepthLadder(
     val priceDecimals: Int,
     /** The same decision for the two quantity columns. See [quantityDecimalsFor]. */
     val quantityDecimals: Int,
+    /**
+     * Whether any visible rung carries an order count, decided once for the whole table.
+     *
+     * Per row it would be worse than useless: the count is a secondary figure, and a column that
+     * appears on four rows and not on the other twelve is a column of holes that a reader stops
+     * trusting. So the header labels it and the cells draw it only when the ladder as a whole has
+     * it — and, separately, only when the table is wide enough to hold it without crowding the
+     * sizes, which is a measurement the renderer makes and this value knows nothing about.
+     */
+    val hasOrders: Boolean,
 )
 
 /**
@@ -67,6 +91,17 @@ data class DepthLadder(
  * over the whole loaded book, because that is a claim about the market rather than about the
  * picture — and the two are printed with their depths so they cannot be read as the same number.
  *
+ * ### The curve's denominator is the loaded book, equally deliberately
+ *
+ * The two fractions on a row are scaled against different things because they answer different
+ * questions, and collapsing them onto one denominator would cost one of the two answers. The bar
+ * asks "which of the rows I can see is the big one" and is scaled to the window. The curve asks
+ * "how much of this market is between here and the touch", and a hundred levels are fetched
+ * precisely so it can answer that — scaled to the window instead, the deepest visible rung is
+ * always full width whatever lies below it, which is the one shape a depth curve must never draw.
+ * Read against the loaded book the visible rungs are a short, shallow wash, and that is the true
+ * picture: eight rows really are a small slice of a hundred, and the size really is further out.
+ *
  * ### Small levels stay small
  *
  * A level a hundredth the size of the wall gets a bar a hundredth as long, which on a phone is
@@ -77,27 +112,45 @@ data class DepthLadder(
 fun ladderRows(book: OrderBook, levels: Int = OrderBookGateway.VISIBLE_LEVELS): DepthLadder {
     val visible = book.top(levels)
     val largestQuantity = visible.largestQuantity
-    val largestCumulative = visible.largestCumulative
+    // The loaded book, not the window. See the note above on the two denominators.
+    val largestCumulative = book.largestCumulative
 
-    fun rows(side: BookSide): List<LadderRow> = visible.cumulative(side).map { level ->
-        LadderRow(
-            price = level.price,
-            quantity = level.quantity,
-            side = side,
-            barFraction = fraction(level.quantity, largestQuantity),
-            curveFraction = fraction(level.total, largestCumulative),
-        )
+    // Zipped against the book's own levels rather than carried on `CumulativeDepth`: the curve is a
+    // running total and an order count is not summable along it, so putting the count in that type
+    // would invite exactly the addition that must never happen.
+    fun rows(side: BookSide): List<LadderRow> {
+        val sideLevels = when (side) {
+            BookSide.BID -> visible.bids
+            BookSide.ASK -> visible.asks
+        }
+        // `cumulative` walks the same list in the same order, so the index is the same rung. It is
+        // read by index rather than zipped so that a future change to either side's ordering breaks
+        // here instead of silently pairing a count with the wrong price.
+        return visible.cumulative(side).mapIndexed { index, level ->
+            LadderRow(
+                price = level.price,
+                quantity = level.quantity,
+                side = side,
+                barFraction = fraction(level.quantity, largestQuantity),
+                curveFraction = fraction(level.total, largestCumulative),
+                orders = sideLevels[index].orders,
+            )
+        }
     }
+
+    val asks = rows(BookSide.ASK)
+    val bids = rows(BookSide.BID)
 
     return DepthLadder(
         // Reversed exactly once, here. See the note on `DepthLadder.asks`.
-        asks = rows(BookSide.ASK).reversed(),
-        bids = rows(BookSide.BID),
+        asks = asks.reversed(),
+        bids = bids,
         book = visible,
         // From the mid rather than from any one level, so the choice does not change as the top of
         // the book moves across a magnitude step and reformats the entire column mid-session.
         priceDecimals = priceDecimalsFor(visible.midPrice ?: visible.bestBid ?: visible.bestAsk ?: 0.0),
         quantityDecimals = quantityDecimalsFor(largestQuantity),
+        hasOrders = asks.any { it.orders != null } || bids.any { it.orders != null },
     )
 }
 
@@ -148,6 +201,32 @@ fun quantityDecimalsFor(largest: Double): Int = when {
  */
 fun percentLabel(share: Double): String =
     BidiText.isolateLtr(String.format(Locale.US, "%.0f%%", share * 100))
+
+/**
+ * A resting-order count for the ladder — `12`.
+ *
+ * Latin digits, and [Locale.US] is the reason: the device locale is Persian, and `%d` through the
+ * default locale emits `۱۲` silently. A count of orders at a price is a market figure and takes the
+ * app's market-figure convention, not the Persian digits prose counts use. Isolated so it cannot be
+ * reordered against the size beside it when the row is laid out.
+ */
+fun ordersLabel(orders: Int): String =
+    BidiText.isolateLtr(String.format(Locale.US, "%d", orders))
+
+/**
+ * A cache bound in milliseconds as a figure in seconds — `0.5`.
+ *
+ * This is the only staleness figure the crypto ladder can honestly print. LBank's futures book
+ * carries no timestamp, so there is no book age to show; what the relay does declare is the TTL of
+ * the cache it served from, which bounds the age from above. The sentence around this label says
+ * "at most", because that is what the number is — anything phrased as "updated N ago" would turn a
+ * bound into a measurement.
+ *
+ * One decimal, because the bound in production is 500 ms and `0` would read as "no age at all".
+ * [Locale.US] for the same reason as everywhere else in this file.
+ */
+fun maxAgeSecondsLabel(maxAgeMillis: Long): String =
+    BidiText.isolateLtr(String.format(Locale.US, "%.1f", maxAgeMillis / 1_000.0))
 
 /**
  * A share of [largest], clamped, with a zero denominator answering zero rather than infinity.

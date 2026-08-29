@@ -30,6 +30,17 @@ data class OrderBookState(
     val unavailable: DepthUnavailableReason? = null,
     /** Something went wrong and retrying is worth a try. Never set together with [unavailable]. */
     val failed: Boolean = false,
+    /**
+     * What kind of thing went wrong upstream, when the server named one. Only ever set alongside
+     * [failed].
+     *
+     * Null is the ordinary case — a dropped connection, a timeout, a body that would not parse —
+     * and it means the screen should say the generic transport sentence, which for those is true.
+     * When it is set the server told us something the reader would otherwise be blamed for: the
+     * exchange is down, or the relay has no exchange configured. Both still get the retry button,
+     * because both end on their own; what changes is the sentence above it.
+     */
+    val outage: DepthOutageReason? = null,
     /** The venue, for the provenance line under the ladder. */
     val sourceName: String = "",
 ) {
@@ -39,9 +50,13 @@ data class OrderBookState(
     /**
      * A book that arrived with nothing in it.
      *
-     * Treated as its own state rather than as depth of zero. It happens on a market that is closed
-     * or halted, and the ladder says so in words instead of drawing eight empty rungs, which is a
-     * picture of a market where nobody wants to trade at any price.
+     * Treated as its own state rather than as depth of zero, and **not** as a failure. It is a
+     * successful call whose honest answer is that nobody is resting an order here — TradeYar found
+     * exactly two of the app's 441 crypto markets in that condition (`1000XECUSDT`, `OBOLUSDT`),
+     * stable across three passes four seconds apart while 439 neighbours returned twenty levels a
+     * side. So this is a live market with an empty queue rather than a closed one or a broken
+     * route, and the copy has to say that: the ladder says it in words instead of drawing eight
+     * empty rungs, which is a picture of a market where nobody wants to trade at any price.
      */
     val emptyBook: Boolean get() = book != null && !hasDepth
 }
@@ -112,7 +127,7 @@ class OrderBookController(
         val symbol = _state.value.symbol
         if (symbol.isEmpty() || _state.value.unavailable != null) return
         job?.cancel()
-        _state.update { it.copy(loading = true, failed = false) }
+        _state.update { it.copy(loading = true, failed = false, outage = null) }
         job = scope.launch { open(symbol) }
     }
 
@@ -127,7 +142,13 @@ class OrderBookController(
         when (val first = gateway.load(symbol, depth)) {
             is AppResult.Success -> {
                 _state.update {
-                    it.copy(book = first.value, loading = false, unavailable = null, failed = false)
+                    it.copy(
+                        book = first.value,
+                        loading = false,
+                        unavailable = null,
+                        failed = false,
+                        outage = null,
+                    )
                 }
                 // Collected in the same job as the snapshot so that cancelling one cancels both.
                 // The stream may complete on its own — a feed that stopped answering ends it — and
@@ -146,6 +167,9 @@ class OrderBookController(
                         // Never both. A refusal is an answer, and marking it as a failure as well
                         // would put a retry button under a sentence that says retrying is pointless.
                         failed = reason == null,
+                        // Only meaningful on the failure branch, and cleared on the other one so a
+                        // stale outage sentence cannot outlive the outage that produced it.
+                        outage = first.depthOutageReason.takeIf { reason == null },
                     )
                 }
             }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -34,9 +35,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.PersianDateTime
-import com.coinepro.core.designsystem.BidiText
+import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
@@ -44,6 +46,7 @@ import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.LtrDirection
 import com.coinepro.core.orderbook.BookSide
+import com.coinepro.core.orderbook.DepthOutageReason
 import com.coinepro.core.orderbook.DepthUnavailableReason
 import com.coinepro.core.orderbook.OrderBook
 import com.coinepro.core.orderbook.OrderBookController
@@ -131,9 +134,9 @@ fun DepthOfMarketBody(
         when {
             unavailable != null -> DepthUnavailable(unavailable)
             state.failed -> CoineProEmptyState(
-                message = stringResource(R.string.dom_failed),
+                message = stringResource(failureMessage(state.outage)),
                 icon = CoineProIcons.Markets,
-                hint = stringResource(R.string.dom_failed_hint),
+                hint = stringResource(failureHint(state.outage)),
                 action = stringResource(R.string.dom_retry),
                 onAction = onRetry,
             )
@@ -160,26 +163,33 @@ fun DepthOfMarketBody(
 }
 
 /**
- * The sentence a reader gets when the feed has no book, which is most readers on most days.
+ * The sentence a reader gets when there is no book and asking again cannot produce one.
  *
- * There is **no retry button** on either branch, and that is the whole design. A retry says
- * "persistence might help". Neither of these conditions is helped by persistence: one is a broker
- * that does not publish Level II and the other is a route that has not been written. Offering the
- * button would be a more comfortable screen that tells the reader something untrue.
+ * There is **no retry button** on any of these branches, and that is the whole design. A retry says
+ * "persistence might help". None of these conditions is helped by persistence: a broker that does
+ * not publish Level II, a server older than the route, a market this platform does not carry, a
+ * contract the exchange has retired. Offering the button would be a more comfortable screen that
+ * tells the reader something untrue.
  *
- * The two reasons get different copy because they have different futures — "not possible here"
- * against "not yet" — and a reader deciding whether this app will ever show them a book is entitled
- * to know which one they are looking at.
+ * Each reason gets its own copy because each has a different future, and a reader deciding whether
+ * this app will ever show them a book is entitled to know which one they are looking at. Two of
+ * them also point at different people: the delisting is the exchange's doing and the out-of-scope
+ * symbol is this app's, so the second says so rather than blaming the backend for a request it was
+ * right to refuse.
  */
 @Composable
 private fun DepthUnavailable(reason: DepthUnavailableReason) {
     val message = when (reason) {
         DepthUnavailableReason.FEED_PUBLISHES_NO_DEPTH -> R.string.dom_unavailable_feed
         DepthUnavailableReason.ENDPOINT_NOT_SERVED -> R.string.dom_unavailable_endpoint
+        DepthUnavailableReason.SYMBOL_NOT_SERVED -> R.string.dom_unavailable_symbol
+        DepthUnavailableReason.SYMBOL_DELISTED -> R.string.dom_unavailable_delisted
     }
     val hint = when (reason) {
         DepthUnavailableReason.FEED_PUBLISHES_NO_DEPTH -> R.string.dom_unavailable_feed_hint
         DepthUnavailableReason.ENDPOINT_NOT_SERVED -> R.string.dom_unavailable_endpoint_hint
+        DepthUnavailableReason.SYMBOL_NOT_SERVED -> R.string.dom_unavailable_symbol_hint
+        DepthUnavailableReason.SYMBOL_DELISTED -> R.string.dom_unavailable_delisted_hint
     }
     CoineProEmptyState(
         message = stringResource(message),
@@ -189,11 +199,32 @@ private fun DepthUnavailable(reason: DepthUnavailableReason) {
 }
 
 /**
+ * The headline for a failure that a retry can outlive.
+ *
+ * Null — an ordinary dropped request — keeps the generic sentence, which is true for it. The two
+ * named outages get their own, because the generic hint tells the reader to check their connection
+ * and on both of these the reader's connection is the one part of the chain that is working.
+ */
+private fun failureMessage(outage: DepthOutageReason?): Int = when (outage) {
+    null -> R.string.dom_failed
+    DepthOutageReason.EXCHANGE_UNREACHABLE -> R.string.dom_outage_exchange
+    DepthOutageReason.RELAY_NOT_CONFIGURED -> R.string.dom_outage_relay
+}
+
+/** The line under [failureMessage]. Same reasoning; see there. */
+private fun failureHint(outage: DepthOutageReason?): Int = when (outage) {
+    null -> R.string.dom_failed_hint
+    DepthOutageReason.EXCHANGE_UNREACHABLE -> R.string.dom_outage_exchange_hint
+    DepthOutageReason.RELAY_NOT_CONFIGURED -> R.string.dom_outage_relay_hint
+}
+
+/**
  * Symbol, venue, and the two figures that summarise the book.
  *
- * The imbalance meter is here rather than beside the ladder on purpose: it is measured over the
- * whole book the server sent, and the ladder shows a window into it. Placed among the rows it would
- * read as a total of the rows, which it is not — hence the note under it.
+ * The imbalance meter is here rather than beside the ladder on purpose: it is measured over a band
+ * near the touch that is wider than the eight rows drawn, and the ladder shows a window into it.
+ * Placed among the rows it would read as a total of the rows, which it is not — hence the note
+ * under it, which names the band.
  */
 @Composable
 private fun DepthHeader(state: OrderBookState) {
@@ -260,14 +291,27 @@ private fun DepthHeader(state: OrderBookState) {
                     color = CoineProColors.TextMuted,
                 )
             }
-            // Zero is "the relay sent no timestamp", not the epoch. An unknown age is left unstated
-            // rather than printed as 1970 or quietly replaced with the phone's own clock.
-            if (book.at > 0L) {
-                Text(
+            // Zero is "the venue published no timestamp", not the epoch. An unknown age is left
+            // unstated rather than printed as 1970 or quietly replaced with the phone's own clock.
+            //
+            // On crypto it is always zero: LBank's futures book carries no time at all. What the
+            // relay does declare is the TTL of the cache it answered from, which bounds the age
+            // from above, so that is what is shown when there is no venue instant. It is the *only*
+            // number on that response that means anything about age — `server_time_ms` is the
+            // relay's own clock at serialisation and would present a half-second-old book as brand
+            // new every time, which is why the model never carries it this far.
+            val maxAge = book.maxAgeMillis
+            when {
+                book.at > 0L -> Text(
                     text = stringResource(
                         R.string.dom_updated,
                         PersianDateTime.clock(Instant.ofEpochMilli(book.at)),
                     ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextMuted,
+                )
+                maxAge != null -> Text(
+                    text = stringResource(R.string.dom_max_age, maxAgeSecondsLabel(maxAge)),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,
                 )
@@ -280,6 +324,10 @@ private fun DepthHeader(state: OrderBookState) {
 @Composable
 private fun DepthSummary(book: OrderBook) {
     val decimals = priceDecimalsFor(book.midPrice ?: 0.0)
+    // Measured once for the figure and the meter, over the band near the touch rather than over
+    // everything loaded — see `OrderBookGateway.IMBALANCE_LEVELS` for why the fetch got wider and
+    // this did not.
+    val share = book.imbalance(OrderBookGateway.IMBALANCE_LEVELS)
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
@@ -290,14 +338,18 @@ private fun DepthSummary(book: OrderBook) {
         book.midPrice?.let { mid ->
             SummaryFigure(stringResource(R.string.dom_mid), MarketNumberFormatter.price(mid, decimals))
         }
-        book.imbalance?.let { share ->
-            SummaryFigure(stringResource(R.string.dom_imbalance), percentLabel(share))
-        }
+        share?.let { SummaryFigure(stringResource(R.string.dom_imbalance), percentLabel(it)) }
     }
-    book.imbalance?.let { share ->
-        ImbalanceMeter(share)
+    share?.let {
+        ImbalanceMeter(it)
         Text(
-            text = stringResource(R.string.dom_imbalance_note),
+            // The band is printed with the meter and not left implied. A bid share over twenty
+            // levels and one over the hundred loaded are different claims about the market wearing
+            // the same percent sign, and neither the figure nor the bar can say which it is.
+            text = stringResource(
+                R.string.dom_imbalance_note,
+                OrderBookGateway.IMBALANCE_LEVELS.toPersianDigits(),
+            ),
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
         )
@@ -356,28 +408,47 @@ private fun ImbalanceMeter(share: Double) {
 @Composable
 private fun DepthLadderTable(ladder: DepthLadder, onPickPrice: (Double) -> Unit) {
     LtrDirection {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            LadderHeaderRow()
-            ladder.asks.forEach { row ->
-                LadderRowView(row, ladder.priceDecimals, ladder.quantityDecimals, onPickPrice)
-            }
-            SpreadRow(ladder)
-            ladder.bids.forEach { row ->
-                LadderRowView(row, ladder.priceDecimals, ladder.quantityDecimals, onPickPrice)
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            // The order count is secondary and it is the first thing to go. Decided once here for
+            // the whole table rather than per cell, so the header can never label a column the
+            // rows below it dropped — the two rows share this layout exactly, so one measurement
+            // answers for both. Below the threshold the sizes need every point they have, and a
+            // size that wraps or truncates loses leading digits, which is a far worse loss than a
+            // count nobody has yet learned to look for.
+            val showOrders = ladder.hasOrders && maxWidth >= MinWidthForOrders
+            Column(modifier = Modifier.fillMaxWidth()) {
+                LadderHeaderRow(showOrders)
+                ladder.asks.forEach { row ->
+                    LadderRowView(row, ladder.priceDecimals, ladder.quantityDecimals, showOrders, onPickPrice)
+                }
+                SpreadRow(ladder)
+                ladder.bids.forEach { row ->
+                    LadderRowView(row, ladder.priceDecimals, ladder.quantityDecimals, showOrders, onPickPrice)
+                }
             }
         }
     }
 }
 
+/**
+ * The column heads, which name the order count only when the rows below are drawing it.
+ *
+ * A bare second number beside every size is a figure a reader has to guess at, and guessing wrong
+ * about a ladder is expensive. Naming it here costs nothing — the label is already there — and it
+ * is the difference between a count and an unexplained digit.
+ */
 @Composable
-private fun LadderHeaderRow() {
+private fun LadderHeaderRow(showOrders: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.Half),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ColumnLabel(stringResource(R.string.dom_column_bid), TextAlign.Left)
+        ColumnLabel(
+            stringResource(if (showOrders) R.string.dom_column_bid_orders else R.string.dom_column_bid),
+            TextAlign.Left,
+        )
         Text(
             text = stringResource(R.string.dom_column_price),
             style = MaterialTheme.typography.labelSmall,
@@ -385,7 +456,10 @@ private fun LadderHeaderRow() {
             textAlign = TextAlign.Center,
             modifier = Modifier.width(PriceColumnWidth),
         )
-        ColumnLabel(stringResource(R.string.dom_column_ask), TextAlign.Right)
+        ColumnLabel(
+            stringResource(if (showOrders) R.string.dom_column_ask_orders else R.string.dom_column_ask),
+            TextAlign.Right,
+        )
     }
 }
 
@@ -414,6 +488,7 @@ private fun LadderRowView(
     row: LadderRow,
     priceDecimals: Int,
     quantityDecimals: Int,
+    showOrders: Boolean,
     onPickPrice: (Double) -> Unit,
 ) {
     val colour = when (row.side) {
@@ -424,7 +499,16 @@ private fun LadderRowView(
         BookSide.ASK -> CoineProColors.Sell
     }
     val price = MarketNumberFormatter.price(row.price, priceDecimals)
-    val pickDescription = stringResource(R.string.dom_pick_price, price)
+    val orders = row.orders?.takeIf { showOrders }
+    // `clickable` merges this row's semantics, so the count has to be part of the row's own
+    // description or a reader who cannot see it never hears it. It is spoken with the price rather
+    // than on its own for the same reason it is printed beside the size: a count without a price is
+    // a number about nothing.
+    val pickDescription = if (orders == null) {
+        stringResource(R.string.dom_pick_price, price)
+    } else {
+        stringResource(R.string.dom_pick_price_orders, price, ordersLabel(orders))
+    }
 
     Row(
         modifier = Modifier
@@ -441,6 +525,7 @@ private fun LadderRowView(
             barEdge = Alignment.CenterStart,
             figureEdge = Alignment.CenterEnd,
             decimals = quantityDecimals,
+            showOrders = showOrders,
         )
         Text(
             text = price,
@@ -455,6 +540,7 @@ private fun LadderRowView(
             barEdge = Alignment.CenterEnd,
             figureEdge = Alignment.CenterStart,
             decimals = quantityDecimals,
+            showOrders = showOrders,
         )
     }
 }
@@ -478,22 +564,53 @@ private fun RowScope.QuantityCell(
     barEdge: Alignment,
     figureEdge: Alignment,
     decimals: Int,
+    showOrders: Boolean,
 ) {
     Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
         if (row != null) {
             DepthFill(row.curveFraction, colour.copy(alpha = CurveAlpha), barEdge)
             DepthFill(row.barFraction, colour.copy(alpha = BarAlpha), barEdge)
-            Text(
-                text = MarketNumberFormatter.price(row.quantity, decimals),
-                style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextSecondary,
-                textAlign = TextAlign.Right,
+            val orders = row.orders?.takeIf { showOrders }
+            Row(
                 modifier = Modifier
                     .align(figureEdge)
                     .padding(horizontal = CoineProSpacing.Half),
-            )
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            ) {
+                // The count sits *outboard* of the size — further from the price spine on both
+                // sides — so the two size columns stay the pair a reader compares across the
+                // ladder. Put inboard it would push the sizes apart by a varying amount and the
+                // one comparison this table exists for would stop being a straight vertical scan.
+                if (orders != null && row.side == BookSide.BID) OrdersFigure(orders)
+                Text(
+                    text = MarketNumberFormatter.price(row.quantity, decimals),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextSecondary,
+                    textAlign = TextAlign.Right,
+                )
+                if (orders != null && row.side == BookSide.ASK) OrdersFigure(orders)
+            }
         }
     }
+}
+
+/**
+ * How many orders make up the size beside it — `12`.
+ *
+ * Deliberately the quietest thing on the row: the disabled ink, no bar, no colour of its own. It
+ * answers a second question ("one wall or fifty bids?") and must never compete with the first one
+ * the ladder is drawn to answer, which is where the size is. Latin digits by [ordersLabel], because
+ * it is a market figure and the device locale would otherwise render it in Persian ones.
+ */
+@Composable
+private fun OrdersFigure(orders: Int) {
+    Text(
+        text = ordersLabel(orders),
+        style = MaterialTheme.typography.labelSmall,
+        color = CoineProColors.TextDisabled,
+        textAlign = TextAlign.Right,
+    )
 }
 
 @Composable
@@ -548,6 +665,17 @@ private val PriceColumnWidth = 96.dp
 
 /** Dense on purpose. See [LadderRowView] for why this is under the usual minimum target. */
 private val RowHeight = 28.dp
+
+/**
+ * The narrowest ladder that still has room for an order count beside each size.
+ *
+ * The price spine takes a fixed 96 points and the two gutters another 32, which leaves the two size
+ * cells about 96 points each at this width — enough for a five-figure size and a two-figure count
+ * without either shortening. Below it the count is dropped rather than squeezed: a truncated size
+ * loses its leading digits, and a leading digit is the difference between a wall and a rounding
+ * error. Split-screen and the smallest phones land under this; ordinary handsets do not.
+ */
+private val MinWidthForOrders = 320.dp
 
 /** The level's own bar: present enough to compare lengths, faint enough to read the figure over. */
 private const val BarAlpha = 0.28f

@@ -310,6 +310,7 @@ core:papertrade
 core:backtest
 core:diagnostics
 core:database
+core:export
 feature:admin
 feature:auth
 feature:home

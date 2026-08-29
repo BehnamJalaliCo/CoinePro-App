@@ -5,6 +5,7 @@ import com.coinepro.core.orderbook.BookSide
 import com.coinepro.core.orderbook.DepthLevel
 import com.coinepro.core.orderbook.OrderBook
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -61,6 +62,24 @@ class DepthLadderRowsTest {
     }
 
     @Test
+    fun `the curve is scaled against the loaded book, so a wall below the window still shows`() {
+        // The change that made a hundred-level fetch worth making. Scaled to the window the
+        // deepest visible rung would be full width whatever lies below it; scaled to the book it
+        // says what it should — these two rows are a tenth of the resting size.
+        val deep = book(
+            bids = listOf(100.0 to 1.0, 99.0 to 1.0, 98.0 to 9.0, 97.0 to 9.0),
+            asks = listOf(101.0 to 1.0, 102.0 to 1.0),
+        )
+        val narrow = ladderRows(deep, levels = 2)
+        // Twenty on the bid side of the loaded book is the denominator, not the two on screen.
+        assertEquals(0.05f, narrow.bids[0].curveFraction, 1e-6f)
+        assertEquals(0.10f, narrow.bids[1].curveFraction, 1e-6f)
+        // The bar keeps its own denominator — the visible window — so the two rungs on screen are
+        // still compared against each other rather than vanishing under the wall below them.
+        assertEquals(1.0f, narrow.bids[0].barFraction, 1e-6f)
+    }
+
+    @Test
     fun `the curve grows away from the spread and reaches full width at the heavier side's total`() {
         val ladder = ladderRows(
             book(
@@ -98,6 +117,44 @@ class DepthLadderRowsTest {
         assertTrue(ladder.asks.isEmpty())
         assertTrue(ladder.bids.isEmpty())
         assertEquals(2, ladder.priceDecimals)
+        assertFalse("a book with no rungs has no counts to label", ladder.hasOrders)
+    }
+
+    @Test
+    fun `an order count reaches the rung it belongs to, on the side it belongs to`() {
+        // The ask side is turned over for display, which is exactly where a count can end up
+        // beside the wrong price without anything looking wrong.
+        val counted = OrderBook.of(
+            symbol = "BTCUSDT",
+            bids = listOf(DepthLevel(100.0, 1.0, orders = 3), DepthLevel(99.0, 1.0, orders = 4)),
+            asks = listOf(DepthLevel(101.0, 1.0, orders = 5), DepthLevel(102.0, 1.0, orders = 6)),
+            at = 1L,
+        )
+        val ladder = ladderRows(counted)
+        assertTrue(ladder.hasOrders)
+        assertEquals(listOf(3, 4), ladder.bids.map { it.orders })
+        // Displayed top-down: 102 first, so its count comes first too.
+        assertEquals(listOf(102.0, 101.0), ladder.asks.map { it.price })
+        assertEquals(listOf(6, 5), ladder.asks.map { it.orders })
+    }
+
+    @Test
+    fun `a venue that counts nothing produces no counts and no column to hold them`() {
+        val ladder = ladderRows(book(bids = listOf(100.0 to 1.0), asks = listOf(101.0 to 1.0)))
+        assertFalse(ladder.hasOrders)
+        assertTrue(ladder.bids.all { it.orders == null })
+        assertTrue(ladder.asks.all { it.orders == null })
+    }
+
+    @Test
+    fun `one side counting is enough to label the column, so a half-counted book is not silent`() {
+        val half = OrderBook.of(
+            symbol = "BTCUSDT",
+            bids = listOf(DepthLevel(100.0, 1.0, orders = 2)),
+            asks = listOf(DepthLevel(101.0, 1.0)),
+            at = 1L,
+        )
+        assertTrue(ladderRows(half).hasOrders)
     }
 
     @Test
@@ -122,6 +179,24 @@ class DepthLadderRowsTest {
         assertEquals(3, quantityDecimalsFor(1.5))
         assertEquals(1, quantityDecimalsFor(240.0))
         assertEquals(0, quantityDecimalsFor(48_000.0))
+    }
+
+    @Test
+    fun `the order count is Latin-digit, because it is a market figure and not a prose count`() {
+        // `%d` through the device locale — Persian here — would emit ۱۲ silently, which is the one
+        // number convention this app does not use for market figures.
+        assertEquals("12", BidiText.strip(ordersLabel(12)))
+        assertEquals("1", BidiText.strip(ordersLabel(1)))
+        assertEquals("4096", BidiText.strip(ordersLabel(4_096)))
+    }
+
+    @Test
+    fun `the staleness bound is printed in seconds with a decimal, because the bound is half a second`() {
+        // Rounded to whole seconds the production bound prints as 0, which reads as "no age at
+        // all" — the opposite of what an upper bound on staleness is for.
+        assertEquals("0.5", BidiText.strip(maxAgeSecondsLabel(500L)))
+        assertEquals("1.0", BidiText.strip(maxAgeSecondsLabel(1_000L)))
+        assertEquals("2.5", BidiText.strip(maxAgeSecondsLabel(2_500L)))
     }
 
     @Test

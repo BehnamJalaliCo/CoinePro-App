@@ -6,25 +6,44 @@
     <string name="dom_column_bid">حجم خرید</string>
     <string name="dom_column_price">قیمت</string>
     <string name="dom_column_ask">حجم فروش</string>
+    <!-- Shown only when the venue counts orders per level and the table is wide enough to draw them. -->
+    <string name="dom_column_bid_orders">حجم خرید · سفارش</string>
+    <string name="dom_column_ask_orders">حجم فروش · سفارش</string>
     <string name="dom_spread">اسپرد</string>
     <string name="dom_mid">میانه</string>
     <string name="dom_imbalance">سهم خرید</string>
-    <string name="dom_imbalance_note">سهم خرید روی کل عمقی که سرور فرستاده سنجیده می‌شود، نه فقط سطرهای روی صفحه.</string>
+    <string name="dom_imbalance_note">سهم خرید روی %1$s سطح نزدیک اسپرد در هر سمت سنجیده می‌شود، نه روی کل دفتری که گرفته شده و نه فقط سطرهای روی صفحه.</string>
     <string name="dom_truncated">فقط نزدیک‌ترین سطح‌ها به اسپرد نشان داده شده‌اند؛ دفتر از این پایین‌تر ادامه دارد.</string>
     <string name="dom_crossed">دفتر در این لحظه ناسازگار است: بهترین خرید از بهترین فروش بالاتر رفته. اسپرد را نخوان.</string>
     <string name="dom_updated">زمان دفتر %1$s</string>
+    <!-- An upper bound, not a measurement: this venue publishes no time, so the only honest figure
+         is the age the relay's cache can guarantee the book is under. -->
+    <string name="dom_max_age">این دفتر حداکثر %1$s ثانیه کهنه است، به‌اضافهٔ زمان رفت‌وبرگشت شبکه.</string>
     <string name="dom_loading">در حال دریافت دفتر سفارش…</string>
 
-    <!-- The three honest answers. None of them is a spinner. -->
+    <!-- The honest answers. None of them is a spinner, and none of the four below has a retry. -->
     <string name="dom_unavailable_feed">این فید عمق بازار منتشر نمی‌کند.</string>
     <string name="dom_unavailable_feed_hint">کارگزارِ متاتریدر ۵ سطح دوم را منتشر نکرده است. تا وقتی منتشر نشود، دفتر سفارشی برای این بازار وجود ندارد.</string>
     <string name="dom_unavailable_endpoint">دفتر سفارش این بازار هنوز سرو نمی‌شود.</string>
-    <string name="dom_unavailable_endpoint_hint">صرافی دفتر را منتشر می‌کند و سرور هنوز آن را بازپخش نکرده است.</string>
+    <string name="dom_unavailable_endpoint_hint">سروری که این نسخه به آن وصل است قدیمی‌تر از مسیر دفتر سفارش است. با به‌روزرسانی سرور، این صفحه بدون تغییر در اپ کار می‌کند.</string>
+    <string name="dom_unavailable_symbol">این بازار روی این پلتفرم سرو نمی‌شود.</string>
+    <string name="dom_unavailable_symbol_hint">نمادی که خواسته شد بیرون از فهرست بازارهای این پلتفرم است. تلاش دوباره جواب نمی‌دهد؛ از فهرست بازارها یک نماد دیگر باز کن.</string>
+    <string name="dom_unavailable_delisted">این بازار از صرافی حذف شده است.</string>
+    <string name="dom_unavailable_delisted_hint">صرافی این قرارداد را دلیست کرده، پس دیگر دفتر سفارشی برایش وجود ندارد.</string>
+
+    <!-- Real failures. Each keeps its retry, and each says whose problem it is. -->
     <string name="dom_failed">دفتر سفارش در دسترس نیست.</string>
     <string name="dom_failed_hint">اتصال را بررسی کن و دوباره بگیر.</string>
+    <string name="dom_outage_exchange">صرافی در این لحظه پاسخ نمی‌دهد.</string>
+    <string name="dom_outage_exchange_hint">اتصال تو و سرور هر دو سالم‌اند؛ صرافی است که در دسترس نیست. کمی بعد دوباره بگیر.</string>
+    <string name="dom_outage_relay">سرور هنوز برای بازپخش دفتر آماده نیست.</string>
+    <string name="dom_outage_relay_hint">این یک تنظیم سمت سرور است و از سمت تو کاری ندارد. کمی بعد دوباره بگیر.</string>
     <string name="dom_retry">تلاش دوباره</string>
+
+    <!-- A successful call whose answer is an empty queue. Not a failure and not a closed market. -->
     <string name="dom_empty">در این لحظه سفارشی در دفتر نیست.</string>
-    <string name="dom_empty_hint">بازار بسته یا متوقف است.</string>
+    <string name="dom_empty_hint">صرافی دفتر را فرستاد و خالی بود: بازاری که هیچ سفارش منتظری روی آن نمانده. این خطا نیست و تلاش دوباره چیزی را عوض نمی‌کند.</string>
 
     <string name="dom_pick_price">ساختن هشدار روی قیمت %1$s</string>
+    <string name="dom_pick_price_orders">ساختن هشدار روی قیمت %1$s، %2$s سفارش در این سطح</string>
 </resources>
