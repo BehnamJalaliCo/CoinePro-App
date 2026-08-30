@@ -98,4 +98,7 @@
     <string name="chart_more_events_note">خبر و تقویم اقتصادی، به شکل نشانه زیر کندل‌ها</string>
     <string name="chart_events_title">رویدادها روی نمودار</string>
     <string name="chart_events_subtitle">%1$s نوع روشن</string>
+    <string name="chart_position_entry">ورود</string>
+    <string name="chart_position_stop">حد ضرر</string>
+    <string name="chart_position_target">حد سود</string>
 </resources>

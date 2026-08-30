@@ -378,7 +378,19 @@ data class PaperBook(
 
     val marginUsed: Double get() = positions.sumOf { it.marginHeld }
 
-    fun positionFor(symbol: String): PaperPosition? = positions.firstOrNull { it.symbol == symbol }
+    /**
+     * The open position on one instrument, or null.
+     *
+     * Normalising here rather than trusting the caller, because everything that *writes* a position
+     * goes through [PaperEngine.normalise] and until the chart started reading this the only
+     * callers were inside the engine, which had already normalised. A screen asking for `btcusdt`
+     * would have been told there is no position on it — which is not "no position", it is the
+     * account's own book failing to recognise its own instrument.
+     */
+    fun positionFor(symbol: String): PaperPosition? {
+        val wanted = PaperEngine.normalise(symbol)
+        return positions.firstOrNull { it.symbol == wanted }
+    }
 
     /**
      * Balance plus what the open book is worth right now.

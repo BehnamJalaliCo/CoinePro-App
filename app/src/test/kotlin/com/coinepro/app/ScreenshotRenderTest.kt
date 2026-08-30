@@ -86,6 +86,8 @@ import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.chart.IndicatorPicker
 import com.coinepro.core.chart.Indicators
 import com.coinepro.core.chart.Structure
+import com.coinepro.core.papertrade.PaperPosition
+import com.coinepro.core.papertrade.PaperSide
 import com.coinepro.core.chart.ToolGroup
 import com.coinepro.core.chart.ToolRail
 import com.coinepro.core.chart.drawDrawing
@@ -2108,6 +2110,46 @@ class ScreenshotRenderTest {
             ),
         )
         ChartScreen(controller = controller, onOpenStudio = {})
+    }
+
+    /**
+     * The chart with the reader's **own open position** on it.
+     *
+     * The render is the check, and it is the only one that can be: the rule is "no green and no red
+     * left of the candle the trade opened on", and no unit test can look at the pixels either side
+     * of that candle.
+     *
+     * The entry is counted back from the **newest** bar rather than taken as a fraction of the
+     * series, and the first version of this case got that wrong: the chart opens on roughly the last
+     * seventy bars of two hundred, so an entry at 60% of the series was off the left of the plot and
+     * the picture came back shaded edge to edge — the exact thing this is here to catch, rendered as
+     * if nothing had been fixed. Off-screen is a real and correct case (`SetupSpan.entryX` is null
+     * and the band still reaches the edge, because the position genuinely was open across every bar
+     * shown), but it is not the case worth a screenshot.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun chartOpenPosition() = capture("99-chart-position-fa") {
+        val controller = ScreenshotFixtures.chartController(scope)
+        val series = ScreenshotFixtures.chartSeries()
+        val index = (series.size - 25).coerceIn(0, series.size - 1)
+        val entry = series.close[index]
+        ChartScreen(
+            controller = controller,
+            onOpenStudio = {},
+            position = PaperPosition(
+                id = 1L,
+                symbol = "XAUUSD",
+                side = PaperSide.BUY,
+                size = 0.25,
+                entry = entry,
+                // The book keeps milliseconds and the bars keep seconds. If that conversion is ever
+                // wrong the zone lands several thousand years off the plot and this picture is bare.
+                openedAtEpochMillis = series.time[index] * 1_000L,
+                stopLoss = entry * 0.985,
+                takeProfit = entry * 1.03,
+            ),
+        )
     }
 
     /**

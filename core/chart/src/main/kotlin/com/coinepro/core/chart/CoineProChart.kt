@@ -3646,12 +3646,12 @@ private fun DrawScope.drawSignal(
     signal.stopLoss?.let { stop ->
         val stopY = view.yOf(stop)
         drawDashedLevel(stopY, span.left, span.right, palette.down)
-        drawLevelLabel(signal.stopLabel, stopY, labelX, palette.down, measurer)
+        drawLevelLabel(signal.stopLabel, stopY, labelX, palette.down, measurer, palette)
     }
     signal.takeProfits.forEachIndexed { index, price ->
         val y = view.yOf(price)
         drawDashedLevel(y, span.left, span.right, palette.up)
-        drawLevelLabel(signal.targetLabels.getOrNull(index), y, labelX, palette.up, measurer)
+        drawLevelLabel(signal.targetLabels.getOrNull(index), y, labelX, palette.up, measurer, palette)
     }
     drawLine(
         color = palette.crosshair,
@@ -3659,7 +3659,7 @@ private fun DrawScope.drawSignal(
         end = Offset(span.right, entryY),
         strokeWidth = LINE_WIDTH_DP.toPx(),
     )
-    drawLevelLabel(signal.entryLabel, entryY, labelX, palette.crosshair, measurer)
+    drawLevelLabel(signal.entryLabel, entryY, labelX, palette.crosshair, measurer, palette)
     drawEntryMark(view, signal, span, entryY, palette)
 }
 
@@ -3710,11 +3710,26 @@ private fun DrawScope.drawLevelLabel(
     x: Float,
     colour: Color,
     measurer: TextMeasurer,
+    palette: ChartPalette,
 ) {
     if (text.isNullOrBlank()) return
     val measured = measurer.measure(text, axisStyle(colour))
     val top = y - measured.size.height - 1f
     if (top < 0f || y > size.height) return
+    // A plate under the word, because these labels sit *inside* the plot rather than out on the
+    // axis: a setup anchored to its entry candle puts «ورود» straight over the bars, and three
+    // characters in the sell red on top of a red candle is not a word, it is a smudge. The axis
+    // labels need no plate — nothing is drawn behind them.
+    //
+    // The stage colour at four-fifths rather than solid, so the candle underneath still shows
+    // through and the plate reads as a highlight over the chart instead of a hole cut in it.
+    val padding = LEGEND_INSET_DP.toPx()
+    drawRoundRect(
+        color = palette.stage.copy(alpha = LEVEL_PLATE_ALPHA),
+        topLeft = Offset(x - padding, top - padding / 2f),
+        size = Size(measured.size.width + padding * 2, measured.size.height + padding),
+        cornerRadius = CornerRadius(EVENT_RADIUS_DP.toPx(), EVENT_RADIUS_DP.toPx()),
+    )
     drawText(measured, topLeft = Offset(x, top))
 }
 
@@ -4634,6 +4649,9 @@ internal val AXIS_PADDING_DP = 4.dp
 private const val GRID_ALPHA = 0.35f
 private const val VOLUME_ALPHA = 0.30f
 private const val ZONE_ALPHA = 0.12f
+
+/** How opaque the plate behind an in-plot level label is. See [drawLevelLabel]. */
+private const val LEVEL_PLATE_ALPHA = 0.8f
 
 /**
  * The dot on the entry bar of a setup.

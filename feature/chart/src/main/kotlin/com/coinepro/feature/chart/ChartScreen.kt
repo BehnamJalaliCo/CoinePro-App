@@ -83,6 +83,7 @@ import com.coinepro.core.chart.ObjectTree
 import com.coinepro.core.chart.Replay
 import com.coinepro.core.chart.ScaleSide
 import com.coinepro.core.chart.SignalOverlay
+import com.coinepro.core.papertrade.PaperPosition
 import com.coinepro.core.chart.ToolRail
 import com.coinepro.core.chart.TradeFromChart
 import com.coinepro.core.chart.TradeSide
@@ -171,13 +172,31 @@ import com.coinepro.core.common.BidiText
  * that are used once a session is a toolbar that costs more than it saves.
  *
  * [signal] draws a setup over the bars when the screen was opened from one — the same overlay the
- * AI screen uses, so the two never disagree about where a stop is.
+ * AI screen uses, so the two never disagree about where a stop is. [position] draws the reader's own
+ * open trade through the same path, and wins where both exist.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChartScreen(
     controller: ChartController,
     signal: SignalOverlay? = null,
+    /**
+     * The reader's open position on this instrument, drawn from the candle it opened on.
+     *
+     * The owner's report, and it is the right one: a chart shaded green above the entry and red
+     * below it from the first bar on screen says «this whole chart is a position», which was never
+     * true. The zone belongs to the candle the trade opened on and to the bars after it, and
+     * nothing before. `setupSpan` is where that rule lives; this is what finally gives it a real
+     * position to apply it to — until now the only thing that ever reached it was a signal opened
+     * from another screen, so a reader who opened a trade *from the chart* watched it appear
+     * nowhere on the chart.
+     *
+     * Takes precedence over [signal] when both are present. A position is a fact about the
+     * reader's money and a signal is a suggestion; drawing both would put two entries, two stops
+     * and two targets over the same bars, and the reader would have to work out which pair is
+     * theirs.
+     */
+    position: PaperPosition? = null,
     /**
      * Opens the full web terminal on this symbol.
      *
@@ -638,6 +657,18 @@ fun ChartScreen(
     // harmless where there is no keyboard: focus on a container changes nothing a finger sees.
     LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
 
+    // The position wins over the signal, and both are optional — see the `position` parameter.
+    //
+    // Remembered on the position rather than rebuilt each recomposition: this reads three string
+    // resources and allocates an overlay, and the chart recomposes on every tick.
+    val positionSetup = position?.let {
+        val entry = stringResource(R.string.chart_position_entry)
+        val stop = stringResource(R.string.chart_position_stop)
+        val target = stringResource(R.string.chart_position_target)
+        remember(it, entry, stop, target) { positionOverlay(it, entry, stop, target) }
+    }
+    val drawnSetup = positionSetup ?: signal
+
     // The chart itself, written once and placed in one of two frames.
     //
     // A lambda rather than two copies of the `when`: the loading, failure and drawing branches are
@@ -654,7 +685,7 @@ fun ChartScreen(
                     type = state.chartType,
                     decoration = ChartDecoration(
                         overlays = state.overlays,
-                        signal = signal,
+                        signal = drawnSetup,
                         levels = state.levels,
                         markers = state.markers,
                         panes = state.panes,
@@ -1024,7 +1055,7 @@ fun ChartScreen(
         ChartUnderline(
             state = state,
             source = controller.sourceName,
-            signalOnChart = signal != null,
+            signalOnChart = drawnSetup != null,
         )
 
         // Only when something is being compared, so a chart with one instrument on it pays

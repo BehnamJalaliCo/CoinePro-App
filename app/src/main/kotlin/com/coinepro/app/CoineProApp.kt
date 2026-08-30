@@ -2043,7 +2043,18 @@ private fun MainShell(
             // controller's own restore reads a stored interval for this symbol and whichever
             // ran last would win — see `ChartController.openAt`.
             LaunchedEffect(chartController, routeTimeframe) { chartController.openAt(routeTimeframe) }
+            // The reader's own open trade on the instrument in front of them, so the chart draws
+            // the setup from the candle it opened on. Read here rather than inside the screen
+            // because the paper book is one account across every symbol, and the screen is one
+            // symbol: `positionFor` is the join, and it belongs on the side that holds the book.
+            //
+            // `activeChartSymbol`, not `routeSymbol` — the watchlist strip swaps the instrument in
+            // place without navigating, and a position drawn from the route argument would be the
+            // previous symbol's trade painted over this symbol's bars.
+            val paperBook by paperTradeController.state.collectAsStateWithLifecycle()
+            val openPosition = paperBook.book.positionFor(activeChartSymbol)
             ChartScreen(
+                position = openPosition,
                 layouts = chartLayouts,
                 onSaveLayout = onSaveLayoutAnnounced,
                 onDeleteLayout = onDeleteLayoutAnnounced,

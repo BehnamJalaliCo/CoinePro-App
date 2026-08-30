@@ -83,4 +83,7 @@
     <string name="chart_more_events_note">News and the economic calendar, as marks under the bars</string>
     <string name="chart_events_title">Events on the chart</string>
     <string name="chart_events_subtitle">%1$s kinds on</string>
+    <string name="chart_position_entry">Entry</string>
+    <string name="chart_position_stop">Stop loss</string>
+    <string name="chart_position_target">Take profit</string>
 </resources>

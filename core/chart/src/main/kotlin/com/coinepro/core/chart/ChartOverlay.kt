@@ -148,12 +148,6 @@ data class SignalOverlay(
     val targetLabels: List<String> = emptyList(),
 ) {
     /**
-     * Reward over risk, or null when there is no stop or no target to measure between.
-     *
-     * Null rather than a default: a setup without a stop has *unbounded* risk, and printing any
-     * ratio for it would be the most dangerous number on the screen.
-     */
-    /**
      * Every price the setup names, so the chart can keep them all on screen.
      *
      * A target is by definition somewhere price has not been, so a range taken from the bars alone
@@ -166,6 +160,12 @@ data class SignalOverlay(
         addAll(takeProfits)
     }
 
+    /**
+     * Reward over risk, or null when there is no stop or no target to measure between.
+     *
+     * Null rather than a default: a setup without a stop has *unbounded* risk, and printing any
+     * ratio for it would be the most dangerous number on the screen.
+     */
     val riskReward: Double?
         get() {
             val stop = stopLoss ?: return null
