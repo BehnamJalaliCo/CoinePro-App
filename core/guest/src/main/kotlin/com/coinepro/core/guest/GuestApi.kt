@@ -147,6 +147,13 @@ internal data class NewsItemDto(
     val slug: String? = null,
     val source: String? = null,
     @SerializedName("sourceUrl") val sourceUrl: String? = null,
+    /**
+     * The publisher's illustration. Camel case on the wire like its neighbours, so it needs the
+     * annotation; the snake-case alternate is there because the members' route beside it spells
+     * every one of these the other way round and either could be the one that changes.
+     */
+    @SerializedName(value = "sourceImageUrl", alternate = ["source_image_url", "image_url"])
+    val sourceImageUrl: String? = null,
     @SerializedName("titleFa") val titleFa: String? = null,
     @SerializedName("summaryFa") val summaryFa: String? = null,
     @SerializedName("publishedAt") val publishedAt: String? = null,

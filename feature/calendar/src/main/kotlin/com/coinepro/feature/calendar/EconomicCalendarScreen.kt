@@ -60,6 +60,8 @@ import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.designsystem.R as DesignR
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.chartevents.ChartEventSymbols
 import com.coinepro.core.marketintel.EconomicEvent
 import com.coinepro.core.marketintel.MarketImpact
@@ -113,6 +115,7 @@ fun EconomicCalendarScreen(
                 )
             },
         )
+        CoineProTeachingStrip(TeachingSurface.CALENDAR, gutter = false)
 
         // Impact is the only filter that survives. The market filter went with it: the calendar is
         // macro data that moves both platforms, so filtering it by instrument hid the releases a

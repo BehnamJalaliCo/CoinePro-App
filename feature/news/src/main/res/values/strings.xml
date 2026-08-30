@@ -12,6 +12,8 @@
     <string name="news_retry">تلاش دوباره</string>
     <string name="news_refresh">به‌روزرسانی</string>
     <string name="news_refreshing">در حال به‌روزرسانی زمانِ منابع…</string>
+    <string name="news_newest">تازه‌ترین خبرِ این فهرست: %1$s</string>
+    <string name="news_refresh_failed">به‌روزرسانی آخر ناموفق بود — تازه‌ترین خبرِ این فهرست: %1$s</string>
     <string name="news_timestamp_note">زمان انتشار از تایم‌استمپ ISO سرور نرمال‌سازی شده است.</string>
     <string name="news_stale">کهنه</string>
     <string name="news_relevance_gold">طلا</string>

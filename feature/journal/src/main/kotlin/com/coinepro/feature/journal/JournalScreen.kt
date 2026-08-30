@@ -52,6 +52,8 @@ import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.CoineProToggleChip
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.journal.Journal
 import com.coinepro.core.journal.JournalController
 import com.coinepro.core.journal.JournalStats
@@ -133,6 +135,7 @@ fun JournalScreen(controller: JournalController) {
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
     ) {
         item { StatsCard(stats, shown.size, state.entries.size, filter.isEverything) }
+        item { CoineProTeachingStrip(TeachingSurface.JOURNAL, gutter = false) }
 
         item {
             FilterCard(

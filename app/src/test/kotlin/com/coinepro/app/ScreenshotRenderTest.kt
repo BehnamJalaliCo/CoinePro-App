@@ -78,6 +78,10 @@ import com.coinepro.core.chart.DrawingActions
 import com.coinepro.core.chart.DrawingList
 import com.coinepro.core.chart.DrawingState
 import com.coinepro.core.chart.DrawingTool
+import com.coinepro.core.copytrade.CopyBook
+import com.coinepro.core.copytrade.CopyPreferences
+import com.coinepro.core.copytrade.CopyTradeGateway
+import com.coinepro.core.copytrade.CopyTradeStatus
 import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.chart.IndicatorPicker
 import com.coinepro.core.chart.Indicators
@@ -1034,6 +1038,56 @@ class ScreenshotRenderTest {
         capture("69-connections-fa") { ConnectionsScreen(controller = controller) }
     }
 
+    /**
+     * Connections on the **forex** platform, which until now was not this screen at all.
+     *
+     * The route drew the copy-trading screen there, so the one thing a CoinePro-FX reader comes to
+     * Connections for — linking their MetaTrader 5 account — had nowhere to be. This is the gate on
+     * it: the same card shape as the LBank surface beside it, the four fields the server's
+     * `user/account/link` actually takes, and a status line that says *not linked* rather than
+     * implying a connection nobody has made.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun connectionsForexPersian() {
+        val copy = CopyTradeController(NotLinkedCopyGateway(), scope)
+        copy.refresh()
+        capture("71-connections-mt5-fa") {
+            ConnectionsScreen(
+                controller = ExecutionController(FakeExecutionGateway(), scope),
+                platform = MarketPlatform.COINEPRO_FX,
+                copyTrade = copy,
+            )
+        }
+    }
+
+    /**
+     * A server that answers copy-status with no account on it: linked to nothing, and no error.
+     *
+     * Deliberately the *empty* case rather than a connected one. A screenshot of a working link is
+     * a picture of a happy path nobody doubts; the picture worth reviewing is the one a reader sees
+     * on the day they arrive, because that is the screen that has to teach them what to do.
+     */
+    private class NotLinkedCopyGateway : CopyTradeGateway {
+        override suspend fun status() = CopyTradeStatus(
+            account = null,
+            preferences = CopyPreferences(),
+            master = CopyBook(),
+            mirrored = emptyList(),
+            mode = null,
+            accountMismatch = false,
+            liveAccount = null,
+            events = emptyList(),
+            slotState = null,
+        )
+
+        override suspend fun setEnabled(enabled: Boolean) = CopyPreferences(enabled = enabled)
+
+        override suspend fun linkAccount(broker: String, server: String, login: String, password: String) = Unit
+
+        override suspend fun unlinkAccount() = Unit
+    }
+
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
     fun newsPersian() {
@@ -1679,6 +1733,23 @@ class ScreenshotRenderTest {
     fun chartScreenLoaded() = capture("50-chart-screen-loaded-fa") {
         val controller = ScreenshotFixtures.chartController(scope)
         listOf("ema", "bollinger", "supertrend", "pivots").forEach(controller::toggleIndicator)
+        ChartScreen(controller = controller, onOpenStudio = {})
+    }
+
+    /**
+     * A drawing tool armed, which is the state that used to be invisible.
+     *
+     * The report was that pressing any tool did nothing on screen, and it was accurate: the strip
+     * that says which tool is armed sat below the command band, below the chart, off the bottom of
+     * a phone. Arming closed the sheet and the reader saw no change at all. This render is the gate
+     * on that — the bar has to be **on the plot**, above the candles, saying which tool and which
+     * point it is waiting for.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun chartScreenToolArmed() = capture("51-chart-tool-armed-fa") {
+        val controller = ScreenshotFixtures.chartController(scope)
+        controller.arm(DrawingTools.ALL.first { it.id == "trend" })
         ChartScreen(controller = controller, onOpenStudio = {})
     }
 

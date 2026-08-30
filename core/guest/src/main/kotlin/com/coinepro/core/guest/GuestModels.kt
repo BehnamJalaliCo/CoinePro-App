@@ -50,6 +50,22 @@ data class GuestHeadline(
      * reason a guest's story had no way through to the publisher while a member's did.
      */
     val url: String? = null,
+    /**
+     * `sourceImageUrl` — the publisher's own illustration, which this route has been sending all
+     * along.
+     *
+     * `docs/SERVER_ASK_NEWS_MEDIA.md` asks both backends for a picture and records «تریدیار ندارد»
+     * against this route. That is wrong, and it was wrong when it was written: every row of
+     * `api/v1/news/list` carries `sourceImageUrl` beside `sourceUrl`, and the app was dropping it
+     * on the floor while asking for it in a document. So a guest read a pictureless feed on a
+     * screen built around a picture, for a field that was already on the wire.
+     *
+     * Passed through exactly as sent. The `https` rule is enforced where the address is *used* —
+     * `NewsImagePolicy.accept` — for the same reason `NewsHandoff.safeUrl` checks the link there:
+     * a scheme checked at the boundary would still have to be checked at the fetch, because an
+     * address can also reach a screen out of a saved record written by an older build.
+     */
+    val imageUrl: String? = null,
 )
 
 /**

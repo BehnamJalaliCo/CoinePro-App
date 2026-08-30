@@ -333,7 +333,18 @@ fun CoineProChart(
      * live edge with the work thrown away.
      */
     var savedZoom by rememberSaveable { mutableIntStateOf(ChartViewport.DEFAULT_BARS_PER_VIEW) }
-    var savedOffset by rememberSaveable { mutableIntStateOf(0) }
+
+    /**
+     * And how far panned back, or [UNSET_OFFSET] on a chart nobody has panned yet.
+     *
+     * A sentinel rather than zero, because zero is now a position a reader can deliberately be in —
+     * the newest bar against the axis — and is *not* where a chart should open. Where it opens is
+     * [ChartViewport.atRest], which keeps a few empty slots at the live edge, and that is a number
+     * the viewport works out from the zoom rather than one this can hard-code. Without the sentinel
+     * there is no way to tell "never panned" from "panned to the very edge", and the restore would
+     * glue every chart in the app to its price axis on the first frame.
+     */
+    var savedOffset by rememberSaveable { mutableIntStateOf(UNSET_OFFSET) }
 
     /**
      * And how far the price axis was stretched.
@@ -350,10 +361,18 @@ fun CoineProChart(
     // The saved pair is applied on the same pass rather than in a separate effect: an effect runs
     // after the first frame, so the chart would draw once at the default and then jump.
     remember(display) {
-        viewport = viewport
+        val restored = viewport
             .withSeries(display)
             .copy(barsPerView = savedZoom, priceZoom = savedPriceZoom)
-            .atOffset(savedOffset)
+        viewport = when {
+            savedOffset != UNSET_OFFSET -> restored.atOffset(savedOffset)
+            // A chart with an axis rests with air at the live edge; one without is a thumbnail or a
+            // list-row sparkline, which has no gutter to breathe into and every pixel spent on the
+            // shape. `showAxes` is the one bit that already separates the two everywhere else in
+            // this file.
+            decoration.showAxes -> restored.atRest()
+            else -> restored.atOffset(0)
+        }
     }
 
     // Applied separately from the series, because it changes on its own — a reader toggling the
@@ -459,6 +478,21 @@ fun CoineProChart(
     val timeHeight = remember(timeFontSp, density) {
         timeAxisHeight(with(density) { timeFontSp.sp.toPx() })
     }
+
+    /**
+     * How much room one date needs on the time axis, measured rather than guessed.
+     *
+     * `timeAxisTicks` turns this into a minimum gap in *bars*, which is what decides how many
+     * labels the ladder is allowed to place. Measured off a real label at the real font — `30 Sep`
+     * is the widest shape the axis prints in the common case — plus the clear space two labels need
+     * between them. A guessed number here is a chart whose dates either collide at one zoom or
+     * thin out to two at another, and both look like a bug rather than a layout.
+     */
+    val timeLabelGapPx = remember(timeFontSp, density, measurer) {
+        measurer
+            .measure(TIME_LABEL_SAMPLE, axisStyle(Color.Black, timeFontSp))
+            .size.width.toFloat() + LABEL_GAP
+    }
     val tolerancePx = with(density) { DrawingHitTest.TOLERANCE_DP.dp.toPx() }
 
     /**
@@ -500,6 +534,15 @@ fun CoineProChart(
      * things at once and neither of them properly.
      */
     val timeAxisTop = remember { floatArrayOf(0f) }
+
+    /**
+     * Each indicator pane's scale as the draw pass resolved it, for the crosshair layer to read.
+     *
+     * A plain array for the same reason [paneTop] is one — written by the draw pass, read by a
+     * second draw pass, and making it state would recompose the tree to record that a frame had
+     * been drawn. See [PaneBand] for what the crosshair does with it and what it was doing before.
+     */
+    val paneBands = remember { arrayOf(emptyList<PaneBand>()) }
     val armed = drawing?.tool
 
     /**
@@ -1447,7 +1490,13 @@ fun CoineProChart(
                                                 ) {
                                                     viewport.autoPriceScale()
                                                 } else {
-                                                    viewport.atOffset(0)
+                                                    // `atRest`, not `atOffset(0)`: "put the view
+                                                    // back" has to land on the position the chart
+                                                    // opens in, air at the live edge included.
+                                                    // Returning to a glued edge would make the
+                                                    // reset produce a picture the reader has never
+                                                    // seen the chart in.
+                                                    viewport.atRest()
                                                 }
                                                 invalidate(Invalidation.FULL)
                                             }
@@ -1639,8 +1688,18 @@ fun CoineProChart(
             val view =
                 if (dirtyLevel <= Invalidation.CURSOR && cached == candidate) cached else candidate
             val ticks = if (view === cached) scaleCache.ticks ?: priceTicks(view) else priceTicks(view)
+            // The time ladder is cached beside the price one and for the same reason: it walks every
+            // visible bar asking what calendar boundary it opens, and a crosshair moving must not
+            // pay for that. Both are keyed on the viewport *instance*, so the pair can only ever be
+            // reused for the frame they were computed on.
+            val timeTicks = if (view === cached) {
+                scaleCache.timeTicks ?: timeAxisTicks(view, type, zone, timeLabelGapPx)
+            } else {
+                timeAxisTicks(view, type, zone, timeLabelGapPx)
+            }
             scaleCache.view = view
             scaleCache.ticks = ticks
+            scaleCache.timeTicks = timeTicks
             lastView[0] = view
 
             // Everything below is in *plot* space: x zero is the plot's left edge, which is where
@@ -1686,7 +1745,7 @@ fun CoineProChart(
                     else -> type
                 }
 
-                if (decoration.showAxes) drawGrid(view, plotWidth, palette, ticks)
+                if (decoration.showAxes) drawGrid(view, plotWidth, palette, ticks, timeTicks)
                 // The setup goes *under* the price. It is context for the bars, and drawn over them
                 // it tints every candle it covers — which on a full-height risk band is most of them.
                 decoration.signal?.let { drawSignal(view, it, plotWidth, palette, measurer) }
@@ -1812,14 +1871,25 @@ fun CoineProChart(
                         }
                     }
                 }
+                // Each pane's own scale, resolved once and *published* — the crosshair layer above
+                // reads it so that a pointer inside a strip reports what the strip measures rather
+                // than a price the price axis would have had to invent. See [PaneBand].
                 if (paneHeight > 0f) {
                     var top = plotHeight
                     val share = paneHeight / shown.panes.sumOf { it.heightRatio.toDouble() }.toFloat()
+                    val bands = ArrayList<PaneBand>(shown.panes.size)
                     for (pane in shown.panes) {
                         val height = pane.heightRatio * share
-                        drawPane(view, pane, top, height, plotWidth, palette, measurer, density.density, metrics.body)
+                        val band = paneBandOf(pane, view.firstVisible, view.lastVisible, top, height)
+                        if (band != null) {
+                            bands += band
+                            drawPane(view, pane, band, plotWidth, palette, measurer, density.density, metrics.body)
+                        }
                         top += height
                     }
+                    paneBands[0] = bands
+                } else {
+                    paneBands[0] = emptyList()
                 }
                 // The live edge, and its price against the axis. This is the one number on the chart
                 // a reader looks for without being asked, and before this it was only in the header —
@@ -1855,8 +1925,24 @@ fun CoineProChart(
                         )
                     }
                     if (decoration.showTimeAxis) {
-                        drawTimeAxis(view, plotHeight + paneHeight, plotWidth, type, palette, measurer, zone)
+                        drawTimeAxis(view, plotHeight + paneHeight, plotWidth, type, palette, measurer, zone, timeTicks)
                         drawEventMarks(view, decoration.events, plotHeight + paneHeight, eventColours)
+                    }
+                }
+                // The day's reference goes under the live price, so the tag that wins a collision
+                // is the one that is moving. See [previousSessionClose] for why it is intraday-only.
+                if (decoration.showPreviousClose && decoration.showLastPrice && priceShown) {
+                    previousSessionClose(view.series, view.lastVisible, zone)?.let { reference ->
+                        drawPreviousClose(
+                            view = view,
+                            price = reference,
+                            plotWidth = plotWidth,
+                            frame = frame,
+                            palette = palette,
+                            measurer = measurer,
+                            withAxis = decoration.showAxes,
+                            suppressNear = lastPriceY,
+                        )
                     }
                 }
                 if (decoration.showLastPrice && priceShown) {
@@ -1913,6 +1999,7 @@ fun CoineProChart(
                         // «نشانگر پیکانی» and «نشانگر نقطه‌ای» were two rail entries that changed a
                         // field and nothing else — see [DrawingMode].
                         mode = drawing?.mode ?: DrawingMode.CURSOR,
+                        paneBands = paneBands[0],
                     )
                 }
             }
@@ -2586,14 +2673,15 @@ private fun DrawScope.drawVolume(
 private fun DrawScope.drawPane(
     view: ChartViewport,
     pane: ChartPane,
-    top: Float,
-    height: Float,
+    band: PaneBand,
     plotWidth: Float,
     palette: ChartPalette,
     measurer: TextMeasurer,
     density: Float,
     body: Float,
 ) {
+    val top = band.top
+    val height = band.height
     if (height <= 0f || plotWidth <= 0f) return
     drawLine(
         color = palette.grid.copy(alpha = GRID_ALPHA),
@@ -2602,35 +2690,11 @@ private fun DrawScope.drawPane(
         strokeWidth = HAIRLINE_DP.toPx(),
     )
 
-    var low = Double.MAX_VALUE
-    var high = -Double.MAX_VALUE
-    val series = (pane.lines + listOfNotNull(pane.histogram))
-    for (line in series) {
-        for (index in view.firstVisible..view.lastVisible) {
-            val value = line.values[index] ?: continue
-            if (value < low) low = value
-            if (value > high) high = value
-        }
-    }
-    for (level in pane.levels) {
-        if (level.price < low) low = level.price
-        if (level.price > high) high = level.price
-    }
-    // A histogram is read against zero, so zero has to be inside the scale even when every bar in
-    // view is on one side of it. Without this a run of positive MACD draws as bars hanging off the
-    // bottom edge with no baseline to hang from.
-    if (pane.histogram != null) {
-        if (low > 0.0) low = 0.0
-        if (high < 0.0) high = 0.0
-    }
-    if (high < low) return
-    // A perfectly flat pane still has to draw, and dividing by a zero span would put it at NaN.
-    val span = (high - low).takeIf { it > 0.0 } ?: 1.0
-    val padded = span * PANE_PADDING
-    val bottom = low - padded
-    val ceiling = high + padded
-    fun yOf(value: Double): Float =
-        top + height * (1.0 - (value - bottom) / (ceiling - bottom)).toFloat()
+    val bottom = band.bottom
+    val ceiling = band.ceiling
+    val high = band.high
+    val low = band.low
+    fun yOf(value: Double): Float = band.yOf(value)
 
     clipRect(0f, top, plotWidth, top + height) {
         pane.levels.forEach { level ->
@@ -2707,6 +2771,100 @@ private fun DrawScope.drawPane(
     drawText(
         bottomLabel,
         topLeft = Offset(plotWidth + AXIS_PADDING_DP.toPx(), top + height - bottomLabel.size.height - AXIS_PADDING_DP.toPx()),
+    )
+}
+
+/**
+ * One indicator pane's vertical scale for one frame — where the strip is, and what its pixels mean.
+ *
+ * ### Why this is a type rather than four locals inside the draw
+ *
+ * Because the crosshair needs it and could not get it, and the result was the chart stating a price
+ * that nobody had quoted.
+ *
+ * The pointer reports `(index, price)` and the price comes from [ChartViewport.priceAt], which
+ * describes the *price* pane and nothing else. A finger inside an RSI strip is below the price
+ * plot, so the fraction it produces is negative and the price is somewhere under the low of the
+ * visible range — and the axis tag then printed that number, clamped to the bottom of the gutter.
+ * The reader touched an oscillator reading 62 and the chart answered with a price. On a screen
+ * somebody places orders from, that is the same class of defect as an axis left holding a dead
+ * series' labels, which this file already refuses to do.
+ *
+ * So the scale each pane resolves to is published rather than being a local, the crosshair asks
+ * which pane it is standing in, and a pointer inside one reads the pane's own value on the pane's
+ * own scale.
+ *
+ * [low] and [high] are the extremes actually found; [bottom] and [ceiling] are those with the
+ * pane's breathing room added and are what the pixels are stretched over.
+ */
+internal data class PaneBand(
+    val top: Float,
+    val height: Float,
+    val low: Double,
+    val high: Double,
+    val bottom: Double,
+    val ceiling: Double,
+) {
+    /** Whether a canvas y falls inside this strip. */
+    fun contains(y: Float): Boolean = height > 0f && y >= top && y <= top + height
+
+    /** A value in the pane's own units, at a pixel. */
+    fun yOf(value: Double): Float =
+        top + height * (1.0 - (value - bottom) / (ceiling - bottom)).toFloat()
+
+    /** And back again — what the pane reads at a pixel, which is what the crosshair wants. */
+    fun valueAt(y: Float): Double =
+        if (height <= 0f) bottom else ceiling - (y - top) / height * (ceiling - bottom)
+
+    /** How precisely to print it. From the pane's own span; see [paneDecimals]. */
+    val decimals: Int get() = paneDecimals(high - low)
+}
+
+/**
+ * The scale a pane resolves to over the bars [first]..[last], or null when it has nothing to draw.
+ *
+ * Pure and separated from the drawing for the reason the legend rows were: this is the arithmetic
+ * two different layers now depend on agreeing about, and a second copy of it inside the crosshair
+ * would be a copy that drifts.
+ */
+internal fun paneBandOf(
+    pane: ChartPane,
+    first: Int,
+    last: Int,
+    top: Float,
+    height: Float,
+): PaneBand? {
+    var low = Double.MAX_VALUE
+    var high = -Double.MAX_VALUE
+    for (line in pane.lines + listOfNotNull(pane.histogram)) {
+        for (index in first..last) {
+            val value = line.values[index] ?: continue
+            if (value < low) low = value
+            if (value > high) high = value
+        }
+    }
+    for (level in pane.levels) {
+        if (level.price < low) low = level.price
+        if (level.price > high) high = level.price
+    }
+    // A histogram is read against zero, so zero has to be inside the scale even when every bar in
+    // view is on one side of it. Without this a run of positive MACD draws as bars hanging off the
+    // bottom edge with no baseline to hang from.
+    if (pane.histogram != null) {
+        if (low > 0.0) low = 0.0
+        if (high < 0.0) high = 0.0
+    }
+    if (high < low) return null
+    // A perfectly flat pane still has to draw, and dividing by a zero span would put it at NaN.
+    val span = (high - low).takeIf { it > 0.0 } ?: 1.0
+    val padded = span * PANE_PADDING
+    return PaneBand(
+        top = top,
+        height = height,
+        low = low,
+        high = high,
+        bottom = low - padded,
+        ceiling = high + padded,
     )
 }
 
@@ -2867,6 +3025,7 @@ private fun DrawScope.drawGrid(
     plotWidth: Float,
     palette: ChartPalette,
     ticks: PriceTicks,
+    timeTicks: List<TimeTick>,
 ) {
     val grid = palette.grid.copy(alpha = GRID_ALPHA)
     // On the round prices, not at even fractions of the plot. The two agree because they are the
@@ -2877,28 +3036,45 @@ private fun DrawScope.drawGrid(
         if (y < 0f || y > view.plotHeight) continue
         drawLine(grid, Offset(0f, y), Offset(plotWidth, y), HAIRLINE_DP.toPx())
     }
-    // Verticals stand where the time labels stand, not at even fractions of the width. A grid whose
-    // columns do not line up with the dates underneath them is a grid a reader cannot use to read
-    // a date off a bar — which is the only thing vertical gridlines are for.
-    for (index in timeLabelIndices(view)) {
-        val x = view.xOf(index)
+    // Verticals stand where the time labels stand, not at even fractions of the width — and now
+    // that the labels stand on calendar boundaries, so do the columns. A gridline at midnight or at
+    // the start of a month is the only thing a vertical rule on a price chart is for; one at 38% of
+    // the visible bar count is a ruled line through the middle of a session.
+    for (tick in timeTicks) {
+        val x = view.xOf(tick.index)
         if (x < 0f || x > plotWidth) continue
         drawLine(grid, Offset(x, 0f), Offset(x, view.plotHeight), HAIRLINE_DP.toPx())
     }
 }
 
 /**
- * Which bars carry a label on the time axis.
+ * The labels the time axis will print this frame.
  *
- * Shared by the axis and the grid so the two cannot disagree: the columns are placed by the same
- * arithmetic that places the dates, rather than by a second rule that happens to look similar.
+ * Computed once and handed to both the axis and the grid, so the two cannot disagree — the same
+ * discipline `priceTicks` follows, and for the same reason.
+ *
+ * [minGapPx] is turned into a gap in *bars* here rather than inside [TimeScale], which knows nothing
+ * about pixels and must not learn: the collision rule is "two labels must not touch", and how many
+ * bars that is depends entirely on the zoom.
  */
-private fun timeLabelIndices(view: ChartViewport): List<Int> {
+private fun timeAxisTicks(
+    view: ChartViewport,
+    type: ChartType,
+    zone: ZoneId,
+    minGapPx: Float,
+): List<TimeTick> {
     if (view.visibleCount <= 0) return emptyList()
-    return (0 until TIME_LABELS)
-        .map { step -> view.firstVisible + (view.visibleCount - 1) * step / max(1, TIME_LABELS - 1) }
-        .filter { it <= view.lastVisible }
-        .distinct()
+    val perBar = view.barWidth
+    val gapBars = if (perBar > 0f) ceil(minGapPx / perBar).toInt() else 1
+    return TimeScale.ticks(
+        times = view.series.time,
+        first = view.firstVisible,
+        last = view.lastVisible,
+        zone = zone,
+        minGapBars = gapBars,
+        maxTicks = MAX_TIME_LABELS,
+        dated = type.isTimeBased,
+    )
 }
 
 /**
@@ -3073,6 +3249,87 @@ private fun DrawScope.drawLastPrice(
 }
 
 /**
+ * The close of the session before the one bar [index] belongs to, or null where there is not one.
+ *
+ * A *session* rather than a bar, decided by the calendar day in the reader's own zone. That is what
+ * makes the line mean "where the day started" on a five-minute chart and on a four-hour one alike,
+ * without either of them being told what timeframe it is.
+ *
+ * Null on three honest cases and never a fabricated number: a series too short to have a bar
+ * interval, a chart whose bars are a day or longer — where the previous close is the candle next
+ * door and the line would say nothing — and a window that does not reach back into a previous day.
+ *
+ * Pure, so the rule is testable off the canvas. The walk is backwards from [index] and stops at the
+ * first bar in a different day, which on a normal intraday chart is at most a session's worth of
+ * bars and is done once per frame.
+ */
+internal fun previousSessionClose(series: CandleSeries, index: Int, zone: ZoneId): Double? {
+    if (series.size < 2 || index !in 0 until series.size) return null
+    val times = series.time
+    val interval = times[times.size - 1] - times[times.size - 2]
+    if (interval <= 0L || interval >= SECONDS_PER_DAY) return null
+    val day = localDay(times[index], zone)
+    for (earlier in index - 1 downTo 0) {
+        if (localDay(times[earlier], zone) != day) return series.close[earlier]
+    }
+    return null
+}
+
+/** The calendar day a moment falls in, in [zone]. Whole days, so a comparison is one subtraction. */
+private fun localDay(epochSeconds: Long, zone: ZoneId): Long =
+    Instant.ofEpochSecond(epochSeconds).atZone(zone).toLocalDate().toEpochDay()
+
+/** A day, for the rule that keeps the previous close off charts that have no session. */
+private const val SECONDS_PER_DAY = 86_400L
+
+/**
+ * The previous session's close, ruled across the plot.
+ *
+ * Fainter than the live-price rule and dotted rather than dashed, because the two are different
+ * kinds of claim and must not read as a pair of equals: one is where the market *is* and belongs to
+ * this second, the other is a fixed reference the whole day is measured against. A reader glancing
+ * at the chart has to be able to tell which is which without reading either number.
+ *
+ * The tag is drawn hollow — the stage colour behind the axis' own text — for the same reason. A
+ * filled chip in the direction colour is the live price's, and a second one beside it would be two
+ * chips competing to be the number the reader looks at.
+ *
+ * Skipped when it would land on the live-price tag, which happens whenever the day is flat: two
+ * labels a few pixels apart do not read as two numbers, they read as one damaged one, and of the
+ * pair the reference is the one a reader can infer from the fact that the market has not moved.
+ */
+private fun DrawScope.drawPreviousClose(
+    view: ChartViewport,
+    price: Double,
+    plotWidth: Float,
+    frame: PlotFrame,
+    palette: ChartPalette,
+    measurer: TextMeasurer,
+    withAxis: Boolean,
+    suppressNear: Float?,
+) {
+    val y = view.yOf(price)
+    if (y < 0f || y > view.plotHeight) return
+    drawLine(
+        color = palette.text.copy(alpha = PREVIOUS_CLOSE_ALPHA),
+        start = Offset(0f, y),
+        end = Offset(plotWidth, y),
+        strokeWidth = HAIRLINE_DP.toPx(),
+        pathEffect = dashEffect(LineStyleKind.DOTTED, HAIRLINE_DP.toPx()),
+    )
+    if (!withAxis || frame.tagGutterWidth <= 0f) return
+    val label = measurer.measure(view.axisText(price), axisStyle(palette.text))
+    val height = label.size.height + TAG_PADDING_DP.toPx() * 2
+    val top = (y - height / 2).coerceIn(0f, max(0f, view.plotHeight - height))
+    if (suppressNear != null && abs(top - suppressNear) < height) return
+    drawAxisChip(frame, top, height, palette.stage)
+    drawText(
+        textLayoutResult = label,
+        topLeft = Offset(frame.tagGutterX + AXIS_PADDING_DP.toPx(), top + TAG_PADDING_DP.toPx()),
+    )
+}
+
+/**
  * How long the bar at the live edge has left, tagged under the live price.
  *
  * ### Where the number comes from
@@ -3200,15 +3457,19 @@ private fun DrawScope.drawAxisTag(
     fill: Color,
     textColour: Color,
     measurer: TextMeasurer,
+    /** The bottom of the strip the tag is clamped inside. */
     plotHeight: Float,
+    /** And its top, which is zero for the price plot and the pane's own edge inside a pane. */
+    top: Float = 0f,
 ) {
     val label = measurer.measure(text, axisStyle(textColour))
     val height = label.size.height + TAG_PADDING_DP.toPx() * 2
-    val top = (y - height / 2).coerceIn(0f, max(0f, plotHeight - height))
-    drawAxisChip(frame, top, height, fill)
+    val lowest = max(top, plotHeight - height)
+    val tagTop = (y - height / 2).coerceIn(top, lowest)
+    drawAxisChip(frame, tagTop, height, fill)
     drawText(
         textLayoutResult = label,
-        topLeft = Offset(frame.tagGutterX + AXIS_PADDING_DP.toPx(), top + TAG_PADDING_DP.toPx()),
+        topLeft = Offset(frame.tagGutterX + AXIS_PADDING_DP.toPx(), tagTop + TAG_PADDING_DP.toPx()),
     )
 }
 
@@ -3221,73 +3482,35 @@ private fun DrawScope.drawTimeAxis(
     palette: ChartPalette,
     measurer: TextMeasurer,
     zone: ZoneId,
+    ticks: List<TimeTick>,
 ) {
-    val labels = TIME_LABELS
-    // How much time the plot is showing, which is what decides whether a label is a clock or a
-    // date. Taken from the visible window rather than the timeframe: the same daily chart zoomed
+    // How much time the plot is showing, which is what decides how much of a date a month label
+    // needs. Taken from the visible window rather than the timeframe: the same daily chart zoomed
     // into a fortnight and zoomed out to a decade wants different labels.
     val span = (view.series.time.getOrNull(view.lastVisible) ?: 0L) -
         (view.series.time.getOrNull(view.firstVisible) ?: 0L)
-    // Where the previous label ended, so a short series does not print "#1#5 #10#14#19" on top of
-    // itself. Skipping a label is better than overlapping one: five collided labels say nothing,
-    // three spaced ones say when.
+    // Where the previous label ended, so two that survived the tick spacing but whose *glyphs* are
+    // wider than it assumed do not print on top of each other. Skipping a label is better than
+    // overlapping one: two collided labels say nothing, one says when.
     var occupiedUntil = -Float.MAX_VALUE
-    // The moment the last *drawn* label named, which is what a boundary is measured against.
-    var previousLabel: Long? = null
-    for (step in 0 until labels) {
-        val index = view.firstVisible + (view.visibleCount - 1) * step / max(1, labels - 1)
-        if (index > view.lastVisible) continue
+    // The bars the labels sit on are the reader's right edge inward, so the whole row is laid out
+    // against the bar area rather than the canvas: a label clamped to `plotWidth` would be dragged
+    // into the empty slots at the live edge and would then be naming a bar it is not over.
+    val barArea = view.xOf(view.lastVisible) + view.barWidth / 2
+    for (tick in ticks) {
         // A price-driven type has no clock, so its axis is numbered by bar. Printing a date there
         // would be a fabricated one — Renko bars carry synthetic timestamps.
-        val text = if (type.isTimeBased) formatTime(view.series.time[index], span, zone) else "#${index + 1}"
-        // A tick that opens a new month or a new year is set bold; an ordinary day is not.
-        //
-        // It costs one font weight and it does most of the wayfinding on this axis. Five labels
-        // reading «3 Mar  10 Mar  17 Mar  24 Mar  31 Mar» are five equal-looking dates a reader has
-        // to actually read; bold the one that starts April and the eye finds the boundary without
-        // reading anything at all. It is the same reason a calendar rules a line at the end of a
-        // month rather than numbering the weeks harder.
-        val moment = view.series.time.getOrNull(index)
-        val boundary = type.isTimeBased && startsAPeriod(moment, previousLabel, zone)
+        val text = if (type.isTimeBased) formatTimeTick(tick, span, zone) else "#${tick.index + 1}"
         val label = measurer.measure(
             text,
-            axisStyle(palette.text, axisFontSizeSp(isPriceAxis = false), bold = boundary),
+            axisStyle(palette.text, axisFontSizeSp(isPriceAxis = false), bold = tick.isBoundary()),
         )
-        val x = (view.xOf(index) - label.size.width / 2).coerceIn(0f, plotWidth - label.size.width)
+        val limit = max(0f, min(plotWidth, barArea) - label.size.width)
+        val x = (view.xOf(tick.index) - label.size.width / 2).coerceIn(0f, limit)
         if (x < occupiedUntil) continue
         drawText(label, topLeft = Offset(x, top + AXIS_PADDING_DP.toPx()))
         occupiedUntil = x + label.size.width + LABEL_GAP
-        previousLabel = moment
     }
-}
-
-/**
- * Whether a label opens a month or a year the label before it did not, in the reader's own zone.
- *
- * Measured against the previous *label* rather than the previous bar, and that is the difference
- * between a feature and a curiosity: with five labels spread over eighty bars, almost none of them
- * lands on the exact bar that opened a month, so comparing neighbouring bars would leave the axis
- * unbolded on nearly every view. What a reader wants to know is which of the labels in front of
- * them is the one where the month changed, and that is a question about the labels.
- *
- * The zone matters and is the trap: comparing epoch seconds against a multiple of a month is
- * meaningless — months are not a fixed number of seconds — and comparing them in UTC would bold the
- * wrong label for a reader in Tehran on every boundary that falls in the three and a half hours
- * either side of midnight.
- *
- * It is a parameter and not [ZoneId.systemDefault] any more, which is the bug this had. The bars
- * are cut into buckets in [CHART_ZONE] and the label under them was being read in the *device's*
- * zone, so on a phone set to anything but Tehran the bold label and the month it was naming were
- * different bars. Both readings now take the same zone from the one caller that knows it.
- *
- * The first label has nothing before it and is never a boundary. It is the start of the *view*,
- * which is not the same claim as the start of a period.
- */
-internal fun startsAPeriod(time: Long?, previous: Long?, zone: ZoneId): Boolean {
-    if (time == null || previous == null) return false
-    val now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(time), zone)
-    val before = ZonedDateTime.ofInstant(Instant.ofEpochSecond(previous), zone)
-    return now.year != before.year || now.monthValue != before.monthValue
 }
 
 // ---------------------------------------------------------------------------- overlays
@@ -3467,11 +3690,20 @@ private fun DrawScope.drawCrosshair(
     decoration: ChartDecoration,
     zone: ZoneId,
     mode: DrawingMode = DrawingMode.CURSOR,
+    /**
+     * The indicator panes' scales, so a pointer standing in one is read on that pane's scale.
+     * Empty on a chart with no panes, which is the common case and costs one `firstOrNull`.
+     */
+    paneBands: List<PaneBand> = emptyList(),
 ) {
     val index = crosshair.index.coerceIn(view.firstVisible, view.lastVisible)
     val bar = view.series[index]
     val x = view.xOf(index)
     val y = view.yOf(crosshair.price)
+    // Which strip the pointer is standing in, or null for the price plot. See [PaneBand]: below the
+    // price plot the price is an extrapolation and printing it is the chart naming a price nobody
+    // quoted.
+    val band = paneBands.firstOrNull { it.contains(y) }
     // A tighter pattern than the level rules use. The crosshair is transient and has to be
     // distinguishable at a glance from the dashed levels it crosses; a shorter dash is the cheapest
     // way to say "this one is yours and it is not part of the chart".
@@ -3491,15 +3723,31 @@ private fun DrawScope.drawCrosshair(
     }
 
     if (!decoration.showAxes || frame.tagGutterWidth <= 0f) return
-    drawAxisTag(
-        text = view.axisText(crosshair.price),
-        y = y,
-        frame = frame,
-        fill = palette.crosshair,
-        textColour = palette.stage,
-        measurer = measurer,
-        plotHeight = view.plotHeight,
-    )
+    // In a pane, the pane's own reading; on the price, the price. The tag is clamped to whichever
+    // strip it belongs to, so a reading taken at the top of an RSI does not slide up into the price
+    // gutter and sit among numbers measured in dollars.
+    if (band != null) {
+        drawAxisTag(
+            text = formatPrice(band.valueAt(y), band.decimals),
+            y = y,
+            frame = frame,
+            fill = palette.crosshair,
+            textColour = palette.stage,
+            measurer = measurer,
+            plotHeight = band.top + band.height,
+            top = band.top,
+        )
+    } else {
+        drawAxisTag(
+            text = view.axisText(crosshair.price),
+            y = y,
+            frame = frame,
+            fill = palette.crosshair,
+            textColour = palette.stage,
+            measurer = measurer,
+            plotHeight = view.plotHeight,
+        )
+    }
     if (!decoration.showTimeAxis) return
     // The time under the finger, centred on the rule and held inside the canvas. Without the clamp
     // the label at either end of a scrolled chart hangs half off the edge.
@@ -3910,6 +4158,39 @@ internal fun formatTime(
     return zoned.format(DateTimeFormatter.ofPattern(pattern, Locale.US))
 }
 
+/**
+ * A time-axis label, in the shape the boundary it stands on calls for.
+ *
+ * This is the second half of what makes the axis read as a calendar. The ladder decides *where* the
+ * labels go; this decides what each one says, and the rule is that a label names the boundary it
+ * opens and nothing more:
+ *
+ *  * A year boundary is the year. `2026`, not `1 Jan`.
+ *  * A month boundary is the month, with the year attached only once the window spans more than
+ *    one — on a two-year chart `Mar` alone is ambiguous and on a two-month chart the year is noise.
+ *  * A week or a day is the date. `12 Mar`.
+ *  * An hour or a minute is the clock. `14:00`.
+ *
+ * The old axis picked one pattern for every label from the visible span, so a chart spanning a
+ * week printed `d MMM` on all five — including the one that opened January, which then read
+ * `1 Jan` where every terminal on earth reads `2026`. Falls back to [formatTime] for a tick with no
+ * boundary, which is the even-spread case.
+ */
+internal fun formatTimeTick(tick: TimeTick, spanSeconds: Long, zone: ZoneId): String {
+    val pattern = when (tick.unit) {
+        TimeTickUnit.YEAR -> "yyyy"
+        TimeTickUnit.MONTH -> if (spanSeconds >= SPAN_MULTI_YEAR) "MMM yy" else "MMM"
+        TimeTickUnit.WEEK, TimeTickUnit.DAY -> "d MMM"
+        TimeTickUnit.HOUR, TimeTickUnit.MINUTE -> "HH:mm"
+        null -> return formatTime(tick.time, spanSeconds, zone)
+    }
+    // `Locale.US` for the same reason [formatTime] uses it: a Gregorian month name rendered in
+    // Persian script reads as a Jalali date and is wrong by eleven days.
+    return Instant.ofEpochSecond(tick.time)
+        .atZone(zone)
+        .format(DateTimeFormatter.ofPattern(pattern, Locale.US))
+}
+
 /** Beyond this much visible time, an axis label is a date rather than a clock. */
 private const val SPAN_MULTI_DAY = 60L * 60 * 24 * 3
 
@@ -3984,6 +4265,14 @@ private const val PANE_BUDGET = 0.5f
  * should look like.
  */
 private val TAG_RADIUS_DP = 2.dp
+
+/**
+ * The saved pan position of a chart nobody has panned. See `savedOffset`.
+ *
+ * [Int.MIN_VALUE] rather than a negative number that could be a real position: every value from
+ * `-barsPerView / 2` upward is somewhere a reader can legitimately be.
+ */
+private const val UNSET_OFFSET = Int.MIN_VALUE
 
 /**
  * How close to the oldest loaded bar a reader has to get before more history is fetched.
@@ -4094,6 +4383,16 @@ private const val MAX_PANE_SCALE = 3f
 /** How solid the last-price rule is. Present, and never competing with the candles. */
 private const val LAST_PRICE_ALPHA = 0.75f
 
+/**
+ * And how faint the previous session's close is.
+ *
+ * Well under the live price's, because the two are different kinds of claim: one is where the
+ * market is right now, the other is a fixed reference the whole day is measured against. Drawn at
+ * the same weight the pair would read as two live prices, which is the one reading this line must
+ * not produce.
+ */
+private const val PREVIOUS_CLOSE_ALPHA = 0.42f
+
 /** Rows the corner legend will print before it starts counting instead. */
 internal const val LEGEND_LINES = 4
 
@@ -4157,10 +4456,28 @@ private const val MAX_TICKS = 24
 /** As many decimals as any instrument this app quotes deserves. */
 private const val MAX_DECIMALS = 8
 private const val GRID_COLUMNS = 5
-private const val TIME_LABELS = 5
+
+/**
+ * The most labels the time axis will print, however many boundaries the window offers.
+ *
+ * Five was a fixed count and is now a ceiling, which is the difference the ladder makes: a window
+ * holding two month boundaries and nothing else gets two labels rather than five, three of which
+ * would have been arbitrary moments padding out a row. `TimeScale` fills up to this from the
+ * coarsest boundary down and stops when it runs out of room or of boundaries.
+ */
+private const val MAX_TIME_LABELS = 6
 
 /** Minimum clear space between two time labels before the later one is dropped. */
 private const val LABEL_GAP = 12f
+
+/**
+ * The label the time axis is measured against when it decides how many will fit.
+ *
+ * A real date rather than a count of characters: the font is IRANYekanX and its Latin digits are
+ * not the same width as its letters, so `"30 Sep"` measured is the only honest answer to how wide
+ * a date is. Never drawn — this string exists to be measured.
+ */
+private const val TIME_LABEL_SAMPLE = "30 Sep"
 
 /**
  * Every stroke on this chart, in **dp**, and that is the fix rather than a tidy-up.
@@ -4250,4 +4567,5 @@ enum class Invalidation {
 private class ScaleCache {
     var view: ChartViewport? = null
     var ticks: PriceTicks? = null
+    var timeTicks: List<TimeTick>? = null
 }

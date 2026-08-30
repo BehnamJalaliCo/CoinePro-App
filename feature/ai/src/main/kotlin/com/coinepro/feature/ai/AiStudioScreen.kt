@@ -59,6 +59,8 @@ import com.coinepro.core.designsystem.CoineProStreamingBar
 import com.coinepro.core.designsystem.CoineProStreamingText
 import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.CoineProThinkingDots
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.SignalDirection
 
@@ -177,6 +179,7 @@ fun AiStudioScreen(
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
     ) {
         item { AiHeader(quota) }
+        item { CoineProTeachingStrip(TeachingSurface.AI, gutter = false) }
 
         item {
             AiPanel(title = stringResource(R.string.ai_group_what)) {

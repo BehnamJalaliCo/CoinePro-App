@@ -61,6 +61,7 @@ import com.coinepro.core.datastore.DrawingTemplateStore
 import com.coinepro.core.datastore.IndicatorTemplateStore
 import com.coinepro.core.datastore.InstallIdStore
 import com.coinepro.core.datastore.IntervalFavouritesStore
+import com.coinepro.core.datastore.TeachingStore
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.PaperLedgerPrefStore
@@ -609,6 +610,16 @@ object AppModule {
     @Singleton
     fun intervalFavouritesStore(dataStore: DataStore<Preferences>): IntervalFavouritesStore =
         IntervalFavouritesStore(dataStore)
+
+    /**
+     * Which teaching banners the reader has already read and put away.
+     *
+     * Singleton and on the same `DataStore` as every other preference: it is one row, and the host
+     * collects it once for the whole composition.
+     */
+    @Provides
+    @Singleton
+    fun teachingStore(dataStore: DataStore<Preferences>): TeachingStore = TeachingStore(dataStore)
 
     /**
      * A named set of indicators, applied without disturbing anything else.

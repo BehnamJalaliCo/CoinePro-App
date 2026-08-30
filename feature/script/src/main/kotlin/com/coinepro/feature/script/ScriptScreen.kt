@@ -60,6 +60,8 @@ import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.LtrDirection
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.script.ScriptController
 import com.coinepro.core.script.ScriptEditorState
 import com.coinepro.core.script.ScriptInput
@@ -134,6 +136,7 @@ fun ScriptScreen(
             .background(CoineProColors.Stage),
     ) {
         Header(symbol = symbol, state = state)
+        CoineProTeachingStrip(TeachingSurface.SCRIPT)
         CoineProSegmentedControl(
             options = ScriptTab.entries.map { it to it.label },
             selected = tab,

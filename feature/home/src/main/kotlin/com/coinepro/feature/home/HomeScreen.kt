@@ -63,6 +63,8 @@ import com.coinepro.core.designsystem.CoineProStreamingBar
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.rememberCoineProHaptics
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.marketdata.MarketConnectionState
 import com.coinepro.core.marketdata.MarketDataOrigin
 import com.coinepro.core.marketdata.MarketDataState
@@ -200,6 +202,9 @@ fun HomeScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
         ) {
+            // What this screen is, once, for a reader who has just installed the app. See
+            // `CoineProTeachingStrip`: it puts itself away for good and leaves a way back.
+            item { CoineProTeachingStrip(TeachingSurface.HOME, gutter = false) }
             if (displayName != null) {
                 item { GreetingRow(displayName, avatar, onOpenProfile) }
             }

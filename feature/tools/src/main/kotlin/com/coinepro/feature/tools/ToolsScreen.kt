@@ -47,6 +47,8 @@ import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketType
 
@@ -143,6 +145,7 @@ fun ToolsScreen(
                 onQuickOpen = { expanded = it },
             )
         }
+        item { CoineProTeachingStrip(TeachingSurface.TOOLS) }
         item { SectionHeader(stringResource(R.string.tools_risk_group), stringResource(R.string.tools_risk_group_body)) }
         items(riskTools.filter { it.servesMarket(platform.marketType) }, key = ToolId::name) { tool ->
             CalculatorCard(

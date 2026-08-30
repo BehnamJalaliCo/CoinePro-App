@@ -57,6 +57,8 @@ import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.coineProPriceFlash
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.designsystem.resolve
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.symbols.SymbolCategory
 import com.coinepro.feature.screener.model.ScreenerField
 import com.coinepro.feature.screener.model.ScreenerFilter
@@ -119,6 +121,7 @@ fun ScreenerScreen(
 
     Column(modifier = modifier.fillMaxSize().background(CoineProColors.Stage)) {
         Header(onOpenFilters = { sheetOpen = true })
+        CoineProTeachingStrip(TeachingSurface.SCREENER)
         CategoryChips(
             selected = selectedCategory(state.filters),
             onSelect = { category -> controller.setFilters(withCategory(state.filters, category)) },

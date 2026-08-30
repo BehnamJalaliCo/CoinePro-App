@@ -55,6 +55,8 @@ import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.rememberCoineProHaptics
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketSearchRow
 import com.coinepro.core.marketdata.SparklineStore
@@ -173,6 +175,7 @@ fun SearchScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
             CategoryChips(selected = state.category, onSelect = controller::setCategory)
+            CoineProTeachingStrip(TeachingSurface.SEARCH, gutter = false)
         }
 
         when {

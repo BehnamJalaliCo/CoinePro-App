@@ -54,6 +54,8 @@ import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 
 /**
  * The curriculum, as a path rather than a list.
@@ -95,6 +97,7 @@ fun AcademyScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
         ) {
+            item { CoineProTeachingStrip(TeachingSurface.ACADEMY, gutter = false) }
             state.profile?.let { profile ->
                 item { ProfileHeader(profile) }
                 item {

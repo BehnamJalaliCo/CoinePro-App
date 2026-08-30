@@ -2,7 +2,9 @@ package com.coinepro.core.guest
 
 import com.coinepro.core.common.AppResult
 import com.coinepro.core.common.ErrorKind
+import com.coinepro.core.common.parseWireInstant
 import java.io.IOException
+import java.time.Instant
 import retrofit2.HttpException
 import retrofit2.Retrofit
 
@@ -84,8 +86,9 @@ class NetworkGuestGateway internal constructor(
                 source = item.source?.takeIf(String::isNotBlank),
                 publishedAt = item.publishedAt?.takeIf(String::isNotBlank),
                 url = item.sourceUrl?.takeIf(String::isNotBlank),
+                imageUrl = item.sourceImageUrl?.takeIf(String::isNotBlank),
             )
-        }
+        }.sortedNewestFirst()
     }
 
     override suspend fun trackRecord(limit: Int): AppResult<GuestTrackRecord> = call {
@@ -206,3 +209,19 @@ class NetworkGuestGateway internal constructor(
  */
 private fun Long?.availableOr(available: Boolean?): MemberCount =
     if (available == true && this != null) MemberCount.Known(this) else MemberCount.Unavailable
+
+/**
+ * Newest first, and undated last.
+ *
+ * The route documents itself as ordered by `published_at` descending and today it is — but so does
+ * the members' route, and the whole reason `MarketIntelSnapshotDto.toDomain` now sorts is that a
+ * feed served in any other order reads as a feed that never updates: the oldest stories sit at the
+ * top for good and every new one lands below the fold. The app knows what «newest» means here, so
+ * it says so rather than asking.
+ *
+ * Undated headlines keep their relative place at the end instead of being dropped, which is the
+ * rule `relatedTo` already applies in `feature:news`: [sortedByDescending] is stable, so a run of
+ * stories the server sent without a readable `published_at` arrives in the order it was sent.
+ */
+private fun List<GuestHeadline>.sortedNewestFirst(): List<GuestHeadline> =
+    sortedByDescending { headline -> parseWireInstant(headline.publishedAt) ?: Instant.EPOCH }

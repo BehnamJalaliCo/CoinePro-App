@@ -50,6 +50,8 @@ import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.CoineProToast
 import com.coinepro.core.designsystem.LocalToaster
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.notifications.AlertFrequency
 import com.coinepro.core.notifications.AlertScope
 import com.coinepro.core.symbols.SymbolArtwork
@@ -123,6 +125,7 @@ fun AlertCenterScreen(controller: AlertsController, initialSymbol: String? = nul
                 )
             },
         )
+        CoineProTeachingStrip(TeachingSurface.ALERTS)
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),

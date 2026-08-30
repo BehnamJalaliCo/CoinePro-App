@@ -44,6 +44,8 @@ import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.CoineProThinkingDots
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.portfolio.ClosedTrade
 import com.coinepro.core.portfolio.MonthlyPerformance
 import com.coinepro.core.portfolio.PortfolioController
@@ -89,6 +91,7 @@ fun PortfolioScreen(
 
     Column(modifier = Modifier.fillMaxSize().background(CoineProColors.Stage)) {
         WindowChips(state.window, controller::setWindow)
+        CoineProTeachingStrip(TeachingSurface.PORTFOLIO)
         when {
             state.loading && state.trades.isEmpty() -> Centre { CoineProThinkingDots() }
             state.error != null && state.trades.isEmpty() ->

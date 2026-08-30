@@ -293,6 +293,32 @@ data class ChartDecoration(
      * Persian ones included.
      */
     val paneScale: Float = 1f,
+    /**
+     * The line at the previous session's close.
+     *
+     * ### Why a chart needs it
+     *
+     * Because "how much is it up today" is a question about a *distance on the chart*, and without
+     * this line there is nothing on the plot to measure that distance from. The header carries the
+     * session change as a number, and a number is the one form of that answer a chart is bad at:
+     * what a trader reads off the picture is whether the candles are above or below where the day
+     * started, by how much, and whether the current bar is the one that crossed it. Every terminal
+     * draws it, and until now this one drew nothing at all — the price plot had no reference for
+     * the day whatsoever, which is a large part of why it reads as a picture of prices rather than
+     * as a trading chart.
+     *
+     * ### Intraday only, and that is not a limitation
+     *
+     * On a daily chart or coarser the previous close is the bar immediately to the left, so a line
+     * at it is a line through the candle next door: it says nothing the picture does not already
+     * say, and it adds a rule across a chart that has no session to divide. The renderer decides
+     * this from the bars' own spacing rather than from a timeframe it was told, for the same reason
+     * the countdown does — see `drawCountdown`.
+     *
+     * On by default, and drawn only where the live price is: a thumbnail switches both off
+     * together, which is the one bit that already separates a chart from a picture of one.
+     */
+    val showPreviousClose: Boolean = true,
 )
 
 /** Where the crosshair is, in chart space. Null when nobody is touching the chart. */

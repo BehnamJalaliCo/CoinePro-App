@@ -32,6 +32,8 @@ import com.coinepro.core.designsystem.CoineProReading
 import com.coinepro.core.designsystem.CoineProReadingRow
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.papertrade.PaperEngine
 import com.coinepro.core.papertrade.PaperQuote
 import com.coinepro.core.papertrade.PaperTradeController
@@ -109,6 +111,7 @@ fun PaperTradeScreen(
                 )
             },
         )
+        CoineProTeachingStrip(TeachingSurface.PAPER_TRADE)
         AccountPanel(state)
         TabChips(tab) { tab = it }
 

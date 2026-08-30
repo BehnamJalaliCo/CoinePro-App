@@ -60,6 +60,8 @@ import com.coinepro.core.designsystem.CoineProListHeader
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.LocalCoineProPalette
 import com.coinepro.core.designsystem.rememberCoineProHaptics
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.symbols.SymbolCategory
 
@@ -233,6 +235,7 @@ fun HeatmapScreen(
                     )
                 },
             )
+            CoineProTeachingStrip(TeachingSurface.HEATMAP)
             if (drawn.isNotEmpty()) {
                 CoverageLine(
                     known = known,

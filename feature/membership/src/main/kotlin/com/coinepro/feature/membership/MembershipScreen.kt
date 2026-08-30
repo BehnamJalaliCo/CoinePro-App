@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPageHeading
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.guest.GuestTrackRecord
 import com.coinepro.core.guest.MembershipTerms
 import com.coinepro.core.membership.MembershipController
@@ -54,6 +56,7 @@ fun MembershipScreen(
                 modifier = Modifier.padding(horizontal = 0.dp),
             )
         }
+        item { CoineProTeachingStrip(TeachingSurface.MEMBERSHIP, gutter = false) }
         item {
             MembershipJourneyPanel(
                 controller = controller,

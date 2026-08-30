@@ -16,8 +16,8 @@
 
     <string name="connections_lbank_live_only">الْبانک محیط آزمایشی ندارد. هر کلیدی که این‌جا ذخیره کنید کلید حساب واقعی شماست و هر سفارشی که از اپ ثبت شود با پول واقعی اجرا می‌شود.</string>
     <string name="connections_unsupported_title">اتصال صرافی در این پلتفرم نیست</string>
-    <string name="connections_unsupported_body">این پلتفرم سفارش را از داخل اپ ثبت نمی‌کند. حساب معاملاتی فارکس از راه کپی‌تریدینگ وصل می‌شود — کارگزار، سرور، شمارهٔ حساب و رمز معاملاتی همان‌جا وارد می‌شوند — و این‌جا چیزی برای تنظیم وجود ندارد.</string>
-    <string name="connections_forex_elsewhere">حساب فارکس این‌جا وصل نمی‌شود. سمت فارکس با کلید API کار نمی‌کند؛ حساب متاتریدر ۵ از راه کپی‌تریدینگ لینک می‌شود و فرمش همان‌جاست.</string>
+    <string name="connections_unsupported_body">این پلتفرم سفارش را از داخل اپ ثبت نمی‌کند و کلید صرافی نمی‌گیرد. حساب معاملاتی فارکس در پلتفرم کوین‌پرو اف‌ایکس وصل می‌شود — کارگزار، سرور، شمارهٔ حساب و رمز معاملاتی — و این‌جا چیزی برای تنظیم وجود ندارد.</string>
+    <string name="connections_forex_elsewhere">حساب فارکس این‌جا وصل نمی‌شود. سمت فارکس با کلید API کار نمی‌کند؛ حساب متاتریدر ۵ در پلتفرم کوین‌پرو اف‌ایکس و در همین صفحهٔ «اتصال‌ها» وصل می‌شود.</string>
     <string name="connections_lbank_save">ذخیرهٔ اتصال الْبانک</string>
     <string name="connections_lbank_replace">جایگزینی اطلاعات</string>
     <string name="connections_lbank_remove">حذف اتصال الْبانک</string>
@@ -32,4 +32,28 @@
     <string name="connections_disconnect_title">اتصال قطع شود؟</string>
     <string name="connections_disconnect_body">مشخصات این حساب پاک می‌شود و هر کپی‌ای که از روی آن باز بود متوقف می‌گردد. ما این مشخصات را جایی نگه نمی‌داریم؛ برای وصل شدن دوباره باید از نو واردشان کنید.</string>
     <string name="connections_keep">بماند</string>
+
+    <!-- MetaTrader 5, on CoinePro-FX. The same account link the copy-trading screen writes. -->
+    <string name="connections_subtitle_mt5">حساب متاتریدر ۵ خود را وصل کن تا سرویس کپی، معامله‌های پرو چارت را روی همان حساب باز کند. اطلاعات ورود روی HTTPS به سرور می‌رود و هرگز در آپ ذخیره نمی‌شود.</string>
+    <string name="connections_setup_not_proof_mt5">آنچه وارد می‌کنی ورودیِ راه‌اندازی است، نه اثباتِ اتصال. وضعیت «متصل» تنها وقتی می‌آید که ترمینال با همین حساب به سرور گزارش بدهد؛ تا آن لحظه اتصال در انتظار می‌ماند و آپ آن را از پیش خودش حدس نمی‌زند.</string>
+    <string name="connections_mt5_name">متاتریدر ۵</string>
+    <string name="connections_mt5_body">همان مشخصاتی که با آن وارد ترمینال متاتریدر ۵ می‌شوی: بروکر، سرور، شمارهٔ حساب و رمز حساب.</string>
+    <string name="connections_mt5_password_warning">این رمز به سرور فرستاده می‌شود تا ترمینال بتواند به حساب شما وارد شود. رمز «سرمایه‌گذار» (Investor) برای این کار کافی نیست و باید رمز اصلی حساب معاملاتی وارد شود — پس با همان دقتی که با یک رمز واقعی رفتار می‌کنید واردش کنید.</string>
+    <string name="connections_mt5_broker">بروکر</string>
+    <string name="connections_mt5_server">سرور</string>
+    <string name="connections_mt5_login">شمارهٔ حساب</string>
+    <string name="connections_mt5_password">رمز حساب</string>
+    <string name="connections_mt5_link">وصل کردن حساب متاتریدر ۵</string>
+    <string name="connections_mt5_relink">جایگزینی مشخصات حساب</string>
+    <string name="connections_mt5_linking">در حال وصل کردن…</string>
+    <string name="connections_mt5_unlink">جدا کردن حساب متاتریدر ۵</string>
+    <string name="connections_mt5_status_pending">در انتظار ترمینال</string>
+    <string name="connections_mt5_status_attention">نیاز به رسیدگی</string>
+    <string name="connections_mt5_status_locked">خوانده نمی‌شود</string>
+    <string name="connections_mt5_pending_note">مشخصات ذخیره شد؛ هنوز هیچ ترمینالی با این حساب گزارش نداده است. تا وقتی ترمینال وصل نشود، کپی روی این حساب اجرا نمی‌شود.</string>
+    <string name="connections_mt5_mismatch">ترمینال روی حساب %1$s لاگین کرده، نه حسابی که این‌جا وصل شده. تا وقتی هر دو یکی نشوند سرور پوزیشن‌های این حساب را نشان نمی‌دهد و کپی روی آن اجرا نمی‌شود.</string>
+    <string name="connections_mt5_locked_default">اشتراک فعالی روی این حساب نیست.</string>
+    <string name="connections_mt5_locked_note">خواندنِ وضعیت اتصال پشت اشتراک است؛ خودِ وصل کردن نیست. می‌توانی همین حالا مشخصات حساب را بفرستی، ولی تا وقتی اشتراک نداشته باشی این‌جا نوشته نمی‌شود که سرور با آن چه کرد.</string>
+    <string name="connections_mt5_sent">مشخصات فرستاده شد. نتیجه‌اش این‌جا خوانده نمی‌شود، چون خواندنِ وضعیت اشتراک می‌خواهد.</string>
+    <string name="connections_mt5_copy_note">این همان اتصالی است که صفحهٔ کپی‌تریدینگ روی آن کار می‌کند: حساب یک‌بار وصل می‌شود و سرویس خودش معامله‌ها را روی آن باز می‌کند.</string>
 </resources>

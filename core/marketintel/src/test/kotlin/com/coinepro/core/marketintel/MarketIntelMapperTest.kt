@@ -97,6 +97,28 @@ class MarketIntelMapperTest {
     }
 
     @Test
+    fun `the feed is ordered newest first whatever order the server sent it in`() {
+        // The owner has reported three times that «اخبار اصلاً آپدیت نمی‌شود، همان چیزی است که از
+        // ورژن ۱ بوده». An adapter answering `ORDER BY id`, or ascending, produces exactly that and
+        // nothing inside the app can tell it apart from a server that stopped publishing: the
+        // request goes out, the response is fresh, the count is right — and the only part of the
+        // list anybody reads is the oldest rows, unchanged for ever.
+        val snapshot = MarketIntelSnapshotDto(
+            serverTime = "2026-08-30T13:00:00Z",
+            news = listOf(
+                newsDto(id = "oldest", publishedAt = "2026-08-24T09:00:00Z"),
+                newsDto(id = "newest", publishedAt = "2026-08-30T12:37:54.012304+00:00"),
+                newsDto(id = "middle", publishedAt = "2026-08-27T18:30:00+00:00"),
+            ),
+        ).toDomain()
+
+        assertEquals(
+            listOf("newest", "middle", "oldest"),
+            snapshot.news.map(MarketNewsItem::id),
+        )
+    }
+
+    @Test
     fun `high impact warning requires exact impact relevance freshness and time window`() {
         val now = Instant.parse("2026-08-23T10:00:00Z")
         val matching = event(
@@ -134,13 +156,15 @@ class MarketIntelMapperTest {
         summary: String? = null,
         imageUrl: String? = null,
         body: String? = null,
+        id: String = "n1",
+        publishedAt: String = "2026-08-23T10:00:00Z",
     ) = MarketNewsDto(
-        id = "n1",
+        id = id,
         title = "Gold reacts to macro data",
         summary = summary,
         source = "Provider",
         url = "https://example.com/item",
-        publishedAt = "2026-08-23T10:00:00Z",
+        publishedAt = publishedAt,
         sentiment = "bullish",
         impact = "high",
         relevance = listOf("gold"),

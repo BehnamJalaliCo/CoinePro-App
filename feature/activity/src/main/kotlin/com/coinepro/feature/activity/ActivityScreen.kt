@@ -59,6 +59,8 @@ import com.coinepro.core.designsystem.CoineProPullToRefresh
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.resolve
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.ExecutionStatus
 import com.coinepro.core.execution.SignalExecution
@@ -382,6 +384,7 @@ private fun ActivityHeader(
                 )
             },
         )
+        CoineProTeachingStrip(TeachingSurface.ACTIVITY, gutter = false)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             HeaderMetric(
                 value = if (expectedSignals > loadedSignals) BidiText.isolateLtr("$loadedSignals / $expectedSignals") else loadedSignals.toString(),

@@ -257,6 +257,15 @@ import kotlinx.coroutines.launch
 private const val SIGNAL_DETAIL_PATTERN = "signal/{signalId}"
 private const val EXECUTION_PATTERN = "execution/{signalId}"
 private const val CONNECTIONS_ROUTE = "connections"
+
+/**
+ * Copy trading, which used to *be* the connections route on CoinePro-FX.
+ *
+ * Its own address now, because Connections has become a real screen on that platform: the
+ * MetaTrader 5 broker link. Sharing one route meant the two could never both be reachable and
+ * meant the heading had to lie about one of them.
+ */
+private const val COPY_TRADE_ROUTE = "copy-trade"
 private const val AI_VISION_ROUTE = "ai/vision"
 private const val AI_ASSISTANT_ROUTE = "ai/assistant"
 private const val MARKET_SEARCH_ROUTE = "market/search"
@@ -397,6 +406,7 @@ private fun surfaceRoute(id: String, platform: MarketPlatform, watchlist: List<S
         "ai-assistant" -> AI_ASSISTANT_ROUTE
         "terminal" -> TERMINAL_ROUTE
         "connections" -> CONNECTIONS_ROUTE
+        "copy-trade" -> COPY_TRADE_ROUTE
         "activity" -> ACTIVITY_ROUTE
         "membership" -> MEMBERSHIP_ROUTE
         "verify" -> KYC_ROUTE
@@ -478,7 +488,7 @@ private fun accentFor(route: String?): PageAccent = when (route) {
     AppDestination.AI.route,
     -> PageAccent.ANALYSIS
 
-    CONNECTIONS_ROUTE -> PageAccent.SOCIAL
+    CONNECTIONS_ROUTE, COPY_TRADE_ROUTE -> PageAccent.SOCIAL
 
     else -> PageAccent.BRAND
 }
@@ -1576,6 +1586,7 @@ private fun MainShell(
         SIGNAL_DETAIL_PATTERN,
         EXECUTION_PATTERN,
         CONNECTIONS_ROUTE,
+        COPY_TRADE_ROUTE,
         MARKET_SEARCH_ROUTE,
         CHART_PATTERN,
         PROFILE_ROUTE,
@@ -1615,13 +1626,11 @@ private fun MainShell(
         ADMIN_ROUTE -> R.string.screen_diagnostics
         SIGNAL_DETAIL_PATTERN -> R.string.screen_signal_detail
         EXECUTION_PATTERN -> R.string.screen_execution
-        // Named for what the screen actually is on each platform. "Connections" over a
-        // copy-trading screen is not wrong so much as unhelpful: it is the reader's word for the
-        // wrong feature.
-        CONNECTIONS_ROUTE -> when (activePlatform) {
-            MarketPlatform.COINEPRO_FX -> R.string.screen_copy_trading
-            MarketPlatform.TRADEYAR -> R.string.screen_connections
-        }
+        // No longer switched on the platform. Connections is genuinely Connections on both now —
+        // an exchange key on TradeYar, a MetaTrader 5 broker login on CoinePro-FX — and copy
+        // trading has its own address rather than borrowing this one's heading.
+        CONNECTIONS_ROUTE -> R.string.screen_connections
+        COPY_TRADE_ROUTE -> R.string.screen_copy_trading
         PROFILE_ROUTE -> R.string.screen_profile
         NOTIFICATIONS_ROUTE -> R.string.screen_notifications
         MEMBERSHIP_ROUTE -> R.string.screen_membership
@@ -2032,7 +2041,7 @@ private fun MainShell(
                     null
                 },
                 onOpenCopyTrading = if (activePlatform == MarketPlatform.COINEPRO_FX) {
-                    { navController.navigate(CONNECTIONS_ROUTE) }
+                    { navController.navigate(COPY_TRADE_ROUTE) }
                 } else {
                     null
                 },
@@ -2507,16 +2516,23 @@ private fun MainShell(
                 )
             }
             composable(CONNECTIONS_ROUTE) {
-                // One route, two entirely different surfaces, because the two products are
-                // different: TradeYar takes an exchange key and places orders per signal, while
-                // CoinePro-FX links a broker account once and a service trades it. Sending an FX
-                // reader to the venue form gave them a screen whose every field was answered by a
-                // 404, worded as though the connection had failed.
-                when (activePlatform) {
-                    MarketPlatform.COINEPRO_FX -> CopyTradeScreen(controller = copyTradeController)
-                    MarketPlatform.TRADEYAR ->
-                        ConnectionsScreen(controller = executionController, platform = activePlatform)
-                }
+                // One screen, one design, two venues — because a platform has exactly one and they
+                // are different kinds of thing. TradeYar takes an LBank key pair and places orders
+                // per signal; CoinePro-FX takes a MetaTrader 5 broker login over the copy-trading
+                // account routes and a service trades it. The screen picks on the platform and on
+                // whether the routes behind the form exist, never on the heading.
+                //
+                // Until now the FX branch drew the *copy-trading* screen here, so the one thing an
+                // FX reader comes to Connections for — linking their broker account — was the one
+                // thing this address could not do.
+                ConnectionsScreen(
+                    controller = executionController,
+                    platform = activePlatform,
+                    copyTrade = copyTradeController,
+                )
+            }
+            composable(COPY_TRADE_ROUTE) {
+                CopyTradeScreen(controller = copyTradeController)
             }
             composable(AppDestination.AI.route) {
                 if (guest) {

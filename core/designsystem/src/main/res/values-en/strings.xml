@@ -35,4 +35,77 @@
     <string name="price_feed_partial">Part of the live price feed is down; the 24-hour figures are correct</string>
     <string name="price_feed_full">The venue\'s live price feed is down and updates more slowly</string>
     <string name="price_feed_unknown">The price feed\'s state is unknown</string>
+
+    <!-- Teaching banners. See CoineProTeaching.kt; the Persian in values/ is the source. -->
+    <string name="teaching_dismiss">Close this explanation</string>
+    <string name="teaching_what_is_this">What is this screen?</string>
+
+    <string name="teaching_home_lead">Your account and the market summarised on one screen: balance, a few symbols, open signals.</string>
+    <string name="teaching_home_pitfall">Everything here is a summary; each section\'s full figures are on its own screen.</string>
+
+    <string name="teaching_markets_lead">Every symbol\'s live price and 24-hour change, in one list.</string>
+    <string name="teaching_markets_pitfall">The percentage on a row is the change over the past 24 hours, not the change since midnight.</string>
+
+    <string name="teaching_chart_lead">One symbol\'s price over time, with timeframes, indicators and drawing tools.</string>
+    <string name="teaching_chart_pitfall">The last candle has not closed yet and keeps changing until the timeframe ends.</string>
+
+    <string name="teaching_signals_lead">Published signals, each with its entry, stop loss and target.</string>
+    <string name="teaching_signals_pitfall">A signal is a report, not advice; the size and the decision are yours.</string>
+
+    <string name="teaching_ai_lead">You ask the model to analyse a symbol and read its answer here.</string>
+    <string name="teaching_ai_pitfall">The model speaks from past data; what it produces is analysis, not a forecast.</string>
+
+    <string name="teaching_tools_lead">Trading calculators: position size, risk, stop loss, profit and loss.</string>
+    <string name="teaching_tools_pitfall">These only calculate; no order goes to an exchange from here.</string>
+
+    <string name="teaching_news_lead">Market news with its source named, newest first.</string>
+    <string name="teaching_news_pitfall">Stories are ordered by time, not by importance or by their effect on price.</string>
+
+    <string name="teaching_calendar_lead">When each economic figure is released, and the number the market expects.</string>
+    <string name="teaching_calendar_pitfall">Until the moment of release, the number you see is the forecast, not the actual figure.</string>
+
+    <string name="teaching_screener_lead">You set conditions and the symbols that meet them are listed.</string>
+    <string name="teaching_screener_pitfall">The list is a snapshot of this moment; symbols join and leave it on every refresh.</string>
+
+    <string name="teaching_heatmap_lead">The whole market in one picture: each cell\'s colour is its price change and its size is that symbol\'s weight.</string>
+    <string name="teaching_heatmap_pitfall">Cell size is not market cap; it is the liquidity or volume you chose in the settings.</string>
+
+    <string name="teaching_watchlist_lead">The symbols you starred, kept apart from the full market list.</string>
+    <string name="teaching_watchlist_pitfall">A watchlist is a list you watch, not a portfolio; starring a symbol buys nothing.</string>
+
+    <string name="teaching_alerts_lead">You set a price condition and get a notification when it is met.</string>
+    <string name="teaching_alerts_pitfall">An alert only tells you; it never opens or closes a trade.</string>
+
+    <string name="teaching_journal_lead">You record each trade with why you entered and why you left, so the pattern in your mistakes becomes visible.</string>
+    <string name="teaching_journal_pitfall">The journal is manual and reads nothing from a connected account; everything here you wrote yourself.</string>
+
+    <string name="teaching_paper_trade_lead">Practice trading on the real market with imaginary money.</string>
+    <string name="teaching_paper_trade_pitfall">The prices are real and the money is not; profit and loss here never reach a real account.</string>
+
+    <string name="teaching_backtest_lead">You run a trading rule over past data to see what it would have done.</string>
+    <string name="teaching_backtest_pitfall">The result is about that stretch of history only; a different stretch gives a different answer.</string>
+
+    <string name="teaching_script_lead">You write NamaScript indicators and strategies here and run them on the chart.</string>
+    <string name="teaching_script_pitfall">A script only calculates on the chart; it never places an order itself.</string>
+
+    <string name="teaching_portfolio_lead">The record of your connected account\'s closed trades: net profit, win rate and worst drawdown.</string>
+    <string name="teaching_portfolio_pitfall">Only closed trades are in these figures; an open position\'s floating profit is not counted.</string>
+
+    <string name="teaching_connections_lead">You connect an exchange account with an API key so orders can be placed from the app.</string>
+    <string name="teaching_connections_pitfall">The key is held on the server and never stored on the phone, and withdrawal permission is not needed.</string>
+
+    <string name="teaching_membership_lead">Your subscription\'s state, and which parts of the app each plan opens.</string>
+    <string name="teaching_membership_pitfall">A subscription opens parts of the app, not profit or a guaranteed signal.</string>
+
+    <string name="teaching_activity_lead">The record of your closed signals and the executions the server logged.</string>
+    <string name="teaching_activity_pitfall">Every figure here comes from the server; nothing is estimated on the phone.</string>
+
+    <string name="teaching_academy_lead">Short lessons about the market and about using this app.</string>
+    <string name="teaching_academy_pitfall">The lessons teach; none of them names a symbol to buy.</string>
+
+    <string name="teaching_dom_lead">The buy and sell orders waiting in the exchange\'s book right now.</string>
+    <string name="teaching_dom_pitfall">These orders have not been filled and can be pulled at any moment.</string>
+
+    <string name="teaching_search_lead">You find a symbol or a screen of the app by its name.</string>
+    <string name="teaching_search_pitfall">Persian names work too; you do not have to know the Latin ticker.</string>
 </resources>

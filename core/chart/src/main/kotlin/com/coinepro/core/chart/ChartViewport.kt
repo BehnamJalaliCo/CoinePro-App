@@ -102,9 +102,28 @@ data class ChartViewport(
     /**
      * How many bars back from the newest the right edge sits. This is the pan position.
      *
-     * Zero means pinned to the live edge, which is where a chart opens and where it should stay
-     * while new bars arrive — a chart that drifts left as the market prints is a chart the reader
-     * has to keep dragging back.
+     * Zero means the newest bar is *against* the right edge, which is where a chart opens only if
+     * nobody asked for the margin below. Negative means the reader — or [atRest] — has pushed the
+     * live edge away from the axis and the slots between the two carry no bar.
+     *
+     * ### Why it is allowed to be negative
+     *
+     * Because a chart whose newest candle is glued to the price axis is the single loudest tell
+     * that a chart was drawn by somebody who had not used one. Three things are wrong with it at
+     * once, and all three are visible in the first second:
+     *
+     *  * The live-price tag and the bar countdown are drawn in the gutter *beside* the last candle,
+     *    so at any ordinary zoom they sit directly against the bars they are describing.
+     *  * There is nowhere to put a projection. A trend line, a channel or a Fibonacci extension is
+     *    drawn to say where price is going, and on a glued chart it has no room to say it — the
+     *    line stops at the axis on the same bar it was anchored to.
+     *  * A trader watching a bar form watches the *right* of the screen. With the edge at the axis
+     *    the newest bar is half-clipped by the gutter's own hairline.
+     *
+     * Every terminal answers all three the same way: keep a few empty bar slots after the last bar.
+     * [restingOffset] is how many, [blankSlots] is what the geometry does with it, and the default
+     * here stays zero so that a thumbnail or a list-row sparkline — which has no axis and no room
+     * to give away — is laid out exactly as it was before.
      */
     val offset: Int = 0,
     /** The plot rectangle in pixels: the canvas minus the price axis and the time axis. */
@@ -252,13 +271,54 @@ data class ChartViewport(
 
     /** How many bars are actually drawn, which is fewer than [barsPerView] on a short series. */
     val visibleCount: Int
-        get() = if (series.isEmpty) 0 else min(effectiveBarsPerView, lastVisible + 1)
+        get() = if (series.isEmpty) 0 else min(effectiveBarsPerView - blankSlots, lastVisible + 1)
 
     private val effectiveBarsPerView: Int
         get() = barsPerView.coerceIn(MIN_BARS_PER_VIEW, MAX_BARS_PER_VIEW)
 
+    /**
+     * How many slots at the right edge carry no bar — the air between the newest candle and the
+     * price axis. See [offset].
+     *
+     * Derived from the pan position rather than stored beside it, so the two cannot disagree and so
+     * panning through the live edge is one continuous movement: every bar of pan slides the picture
+     * by exactly one slot whichever side of zero the offset is on. A separate "margin" field would
+     * have had to be spent and refilled at the boundary, which is a jump.
+     */
+    val blankSlots: Int
+        get() = if (series.isEmpty) 0 else max(0, -offset).coerceAtMost(maxBlankSlots)
+
+    /**
+     * The furthest the reader may push the newest bar from the axis: half a screen.
+     *
+     * Half rather than a fixed count, because "how much air is too much" is a question about the
+     * picture and not about the instrument. Past half the screen the chart is mostly empty and the
+     * reader has lost the thing they were panning towards; short of it, every projection a drawing
+     * tool can make has somewhere to land.
+     */
+    private val maxBlankSlots: Int get() = effectiveBarsPerView / 2
+
+    /**
+     * Where the chart sits when it is following the market: the newest bar, with air after it.
+     *
+     * A share of the window rather than a fixed number of bars, and that is the part worth stating.
+     * TradingView stores its own right offset in bars, which is right on a desktop where the window
+     * is wide and rarely re-zoomed, and wrong on a phone: six bars is a comfortable margin at eighty
+     * bars a screen, more than a third of the plot at [MIN_BARS_PER_VIEW], and an invisible sliver
+     * at six hundred. A share is the same *picture* at every zoom, which is what the reader is
+     * actually judging.
+     *
+     * Clamped at both ends so the share cannot round to nothing when zoomed right in, and cannot
+     * eat a screenful when zoomed right out.
+     */
+    val restingOffset: Int
+        get() = -(effectiveBarsPerView * RIGHT_MARGIN_SHARE)
+            .roundToInt()
+            .coerceIn(MIN_RIGHT_SLOTS, MAX_RIGHT_SLOTS)
+            .coerceAtMost(maxBlankSlots)
+
     /** Whether the right edge is at the newest bar, and so should follow new data. */
-    val isAtLiveEdge: Boolean get() = offset == 0
+    val isAtLiveEdge: Boolean get() = offset <= 0
 
     /**
      * Pixels per bar.
@@ -274,7 +334,11 @@ data class ChartViewport(
      */
     val barWidth: Float
         get() {
-            val slots = min(effectiveBarsPerView, max(visibleCount, MIN_BARS_PER_VIEW))
+            // The blank slots at the live edge are counted, because they are part of the picture:
+            // leaving them out would make the bars wider to fill a plot that is deliberately not
+            // full, and the margin would collapse to nothing on exactly the short series where it
+            // is most visible.
+            val slots = min(effectiveBarsPerView, max(visibleCount + blankSlots, MIN_BARS_PER_VIEW))
             return if (slots == 0) 0f else plotWidth / slots
         }
 
@@ -515,8 +579,21 @@ data class ChartViewport(
 
     fun atOffset(newOffset: Int): ChartViewport {
         val maximum = max(0, series.size - MIN_BARS_PER_VIEW)
-        return copy(offset = newOffset.coerceIn(0, maximum))
+        // The near clamp is negative now: past the newest bar there is air rather than a wall. The
+        // far clamp is unchanged — past the oldest bar there is genuinely nothing, and coasting
+        // into it would leave the reader looking at an empty plot with no way to tell whether the
+        // history ran out or the feed did.
+        return copy(offset = newOffset.coerceIn(-maxBlankSlots, max(-maxBlankSlots, maximum)))
     }
+
+    /**
+     * The resting position at the live edge: the newest bar, with [restingOffset] slots of air.
+     *
+     * What a chart opens on and what a double tap on the plot puts it back to. Separate from
+     * `atOffset(0)`, which still means "glue the newest bar to the axis" and is what a thumbnail
+     * wants — a sparkline in a list row has no gutter to breathe into and no projection to make.
+     */
+    fun atRest(): ChartViewport = atOffset(restingOffset)
 
     /**
      * Zoom by a scale factor, keeping the right edge fixed.
@@ -535,12 +612,24 @@ data class ChartViewport(
         if (scale <= 0f || !scale.isFinite()) return this
         val before = effectiveBarsPerView
         val bars = (before / scale).roundToInt().coerceIn(MIN_BARS_PER_VIEW, MAX_BARS_PER_VIEW)
-        if (!priceBarLock) return copy(barsPerView = bars)
-        val realised = bars.toFloat() / before
-        return copy(
-            barsPerView = bars,
-            priceZoom = (priceZoom * realised).coerceIn(MIN_PRICE_ZOOM, MAX_PRICE_ZOOM),
-        )
+        // Whether the margin at the live edge was the resting one, asked *before* the bar count
+        // moves. The margin is a share of the window, so a chart that was resting has to go on
+        // resting at the new zoom — otherwise pinching out shrinks the air to a sliver and pinching
+        // in blows it up to a third of the plot, and the reader has to re-find the edge every time
+        // they change zoom.
+        val resting = offset == restingOffset
+        val zoomed = if (!priceBarLock) {
+            copy(barsPerView = bars)
+        } else {
+            val realised = bars.toFloat() / before
+            copy(
+                barsPerView = bars,
+                priceZoom = (priceZoom * realised).coerceIn(MIN_PRICE_ZOOM, MAX_PRICE_ZOOM),
+            )
+        }
+        // Re-clamped either way: the near bound is half the window, so a hard pinch inward can
+        // leave a stored offset outside the range the new zoom allows.
+        return if (resting) zoomed.atRest() else zoomed.atOffset(zoomed.offset)
     }
 
     /**
@@ -621,7 +710,14 @@ data class ChartViewport(
     fun withSeries(newSeries: CandleSeries): ChartViewport {
         val maximum = max(0, newSeries.size - MIN_BARS_PER_VIEW)
         if (isAtLiveEdge || series.isEmpty || newSeries.isEmpty) {
-            return copy(series = newSeries, offset = if (isAtLiveEdge) 0 else offset.coerceIn(0, maximum))
+            // `min(0, offset)` rather than `0`: a reader resting with air at the live edge is still
+            // at the live edge, and resetting them to zero would snap the newest bar against the
+            // axis every time a bar arrived — which on a live feed is the chart twitching once a
+            // minute.
+            return copy(
+                series = newSeries,
+                offset = if (isAtLiveEdge) min(0, offset) else offset.coerceIn(0, maximum),
+            )
         }
         val anchor = series.time[lastVisible]
         val index = lastIndexAtOrBefore(newSeries.time, anchor)
@@ -701,6 +797,23 @@ data class ChartViewport(
 
         /** The share of a bar's slot the body occupies; the rest is the gap. */
         const val BODY_RATIO = 0.72f
+
+        /**
+         * How much of the window is air between the newest bar and the price axis, at rest.
+         *
+         * Six percent. On the 393dp phone this app is built for that is about twenty points of
+         * plot: wide enough that the live-price tag and the countdown are not pressed against the
+         * candle they describe, wide enough for a projection to say something, and narrow enough
+         * that it never reads as the feed having stopped. Ten percent was tried and reads as a
+         * gap; three is not distinguishable from none.
+         */
+        const val RIGHT_MARGIN_SHARE = 0.06f
+
+        /** Below two slots the margin rounds away entirely at the tightest zoom. */
+        const val MIN_RIGHT_SLOTS = 2
+
+        /** And above this it stops growing, so a zoomed-out chart is bars rather than air. */
+        const val MAX_RIGHT_SLOTS = 24
 
         /** Headroom above the highest wick and below the lowest, as a share of the visible range. */
         const val PRICE_PADDING = 0.08

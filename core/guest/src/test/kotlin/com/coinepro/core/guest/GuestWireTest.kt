@@ -142,6 +142,80 @@ class GuestWireTest {
     }
 
     @Test
+    fun `headlines are ordered newest first whatever order the route sent them in`() = runTest {
+        // The order the app has to survive rather than the order the route documents. `news/list`
+        // says it sorts by `published_at` descending and today it does — but the members' route
+        // says the same thing, and a feed served in any other order is what «اخبار اصلاً آپدیت
+        // نمی‌شود» looks like from the reader's chair: the oldest rows sit at the top for good and
+        // every new story lands below the fold, on a list nobody scrolls.
+        val gateway = NetworkGuestGateway(
+            FakeApi(
+                news = listOf(
+                    headline("old", "2026-08-24T09:00:00+00:00"),
+                    headline("newest", "2026-08-30T12:37:54.012304+00:00"),
+                    headline("middle", "2026-08-27T18:30:00Z"),
+                ),
+            ),
+        )
+
+        val headlines = (gateway.news() as AppResult.Success).value
+
+        assertEquals(listOf("newest", "middle", "old"), headlines.map(GuestHeadline::slug))
+    }
+
+    @Test
+    fun `an undated headline keeps its place at the end rather than being dropped`() = runTest {
+        val gateway = NetworkGuestGateway(
+            FakeApi(
+                news = listOf(
+                    headline("undated", null),
+                    headline("dated", "2026-08-30T12:00:00Z"),
+                ),
+            ),
+        )
+
+        val headlines = (gateway.news() as AppResult.Success).value
+
+        // Dropping it would lose a real story to a rule about ordering. It sorts last because the
+        // app cannot place it, which is the same answer `relatedTo` gives in `feature:news`.
+        assertEquals(listOf("dated", "undated"), headlines.map(GuestHeadline::slug))
+    }
+
+    @Test
+    fun `the picture the public route has always sent reaches the headline`() = runTest {
+        // `sourceImageUrl` is on every row of `api/v1/news/list` and was being dropped, so a guest
+        // read a pictureless feed on a screen built around a picture — while
+        // `docs/SERVER_ASK_NEWS_MEDIA.md` asked the server for a field it was already sending.
+        val gateway = NetworkGuestGateway(
+            FakeApi(
+                news = listOf(
+                    headline("with-picture", "2026-08-30T12:00:00Z")
+                        .copy(sourceImageUrl = "https://cdn.example.invalid/hero.jpg"),
+                ),
+            ),
+        )
+
+        val headline = (gateway.news() as AppResult.Success).value.single()
+
+        assertEquals("https://cdn.example.invalid/hero.jpg", headline.imageUrl)
+    }
+
+    @Test
+    fun `the camelCase picture key parses despite the snake_case policy`() {
+        val json = """
+            {"data":[{"id":37447,"slug":"a","source":"cryptoslate",
+                      "sourceUrl":"https://example.invalid/a",
+                      "sourceImageUrl":"https://example.invalid/a.jpg",
+                      "titleFa":"عنوان","publishedAt":"2026-08-30T12:37:54.012304+00:00"}],
+             "meta":{"count":1,"type":"news"}}
+        """.trimIndent()
+
+        val item = gson.fromJson(json, NewsListDto::class.java).data!!.single()
+
+        assertEquals("https://example.invalid/a.jpg", item.sourceImageUrl)
+    }
+
+    @Test
     fun `a community with no channel and no readable count reports itself empty`() = runTest {
         val gateway = NetworkGuestGateway(FakeApi(community = CommunityDto()))
 
@@ -151,16 +225,26 @@ class GuestWireTest {
     }
 }
 
+private fun headline(slug: String, publishedAt: String?): NewsItemDto = NewsItemDto(
+    slug = slug,
+    source = "cryptoslate",
+    sourceUrl = "https://example.invalid/$slug",
+    titleFa = "عنوان $slug",
+    summaryFa = "خلاصه",
+    publishedAt = publishedAt,
+)
+
 private class FakeApi(
     private val body: String = """{"data":[]}""",
     private val community: CommunityDto = CommunityDto(),
     private val membership: MembershipDto = MembershipDto(),
     private val candles: PublicCandlesDto = PublicCandlesDto(),
+    private val news: List<NewsItemDto> = emptyList(),
 ) : GuestApi {
     override suspend fun prices(symbols: String): PriceSnapshotDto =
         GsonBuilder().create().fromJson(body, PriceSnapshotDto::class.java)
 
-    override suspend fun news(type: String, limit: Int): NewsListDto = NewsListDto(emptyList())
+    override suspend fun news(type: String, limit: Int): NewsListDto = NewsListDto(news)
 
     override suspend fun trackRecord(limit: Int): TrackRecordDto = TrackRecordDto(emptyList())
 

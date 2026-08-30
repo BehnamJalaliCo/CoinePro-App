@@ -149,6 +149,8 @@ import com.coinepro.core.chart.DrawingActions
 import com.coinepro.core.chart.DrawingIconPicker
 import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.CoineProPrimaryButton
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.common.BidiText
 
 /**
@@ -751,6 +753,26 @@ fun ChartScreen(
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                 }
             }
+            // **The armed tool says so on the plot, not under it.**
+            //
+            // This bar existed and was correct and was in the wrong place: below the command band,
+            // below the chart, off the bottom of a phone. So arming a tool closed the sheet and
+            // *nothing visibly happened* — which is exactly how it was reported, three tools in a
+            // row with no effect. A drawing tool is a mode, the reader's next tap belongs to it,
+            // and a mode whose only indication is off screen is a mode nobody knows they are in.
+            //
+            // Inside the canvas box, so it follows the chart into fullscreen without being wired
+            // twice, and at the top, where it is over the price the reader is about to draw on
+            // rather than over the axis they need to read. It carries the point count — «نقطهٔ ۱
+            // از ۲» — which is also the instruction: tap the chart.
+            ActiveToolBar(
+                tool = state.drawing.tool,
+                placed = state.drawing.pending.size,
+                onCancel = controller::cancelDrawing,
+                onUndo = controller::undoDrawing,
+                onHelp = onHelp,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
             // The floating toolbar, inside the canvas box so that it follows the chart into
             // fullscreen without being wired twice. Top-centre rather than bottom: the price and
             // time axes are along the bottom and right, the fullscreen mode's own strip is along
@@ -918,6 +940,7 @@ fun ChartScreen(
             ),
     ) {
         Header(state, onOpenTerminal)
+        CoineProTeachingStrip(TeachingSurface.CHART)
         // The wheel is the strip's older, worse sibling and only appears where the split cannot:
         // on a build with no controller holder, where switching is a navigation anyway. Drawing
         // both would be the same list twice on one screen.
@@ -1032,14 +1055,6 @@ fun ChartScreen(
                 state.comparisons.isNotEmpty() ||
                 state.scaleMode != PriceScaleMode.REGULAR ||
                 axisAdjusted,
-        )
-
-        ActiveToolBar(
-            tool = state.drawing.tool,
-            placed = state.drawing.pending.size,
-            onCancel = controller::cancelDrawing,
-            onUndo = controller::undoDrawing,
-            onHelp = onHelp,
         )
 
         // Only where they have nowhere better to be. On a window wide enough for the side column

@@ -74,10 +74,12 @@ internal fun MarketNewsItem.asStory(): NewsStory = NewsStory(
 /**
  * A guest's headline, as a story the same page can open.
  *
- * Five fields arrive and five fields are set. Nothing here fabricates the rest:
+ * Six fields arrive and six fields are set. Nothing here fabricates the rest:
  *
- * * **No picture and no body**, because the public route sends neither. The same ask covers both
- *   feeds and names this route explicitly.
+ * * **No body**, because the public route sends none. The picture is a different story: this route
+ *   has always sent `sourceImageUrl` and `core:guest` used to drop it, so a guest read a feed with
+ *   no pictures on a screen built around one while `docs/SERVER_ASK_NEWS_MEDIA.md` asked the server
+ *   for a field it was already sending. It is carried now — see [GuestHeadline.imageUrl].
  * * **No classification.** The public route sends `importance` and nothing else; impact, sentiment
  *   and market tags stay unknown rather than being guessed from a single integer, so the pills that
  *   would carry them are not drawn at all.
@@ -103,6 +105,7 @@ internal fun GuestHeadline.asStory(): NewsStory = NewsStory(
     summary = summary,
     source = source,
     url = url,
+    imageUrl = imageUrl,
     publishedAt = parseWireInstant(publishedAt),
 )
 

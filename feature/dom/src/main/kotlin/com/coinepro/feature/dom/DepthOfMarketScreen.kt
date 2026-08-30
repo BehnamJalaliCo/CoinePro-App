@@ -61,6 +61,8 @@ import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.LtrDirection
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.orderbook.BookSide
 import com.coinepro.core.orderbook.DepthOutageReason
 import com.coinepro.core.orderbook.DepthUnavailableReason
@@ -186,6 +188,7 @@ fun DepthOfMarketBody(
             .verticalScroll(rememberScrollState()),
     ) {
         DepthHeader(state)
+        CoineProTeachingStrip(TeachingSurface.DOM)
         when {
             unavailable != null -> DepthUnavailable(unavailable)
             state.failed -> CoineProEmptyState(

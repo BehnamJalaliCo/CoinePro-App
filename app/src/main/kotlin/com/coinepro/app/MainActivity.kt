@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
@@ -42,6 +43,8 @@ import com.coinepro.core.datastore.DrawingImageStore
 import com.coinepro.core.datastore.DrawingSyncStore
 import com.coinepro.core.datastore.TimeZonePrefStore
 import com.coinepro.core.datastore.IntervalFavouritesStore
+import com.coinepro.core.datastore.TeachingStore
+import com.coinepro.core.designsystem.LocalTeachingDismissals
 import com.coinepro.feature.chart.ChartWorkspaceStore
 import com.coinepro.feature.alerts.AlertsController
 import com.coinepro.feature.screener.ScreenerController
@@ -130,6 +133,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var drawingImageStore: DrawingImageStore
     @Inject lateinit var timeZonePrefStore: TimeZonePrefStore
     @Inject lateinit var intervalFavouritesStore: IntervalFavouritesStore
+    @Inject lateinit var teachingStore: TeachingStore
     @Inject lateinit var chartWorkspaceStore: ChartWorkspaceStore
     @Inject lateinit var journalController: JournalController
     @Inject lateinit var paperTradeController: PaperTradeController
@@ -214,6 +218,11 @@ class MainActivity : FragmentActivity() {
             return
         }
         setContent {
+            // One collection of the dismissal set for the whole app. Around `CoineProApp` rather
+            // than inside it, so no screen has to be handed a store it does not otherwise use.
+            CompositionLocalProvider(
+                LocalTeachingDismissals provides rememberTeachingDismissals(teachingStore),
+            ) {
             CoineProApp(
                 sessionController = sessionController,
                 emailAuthController = emailAuthController,
@@ -292,6 +301,7 @@ class MainActivity : FragmentActivity() {
                 onOpenNotificationSettings = ::openNotificationSettings,
                 onSendFeedback = ::sendFeedback,
             )
+            }
         }
     }
 

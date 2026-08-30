@@ -57,6 +57,8 @@ import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.resolve
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.guest.GuestMembershipState
 import com.coinepro.core.guest.GuestTrackRecordState
@@ -127,6 +129,7 @@ fun SignalsScreen(
                 )
             },
         )
+        CoineProTeachingStrip(TeachingSurface.SIGNALS)
         CoineProSegmentTabs(
             options = SignalStatusFilter.entries.map { it to stringResource(it.labelRes()) },
             selected = state.status,

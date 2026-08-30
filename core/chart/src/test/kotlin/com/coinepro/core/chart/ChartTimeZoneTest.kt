@@ -3,8 +3,7 @@ package com.coinepro.core.chart
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -33,35 +32,37 @@ class ChartTimeZoneTest {
 
     @Test
     fun `a month boundary is decided in the zone it is asked for`() {
-        assertTrue(
+        assertEquals(
             "in Tehran the label opens April",
-            startsAPeriod(afterMidnight, beforeMidnight, tehran),
+            TimeTickUnit.MONTH,
+            TimeScale.boundaryOf(afterMidnight, beforeMidnight, tehran),
         )
-        assertFalse(
-            "and in UTC the same pair of bars are both still March",
-            startsAPeriod(afterMidnight, beforeMidnight, utc),
+        assertEquals(
+            "and in UTC the same pair of bars are both still March, so it is only a new hour",
+            TimeTickUnit.HOUR,
+            TimeScale.boundaryOf(afterMidnight, beforeMidnight, utc),
         )
     }
 
     @Test
-    fun `the first label of a view is never a boundary`() {
-        assertFalse("there is nothing before it to be a boundary against", startsAPeriod(afterMidnight, null, tehran))
-        assertFalse(startsAPeriod(null, beforeMidnight, tehran))
-    }
-
-    @Test
-    fun `two bars in the same month are not a boundary in any zone`() {
+    fun `two bars in the same month are a week rather than a month`() {
         val earlier = ZonedDateTime.of(2026, 4, 10, 9, 0, 0, 0, tehran).toEpochSecond()
         val later = ZonedDateTime.of(2026, 4, 17, 9, 0, 0, 0, tehran).toEpochSecond()
-        assertFalse(startsAPeriod(later, earlier, tehran))
-        assertFalse(startsAPeriod(later, earlier, utc))
+        assertEquals(TimeTickUnit.WEEK, TimeScale.boundaryOf(later, earlier, tehran))
+        assertEquals(TimeTickUnit.WEEK, TimeScale.boundaryOf(later, earlier, utc))
     }
 
     @Test
-    fun `a year turning over is a boundary as much as a month is`() {
+    fun `a year turning over outranks the month it also turns over`() {
         val december = ZonedDateTime.of(2025, 12, 30, 12, 0, 0, 0, tehran).toEpochSecond()
         val january = ZonedDateTime.of(2026, 1, 2, 12, 0, 0, 0, tehran).toEpochSecond()
-        assertTrue(startsAPeriod(january, december, tehran))
+        assertEquals(TimeTickUnit.YEAR, TimeScale.boundaryOf(january, december, tehran))
+    }
+
+    @Test
+    fun `two bars inside one minute open nothing at all`() {
+        val moment = ZonedDateTime.of(2026, 4, 10, 9, 0, 10, 0, tehran).toEpochSecond()
+        assertNull(TimeScale.boundaryOf(moment + 5, moment, tehran))
     }
 
     @Test

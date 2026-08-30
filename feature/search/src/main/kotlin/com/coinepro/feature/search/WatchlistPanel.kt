@@ -66,6 +66,8 @@ import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.rememberCoineProHaptics
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.marketdata.MarketSearchRow
 import com.coinepro.core.watchlistsync.R as SyncR
 import com.coinepro.core.watchlistsync.WatchlistSyncController
@@ -190,6 +192,7 @@ fun WatchlistPanel(
             onColumns = { sheet = WatchlistSheet.Columns },
             onTransfer = { sheet = WatchlistSheet.Transfer },
         )
+        CoineProTeachingStrip(TeachingSurface.WATCHLIST)
         if (columns.isNotEmpty()) {
             Headings(
                 columns = columns,

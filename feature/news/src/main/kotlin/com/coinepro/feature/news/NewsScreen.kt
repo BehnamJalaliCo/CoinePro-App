@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.announcements.AnnouncementsController
+import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -56,6 +57,8 @@ import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.designsystem.R as DesignR
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.marketintel.MarketImpact
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.marketintel.MarketNewsItem
@@ -179,6 +182,13 @@ fun NewsScreen(
         }
     }
 
+    // The moment the newest story on screen was published — the one fact that settles «اخبار
+    // آپدیت نمی‌شود» without an export, a log or a second person. It is read off the list rather
+    // than off `state.serverTime`, because what the reader is disputing is the age of the stories,
+    // not the age of the response: a server answering instantly with last month's rows has a
+    // `server_time` of right now.
+    val newest = remember(filtered) { filtered.mapNotNull(NewsStory::publishedAt).maxOrNull() }
+
     // Only the markets this platform serves. A crypto session filtering by "Gold" would be asking
     // the feed for a market its own signals never mention.
     val relevances = remember(platform) {
@@ -298,6 +308,7 @@ fun NewsScreen(
                     )
                 },
             )
+            CoineProTeachingStrip(TeachingSurface.NEWS, gutter = false)
 
             // A one-market platform gets no filter at all: a control with a single alternative to "all"
             // is a switch that says nothing. Nor does the saved list, which is the reader's own sequence
@@ -361,6 +372,15 @@ fun NewsScreen(
                                 item {
                                     FreshnessStrip(
                                         refreshing = state.refreshing,
+                                        newest = newest,
+                                        // The failure the list itself cannot show. A refresh that
+                                        // fails over stories already on screen leaves them there —
+                                        // deliberately, because an error message where a feed used
+                                        // to be is worse than a feed an hour old — but until now it
+                                        // said so nowhere, so a reader whose every refresh had
+                                        // failed since breakfast saw a list that simply never moved
+                                        // and no reason for it.
+                                        failed = state.error != null,
                                         onRefresh = controller::refresh,
                                     )
                                 }
@@ -478,8 +498,37 @@ internal fun relatedTo(story: NewsStory, feed: List<NewsStory>): List<NewsStory>
 /** Four. Enough that the page continues, few enough that it is a suggestion and not a second feed. */
 internal const val MAX_RELATED = 4
 
+/**
+ * The strip over the feed, which now says the one thing it was built to say.
+ *
+ * It used to print «زمان انتشار از تایم‌استمپ ISO سرور نرمال‌سازی شده است» — a true sentence about
+ * a parser, over a list, to a reader who has never heard of ISO 8601. It said nothing about the
+ * list under it, and in particular it said nothing to the owner, who has now reported three times
+ * that the feed never moves. [newest] is that answer: the publication moment of the freshest story
+ * on screen, in the reader's own calendar, refetched on every entry to this screen.
+ *
+ * With it the complaint stops being a matter of impression. Either that line moves between two
+ * openings of the screen — in which case the feed is live and the argument is over — or it does
+ * not, and the date it is stuck on is the exact fact to hand a backend, no export required. See
+ * `docs/SERVER_ASK_NEWS_STALE_TRADEYAR.md`, which asks for the measurement this line takes.
+ *
+ * [failed] is the other half of the same honesty. The list deliberately survives a failed refresh —
+ * an error message where a feed used to be is worse than a feed an hour old — but the reader was
+ * told nothing, so a run of failed refreshes and a server that had stopped publishing looked
+ * identical from the only place anybody looks.
+ *
+ * Null only where no story on screen carries a readable publication time, which on the members'
+ * feed cannot happen — `published_at` is one of the four fields a story is dropped for missing —
+ * and on the public feed means the server sent none. The old sentence stands in for that case,
+ * because a strip that vanishes reads as a layout bug rather than as an absent date.
+ */
 @Composable
-private fun FreshnessStrip(refreshing: Boolean, onRefresh: () -> Unit) {
+private fun FreshnessStrip(
+    refreshing: Boolean,
+    newest: Instant?,
+    failed: Boolean,
+    onRefresh: () -> Unit,
+) {
     CoineProCard(
         modifier = Modifier.fillMaxWidth().animateContentSize(),
         shape = MaterialTheme.shapes.medium,
@@ -491,9 +540,14 @@ private fun FreshnessStrip(refreshing: Boolean, onRefresh: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = stringResource(
-                    if (refreshing) R.string.news_refreshing else R.string.news_timestamp_note,
-                ),
+                text = when {
+                    refreshing -> stringResource(R.string.news_refreshing)
+                    failed && newest != null ->
+                        stringResource(R.string.news_refresh_failed, PersianDateTime.moment(newest))
+                    failed -> stringResource(R.string.news_unavailable)
+                    newest != null -> stringResource(R.string.news_newest, PersianDateTime.moment(newest))
+                    else -> stringResource(R.string.news_timestamp_note)
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextSecondary,
                 modifier = Modifier.weight(1f),

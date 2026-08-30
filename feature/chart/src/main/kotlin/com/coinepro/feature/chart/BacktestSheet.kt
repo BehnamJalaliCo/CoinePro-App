@@ -69,6 +69,8 @@ import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.CoineProToggleChip
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.marketdata.CHART_TIME_ZONE
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -159,6 +161,7 @@ internal fun BacktestSheetBody(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
+        CoineProTeachingStrip(TeachingSurface.BACKTEST, gutter = false)
         Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
             Backtest.Strategy.entries.forEach { option ->
                 Chip(option.label(), option == strategy) { strategy = option }

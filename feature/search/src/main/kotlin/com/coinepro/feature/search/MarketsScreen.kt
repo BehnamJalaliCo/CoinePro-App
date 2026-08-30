@@ -61,6 +61,8 @@ import com.coinepro.core.designsystem.CoineProSparkline
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.designsystem.resolve
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketSearchRow
 import com.coinepro.core.marketdata.MarketTicker
@@ -238,6 +240,7 @@ fun MarketsScreen(
 
     Column(modifier = modifier.fillMaxSize().background(CoineProColors.Stage)) {
         Header(onOpenSearch = onOpenSearch)
+        CoineProTeachingStrip(TeachingSurface.MARKETS)
         // The shared strip. This screen had grown a byte-for-byte copy of it — same tray, same
         // raised block, same weights — which is one more place for the next change to be applied
         // once and forgotten once. It is also how this row ended up without the tick every other

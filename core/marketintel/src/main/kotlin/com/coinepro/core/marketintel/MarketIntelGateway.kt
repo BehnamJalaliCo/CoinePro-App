@@ -140,8 +140,30 @@ internal data class EconomicEventDto(
     val stale: Boolean?,
 )
 
+/**
+ * The snapshot, ordered by this app rather than taken on trust.
+ *
+ * ### Why the news is sorted here, when the contract already says it arrives sorted
+ *
+ * Because «اخبار اصلاً آپدیت نمی‌شود، همان چیزی است که از ورژن ۱ بوده» is what an unsorted feed
+ * looks like from the reader's chair, and it is indistinguishable from a server that has stopped
+ * publishing. `docs/NEWS_REQUEST_TRADEYAR.md` asks for «مرتب بر اساس `published_at` نزولی», and an
+ * ask is not a guarantee: an adapter that answers `ORDER BY id`, or ascending, or in whatever order
+ * the rows came back, puts the *oldest* stories at the top of the list and appends every new one
+ * below the fold. The feed then updates on every single fetch and looks frozen, because the only
+ * part of it anybody reads never changes.
+ *
+ * That failure survives every check made from inside the app — the request goes out, the response
+ * is fresh, the count is right, the newest `published_at` moves — which is precisely why it was
+ * worth three reports without being found. One `sortedByDescending` makes it impossible from this
+ * side, and costs nothing on a feed of twenty to fifty rows.
+ *
+ * The calendar has been sorted here since it was written, and `relatedTo` in `feature:news` sorts
+ * the suggestions under a story newest-first. The feed itself was the one list in this app that
+ * took somebody else's word for its order.
+ */
 internal fun MarketIntelSnapshotDto.toDomain(): MarketIntelSnapshot = MarketIntelSnapshot(
-    news = news.mapNotNull(MarketNewsDto::toDomain),
+    news = news.mapNotNull(MarketNewsDto::toDomain).sortedByDescending(MarketNewsItem::publishedAt),
     calendar = calendar.mapNotNull(EconomicEventDto::toDomain).sortedBy(EconomicEvent::scheduledAt),
     serverTime = parseInstant(serverTime),
 )

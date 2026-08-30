@@ -41,4 +41,80 @@
     <string name="price_feed_partial">بخشی از قیمت‌های زنده قطع است؛ آمار ۲۴ ساعته درست است</string>
     <string name="price_feed_full">قیمت زندهٔ صرافی قطع است و کندتر به‌روز می‌شود</string>
     <string name="price_feed_unknown">وضعیت فید قیمت نامعلوم است</string>
+
+    <!-- ── teaching banners ──────────────────────────────────────────────────────────
+         One sentence saying what a screen does, and one saying the thing a first-time
+         reader gets wrong. Persian is the source; values-en is the translation.
+         See CoineProTeaching.kt for the rules these were written to. -->
+    <string name="teaching_dismiss">بستن این توضیح</string>
+    <string name="teaching_what_is_this">این صفحه چیست؟</string>
+
+    <string name="teaching_home_lead">خلاصهٔ حساب و بازار در یک صفحه: موجودی، چند نماد و سیگنال‌های باز.</string>
+    <string name="teaching_home_pitfall">هرچه اینجاست خلاصه است؛ رقم کامل هر بخش داخل صفحهٔ خودش است.</string>
+
+    <string name="teaching_markets_lead">قیمت لحظه‌ای و تغییر 24 ساعتهٔ همهٔ نمادها، در یک فهرست.</string>
+    <string name="teaching_markets_pitfall">درصد هر ردیف تغییر 24 ساعت گذشته است، نه تغییر از اول امروز.</string>
+
+    <string name="teaching_chart_lead">قیمت یک نماد در طول زمان، با تایم‌فریم، اندیکاتور و ابزار ترسیم.</string>
+    <string name="teaching_chart_pitfall">آخرین کندل هنوز بسته نشده و تا پایان تایم‌فریم عوض می‌شود.</string>
+
+    <string name="teaching_signals_lead">سیگنال‌های منتشرشده، با نقطهٔ ورود، حد ضرر و هدف هرکدام.</string>
+    <string name="teaching_signals_pitfall">سیگنال یک گزارش است، نه توصیه؛ حجم و تصمیم با خودت است.</string>
+
+    <string name="teaching_ai_lead">از مدل می‌خواهی یک نماد را تحلیل کند و نتیجه را همین‌جا می‌خوانی.</string>
+    <string name="teaching_ai_pitfall">مدل روی دادهٔ گذشته حرف می‌زند؛ خروجی‌اش تحلیل است، نه پیش‌بینی.</string>
+
+    <string name="teaching_tools_lead">ماشین‌حساب‌های معامله: حجم، ریسک، حد ضرر و سود و زیان.</string>
+    <string name="teaching_tools_pitfall">این‌ها فقط حساب می‌کنند؛ هیچ سفارشی از اینجا به صرافی نمی‌رود.</string>
+
+    <string name="teaching_news_lead">خبرهای بازار با منبع مشخص، تازه‌ترین در بالا.</string>
+    <string name="teaching_news_pitfall">ترتیب خبرها زمانی است، نه بر پایهٔ اهمیت یا اثرشان بر قیمت.</string>
+
+    <string name="teaching_calendar_lead">زمان انتشار دادهٔ اقتصادی و عددی که بازار انتظارش را دارد.</string>
+    <string name="teaching_calendar_pitfall">تا لحظهٔ انتشار، عددی که می‌بینی پیش‌بینی است، نه رقم واقعی.</string>
+
+    <string name="teaching_screener_lead">شرط می‌گذاری و نمادهایی که با آن شرط می‌خوانند فهرست می‌شوند.</string>
+    <string name="teaching_screener_pitfall">این فهرست عکس همین لحظه است؛ با هر به‌روزرسانی نمادها کم و زیاد می‌شوند.</string>
+
+    <string name="teaching_heatmap_lead">کل بازار در یک تصویر: رنگ هر خانه تغییر قیمت است و اندازه‌اش وزن آن نماد.</string>
+    <string name="teaching_heatmap_pitfall">اندازهٔ خانه ارزش بازار نیست؛ نقدشوندگی یا حجمی است که در تنظیمات انتخاب کرده‌ای.</string>
+
+    <string name="teaching_watchlist_lead">نمادهایی که خودت ستاره زده‌ای، جدا از فهرست کامل بازار.</string>
+    <string name="teaching_watchlist_pitfall">دیده‌بان فهرست تماشای توست، نه سبد دارایی؛ ستاره زدن چیزی نمی‌خرد.</string>
+
+    <string name="teaching_alerts_lead">شرط قیمتی می‌گذاری و وقتی برقرار شد اعلان می‌گیری.</string>
+    <string name="teaching_alerts_pitfall">هشدار فقط خبر می‌دهد؛ هیچ معامله‌ای را باز یا بسته نمی‌کند.</string>
+
+    <string name="teaching_journal_lead">هر معامله را با دلیل ورود و خروجش ثبت می‌کنی تا بعد الگوی خطاها را ببینی.</string>
+    <string name="teaching_journal_pitfall">ژورنال دستی است و از حساب متصل چیزی نمی‌خواند؛ هرچه اینجاست را خودت نوشته‌ای.</string>
+
+    <string name="teaching_paper_trade_lead">تمرین معامله روی همان بازار واقعی، با پول فرضی.</string>
+    <string name="teaching_paper_trade_pitfall">قیمت‌ها واقعی است و پول فرضی؛ سود و زیان اینجا به حساب واقعی نمی‌رود.</string>
+
+    <string name="teaching_backtest_lead">یک قانون معاملاتی را روی دادهٔ گذشته اجرا می‌کنی تا ببینی چه نتیجه‌ای می‌داد.</string>
+    <string name="teaching_backtest_pitfall">نتیجه فقط دربارهٔ همان بازهٔ گذشته است؛ بازهٔ دیگر جواب دیگری می‌دهد.</string>
+
+    <string name="teaching_script_lead">اندیکاتور و استراتژی نمااسکریپت را اینجا می‌نویسی و روی نمودار اجرا می‌کنی.</string>
+    <string name="teaching_script_pitfall">اسکریپت فقط روی نمودار محاسبه می‌کند؛ خودش سفارشی ثبت نمی‌کند.</string>
+
+    <string name="teaching_portfolio_lead">کارنامهٔ معامله‌های بسته‌شدهٔ حساب متصل: سود خالص، نرخ برد و بیشترین افت.</string>
+    <string name="teaching_portfolio_pitfall">فقط معامله‌های بسته‌شده در این عددها هستند؛ سود شناور پوزیشن باز شمرده نمی‌شود.</string>
+
+    <string name="teaching_connections_lead">حساب صرافی را با کلید API وصل می‌کنی تا سفارش از داخل برنامه ثبت شود.</string>
+    <string name="teaching_connections_pitfall">کلید روی سرور نگه داشته می‌شود و در گوشی ذخیره نمی‌شود؛ دسترسی برداشت هم لازم نیست.</string>
+
+    <string name="teaching_membership_lead">وضعیت اشتراکت و اینکه هر پلن کدام بخش‌ها را باز می‌کند.</string>
+    <string name="teaching_membership_pitfall">اشتراک دسترسی به بخش‌های برنامه را باز می‌کند، نه سود یا سیگنال تضمینی.</string>
+
+    <string name="teaching_activity_lead">کارنامهٔ سیگنال‌های بسته و اجراهایی که سرور ثبت کرده است.</string>
+    <string name="teaching_activity_pitfall">هر عددی اینجا از سرور می‌آید؛ چیزی روی گوشی تخمین زده نمی‌شود.</string>
+
+    <string name="teaching_academy_lead">درس‌های کوتاه دربارهٔ بازار و کار با همین برنامه.</string>
+    <string name="teaching_academy_pitfall">درس‌ها آموزش‌اند؛ هیچ‌کدام نمادی را برای خرید معرفی نمی‌کند.</string>
+
+    <string name="teaching_dom_lead">سفارش‌های خرید و فروشی که همین حالا در دفتر صرافی منتظرند.</string>
+    <string name="teaching_dom_pitfall">این سفارش‌ها هنوز انجام نشده‌اند و هر لحظه می‌توانند برداشته شوند.</string>
+
+    <string name="teaching_search_lead">نماد یا صفحه‌ای از برنامه را با نامش پیدا می‌کنی.</string>
+    <string name="teaching_search_pitfall">نام فارسی هم کار می‌کند؛ لازم نیست نماد لاتین را بدانی.</string>
 </resources>

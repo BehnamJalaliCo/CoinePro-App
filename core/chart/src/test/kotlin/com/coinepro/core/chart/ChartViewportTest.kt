@@ -58,8 +58,13 @@ class ChartViewportTest {
 
         // Past the oldest bar there is nothing to show, so it stops.
         assertEquals(series.size - ChartViewport.MIN_BARS_PER_VIEW, view.pannedBy(1_000_000f).offset)
-        // And it cannot pan into the future either.
-        assertEquals(0, view.pannedBy(-1_000_000f).offset)
+        // Forward it stops at half a screen of air rather than at the newest bar. Panning past the
+        // live edge is what gives a projection somewhere to land; going further would leave the
+        // reader looking at an empty plot with the market off the left of it.
+        assertEquals(
+            -ChartViewport.DEFAULT_BARS_PER_VIEW / 2,
+            view.pannedBy(-1_000_000f).offset,
+        )
     }
 
     @Test
@@ -160,6 +165,92 @@ class ChartViewportTest {
     fun `a full window still divides by the window`() {
         val view = viewport()
         assertEquals(360f / ChartViewport.DEFAULT_BARS_PER_VIEW, view.barWidth, 1e-4f)
+    }
+}
+
+/**
+ * The air between the newest candle and the price axis.
+ *
+ * The loudest single tell that a chart was drawn by somebody who had not used one: with the live
+ * edge glued to the gutter there is nowhere to put a projection, and the live-price tag and the bar
+ * countdown are pressed against the candle they are describing. See [ChartViewport.offset].
+ */
+class ChartEdgeMarginTest {
+
+    private val series = CandleSeries(
+        (0 until 500).map { index ->
+            val base = 100.0 + index * 0.1
+            Candle(1_700_000_000L + index * 3600, base, base + 1, base - 1, base + 0.5)
+        },
+    )
+
+    private fun viewport() = ChartViewport(series).sized(width = 360f, height = 240f)
+
+    @Test
+    fun `a chart at rest leaves the newest bar clear of the price axis`() {
+        val glued = viewport().atOffset(0)
+        val rested = viewport().atRest()
+        // Glued, the last bar's centre is half a slot from the edge and its body touches the gutter.
+        assertEquals(360f - glued.barWidth / 2, glued.xOf(glued.lastVisible), 1e-3f)
+        // At rest there is real space after it — several bar widths of it.
+        val clearance = 360f - rested.xOf(rested.lastVisible)
+        assertTrue("the last bar must not be against the axis", clearance > rested.barWidth * 2)
+    }
+
+    @Test
+    fun `resting still shows the newest bar and still follows the feed`() {
+        val rested = viewport().atRest()
+        assertEquals(series.size - 1, rested.lastVisible)
+        assertTrue("air at the edge is still the live edge", rested.isAtLiveEdge)
+        val extended = CandleSeries(series.bars + Candle(1_700_000_000L + 500 * 3600, 150.0, 151.0, 149.0, 150.5))
+        val after = rested.withSeries(extended)
+        assertEquals("the margin survives a new bar", rested.offset, after.offset)
+        assertEquals(extended.size - 1, after.lastVisible)
+    }
+
+    @Test
+    fun `the margin is a share of the window rather than a fixed count of bars`() {
+        // Six bars is a comfortable margin at eighty a screen and a third of the plot at fourteen.
+        // What has to stay the same across zooms is the *picture*, so the share is what is pinned.
+        val wide = viewport().copy(barsPerView = 400).atRest()
+        val tight = viewport().copy(barsPerView = ChartViewport.MIN_BARS_PER_VIEW).atRest()
+        val wideShare = (360f - wide.xOf(wide.lastVisible)) / 360f
+        val tightShare = (360f - tight.xOf(tight.lastVisible)) / 360f
+        assertTrue("the wide chart keeps a visible margin", wideShare > 0.02f)
+        assertTrue("and the tight one does not give away a third of the plot", tightShare < 0.25f)
+    }
+
+    @Test
+    fun `panning through the live edge moves by one slot a bar with no jump`() {
+        // The failure a separately-stored margin would have: the air has to be spent and refilled at
+        // the boundary, so the picture lurches as the reader drags across it.
+        val anchor = 490
+        val steps = (-4..4).map { offset -> viewport().atOffset(offset).xOf(anchor) }
+        val width = viewport().barWidth
+        steps.zipWithNext { a, b -> b - a }.forEach { assertEquals(width, it, 1e-3f) }
+    }
+
+    @Test
+    fun `a zoom keeps a resting chart resting`() {
+        val rested = viewport().atRest()
+        val zoomed = rested.zoomedBy(0.5f)
+        assertEquals("still at rest, at the new zoom's own margin", zoomed.restingOffset, zoomed.offset)
+        assertTrue(zoomed.blankSlots > 0)
+    }
+
+    @Test
+    fun `a thumbnail keeps every pixel`() {
+        // `atOffset(0)` still means "glue the newest bar to the edge", which is what a list-row
+        // sparkline wants: no gutter to breathe into, and nothing to project.
+        val thumbnail = viewport().atOffset(0)
+        assertEquals(0, thumbnail.blankSlots)
+        assertEquals(ChartViewport.DEFAULT_BARS_PER_VIEW, thumbnail.visibleCount)
+    }
+
+    @Test
+    fun `a touch in the empty slots reads the newest bar rather than nothing`() {
+        val rested = viewport().atRest()
+        assertEquals(rested.lastVisible, rested.indexAt(359f))
     }
 }
 
