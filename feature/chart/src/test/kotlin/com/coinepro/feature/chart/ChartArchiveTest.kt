@@ -1,10 +1,12 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.chart.ChartHistory
 import com.coinepro.core.marketdata.ArchiveSpan
 import com.coinepro.core.marketdata.CandleArchive
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.CandlePage
 import com.coinepro.core.marketdata.ChartInterval
+import com.coinepro.core.marketdata.HISTORY_PAGE_BARS
 import com.coinepro.core.marketdata.InMemoryCandleArchive
 import com.coinepro.core.marketdata.OhlcBar
 import com.coinepro.core.marketdata.Timeframe
@@ -148,6 +150,51 @@ class ChartArchiveTest {
 
         assertEquals(40, controller.state.value.series.size)
         assertNull(controller.state.value.error)
+    }
+
+    @Test
+    fun `paging back stops at the ceiling instead of growing without bound`() = runTest {
+        // The regression this guards. Reading from disk removed the network's brake, and the first
+        // build with the archive grew the series as fast as frames rendered — which the owner
+        // reported as a chart that had become very slow to the point of being unusable.
+        val newest = bars(60, from = 1_700_000_000L, base = 100.0)
+        val deep = bars(
+            ChartHistory.MAX_RESIDENT_BARS + 500,
+            from = 1_700_000_000L - (ChartHistory.MAX_RESIDENT_BARS + 500) * 3600L,
+            base = 50.0,
+        )
+        val archive = InMemoryCandleArchive()
+        archive.write("BTCUSDT", hourly, deep)
+
+        val controller = ChartController(
+            "BTCUSDT",
+            OnePage(newest),
+            this,
+            cache = archiveless(),
+            archive = archive,
+        )
+        controller.start()
+        advanceUntilIdle()
+
+        // Drag at the left edge for far longer than any reader would.
+        repeat(200) {
+            controller.loadMore()
+            advanceUntilIdle()
+        }
+
+        // The ceiling plus at most one page, which is the real contract: the guard refuses to
+        // *start* a page once the series has reached the ceiling, so the page that carried it over
+        // still lands whole. Trimming that page instead would cut a hole at the left edge of a
+        // chart the reader is looking at, to save a few hundred bars out of twelve thousand.
+        val size = controller.state.value.series.size
+        assertTrue(
+            "series grew to " + size,
+            size <= ChartHistory.MAX_RESIDENT_BARS + HISTORY_PAGE_BARS,
+        )
+        // Two hundred drags and it stopped growing long before the end of them.
+        assertTrue(size >= ChartHistory.MAX_RESIDENT_BARS)
+        // And it is held rather than declared finished: the history is real and still on disk, so
+        // saying there is no more would be a lie the «بیشتر» affordance is built on.
     }
 
     /** No cache, so every one of these tests is measuring the archive and not the other store. */

@@ -2091,6 +2091,36 @@ class ChartController(
     fun loadMore() {
         val current = _state.value
         if (current.loadingMore || current.loading || !current.hasMore || current.series.isEmpty) return
+        // **A ceiling on what one chart may hold in memory, and it is not decoration.**
+        //
+        // Before the archive, this method's brake was the network: a page-back cost a round trip,
+        // so a reader dragging at the left edge asked a few times a second at most. Reading from
+        // disk removed that brake, and the first build with the archive in it grew the series as
+        // fast as frames rendered — tens of thousands of bars in a couple of seconds, every one of
+        // them rebuilding six columns and recomputing every switched-on indicator. The report was
+        // "the chart is very slow", and it was right.
+        //
+        // The renderer's own trigger has been fixed to ask once per page rather than once per
+        // frame; this is the belt to that brace, because a trigger that misbehaves again must cost
+        // a reader a stalled request rather than a stalled phone. [ChartHistory.MAX_RESIDENT_BARS]
+        // is about forty screenfuls at ordinary zoom, so nobody reaches it by dragging on purpose.
+        //
+        // `hasMore` is deliberately **not** cleared: there really is more history, it is in the
+        // archive, and saying otherwise would be a lie the «بیشتر» affordance is built on. What
+        // stops is this chart growing; a reader who wants to see further back changes the bar
+        // length, which is the right instrument for it anyway.
+        if (current.series.size >= ChartHistory.MAX_RESIDENT_BARS) {
+            log?.debug(
+                LogTag.CHART,
+                "page-back held at the resident ceiling",
+                mapOf(
+                    "symbol" to current.symbol,
+                    "tf" to current.interval.wire,
+                    "bars" to current.series.size.toString(),
+                ),
+            )
+            return
+        }
         val oldest = current.series.time.first()
         _state.update { it.copy(loadingMore = true) }
         scope.launch {
