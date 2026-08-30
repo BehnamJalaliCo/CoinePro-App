@@ -189,4 +189,7 @@ internal fun Context.open(url: String) {
     }
 }
 
+// Compiled in, and never rendered. The reader reaches the page through the named button
+// above — the address itself is not on any screen, and printing it would put a personal
+// hosting address in front of somebody who asked to read the terms.
 private const val TERMS_URL = "https://behnamjalalico.github.io/CoinePro-App/terms/"

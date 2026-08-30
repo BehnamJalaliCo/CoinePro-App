@@ -27,6 +27,8 @@
     <string name="delete_account_web_title">Delete from outside the app</string>
     <string name="delete_account_web_body">The deletion page sets out the steps and the timescales, and does not require signing in.</string>
     <string name="delete_account_web_action">Open the deletion page</string>
+    <string name="delete_account_web_copy">Copy the page link</string>
+    <string name="delete_account_web_copied">The link is on your clipboard. Open it in a browser on a computer or any other device.</string>
 
     <string name="delete_account_policy_link">Retention and deletion are set out in full in the privacy policy, section 5.</string>
     <string name="delete_account_open_policy">Privacy policy</string>

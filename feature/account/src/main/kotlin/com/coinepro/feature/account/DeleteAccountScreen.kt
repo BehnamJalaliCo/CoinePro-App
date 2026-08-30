@@ -1,6 +1,9 @@
 package com.coinepro.feature.account
 
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -223,10 +226,24 @@ fun DeleteAccountScreen(
  * On [PageAccent.BRAND] rather than the screen's red: opening a web page is not the destructive
  * act, it is the way to reach it. Painting it red would put two identical-looking buttons on one
  * screen, one of which deletes an account and one of which opens a browser.
+ *
+ * **The address itself is never on screen, and the second button is why it does not need to be.**
+ * Two readers genuinely need the address rather than the page: somebody who would rather finish an
+ * irreversible thing at a desk than on a phone, and a handset with no browser at all, where a
+ * button that opens nothing is the whole route failing in silence. Neither of them needs it printed
+ * in the body text, where it is read by everybody and used by nobody. It is handed over on request
+ * — the copy button — and on the one failure that leaves no other way through.
  */
 @Composable
 private fun OutOfAppRoute() = ProvidePageAccent(PageAccent.BRAND) {
     val context = LocalContext.current
+    // The clip's own name, which some clipboard managers show in their history. The card's title
+    // is already the sentence that names what the address is for.
+    val clipLabel = stringResource(R.string.delete_account_web_title)
+    // Saved rather than remembered: this line is the only confirmation a copy happened — Android
+    // stopped showing its own in 13 — and a reader who rotates the phone to read it would come
+    // back to a card that says nothing and press the button again.
+    var copied by rememberSaveable { mutableStateOf(false) }
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
             Text(
@@ -241,9 +258,26 @@ private fun OutOfAppRoute() = ProvidePageAccent(PageAccent.BRAND) {
             )
             CoineProPrimaryButton(
                 text = stringResource(R.string.delete_account_web_action),
-                onClick = { context.open(DELETION_URL) },
+                // The copy runs only where the page could not be opened. A device that has a
+                // browser has no use for the address on its clipboard, and overwriting whatever the
+                // reader had copied — an exchange UID, a wallet address — is not a favour.
+                onClick = {
+                    if (!context.open(DELETION_URL)) copied = context.copyLink(clipLabel, DELETION_URL)
+                },
                 modifier = Modifier.fillMaxWidth(),
             )
+            CoineProSecondaryButton(
+                text = stringResource(R.string.delete_account_web_copy),
+                onClick = { copied = context.copyLink(clipLabel, DELETION_URL) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (copied) {
+                Text(
+                    text = stringResource(R.string.delete_account_web_copied),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = CoineProColors.TextMuted,
+                )
+            }
         }
     }
 }
@@ -278,19 +312,39 @@ private fun Bullets(title: String, lines: List<Int>, note: String? = null) {
 }
 
 /**
- * Opens a link, and does nothing when the device has no browser.
+ * Opens a link. False where the device has no browser.
  *
  * Rather than crashing: a device with no activity for `ACTION_VIEW` is unusual but real (a locked
- * kiosk build), and the whole page is reachable by typing the address, which is printed above.
+ * kiosk build). It reports the failure rather than swallowing it because the caller has an answer
+ * for it — the address goes to the clipboard, which is the only route left on a handset that
+ * cannot open a page. The previous version of this comment said the page was still reachable
+ * "by typing the address, which is printed above"; the address is not printed anywhere on this
+ * screen, so that sentence described a way out that did not exist.
  */
-private fun android.content.Context.open(url: String) {
-    try {
-        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    } catch (_: ActivityNotFoundException) {
-        Unit
-    }
+private fun Context.open(url: String): Boolean = try {
+    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    true
+} catch (_: ActivityNotFoundException) {
+    false
 }
 
+/**
+ * Puts the address on the clipboard, and says whether it got there.
+ *
+ * The answer is not ceremony. The card prints "copied" only on a true, because a line that says so
+ * whether or not the system took the clip sends somebody to a computer with an empty paste buffer
+ * and nothing to type. `setPrimaryClip` throws on OEM builds that police the clipboard, and the
+ * service is absent altogether in a context that has none.
+ */
+private fun Context.copyLink(label: String, url: String): Boolean = runCatching {
+    val clipboard = getSystemService(ClipboardManager::class.java)
+    clipboard?.setPrimaryClip(ClipData.newPlainText(label, url))
+    clipboard != null
+}.getOrDefault(false)
+
+// Compiled in, and never rendered. Both pages are reached by the named buttons above; the strings
+// themselves reach the reader only through the browser they open, or through the clipboard when
+// they ask for the address.
 private const val SITE = "https://behnamjalalico.github.io/CoinePro-App"
 private const val DELETION_URL = "$SITE/delete-account/"
 private const val POLICY_URL = "$SITE/privacy/"

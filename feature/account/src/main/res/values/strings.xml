@@ -27,6 +27,8 @@
     <string name="delete_account_web_title">حذف از بیرون اپ</string>
     <string name="delete_account_web_body">صفحهٔ حذف حساب، مراحل و مهلت‌ها را می‌گوید و برای استفاده از آن لازم نیست وارد حساب شوید.</string>
     <string name="delete_account_web_action">باز کردن صفحهٔ حذف حساب</string>
+    <string name="delete_account_web_copy">کپی نشانی صفحه</string>
+    <string name="delete_account_web_copied">نشانی صفحه کپی شد. می‌توانی آن را در مرورگر رایانه یا هر دستگاه دیگری باز کنی.</string>
 
     <string name="delete_account_policy_link">شرح کامل نگهداری و حذف داده در سیاست حریم خصوصی، بند ۵ آمده است.</string>
     <string name="delete_account_open_policy">سیاست حریم خصوصی</string>
