@@ -82,19 +82,21 @@ WORDMARK_MDPI = 168
 LAUNCHER_CANVAS = 432
 LAUNCHER_MARK = int(LAUNCHER_CANVAS * 50 / 108)
 
-# The mark sits five percent of the icon's width to the **right** of centre.
+# **There is no nudge.** The mark is centred on its own ink, exactly.
 #
-# The owner asked for it after looking at the icon on a device, and it is the kind of call that is
-# made that way rather than derived: [scaled_to_box] centres the artwork by its bounding box, and a
-# box is only the optical centre when the ink inside it is evenly distributed. This artwork's is
-# not — the stem is a solid vertical on the left and the right half is the open bowl of the C with
-# a thin arrow through it — so the same box has much more weight on its left, and a box-centred
-# mark reads as sitting left. That is what was seen and this is the correction.
+# It sat five percent right of centre for one build, on the argument that the artwork's weight is on
+# its left — a solid stem against an open bowl — so optical centring should pull it the other way.
+# On a home screen beside another app's icon that argument lost: the mark read as *pushed*, and the
+# gap along its top no longer matched the gap along its bottom. Optical centring is a real technique
+# and it earns its place on a letterform inside a wordmark; a launcher icon is looked at next to
+# twenty others on a grid, and there the eye checks the margins, not the mass.
 #
-# Five percent of 432 is 22 pixels, and the result is measured rather than assumed: the ink lands
-# at 139..336 inside a safe zone of 84..348, so twelve pixels of margin remain on the side it moved
-# towards. A larger nudge spends that margin and puts the icon back where the 72 cut left it.
-LAUNCHER_NUDGE = 0.05
+# So the offsets below are computed from the ink's own bounding box rather than from the box it was
+# fitted into. Those are not the same thing: [scaled_to_box] centres the *fitted image* in a square,
+# and a mark that is 951 wide and 975 tall leaves two rows of empty pixels inside that square — so a
+# box-centred paste puts the ink a pixel or two off, on one axis only, in a way that is invisible in
+# the file and visible on a grid of icons. Centring the ink makes the four margins equal by
+# construction, and `main` prints the bounds so it can be checked rather than believed.
 
 
 # The brand gold, measured off the owner's own icon rather than typed in.
@@ -208,6 +210,28 @@ def trimmed(image: Image.Image) -> Image.Image:
     return image.crop(box) if box else image
 
 
+def paste_centred(canvas: Image.Image, mark: Image.Image) -> None:
+    """Place [mark] so its **ink** sits in the middle of [canvas], to the pixel.
+
+    Not `(canvas - mark) // 2`, which centres the mark's *rectangle*. A fitted mark is a square with
+    the artwork inside it, and unless the artwork happens to be exactly square there is empty space
+    down two of its sides — so a rectangle-centred paste leaves the ink off-centre on one axis. It is
+    a pixel or two, it is invisible in the file, and it is exactly what shows up as "the gap at the
+    top is not the gap at the bottom" on a home screen next to somebody else's icon.
+
+    Rounding splits the remainder the same way on both axes, so a mark with an odd width lands with
+    its extra pixel on the same side every run rather than wherever integer division fell.
+    """
+    box = mark.getbbox()
+    if box is None:
+        return
+    ink_centre_x = (box[0] + box[2]) / 2
+    ink_centre_y = (box[1] + box[3]) / 2
+    x = round(canvas.width / 2 - ink_centre_x)
+    y = round(canvas.height / 2 - ink_centre_y)
+    canvas.paste(mark, (x, y), mark)
+
+
 def write(image: Image.Image, path: pathlib.Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     image.save(path, "PNG", optimize=True)
@@ -283,13 +307,11 @@ def main() -> int:
     print("launcher:")
     ground = Image.new("RGBA", (LAUNCHER_CANVAS, LAUNCHER_CANVAS), (0, 0, 0, 255))
     foreground = Image.new("RGBA", (LAUNCHER_CANVAS, LAUNCHER_CANVAS), (0, 0, 0, 0))
-    # The **gold** mark on the launcher, which is the owner's own icon rather than a tint of ours.
-    # In the app the mark stays white coverage so a screen can paint it whatever the theme asks for;
-    # a launcher icon has no theme to follow and is the one place the brand colour is the design.
-    centred = scaled_to_box(gold, LAUNCHER_MARK)
-    offset = (LAUNCHER_CANVAS - LAUNCHER_MARK) // 2
-    nudge = round(LAUNCHER_CANVAS * LAUNCHER_NUDGE)
-    foreground.paste(centred, (offset + nudge, offset), centred)
+    # White on the black plate, which is where this icon started and where the owner has put it
+    # back. The gold stays the brand's colour everywhere else — it is [BRAND_GOLD] the wordmark's
+    # lockup pairs with, and it is what `golden` exists to derive — but on a home screen the white
+    # mark on black is the one that reads at 48dp beside a grid of other icons.
+    paste_centred(foreground, scaled_to_box(coverage(gold), LAUNCHER_MARK))
     for bucket, factor in DENSITIES.items():
         side = round(108 * factor)
         write(ground.resize((side, side), Image.LANCZOS), APP_RES / f"mipmap-{bucket}" / "ic_launcher_background.png")
@@ -308,16 +330,10 @@ def main() -> int:
     play = Image.new("RGBA", (512, 512), (0, 0, 0, 255))
     # The same proportion the launcher uses, so the store icon and the one on the home screen are
     # the same drawing at two sizes rather than two different logos.
-    play_side = round(512 * 54 / 108)
-    play_mark = scaled_to_box(gold, play_side)
-    # The same nudge, in the same proportion. The store icon and the one on the home screen have to
-    # be the same drawing at two sizes; moving one and not the other would make them two logos.
-    play_nudge = round(512 * LAUNCHER_NUDGE)
-    play.paste(
-        play_mark,
-        ((512 - play_side) // 2 + play_nudge, (512 - play_side) // 2),
-        play_mark,
-    )
+    play_side = round(512 * LAUNCHER_MARK / LAUNCHER_CANVAS)
+    # Centred the same way, by the same function. The store icon and the one on the home screen have
+    # to be the same drawing at two sizes; two paste expressions is how they stop being.
+    paste_centred(play, scaled_to_box(coverage(gold), play_side))
     write(play.convert("RGB").convert("RGBA"), ROOT / "design" / "play" / "icon-512.png")
 
     return 0
