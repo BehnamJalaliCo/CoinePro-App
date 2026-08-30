@@ -37,4 +37,8 @@
     <string name="a11y_navigation_rail">ناوبری اصلی</string>
     <!-- Half a tablet screen, before a row is chosen. Blank would read as a screen that failed. -->
     <string name="pane_detail_empty">یک مورد را از فهرست انتخاب کنید تا اینجا باز شود.</string>
+    <!-- The venue's live price relay, not the phone's network. See CoineProPriceFeedBar. -->
+    <string name="price_feed_partial">بخشی از قیمت‌های زنده قطع است؛ آمار ۲۴ ساعته درست است</string>
+    <string name="price_feed_full">قیمت زندهٔ صرافی قطع است و کندتر به‌روز می‌شود</string>
+    <string name="price_feed_unknown">وضعیت فید قیمت نامعلوم است</string>
 </resources>

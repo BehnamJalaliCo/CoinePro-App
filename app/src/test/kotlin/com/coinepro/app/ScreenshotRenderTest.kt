@@ -98,6 +98,9 @@ import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProListDetail
+import com.coinepro.core.designsystem.PriceFeedReading
+import com.coinepro.core.designsystem.CoineProPriceFeedBar
+import com.coinepro.core.designsystem.CoineProOfflineBar
 import com.coinepro.core.designsystem.CoineProNavigationRail
 import com.coinepro.core.designsystem.CoineProRailHeader
 import com.coinepro.core.designsystem.CoineProRailItem
@@ -1677,6 +1680,34 @@ class ScreenshotRenderTest {
         val controller = ScreenshotFixtures.chartController(scope)
         listOf("ema", "bollinger", "supertrend", "pivots").forEach(controller::toggleIndicator)
         ChartScreen(controller = controller, onOpenStudio = {})
+    }
+
+    /**
+     * The venue's relay in its three broken states, and the phone's own offline bar beside them.
+     *
+     * Four bars in one render because the thing worth looking at is whether they read as four
+     * different facts. They must not: the offline bar is the reader's network and is drawn in the
+     * sell red; the three relay bars are the *server's* upstream and are drawn in the warning ink,
+     * because the day's figures on the screen behind them are still correct. A reader who reads
+     * «قیمت زنده قطع است» as «برو اینترنتت را چک کن» has been sent to fix something that is not
+     * broken.
+     *
+     * The healthy state is deliberately absent from this render, because it is absent from the
+     * app: a bar that says everything is fine is a bar nobody reads, and a badge that says it on a
+     * server which never sent the field would be the exact silence this whole feature ends.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun priceFeedBars() = capture("99-feed-bars-fa") {
+        Column(
+            modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        ) {
+            CoineProOfflineBar(online = false)
+            CoineProPriceFeedBar(status = PriceFeedReading.PARTIAL)
+            CoineProPriceFeedBar(status = PriceFeedReading.FULL)
+            CoineProPriceFeedBar(status = PriceFeedReading.UNKNOWN)
+        }
     }
 
     /* ── the tablet layer ─────────────────────────────────────────────────────────────────────

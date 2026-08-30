@@ -45,6 +45,7 @@ import com.coinepro.core.diagnostics.HubTile
 import com.coinepro.core.diagnostics.LogCounters
 import com.coinepro.core.diagnostics.SessionRow
 import com.coinepro.core.diagnostics.ServerCapabilities
+import com.coinepro.core.diagnostics.RelayStatus
 import com.coinepro.core.diagnostics.VenueStatus
 import com.coinepro.core.diagnostics.hubTiles
 import com.coinepro.core.diagnostics.tone
@@ -78,6 +79,7 @@ internal fun LazyListScope.overviewSection(
     }
     hub.feed?.let { item { FeedCard(it, actions) } }
     hub.venue?.let { item { VenueCard(it) } }
+    hub.relay?.let { item { RelayCard(it) } }
     hub.capabilities[state.selected]?.let {
         item { CapabilitiesCard(it, state.selected, actions) }
     }
@@ -315,6 +317,31 @@ private fun FeedCard(feed: FeedStatus, actions: HubActions) {
             onClick = actions.onClearMarketCache,
             modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.One),
         )
+    }
+}
+
+/**
+ * The exchange's own price relay, which is not this app's feed and fails apart from it.
+ *
+ * Every number is printed and none is interpreted except the state line, because that is what an
+ * operator needs to hand to the server's team: `ws 5/5, 3816ms` is a sentence they can act on and
+ * a green light is not. The age carries its own note — see [RelayStatus.tickAgeMillis] — since an
+ * operator who reads four seconds as a fault will file a bug against a healthy relay.
+ */
+@Composable
+private fun RelayCard(relay: RelayStatus) {
+    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+        CardHead(CoineProIcons.TrendUp, R.string.admin_relay_title)
+        Field(R.string.admin_relay_tier, figure(relay.tier), relay.tone.colour())
+        Field(
+            R.string.admin_relay_sockets,
+            figure((relay.socketsUp?.toString() ?: ABSENT) + " / " + (relay.socketsTotal?.toString() ?: ABSENT)),
+            // The half a single flag misses: the relay still calls itself connected with one
+            // shard alive out of five, and four fifths of the catalogue frozen behind it.
+            if (relay.degraded) CoineProColors.Warning else CoineProColors.Buy,
+        )
+        Field(R.string.admin_relay_tick_age, figure(relay.tickAgeMillis?.let { it.toString() + "ms" } ?: ABSENT))
+        Muted(stringResource(R.string.admin_relay_note))
     }
 }
 

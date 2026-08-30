@@ -44,6 +44,44 @@ data class FeedStatus(
 )
 
 /**
+ * The **venue's** price relay, one layer above this app's own feed.
+ *
+ * ### Why it is a separate row from [FeedStatus]
+ *
+ * [FeedStatus] is our socket to our server. This is our server's socket to the exchange, and the
+ * two fail independently: a perfectly connected app can be reading prices that the relay last
+ * refreshed four minutes ago by polling REST. TradeYar's relay sat in exactly that state for
+ * forty-five hours with every probe green, because a degraded tier still answers `200`. An
+ * operator looking at one row and not the other would have concluded the app was fine — and would
+ * have been right about the app.
+ *
+ * Null where the server does not report it, and null is drawn as absent rather than as healthy.
+ */
+data class RelayStatus(
+    /** `ws`, `rest_fallback` or `unknown`, as the relay names itself. Already a wire string. */
+    val tier: String,
+    val socketsUp: Int? = null,
+    val socketsTotal: Int? = null,
+    /**
+     * An upper bound on the newest tick's age, not a measurement.
+     *
+     * The relay rewrites its health record every five seconds, so a healthy feed reports anything
+     * up to five thousand here. Drawn as a number and never as a verdict; [tone] is the verdict.
+     */
+    val tickAgeMillis: Long? = null,
+    /** `tier != ws` **or** some shards down — both halves, see the app's own `PriceFeedStatus`. */
+    val degraded: Boolean = false,
+    /** Every shard down. Worse than degraded, and the only state worth a red row. */
+    val fullOutage: Boolean = false,
+) {
+    val tone: HubTone get() = when {
+        fullOutage -> HubTone.BAD
+        degraded -> HubTone.WARN
+        else -> HubTone.GOOD
+    }
+}
+
+/**
  * Whether a notification can be delivered, which needs both halves to be true.
  *
  * [serverEnabled] is what `/auth/methods` reported. It is separate from the Android permission
@@ -114,6 +152,8 @@ data class ControlHub(
     val feed: FeedStatus? = null,
     val push: PushStatus? = null,
     val venue: VenueStatus? = null,
+    /** The exchange's own price relay, as the server reports it. See [RelayStatus]. */
+    val relay: RelayStatus? = null,
     val capabilities: Map<MarketPlatform, ServerCapabilities> = emptyMap(),
 )
 

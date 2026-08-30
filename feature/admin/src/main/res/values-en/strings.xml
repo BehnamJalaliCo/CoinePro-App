@@ -198,4 +198,9 @@
     <string name="admin_capability_symbols">Symbols offered</string>
     <string name="admin_capabilities_refresh">Read again from the server</string>
     <string name="admin_capabilities_note">The server declares these. The app draws only what it says is on.</string>
+    <string name="admin_relay_title">Venue price relay</string>
+    <string name="admin_relay_tier">Tier</string>
+    <string name="admin_relay_sockets">Live sockets</string>
+    <string name="admin_relay_tick_age">Newest tick age</string>
+    <string name="admin_relay_note">This is the server\'s link to the exchange, not the app\'s link to the server. The tick age is an upper bound: the health record is rewritten every 5 seconds, so a healthy feed reads up to 5000ms here.</string>
 </resources>

@@ -90,6 +90,97 @@ data class MarketTicker(
 )
 
 /**
+ * Which layer the venue's prices are reaching us through.
+ *
+ * A string on the wire rather than a number, and that is deliberate on the server's side: a count
+ * cannot say "I don't know" and a name can. [UNKNOWN] is therefore a real answer — Redis down, or a
+ * tier this build has never heard of — and it is never optimistically read as healthy.
+ */
+enum class PriceFeedTier {
+    /** The websocket layer. The only healthy value. */
+    WS,
+
+    /** Every shard is down and the relay is polling REST instead. Prices move in steps, not ticks. */
+    REST_FALLBACK,
+
+    /** The relay could not be read, or named a tier this build does not know. Not "fine". */
+    UNKNOWN,
+    ;
+
+    internal companion object {
+        fun parse(wire: String?): PriceFeedTier = when (wire?.trim()?.lowercase()) {
+            "ws" -> WS
+            "rest_fallback" -> REST_FALLBACK
+            else -> UNKNOWN
+        }
+    }
+}
+
+/**
+ * How the venue's live prices are actually arriving — the field that ends a silent outage.
+ *
+ * ### Why this exists at all
+ *
+ * TradeYar's price relay sat on its REST fallback for **forty-five hours** and nothing anywhere
+ * said so. Every health probe was green, because a fallback tier answers `200`: "broken but up" is
+ * a successful HTTP status. The app showed prices that were minutes old and had no way to know.
+ *
+ * ### The reading rule, and why one field is not enough
+ *
+ * The relay labels itself `lbank-rest` only when **every** shard is down, and calls itself
+ * connected whenever `sockets_up > 0`. So four dead shards out of five is a relay reporting `ws`
+ * and `connected` with four fifths of the catalogue frozen. Hence [degraded] is two conditions:
+ *
+ * > broken = `tier != ws` **or** `socketsUp < socketsTotal`
+ *
+ * ### The trap in [tickAgeMillis]
+ *
+ * It is an upper bound on staleness, not a tick rate. The relay rewrites its health record every
+ * five seconds, so a perfectly healthy feed reports anything from 0 to 5 000 here — the server's
+ * own sample read 3 618 ms while the true tick age was 2 ms. A "stale" badge at five seconds would
+ * blink on a healthy feed, which is why [STALE_AFTER_MILLIS] is fifteen: the threshold the
+ * server's own website uses, chosen by them for this exact reason.
+ */
+data class PriceFeedStatus(
+    val tier: PriceFeedTier,
+    /** Live shards, or null where the relay did not say. */
+    val socketsUp: Int? = null,
+    /** Shards there should be. Null and [socketsUp] travel together. */
+    val socketsTotal: Int? = null,
+    /** An upper bound on how old the newest tick is. See the note above before drawing it. */
+    val tickAgeMillis: Long? = null,
+) {
+
+    /** Some shards are down but not all — the outage no single flag on the wire can see. */
+    val partialOutage: Boolean
+        get() = socketsUp != null && socketsTotal != null && socketsTotal > 0 && socketsUp in 1 until socketsTotal
+
+    /** Every shard is down and prices are coming from REST polling. */
+    val fullOutage: Boolean
+        get() = tier == PriceFeedTier.REST_FALLBACK || (socketsUp != null && socketsUp <= 0)
+
+    /** The one question a screen asks. See the reading rule above — both halves are needed. */
+    val degraded: Boolean
+        get() = tier != PriceFeedTier.WS ||
+            (socketsUp != null && socketsTotal != null && socketsUp < socketsTotal)
+
+    /** Whether the newest tick is old enough to be worth saying so. */
+    val stale: Boolean
+        get() = tickAgeMillis != null && tickAgeMillis > STALE_AFTER_MILLIS
+
+    companion object {
+        /**
+         * Fifteen seconds, and not five.
+         *
+         * The relay's health record is rewritten every five seconds, so the age reported here is a
+         * bound rather than a measurement and a threshold at the write interval fires on a healthy
+         * feed. Fifteen is what the server's own site uses and what they asked us to copy.
+         */
+        const val STALE_AFTER_MILLIS = 15_000L
+    }
+}
+
+/**
  * Every market's twenty-four-hour figures, in one request.
  *
  * ### What this unblocks
@@ -118,6 +209,19 @@ data class MarketTickerTable(
     val cacheTtlMillis: Long?,
     val fetchedAtEpochMillis: Long?,
     val source: String?,
+    /**
+     * How the venue's live prices are reaching the relay, or null where the server does not say.
+     *
+     * **Null is not health.** It means this deployment predates the field, and a screen must draw
+     * nothing at all rather than a reassuring badge — the whole point of the field is that silence
+     * used to look exactly like success.
+     *
+     * It describes the socket layer and not the rows beside it: the day's figures in this response
+     * are read from the venue's REST snapshot either way. The one row value that follows the tier
+     * is `open_interest`, which is structurally absent on the fallback. So a degraded feed here
+     * means "the live price is stale", never "these numbers are wrong".
+     */
+    val priceFeed: PriceFeedStatus? = null,
 ) {
     companion object {
         val Empty = MarketTickerTable(emptyMap(), null, null, null, null)
@@ -164,6 +268,7 @@ class NetworkMarketTickerGateway private constructor(
             cacheTtlMillis = response.cacheTtlMs,
             fetchedAtEpochMillis = response.fetchedAtMs,
             source = response.source,
+            priceFeed = response.priceFeed?.toDomain(),
         )
     }
 
@@ -199,6 +304,35 @@ internal data class MarketTickersDto(
     @SerializedName("cache_ttl_ms") val cacheTtlMs: Long? = null,
     @SerializedName("fetched_at_ms") val fetchedAtMs: Long? = null,
     val source: String? = null,
+    @SerializedName("price_feed") val priceFeed: PriceFeedDto? = null,
+)
+
+/**
+ * The relay's own health, in the envelope rather than on the rows.
+ *
+ * `source` was deliberately left alone by the server — it names the exchange and this app already
+ * parses it — so the transport got its own key instead. Every field is nullable here for the usual
+ * reason: this class is about what arrives, not about what was promised.
+ */
+internal data class PriceFeedDto(
+    val tier: String? = null,
+    @SerializedName("sockets_up") val socketsUp: Int? = null,
+    @SerializedName("sockets_total") val socketsTotal: Int? = null,
+    @SerializedName("tick_age_ms") val tickAgeMs: Long? = null,
+)
+
+/**
+ * The wire status as a reading.
+ *
+ * A negative shard count or a negative age is a broken reading rather than a small one, so it is
+ * dropped to null — [PriceFeedStatus.degraded] then falls back to the tier alone, which is the
+ * conservative half of the rule.
+ */
+internal fun PriceFeedDto.toDomain(): PriceFeedStatus = PriceFeedStatus(
+    tier = PriceFeedTier.parse(tier),
+    socketsUp = socketsUp?.takeIf { it >= 0 },
+    socketsTotal = socketsTotal?.takeIf { it > 0 },
+    tickAgeMillis = tickAgeMs?.takeIf { it >= 0 },
 )
 
 /**

@@ -81,3 +81,91 @@ fun CoineProOfflineBar(
 
 private val BAR_VERTICAL = 6.dp
 private val GLYPH = 14.dp
+
+/**
+ * The other kind of "the prices are not moving": ours are fine, the venue's relay is not.
+ *
+ * ### Why this is a separate bar from [CoineProOfflineBar]
+ *
+ * They look alike and mean opposite things about what the reader should do. Offline is the phone,
+ * it clears when the reader walks to a window, and every number on screen is a remembered one. This
+ * is the *server's* upstream: the phone is fine, the request succeeded, and the day's figures in
+ * front of the reader are correct — it is the live price behind them that has stopped ticking.
+ * Wording those as one sentence would tell a reader to check their connection over a problem no
+ * connection of theirs can fix.
+ *
+ * ### Why it exists at all
+ *
+ * TradeYar's relay sat on its REST fallback for forty-five hours and every probe stayed green,
+ * because a degraded tier still answers `200`. This bar is the reader's half of the fix; the
+ * server built the alerting for theirs. Neither half alone would have caught it.
+ *
+ * It is drawn in the warning ink rather than the sell red — this is "older than it looks", not
+ * "broken" — and, like the offline bar, it takes its own row, has no dismiss, and leaves by itself.
+ */
+@Composable
+fun CoineProPriceFeedBar(
+    /**
+     * The relay's health, or null where the server does not report it.
+     *
+     * Null draws nothing. A deployment that predates the field cannot be distinguished from a
+     * healthy one, and inventing a reassuring answer for it is exactly the silence this bar was
+     * built to break.
+     */
+    status: PriceFeedReading?,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = status != null,
+        modifier = modifier,
+        enter = expandVertically() + fadeIn(),
+        exit = shrinkVertically() + fadeOut(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(CoineProTint.fill(CoineProColors.Warning, CoineProColors.Stage))
+                .padding(horizontal = CoineProSpacing.Gutter, vertical = BAR_VERTICAL),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        ) {
+            Icon(
+                painter = painterResource(CoineProIcons.Warning),
+                contentDescription = null,
+                tint = CoineProColors.Warning,
+                modifier = Modifier.size(GLYPH),
+            )
+            Text(
+                // Held while the bar animates out, so the sentence does not blank a frame before
+                // the row finishes collapsing.
+                text = stringResource(
+                    when (status ?: PriceFeedReading.PARTIAL) {
+                        PriceFeedReading.PARTIAL -> R.string.price_feed_partial
+                        PriceFeedReading.FULL -> R.string.price_feed_full
+                        PriceFeedReading.UNKNOWN -> R.string.price_feed_unknown
+                    },
+                ),
+                style = MaterialTheme.typography.labelMedium,
+                color = CoineProColors.TextSecondary,
+            )
+        }
+    }
+}
+
+/**
+ * What the bar has to say, as three cases rather than a boolean.
+ *
+ * `core:designsystem` cannot see `core:marketdata`, so the caller maps the relay's own status onto
+ * this — which is the right way round anyway: the design system owns the sentence, and the module
+ * that talks to the server owns the reading rule. See `PriceFeedStatus` for that rule.
+ */
+enum class PriceFeedReading {
+    /** Some shards are down; part of the catalogue is frozen and the rest is live. */
+    PARTIAL,
+
+    /** Every shard is down. Prices arrive by polling, in steps rather than ticks. */
+    FULL,
+
+    /** The relay could not be read at all. Not health, and not drawn as health. */
+    UNKNOWN,
+}

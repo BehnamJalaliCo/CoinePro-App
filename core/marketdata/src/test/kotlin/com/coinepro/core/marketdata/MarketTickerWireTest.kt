@@ -56,7 +56,13 @@ class MarketTickerWireTest {
           "server_time_ms": 1788037124000,
           "cache_ttl_ms": 5000,
           "fetched_at_ms": 1788037121000,
-          "source": "lbank"
+          "source": "lbank",
+          "price_feed": {
+            "tier": "ws",
+            "sockets_up": 5,
+            "sockets_total": 5,
+            "tick_age_ms": 3816
+          }
         }
     """.trimIndent()
 
@@ -91,6 +97,66 @@ class MarketTickerWireTest {
         // actually are rather than how old they are permitted to get.
         assertEquals(1788037121000L, table.fetchedAtMs)
         assertEquals("lbank", table.source)
+        // The transport got its own key rather than overloading `source`, which names the exchange
+        // and which this app has parsed since the route existed.
+        val feed = table.priceFeed!!.toDomain()
+        assertEquals(PriceFeedTier.WS, feed.tier)
+        assertEquals(5, feed.socketsUp)
+        assertEquals(5, feed.socketsTotal)
+        assertEquals(3816L, feed.tickAgeMillis)
+        assertTrue(!feed.degraded)
+        // 3 816 ms on a healthy feed, and this is the trap: the relay rewrites its health record
+        // every five seconds, so the age is a bound rather than a measurement. A threshold at the
+        // write interval would put a «کهنه» badge on a feed whose true tick age was 2 ms.
+        assertTrue(!feed.stale)
+    }
+
+    @Test
+    fun `four dead shards out of five is an outage the tier alone cannot see`() {
+        // The relay calls itself `ws` while any shard lives, and `connected` while `sockets_up > 0`
+        // — so this is precisely the state that hid for forty-five hours. Both halves of the rule
+        // are needed, and this is the half a single flag misses.
+        val body = """{"tickers":[],"price_feed":{"tier":"ws","sockets_up":1,"sockets_total":5}}"""
+        val feed = gson.fromJson(body, MarketTickersDto::class.java).priceFeed!!.toDomain()
+        assertTrue(feed.degraded)
+        assertTrue(feed.partialOutage)
+        assertTrue(!feed.fullOutage)
+    }
+
+    @Test
+    fun `the fallback tier is the full outage, and is read as one`() {
+        val body = """{"tickers":[],"price_feed":{"tier":"rest_fallback","sockets_up":0,"sockets_total":5}}"""
+        val feed = gson.fromJson(body, MarketTickersDto::class.java).priceFeed!!.toDomain()
+        assertTrue(feed.degraded)
+        assertTrue(feed.fullOutage)
+        assertTrue(!feed.partialOutage)
+    }
+
+    @Test
+    fun `an unrecognised tier is unknown, never optimistically healthy`() {
+        // Redis down, or a tier a later server grows. Either way the honest answer is that we do
+        // not know, and «نمی‌دانم» must never be drawn as «سالم» — that is the whole reason the
+        // server sends a string here instead of a count.
+        val body = """{"tickers":[],"price_feed":{"tier":"quantum"}}"""
+        val feed = gson.fromJson(body, MarketTickersDto::class.java).priceFeed!!.toDomain()
+        assertEquals(PriceFeedTier.UNKNOWN, feed.tier)
+        assertTrue(feed.degraded)
+    }
+
+    @Test
+    fun `a server that does not send the field leaves it null rather than healthy`() {
+        // A deployment older than the field. Null has to stay null all the way to the screen: a
+        // badge reading «سالم» here would be the same silent lie the field was built to end.
+        val body = """{"tickers":[{"symbol":"BTCUSDT","last":1.0}],"source":"lbank"}"""
+        assertNull(gson.fromJson(body, MarketTickersDto::class.java).priceFeed)
+    }
+
+    @Test
+    fun `a stale tick is only called stale past fifteen seconds`() {
+        val fresh = """{"tickers":[],"price_feed":{"tier":"ws","sockets_up":5,"sockets_total":5,"tick_age_ms":4999}}"""
+        val old = """{"tickers":[],"price_feed":{"tier":"ws","sockets_up":5,"sockets_total":5,"tick_age_ms":15001}}"""
+        assertTrue(!gson.fromJson(fresh, MarketTickersDto::class.java).priceFeed!!.toDomain().stale)
+        assertTrue(gson.fromJson(old, MarketTickersDto::class.java).priceFeed!!.toDomain().stale)
     }
 
     @Test

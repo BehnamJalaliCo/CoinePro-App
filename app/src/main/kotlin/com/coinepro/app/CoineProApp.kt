@@ -111,6 +111,8 @@ import com.coinepro.app.security.LockScreen
 import com.coinepro.app.security.rememberLockCapability
 import com.coinepro.core.designsystem.CoineProConfirmDialog
 import com.coinepro.core.designsystem.CoineProOfflineBar
+import com.coinepro.core.designsystem.CoineProPriceFeedBar
+import com.coinepro.core.designsystem.PriceFeedReading
 import com.coinepro.core.designsystem.CoineProToast
 import com.coinepro.core.designsystem.LocalToaster
 import com.coinepro.core.designsystem.ToastTone
@@ -134,6 +136,7 @@ import com.coinepro.core.diagnostics.HubTone
 import com.coinepro.core.diagnostics.PushPermission
 import com.coinepro.core.diagnostics.PushPreferenceKey
 import com.coinepro.core.diagnostics.PushStatus
+import com.coinepro.core.diagnostics.RelayStatus
 import com.coinepro.core.diagnostics.ServerCapabilities
 import com.coinepro.core.diagnostics.SessionRow
 import com.coinepro.core.diagnostics.VenueStatus
@@ -154,6 +157,8 @@ import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.marketdata.MarketDataSymbols
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketTickerStore
+import com.coinepro.core.marketdata.PriceFeedStatus
+import com.coinepro.core.marketdata.PriceFeedTier
 import com.coinepro.core.marketdata.SparklineStore
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.membership.MembershipController
@@ -246,6 +251,7 @@ import com.coinepro.feature.terminal.TerminalController
 import com.coinepro.feature.terminal.TerminalScreen
 import com.coinepro.feature.tools.ToolsScreen
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 private const val SIGNAL_DETAIL_PATTERN = "signal/{signalId}"
@@ -806,6 +812,12 @@ fun CoineProApp(
     // Assembled here rather than inside the diagnostics module: every controller the hub reaches is
     // already in this scope, and giving core:diagnostics a dependency on all of them would make the
     // module that observes the app depend on nearly the whole app.
+    // Only the relay's own status, not the whole table: the table is replaced on every five-second
+    // poll and the hub would be rebuilt with it. The shell's bar collects the same store further
+    // down, mapped the same way and for the same reason.
+    val relayStatus by remember(marketTickerStore) {
+        marketTickerStore.state.map { it.table.priceFeed }
+    }.collectAsStateWithLifecycle(null)
     val hub = ControlHub(
         sessions = activePlatformStore.available.map { platform ->
             SessionRow(
@@ -830,6 +842,19 @@ fun CoineProApp(
             priceAlerts = notificationState.preferences.priceAlerts,
         ),
         venue = venueState.forPlatform(activePlatform),
+        // The exchange's own relay, as the server reports it on the ticker envelope. Absent — not
+        // green — where the server does not send the field, which is every deployment older than
+        // 2026-08-29 and is a state an operator has to be able to tell from health.
+        relay = relayStatus?.let { feed ->
+            RelayStatus(
+                tier = feed.tier.name.lowercase(),
+                socketsUp = feed.socketsUp,
+                socketsTotal = feed.socketsTotal,
+                tickAgeMillis = feed.tickAgeMillis,
+                degraded = feed.degraded,
+                fullOutage = feed.fullOutage,
+            )
+        },
         // What each server said about itself, per platform. Null inside a row means that server
         // has not answered yet, which the panel draws differently from a capability reported off —
         // the whole point of asking is to tell those two apart.
@@ -1836,6 +1861,41 @@ private fun MainShell(
         // Above every screen and below the bar, because being offline changes what every one of
         // them is showing. It takes its own row rather than floating, so it never covers a line.
         CoineProOfflineBar(online = online)
+        // The venue's relay, which is a different fact from the phone's network and reads as one.
+        // Only where the server actually reports it: a deployment without `price_feed` draws
+        // nothing rather than a reassuring line. See `CoineProPriceFeedBar`.
+        //
+        // **Mapped to the reading before it is collected, and that is not tidiness.** The ticker
+        // table is replaced on every five-second poll — eight hundred rows, and a tick age that
+        // moves every time — so collecting it whole here would recompose the whole shell around
+        // the NavHost twelve times a minute for a bar that changes about once a week. The reading
+        // is equal across those polls, so the collected state never publishes and nothing
+        // recomposes. Nothing else in this scope may read the status itself for the same reason.
+        val feedReading by remember(marketTickerStore) {
+            marketTickerStore.state.map { it.table.priceFeed?.reading() }
+        }.collectAsStateWithLifecycle(null)
+        CoineProPriceFeedBar(status = feedReading)
+        // And into the exportable log, because the bar is only the half a reader sees. The outage
+        // this field exists for lasted forty-five hours precisely because nothing wrote it down;
+        // an operator handed the log now finds the transition in it with the counts attached.
+        //
+        // Keyed on the reading, so one line is written when the state changes rather than one
+        // every five seconds — and the numbers are read from the store *inside* the effect, where
+        // reading them is not a composition read and cannot drag the recomposition back in.
+        LaunchedEffect(feedReading, activePlatform) {
+            val feed = marketTickerStore.state.value.table.priceFeed ?: return@LaunchedEffect
+            val fields = mapOf(
+                "platform" to activePlatform.name,
+                "tier" to feed.tier.name,
+                "sockets" to (feed.socketsUp?.toString() ?: "—") + "/" + (feed.socketsTotal?.toString() ?: "—"),
+                "tick_age_ms" to (feed.tickAgeMillis?.toString() ?: "—"),
+            )
+            if (feedReading == null) {
+                appLog.info(LogTag.SOCKET, "venue price feed healthy", fields)
+            } else {
+                appLog.warn(LogTag.SOCKET, "venue price feed degraded", fields)
+            }
+        }
         // The accent for whatever is on screen, set once here rather than by every screen.
         //
         // Wrapping the NavHost rather than each destination means a screen cannot forget: the
@@ -3097,4 +3157,19 @@ private class SymbolChartDepthPreferences(
             ),
         )
     }
+}
+
+/**
+ * The relay's health as the one sentence a reader needs, or null when there is nothing to say.
+ *
+ * Here rather than in `core:designsystem`, which cannot see `core:marketdata`, and rather than in
+ * `core:marketdata`, which has no business owning a sentence. The reading rule itself belongs to
+ * `PriceFeedStatus` — this only chooses which of the three cases applies, healthy included, and
+ * healthy is null because a bar that says «همه‌چیز خوب است» is a bar nobody reads.
+ */
+private fun PriceFeedStatus.reading(): PriceFeedReading? = when {
+    !degraded -> null
+    tier == PriceFeedTier.UNKNOWN -> PriceFeedReading.UNKNOWN
+    fullOutage -> PriceFeedReading.FULL
+    else -> PriceFeedReading.PARTIAL
 }

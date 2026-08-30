@@ -207,4 +207,9 @@
     <string name="admin_capability_symbols">تعداد نمادها</string>
     <string name="admin_capabilities_refresh">خواندن دوباره از سرور</string>
     <string name="admin_capabilities_note">این‌ها را خود سرور اعلام می‌کند. اپ فقط چیزی را می‌کشد که سرور گفته روشن است.</string>
+    <string name="admin_relay_title">رلهٔ قیمت صرافی</string>
+    <string name="admin_relay_tier">لایه</string>
+    <string name="admin_relay_sockets">سوکت‌های زنده</string>
+    <string name="admin_relay_tick_age">سن آخرین تیک</string>
+    <string name="admin_relay_note">این اتصال سرور به صرافی است، نه اتصال اپ به سرور. سن تیک کران بالاست: رکورد سلامت هر ۵ ثانیه بازنویسی می‌شود، پس روی یک فید سالم هم تا ۵۰۰۰ میلی‌ثانیه دیده می‌شود.</string>
 </resources>
