@@ -18,6 +18,25 @@ data class MarketNewsItem(
     val impact: MarketImpact,
     val relevance: Set<MarketRelevance>,
     val isStale: Boolean,
+    /**
+     * The picture that belongs above this story, or null where the feed sent none.
+     *
+     * Defaulted so the two other places in this repository that build one of these by hand — the
+     * chart's event feed and the app's screenshot fixtures — did not have to learn about pictures
+     * to keep compiling. That is the only reason for the default; a story from the wire either has
+     * an address here or genuinely has no picture, and every surface that draws one is written to
+     * be right in the second case.
+     */
+    val imageUrl: String? = null,
+    /**
+     * The story's own text, or null where the feed sent only a summary.
+     *
+     * Null on both feeds today, and that is a fact about the servers rather than about this app:
+     * TradeYar's `news_posts` stores `summary_fa` and no body, and the forex side is a cache of wire
+     * headlines. `docs/SERVER_ASK_NEWS_MEDIA.md` is the ask; `articleBody` is what decides whether
+     * what arrives under the name is really one.
+     */
+    val body: String? = null,
 )
 
 data class EconomicEvent(

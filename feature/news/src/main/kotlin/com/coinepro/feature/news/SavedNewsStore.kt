@@ -6,10 +6,6 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.coinepro.core.marketintel.MarketImpact
-import com.coinepro.core.marketintel.MarketNewsItem
-import com.coinepro.core.marketintel.MarketRelevance
-import com.coinepro.core.marketintel.NewsSentiment
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -27,10 +23,19 @@ import kotlinx.coroutines.flow.map
  * Thursday's response. A set of ids would therefore be a list that silently empties itself, and the
  * reader would conclude the app had lost their saves — which, functionally, it would have.
  *
- * So the save copies what it takes to draw the story again and to reach it: the headline, who
- * published it, when, the link, and the picture's address for the day the servers start sending
- * one. It does not copy impact or sentiment, because those are a reading of a live market and a
- * stored one goes stale in a way a headline does not.
+ * So the save copies what it takes to draw the story again, to read it again, and to reach it: the
+ * headline, the summary, who published it, when, the link and the picture's address. It does not
+ * copy impact or sentiment, because those are a reading of a live market and a stored one goes
+ * stale in a way a headline does not.
+ *
+ * **The summary is kept and the body is not**, and the asymmetry is deliberate rather than
+ * unfinished. Without the summary a saved story reopened a week later was a headline over the words
+ * «سرور برای این خبر خلاصه‌ای نفرستاده است» — the reader saved something to read and got an empty
+ * page, which is the worst outcome this feature has. A body is a different size of object: at the
+ * cap this file writes, two hundred saved bodies is more text than every other preference in the
+ * app put together, read into memory on every emission of [SavedNewsStore.saved]. A saved story
+ * therefore keeps its lede and points at the source for the rest, and when bodies start arriving
+ * that is the line at which this store moves to a database rather than the line at which it grows.
  *
  * [savedAt] is when the reader pressed save, not when the story was published, and it is what the
  * saved list orders by: the reader's own sequence is the thing they will look for.
@@ -38,7 +43,8 @@ import kotlinx.coroutines.flow.map
 data class SavedArticle(
     val id: String,
     val title: String,
-    val source: String,
+    val summary: String?,
+    val source: String?,
     val url: String?,
     val imageUrl: String?,
     val publishedAt: Instant,
@@ -143,9 +149,10 @@ class PreferencesSavedNewsStore(private val dataStore: DataStore<Preferences>) :
          * How long any one stored field may be.
          *
          * A headline is under two hundred characters in every feed this app reads, and a URL is
-         * capped where `NewsImagePolicy` caps one. What this really guards against is a server that
-         * starts sending an article body in a field this store copies verbatim — at which point one
-         * save would be larger than every other preference in the app put together.
+         * capped where `NewsImagePolicy` caps one. The summary is the field this number is really
+         * for: it is the one whose length the servers do not bound, and two thousand characters is
+         * several times the longest either feed has sent while still being small enough that two
+         * hundred of them are an ordinary preferences file.
          */
         const val MAX_FIELD = 2048
 
@@ -159,7 +166,20 @@ class PreferencesSavedNewsStore(private val dataStore: DataStore<Preferences>) :
         private const val TIME_SEPARATOR = ":"
 
         /** Fields per record, in the order [encodeOne] writes them. */
-        private const val FIELDS = 6
+        private const val FIELDS = 7
+
+        /**
+         * What a record written before the summary was kept looks like.
+         *
+         * Read as well as the current shape, and the summary of such a record comes back null — the
+         * state the reading page already draws for a story the server sent no summary for. The
+         * alternative is what the tolerant-decode rule would otherwise do to it: a record whose
+         * field count this build does not recognise is dropped, so shipping the seventh field
+         * without this line would silently empty every reader's saved list on update. The new field
+         * is appended rather than inserted for the same reason — the first six indices mean the
+         * same thing in both shapes, so there is one branch here and none below.
+         */
+        private const val FIELDS_V1 = 6
 
         internal fun encode(articles: List<SavedArticle>): String =
             articles.take(MAX_SAVED).joinToString(GROUP, transform = ::encodeOne)
@@ -167,10 +187,11 @@ class PreferencesSavedNewsStore(private val dataStore: DataStore<Preferences>) :
         private fun encodeOne(article: SavedArticle): String = listOf(
             article.id,
             article.title,
-            article.source,
+            article.source.orEmpty(),
             article.url.orEmpty(),
             article.imageUrl.orEmpty(),
             article.publishedAt.epochSecond.toString() + TIME_SEPARATOR + article.savedAt.epochSecond,
+            article.summary.orEmpty(),
         ).joinToString(UNIT)
 
         internal fun decode(stored: String?): List<SavedArticle> {
@@ -180,10 +201,9 @@ class PreferencesSavedNewsStore(private val dataStore: DataStore<Preferences>) :
 
         private fun decodeOne(record: String): SavedArticle? {
             val parts = record.split(UNIT)
-            if (parts.size != FIELDS) return null
+            if (parts.size != FIELDS && parts.size != FIELDS_V1) return null
             val storedId = parts[0].takeIf(String::isNotEmpty) ?: return null
             val storedTitle = parts[1].takeIf(String::isNotEmpty) ?: return null
-            val storedSource = parts[2].takeIf(String::isNotEmpty) ?: return null
             val times = parts[5].split(TIME_SEPARATOR)
             if (times.size != 2) return null
             val published = times[0].toLongOrNull() ?: return null
@@ -191,7 +211,8 @@ class PreferencesSavedNewsStore(private val dataStore: DataStore<Preferences>) :
             return SavedArticle(
                 id = storedId,
                 title = storedTitle,
-                source = storedSource,
+                summary = parts.getOrNull(6)?.takeIf(String::isNotEmpty),
+                source = parts[2].takeIf(String::isNotEmpty),
                 url = parts[3].takeIf(String::isNotEmpty),
                 imageUrl = parts[4].takeIf(String::isNotEmpty),
                 publishedAt = Instant.ofEpochSecond(published),
@@ -210,11 +231,11 @@ class PreferencesSavedNewsStore(private val dataStore: DataStore<Preferences>) :
         internal fun SavedArticle.sanitised(): SavedArticle? {
             val safeId = id.clean() ?: return null
             val safeTitle = title.clean() ?: return null
-            val safeSource = source.clean() ?: return null
             return copy(
                 id = safeId,
                 title = safeTitle,
-                source = safeSource,
+                summary = summary?.clean(),
+                source = source?.clean(),
                 url = url?.clean(),
                 imageUrl = imageUrl?.clean(),
             )
@@ -231,42 +252,43 @@ class PreferencesSavedNewsStore(private val dataStore: DataStore<Preferences>) :
 /**
  * The story a reader is looking at, as the thing that gets stored.
  *
- * [imageUrl] is passed in rather than read off [MarketNewsItem] because the item has no such field —
- * no backend sends one yet. `NewsScreen`'s `imageUrlOf` parameter is the whole seam, and this is the
- * second and last place it reaches.
+ * An undated story cannot be saved, and there is exactly one of those: a public headline whose
+ * publication time would not parse. The save is refused rather than dated, for the reason
+ * [NewsStory] gives about the epoch — a saved list is the one place in this app where a wrong date
+ * would persist and be sorted by. The caller draws no save control for such a story, so this is the
+ * second check rather than the reader's first surprise.
  */
-internal fun MarketNewsItem.asSavedArticle(imageUrl: String?, savedAt: Instant): SavedArticle =
-    SavedArticle(
-        id = id,
-        title = title,
-        source = source,
-        url = url,
-        imageUrl = imageUrl,
-        publishedAt = publishedAt,
-        savedAt = savedAt,
-    )
-
-/**
- * A saved story rendered back as a feed item, so one card draws both.
- *
- * The two readings a save deliberately does not keep come back as [MarketImpact.UNKNOWN] and
- * [NewsSentiment.UNKNOWN], which is exactly what they are: this app does not know today what a
- * story from last week was rated, and the pills for "unknown" are already the ones that stay grey
- * and make no claim. Relevance comes back empty for the same reason, and the card reads that as
- * general market — honest, rather than a market tag preserved from a reading that has since
- * expired.
- */
-internal fun SavedArticle.asNewsItem(): MarketNewsItem = MarketNewsItem(
+internal fun NewsStory.asSavedArticle(savedAt: Instant): SavedArticle? = SavedArticle(
     id = id,
     title = title,
-    summary = null,
+    summary = summary,
     source = source,
     url = url,
+    imageUrl = imageUrl,
+    publishedAt = publishedAt ?: return null,
+    savedAt = savedAt,
+)
+
+/**
+ * A saved story rendered back as a story, so one card and one page draw both.
+ *
+ * The readings a save deliberately does not keep come back unknown, which is exactly what they are:
+ * this app does not know today what a story from last week was rated, and the pills for "unknown"
+ * are already the ones that stay grey and make no claim. Relevance comes back empty for the same
+ * reason, and the page reads that as general market — honest, rather than a market tag preserved
+ * from a reading that has since expired.
+ *
+ * The body comes back null because it was never written; the reading page draws a saved story the
+ * way it draws any story whose server sent only a summary, and the line under the lede says so.
+ */
+internal fun SavedArticle.asStory(): NewsStory = NewsStory(
+    id = id,
+    title = title,
+    summary = summary,
+    source = source,
+    url = url,
+    imageUrl = imageUrl,
     publishedAt = publishedAt,
-    sentiment = NewsSentiment.UNKNOWN,
-    impact = MarketImpact.UNKNOWN,
-    relevance = emptySet<MarketRelevance>(),
-    isStale = false,
 )
 
 /**

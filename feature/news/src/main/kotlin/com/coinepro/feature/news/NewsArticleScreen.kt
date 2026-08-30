@@ -22,74 +22,67 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.chartevents.ChartEventSymbols
+import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
-import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.marketintel.MarketImpact
-import com.coinepro.core.marketintel.MarketNewsItem
 import com.coinepro.core.marketintel.NewsSentiment
 
 /**
- * One story, on a page of its own.
+ * One story, on a page of its own, read here.
  *
- * ### What was wrong before
+ * ### What the owner said, twice
  *
- * There was no such page. A headline was a card in a list with its summary printed under it, and
- * that was the whole of the story — tapping it did nothing, because nothing was listening. So a
- * reader who wanted to know more about a rate decision had the same four lines whether they glanced
- * at the list or studied it, and the app's answer to "read this" was "you already have".
+ * «هنوز روی خبرها عکس نیست، و متن کامل باید داخل خود اپ باشد — نه اینکه من را به سایت منبع بفرستد.»
+ * There is still no picture on the news, and the full text must be inside our own app rather than
+ * sending the reader to the source site. Both halves of that sentence are structural and both are
+ * answered here:
  *
- * ### What "read it in full" can honestly mean here, given what the feed sends
+ * * **The picture is the first thing on the page**, full-bleed, above the eyebrow and the headline.
+ *   `MarketNewsItem.imageUrl` now carries it end to end — the gateway reads the field, the story
+ *   type keeps it, this page draws it, and the saved copy remembers it — so the day either backend
+ *   starts sending one, every picture in the feature appears at once with nothing to wire.
+ * * **The page is the destination, not a lobby.** It was not, before. The whole of the text sat in
+ *   one paragraph and under it was a gold button reading «خواندن متن کامل در منبع», which is a page
+ *   whose loudest object is the exit — precisely the thing being complained about. The publisher's
+ *   own copy is still reachable, because a reader who wants the original is entitled to it, but it
+ *   is now a quiet line at the end of the text beside the publisher's name. It is a footnote. The
+ *   story is the page.
  *
- * Neither backend sends an article body. `MarketNewsDto` carries `title`, `summary`, `source`,
- * `url`, `published_at` and three classifications, and both contract documents are explicit that
- * this is a thin adapter over a cache of headlines — CoinePro-FX over its Redis key, TradeYar over
- * `news_posts`, which stores `summary_fa` and not a body. There is no text to render that the
- * server has not sent.
+ * ### What "the full text" can honestly mean today, and what it will mean tomorrow
  *
- * Three answers were possible and this page takes the third:
+ * [NewsStory.body] is the story's own text and it is null on both feeds as they stand.
+ * `news_posts` stores `summary_fa` and no body; the forex side is a cache of wire headlines. Two
+ * answers to that were available and this page takes neither of the bad ones — it does not render
+ * the source page in a WebView (see [NewsHandoff] for why an arbitrary third-party host must not
+ * run in this process), and it does not write something that reads like the article, which would be
+ * inventing a story and attributing it to a named publisher.
  *
- * 1. **Render the source page in a WebView.** Rejected. The addresses are arbitrary third-party
- *    hosts chosen by a wire feed, and a WebView in this process carries this process's storage —
- *    see `NewsHandoff` for the longer version of that argument.
- * 2. **Reconstruct or summarise the article.** Rejected outright. This app does not have the text,
- *    and writing something that reads like the article would be inventing a story and attributing
- *    it to a named publisher.
- * 3. **Give everything the server did send its proper setting, and hand off honestly for the rest.**
- *    This one. The summary is set as a lede at reading size rather than as a caption; the source
- *    and the moment are stated plainly; the classifications become a short paragraph about what the
- *    story bears on rather than three coloured chips; and one gold button says, in words, that the
- *    full text lives with the publisher and opens it there.
+ * What it does instead is set what the server *did* send as text rather than as a caption: the
+ * summary at eighteen points with reading leading, on a measure, under a rule, with a line under it
+ * saying plainly that this is the summary the source published and not the whole of it. That is a
+ * short article, honestly labelled — not a stub apologising for itself.
  *
- * The day either server adds a body field, this page has the place for it already — between the
- * lede and the hand-off — and the hand-off becomes a footnote rather than the destination. That ask
- * is written out in the report.
- *
- * ### The picture
- *
- * [imageUrl] is at the very top, above everything, which is what the owner asked for and asked for
- * twice. It is null for every story today because no feed sends one; see [NewsHero], which draws
- * nothing at all in that case, and note that this page is laid out to be complete without it rather
- * than to have a hole where it goes.
+ * And [ArticleText] already has the shape for the other case: where a body arrives it is set below
+ * the lede in paragraphs, and the sentence about the summary being all there is disappears, because
+ * it would no longer be true. The ask that makes that happen is `docs/SERVER_ASK_NEWS_MEDIA.md`.
  */
 @Composable
 fun NewsArticleScreen(
-    item: MarketNewsItem,
+    story: NewsStory,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
-    imageUrl: String? = null,
     /** Whether this story is in the reader's saved list. */
     saved: Boolean = false,
     /**
@@ -107,8 +100,8 @@ fun NewsArticleScreen(
      * alternative is a page whose only exit is back, which is how a news app becomes a thing people
      * check rather than a thing people read.
      */
-    related: List<MarketNewsItem> = emptyList(),
-    onOpenRelated: (MarketNewsItem) -> Unit = {},
+    related: List<NewsStory> = emptyList(),
+    onOpenRelated: (NewsStory) -> Unit = {},
     onOpenChart: ((symbol: String, atSeconds: Long) -> Unit)? = null,
 ) {
     val context = LocalContext.current
@@ -116,7 +109,7 @@ fun NewsArticleScreen(
     // One line, under the actions, for the two things that can fail from here. It is not a toast:
     // the toaster belongs to the app shell and this module cannot reach it, and a failure that
     // appears next to the button that caused it is easier to connect anyway.
-    var problem by remember(item.id) { mutableStateOf<Int?>(null) }
+    var problem by remember(story.id) { mutableStateOf<Int?>(null) }
 
     Column(
         modifier = modifier
@@ -130,7 +123,7 @@ fun NewsArticleScreen(
             onBack = onBack,
             onToggleSave = onToggleSave,
             onShare = {
-                problem = if (NewsHandoff.share(context, item.title, item.source, item.url, shareSubject)) {
+                problem = if (NewsHandoff.share(context, story.title, story.source, story.url, shareSubject)) {
                     null
                 } else {
                     R.string.news_share_unavailable
@@ -159,8 +152,8 @@ fun NewsArticleScreen(
             // thumbnail. Everything below it is inset, which is what makes the picture read as the
             // top of the story rather than as one more block in a stack.
             NewsHero(
-                url = imageUrl,
-                contentDescription = stringResource(R.string.news_image_of, item.title),
+                url = story.imageUrl,
+                contentDescription = stringResource(R.string.news_image_of, story.title),
                 shape = RectangleShape,
             )
 
@@ -169,42 +162,27 @@ fun NewsArticleScreen(
                 verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (item.impact != MarketImpact.UNKNOWN) ImpactPill(item.impact)
-                    if (item.sentiment != NewsSentiment.UNKNOWN) SentimentPill(item.sentiment)
-                    if (item.isStale) {
+                    if (story.impact != MarketImpact.UNKNOWN) ImpactPill(story.impact)
+                    if (story.sentiment != NewsSentiment.UNKNOWN) SentimentPill(story.sentiment)
+                    if (story.isStale) {
                         MetaPill(stringResource(R.string.news_stale), CoineProColors.Warning)
                     }
                 }
                 Text(
-                    text = item.title,
+                    text = story.title,
                     style = NewsTextStyles.Headline,
                     color = CoineProColors.TextPrimary,
                     textAlign = TextAlign.Right,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                NewsByline(item)
+                NewsByline(story)
                 Rule()
-                // The summary, set as the article's opening paragraph rather than as a caption.
-                // This is the whole of the text the server sends, so it gets the whole of the
-                // reading treatment; printing it at `bodyMedium` under a headline, which is what
-                // the card did, is what made the old screen feel like it had nothing in it.
-                Text(
-                    text = item.summary ?: stringResource(R.string.news_no_summary),
-                    style = NewsTextStyles.Lede,
-                    color = if (item.summary == null) CoineProColors.TextMuted else CoineProColors.TextSecondary,
-                    textAlign = TextAlign.Right,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                ArticleText(story)
+                SourceLine(story, onProblem = { problem = it })
             }
 
-            SourceHandoff(
-                item = item,
-                onProblem = { problem = it },
-                modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
-            )
-
             MarketContext(
-                item = item,
+                story = story,
                 onOpenChart = onOpenChart,
                 modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
             )
@@ -218,6 +196,111 @@ fun NewsArticleScreen(
             }
 
             Spacer(Modifier.height(CoineProSpacing.Four))
+        }
+    }
+}
+
+/**
+ * The story itself: the lede, then the body where there is one.
+ *
+ * ### The lede
+ *
+ * The summary, set as the article's opening paragraph rather than as a caption. Where it is the
+ * only text the server sent — which is every story on both feeds today — it *is* the article, and
+ * it is set that way: eighteen points, reading leading, full measure. Printing it at `bodyMedium`
+ * under a headline, which is what the card does deliberately and what this page used to do by
+ * accident, is what made the old screen feel like it had nothing in it.
+ *
+ * ### The body, and the line that appears only when there is none
+ *
+ * A body arrives as plain text in paragraphs — see `articleBody`, which refuses markup and refuses
+ * a body that is only the summary again — and is set at sixteen points under the lede, each
+ * paragraph its own block. There is no drop cap, no pull quote and no first-line indent: this is
+ * Persian, set right-aligned, and the paragraph break is the only structure the text carries.
+ *
+ * Where there is no body, one muted sentence says so. It is worth the line: without it a reader
+ * cannot tell a story that is genuinely four lines long from an app that has lost the rest of it,
+ * and the difference between those two is the difference between a short article and a bug.
+ */
+@Composable
+private fun ArticleText(story: NewsStory, modifier: Modifier = Modifier) {
+    val paragraphs = remember(story.body) { newsParagraphs(story.body) }
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+    ) {
+        Text(
+            text = story.summary ?: stringResource(R.string.news_no_summary),
+            style = NewsTextStyles.Lede,
+            color = if (story.summary == null) CoineProColors.TextMuted else CoineProColors.TextSecondary,
+            textAlign = TextAlign.Right,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        paragraphs.forEach { paragraph ->
+            Text(
+                text = paragraph,
+                style = NewsTextStyles.Body,
+                color = CoineProColors.TextSecondary,
+                textAlign = TextAlign.Right,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (paragraphs.isEmpty() && story.summary != null) {
+            Text(
+                text = stringResource(R.string.news_summary_is_all),
+                style = MaterialTheme.typography.bodySmall,
+                color = CoineProColors.TextMuted,
+                textAlign = TextAlign.Right,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+/**
+ * Who published this, and the one quiet way through to their own copy.
+ *
+ * This is what the gold «خواندن متن کامل در منبع» button became, and the demotion is the point. A
+ * primary action is the thing a screen is asking the reader to do, and this screen is asking them
+ * to read what is on it. The publisher's page is an entitlement, not an instruction — so it is a
+ * neutral pill at the end of the text, sized to its label rather than to the column, beside the
+ * name of whoever wrote the thing.
+ *
+ * Nothing is drawn where the feed sent neither a publisher nor an address, which is a real state on
+ * the public feed rather than a defensive one. A row containing only a middle dot is furniture.
+ */
+@Composable
+private fun SourceLine(story: NewsStory, onProblem: (Int?) -> Unit, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val link = remember(story.url) { NewsHandoff.safeUrl(story.url) }
+    if (story.source == null && link == null) return
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        story.source?.let { source ->
+            Text(
+                // Isolated, because this is the one place a publisher's name sits *inside* a Persian
+                // sentence rather than alone in its own line. «منتشرشده در ForexLive» without the
+                // isolate lets the bidi algorithm pull the Latin run to the wrong end of the line
+                // the moment the name ends in anything but a letter — a full stop, a closing
+                // bracket, the ".com" some feeds put in a source name.
+                text = stringResource(R.string.news_published_by, BidiText.isolateLtr(source)),
+                style = MaterialTheme.typography.labelMedium,
+                color = CoineProColors.TextMuted,
+                textAlign = TextAlign.Right,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        if (link != null) {
+            CoineProSecondaryButton(
+                text = stringResource(R.string.news_open_source),
+                icon = CoineProIcons.Link,
+                onClick = {
+                    onProblem(if (NewsHandoff.openSource(context, link)) null else R.string.news_open_failed)
+                },
+            )
         }
     }
 }
@@ -254,9 +337,10 @@ private fun ArticleChrome(
                 icon = DesignR.drawable.icon_bookmark_simple,
                 label = stringResource(if (saved) R.string.news_unsave else R.string.news_save),
                 onClick = toggle,
-                // The one thing on this row that changes state, and colour is how it says so. It is
-                // the accent rather than a second gold object: the gold on this page belongs to the
-                // button that opens the source, and two golds on a screen is a design bug here.
+                // The one thing on this row that changes state, and colour is how it says so. With
+                // the gold button gone from the body of the page this is now the only accent on the
+                // screen, which is the right place for it: what the reader can change here is
+                // whether they keep the story.
                 tint = if (saved) CoineProColors.Accent else CoineProColors.TextPrimary,
             )
         }
@@ -269,58 +353,6 @@ private fun ArticleChrome(
 }
 
 /**
- * Where the rest of the story is, said in words.
- *
- * This is the honest half of the answer to "let the reader read it in full". The app does not have
- * the text and says so, names who does, and opens it there. A block that simply said «مشاهدهٔ منبع»
- * would be the same button with the truth left out — the reader would press it expecting more of
- * this page and get a browser.
- *
- * Where the feed sent no link the block is a single grey sentence and no button, because a
- * hand-off with nowhere to hand off to is not a lesser action, it is a missing one.
- */
-@Composable
-private fun SourceHandoff(
-    item: MarketNewsItem,
-    onProblem: (Int?) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val context = LocalContext.current
-    val link = remember(item.url) { NewsHandoff.safeUrl(item.url) }
-    CoineProCard(modifier = modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf)) {
-            Text(
-                text = stringResource(R.string.news_full_text_eyebrow),
-                style = CoineProTextStyles.Eyebrow,
-                color = CoineProColors.TextMuted,
-                textAlign = TextAlign.Right,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Text(
-                text = stringResource(
-                    if (link == null) R.string.news_no_link else R.string.news_full_text_note,
-                    item.source,
-                ),
-                style = NewsTextStyles.Body,
-                color = CoineProColors.TextSecondary,
-                textAlign = TextAlign.Right,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            if (link != null) {
-                CoineProPrimaryButton(
-                    text = stringResource(R.string.news_read_at_source),
-                    onClick = {
-                        onProblem(if (NewsHandoff.openSource(context, link)) null else R.string.news_open_failed)
-                    },
-                    icon = CoineProIcons.Link,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-    }
-}
-
-/**
  * What this story bears on, in a sentence, and the chart it bears on.
  *
  * The three classifications were three coloured chips and nothing else, which told a reader who
@@ -329,19 +361,20 @@ private fun SourceHandoff(
  * button underneath it stops being an orphan control at the bottom of a card.
  *
  * Only where the story names a market. A general-market headline has no instrument to open, and
- * sending the reader to an arbitrary chart would imply the story was about it.
+ * sending the reader to an arbitrary chart would imply the story was about it. That also keeps the
+ * card off the public feed entirely, which sends no classifications at all — see [NewsStory].
  */
 @Composable
 private fun MarketContext(
-    item: MarketNewsItem,
+    story: NewsStory,
     onOpenChart: ((symbol: String, atSeconds: Long) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    val symbol = remember(item.relevance) { ChartEventSymbols.symbolFor(item.relevance) }
+    val symbol = remember(story.relevance) { ChartEventSymbols.symbolFor(story.relevance) }
     // Resolved before the join: stringResource is composable and cannot be called from inside
     // joinToString's non-composable transform.
-    val markets = item.relevance.map { stringResource(it.labelRes()) }
-    if (markets.isEmpty() && item.impact == MarketImpact.UNKNOWN && symbol == null) return
+    val markets = story.relevance.map { stringResource(it.labelRes()) }
+    if (markets.isEmpty() && story.impact == MarketImpact.UNKNOWN && symbol == null) return
     CoineProCard(modifier = modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf)) {
             Text(
@@ -365,11 +398,16 @@ private fun MarketContext(
                 textAlign = TextAlign.Right,
                 modifier = Modifier.fillMaxWidth(),
             )
-            if (onOpenChart != null && symbol != null) {
+            // The chart entry needs a moment to scroll to as well as an instrument to open. A story
+            // the feed dated is every story a member sees; one the public feed left undated has no
+            // second to point at, and a mark dropped on the axis at "now" would be a claim about
+            // when the news broke that nobody made.
+            val moment = story.publishedAt
+            if (onOpenChart != null && symbol != null && moment != null) {
                 CoineProSecondaryButton(
                     text = stringResource(R.string.news_open_chart),
                     icon = DesignR.drawable.nav_chart,
-                    onClick = { onOpenChart(symbol, item.publishedAt.epochSecond) },
+                    onClick = { onOpenChart(symbol, moment.epochSecond) },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -380,8 +418,8 @@ private fun MarketContext(
 /** The next thing to read, so the page has an exit that is not back. */
 @Composable
 private fun RelatedStories(
-    related: List<MarketNewsItem>,
-    onOpen: (MarketNewsItem) -> Unit,
+    related: List<NewsStory>,
+    onOpen: (NewsStory) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(

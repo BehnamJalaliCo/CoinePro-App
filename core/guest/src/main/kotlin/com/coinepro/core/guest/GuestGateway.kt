@@ -83,6 +83,7 @@ class NetworkGuestGateway internal constructor(
                 summary = item.summaryFa?.takeIf(String::isNotBlank),
                 source = item.source?.takeIf(String::isNotBlank),
                 publishedAt = item.publishedAt?.takeIf(String::isNotBlank),
+                url = item.sourceUrl?.takeIf(String::isNotBlank),
             )
         }
     }

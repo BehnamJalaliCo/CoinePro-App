@@ -35,15 +35,21 @@ internal object NewsHandoff {
      * because that is what somebody receiving it needs in the order they need it — a bare URL in a
      * chat is a thing the recipient has to open before they know whether they want to.
      *
+     * The publisher and the link are each written only where there is one. The public feed sends
+     * stories with no attribution and no address — see [NewsStory] — and a shared message with a
+     * blank line where the source should be reads as a message that was cut off.
+     *
      * Returns false when the device has nothing to share with, so the caller can say so rather than
      * leaving a button that appears to have done nothing. It is rare and it is real: a locked-down
      * device with no mail, no messenger and no browser.
      */
-    fun share(context: Context, title: String, source: String, url: String?, subject: String): Boolean {
+    fun share(context: Context, title: String, source: String?, url: String?, subject: String): Boolean {
         val body = buildString {
             append(title)
-            appendLine()
-            append(source)
+            source?.let {
+                appendLine()
+                append(it)
+            }
             safeUrl(url)?.let {
                 appendLine()
                 append(it)

@@ -2,6 +2,7 @@
 <resources>
     <string name="news_title">Market news</string>
     <string name="news_subtitle">Structured news with named sources</string>
+    <string name="news_public_subtitle">The latest market headlines</string>
     <string name="news_calendar">Calendar</string>
     <string name="news_filter_all">All</string>
     <string name="news_loading">Loading verified market news…</string>
@@ -34,10 +35,9 @@
     <string name="news_unsave">Remove from saved</string>
     <string name="news_image_of">Picture for: %1$s</string>
     <string name="news_no_summary">The server sent no summary for this story.</string>
-    <string name="news_full_text_eyebrow">The full story</string>
-    <string name="news_full_text_note">The full text is published by %1$s and is read there. What you see here is the headline and summary the server sent.</string>
-    <string name="news_no_link">%1$s sent no address for this story, so there is no way through to the full text.</string>
-    <string name="news_read_at_source">Read the full story at the source</string>
+    <string name="news_summary_is_all">What you have just read is the whole of the text the source published.</string>
+    <string name="news_published_by">Published by %1$s</string>
+    <string name="news_open_source">The source's page</string>
     <string name="news_open_failed">No browser was found to open this address.</string>
     <string name="news_context_eyebrow">What this bears on</string>
     <string name="news_context_markets">This story bears on %1$s.</string>

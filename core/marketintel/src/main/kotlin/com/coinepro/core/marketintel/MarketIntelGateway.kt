@@ -4,6 +4,7 @@ import java.net.URI
 import java.time.Instant
 import com.coinepro.core.common.parseWireInstant
 import com.coinepro.core.model.MarketPlatform
+import com.google.gson.annotations.SerializedName
 import retrofit2.Retrofit
 import retrofit2.http.GET
 
@@ -65,6 +66,39 @@ internal data class MarketNewsDto(
     val impact: String?,
     val relevance: List<String> = emptyList(),
     val stale: Boolean?,
+    /**
+     * The address of the picture that belongs above this story.
+     *
+     * Neither backend sends it today — that ask is `docs/SERVER_ASK_NEWS_MEDIA.md` — and the field
+     * is read now rather than on the day it lands, because the alternative is a server that starts
+     * sending pictures to an app that silently drops them and two people each certain the other has
+     * the bug.
+     *
+     * **The alternates are not hedging.** These two feeds have already disagreed with each other
+     * about spelling once, in this exact subject area: the public headline route serves `titleFa`,
+     * `summaryFa` and `sourceUrl` in camel case while the market-intelligence adapter beside it is
+     * snake case throughout, so `core:guest` carries a `@SerializedName` for every field it reads.
+     * Naming the spellings a wire feed plausibly arrives under costs one annotation; getting it
+     * wrong costs a round trip through two backend teams to discover that the picture was there all
+     * along under `thumbnail`.
+     */
+    @SerializedName(
+        value = "image_url",
+        alternate = ["imageUrl", "image", "thumbnail", "thumbnail_url", "cover_image_url"],
+    )
+    val imageUrl: String? = null,
+    /**
+     * The story's own text, where the server has one.
+     *
+     * Read on the same terms and for the same reason as [imageUrl]. `news_posts` stores `summary_fa`
+     * and no body, and the forex side is a cache of wire headlines, so this is null on both feeds
+     * today; what [articleBody] does with it is where the honesty lives, not here.
+     */
+    @SerializedName(
+        value = "body",
+        alternate = ["content", "body_fa", "content_fa", "full_text", "article_body"],
+    )
+    val body: String? = null,
 )
 
 internal data class EconomicEventDto(
@@ -103,6 +137,8 @@ internal fun MarketNewsDto.toDomain(): MarketNewsItem? {
         impact = parseImpact(impact),
         relevance = parseRelevance(relevance),
         isStale = stale != false,
+        imageUrl = safeHttpsUrl(imageUrl),
+        body = articleBody(body, summary),
     )
 }
 
@@ -156,3 +192,39 @@ internal fun safeHttpsUrl(value: String?): String? = runCatching {
         if (uri.scheme.equals("https", ignoreCase = true) && !uri.host.isNullOrBlank()) raw else null
     }
 }.getOrNull()
+
+/**
+ * The story's own text, or null where what arrived is not one.
+ *
+ * The reading page prints this under a heading that promises the full story, so what it accepts is
+ * the whole of that promise. Three things are refused, and each is a way a `body` field can be
+ * present and still not be a body:
+ *
+ * * **Blank**, which needs no argument.
+ * * **A copy of the summary.** This is the likeliest first version of the route rather than an
+ *   exotic case: an adapter mapping `summary_fa` into both fields is one line and looks correct
+ *   from the server side. Taken at face value it would print the same paragraph twice on one page,
+ *   the second time under a heading claiming it was more.
+ * * **Markup.** The page sets plain text, because a Compose `Text` renders `<p>` as the four
+ *   characters it is. A story with its own tags printed through it reads as a broken app rather
+ *   than as a story, and the honest fallback — the summary, well set, and the source named — is
+ *   better than that. `docs/SERVER_ASK_NEWS_MEDIA.md` asks for plain text for exactly this reason.
+ *
+ * What it does accept, it normalises: CRLF becomes LF so a Windows-authored body does not arrive
+ * with a stray carriage return at the end of every paragraph, and a run of blank lines collapses to
+ * one, because a blank line is the paragraph break the reader splits on and four of them in a row
+ * is a hole in the page rather than four breaks.
+ */
+internal fun articleBody(raw: String?, summary: String?): String? {
+    val trimmed = raw?.replace("\r\n", "\n")?.replace('\r', '\n')?.trim()?.takeIf(String::isNotEmpty)
+        ?: return null
+    if (trimmed.equals(summary?.trim(), ignoreCase = true)) return null
+    if (MARKUP.containsMatchIn(trimmed)) return null
+    return trimmed.replace(BLANK_LINES, "\n\n")
+}
+
+/** An opening or closing tag with a name — not any `<`, which Persian prose may legitimately hold. */
+private val MARKUP = Regex("</?[A-Za-z][A-Za-z0-9]*[^<>]*>")
+
+/** Two or more line breaks with nothing but whitespace between them. */
+private val BLANK_LINES = Regex("\n[ \\t]*(\n[ \\t]*)+")

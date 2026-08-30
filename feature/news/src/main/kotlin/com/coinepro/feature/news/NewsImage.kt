@@ -59,8 +59,9 @@ import kotlinx.coroutines.withContext
  *   [BitmapFactory.Options.inSampleSize] is decided from the real bounds before the pixels are
  *   read, so the large decode never happens at all.
  * * **Failure renders nothing.** Not a broken-image glyph and not a grey box. The layout below is
- *   written to read properly without a picture — it has to be, because no story carries one today
- *   — so the honest answer to a fetch that failed is the same layout the story would have had.
+ *   written to read properly without a picture — it has to be, because no story carries one until a
+ *   server sends `image_url` — so the honest answer to a fetch that failed is the same layout the
+ *   story would have had.
  */
 internal object NewsImagePolicy {
 
@@ -212,8 +213,9 @@ private sealed interface HeroImage {
  *
  * It emits nothing at all for a story with no picture, an address that is not `https`, or a fetch
  * that failed. Nothing, not a placeholder: see [NewsImagePolicy] for why, and note that today
- * **every** story takes this path, because neither backend sends an image field yet. The layout
- * below has to be good without one, and is.
+ * **every** story takes this path, because neither backend sends an image field yet —
+ * `docs/SERVER_ASK_NEWS_MEDIA.md` is the ask, and `MarketNewsItem.imageUrl` is the field already
+ * waiting for the answer. The layout below has to be good without one, and is.
  *
  * There is no scrim and no text over the picture, which is a design decision that also happens to
  * be the policy: `scripts/quality/check-motion-policy.sh` allow-lists gradients by file, a scrim is

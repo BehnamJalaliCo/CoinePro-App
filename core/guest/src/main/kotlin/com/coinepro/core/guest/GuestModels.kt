@@ -43,6 +43,13 @@ data class GuestHeadline(
     val source: String?,
     /** ISO-8601 as the server sent it, unparsed — the screen shows the source, not a computed age. */
     val publishedAt: String?,
+    /**
+     * `source_url`, as the public route serves it.
+     *
+     * The route has sent it since the first version and this class dropped it, which is the whole
+     * reason a guest's story had no way through to the publisher while a member's did.
+     */
+    val url: String? = null,
 )
 
 /**

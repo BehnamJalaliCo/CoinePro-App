@@ -1,9 +1,6 @@
 package com.coinepro.feature.news
 
-import com.coinepro.core.marketintel.MarketImpact
-import com.coinepro.core.marketintel.MarketNewsItem
 import com.coinepro.core.marketintel.MarketRelevance
-import com.coinepro.core.marketintel.NewsSentiment
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -22,19 +19,15 @@ class RelatedStoriesTest {
 
     private var clock = 1_756_000_000L
 
-    private fun story(id: String, vararg relevance: MarketRelevance): MarketNewsItem {
+    private fun story(id: String, vararg relevance: MarketRelevance): NewsStory {
         clock += 600
-        return MarketNewsItem(
+        return NewsStory(
             id = id,
             title = "خبر $id",
             summary = null,
             source = "ForexLive",
-            url = null,
             publishedAt = Instant.ofEpochSecond(clock),
-            sentiment = NewsSentiment.UNKNOWN,
-            impact = MarketImpact.UNKNOWN,
             relevance = relevance.toSet(),
-            isStale = false,
         )
     }
 
@@ -47,7 +40,7 @@ class RelatedStoriesTest {
             story("crypto-1", MarketRelevance.CRYPTO),
             story("silver-1", MarketRelevance.SILVER),
         )
-        val related = relatedTo(subject, feed).map(MarketNewsItem::id)
+        val related = relatedTo(subject, feed).map(NewsStory::id)
         assertEquals(listOf("gold-2"), related)
     }
 
@@ -55,7 +48,7 @@ class RelatedStoriesTest {
     fun `a story never suggests itself`() {
         val subject = story("gold-1", MarketRelevance.GOLD)
         val feed = listOf(subject, story("gold-2", MarketRelevance.GOLD))
-        assertFalse("gold-1" in relatedTo(subject, feed).map(MarketNewsItem::id))
+        assertFalse("gold-1" in relatedTo(subject, feed).map(NewsStory::id))
     }
 
     @Test
@@ -66,14 +59,14 @@ class RelatedStoriesTest {
             story("silver-1", MarketRelevance.SILVER),
             story("crypto-1", MarketRelevance.CRYPTO),
         )
-        assertEquals(listOf("silver-1"), relatedTo(subject, feed).map(MarketNewsItem::id))
+        assertEquals(listOf("silver-1"), relatedTo(subject, feed).map(NewsStory::id))
     }
 
     @Test
     fun `a general market headline is offered the rest of the feed rather than nothing`() {
         val subject = story("general")
         val feed = listOf(subject, story("gold-1", MarketRelevance.GOLD))
-        assertEquals(listOf("gold-1"), relatedTo(subject, feed).map(MarketNewsItem::id))
+        assertEquals(listOf("gold-1"), relatedTo(subject, feed).map(NewsStory::id))
     }
 
     @Test
@@ -82,7 +75,7 @@ class RelatedStoriesTest {
         val older = story("gold-old", MarketRelevance.GOLD)
         val newer = story("gold-new", MarketRelevance.GOLD)
         // Handed to it in the wrong order on purpose: the feed's own order is not a guarantee.
-        val related = relatedTo(subject, listOf(subject, older, newer)).map(MarketNewsItem::id)
+        val related = relatedTo(subject, listOf(subject, older, newer)).map(NewsStory::id)
         assertEquals(listOf("gold-new", "gold-old"), related)
     }
 
@@ -91,5 +84,17 @@ class RelatedStoriesTest {
         val subject = story("gold-1", MarketRelevance.GOLD)
         val feed = listOf(subject, story("crypto-1", MarketRelevance.CRYPTO))
         assertTrue(relatedTo(subject, feed).isEmpty())
+    }
+
+    @Test
+    fun `an undated headline is offered last rather than dropped from the suggestions`() {
+        // The public feed's shape: a story whose publication time would not parse. It has to still
+        // be offered — it is one of only a dozen headlines a guest is given — but it cannot be
+        // sorted as though it were the newest thing in the list.
+        val subject = story("general")
+        val dated = story("dated")
+        val undated = story("undated").copy(publishedAt = null)
+        val related = relatedTo(subject, listOf(subject, undated, dated)).map(NewsStory::id)
+        assertEquals(listOf("dated", "undated"), related)
     }
 }

@@ -195,7 +195,6 @@ import com.coinepro.feature.dom.R as DomR
 import com.coinepro.feature.execution.ExecutionScreen
 import com.coinepro.feature.guest.GuestGate
 import com.coinepro.feature.guest.GuestGateScreen
-import com.coinepro.feature.guest.GuestNewsScreen
 import com.coinepro.feature.guest.GuestScreen
 import com.coinepro.feature.home.HomeBriefing
 import com.coinepro.feature.home.HomePortfolio
@@ -216,6 +215,7 @@ import com.coinepro.feature.journal.JournalScreen
 import com.coinepro.feature.kyc.KycScreen
 import com.coinepro.feature.membership.MembershipScreen
 import com.coinepro.feature.news.NewsScreen
+import com.coinepro.feature.news.PublicNewsScreen
 import com.coinepro.feature.notifications.AlertComposerSheet
 import com.coinepro.feature.notifications.NotificationSection
 import com.coinepro.feature.notifications.NotificationSettingsScreen
@@ -2601,7 +2601,11 @@ private fun MainShell(
                 // screen would hand them a 401 worded as an outage, on content the server
                 // publishes to anybody.
                 if (guest) {
-                    GuestNewsScreen(controller = guestController)
+                    // The same card and the same reading page a member gets, over the public
+                    // headline route. A guest is the one reader who has to find the product
+                    // attractive, and until now they were the one reader who could not open a
+                    // story at all.
+                    PublicNewsScreen(controller = guestController)
                     return@composable
                 }
                 NewsScreen(

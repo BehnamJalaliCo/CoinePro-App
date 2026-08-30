@@ -3,6 +3,7 @@
 <resources>
     <string name="news_title">اخبار بازار</string>
     <string name="news_subtitle">خبرِ ساختاریافته با منبع مشخص</string>
+    <string name="news_public_subtitle">تازه‌ترین سرخط‌های بازار</string>
     <string name="news_calendar">تقویم</string>
     <string name="news_filter_all">همه</string>
     <string name="news_loading">در حال دریافت اخبار تأییدشده…</string>
@@ -35,10 +36,9 @@
     <string name="news_unsave">حذف از ذخیره‌شده‌ها</string>
     <string name="news_image_of">تصویر خبر: %1$s</string>
     <string name="news_no_summary">سرور برای این خبر خلاصه‌ای نفرستاده است.</string>
-    <string name="news_full_text_eyebrow">متن کامل</string>
-    <string name="news_full_text_note">متن کامل این خبر نزد %1$s منتشر شده و همان‌جا خوانده می‌شود. آنچه اینجا می‌بینید عنوان و خلاصه‌ای است که سرور فرستاده.</string>
-    <string name="news_no_link">%1$s برای این خبر نشانی‌ای نفرستاده است، پس راهی به متن کامل نداریم.</string>
-    <string name="news_read_at_source">خواندن متن کامل در منبع</string>
+    <string name="news_summary_is_all">همین اندازه‌ای که خواندید، تمام متنی است که منبع منتشر کرده.</string>
+    <string name="news_published_by">منتشرشده در %1$s</string>
+    <string name="news_open_source">صفحهٔ منبع</string>
     <string name="news_open_failed">مرورگری برای باز کردن این نشانی پیدا نشد.</string>
     <string name="news_context_eyebrow">این خبر به چه مربوط است</string>
     <string name="news_context_markets">این خبر روی %1$s اثر دارد.</string>

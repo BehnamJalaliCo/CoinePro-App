@@ -49,6 +49,54 @@ class MarketIntelMapperTest {
     }
 
     @Test
+    fun `a picture and a body survive the mapping, and a cleartext picture does not`() {
+        val item = requireNotNull(
+            newsDto(
+                imageUrl = "https://cdn.example.com/gold.jpg",
+                body = "بند اول.\n\nبند دوم.",
+            ).toDomain(),
+        )
+        assertEquals("https://cdn.example.com/gold.jpg", item.imageUrl)
+        assertEquals("بند اول.\n\nبند دوم.", item.body)
+
+        // The same rule the article link has, for the same reason: a cleartext fetch is the one
+        // request in the app anybody on the path can rewrite, and a swapped picture is worse than
+        // no picture because the reader trusts it precisely because the app drew it.
+        assertNull(newsDto(imageUrl = "http://cdn.example.com/gold.jpg").toDomain()?.imageUrl)
+    }
+
+    @Test
+    fun `a body that is only the summary again is not a body`() {
+        // The likeliest first version of the route: an adapter mapping `summary_fa` into both
+        // fields. Taken at face value the reading page would print the same paragraph twice, the
+        // second time under a heading claiming it was more.
+        val summary = "کمیتهٔ بازار باز رأی به توقف داد."
+        assertNull(newsDto(summary = summary, body = summary).toDomain()?.body)
+        assertNull(newsDto(summary = summary, body = "  $summary  ").toDomain()?.body)
+    }
+
+    @Test
+    fun `a body arriving as markup is refused rather than printed with its tags`() {
+        assertNull(newsDto(body = "<p>بند اول.</p><p>بند دوم.</p>").toDomain()?.body)
+        // A lone angle bracket is not markup. Persian prose is allowed to contain one, and refusing
+        // the whole story over it would lose real text to a rule aimed at HTML.
+        assertEquals("نرخ < ۲ درصد ماند.", newsDto(body = "نرخ < ۲ درصد ماند.").toDomain()?.body)
+    }
+
+    @Test
+    fun `a body written on Windows and padded with blank lines is normalised, not rejected`() {
+        val item = newsDto(body = "بند اول.\r\n\r\n\r\n  \r\nبند دوم.\r\n").toDomain()
+        assertEquals("بند اول.\n\nبند دوم.", item?.body)
+    }
+
+    @Test
+    fun `a story with neither picture nor body maps to a story that has neither`() {
+        val item = requireNotNull(newsDto().toDomain())
+        assertNull(item.imageUrl)
+        assertNull(item.body)
+    }
+
+    @Test
     fun `high impact warning requires exact impact relevance freshness and time window`() {
         val now = Instant.parse("2026-08-23T10:00:00Z")
         val matching = event(
@@ -81,6 +129,25 @@ class MarketIntelMapperTest {
         assertEquals(listOf("high-gold"), warnings.map(EconomicEvent::id))
         assertFalse(listOf(matching).highImpactWarningsFor("EURUSD", now).isNotEmpty())
     }
+
+    private fun newsDto(
+        summary: String? = null,
+        imageUrl: String? = null,
+        body: String? = null,
+    ) = MarketNewsDto(
+        id = "n1",
+        title = "Gold reacts to macro data",
+        summary = summary,
+        source = "Provider",
+        url = "https://example.com/item",
+        publishedAt = "2026-08-23T10:00:00Z",
+        sentiment = "bullish",
+        impact = "high",
+        relevance = listOf("gold"),
+        stale = false,
+        imageUrl = imageUrl,
+        body = body,
+    )
 
     private fun event(
         id: String,

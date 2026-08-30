@@ -39,7 +39,6 @@ import com.coinepro.core.designsystem.CoineProFontFamily
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.marketintel.MarketImpact
-import com.coinepro.core.marketintel.MarketNewsItem
 import com.coinepro.core.marketintel.MarketRelevance
 import com.coinepro.core.marketintel.NewsSentiment
 
@@ -156,33 +155,45 @@ internal fun SentimentPill(sentiment: NewsSentiment) {
  * The date comes from [PersianDateTime.moment], so the day is Jalali and in Persian digits and the
  * clock is Latin and isolated. That split is the app's rule and it is right here for the reason the
  * rule gives: the day is prose and the clock is a figure a reader checks against their platform.
+ *
+ * Either half may be missing, which is the public feed's shape rather than a defect — see
+ * [NewsStory]. What is drawn is what is known: the separator appears only between two things, and a
+ * story with neither draws no line at all rather than a bare middle dot.
  */
 @Composable
-internal fun NewsByline(item: MarketNewsItem, modifier: Modifier = Modifier) {
+internal fun NewsByline(story: NewsStory, modifier: Modifier = Modifier) {
+    val moment = story.publishedAt?.let(PersianDateTime::moment)
+    if (story.source == null && moment == null) return
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = item.source,
-            style = MaterialTheme.typography.labelMedium,
-            color = CoineProColors.TextSecondary,
-            maxLines = 1,
-            textAlign = TextAlign.Right,
-            modifier = Modifier.weight(1f, fill = false),
-        )
-        Text(
-            text = MIDDLE_DOT,
-            style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.TextMuted,
-        )
-        Text(
-            text = PersianDateTime.moment(item.publishedAt),
-            style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.TextMuted,
-            maxLines = 1,
-        )
+        story.source?.let { source ->
+            Text(
+                text = source,
+                style = MaterialTheme.typography.labelMedium,
+                color = CoineProColors.TextSecondary,
+                maxLines = 1,
+                textAlign = TextAlign.Right,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+        }
+        if (story.source != null && moment != null) {
+            Text(
+                text = MIDDLE_DOT,
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+            )
+        }
+        moment?.let { stamp ->
+            Text(
+                text = stamp,
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+                maxLines = 1,
+            )
+        }
     }
 }
 

@@ -27,12 +27,14 @@ class SavedNewsCodecTest {
     private fun article(
         id: String,
         title: String = "تصمیم نرخ بهرهٔ فدرال رزرو",
-        source: String = "ForexLive",
+        summary: String? = "کمیتهٔ بازار باز نرخ را بدون تغییر نگه داشت.",
+        source: String? = "ForexLive",
         url: String? = "https://example.com/a",
         imageUrl: String? = null,
     ) = SavedArticle(
         id = id,
         title = title,
+        summary = summary,
         source = source,
         url = url,
         imageUrl = imageUrl,
@@ -94,5 +96,47 @@ class SavedNewsCodecTest {
     fun `a record with no id cannot be written`() {
         val nameless = article(id = "   ")
         assertNull(with(PreferencesSavedNewsStore.Companion) { nameless.sanitised() })
+    }
+
+    @Test
+    fun `a save written before summaries were kept still reads back`() {
+        // Six fields, in the order the previous build wrote them. Without the older shape being
+        // recognised this record would fail the field-count check and be dropped, which on an
+        // update would empty every reader's saved list at once — the one failure in this file that
+        // cannot be undone.
+        val stored = listOf(
+            "fx-old",
+            "تصمیم نرخ بهرهٔ فدرال رزرو",
+            "ForexLive",
+            "https://example.com/a",
+            "",
+            "1756000000:1756000500",
+        ).joinToString(unit)
+        val restored = decode(stored).single()
+        assertEquals("fx-old", restored.id)
+        assertEquals("ForexLive", restored.source)
+        // Absent rather than empty text: the reading page already has a state for a story whose
+        // server sent no summary, and this is honestly that state.
+        assertNull(restored.summary)
+    }
+
+    @Test
+    fun `a story saved with no publisher keeps the rest of itself`() {
+        // The public feed's shape. The source field is written as empty and read back as absent,
+        // which is what the byline draws around rather than printing a blank name.
+        val original = article(id = "guest-1", source = null, url = null)
+        val restored = decode(encode(listOf(original))).single()
+        assertNull(restored.source)
+        assertEquals(original.summary, restored.summary)
+    }
+
+    @Test
+    fun `a summary carrying a separator cannot invent a field boundary`() {
+        val hostile = article(id = "fx-7", summary = "خلاصه" + unit + "جعلی" + group + "دوم")
+        val clean = with(PreferencesSavedNewsStore.Companion) { hostile.sanitised() }
+        assertNotNull(clean)
+        val restored = decode(encode(listOf(clean!!)))
+        assertEquals(1, restored.size)
+        assertEquals("خلاصهجعلیدوم", restored.single().summary)
     }
 }

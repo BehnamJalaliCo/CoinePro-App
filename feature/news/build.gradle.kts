@@ -26,6 +26,10 @@ dependencies {
     // The market-to-instrument table, shared with the chart so a story and a mark cannot
     // disagree about which chart a gold headline opens.
     implementation(project(":core:chartevents"))
+    // The public headline route, so a reader with no account gets the same cards and the same
+    // reading page rather than a second, flatter design. See PublicNewsScreen for why the guest's
+    // feed moved into this module instead of the reader moving into `feature:guest`.
+    implementation(project(":core:guest"))
     implementation(project(":core:designsystem"))
     // The saved list. Preferences rather than a database because a saved story is six short
     // strings and the app has no room for a second persistence style; see SavedNewsStore for why

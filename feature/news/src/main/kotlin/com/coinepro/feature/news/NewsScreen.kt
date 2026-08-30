@@ -82,11 +82,13 @@ import kotlinx.coroutines.launch
  *   classifications moved above it as small pills and the source and the moment moved together onto
  *   one byline under it. What a card now answers, in order, is what happened, who says so, and when.
  * * **A story is a place.** Pressing a card opens [NewsArticleScreen] — the whole screen, not a
- *   sheet — with its own back, its own share, and its own save. See that file for what "read in
- *   full" can honestly mean given that no backend sends an article body.
- * * **The picture, where there is one, is above the headline.** The owner asked for that twice. See
- *   [NewsHero] and [imageUrlOf]: the layout is built around a picture and complete without one,
- *   which is what it has to be, because no feed sends one yet.
+ *   sheet — with its own back, its own share, and its own save, and the story is read there. See
+ *   that file for what "read it in full" can honestly mean given what each feed sends.
+ * * **The picture, where there is one, is above the headline.** The owner asked for that twice. The
+ *   address travels on the story itself now — `MarketNewsItem.imageUrl`, read by the gateway and
+ *   kept by [NewsStory] — so there is nothing for a host to wire and no way for one to forget. See
+ *   [NewsHero]: the layout is built around a picture and complete without one, which is what it has
+ *   to be, because neither feed sends one yet.
  *
  * ### Why the article is a state here rather than a route in the navigation graph
  *
@@ -116,20 +118,6 @@ fun NewsScreen(
      * destinations under one thumb.
      */
     onOpenChart: ((symbol: String, atSeconds: Long) -> Unit)? = null,
-    /**
-     * The address of the picture that belongs above a story, or null where there is none.
-     *
-     * **This is the whole image seam and it is deliberately one function.** Neither backend sends an
-     * image field today — `MarketNewsDto` has no such member, and both contract documents describe a
-     * thin adapter over a cache that has never held one — so the default answers null for every
-     * story and every layout below is written to be correct in that case.
-     *
-     * It is a parameter rather than a field on [MarketNewsItem] because `core:marketintel` is not
-     * this module's to change. The day the field lands there, the app passes `{ it.imageUrl }` here
-     * and every picture in this feature appears at once: the hero on a card, the hero on the reading
-     * page, and the copy kept with a saved story. The contract to ask for is in the report.
-     */
-    imageUrlOf: (MarketNewsItem) -> String? = { null },
     /**
      * The announcements channel, or null on a platform that has none.
      *
@@ -163,7 +151,7 @@ fun NewsScreen(
     // out of the feed would make the page the reader was reading disappear under them — which is
     // the opposite of what pressing unsave asks for.
     var openArticleId by rememberSaveable { mutableStateOf<String?>(null) }
-    var openArticle by remember { mutableStateOf<MarketNewsItem?>(null) }
+    var openArticle by remember { mutableStateOf<NewsStory?>(null) }
     // Saveable, so a reader who rotates the phone while reading an outage notice is still reading
     // it afterwards. It is one boolean rather than a copy of the list because the list itself is
     // held by a singleton controller and survives anything short of process death; on the other
@@ -184,9 +172,9 @@ fun NewsScreen(
             // is a two-hour window; anything older than that is gone from it, and a saved list that
             // could only show what happened to still be in the window would be a saved list that
             // empties itself overnight.
-            savedOnly -> savedArticles.map(SavedArticle::asNewsItem)
-            relevance == null -> state.news
-            else -> state.news.filter { relevance in it.relevance }
+            savedOnly -> savedArticles.map(SavedArticle::asStory)
+            relevance == null -> state.news.map(MarketNewsItem::asStory)
+            else -> state.news.filter { relevance in it.relevance }.map(MarketNewsItem::asStory)
         }
     }
 
@@ -205,8 +193,8 @@ fun NewsScreen(
     // two that still has the story an hour later.
     val reading = openArticleId?.let { id ->
         openArticle?.takeIf { it.id == id }
-            ?: state.news.firstOrNull { it.id == id }
-            ?: savedArticles.firstOrNull { it.id == id }?.asNewsItem()
+            ?: state.news.firstOrNull { it.id == id }?.asStory()
+            ?: savedArticles.firstOrNull { it.id == id }?.asStory()
     }
 
     // The system gesture and the button on the page do the same thing, which is the point: a reader
@@ -235,11 +223,10 @@ fun NewsScreen(
 
     if (openArticleId != null) {
         ReadingSurface(
-            item = reading,
+            story = reading,
             saved = savedArticles.any { it.id == openArticleId },
             store = store,
-            feed = state.news,
-            imageUrlOf = imageUrlOf,
+            feed = remember(state.news) { state.news.map(MarketNewsItem::asStory) },
             onOpenChart = onOpenChart,
             onOpen = { next ->
                 openArticle = next
@@ -249,13 +236,13 @@ fun NewsScreen(
                 openArticleId = null
                 openArticle = null
             },
-            onSave = { item, saved ->
+            onSave = { story, saved ->
                 scope.launch {
                     val target = store ?: return@launch
                     if (saved) {
-                        target.remove(item.id)
+                        target.remove(story.id)
                     } else {
-                        target.save(item.asSavedArticle(imageUrlOf(item), Instant.now()))
+                        story.asSavedArticle(Instant.now())?.let { target.save(it) }
                     }
                 }
             },
@@ -377,13 +364,12 @@ fun NewsScreen(
                                 )
                             }
                         }
-                        items(filtered, key = MarketNewsItem::id) { item ->
+                        items(filtered, key = NewsStory::id) { story ->
                             NewsCard(
-                                item = item,
-                                imageUrl = imageUrlOf(item),
+                                story = story,
                                 onOpen = {
-                                    openArticle = item
-                                    openArticleId = item.id
+                                    openArticle = story
+                                    openArticleId = story.id
                                 },
                                 modifier = Modifier.animateItem(),
                             )
@@ -405,18 +391,17 @@ fun NewsScreen(
  * message says so.
  */
 @Composable
-private fun ReadingSurface(
-    item: MarketNewsItem?,
+internal fun ReadingSurface(
+    story: NewsStory?,
     saved: Boolean,
     store: SavedNewsStore?,
-    feed: List<MarketNewsItem>,
-    imageUrlOf: (MarketNewsItem) -> String?,
+    feed: List<NewsStory>,
     onOpenChart: ((symbol: String, atSeconds: Long) -> Unit)?,
-    onOpen: (MarketNewsItem) -> Unit,
+    onOpen: (NewsStory) -> Unit,
     onClose: () -> Unit,
-    onSave: (MarketNewsItem, Boolean) -> Unit,
+    onSave: (NewsStory, Boolean) -> Unit,
 ) {
-    if (item == null) {
+    if (story == null) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -436,12 +421,18 @@ private fun ReadingSurface(
         return
     }
     NewsArticleScreen(
-        item = item,
+        story = story,
         onBack = onClose,
-        imageUrl = imageUrlOf(item),
         saved = saved,
-        onToggleSave = store?.let { { onSave(item, saved) } },
-        related = remember(feed, item) { relatedTo(item, feed) },
+        // Two conditions, not one. There has to be somewhere to write the save, and the story has to
+        // carry a publication date — see `asSavedArticle`, which refuses an undated one rather than
+        // dating it. Where either is missing the control is absent rather than present and inert.
+        onToggleSave = if (store != null && story.publishedAt != null) {
+            { onSave(story, saved) }
+        } else {
+            null
+        },
+        related = remember(feed, story) { relatedTo(story, feed) },
         onOpenRelated = onOpen,
         onOpenChart = onOpenChart,
     )
@@ -455,14 +446,20 @@ private fun ReadingSurface(
  * of the feed instead — which is still the right answer for a general-market headline, where the
  * reader's interest is the feed itself.
  */
-internal fun relatedTo(item: MarketNewsItem, feed: List<MarketNewsItem>): List<MarketNewsItem> {
-    val others = feed.filterNot { it.id == item.id }
-    val matched = if (item.relevance.isEmpty()) {
+internal fun relatedTo(story: NewsStory, feed: List<NewsStory>): List<NewsStory> {
+    val others = feed.filterNot { it.id == story.id }
+    val matched = if (story.relevance.isEmpty()) {
         others
     } else {
-        others.filter { candidate -> candidate.relevance.any { it in item.relevance } }
+        others.filter { candidate -> candidate.relevance.any { it in story.relevance } }
     }
-    return matched.sortedByDescending(MarketNewsItem::publishedAt).take(MAX_RELATED)
+    // Undated stories sort last rather than being dropped. The public feed is the only one that
+    // produces them and it is ordered newest-first by the server already, so an undated headline
+    // keeps its place among its own kind instead of vanishing from the one list on the page whose
+    // job is to give the reader somewhere to go next.
+    return matched
+        .sortedByDescending { it.publishedAt ?: Instant.EPOCH }
+        .take(MAX_RELATED)
 }
 
 /** Four. Enough that the page continues, few enough that it is a suggestion and not a second feed. */
@@ -518,15 +515,14 @@ private fun FreshnessStrip(refreshing: Boolean, onRefresh: () -> Unit) {
  * cannot press confidently, and it was the reason the old card had a button at all.
  */
 @Composable
-private fun NewsCard(
-    item: MarketNewsItem,
-    imageUrl: String?,
+internal fun NewsCard(
+    story: NewsStory,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // A live high-impact story is the one card that gets an edge. Everything else is separated by
     // the gap, so the edge means "read this one" rather than "this is a card".
-    val urgent = item.impact == MarketImpact.HIGH && !item.isStale
+    val urgent = story.impact == MarketImpact.HIGH && !story.isStale
     CoineProCard(
         modifier = modifier
             .fillMaxWidth()
@@ -544,8 +540,8 @@ private fun NewsCard(
         contentPadding = PaddingValues(0.dp),
     ) {
         NewsHero(
-            url = imageUrl,
-            contentDescription = stringResource(R.string.news_image_of, item.title),
+            url = story.imageUrl,
+            contentDescription = stringResource(R.string.news_image_of, story.title),
             // The card's own radius on the two corners the picture touches, so no fill shows through
             // behind it. `MaterialTheme.shapes.large` is 16dp; naming it here rather than reading it
             // keeps the two corners identical to the card's even if this card is ever given another.
@@ -559,20 +555,20 @@ private fun NewsCard(
             verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (item.impact != MarketImpact.UNKNOWN) ImpactPill(item.impact)
-                if (item.sentiment != NewsSentiment.UNKNOWN) SentimentPill(item.sentiment)
+                if (story.impact != MarketImpact.UNKNOWN) ImpactPill(story.impact)
+                if (story.sentiment != NewsSentiment.UNKNOWN) SentimentPill(story.sentiment)
                 // Staleness is said, not implied by a dimmer grey nobody reads as a claim.
-                if (item.isStale) MetaPill(stringResource(R.string.news_stale), CoineProColors.Warning)
+                if (story.isStale) MetaPill(stringResource(R.string.news_stale), CoineProColors.Warning)
             }
             Text(
-                text = item.title,
+                text = story.title,
                 style = NewsTextStyles.CardHeadline,
                 color = CoineProColors.TextPrimary,
                 maxLines = 3,
                 textAlign = TextAlign.Right,
                 modifier = Modifier.fillMaxWidth(),
             )
-            item.summary?.let { summary ->
+            story.summary?.let { summary ->
                 Text(
                     text = summary,
                     style = MaterialTheme.typography.bodyMedium,
@@ -585,7 +581,7 @@ private fun NewsCard(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            NewsByline(item)
+            NewsByline(story)
         }
     }
 }
