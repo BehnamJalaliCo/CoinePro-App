@@ -6,6 +6,7 @@ import com.coinepro.feature.chart.ChartController
 import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.DrawingImageStore
 import com.coinepro.core.diagnostics.AppLog
+import com.coinepro.core.marketdata.CandleArchive
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.marketdata.CandleGateway
 import kotlinx.coroutines.CoroutineScope
@@ -60,6 +61,14 @@ class ChartControllers(
     private val log: AppLog,
     /** The bars already held, so a chart draws before it fetches. See [CandleCache]. */
     private val cache: CandleCache,
+    /**
+     * Every bar ever fetched for a series, so paging back deepens instead of resetting.
+     *
+     * One archive for every controller in the map rather than one each: it is keyed by symbol and
+     * interval already, and its ceilings are meant to be shared — a per-controller archive would
+     * put eight quarter-million-bar budgets on one phone.
+     */
+    private val archive: CandleArchive,
 ) {
     private val controllers = LinkedHashMap<String, ChartController>()
 
@@ -79,6 +88,7 @@ class ChartControllers(
             images = images,
             log = log,
             cache = cache,
+            archive = archive,
         )
         controllers[key] = created
         while (controllers.size > MAX_CONTROLLERS) {
@@ -107,6 +117,7 @@ fun rememberChartControllers(
     images: DrawingImageStore,
     log: AppLog,
     cache: CandleCache,
-): ChartControllers = remember(gateway, scope, drawings, images, log, cache) {
-    ChartControllers(gateway, scope, drawings, images, log, cache)
+    archive: CandleArchive,
+): ChartControllers = remember(gateway, scope, drawings, images, log, cache, archive) {
+    ChartControllers(gateway, scope, drawings, images, log, cache, archive)
 }

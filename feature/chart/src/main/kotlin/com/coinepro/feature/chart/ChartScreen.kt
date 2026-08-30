@@ -118,6 +118,8 @@ import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTint
+import com.coinepro.core.designsystem.CoineProWindowSize
+import com.coinepro.core.designsystem.coineProWindowClass
 import com.coinepro.core.designsystem.LtrDirection
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.onPageAccent
@@ -791,17 +793,29 @@ fun ChartScreen(
     }
 
     /**
-     * How tall the plot is on this phone.
+     * How tall the plot is on this device.
      *
      * A fraction of the glass rather than the three hundred points it was fixed at. Three hundred
      * is a third of a tall phone and two-fifths of a short one, so the same page looked like two
      * different designs depending on the device — and on the tall one, which is most of them, the
      * chart was the smallest thing on a screen that exists to show a chart. Read once per
      * configuration; a rotation is a configuration change, so it follows the phone round.
+     *
+     * A large window takes a **larger** fraction and a much higher ceiling, and the reason is that
+     * the fraction was never about the chart — it was about the six bands that had to fit under it.
+     * On a tablet the tools and the readings are columns beside the plot rather than bands beneath
+     * it, so the height that was being reserved for them is height the plot can have. At 0.46 a
+     * 1280-point tablet gave the chart 460 points and left five hundred blank; the same page at
+     * [TABLET_PLOT_SCREEN_FRACTION] gives it eight hundred and needs no scroll to show the rest.
      */
     val configuration = LocalConfiguration.current
-    val plotHeight = remember(configuration.screenHeightDp) {
-        (configuration.screenHeightDp * PLOT_SCREEN_FRACTION).dp.coerceIn(PLOT_MIN, PLOT_MAX)
+    val window = coineProWindowClass()
+    val roomy = window.width != CoineProWindowSize.COMPACT
+    val plotHeight = remember(configuration.screenHeightDp, roomy) {
+        val fraction = if (roomy) TABLET_PLOT_SCREEN_FRACTION else PLOT_SCREEN_FRACTION
+        val floor = if (roomy) TABLET_PLOT_MIN else PLOT_MIN
+        val ceiling = if (roomy) TABLET_PLOT_MAX else PLOT_MAX
+        (configuration.screenHeightDp * fraction).dp.coerceIn(floor, ceiling)
     }
 
     /** Whether the price axis is off its defaults — inverted, locked, or a pinned precision. */
@@ -810,6 +824,43 @@ fun ChartScreen(
     // The three readings, computed from the bars on screen rather than from the whole series, and
     // remembered so a pan does not run Wilder's ADX on every frame.
     val reading = remember(state.visibleSeries) { ChartReading.of(state.visibleSeries) }
+
+    /**
+     * Everything on this page that is *read* rather than *touched*.
+     *
+     * Hoisted into one lambda because it now has two homes: under the plot on a phone, and in its
+     * own column on a large window — see [ChartWorkbench]. Two copies of these three blocks is how
+     * a tablet ends up drawing the readings panel twice, once in each place, and the duplicate
+     * would look like a rendering bug rather than like the two call sites it is.
+     */
+    val analysisBlocks: @Composable () -> Unit = {
+        // The readings, and they are the one block on this page that gains weight rather than
+        // losing it. See `ChartReadingsPanel`: they answer the question the reader arrived with,
+        // and until now they were three cards styled exactly like the row of sheet-openers above
+        // them. Null under sixty bars — `ChartReading.of` refuses to name a market it cannot read,
+        // and a panel of three em dashes would be worse than none.
+        reading?.let { values ->
+            ChartReadingsPanel(
+                reading = values,
+                interval = state.interval,
+                modifier = Modifier.padding(
+                    horizontal = CoineProSpacing.Gutter,
+                    vertical = CoineProSpacing.OneHalf,
+                ),
+            )
+        }
+        state.setup?.let { order -> SetupCard(order, onOpen = { sheet = ChartSheet.SETUP }) }
+        onOpenStudio?.let { open ->
+            StudioRow(
+                summary = studioSummary(state.activeIndicators.size, state.drawing.drawings.size),
+                onOpen = open,
+                modifier = Modifier.padding(
+                    horizontal = CoineProSpacing.Gutter,
+                    vertical = CoineProSpacing.Half,
+                ),
+            )
+        }
+    }
 
     if (fullscreen) {
         FullscreenChart(
@@ -831,8 +882,28 @@ fun ChartScreen(
         onSelect = switchSymbol,
         workspace = workspace,
     ) { pageModifier ->
+    // The columns a large window can pay for, and the page in the middle of them. On a phone this
+    // is a pass-through: `ChartWorkbench` hands the page the whole modifier and composes neither
+    // column, so nothing below this line behaves differently on the device the page was designed
+    // for.
+    ChartWorkbench(
+        modifier = pageModifier,
+        tools = { railModifier ->
+            ChartToolColumn(
+                state = state,
+                controller = controller,
+                templates = armedTemplates,
+                defaultTemplateId = armedDefault?.id,
+                onHelp = onHelp,
+                modifier = railModifier,
+            )
+        },
+        readings = { columnModifier ->
+            ChartReadingsColumn(modifier = columnModifier) { analysisBlocks() }
+        },
+    ) { workbenchModifier, columns ->
     Column(
-        modifier = pageModifier
+        modifier = workbenchModifier
             .background(CoineProColors.Stage)
             .verticalScroll(rememberScrollState())
             .focusRequester(focusRequester)
@@ -944,6 +1015,11 @@ fun ChartScreen(
             // Armed is a state the reader has to be able to see without looking at the chart: it
             // changes what the next tap on the canvas does.
             armedTool = state.drawing.tool != null,
+            // Dropped where the palette is already open beside the plot. The button's two jobs are
+            // to open the tools and to show that one is armed, and the permanent column does both
+            // better — a button that opens a sheet duplicating a column already on screen is the
+            // kind of leftover that makes a tablet layout look ported rather than designed.
+            showDraw = !columns.hasTools,
             indicators = state.activeIndicators.size,
             drawings = state.drawing.drawings.size,
             onOpen = { sheet = it },
@@ -966,33 +1042,12 @@ fun ChartScreen(
             onHelp = onHelp,
         )
 
-        // The readings, and they are the one block on this page that gains weight rather than
-        // losing it. See `ChartReadingsPanel`: they answer the question the reader arrived with,
-        // and until now they were three cards styled exactly like the row of sheet-openers above
-        // them. Null under sixty bars — `ChartReading.of` refuses to name a market it cannot read,
-        // and a panel of three em dashes would be worse than none.
-        reading?.let { values ->
-            ChartReadingsPanel(
-                reading = values,
-                interval = state.interval,
-                modifier = Modifier.padding(
-                    horizontal = CoineProSpacing.Gutter,
-                    vertical = CoineProSpacing.OneHalf,
-                ),
-            )
-        }
-        state.setup?.let { order -> SetupCard(order, onOpen = { sheet = ChartSheet.SETUP }) }
-        onOpenStudio?.let { open ->
-            StudioRow(
-                summary = studioSummary(state.activeIndicators.size, state.drawing.drawings.size),
-                onOpen = open,
-                modifier = Modifier.padding(
-                    horizontal = CoineProSpacing.Gutter,
-                    vertical = CoineProSpacing.Half,
-                ),
-            )
-        }
+        // Only where they have nowhere better to be. On a window wide enough for the side column
+        // these three are already drawn there, permanently, instead of below a plot the reader has
+        // to scroll off the screen to reach them.
+        if (!columns.hasReadings) analysisBlocks()
         Spacer(Modifier.height(CoineProSpacing.Three))
+    }
     }
     }
     }
@@ -1059,56 +1114,26 @@ fun ChartScreen(
         }
 
         ChartSheet.TOOLS -> CoineProSheet(
-            title = "ابزارهای ترسیم",
-            subtitle = "${(DrawingTools.ALL.size).toPersianDigits()} ابزار",
+            title = stringResource(R.string.chart_tools_column_title),
+            subtitle = stringResource(
+                R.string.chart_tools_column_count,
+                DrawingTools.ALL.size.toPersianDigits(),
+            ),
             onDismiss = { sheet = null },
         ) {
-            // The armed tool's saved styles, above the rail rather than on the toolbar. Choosing
-            // one arms the tool *and* sets the style in a single tap, which is the whole point:
-            // "draw a trend line the way I always draw trend lines" is one decision, not two.
-            ToolTemplateRow(
-                tool = state.drawing.tool,
+            // The same palette the tablet keeps open in a column — see `ChartToolPalette`. One call
+            // site rather than two, because every one of `ToolRail`'s parameters is a feature that
+            // was unreachable until somebody passed it, and a rail that quietly omits a row is not
+            // a failure anything would catch.
+            ChartToolPalette(
+                state = state,
+                controller = controller,
                 templates = armedTemplates,
                 defaultTemplateId = armedDefault?.id,
-                onApply = { template ->
-                    controller.armWithStyle(state.drawing.tool, template.colour, template.widthDp)
-                    sheet = null
-                },
-            )
-            ToolRail(
-                selected = state.drawing.tool?.id,
-                onSelect = {
-                    // Plain arm. This tool's own default template, where the reader has set one,
-                    // is applied by the effect that watches the armed tool — one place rather than
-                    // two, so the studio's rail gets the same behaviour without repeating it.
-                    controller.arm(it)
-                    sheet = null
-                },
                 onHelp = onHelp,
-                // Every parameter the rail takes, and each one was previously a feature that
-                // existed and could not be reached. The rail's own action row — magnet, keep
-                // drawing, lock all, hide layers — renders only when a caller offers at least one
-                // of these callbacks, and neither call site offered any: the whole row had never
-                // been on a screen. The magnet in particular was `OFF` for the life of the app,
-                // which also made the OHLC channel bindings dead code, since one is written only
-                // by a tap the magnet moved.
-                //
-                // `hasVolume` is the one that was actively wrong rather than merely absent. On the
-                // MT5 forex feed a reader could arm a volume-profile tool and watch it draw
-                // nothing, because the rail was offering three tools the renderer has no column
-                // for.
-                hasVolume = state.series.hasVolume,
-                favourites = state.drawing.favourites,
-                onToggleFavourite = { controller.toggleToolFavourite(it.id) },
-                magnet = state.drawing.magnetMode,
-                onCycleMagnet = controller::cycleMagnet,
-                keepDrawing = state.drawing.keepDrawing,
-                onKeepDrawing = controller::setKeepDrawing,
-                lockedAll = state.drawing.lockedAll,
-                onLockAll = controller::setLockAllDrawings,
-                hidden = state.drawing.hidden,
-                onHide = controller::setLayerHidden,
-                onHideAll = controller::setAllLayersHidden,
+                // The sheet closes itself the moment a tool is armed: it is covering the chart the
+                // tool is about to be drawn on.
+                onArmed = { sheet = null },
             )
         }
 
@@ -2864,6 +2889,11 @@ private fun ChartFailure(error: ChartError, onRetry: () -> Unit) {
                 ChartError.NETWORK -> "چارت بارگیری نشد."
                 ChartError.UNSUPPORTED_SYMBOL -> "این نماد روی این پلتفرم چارت ندارد."
                 ChartError.CHART_DISABLED -> "چارت این پلتفرم موقتاً در دسترس نیست."
+                // No retry appears under this one — the guard below already excludes it, and that
+                // is deliberate: this venue has no feed fine enough to build this bar length, so
+                // a «تلاش دوباره» would be a button that cannot ever succeed.
+                ChartError.INTERVAL_UNAVAILABLE ->
+                    "این پلتفرم کندل این بازه را ندارد. بازهٔ بلندتری انتخاب کنید."
             },
             style = MaterialTheme.typography.bodyMedium,
             color = CoineProColors.TextSecondary,
@@ -2907,6 +2937,22 @@ private val INTERVAL_KEY_WIDTH = 44.dp
 private const val PLOT_SCREEN_FRACTION = 0.46f
 private val PLOT_MIN = 260.dp
 private val PLOT_MAX = 460.dp
+
+/**
+ * The same three numbers for a window that is not a phone.
+ *
+ * The old ceiling of 460 was the binding constraint on every tablet: the fraction wanted 590 points
+ * on a 1280-tall tablet and 368 on an 800-tall one, and the clamp handed back 460 in the first case
+ * and left five hundred points of the screen doing nothing. That ceiling was written for a phone,
+ * where a plot taller than 460 pushes the whole control band off the bottom — and on a tablet the
+ * control band is a column at the side, so there is nothing left for it to push.
+ *
+ * [TABLET_PLOT_MIN] is 380 rather than 260 for the opposite reason: a window this wide with a plot
+ * a quarter of its height reads as a chart somebody forgot to finish laying out.
+ */
+private const val TABLET_PLOT_SCREEN_FRACTION = 0.62f
+private val TABLET_PLOT_MIN = 380.dp
+private val TABLET_PLOT_MAX = 900.dp
 
 /**
  * How often the demonstration marks are swept, in milliseconds.

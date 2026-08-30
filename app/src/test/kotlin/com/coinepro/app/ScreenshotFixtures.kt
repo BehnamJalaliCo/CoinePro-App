@@ -34,8 +34,8 @@ import com.coinepro.core.copytrade.CopyTradeGateway
 import com.coinepro.core.copytrade.CopyTradeStatus
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.diagnostics.AdminBuildInfo
+import com.coinepro.core.diagnostics.AdminGateState
 import com.coinepro.core.diagnostics.AdminUiState
-import com.coinepro.core.diagnostics.Appearance
 import com.coinepro.core.diagnostics.CatalogedEndpoint
 import com.coinepro.core.diagnostics.ControlHub
 import com.coinepro.core.diagnostics.EndpointProbe
@@ -700,6 +700,10 @@ object ScreenshotFixtures {
                 probe("POST", "user/mobile/kyc/level1", "account", ProbeOutcome.SKIPPED, null),
             )
             return AdminUiState(
+                // Unlocked, because the render is of the panel. The lock screen has its own case
+                // below — a fixture that left the gate closed would capture the door on every run
+                // and quietly stop covering everything behind it.
+                gate = AdminGateState(unlocked = true, provisioned = true),
                 build = AdminBuildInfo(
                     versionName = "1.0.0",
                     versionCode = "1",
@@ -790,7 +794,6 @@ object ScreenshotFixtures {
                     symbolCount = 2,
                 ),
             ),
-            appearance = Appearance(languageTag = "fa"),
         )
 
 

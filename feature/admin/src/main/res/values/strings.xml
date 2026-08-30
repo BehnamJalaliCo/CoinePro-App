@@ -1,11 +1,101 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Default language: Persian. Numbers stay Latin so they match server logs exactly. -->
+<!--
+  Default language: Persian.
+
+  Two number rules, and they are not the same rule. A figure a reader compares against a server, a
+  broker or another log stays Latin — a status code, a duration in milliseconds, a version, a byte
+  count, a base URL. A count in a sentence is prose and takes Persian digits, which is why the
+  counters below are formatted with %1$s rather than %1$d: the digits are converted before they
+  arrive, and a `%d` would print Latin ones straight into a Persian phrase.
+-->
 <resources>
+
+    <!-- the door -->
+    <string name="admin_lock_title">پنل مدیریت</string>
+    <string name="admin_lock_body">این صفحه فقط نشان نمی‌دهد؛ کار هم می‌کند. از هر دو پلتفرم خارج می‌شود، جریان بازار را از نو راه می‌اندازد، کش را پاک می‌کند و از این نصب فایل خروجی می‌گیرد. برای همین نام کاربری و گذرواژه می‌خواهد.</string>
+    <string name="admin_lock_username">نام کاربری</string>
+    <string name="admin_lock_password">گذرواژه</string>
+    <string name="admin_lock_enter">ورود</string>
+    <string name="admin_lock_refused">نام کاربری یا گذرواژه درست نیست.</string>
+    <string name="admin_lock_locked">بعد از پنج تلاش ناموفق بسته شد. %1$s دقیقهٔ دیگر دوباره امتحان کنید.</string>
+    <string name="admin_lock_unprovisioned">این بیلد هیچ کلیدی برای این در ندارد. تا وقتی اعتبارنامه در بیلد گذاشته نشود، پنل باز نمی‌شود — و این درست‌ترین رفتار برای یک در است.</string>
+    <string name="admin_lock_now">قفل کردن پنل</string>
+
+    <!-- sections -->
+    <string name="admin_section_overview">نمای کلی</string>
+    <string name="admin_section_log">گزارش</string>
+    <string name="admin_section_network">شبکه</string>
+    <string name="admin_section_system">سامانه</string>
+
+    <!-- the verdict -->
     <string name="admin_title">سلامت این نصب</string>
     <string name="admin_subtitle">این اپ روی این گوشی، و دو سروری که با آن‌ها حرف می‌زند</string>
-    <string name="admin_verdict_healthy">سالم</string>
-    <string name="admin_verdict_failures">خطا دارد</string>
-    <string name="admin_verdict_missing">مسیر گم‌شده</string>
+    <string name="admin_verdict_healthy">مشکلی پیدا نشد</string>
+    <string name="admin_verdict_faulty">مشکل پیدا شد</string>
+    <string name="admin_verdict_note">۴۰۱ و ۴۰۳ خطا شمرده نمی‌شوند: وقتی وارد نشده‌اید، پاسخ درست همین است.</string>
+    <string name="admin_finding_crash">کرش ثبت‌شده</string>
+    <string name="admin_finding_route">مسیری که سرور سرو نمی‌کند</string>
+    <string name="admin_finding_server">خطای سرور</string>
+    <string name="admin_finding_transport">درخواستی که هیچ پاسخی نگرفت</string>
+    <string name="admin_finding_gateway">آدرس پایه در این بیلد تنظیم نشده</string>
+    <string name="admin_finding_errors">خطای ثبت‌شده در یک ساعت گذشته</string>
+    <string name="admin_finding_count">%1$s مورد</string>
+
+    <string name="admin_counter_errors">خطا</string>
+    <string name="admin_counter_warnings">هشدار</string>
+    <string name="admin_counter_lines">خط گزارش</string>
+    <string name="admin_counter_failures">درخواست ناموفق</string>
+
+    <!-- the export -->
+    <string name="admin_export_title">خروجی گرفتن</string>
+    <string name="admin_export_body">یک فایل متنی با نسخهٔ بیلد، مشخصات گوشی، وضعیت لحظهٔ خروجی، درخواست‌های ناموفق، آخرین کرش و همین گزارشی که الان فیلتر کرده‌اید. همان چیزی که یک برنامه‌نویس برای رفع اشکال لازم دارد.</string>
+    <string name="admin_export_share">اشتراک‌گذاری فایل</string>
+    <string name="admin_export_save">ذخیرهٔ فایل</string>
+    <string name="admin_export_copy">کپی گزارش</string>
+    <string name="admin_export_done_share">فایل به اپ انتخابی داده شد.</string>
+    <string name="admin_export_done_save">ذخیره شد.</string>
+    <string name="admin_export_failed">نوشتن فایل ممکن نشد.</string>
+    <string name="admin_export_copied">در حافظه کپی شد.</string>
+    <string name="admin_export_redaction">توکن، کلید، گذرواژه و نشانی ایمیل در فایل نوشته نمی‌شوند. فقط نام متغیر می‌ماند و مقدارش حذف می‌شود.</string>
+
+    <!-- the log -->
+    <string name="admin_log_title">گزارش سامانه</string>
+    <string name="admin_log_count">%1$s خط از %2$s</string>
+    <string name="admin_log_search">جستجو در متن، برچسب و فیلدها</string>
+    <string name="admin_log_level">کمینهٔ سطح</string>
+    <string name="admin_log_window">بازهٔ زمانی</string>
+    <string name="admin_log_tags">برچسب‌ها</string>
+    <string name="admin_window_5m">۵ دقیقه</string>
+    <string name="admin_window_1h">۱ ساعت</string>
+    <string name="admin_window_1d">۱ روز</string>
+    <string name="admin_window_all">همه</string>
+    <string name="admin_log_clear_filter">برداشتن فیلترها</string>
+    <string name="admin_log_empty">هنوز چیزی ثبت نشده است.</string>
+    <string name="admin_log_empty_filtered">با این فیلترها چیزی پیدا نشد.</string>
+    <string name="admin_log_copy">کپی</string>
+    <string name="admin_log_copy_entry">کپی این خط</string>
+    <string name="admin_log_wipe">پاک کردن کامل گزارش</string>
+    <string name="admin_log_verbosity">حجم ثبت</string>
+    <string name="admin_log_verbosity_note">برای بازسازی یک اشکال روی TRACE بگذارید و بعد برگردانید. TRACE هر تیک و هر فریم را می‌نویسد و حافظهٔ گزارش را در چند ثانیه پر می‌کند.</string>
+    <string name="admin_log_persisted">گزارش روی حافظه</string>
+    <string name="admin_log_persisted_note">گزارش روی دیسک هم نوشته می‌شود، وگرنه هر کرشی که پروسه را می‌کشد گزارشش را هم با خود می‌برد. «پاک کردن کامل» هم حافظه و هم فایل را خالی می‌کند.</string>
+    <string name="admin_log_thread">رشته</string>
+    <string name="admin_log_sequence">شماره</string>
+
+    <!-- the crash -->
+    <string name="admin_crash_title">آخرین کرش</string>
+    <string name="admin_crash_none">از آخرین پاک‌سازی، کرشی ثبت نشده است.</string>
+    <string name="admin_crash_at">زمان</string>
+    <string name="admin_crash_where">اولین فریم در کد این اپ</string>
+    <string name="admin_crash_copy">کپی ردیابی</string>
+    <string name="admin_crash_clear">پاک کردن</string>
+
+    <!-- the network -->
+    <string name="admin_failures_title">درخواست‌های ناموفق</string>
+    <string name="admin_failures_body">هم‌شکل‌ها با هم جمع شده‌اند. چهل بار تلاش دوباره روی یک مسیر خراب، یک سطر است نه چهل سطر.</string>
+    <string name="admin_failures_empty">درخواست ناموفقی ثبت نشده است.</string>
+    <string name="admin_failures_expected">طبیعی است؛ نشست وارد نشده</string>
+    <string name="admin_failures_count">%1$s بار</string>
 
     <string name="admin_build_title">مشخصات بیلد</string>
     <string name="admin_version">نسخه</string>
@@ -14,15 +104,25 @@
     <string name="admin_debuggable">قابل دیباگ</string>
     <string name="admin_firebase">فایربیس</string>
 
+    <string name="admin_device_title">دستگاه</string>
+    <string name="admin_device_model">مدل</string>
+    <string name="admin_device_android">اندروید</string>
+    <string name="admin_device_abi">معماری</string>
+    <string name="admin_device_locale">زبان سامانه</string>
+    <string name="admin_device_direction">جهت چیدمان</string>
+    <string name="admin_device_heap">حافظهٔ اپ</string>
+    <string name="admin_device_storage">فضای آزاد</string>
+    <string name="admin_device_note">هیچ‌کدام از این‌ها کسی را نمی‌شناساند. مدل و نسخه و زبان، توصیف یک دسته دستگاه است نه توصیف صاحبش.</string>
+
     <string name="admin_platform_title">اتصال</string>
     <string name="admin_platform_forex">فارکس</string>
     <string name="admin_platform_crypto">کریپتو</string>
     <string name="admin_base_url">آدرس پایه</string>
     <string name="admin_platform_configured">پیکربندی</string>
     <string name="admin_install_id">شناسهٔ نصب</string>
-    <string name="admin_masking_note">آدرس‌ها و شناسه‌ها ماسک شده‌اند. این صفحه در بیلد نهایی هم باز می‌شود و ممکن است از آن اسکرین‌شات گرفته شود.</string>
+    <string name="admin_masking_note">آدرس‌ها و شناسه‌ها ماسک شده‌اند. از این صفحه اسکرین‌شات گرفته می‌شود.</string>
 
-    <string name="admin_probe_title">دسترسی به مسیرها</string>
+    <string name="admin_probe_title">تطبیق مسیرها با سرور</string>
     <string name="admin_probe_body">هر مسیر خواندنی یک بار صدا زده می‌شود. مسیرهایی که می‌نویسند یا سهمیه خرج می‌کنند فقط فهرست می‌شوند و اجرا نمی‌شوند. پاسخ ۴۰۱ یعنی آن آدرس واقعاً وجود دارد؛ ۴۰۴ یعنی مسیر اشتباه است.</string>
     <string name="admin_probe_run">اجرای آزمون</string>
     <string name="admin_probe_running">در حال اجرا…</string>
@@ -37,8 +137,8 @@
     <string name="admin_outcome_unreachable">در دسترس نبود</string>
     <string name="admin_outcome_skipped">اجرا نشد</string>
 
-    <string name="admin_requests_title">درخواست‌های اخیر</string>
-    <string name="admin_requests_count">%1$d درخواست در حافظه</string>
+    <string name="admin_requests_title">همهٔ درخواست‌ها</string>
+    <string name="admin_requests_count">%1$s درخواست در حافظه</string>
     <string name="admin_requests_failures">فقط خطاها</string>
     <string name="admin_requests_all">همه</string>
     <string name="admin_requests_clear">پاک کردن</string>
@@ -51,13 +151,15 @@
     <string name="admin_on">روشن</string>
     <string name="admin_off">خاموش</string>
     <string name="admin_unknown">نامعلوم</string>
+    <string name="admin_rtl">راست‌به‌چپ</string>
+    <string name="admin_ltr">چپ‌به‌راست</string>
 
     <string name="admin_tile_session">نشست</string>
     <string name="admin_tile_feed">جریان بازار</string>
     <string name="admin_tile_push">اعلان</string>
     <string name="admin_tile_venue">صرافی</string>
     <string name="admin_tile_routes">مسیر گم‌شده</string>
-    <string name="admin_tile_requests">خطای اخیر</string>
+    <string name="admin_tile_requests">خطای بی‌توضیح</string>
 
     <string name="admin_session_title">نشست‌ها</string>
     <string name="admin_session_in">وارد شده</string>
@@ -105,13 +207,4 @@
     <string name="admin_capability_symbols">تعداد نمادها</string>
     <string name="admin_capabilities_refresh">خواندن دوباره از سرور</string>
     <string name="admin_capabilities_note">این‌ها را خود سرور اعلام می‌کند. اپ فقط چیزی را می‌کشد که سرور گفته روشن است.</string>
-
-    <string name="admin_appearance_title">زبان</string>
-    <string name="admin_language_fa">فارسی</string>
-    <string name="admin_language_en">English</string>
-    <string name="admin_language_note">تغییر زبان اپ را از نو باز می‌کند.</string>
-    <string name="admin_log_title">گزارش برنامه</string>
-    <string name="admin_log_count">%1$d خط</string>
-    <string name="admin_log_copy">کپی</string>
-    <string name="admin_log_empty">هنوز چیزی ثبت نشده است.</string>
 </resources>

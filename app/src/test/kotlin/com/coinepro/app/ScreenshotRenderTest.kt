@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.os.Looper
 import android.view.View
 import androidx.activity.ComponentActivity
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -94,10 +96,17 @@ import com.coinepro.core.datastore.StoredProfile
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.CoineProListDetail
+import com.coinepro.core.designsystem.CoineProNavigationRail
+import com.coinepro.core.designsystem.CoineProRailHeader
+import com.coinepro.core.designsystem.CoineProRailItem
 import com.coinepro.core.designsystem.CoineProReading
 import com.coinepro.core.designsystem.CoineProSheetBody
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTheme
+import com.coinepro.core.designsystem.ProChartWordmark
+import com.coinepro.core.designsystem.coineProWindowClass
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.help.HelpBody
@@ -123,6 +132,7 @@ import com.coinepro.feature.academy.AcademyScreen
 import com.coinepro.feature.academy.LessonScreen
 import com.coinepro.feature.account.DeleteAccountScreen
 import com.coinepro.feature.activity.ActivityScreen
+import com.coinepro.core.diagnostics.AdminGateState
 import com.coinepro.feature.admin.AdminScreen
 import com.coinepro.feature.ai.AiStudioScreen
 import com.coinepro.feature.alerts.AlertCenterScreen
@@ -131,6 +141,9 @@ import com.coinepro.feature.auth.AuthScreen
 import com.coinepro.feature.auth.EmailAuthScreen
 import com.coinepro.feature.calendar.EconomicCalendarScreen
 import com.coinepro.feature.chart.ChartScreen
+import com.coinepro.feature.chart.ChartController
+import com.coinepro.feature.chart.ChartPanesScreen
+import com.coinepro.feature.chart.ChartWorkspaceStore
 import com.coinepro.feature.chart.ChartStudioScreen
 import com.coinepro.feature.connections.ConnectionsScreen
 import com.coinepro.feature.copytrade.CopyTradeScreen
@@ -169,6 +182,7 @@ import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -1051,6 +1065,17 @@ class ScreenshotRenderTest {
         AdminScreen(state = ScreenshotFixtures.adminState, hub = ScreenshotFixtures.controlHub)
     }
 
+    /** The door in front of it, which is the first thing anybody now sees. */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1800dp-xxhdpi")
+    fun adminLocked() = capture("23-admin-locked-fa") {
+        AdminScreen(
+            state = ScreenshotFixtures.adminState.copy(
+                gate = AdminGateState(provisioned = true),
+            ),
+        )
+    }
+
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
     fun emailSignIn() = capture("20-auth-email-sign-in") {
@@ -1654,6 +1679,199 @@ class ScreenshotRenderTest {
         ChartScreen(controller = controller, onOpenStudio = {})
     }
 
+    /* ── the tablet layer ─────────────────────────────────────────────────────────────────────
+     *
+     * Every case above this line renders at `w411dp`, and until now every case in the file did.
+     * That is what let a phone layout stretched across a metre of glass ship unremarked: the gate
+     * this repository judges its design with had never once looked at a tablet. `targetSdk = 36`
+     * means Android 16 ignores `resizeableActivity`, so the app *is* run at these widths today.
+     *
+     * The two windows are [TABLET_LANDSCAPE] and [TABLET_PORTRAIT] and they are deliberately the
+     * only two. Portrait is not landscape with the numbers swapped — at 800dp the rail carries
+     * glyphs alone, the chart affords one side column and a list-detail refuses to split; at
+     * 1280dp all three go the other way. A gate with only the landscape case would pass while the
+     * more common way to hold a tablet was never looked at.
+     */
+
+    /**
+     * What the owner judges first: the rail, and a list that is not thrown away to open one row.
+     *
+     * Markets beside the chart of the row that is open, with the real navigation rail down the
+     * start edge — the right, in Persian, and that is the single most visible thing this render is
+     * here to prove. A rail on the left of a right-to-left screen is not a subtle bug; it is the
+     * first thing anybody sees and it looks like a port rather than a design.
+     *
+     * At 1280dp the rail is the labelled form, so this render also covers the wordmark in its
+     * header and the labels beside the glyphs.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = TABLET_LANDSCAPE)
+    fun tabletShell() = captureRaw("94-tablet-shell-fa") { TabletShell() }
+
+    /** The same, in the light theme, which must hold the same structure rather than invert. */
+    @Test
+    @Config(sdk = [34], qualifiers = TABLET_LANDSCAPE)
+    fun tabletShellLight() = captureRaw("94-tablet-shell-fa-light", darkTheme = false) { TabletShell() }
+
+    /**
+     * The same shell held upright.
+     *
+     * Three things change and all three are decisions rather than reflow: the rail drops its labels
+     * (800dp is under `LABELLED_RAIL_WIDTH_DP`, and the 160dp they cost would come out of the
+     * content), the list-detail refuses to split, and the chart keeps only its tool column. This is
+     * the render that catches a threshold moved by mistake — each of those would silently become
+     * the landscape answer.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = TABLET_PORTRAIT)
+    fun tabletShellPortrait() = captureRaw("95-tablet-shell-portrait-fa") { TabletShell() }
+
+    /**
+     * The chart with the room a tablet has, and nothing between the reader and it.
+     *
+     * The plot takes the middle at [TABLET_PLOT_SCREEN_FRACTION]-equivalent height, the drawing
+     * palette is open at the start edge instead of behind a sheet, and the readings have their own
+     * column at the end instead of a band under the plot that scrolls away. The band's «ترسیم»
+     * button is gone, because the palette it opens is already on screen.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = TABLET_LANDSCAPE)
+    fun tabletChart() = capture("96-tablet-chart-fa") {
+        val controller = ScreenshotFixtures.chartController(scope)
+        listOf("ema", "bollinger", "supertrend", "rsi").forEach(controller::toggleIndicator)
+        ChartScreen(controller = controller, onOpenStudio = {})
+    }
+
+    /**
+     * The same chart on the tablet held upright: the palette column, and no readings column.
+     *
+     * 800dp less the palette's 280 leaves 520 of plot, which clears the floor; adding the readings
+     * as well would leave 200 and put the chart below the width it has on a phone. That trade is
+     * the whole of `columnsFor`, and this is the picture of it being made.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = TABLET_PORTRAIT)
+    fun tabletChartPortrait() = capture("97-tablet-chart-portrait-fa") {
+        val controller = ScreenshotFixtures.chartController(scope)
+        listOf("ema", "rsi").forEach(controller::toggleIndicator)
+        ChartScreen(controller = controller, onOpenStudio = {})
+    }
+
+    /**
+     * Eight panes, which is the number this screen refuses to draw on a phone.
+     *
+     * The count is driven through the workspace store rather than by tapping, because a render
+     * cannot tap — and going through the store is the better test anyway: it is the same path a
+     * reader's saved arrangement takes on the next cold start, so this render also proves that
+     * eight panes survive being written down and read back.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = TABLET_LANDSCAPE)
+    fun tabletChartPanes() = capture("98-tablet-panes-fa") {
+        val workspace = remember {
+            ChartWorkspaceStore(FakeScreenshotPreferences()).also { store ->
+                // Inside the `remember` so the arrangement is written once rather than on every
+                // recomposition, and on Unconfined so it has already landed by the time the
+                // screen's own effect reads it back.
+                scope.launch {
+                    store.setPaneCount(8)
+                    store.setExtraPaneSymbols(
+                        listOf("BTCUSDT", "ETHUSDT", "XAGUSD", "BTCUSDT", "XAUUSD", "ETHUSDT", "XAGUSD"),
+                    )
+                }
+            }
+        }
+        val controllers = remember { mutableMapOf<String, ChartController>() }
+        ChartPanesScreen(
+            firstSymbol = "XAUUSD",
+            controllerFor = { symbol ->
+                controllers.getOrPut(symbol) { ScreenshotFixtures.chartController(scope, symbol) }
+            },
+            watchlist = listOf("XAUUSD", "BTCUSDT", "ETHUSDT", "XAGUSD"),
+            workspace = workspace,
+            onBack = {},
+        )
+    }
+
+    /**
+     * The rail and a list-detail around the markets list, which is what a tablet reader sees.
+     *
+     * `CoineProListDetail` is handed a detail because a tablet reader opening a row keeps the list;
+     * on the portrait render the same call draws the list alone and the row tap stays a navigation,
+     * which is the phone behaviour and is correct there.
+     */
+    @Composable
+    private fun TabletShell() {
+        Row(modifier = Modifier.fillMaxSize().background(CoineProColors.Stage)) {
+            CoineProNavigationRail(
+                items = railItems(),
+                selectedKey = AppDestination.MARKETS.route,
+                onSelect = {},
+                header = {
+                    CoineProRailHeader {
+                        // Only where the rail is wide enough to hold it. The wordmark is 160dp at
+                        // its smallest legible size and the icon rail is 80dp wide; scaling it down
+                        // to fit would put an illegible logo on the screen, which is worse than no
+                        // logo at all.
+                        if (coineProWindowClass().prefersLabelledRail) {
+                            ProChartWordmark(modifier = Modifier.width(RAIL_WORDMARK))
+                        }
+                    }
+                },
+            )
+            CoineProListDetail(
+                modifier = Modifier.weight(1f),
+                detail = {
+                    ChartScreen(
+                        controller = ScreenshotFixtures.chartController(scope),
+                        onOpenStudio = {},
+                    )
+                },
+            ) {
+                MarketsScreen(
+                    controller = MarketSearchController(ScreenshotFixtures.searchCatalog(), scope)
+                        .also { it.start() },
+                    sparklines = ScreenshotFixtures.sparklineStore(scope),
+                    watchlist = listOf("BTCUSDT", "XAUUSD"),
+                    onOpenSymbol = {},
+                    onOpenSearch = {},
+                )
+            }
+        }
+    }
+
+    /**
+     * The five destinations as the rail wants them.
+     *
+     * Built here rather than imported because the destination-to-glyph mapping is private to
+     * `AppChrome`, where `CoineProBottomBar` keeps it — and it is private for the reason that file
+     * gives: `core:navigation` has no Compose dependency, so the glyphs cannot live on the enum.
+     * The shell wiring builds the same list; see the note in the tablet work's report.
+     */
+    @Composable
+    private fun railItems(): List<CoineProRailItem> = AppDestination.entries.map { destination ->
+        CoineProRailItem(
+            key = destination.route,
+            label = stringResource(destination.labelRes),
+            icon = destination.railIcon(selected = false),
+            selectedIcon = destination.railIcon(selected = true),
+        )
+    }
+
+    /** The same pairs `CoineProBottomBar` uses, since a reader must meet one glyph per tab. */
+    @DrawableRes
+    private fun AppDestination.railIcon(selected: Boolean): Int = when (this) {
+        AppDestination.HOME -> if (selected) CoineProIcons.Filled.Home else CoineProIcons.Home
+        AppDestination.SIGNALS -> if (selected) CoineProIcons.Filled.Signals else CoineProIcons.Signals
+        AppDestination.AI -> if (selected) CoineProIcons.Filled.Ai else CoineProIcons.Ai
+        AppDestination.MARKETS -> if (selected) CoineProIcons.Filled.Markets else CoineProIcons.Markets
+        AppDestination.CHART -> if (selected) CoineProIcons.Filled.Chart else CoineProIcons.Chart
+    }
+
+    /** The wordmark at the head of the labelled rail: 240dp less the rail's own gutters. */
+    private val RAIL_WORDMARK = 160.dp
+
+
     /**
      * The four screens that had no render case.
      *
@@ -1990,11 +2208,21 @@ class ScreenshotRenderTest {
 
         val view = composeRule.activity.window.decorView
         if (view.width == 0 || view.height == 0) {
+            // The fallback used to be the two constants that spell out this class's own
+            // `w411dp-h914dp-xxhdpi`, and that was fine while every case in the file rendered at
+            // that qualifier. It is not fine now: a case that overrides the qualifier to a tablet
+            // and lands here would be measured at phone width, and the capture would be a phone
+            // layout filed under a tablet name — a screenshot gate that passes by rendering the
+            // wrong thing. The metrics come from the configuration the test is actually running
+            // in, so the fallback follows whatever `@Config` asked for.
+            val metrics = composeRule.activity.resources.displayMetrics
+            val width = metrics.widthPixels
+            val height = metrics.heightPixels
             view.measure(
-                View.MeasureSpec.makeMeasureSpec(WIDTH_PX, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(HEIGHT_PX, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY),
             )
-            view.layout(0, 0, WIDTH_PX, HEIGHT_PX)
+            view.layout(0, 0, width, height)
         }
         val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
         view.draw(Canvas(bitmap))
@@ -2004,11 +2232,23 @@ class ScreenshotRenderTest {
     }
 
     private companion object {
-        /** Matches the w411dp-h914dp-xxhdpi qualifier on the class. */
-        const val WIDTH_PX = 411 * 3
-        const val HEIGHT_PX = 914 * 3
-
         val OUTPUT_DIR = File("build/screenshots")
+
+        /**
+         * The two tablet qualifiers every large-screen case in this file renders at.
+         *
+         * Named rather than typed out per case, because the point of them is that they are the
+         * *same* two windows every time: a picture of the chart at 1280dp is only comparable with
+         * last week's picture of the chart at 1280dp.
+         *
+         * `sw800dp` is on both because it is the qualifier Android itself uses to mean "a tablet",
+         * so a resource bucket added later resolves in these renders exactly as it will on the
+         * device. The density is `xhdpi` and not the phone cases' `xxhdpi`: a 1280dp window at 3x
+         * is a 3840-pixel bitmap, which is thirty-seven megabytes per capture for no extra
+         * information — real ten-inch tablets are near 2x.
+         */
+        const val TABLET_LANDSCAPE = "fa-rIR-ldrtl-sw800dp-w1280dp-h800dp-xhdpi"
+        const val TABLET_PORTRAIT = "fa-rIR-ldrtl-sw800dp-w800dp-h1280dp-xhdpi"
     }
 }
 

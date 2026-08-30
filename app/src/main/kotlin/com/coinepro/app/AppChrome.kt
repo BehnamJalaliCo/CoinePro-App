@@ -16,8 +16,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
+import androidx.navigation.NavOptionsBuilder
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.CoineProRailItem
 import com.coinepro.core.navigation.AppDestination
 
 /**
@@ -29,6 +33,35 @@ import com.coinepro.core.navigation.AppDestination
  * with the indicator pill turned off. The gold is spent on the primary action, and a gold pill down
  * here would put a second one on every screen.
  */
+/**
+ * How a tab tap rearranges the back stack.
+ *
+ * Here rather than inline at the call site because it is the subject of `BottomBarNavigationTest`,
+ * and a copy of these options in a test proves nothing about the ones the bar actually uses.
+ *
+ * ### Why `restoreState` is conditional
+ *
+ * The other three lines are the pattern every Android sample ships, and they are right. The
+ * conditional is the fix for a bug the owner reported as «from the toolkit, Markets and Chart and
+ * everything else switched, and Home did nothing».
+ *
+ * `popUpTo(start) { saveState = true }` files the entries it pops under the destination the pop
+ * lands on, and `restoreState = true` asks for exactly that file. For any tab other than the start
+ * destination those are two different keys — Tools is saved under Home, and Markets restores its
+ * own — and the pattern works. Tapping **Home** makes them the same key: the toolkit is popped,
+ * filed under Home, and then immediately restored on top of it. The reader is returned to the
+ * screen they were trying to leave, and no error is raised anywhere, which is why it looked like a
+ * dead button rather than a bug.
+ *
+ * Skipping the restore only on the start destination keeps every other tab's saved stack intact.
+ */
+internal fun NavOptionsBuilder.tabSwitch(navController: NavHostController, route: String) {
+    val start = navController.graph.findStartDestination()
+    popUpTo(start.id) { saveState = true }
+    launchSingleTop = true
+    restoreState = route != start.route
+}
+
 @Composable
 fun CoineProBottomBar(
     currentRoute: String?,
@@ -87,4 +120,21 @@ private fun AppDestination.icon(selected: Boolean): Int = when (this) {
     // tabs the selection was a shade of grey and nothing else.
     AppDestination.MARKETS -> if (selected) CoineProIcons.Filled.Markets else CoineProIcons.Markets
     AppDestination.CHART -> if (selected) CoineProIcons.Filled.Chart else CoineProIcons.Chart
+}
+
+/**
+ * The five destinations as [CoineProNavigationRail] wants them.
+ *
+ * Here rather than in `core:designsystem` for the same reason the glyph pairs are: the rail takes
+ * plain items so `core:navigation` stays a module with no Compose dependency at all. One list, so
+ * the bar and the rail can never disagree about which glyph belongs to which tab.
+ */
+@Composable
+fun coineProRailItems(): List<CoineProRailItem> = AppDestination.entries.map { destination ->
+    CoineProRailItem(
+        key = destination.route,
+        label = stringResource(destination.labelRes),
+        icon = destination.icon(selected = false),
+        selectedIcon = destination.icon(selected = true),
+    )
 }

@@ -20,6 +20,9 @@ dependencies {
     implementation(project(":core:diagnostics"))
     implementation(project(":core:model"))
     implementation(platform(libs.androidx.compose.bom))
+    // The document picker the export saves through, and the FileProvider it shares through.
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)

@@ -92,6 +92,15 @@ class GuestMarketCatalogGateway(
  */
 class GuestCandleGateway(private val gateway: GuestGateway) : CandleGateway {
 
+    /**
+     * The public route's own ceiling, which is not the signed-in route's.
+     *
+     * It validates `limit` and answers 422 above five hundred rather than truncating, so a fold
+     * that multiplies the bar count has to be clamped to this and not to the mobile route's
+     * thousand — otherwise a folded interval asks for a page the server refuses outright.
+     */
+    override val sourceLimitMax: Int = MAX_LIMIT
+
     override suspend fun load(
         symbol: String,
         timeframe: Timeframe,

@@ -51,9 +51,17 @@ class RequestLogInterceptor(
                 )
                 val millis = clock() - started
                 appLog?.log(
-                    // A call that failed is a warning even when the app recovers from it, because
-                    // the recovery is the thing somebody will be reading this to understand.
-                    level = if (response.code in 200..399) LogLevel.DEBUG else LogLevel.WARN,
+                    // Three levels rather than two, and the middle one is the point. A 401 or a 403
+                    // is the *correct* answer to an authenticated route while signed out, and
+                    // recording it as a warning is what filled the panel's error count on every
+                    // install nobody had signed into — which is what made the whole screen read as
+                    // broken on open. A 5xx is an error because the server actually broke.
+                    level = when {
+                        response.code in 200..399 -> LogLevel.DEBUG
+                        response.code == 401 || response.code == 403 -> LogLevel.DEBUG
+                        response.code >= 500 -> LogLevel.ERROR
+                        else -> LogLevel.WARN
+                    },
                     tag = LogTag.NETWORK,
                     message = request.method + " " + request.url.encodedPath,
                     fields = mapOf(

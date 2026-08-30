@@ -125,6 +125,15 @@ internal fun ChartCommandBand(
     onMoreIntervals: () -> Unit,
     /** Whether a drawing tool is armed — the state that changes what the next tap on the plot does. */
     armedTool: Boolean,
+    /**
+     * Whether the band carries the drawing control at all.
+     *
+     * False on a window wide enough to keep the palette permanently open beside the plot — see
+     * `ChartWorkbench`. The button exists to open the tools and to report that one is armed, and an
+     * open column does both; leaving it would put a sheet on the screen that duplicates a column
+     * already on it. The other five keep their weights, so the band simply divides five ways.
+     */
+    showDraw: Boolean = true,
     indicators: Int,
     drawings: Int,
     onOpen: (ChartSheet) -> Unit,
@@ -155,13 +164,15 @@ internal fun ChartCommandBand(
                 .padding(start = 6.dp, end = 6.dp, bottom = CoineProSpacing.Half),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            BandButton(
-                icon = DesignR.drawable.tv_pencil,
-                label = stringResource(R.string.chart_band_draw),
-                armed = armedTool,
-                onClick = { onOpen(ChartSheet.TOOLS) },
-                modifier = Modifier.weight(1f),
-            )
+            if (showDraw) {
+                BandButton(
+                    icon = DesignR.drawable.tv_pencil,
+                    label = stringResource(R.string.chart_band_draw),
+                    armed = armedTool,
+                    onClick = { onOpen(ChartSheet.TOOLS) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
             BandButton(
                 icon = DesignR.drawable.icon_sliders_horizontal,
                 label = stringResource(R.string.chart_band_studies),

@@ -30,4 +30,6 @@
     <string name="message_session_not_revalidated">A stored session could not be revalidated. Anything that needs an account stays locked until the server is reachable.</string>
     <string name="message_telegram_sign_in_not_configured">Telegram sign-in is not configured on this server.</string>
     <string name="message_telegram_sign_in_config_unavailable">The Telegram sign-in configuration could not be loaded. Check the connection and retry.</string>
+    <string name="a11y_navigation_rail">Main navigation</string>
+    <string name="pane_detail_empty">Choose a row from the list and it opens here.</string>
 </resources>

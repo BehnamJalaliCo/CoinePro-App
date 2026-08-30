@@ -97,15 +97,24 @@ data class ServerCapabilities(
     val symbolCount: Int? = null,
 )
 
-data class Appearance(val languageTag: String)
-
+/**
+ * What the panel can see, all of it supplied by the app layer.
+ *
+ * ### Language used to be here, and is not
+ *
+ * There was an `appearance` field carrying the app's language, drawn as a two-segment control on
+ * this screen. It was wrong twice over. It is the *reader's* setting, not an operator's — nobody
+ * diagnoses anything by switching the app to English — and putting it behind an admin door meant
+ * the one control every reader might genuinely want was the one control no reader could reach. It
+ * now lives on the profile screen, where a setting belongs, and it is deliberately gone from here
+ * rather than duplicated: two places to change one thing is how the two end up disagreeing.
+ */
 data class ControlHub(
     val sessions: List<SessionRow> = emptyList(),
     val feed: FeedStatus? = null,
     val push: PushStatus? = null,
     val venue: VenueStatus? = null,
     val capabilities: Map<MarketPlatform, ServerCapabilities> = emptyMap(),
-    val appearance: Appearance? = null,
 )
 
 /**
@@ -128,13 +137,50 @@ data class HubActions(
     val onOpenPushSettings: () -> Unit = {},
     val onReRegisterPushToken: () -> Unit = {},
     val onSetPushPreference: (PushPreferenceKey, Boolean) -> Unit = { _, _ -> },
-    val onSetLanguage: (String) -> Unit = {},
     val onProbe: (MarketPlatform) -> Unit = {},
     val onRefreshCapabilities: (MarketPlatform) -> Unit = {},
     val onToggleFailuresOnly: () -> Unit = {},
     val onClearRequests: () -> Unit = {},
-    /** Puts the whole narrative log on the clipboard, which is how it reaches somebody who can act. */
-    val onCopyLog: () -> Unit = {},
+
+    /* ------------------------------------------------------------------ the door */
+
+    /**
+     * One unlock attempt. Returns whether it opened, so the screen can clear the field it typed in.
+     *
+     * Refusing by default matters: a caller that forgets to wire this up gets a panel that never
+     * opens, rather than one that opens to anybody.
+     */
+    val onUnlock: (String, String) -> Boolean = { _, _ -> false },
+    val onCredentialEdited: () -> Unit = {},
+    /** Closes it again. A door that only opens is a door in name. */
+    val onLock: () -> Unit = {},
+
+    /* ------------------------------------------------------------- the log itself */
+
+    val onShowSection: (AdminSection) -> Unit = {},
+    val onSetMinimumLevel: (LogLevel) -> Unit = {},
+    val onToggleTag: (LogTag) -> Unit = {},
+    val onSetQuery: (String) -> Unit = {},
+    val onSetWindow: (LogWindow) -> Unit = {},
+    val onClearFilter: () -> Unit = {},
+    /** Opens one entry to show its fields, or closes the one already open. */
+    val onExpandEntry: (Long) -> Unit = {},
+    /** Wipes the ring and the file together — see [AppLog.clear] for why both. */
+    val onClearLog: () -> Unit = {},
+    /** How much the app writes: TRACE to reproduce something, WARN to leave it running. */
+    val onSetVerbosity: (LogLevel) -> Unit = {},
+    val onClearCrash: () -> Unit = {},
+    /**
+     * The handset reading and the last crash, handed up from the screen when the panel opens.
+     *
+     * Pushed in rather than read here because both need a `Context`, and both are read once per
+     * visit rather than watched: a crash file cannot change while the app that would write it is
+     * the one on screen, and a memory reading taken when the panel opened is the reading the
+     * operator is looking at.
+     */
+    val onObserveInstall: (DeviceReport, Crash?) -> Unit = { _, _ -> },
+    /** What the export did, recorded in the log so the file names its own export. */
+    val onExported: (ExportOutcome) -> Unit = {},
 )
 
 enum class PushPreferenceKey { NEW_SIGNALS, SIGNAL_UPDATES, PRICE_ALERTS }
@@ -148,7 +194,10 @@ enum class PushPreferenceKey { NEW_SIGNALS, SIGNAL_UPDATES, PRICE_ALERTS }
  */
 fun AdminUiState.hubTiles(hub: ControlHub): List<HubTile> {
     val missing = panels[selected]?.probes.orEmpty().count { it.outcome == ProbeOutcome.NOT_FOUND }
-    val failed = requests.count { it.platform == selected && it.failed }
+    // Unexplained failures only. A 401 while signed out is the server working correctly, and a
+    // tile that counted those was red on every install that had not signed in yet — which is what
+    // made the whole panel read as broken the moment it opened. See [findings].
+    val failed = requests.count { it.platform == selected && it.failed && it.status !in EXPECTED }
     val session = hub.sessions.firstOrNull { it.platform == selected }
 
     return listOf(
@@ -199,3 +248,12 @@ fun AdminUiState.hubTiles(hub: ControlHub): List<HubTile> {
  */
 const val HUB_ON: String = "on"
 const val HUB_OFF: String = "off"
+
+/**
+ * The two statuses that are not faults.
+ *
+ * A refusal proves a server is there and listening, and while signed out it is the normal answer to
+ * every authenticated route in both catalogues. Counting them was what made the panel open onto its
+ * own error state on an install nobody had signed into yet.
+ */
+private val EXPECTED = setOf(401, 403)

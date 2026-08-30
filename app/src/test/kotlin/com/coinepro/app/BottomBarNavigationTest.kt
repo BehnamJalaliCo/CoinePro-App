@@ -3,7 +3,6 @@ package com.coinepro.app
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Text
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -47,13 +46,15 @@ class BottomBarNavigationTest {
         }
     }
 
-    /** Exactly the options `CoineProBottomBar`'s `onSelect` navigates with. */
+    /**
+     * The production options themselves, not a copy of them.
+     *
+     * `tabSwitch` is what the bar's `onSelect` calls, so a change to it is caught here rather than
+     * only on a device. A test that pasted the same four lines would keep passing after somebody
+     * changed the real ones.
+     */
     private fun tapTab(route: String) = rule.runOnUiThread {
-        nav.navigate(route) {
-            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
-        }
+        nav.navigate(route) { tabSwitch(nav, route) }
     }
 
     private fun route(): String? = nav.currentBackStackEntry?.destination?.route

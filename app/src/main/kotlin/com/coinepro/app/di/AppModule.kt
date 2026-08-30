@@ -45,6 +45,7 @@ import com.coinepro.core.copytrade.CopyTradeGateway
 import com.coinepro.core.copytrade.NetworkCopyTradeGateway
 import com.coinepro.core.database.CoineProDatabase
 import com.coinepro.core.database.CoineProDatabaseFactory
+import com.coinepro.core.database.RoomCandleArchive
 import com.coinepro.core.database.RoomCandleCache
 import com.coinepro.core.database.RoomMarketDataCache
 import com.coinepro.core.database.RoomSignalHistoryCache
@@ -71,8 +72,11 @@ import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.datastore.WidgetSnapshotStore
 import com.coinepro.core.diagnostics.AdminBuildInfo
 import com.coinepro.core.diagnostics.AdminController
+import com.coinepro.core.diagnostics.AdminGate
 import com.coinepro.core.diagnostics.AppLog
+import com.coinepro.core.diagnostics.BuildCredential
 import com.coinepro.core.diagnostics.EndpointProber
+import com.coinepro.core.diagnostics.FileLogSink
 import com.coinepro.core.diagnostics.LogTag
 import com.coinepro.core.diagnostics.PlatformBuildInfo
 import com.coinepro.core.diagnostics.RequestLog
@@ -85,6 +89,7 @@ import com.coinepro.core.guest.GuestGateway
 import com.coinepro.core.guest.NetworkGuestGateway
 import com.coinepro.core.journal.JournalController
 import com.coinepro.core.marketdata.AcademyTokenStore
+import com.coinepro.core.marketdata.CandleArchive
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.CoineProFxCandleGateway
@@ -199,7 +204,30 @@ object AppModule {
      */
     @Provides
     @Singleton
-    fun appLog(): AppLog = AppLog()
+    fun appLog(@ApplicationContext context: Context): AppLog = AppLog(
+        // Persisted, because the failures worth diagnosing are exactly the ones that kill the
+        // process holding the log. Its own directory, so wiping it cannot touch anything else.
+        sink = FileLogSink(File(context.filesDir, "diagnostics")),
+    )
+
+    /**
+     * The admin panel's door.
+     *
+     * A credential of empty strings — which is what a build given no property reads — is not a
+     * credential, and the gate refuses everything rather than opening. So a clone of this
+     * repository builds an app whose admin panel nobody can enter, which is the right default.
+     */
+    @Provides
+    @Singleton
+    fun adminGate(appLog: AppLog): AdminGate = AdminGate(
+        credential = BuildCredential(
+            username = BuildConfig.ADMIN_USERNAME,
+            salt = BuildConfig.ADMIN_SALT,
+            hash = BuildConfig.ADMIN_HASH,
+            iterations = BuildConfig.ADMIN_ITERATIONS,
+        ),
+        appLog = appLog,
+    )
 
     /**
      * The panel's own view of the build.
@@ -214,6 +242,7 @@ object AppModule {
         @CryptoPlatform cryptoClient: OkHttpClient,
         requestLog: RequestLog,
         appLog: AppLog,
+        gate: AdminGate,
         activePlatformStore: ActivePlatformStore,
         scope: CoroutineScope,
     ): AdminController = AdminController(
@@ -243,6 +272,7 @@ object AppModule {
         ),
         requestLog = requestLog,
         appLog = appLog,
+        gate = gate,
         scope = scope,
         initialPlatform = activePlatformStore.available.first(),
     )
@@ -477,6 +507,20 @@ object AppModule {
     @Provides
     @Singleton
     fun candleCache(database: CoineProDatabase): CandleCache = RoomCandleCache(database.candleCacheDao())
+
+    /**
+     * The growing store, over the same table the cache reads.
+     *
+     * A second object rather than a second interface on the first: the two `write` methods have
+     * the same parameters and different return types, so Kotlin cannot resolve one function
+     * against both. See [RoomCandleArchive], and note the two bounds — the cache trims to a few
+     * hundred bars so a chart opens instantly, the archive to fifty thousand so a fortnight of
+     * paging back survives the night instead of being paid for again the next morning.
+     */
+    @Provides
+    @Singleton
+    fun candleArchive(database: CoineProDatabase): CandleArchive =
+        RoomCandleArchive(database.candleCacheDao())
 
     /**
      * Whether the phone has a network at all.

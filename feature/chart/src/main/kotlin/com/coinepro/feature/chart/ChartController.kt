@@ -43,8 +43,10 @@ import com.coinepro.core.chart.ReplaySpeed
 import com.coinepro.core.chart.ReplayState
 import com.coinepro.core.chart.ScaleSide
 import com.coinepro.core.chart.TradeSide
+import com.coinepro.core.chart.ChartHistory
 import com.coinepro.core.chart.align
 import com.coinepro.core.chart.comparisonColour
+import com.coinepro.core.chart.resident
 import com.coinepro.core.datastore.ChartColourTemplate
 import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayout
@@ -58,14 +60,20 @@ import com.coinepro.core.datastore.SymbolChartState
 import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.diagnostics.AppLog
 import com.coinepro.core.diagnostics.LogTag
+import com.coinepro.core.marketdata.CandleArchive
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.ChartInterval
+import com.coinepro.core.marketdata.HISTORY_PAGE_BARS
+import com.coinepro.core.marketdata.NoOpCandleArchive
 import com.coinepro.core.marketdata.NoOpCandleCache
 import com.coinepro.core.marketdata.OhlcBar
+import com.coinepro.core.marketdata.fillHistory
 import com.coinepro.core.marketdata.resolveCandleRequest
 import com.coinepro.core.marketdata.Timeframe
 import com.coinepro.core.marketdata.of
+import kotlin.coroutines.coroutineContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -171,6 +179,24 @@ data class ChartUiState(
      */
     val colourTemplate: ChartColourTemplate? = null,
     val hasMore: Boolean = false,
+    /**
+     * How many bars this app holds on disk for this series, across every session.
+     *
+     * Not the same number as `series.size` and the difference is the whole point of the archive:
+     * the chart holds a window, the archive holds everything that has ever been fetched. It is a
+     * **fact** and is worded to the reader as one — see `CandleArchive.MAX_BARS_PER_SERIES`, which
+     * is a ceiling on capacity and must never be read out as a promise about history that exists.
+     * Zero until the first load lands, or wherever no archive is wired.
+     */
+    val archivedBars: Int = 0,
+    /**
+     * Whether the venue has genuinely run out of history for this series.
+     *
+     * Separate from `!hasMore`, which only says the last page came back short. This is the answer
+     * a backward fill established by walking to the end, and it is the honest basis for a chart
+     * that stops offering «بیشتر» rather than one that keeps asking a server that has nothing.
+     */
+    val venueExhausted: Boolean = false,
     /**
      * Bar replay: the chart rewound and walked forward.
      *
@@ -701,6 +727,9 @@ internal fun ChartUiState.toLayout(
  * "retry" for the first one wastes the reader's time.
  */
 enum class ChartError {
+    /** This venue has no feed fine enough to build this bar length. Retrying cannot help. */
+    INTERVAL_UNAVAILABLE,
+
     /** The network failed. Retrying is the right suggestion. */
     NETWORK,
 
@@ -760,6 +789,17 @@ class ChartController(
      * by a faster request, only by having something true to draw while one is in flight.
      */
     private val cache: CandleCache = NoOpCandleCache,
+    /**
+     * Every bar this app has ever been given for this series, kept between sessions.
+     *
+     * Distinct from [cache], which holds one screenful so that a chart opens with something true
+     * on it and is trimmed on every write. This is not trimmed to a screenful, it is read *before*
+     * the network on a page-back, and it is deepened in the background after every load — so the
+     * second walk back through a week costs nothing and the window a reader has accumulated is
+     * theirs from then on. [NoOpCandleArchive] is the default and is a working answer: every read
+     * is empty and the chart pages from the network exactly as it did before this existed.
+     */
+    private val archive: CandleArchive = NoOpCandleArchive,
     /** See [bindStores]. Supplied here where a caller builds the controller itself. */
     symbolStates: SymbolChartStateStore? = null,
     /** See [bindStores]. Supplied here where a caller builds the controller itself. */
@@ -775,6 +815,10 @@ class ChartController(
     val state: StateFlow<ChartUiState> = _state.asStateFlow()
 
     private var loadJob: Job? = null
+
+    /** The background deepening of the archive. One at a time; a switch cancels the last. */
+    private var fillJob: Job? = null
+
 
     /** Read once per controller. See [restoreDrawings]. */
     private var restored = false
@@ -2030,31 +2074,87 @@ class ChartController(
         val oldest = current.series.time.first()
         _state.update { it.copy(loadingMore = true) }
         scope.launch {
+            // **Disk before the network.** The archive holds every bar this app has ever been
+            // given for this series, so a reader walking back over a week they have already walked
+            // is served from storage in a frame rather than from a server in a second — and it
+            // works with no connection at all, which on the networks this app is used on is not a
+            // small thing. Only when the archive comes back empty is the venue asked.
+            val stored = runCatching {
+                archive.read(current.symbol, current.interval, HISTORY_PAGE_BARS, before = oldest)
+            }.getOrDefault(emptyList())
+            if (stored.isNotEmpty()) {
+                prependOlder(current, stored, hasMore = true)
+                realignComparisons()
+                return@launch
+            }
             val result = runCatching {
                 gateway.load(current.symbol, current.interval, before = oldest)
             }
             result.onSuccess { page ->
-                _state.update { old ->
-                    // Prepended, and only bars strictly older than what is held. The server
-                    // promises no overlap; trusting that promise and being wrong would double a
-                    // bar, and a doubled bar is a spike on the chart that never happened.
-                    val older = page.candles.filter { it.t < oldest }
-                    old.copy(
-                        series = CandleSeries(older.map(OhlcBar::toCandle) + old.series.bars),
-                        loadingMore = false,
-                        hasMore = page.hasMore && older.isNotEmpty(),
-                    )
-                }
+                // Only bars strictly older than what is held. The server promises no overlap;
+                // trusting that promise and being wrong would double a bar, and a doubled bar is a
+                // spike on the chart that never happened.
+                val older = page.candles.filter { it.t < oldest }
+                prependOlder(current, older, hasMore = page.hasMore && older.isNotEmpty())
                 // The base grew at its left edge, so every overlay is now a page short of it.
                 realignComparisons()
                 // History is cached too. Paging back is the second place a reader waits, and a
                 // reader who pans back over the same week twice should only pay for it once.
                 runCatching { cache.write(current.symbol, current.interval, page.candles) }
+                // And kept. The cache is trimmed to a screenful on every write, so without this
+                // the walk above is paid for again tomorrow — which is exactly what used to happen.
+                runCatching { archive.write(current.symbol, current.interval, page.candles) }
+                publishDepth(current.symbol, current.interval)
             }.onFailure {
                 // A failed page-back leaves the chart alone. There is nothing to say that would be
                 // more useful than the bars already on screen.
                 _state.update { it.copy(loadingMore = false) }
             }
+        }
+    }
+
+    /**
+     * Put a page of older bars in front of what is held.
+     *
+     * ### Why this does not slice the series back down
+     *
+     * `CandleSeries.resident` exists to bound a chart at [ChartHistory.MAX_RESIDENT_BARS], and this
+     * is the one path that can walk past it — twenty-four page-backs at [HISTORY_PAGE_BARS] each.
+     * It is deliberately not applied here. Slicing after a prepend can only drop bars from the
+     * newest end, since the oldest are the ones the reader just asked for, and there is no way to
+     * put those back later without replacing the series under a reader whose viewport is an index
+     * into it. That is a chart that jumps while somebody is reading it, to save a few megabytes on
+     * the single series they are actively dragging through. The bound that matters is the one on
+     * the reload path, which is where eight controllers each paint a fresh series; this one costs
+     * memory only for as long as one reader keeps pulling, and `CandleArchive.MAX_BARS_PER_SERIES`
+     * is its ceiling.
+     */
+    private fun prependOlder(request: ChartUiState, older: List<OhlcBar>, hasMore: Boolean) {
+        _state.update { old ->
+            // The reader may have switched symbol or interval while the page was in flight, and
+            // prepending this page onto that series would draw one instrument's history under
+            // another's label.
+            if (old.symbol != request.symbol || old.interval != request.interval) {
+                old.copy(loadingMore = false)
+            } else {
+                old.copy(
+                    series = CandleSeries(older.map(OhlcBar::toCandle) + old.series.bars),
+                    loadingMore = false,
+                    hasMore = hasMore,
+                )
+            }
+        }
+    }
+
+    /**
+     * Read how deep the archive now is for this series and publish it.
+     *
+     * A fact, printed as one. See [ChartUiState.archivedBars].
+     */
+    private suspend fun publishDepth(symbol: String, interval: ChartInterval) {
+        val span = runCatching { archive.span(symbol, interval) }.getOrNull() ?: return
+        _state.update { old ->
+            if (old.symbol != symbol || old.interval != interval) old else old.copy(archivedBars = span.count)
         }
     }
 
@@ -2068,20 +2168,36 @@ class ChartController(
             // gateway call: it is the interval a reader spends looking at an empty chart, which
             // ends when the state carrying the bars is published, not when the response lands.
             val startedAt = System.nanoTime()
-            runCatching { gateway.load(current.symbol, current.interval) }
+            // `runCatching` catches `CancellationException` too, and every interval switch cancels
+            // the load in flight. Without this the cancelled job writes its own failure over a
+            // series the switch has just emptied, so the chart says «چارت بارگیری نشد» for the
+            // timeframe the reader has just picked — while that timeframe is still loading. On a
+            // slow link that is a failure on every tap and none on the one that loaded at open,
+            // which is exactly how it was reported.
+            val outcome = runCatching { gateway.load(current.symbol, current.interval) }
+            if (outcome.exceptionOrNull() is CancellationException) return@launch
+            outcome
                 .onSuccess { page ->
                     _state.update {
                         it.copy(
-                            series = CandleSeries(page.candles.map(OhlcBar::toCandle)),
+                            // Bounded here and only here. This is the path eight live controllers
+                            // take when a reader flips between symbols, and it is the one that can
+                            // be handed a deep series without anybody asking for one. Below the
+                            // ceiling `resident` returns the same object, so an ordinary chart
+                            // pays one comparison and allocates nothing.
+                            series = CandleSeries(page.candles.map(OhlcBar::toCandle)).resident(),
                             loading = false,
                             error = null,
                             hasMore = page.hasMore,
+                            venueExhausted = false,
                         )
                     }
                     realignComparisons()
                     // Written after the state, not before: the reader's chart is the thing that
                     // matters and a slow disk must never sit between them and their candles.
                     runCatching { cache.write(current.symbol, current.interval, page.candles) }
+                    runCatching { archive.write(current.symbol, current.interval, page.candles) }
+                    deepenArchive(current.symbol, current.interval)
                     val millis = (System.nanoTime() - startedAt) / 1_000_000
                     val fields = mapOf(
                         "symbol" to current.symbol,
@@ -2117,7 +2233,71 @@ class ChartController(
                         ),
                     )
                 }
-            loadJob = null
+            // Only if this job is still the current one. A cancelled job that nulls the handle
+            // leaves the job that replaced it untracked, so the next switch cancels nothing and
+            // two loads race — and the older one can land last, drawing the previous interval's
+            // bars under the new interval's label.
+            if (loadJob === coroutineContext[Job]) loadJob = null
+        }
+    }
+
+    /**
+     * Deepen the archive for this series in the background, and say how deep it got.
+     *
+     * ### Why this runs at all, and why it is not a download
+     *
+     * The owner asked for twenty to fifty thousand candles. Fifty thousand is the archive's
+     * ceiling and it is **capacity**: at five hundred bars a page it is a hundred round trips, and
+     * no venue this app talks to holds that much for most series anyway — the crypto route's whole
+     * retention is on the order of two thousand bars. So this does not fetch fifty thousand
+     * candles; it walks a session's worth backwards after each load and keeps what it finds, and
+     * the depth accumulates across openings of the app. `HistoryDepth.bars` is what the reader is
+     * told, because it is a fact; the constant never is.
+     *
+     * It is fire-and-forget on purpose. Nothing on screen waits for it, a failure is not shown,
+     * and a switch of symbol or interval cancels it — the reader's next chart is worth more than
+     * finishing a fill for the last one.
+     */
+    private fun deepenArchive(symbol: String, interval: ChartInterval) {
+        if (archive === NoOpCandleArchive) return
+        fillJob?.cancel()
+        fillJob = scope.launch {
+            val depth = runCatching { gateway.fillHistory(symbol, interval, archive) }.getOrNull() ?: return@launch
+            _state.update { old ->
+                if (old.symbol != symbol || old.interval != interval) {
+                    old
+                } else {
+                    // A fill that walked to the end of the venue has established something a
+                    // short page never can — but "the venue has no more" is not "there is no
+                    // more". The fill's own writes usually sit *behind* what the chart is
+                    // drawing, and those bars are pages the reader can still walk back through.
+                    // So «بیشتر» is withdrawn only when the archive has nothing older either,
+                    // which is the one state where another page-back genuinely cannot produce a
+                    // bar. Getting this backwards is what would make a chart with thirty
+                    // thousand bars on disk refuse to show the reader the second one.
+                    val archivedOldest = depth.oldest
+                    val archiveHasOlder = archivedOldest != null &&
+                        !old.series.isEmpty &&
+                        archivedOldest < old.series.time.first()
+                    old.copy(
+                        archivedBars = depth.bars,
+                        venueExhausted = depth.venueExhausted,
+                        hasMore = if (depth.venueExhausted) archiveHasOlder else old.hasMore,
+                    )
+                }
+            }
+            log?.debug(
+                LogTag.CHART,
+                "archive filled",
+                mapOf(
+                    "symbol" to symbol,
+                    "tf" to interval.wire,
+                    "bars" to depth.bars.toString(),
+                    "added" to depth.added.toString(),
+                    "pages" to depth.pages.toString(),
+                    "stop" to depth.stop.name,
+                ),
+            )
         }
     }
 
@@ -2136,6 +2316,11 @@ class ChartController(
      */
     private suspend fun paintFromCache(symbol: String, interval: ChartInterval) {
         val cached = runCatching { cache.read(symbol, interval) }.getOrDefault(emptyList())
+            // The archive is a superset of the cache and outlives it: the cache is trimmed to a
+            // screenful and is cleared with the app's storage, while the archive is what this
+            // series has accumulated. Falling back to it means a chart opened after a clear-cache,
+            // or one whose cache write lost a race, still comes up on real candles.
+            .ifEmpty { runCatching { archive.read(symbol, interval) }.getOrDefault(emptyList()) }
         if (cached.isEmpty()) return
         _state.update { current ->
             if (current.symbol != symbol || current.interval != interval || !current.series.isEmpty) {
@@ -2330,6 +2515,10 @@ internal fun Throwable.toChartError(): ChartError {
     return when {
         text.contains("academy_disabled") -> ChartError.CHART_DISABLED
         text.contains("TYR-021") || text.contains("unsupported_symbol") -> ChartError.UNSUPPORTED_SYMBOL
+        // Refused before a request went out, because this venue has no feed fine enough to fold
+        // this bar length from. Distinguished from the network because retrying cannot help, and
+        // a «تلاش دوباره» under it sends the reader round a loop that has no end.
+        text.contains("interval_unavailable") -> ChartError.INTERVAL_UNAVAILABLE
         else -> ChartError.NETWORK
     }
 }

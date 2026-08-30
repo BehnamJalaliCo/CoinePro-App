@@ -58,9 +58,8 @@ class IndicatorParityTest {
         fixture.assertMatches("macdSignal", macd.signal)
         fixture.assertMatches("macdHist", macd.histogram)
 
-        val stochastic = Indicators.stochastic(high, low, close, 14, 3)
-        fixture.assertMatches("stochK", stochastic.k)
-        fixture.assertMatches("stochD", stochastic.d)
+        // `stochD` is not here. See `three series part company with the web app, deliberately`.
+        fixture.assertMatches("stochK", Indicators.stochastic(high, low, close, 14, 3).k)
     }
 
     @Test
@@ -89,9 +88,7 @@ class IndicatorParityTest {
         fixture.assertMatches("spanA", ichimoku.spanA)
         fixture.assertMatches("spanB", ichimoku.spanB)
 
-        val supertrend = Indicators.supertrend(high, low, close, 10, 3.0)
-        fixture.assertMatches("stLine", supertrend.line)
-        fixture.assertMatches("stTrend", supertrend.trend)
+        // `stLine` and `stTrend` are not here, for the same reason `stochD` is not: see below.
 
         val vortex = Indicators.vortex(high, low, close, 14)
         fixture.assertMatches("vortexPlus", vortex.plus)
@@ -209,6 +206,46 @@ class IndicatorParityTest {
         val none = DoubleArray(close.size)
         val line = IndicatorsExt.accumulationDistribution(high, low, close, none)
         for (index in close.indices) assertEquals("bar $index", null, line[index])
+    }
+
+    @Test
+    fun `three series part company with the web app, deliberately`() {
+        // Parity is the rule and these three are the exception, so the exception is written down
+        // rather than quietly dropped from the list above.
+        //
+        // The recorded output is `indicators.js` doing two things wrong, and the fixture is left
+        // exactly as it was because it is a true record of what that file produces — it is evidence,
+        // not an expectation. What changed is the Kotlin, and this test is what stops the two
+        // drifting apart again without anybody noticing.
+        val supertrend = Indicators.supertrend(high, low, close, 10, 3.0)
+        // The web app's SuperTrend holds one side for all hundred and twenty bars of this walk. Its
+        // band ratchet is inverted, so the stop settles three average ranges below where the *trend
+        // began* and stays there; nothing short of a bar several ranges long can reach it. This
+        // walk drifts up throughout, so neither version changes side on it — what differs is where
+        // the stop sits, and that is what is asserted. `IndicatorTrailingTest` is where the flip
+        // itself is proved, on a series with a pullback in it.
+        assertEquals(1, fixture.series.getValue("stTrend").filterNotNull().distinct().size)
+        val recordedLine = fixture.series.getValue("stLine")
+        val last = bars.size - 1
+        val ours = requireNotNull(supertrend.line[last])
+        val theirs = requireNotNull(recordedLine[last])
+        assertTrue(
+            "our stop is at $ours, the web app's at $theirs, price at ${close[last]}",
+            close[last] - ours < close[last] - theirs,
+        )
+
+        // %D is the milder of the two and the more insidious. `indicators.js` averages the
+        // zero-filled head of %K into the first two published values, so they arrive near the floor
+        // and cross %K on a chart that is only warming up. Ours is null until its window is real.
+        val stochastic = Indicators.stochastic(high, low, close, 14, 3)
+        val recordedD = fixture.series.getValue("stochD")
+        assertNotNull("the record still shows the web app publishing a warm-up value", recordedD[13])
+        assertEquals(null, stochastic.d[13])
+        assertEquals(null, stochastic.d[14])
+        // The first index where every bar in the window is a real %K — 14 - 1 plus 3 - 1 — and from
+        // there the two agree again to the same tolerance as everything else.
+        assertNotNull(stochastic.d[15])
+        assertEquals(recordedD[15]!!, stochastic.d[15]!!, 1e-6)
     }
 
     @Test

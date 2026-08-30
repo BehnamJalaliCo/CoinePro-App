@@ -5,7 +5,10 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.net.Uri
 import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,6 +62,7 @@ import com.coinepro.core.auth.PlatformCapabilities
 import com.coinepro.core.auth.PlatformSessions
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionState
+import com.coinepro.core.auth.sessionForShell
 import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.toPersianDigits
@@ -79,6 +83,12 @@ import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
+import com.coinepro.core.designsystem.CoineProNavigationRail
+import com.coinepro.core.designsystem.CoineProRailHeader
+import com.coinepro.core.designsystem.ProChartWordmark
+import com.coinepro.core.designsystem.CoineProListDetail
+import com.coinepro.core.designsystem.coineProWindowClass
+import com.coinepro.core.marketdata.CandleArchive
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.network.NetworkStatus
 import com.coinepro.core.datastore.MarketColorScheme
@@ -113,9 +123,9 @@ import com.coinepro.core.designsystem.ProvideToaster
 import com.coinepro.core.designsystem.PageAccent
 import com.coinepro.core.designsystem.ProvidePageAccent
 import com.coinepro.core.diagnostics.AdminController
+import com.coinepro.core.diagnostics.DiagnosticExport
 import com.coinepro.core.diagnostics.AppLog
 import com.coinepro.core.diagnostics.LogTag
-import com.coinepro.core.diagnostics.Appearance
 import com.coinepro.core.diagnostics.ControlHub
 import com.coinepro.core.diagnostics.CrashReport
 import com.coinepro.core.diagnostics.FeedStatus
@@ -483,6 +493,8 @@ fun CoineProApp(
     networkStatus: NetworkStatus,
     /** The bars already held, so a chart draws before it fetches. */
     candleCache: CandleCache,
+    /** Every bar ever fetched, so paging back deepens across sessions. See [CandleArchive]. */
+    candleArchive: CandleArchive,
     notificationSettingsStore: NotificationSettingsStore,
     localAlertStore: LocalAlertStore,
     localAlertScheduler: LocalAlertScheduler,
@@ -606,15 +618,27 @@ fun CoineProApp(
     // one starts, so two sockets are never open and the screen can never blend their quotes.
     val activePlatform by activePlatformStore.active
         .collectAsStateWithLifecycle(initialValue = activePlatformStore.available.first())
-    // What gates the shell: the session belonging to the platform on screen.
+    // What gates the shell: the reader's session, and *not* the tab they are looking at.
     //
-    // It used to be the unqualified controller's, which is TradeYar's — and that is wrong the
-    // moment sign-in can succeed on the other backend. A reader whose account is on CoinePro-FX
-    // would have completed a sign-in, had a valid session written, and still been looking at the
-    // sign-in screen, because the app was asking a server they do not have an account with.
+    // This was `sessionStates[activePlatform]`, and that is the forex bug. «فارکس» and «کریپتو» are
+    // a market switch in the reader's hands; reading a session out of them made the tab an account
+    // switch. Registration deliberately does not federate — see `FederatedEmailAuthGateway` — so a
+    // sign-in mints exactly one session and every reader is signed out of exactly one of the two
+    // platforms. Tapping the other tab therefore dropped a valid session into the guest branch
+    // below, which draws no platform switcher, so the switch was one-way and read as being logged
+    // out. From the admin panel it reads as a crash, because the whole `MainShell` holding the
+    // diagnostics route is disposed and rebuilt at the start destination.
     //
-    // The fallback is for the first frame only, before the map has been collected.
-    val session = sessionStates[activePlatform] ?: SessionState.Loading
+    // `sessionForShell` asks the platform on screen first and falls back to the reader's other
+    // session. It lends no token: the platform with no account still answers 401 to its own
+    // screens, and each of them says so for itself — a gap the reader can see, rather than a
+    // sign-out they cannot explain. See `PlatformSwitchTest`, and
+    // `docs/SERVER_ASK_ONE_ACCOUNT_TWO_BACKENDS.md` for the half that is the servers'.
+    //
+    // It also settles the teardown below. `signedIn` now means "this reader holds an account", so
+    // the sign-out branch of that effect — which clears every controller on *both* platforms and
+    // destroys the academy token — stops firing on a change of market.
+    val session = sessionStates.sessionForShell(activePlatform)
     val marketDataController = marketDataControllers.getValue(activePlatform)
     val marketSearchController = marketSearchControllers.getValue(activePlatform)
     val marketTickerStore = marketTickerStores.getValue(activePlatform)
@@ -755,35 +779,18 @@ fun CoineProApp(
 
     val notificationState by notificationController.state.collectAsStateWithLifecycle()
     val venueState by executionController.connections.collectAsStateWithLifecycle()
-    // The shell follows the session, not a remembered preference.
+    // A cold start opens on the platform the reader's account is actually on.
     //
-    // This is the second half of the sign-in fix, and it is the half that shows up as "I sign in
-    // and it throws me straight back to the guest screen".
+    // Narrower than it was, because the reason it was written for is gone. It used to be the guard
+    // against a stored preference naming a platform with no token: the shell opened there, the
+    // first request came back 401, and the app landed on the guest screen. `sessionForShell` above
+    // is what stops that now, and it stops it properly rather than by moving the reader.
     //
-    // The two backends are separate accounts with separate tokens, and the shell reads *one* of
-    // them: every controller on screen is `controllers.getValue(activePlatform)`. Sign-in now
-    // creates a **TradeYar** session — that is where a CoinePro account belongs, and it is what
-    // fixes the mail arriving as "CoinePro Fx" — but `activePlatform` is a stored preference, and
-    // on a phone that ran an earlier build it still says CoinePro-FX. The shell then opens on a
-    // platform this reader has no token for, the first request comes back 401, the 401 handler
-    // ends the session, and the app lands back on the guest screen. From the outside that is
-    // indistinguishable from a crash, which is exactly how it was reported.
-    //
-    // So: if the platform on screen has no session and exactly one platform does, follow it. Only
-    // when it is unambiguous — somebody signed in to both has made a real choice and this must not
-    // overrule it.
-    // ...and it must not overrule a **tap**, which is the half that was missing.
-    //
-    // The effect above was written for a stored preference left over from an older build, and for
-    // that it is right. But it re-ran on every change to `activePlatform`, including the reader's
-    // own — so tapping «فارکس» while signed in only to TradeYar set the platform, tore the shell
-    // down to the guest branch for one frame, and the effect immediately set it back and rebuilt
-    // the signed-in shell. What the reader saw was a tab that flashed the whole app and did
-    // nothing, which is how it was reported: «روی فارکس میزنم کرش میکنه».
-    //
-    // A deliberate choice is respected for the rest of the session. The reader still cannot see a
-    // platform they have no token for — there is nothing to show them — but they now land on its
-    // sign-in and are told why, instead of being bounced back with no explanation.
+    // What is left is still worth having, and only on a first frame: a reader whose one account is
+    // on CoinePro-FX, opening a build whose fallback is TradeYar, would otherwise land on a crypto
+    // shell where every controller answers 401. So — if the platform on screen has no session and
+    // exactly one platform does, follow it. Only when it is unambiguous, and only until the reader
+    // touches the switcher, because a deliberate choice is not a stale preference.
     var platformChosen by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(sessionStates, activePlatform) {
         if (platformChosen) return@LaunchedEffect
@@ -835,7 +842,6 @@ fun CoineProApp(
                 chartVision = methods.chartVision,
             )
         },
-        appearance = Appearance(AppLanguageStore.current(context).tag),
     )
 
     val hubActions = HubActions(
@@ -862,19 +868,27 @@ fun CoineProApp(
                 },
             )
         },
-        onSetLanguage = { tag ->
-            AppLanguageStore.set(context, AppLanguage.fromTag(tag))
-            // The locale is read in attachBaseContext, so the change lands on the next creation.
-            (context as? Activity)?.recreate()
-        },
         onProbe = adminController::probe,
         onToggleFailuresOnly = adminController::toggleFailuresOnly,
         onClearRequests = adminController::clearRequests,
-        onCopyLog = {
-            context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(
-                ClipData.newPlainText("CoinePro log", adminController.logText()),
-            )
-        },
+        // The panel's own levers. The clipboard and the file are done inside `feature:admin`,
+        // which owns the FileProvider write and the document picker — this side only names the
+        // controller calls, so the shell has no opinion about how a report leaves the device.
+        onUnlock = adminController::unlock,
+        onCredentialEdited = adminController::editingCredentials,
+        onLock = adminController::lock,
+        onShowSection = adminController::show,
+        onSetMinimumLevel = adminController::setMinimumLevel,
+        onToggleTag = adminController::toggleTag,
+        onSetQuery = adminController::setQuery,
+        onSetWindow = adminController::setWindow,
+        onClearFilter = adminController::clearFilter,
+        onExpandEntry = adminController::expand,
+        onClearLog = adminController::clearLog,
+        onSetVerbosity = adminController::setVerbosity,
+        onClearCrash = adminController::clearCrash,
+        onExported = adminController::exported,
+        onObserveInstall = adminController::observe,
     )
 
     // Collected here rather than inside the theme so the whole tree — including the sign-in and
@@ -935,6 +949,7 @@ fun CoineProApp(
                 candleGateway = candleGateways.getValue(activePlatform),
                 orderBookGateway = orderBookGateways.getValue(activePlatform),
                 candleCache = candleCache,
+                candleArchive = candleArchive,
                 chartDrawingStore = chartDrawingStore,
                 drawingImageStore = drawingImageStore,
                 chartLayoutStore = chartLayoutStore,
@@ -1124,6 +1139,7 @@ fun CoineProApp(
                         // is the truth for both of them.
                         orderBookGateway = orderBookGateways.getValue(activePlatform),
                         candleCache = candleCache,
+                        candleArchive = candleArchive,
                         chartDrawingStore = chartDrawingStore,
                         drawingImageStore = drawingImageStore,
                         chartLayoutStore = chartLayoutStore,
@@ -1300,6 +1316,8 @@ private fun MainShell(
     orderBookGateway: OrderBookGateway,
     /** The bars already held, so a chart draws before it fetches. */
     candleCache: CandleCache,
+    /** Every bar ever fetched, so paging back deepens across sessions. See [CandleArchive]. */
+    candleArchive: CandleArchive,
     chartDrawingStore: ChartDrawingStore,
     /** Where the image drawing tool's pictures live. See `DrawingImageStore`. */
     drawingImageStore: DrawingImageStore,
@@ -1498,6 +1516,7 @@ private fun MainShell(
         images = drawingImageStore,
         log = appLog,
         cache = candleCache,
+        archive = candleArchive,
     )
 
     // The prices the chart's watchlist strip and the two-pane pickers put beside their tickers,
@@ -1562,6 +1581,11 @@ private fun MainShell(
         LAUNCH_READINESS_ROUTE,
         ADMIN_ROUTE,
     )
+    // How much glass there is, read once for the whole shell. `CoineProTheme` provides it, so this
+    // is the same answer every screen underneath gets — which is what stops a rail and a bottom bar
+    // being drawn at the same time.
+    val window = coineProWindowClass()
+
     val subTitleRes = when (currentRoute) {
         ADMIN_ROUTE -> R.string.screen_diagnostics
         SIGNAL_DETAIL_PATTERN -> R.string.screen_signal_detail
@@ -1769,14 +1793,12 @@ private fun MainShell(
             }
         },
         bottomBar = {
-            if (!isSubScreen) {
+            if (!isSubScreen && !window.showsNavigationRail) {
                 CoineProBottomBar(
                     currentRoute = currentRoute,
                     onSelect = { destination ->
                         navController.navigate(destination.route) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
+                            tabSwitch(navController, destination.route)
                         }
                     },
                 )
@@ -1786,7 +1808,31 @@ private fun MainShell(
         // A box, so the toast host at the bottom of it can overlay whatever screen is up without
         // that screen having to know it exists. See `CoineProToastHost`.
         Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        // The rail first, so it takes the *start* edge — the right in Persian. Nothing here names
+        // a side and nothing must: a rail pinned to a physical edge is the first thing a reader of
+        // a right-to-left app sees, and it is wrong in a way that looks deliberate.
+        Row(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        if (!isSubScreen && window.showsNavigationRail) {
+            CoineProNavigationRail(
+                items = coineProRailItems(),
+                selectedKey = currentRoute,
+                onSelect = { item ->
+                    navController.navigate(item.key) { tabSwitch(navController, item.key) }
+                },
+                labelled = window.prefersLabelledRail,
+                header = {
+                    CoineProRailHeader {
+                        // Only on the labelled rail. The wordmark's smallest legible width is
+                        // 160dp and the glyph rail is 80dp wide; scaling it to fit would put an
+                        // illegible logo on screen, which is worse than no logo.
+                        if (window.prefersLabelledRail) {
+                            ProChartWordmark(modifier = Modifier.width(160.dp))
+                        }
+                    }
+                },
+            )
+        }
+        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
         // Above every screen and below the bar, because being offline changes what every one of
         // them is showing. It takes its own row rather than floating, so it never covers a line.
         CoineProOfflineBar(online = online)
@@ -1797,6 +1843,142 @@ private fun MainShell(
         // below is brand gold, which is the right default for the parts of the app that act on an
         // account rather than analyse a market.
         ProvidePageAccent(accentFor(currentRoute)) {
+        /**
+         * The chart, as a value, so the tablet's detail pane draws the same one the route does.
+         *
+         * Hoisted out of `composable(CHART_PATTERN)` and called from it, rather than copied: a
+         * second chart written beside the first is a second set of callbacks to keep in step, and
+         * the one that fell behind would be the one nobody was testing on a phone. Everything it
+         * reads — the controller holder, the stores, the alert composer — already belongs to the
+         * shell, so this is a move and not a lift.
+         *
+         * `symbol` is the instrument to open; `timeframe` is the bar length a fired alert was
+         * decided on, or null for the reader's own last one.
+         */
+        val chartPane: @Composable (symbol: String, timeframe: String?) -> Unit =
+            @Composable { routeSymbol, routeTimeframe ->
+            /**
+             * The instrument actually in front of the reader.
+             *
+             * Not the route argument, and this is the whole reason it exists: the watchlist
+             * strip under the chart swaps the symbol *in place* without navigating, so the
+             * path still names the market they started from. Every entry that leaves this
+             * screen *on a symbol* reads this instead — the studio above all, and through it
+             * the two-pane screen — or it would open on the chart the reader stopped looking
+             * at several taps ago. The terminal is not one of them: its address carries no
+             * instrument. `onSelectSymbol` below is the deliberate exception, because that is
+             * the fallback path that really does navigate.
+             *
+             * Saved rather than remembered, so a rotation does not undo the switch.
+             */
+            var activeChartSymbol by rememberSaveable { mutableStateOf(routeSymbol) }
+            // What the bar's depth entry opens on. Keyed on the symbol rather than set inside
+            // `onSymbolChanged`, because that callback only fires on a *change* — a reader who
+            // opens a chart and presses depth straight away has never changed anything.
+            LaunchedEffect(activeChartSymbol) { chartSymbolOnScreen = activeChartSymbol }
+            val chartController = chartControllers.controllerFor(routeSymbol)
+            // The bar a fired alert was decided on. Recorded rather than applied, because the
+            // controller's own restore reads a stored interval for this symbol and whichever
+            // ran last would win — see `ChartController.openAt`.
+            LaunchedEffect(chartController, routeTimeframe) { chartController.openAt(routeTimeframe) }
+            ChartScreen(
+                layouts = chartLayouts,
+                onSaveLayout = onSaveLayoutAnnounced,
+                onDeleteLayout = onDeleteLayoutAnnounced,
+                watchlist = watchlist,
+                onPaperTrade = { symbol, buy, entry, size, stopLoss, takeProfit ->
+                    paperTradeController.place(
+                        PaperOrderRequest(
+                            symbol = symbol,
+                            side = if (buy) PaperSide.BUY else PaperSide.SELL,
+                            // A limit at the entry the reader drew, not a market order.
+                            //
+                            // The two are the same thing whenever the price is already there:
+                            // `PaperFills.marketable` fills a limit that the book has reached
+                            // at the book's own price, capped at the limit. They differ where
+                            // the setup is a level the market has not come to yet, and there a
+                            // market order would take a trade at a price the reader did not
+                            // choose — which is the opposite of what drawing an entry means.
+                            type = PaperOrderType.LIMIT,
+                            size = size,
+                            limitPrice = entry,
+                            // Both lines they drew. A setup that arrives without its stop is
+                            // one they have to protect a second time, and the second time is
+                            // the one that gets skipped.
+                            stopLoss = stopLoss,
+                            takeProfit = takeProfit,
+                        ),
+                    )
+                },
+                // The chart says which price; the composer asks the rest. Opened here rather
+                // than inside `feature:chart` so the sheet keeps one owner.
+                onCreateAlert = { symbol, price -> alertFromChart = symbol to price },
+                onSelectSymbol = { symbol ->
+                    // Replaces the chart rather than stacking one on top of another: flipping
+                    // through six symbols must not build a six-deep back stack that takes six
+                    // presses to leave.
+                    navController.navigate(chartRoute(symbol)) {
+                        popUpTo(CHART_PATTERN) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+                controller = chartController,
+                // What turns a tap in the strip into a switch rather than a navigation: the
+                // holder already keeps a controller per symbol, with that symbol's own
+                // drawings and its own restored timeframe.
+                controllerFor = chartControllers::controllerFor,
+                onSymbolChanged = { activeChartSymbol = it },
+                watchlistQuotes = watchlistQuotes,
+                workspace = chartWorkspaceStore,
+                drawingTemplates = drawingTemplateStore,
+                symbolChartStates = symbolChartStateStore,
+                chartLayoutStore = chartLayoutStore,
+                intervalFavourites = intervalFavouritesStore,
+                drawingSync = drawingSyncStore,
+                events = chartEventController,
+                timeZones = timeZonePrefStore,
+                onOpenStudio = { navController.navigate(studioRoute(activeChartSymbol)) },
+                onOpenTerminal = if (terminalController.isConfigured) {
+                    { navController.navigate(TERMINAL_ROUTE) }
+                } else {
+                    null
+                },
+            )
+        }
+
+        /**
+         * One signal's page, as a value, so the tablet draws it beside the list it came from.
+         *
+         * The same move as [chartPane] and for the same reason: a reader working through six
+         * open signals on a tablet should not push and pop six times to compare them.
+         */
+        val signalPane: @Composable (signalId: Long) -> Unit =
+            @Composable { signalId ->
+            val chartScope = rememberCoroutineScope()
+            val signalChartController = remember(candleGateway) {
+                SignalChartController(gateway = candleGateway, scope = chartScope)
+            }
+            SignalDetailScreen(
+                controller = signalController,
+                marketIntelController = marketIntelController,
+                signalId = signalId,
+                chartController = signalChartController,
+                // Null where the platform places no orders. CoinePro-FX is the case: its
+                // signals reach a reader's account through copy trading, so the button that
+                // used to sit here led to a screen that could only say the feature was absent.
+                onExecute = if (activePlatform == MarketPlatform.TRADEYAR) {
+                    { id -> navController.navigate(executionRoute(id)) }
+                } else {
+                    null
+                },
+                onOpenCopyTrading = if (activePlatform == MarketPlatform.COINEPRO_FX) {
+                    { navController.navigate(CONNECTIONS_ROUTE) }
+                } else {
+                    null
+                },
+            )
+        }
+
         NavHost(
             navController = navController,
             startDestination = AppDestination.HOME.route,
@@ -1879,6 +2061,16 @@ private fun MainShell(
                     state = adminState,
                     hub = hub,
                     actions = hubActions,
+                    // Lambdas rather than values: building the report walks the whole ring and
+                    // every recorded request, and doing that on each recomposition of a screen
+                    // that has a search field on it would cost the panel its own responsiveness.
+                    report = {
+                        DiagnosticExport.render(
+                            adminController.exportContext(hub, marketState.connection.name),
+                            System.currentTimeMillis(),
+                        )
+                    },
+                    logText = adminController::logText,
                 )
             }
             composable(AppDestination.SIGNALS.route) {
@@ -1890,9 +2082,15 @@ private fun MainShell(
                     )
                     return@composable
                 }
+                var pairedSignal by rememberSaveable { mutableStateOf<Long?>(null) }
+                CoineProListDetail(
+                    detail = pairedSignal?.let { id -> { signalPane(id) } },
+                ) { twoPane ->
                 SignalsScreen(
                     controller = signalController,
-                    onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
+                    onOpenSignal = {
+                        if (twoPane) pairedSignal = it else navController.navigate(signalDetailRoute(it))
+                    },
                     platform = activePlatform,
                     // The locked state is the membership journey now, not a card naming a Telegram
                     // channel. Somebody who installed this from Google Play has never heard of that
@@ -1901,35 +2099,13 @@ private fun MainShell(
                     membershipController = membershipController,
                     guestController = guestController,
                 )
+                }
             }
             composable(
                 route = SIGNAL_DETAIL_PATTERN,
                 arguments = listOf(navArgument("signalId") { type = NavType.LongType }),
             ) { entry ->
-                val signalId = entry.arguments?.getLong("signalId") ?: return@composable
-                val chartScope = rememberCoroutineScope()
-                val signalChartController = remember(candleGateway) {
-                    SignalChartController(gateway = candleGateway, scope = chartScope)
-                }
-                SignalDetailScreen(
-                    controller = signalController,
-                    marketIntelController = marketIntelController,
-                    signalId = signalId,
-                    chartController = signalChartController,
-                    // Null where the platform places no orders. CoinePro-FX is the case: its
-                    // signals reach a reader's account through copy trading, so the button that
-                    // used to sit here led to a screen that could only say the feature was absent.
-                    onExecute = if (activePlatform == MarketPlatform.TRADEYAR) {
-                        { id -> navController.navigate(executionRoute(id)) }
-                    } else {
-                        null
-                    },
-                    onOpenCopyTrading = if (activePlatform == MarketPlatform.COINEPRO_FX) {
-                        { navController.navigate(CONNECTIONS_ROUTE) }
-                    } else {
-                        null
-                    },
-                )
+                signalPane(entry.arguments?.getLong("signalId") ?: return@composable)
             }
             composable(
                 route = EXECUTION_PATTERN,
@@ -2310,6 +2486,13 @@ private fun MainShell(
             }
             composable(AppDestination.MARKETS.route) {
                 val signals by signalController.state.collectAsStateWithLifecycle()
+                // The instrument in the detail pane, or null where there is only one pane and a
+                // row tap is still a navigation. Saveable, so a rotation on a tablet does not
+                // close the chart the reader is looking at.
+                var pairedSymbol by rememberSaveable { mutableStateOf<String?>(null) }
+                CoineProListDetail(
+                    detail = pairedSymbol?.let { symbol -> { chartPane(symbol, null) } },
+                ) { twoPane ->
                 MarketsScreen(
                     controller = marketSearchController,
                     sparklines = sparklineStore,
@@ -2321,7 +2504,12 @@ private fun MainShell(
                     watchlist = watchlist,
                     watchlistStore = watchlistStore,
                     watchlistSync = watchlistSyncController,
-                    onOpenSymbol = { symbol -> navController.navigate(chartRoute(symbol)) },
+                    // Two panes: the chart appears beside the list and the list stays where it
+                    // is. One pane: exactly what it always did. See `CoineProListDetail` — the
+                    // decision is made on the width this layout was given, not on the window.
+                    onOpenSymbol = { symbol ->
+                        if (twoPane) pairedSymbol = symbol else navController.navigate(chartRoute(symbol))
+                    },
                     onOpenSearch = { navController.navigate(MARKET_SEARCH_ROUTE) },
                     // The same hoisted composer the chart uses, at the price the preview showed —
                     // the shell's live map carries only the subscribed handful, and looking the
@@ -2339,6 +2527,7 @@ private fun MainShell(
                         )
                     },
                 )
+                }
             }
             composable(AppDestination.CHART.route) {
                 // The tab opens the reader's own first market, or the platform's first quoted one.
@@ -2396,94 +2585,9 @@ private fun MainShell(
                     },
                 ),
             ) { entry ->
-                val routeSymbol = entry.arguments?.getString("symbol").orEmpty()
-                val routeTimeframe = entry.arguments?.getString("timeframe")
-                /**
-                 * The instrument actually in front of the reader.
-                 *
-                 * Not the route argument, and this is the whole reason it exists: the watchlist
-                 * strip under the chart swaps the symbol *in place* without navigating, so the
-                 * path still names the market they started from. Every entry that leaves this
-                 * screen *on a symbol* reads this instead — the studio above all, and through it
-                 * the two-pane screen — or it would open on the chart the reader stopped looking
-                 * at several taps ago. The terminal is not one of them: its address carries no
-                 * instrument. `onSelectSymbol` below is the deliberate exception, because that is
-                 * the fallback path that really does navigate.
-                 *
-                 * Saved rather than remembered, so a rotation does not undo the switch.
-                 */
-                var activeChartSymbol by rememberSaveable { mutableStateOf(routeSymbol) }
-                // What the bar's depth entry opens on. Keyed on the symbol rather than set inside
-                // `onSymbolChanged`, because that callback only fires on a *change* — a reader who
-                // opens a chart and presses depth straight away has never changed anything.
-                LaunchedEffect(activeChartSymbol) { chartSymbolOnScreen = activeChartSymbol }
-                val chartController = chartControllers.controllerFor(routeSymbol)
-                // The bar a fired alert was decided on. Recorded rather than applied, because the
-                // controller's own restore reads a stored interval for this symbol and whichever
-                // ran last would win — see `ChartController.openAt`.
-                LaunchedEffect(chartController, routeTimeframe) { chartController.openAt(routeTimeframe) }
-                ChartScreen(
-                    layouts = chartLayouts,
-                    onSaveLayout = onSaveLayoutAnnounced,
-                    onDeleteLayout = onDeleteLayoutAnnounced,
-                    watchlist = watchlist,
-                    onPaperTrade = { symbol, buy, entry, size, stopLoss, takeProfit ->
-                        paperTradeController.place(
-                            PaperOrderRequest(
-                                symbol = symbol,
-                                side = if (buy) PaperSide.BUY else PaperSide.SELL,
-                                // A limit at the entry the reader drew, not a market order.
-                                //
-                                // The two are the same thing whenever the price is already there:
-                                // `PaperFills.marketable` fills a limit that the book has reached
-                                // at the book's own price, capped at the limit. They differ where
-                                // the setup is a level the market has not come to yet, and there a
-                                // market order would take a trade at a price the reader did not
-                                // choose — which is the opposite of what drawing an entry means.
-                                type = PaperOrderType.LIMIT,
-                                size = size,
-                                limitPrice = entry,
-                                // Both lines they drew. A setup that arrives without its stop is
-                                // one they have to protect a second time, and the second time is
-                                // the one that gets skipped.
-                                stopLoss = stopLoss,
-                                takeProfit = takeProfit,
-                            ),
-                        )
-                    },
-                    // The chart says which price; the composer asks the rest. Opened here rather
-                    // than inside `feature:chart` so the sheet keeps one owner.
-                    onCreateAlert = { symbol, price -> alertFromChart = symbol to price },
-                    onSelectSymbol = { symbol ->
-                        // Replaces the chart rather than stacking one on top of another: flipping
-                        // through six symbols must not build a six-deep back stack that takes six
-                        // presses to leave.
-                        navController.navigate(chartRoute(symbol)) {
-                            popUpTo(CHART_PATTERN) { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    },
-                    controller = chartController,
-                    // What turns a tap in the strip into a switch rather than a navigation: the
-                    // holder already keeps a controller per symbol, with that symbol's own
-                    // drawings and its own restored timeframe.
-                    controllerFor = chartControllers::controllerFor,
-                    onSymbolChanged = { activeChartSymbol = it },
-                    watchlistQuotes = watchlistQuotes,
-                    workspace = chartWorkspaceStore,
-                    drawingTemplates = drawingTemplateStore,
-                    symbolChartStates = symbolChartStateStore,
-                    chartLayoutStore = chartLayoutStore,
-                    intervalFavourites = intervalFavouritesStore,
-                    drawingSync = drawingSyncStore,
-                    events = chartEventController,
-                    timeZones = timeZonePrefStore,
-                    onOpenStudio = { navController.navigate(studioRoute(activeChartSymbol)) },
-                    onOpenTerminal = if (terminalController.isConfigured) {
-                        { navController.navigate(TERMINAL_ROUTE) }
-                    } else {
-                        null
-                    },
+                chartPane(
+                    entry.arguments?.getString("symbol").orEmpty(),
+                    entry.arguments?.getString("timeframe"),
                 )
             }
             composable(
@@ -2643,10 +2747,20 @@ private fun MainShell(
                 )
             }
             composable(SCREENER_ROUTE) {
-                ScreenerScreen(
-                    controller = screenerController,
-                    onOpenSymbol = { navController.navigate(chartRoute(it)) },
-                )
+                var pairedSymbol by rememberSaveable { mutableStateOf<String?>(null) }
+                CoineProListDetail(
+                    detail = pairedSymbol?.let { symbol -> { chartPane(symbol, null) } },
+                ) { twoPane ->
+                    ScreenerScreen(
+                        controller = screenerController,
+                        // A screener is a list of instruments to look at, so the reader who has
+                        // just filtered forty of them down to three should be able to look at all
+                        // three without losing the filter that found them.
+                        onOpenSymbol = {
+                            if (twoPane) pairedSymbol = it else navController.navigate(chartRoute(it))
+                        },
+                    )
+                }
             }
             composable(TOOLS_ROUTE) {
                 ToolsScreen(
@@ -2750,6 +2864,7 @@ private fun MainShell(
                     },
                 )
             }
+        }
         }
         }
         }

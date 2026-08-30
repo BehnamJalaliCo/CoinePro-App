@@ -14,3 +14,17 @@ COINEPRO_RELEASE_KEY_PASSWORD=
 COINEPRO_DEBUG_TERMINAL_URL=
 COINEPRO_STAGING_TERMINAL_URL=
 COINEPRO_PRODUCTION_TERMINAL_URL=
+
+# The admin panel's credential.
+#
+# The password is stored nowhere — not here, not in `local.properties`, not on the device. What
+# goes in `local.properties` is the PBKDF2-HMAC-SHA256 derivation of it under a random salt, which
+# cannot be turned back into the password and is worthless against anything else.
+#
+# Generate a pair with any PBKDF2 tool: 100000 iterations, a 16-byte random salt, a 32-byte output,
+# both encoded base64. A build with these left empty has no key in its admin door at all and every
+# unlock attempt is refused, which is the correct failure — see core/diagnostics/AdminCredentials.kt.
+COINEPRO_ADMIN_USERNAME=
+COINEPRO_ADMIN_SALT=
+COINEPRO_ADMIN_HASH=
+COINEPRO_ADMIN_ITERATIONS=100000

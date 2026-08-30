@@ -45,4 +45,28 @@
     <string name="chart_reading_bias">Bias</string>
     <string name="chart_reading_volatility_why">%1$s of its recent range</string>
     <string name="chart_reading_bias_why">%1$s between the averages</string>
+
+    <string name="panes_title">%1$s charts</string>
+    <string name="panes_single">One chart</string>
+    <string name="panes_count_label">Panes</string>
+    <string name="panes_no_chart">This symbol has no chart at this bar length.</string>
+    <string name="panes_interval_title">Bar length</string>
+    <string name="panes_symbol_title">This pane\'s symbol</string>
+    <string name="panes_sync_title">Sync</string>
+    <string name="panes_sync_none">Nothing</string>
+    <string name="panes_sync_open">Open</string>
+    <string name="panes_sync_close">Close</string>
+    <string name="panes_sync_unavailable">The chart canvas does not yet report the crosshair or the visible window, so this tie is not available.</string>
+
+    <string name="pane_sync_symbol">Symbol</string>
+    <string name="pane_sync_symbol_note">Choosing a symbol in the first pane opens it in all the others.</string>
+    <string name="pane_sync_interval">Bar length</string>
+    <string name="pane_sync_interval_note">Changing the bar length in one pane changes it in the rest.</string>
+    <string name="pane_sync_crosshair">Crosshair</string>
+    <string name="pane_sync_crosshair_note">The crosshair on one chart marks the same moment on the others.</string>
+    <string name="pane_sync_time_range">Time range</string>
+    <string name="pane_sync_time_range_note">Panning or zooming one pane moves the rest to the same bars.</string>
+
+    <string name="chart_tools_column_title">Drawing tools</string>
+    <string name="chart_tools_column_count">%1$s tools</string>
 </resources>

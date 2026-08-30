@@ -32,9 +32,17 @@ class ScriptStrategiesTest {
      *
      * The **shocks** are the part that is easy to leave out and must not be. Every real chart has a
      * handful of bars several times the size of the ones around them, and a study that is only ever
-     * fed a well-behaved series is a study nobody has tested: SuperTrend, in particular, cannot
-     * change side at all without one, so a fixture without shocks would let a permanently frozen
-     * SuperTrend pass as working.
+     * fed a well-behaved series is a study nobody has tested.
+     *
+     * The **amplitudes are chosen against the ATR**, and that is not cosmetic tuning — it is what
+     * decides whether this file can see anything at all. An ATR-band study only speaks when an
+     * ordinary pullback can reach its band, so a series whose swings are small next to its own
+     * bar-to-bar range leaves SuperTrend flipping on nothing but the shocks. A fixture like that
+     * looks busy and is blind: it recorded the same seven flips whether the bands ratcheted towards
+     * price or walked away from it, which is precisely the bug that shipped. The waves here are
+     * around six times the median ATR, so a pullback reaches the band and a flip means something —
+     * and a SuperTrend that stopped trailing would show up as flips collapsing back onto the shock
+     * bars, which is what [the SuperTrend band tightens towards price while a trend runs] checks.
      */
     private fun waves(count: Int): CandleSeries {
         var seed = 20260830L
@@ -47,8 +55,8 @@ class ScriptStrategiesTest {
         return CandleSeries(
             List(count) { index ->
                 if (index % 83 == 11) shock += if ((index / 83) % 2 == 0) 40.0 else -40.0
-                val base = 100.0 + sin(index / 9.0) * 6 + sin(index / 31.0) * 14 +
-                    sin(index / 97.0) * 22 + index * 0.02 + noise() * 5 + shock
+                val base = 100.0 + sin(index / 7.0) * 20 + sin(index / 23.0) * 40 +
+                    sin(index / 71.0) * 34 + index * 0.02 + noise() * 5 + shock
                 val open = previous
                 previous = base
                 val wick = (0.4 + abs(noise())) * 3
@@ -409,6 +417,57 @@ class ScriptStrategiesTest {
         assertFalse("اگر این دو یکی باشند، جابه‌جایی ابر بی‌اثر شده است", here == displaced)
     }
 
+    /**
+     * The SuperTrend band tightens towards price while a trend runs.
+     *
+     * This is here because the recorded signals alone could not see it. `core:chart` had the band
+     * rule the wrong way round for a while: instead of holding its previous reading and creeping
+     * towards price, the band settled a fixed multiple of ATR from the current bar's mid and stayed
+     * there. An indicator that never trails cannot be ended by a pullback, only by one enormous
+     * bar — and on a fixture whose swings were small next to its own ATR, that produced *exactly
+     * the same signals* as a working one, so the pin below went green either way.
+     *
+     * Two things are checked, and neither can be satisfied by a band that walks away from price.
+     * A ratcheted band sits **above** the raw `hl2 - m * atr` during an uptrend, which under the
+     * broken rule was true on precisely zero bars. And the flips must mostly fall on ordinary bars
+     * rather than on the fixture's handful of shocks, because an untrailed band can only be reached
+     * by a shock.
+     */
+    @Test
+    fun `the SuperTrend band tightens towards price while a trend runs`() {
+        val series = waves(600)
+        val bands = NamaScript.run(
+            """
+            multiplier = 3
+            band = ta.supertrend(10, multiplier)
+            raw = hl2 - multiplier * ta.atr(10)
+            up = ta.supertrend_trend(10, multiplier) > 0
+            marker(up, title = "روند صعودی", style = "circle")
+            marker(up and band > raw, title = "باند جمع‌شده", style = "up")
+            """.trimIndent(),
+            series,
+        )
+        assertNull(bands.error?.message, bands.error)
+        val rising = bands.markers[0].bars.size
+        val tightened = bands.markers[1].bars.size
+        assertTrue("نمونه روند صعودی ندارد", rising > 100)
+        assertTrue(
+            "باند سوپرترند به قیمت نزدیک نمی‌شود: $tightened از $rising کندلِ صعودی",
+            tightened > rising / 4,
+        )
+
+        // The fixture's shock bars, from the generator above. A band that does not trail can only
+        // be reached by one of these.
+        val shocks = (0 until 600).filter { it % 83 == 11 }
+        val flips = NamaScript.run(ScriptStrategies.SUPERTREND_FLIP.source, series)
+            .markers.flatMap { it.bars }
+        val ordinary = flips.filterNot { bar -> shocks.any { abs(bar - it) <= 2 } }
+        assertTrue(
+            "سوپرترند فقط روی کندل‌های شوک برمی‌گردد، یعنی باند دنبال قیمت نمی‌آید: $flips",
+            ordinary.size > flips.size / 2,
+        )
+    }
+
     /* ------------------------------------------------------------------ pinned output */
 
     /**
@@ -424,47 +483,47 @@ class ScriptStrategiesTest {
         val series = waves(600)
         val expected = mapOf(
             "hull-cross" to listOf(
-                listOf(41, 100, 152, 210, 267, 284, 288, 319, 325, 334, 370, 383, 413, 433, 488, 492, 542, 546),
-                listOf(65, 124, 184, 235, 283, 286, 292, 322, 332, 349, 378, 408, 414, 460, 489, 516, 543, 583),
+                listOf(32, 76, 101, 118, 165, 210, 251, 266, 295, 341, 384, 424, 432, 473, 509, 523, 557),
+                listOf(52, 94, 107, 143, 184, 228, 260, 277, 318, 350, 408, 426, 450, 491, 515, 538, 583),
             ),
             "supertrend-flip" to listOf(
-                listOf(177, 343, 509),
-                listOf(94, 260, 426, 592),
+                listOf(129, 270, 343, 396, 436, 484, 509, 566),
+                listOf(63, 196, 330, 369, 426, 468, 502, 551, 592),
             ),
             "channel-breakout" to listOf(
-                listOf(170, 177, 222, 229, 343, 345, 393, 395, 397, 402, 509, 515, 561, 565, 568, 570, 573, 580),
-                listOf(90, 94, 138, 142, 146, 252, 256, 260, 263, 268, 307, 309, 314, 317, 321, 428, 477, 480, 483, 488, 592),
+                listOf(132, 135, 137, 139, 141, 143, 173, 175, 177, 180, 183, 303, 308, 311, 314, 319, 351, 353, 399, 402, 405, 440, 450, 484, 486, 490, 532, 538, 568, 572, 584),
+                listOf(77, 79, 94, 106, 109, 111, 115, 120, 207, 212, 232, 234, 237, 242, 245, 249, 252, 260, 291, 336, 338, 340, 369, 373, 426, 502, 504, 507, 550, 557, 596),
             ),
             "band-reversion" to listOf(
-                listOf(97, 264, 308, 312, 429, 484, 596),
-                listOf(57, 181, 230, 347, 403, 512, 563, 567, 569),
+                listOf(70, 96, 202, 244, 262, 335, 376, 429, 553, 596),
+                listOf(48, 136, 181, 309, 401, 403, 483, 488, 574),
             ),
             "trend-pullback" to listOf(
-                listOf(253, 257, 259, 364),
-                emptyList(),
+                listOf(368, 466, 469, 472, 505, 551, 598),
+                listOf(275, 277, 280, 305, 309, 395, 398),
             ),
             "triple-confluence" to listOf(
-                listOf(177, 347, 408, 417, 512, 577),
-                listOf(146, 150, 260, 428, 444, 447, 458, 488, 598),
+                listOf(141, 146, 177, 344, 410, 441, 458, 509, 570, 591),
+                listOf(109, 111, 209, 245, 260, 376, 427, 517),
             ),
             "confluence-score" to listOf(
-                listOf(75, 162, 164, 198, 210, 213, 343, 384, 456, 460, 464, 466, 509, 533, 553),
+                listOf(91, 128, 169, 271, 284, 299, 344, 395, 436, 478, 509, 526, 565),
             ),
             "supertrend-momentum" to listOf(
-                listOf(177, 248, 343, 372, 383, 420, 423, 509, 538, 540, 542, 553),
-                listOf(94, 131, 161, 163, 260, 426, 459, 463, 468, 592),
+                listOf(132, 160, 168, 301, 343, 399, 420, 423, 436, 484, 509, 528, 566),
+                listOf(94, 200, 332, 369, 426, 502, 551, 592),
             ),
             "channel-momentum" to listOf(
-                listOf(56, 62, 118, 170, 177, 222, 229, 343, 345, 393, 395, 397, 402, 509, 515, 561, 565, 568, 570, 573, 580),
-                listOf(90, 94, 138, 142, 146, 252, 256, 260, 263, 307, 309, 314, 317, 321, 379, 425, 428, 477, 480, 483, 488, 592),
+                listOf(51, 130, 132, 135, 137, 139, 141, 143, 173, 175, 177, 180, 183, 303, 308, 311, 314, 319, 399, 402, 405, 440, 450, 484, 486, 490, 532, 538, 568, 572, 584),
+                listOf(64, 69, 77, 79, 94, 109, 111, 115, 163, 199, 207, 212, 232, 234, 237, 242, 245, 249, 252, 260, 291, 331, 336, 338, 340, 369, 373, 426, 468, 502, 504, 507, 550, 557, 596),
             ),
             "ichimoku-cloud" to listOf(
-                listOf(219, 343, 389, 511, 559),
-                listOf(137, 426, 476),
+                listOf(173, 352, 439, 484, 569),
+                listOf(100, 426, 519),
             ),
             "directional-strength" to listOf(
-                listOf(130, 160, 343, 455, 509),
-                listOf(79, 252, 379, 425, 543, 592),
+                listOf(91, 129, 170, 272, 297, 343, 395, 435, 476, 509, 565),
+                listOf(62, 94, 162, 196, 281, 330, 367, 426, 468, 501, 513, 547, 592),
             ),
         )
         assertEquals(ScriptStrategies.ALL.map { it.id }.toSet(), expected.keys)

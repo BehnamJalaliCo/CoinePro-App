@@ -88,6 +88,11 @@ fun CoineProTheme(
     CompositionLocalProvider(
         LocalLayoutDirection provides layoutDirection,
         LocalCoineProPalette provides palette,
+        // Provided here so that every screen, preview and screenshot render inherits one answer to
+        // "how much room is there". A screen that computed its own would disagree with the shell
+        // the day the app runs in a window smaller than the display, and the two would then draw a
+        // navigation rail and a bottom bar at the same time.
+        LocalCoineProWindowClass provides configurationWindowClass(),
     ) {
         MaterialTheme(
             colorScheme = palette.toColorScheme(),

@@ -210,6 +210,35 @@ android {
         versionCode = configuredVersionCode
         versionName = configuredVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // The admin panel's credential. Only a PBKDF2-HMAC-SHA256 derivation travels into the
+        // build; the password itself is stored nowhere. `signingProperty` reads a Gradle property
+        // first and `local.properties` second, which is the same untracked path the release
+        // signing credentials already take.
+        //
+        // Empty is a legitimate answer and means this build has no key in its admin door at all —
+        // `AdminGate` then refuses every attempt, which is what a clone of this repository should
+        // produce rather than a panel anybody can open.
+        buildConfigField(
+            "String",
+            "ADMIN_USERNAME",
+            escapedBuildConfig(signingProperty("COINEPRO_ADMIN_USERNAME").orEmpty()),
+        )
+        buildConfigField(
+            "String",
+            "ADMIN_SALT",
+            escapedBuildConfig(signingProperty("COINEPRO_ADMIN_SALT").orEmpty()),
+        )
+        buildConfigField(
+            "String",
+            "ADMIN_HASH",
+            escapedBuildConfig(signingProperty("COINEPRO_ADMIN_HASH").orEmpty()),
+        )
+        buildConfigField(
+            "int",
+            "ADMIN_ITERATIONS",
+            (signingProperty("COINEPRO_ADMIN_ITERATIONS")?.toIntOrNull() ?: 100_000).toString(),
+        )
     }
 
     buildFeatures {

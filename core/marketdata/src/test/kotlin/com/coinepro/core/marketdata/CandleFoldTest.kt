@@ -326,7 +326,7 @@ class CandleFoldTest {
     @Test
     fun `every source bar boundary nests inside the custom buckets it is folded into`() {
         val interval = ChartInterval.Custom(CustomInterval(205))
-        val source = sourceTimeframeFor(interval)
+        val source = requireNotNull(sourceTimeframeFor(interval))
         val start = dayStart("2026-08-29")
         for (step in 0 until 400) {
             val boundary = interval.bucketStart(start + step * 300L, tehran)

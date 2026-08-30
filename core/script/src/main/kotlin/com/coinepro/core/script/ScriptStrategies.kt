@@ -132,15 +132,6 @@ object ScriptStrategies {
      * bar its ATR exists, so a series that opens in a downtrend flips on its first valid bar and
      * the original drew a sell there that means nothing; this waits for the seed to be washed out.
      *
-     * One limitation is not the original's and is worth stating plainly: `core:chart`'s SuperTrend
-     * bands do not trail. The rule that should hold the band at its tightest reading while a trend
-     * runs has its comparison the wrong way round, so the band sits a fixed multiple of ATR from
-     * the current bar's mid and never ratchets towards price. The practical effect is that the
-     * indicator only changes side when a single bar closes several times the average range beyond
-     * the band, rather than on the ordinary pullback that should end a trend — it under-reports
-     * badly, but every flip it does report is real, so nothing here is false, only late and rare.
-     * The fix belongs in `core:chart`.
-     *
      * A mark is not advice.
      */
     val SUPERTREND_FLIP = ScriptStrategy(
@@ -473,15 +464,6 @@ object ScriptStrategies {
      * and stays quiet after. The original also drew its risk box from `close` on every bar, so the
      * box moved with the live price and had no relationship to the bar the setup came from; the
      * setup here is anchored to the firing bar.
-     *
-     * One limitation is not the original's and is worth stating plainly: `core:chart`'s SuperTrend
-     * bands do not trail. The rule that should hold the band at its tightest reading while a trend
-     * runs has its comparison the wrong way round, so the band sits a fixed multiple of ATR from
-     * the current bar's mid and never ratchets towards price. The practical effect is that the
-     * indicator only changes side when a single bar closes several times the average range beyond
-     * the band, rather than on the ordinary pullback that should end a trend — it under-reports
-     * badly, but every flip it does report is real, so nothing here is false, only late and rare.
-     * The fix belongs in `core:chart`.
      *
      * A mark is not advice.
      */

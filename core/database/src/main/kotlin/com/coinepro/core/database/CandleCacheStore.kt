@@ -84,6 +84,47 @@ interface CandleCacheDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(candles: List<CachedCandleEntity>)
 
+    /**
+     * The newest [limit] bars opening strictly **before** [before], for a page-back off disk.
+     *
+     * Strictly before, and the strictness is the contract: it is the same window the network
+     * gateway answers, so a page that comes off disk and one that comes off the wire are
+     * interchangeable and neither can hand back a bar the caller already holds.
+     */
+    @Query(
+        "SELECT * FROM cached_candles WHERE symbol = :symbol AND `interval` = :intervalWire " +
+            "AND t < :before ORDER BY t DESC LIMIT :limit",
+    )
+    suspend fun before(
+        symbol: String,
+        intervalWire: String,
+        before: Long,
+        limit: Int,
+    ): List<CachedCandleEntity>
+
+    /** How many bars are held for one series, and the ends of them. One row, one round trip. */
+    @Query(
+        "SELECT COUNT(*) AS count, MIN(t) AS oldest, MAX(t) AS newest FROM cached_candles " +
+            "WHERE symbol = :symbol AND `interval` = :intervalWire",
+    )
+    suspend fun span(symbol: String, intervalWire: String): CachedSpanRow?
+
+    /** Bars held across every series, which is what the archive's total bound is measured against. */
+    @Query("SELECT COUNT(*) FROM cached_candles")
+    suspend fun totalBars(): Int
+
+    /**
+     * The series least recently written, for eviction at the total bound.
+     *
+     * Whole series rather than oldest rows across the table, because a series with a hole punched
+     * in the middle of it draws as a market that was shut.
+     */
+    @Query(
+        "SELECT symbol, `interval` AS intervalWire, MAX(cachedAtEpochMillis) AS touchedAt, " +
+            "COUNT(*) AS bars FROM cached_candles GROUP BY symbol, `interval` ORDER BY touchedAt ASC",
+    )
+    suspend fun seriesByAge(): List<CachedSeriesRow>
+
     @Query("DELETE FROM cached_candles WHERE symbol = :symbol AND `interval` = :intervalWire")
     suspend fun clearSeries(symbol: String, intervalWire: String)
 
@@ -116,3 +157,14 @@ interface CandleCacheDao {
         trim(symbol, intervalWire, keep)
     }
 }
+
+/** One series' extent, as [CandleCacheDao.span] reads it. */
+data class CachedSpanRow(val count: Int, val oldest: Long, val newest: Long)
+
+/** One series and when it was last written, as [CandleCacheDao.seriesByAge] reads it. */
+data class CachedSeriesRow(
+    val symbol: String,
+    val intervalWire: String,
+    val touchedAt: Long,
+    val bars: Int,
+)

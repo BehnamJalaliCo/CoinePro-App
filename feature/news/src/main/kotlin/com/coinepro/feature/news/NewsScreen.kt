@@ -44,6 +44,7 @@ import com.coinepro.core.announcements.AnnouncementsController
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProListDetail
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProHeaderAction
 import com.coinepro.core.designsystem.CoineProIcons
@@ -221,7 +222,7 @@ fun NewsScreen(
         return
     }
 
-    if (openArticleId != null) {
+    val readingSurface: @Composable () -> Unit = @Composable {
         ReadingSurface(
             story = reading,
             saved = savedArticles.any { it.id == openArticleId },
@@ -247,138 +248,150 @@ fun NewsScreen(
                 }
             },
         )
-        return
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(CoineProColors.Stage)
-            .padding(horizontal = CoineProSpacing.Gutter),
-        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
-    ) {
-        // The list voice: a compact header with its actions as icons, so the first headline is above
-        // the fold rather than under a two-line heading and a button.
-        CoineProListHeader(
-            title = stringResource(if (savedOnly) R.string.news_saved_title else R.string.news_title),
-            subtitle = if (savedOnly) {
-                // A prose count, so Persian digits — the app's rule, and the opposite of what the
-                // figures on a market row take.
-                stringResource(R.string.news_saved_count, savedArticles.size.toPersianDigits())
-            } else {
-                stringResource(R.string.news_subtitle)
-            },
-            modifier = Modifier.padding(horizontal = 0.dp),
-            actions = {
-                // Only where there is a store to read. A filter that can only ever be empty is a
-                // control that teaches the reader the feature is broken.
-                if (store != null) {
-                    NewsIconAction(
-                        icon = DesignR.drawable.icon_bookmark_simple,
-                        label = stringResource(R.string.news_saved_title),
-                        onClick = { savedOnly = !savedOnly },
-                        tint = if (savedOnly) CoineProColors.Accent else CoineProColors.TextPrimary,
-                    )
-                }
-                // Only where there is a channel to open. On CoinePro-FX the route does not exist,
-                // so the icon does not exist either — the alternative is a control that reports a
-                // 404 as though the announcements service were down.
-                if (announcements != null) {
+    val listPane: @Composable () -> Unit = @Composable {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(CoineProColors.Stage)
+                .padding(horizontal = CoineProSpacing.Gutter),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+        ) {
+            // The list voice: a compact header with its actions as icons, so the first headline is above
+            // the fold rather than under a two-line heading and a button.
+            CoineProListHeader(
+                title = stringResource(if (savedOnly) R.string.news_saved_title else R.string.news_title),
+                subtitle = if (savedOnly) {
+                    // A prose count, so Persian digits — the app's rule, and the opposite of what the
+                    // figures on a market row take.
+                    stringResource(R.string.news_saved_count, savedArticles.size.toPersianDigits())
+                } else {
+                    stringResource(R.string.news_subtitle)
+                },
+                modifier = Modifier.padding(horizontal = 0.dp),
+                actions = {
+                    // Only where there is a store to read. A filter that can only ever be empty is a
+                    // control that teaches the reader the feature is broken.
+                    if (store != null) {
+                        NewsIconAction(
+                            icon = DesignR.drawable.icon_bookmark_simple,
+                            label = stringResource(R.string.news_saved_title),
+                            onClick = { savedOnly = !savedOnly },
+                            tint = if (savedOnly) CoineProColors.Accent else CoineProColors.TextPrimary,
+                        )
+                    }
+                    // Only where there is a channel to open. On CoinePro-FX the route does not exist,
+                    // so the icon does not exist either — the alternative is a control that reports a
+                    // 404 as though the announcements service were down.
+                    if (announcements != null) {
+                        CoineProHeaderAction(
+                            icon = CoineProIcons.Info,
+                            label = stringResource(R.string.announcements_open),
+                            onClick = { showAnnouncements = true },
+                        )
+                    }
                     CoineProHeaderAction(
-                        icon = CoineProIcons.Info,
-                        label = stringResource(R.string.announcements_open),
-                        onClick = { showAnnouncements = true },
+                        icon = DesignR.drawable.icon_calendar_dots,
+                        label = stringResource(R.string.news_calendar),
+                        onClick = onOpenCalendar,
                     )
-                }
-                CoineProHeaderAction(
-                    icon = DesignR.drawable.icon_calendar_dots,
-                    label = stringResource(R.string.news_calendar),
-                    onClick = onOpenCalendar,
-                )
-            },
-        )
-
-        // A one-market platform gets no filter at all: a control with a single alternative to "all"
-        // is a switch that says nothing. Nor does the saved list, which is the reader's own sequence
-        // and not a slice of today's feed.
-        if (relevances.size > 1 && !savedOnly) {
-            CoineProSegmentedControl(
-                options = listOf<MarketRelevance?>(null).plus(relevances)
-                    .map { it to (it?.let { r -> stringResource(r.labelRes()) } ?: stringResource(R.string.news_filter_all)) },
-                selected = relevance,
-                onSelect = { relevance = it },
+                },
             )
-        }
 
-        AnimatedContent(
-            targetState = when {
-                savedOnly && filtered.isEmpty() -> "saved-empty"
-                savedOnly -> "content"
-                state.loading -> "loading"
-                state.error != null && state.news.isEmpty() -> "error"
-                filtered.isEmpty() -> "empty"
-                else -> "content"
-            },
-            transitionSpec = {
-                (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 8 }) togetherWith
-                    (fadeOut(tween(150)) + slideOutVertically(tween(150)) { -it / 12 })
-            },
-            label = "news-state",
-        ) { mode ->
-            when (mode) {
-                "loading" -> CenterState(stringResource(R.string.news_loading), showProgress = true)
-                // Server wording when there is any: the client did not diagnose this.
-                "error" -> CenterState(
-                    message = state.error ?: stringResource(R.string.news_unavailable),
-                    action = stringResource(R.string.news_retry),
-                    onAction = controller::refresh,
+            // A one-market platform gets no filter at all: a control with a single alternative to "all"
+            // is a switch that says nothing. Nor does the saved list, which is the reader's own sequence
+            // and not a slice of today's feed.
+            if (relevances.size > 1 && !savedOnly) {
+                CoineProSegmentedControl(
+                    options = listOf<MarketRelevance?>(null).plus(relevances)
+                        .map { it to (it?.let { r -> stringResource(r.labelRes()) } ?: stringResource(R.string.news_filter_all)) },
+                    selected = relevance,
+                    onSelect = { relevance = it },
                 )
-                "saved-empty" -> CoineProEmptyState(
-                    icon = DesignR.drawable.icon_bookmark_simple,
-                    message = stringResource(R.string.news_saved_empty),
-                    hint = stringResource(R.string.news_saved_empty_hint),
-                    action = stringResource(R.string.news_saved_back),
-                    onAction = { savedOnly = false },
-                )
-                "empty" -> CoineProEmptyState(
-                    icon = CoineProIcons.News,
-                    message = stringResource(R.string.news_empty),
-                    action = stringResource(R.string.news_refresh),
-                    onAction = controller::refresh,
-                )
-                // The strip stays: it says how old the headlines are, which the gesture cannot.
-                // What the gesture adds is the answer to a tug, which this list had none of.
-                else -> CoineProPullToRefresh(
-                    refreshing = state.refreshing,
-                    onRefresh = controller::refresh,
-                ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+            }
+
+            AnimatedContent(
+                targetState = when {
+                    savedOnly && filtered.isEmpty() -> "saved-empty"
+                    savedOnly -> "content"
+                    state.loading -> "loading"
+                    state.error != null && state.news.isEmpty() -> "error"
+                    filtered.isEmpty() -> "empty"
+                    else -> "content"
+                },
+                transitionSpec = {
+                    (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 8 }) togetherWith
+                        (fadeOut(tween(150)) + slideOutVertically(tween(150)) { -it / 12 })
+                },
+                label = "news-state",
+            ) { mode ->
+                when (mode) {
+                    "loading" -> CenterState(stringResource(R.string.news_loading), showProgress = true)
+                    // Server wording when there is any: the client did not diagnose this.
+                    "error" -> CenterState(
+                        message = state.error ?: stringResource(R.string.news_unavailable),
+                        action = stringResource(R.string.news_retry),
+                        onAction = controller::refresh,
+                    )
+                    "saved-empty" -> CoineProEmptyState(
+                        icon = DesignR.drawable.icon_bookmark_simple,
+                        message = stringResource(R.string.news_saved_empty),
+                        hint = stringResource(R.string.news_saved_empty_hint),
+                        action = stringResource(R.string.news_saved_back),
+                        onAction = { savedOnly = false },
+                    )
+                    "empty" -> CoineProEmptyState(
+                        icon = CoineProIcons.News,
+                        message = stringResource(R.string.news_empty),
+                        action = stringResource(R.string.news_refresh),
+                        onAction = controller::refresh,
+                    )
+                    // The strip stays: it says how old the headlines are, which the gesture cannot.
+                    // What the gesture adds is the answer to a tug, which this list had none of.
+                    else -> CoineProPullToRefresh(
+                        refreshing = state.refreshing,
+                        onRefresh = controller::refresh,
                     ) {
-                        if (!savedOnly) {
-                            item {
-                                FreshnessStrip(
-                                    refreshing = state.refreshing,
-                                    onRefresh = controller::refresh,
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+                        ) {
+                            if (!savedOnly) {
+                                item {
+                                    FreshnessStrip(
+                                        refreshing = state.refreshing,
+                                        onRefresh = controller::refresh,
+                                    )
+                                }
+                            }
+                            items(filtered, key = NewsStory::id) { story ->
+                                NewsCard(
+                                    story = story,
+                                    onOpen = {
+                                        openArticle = story
+                                        openArticleId = story.id
+                                    },
+                                    modifier = Modifier.animateItem(),
                                 )
                             }
+                            item { Spacer(Modifier.height(CoineProSpacing.Three)) }
                         }
-                        items(filtered, key = NewsStory::id) { story ->
-                            NewsCard(
-                                story = story,
-                                onOpen = {
-                                    openArticle = story
-                                    openArticleId = story.id
-                                },
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
-                        item { Spacer(Modifier.height(CoineProSpacing.Three)) }
                     }
                 }
             }
         }
+    }
+
+    // A story beside the list it came from, where the glass is wide enough for both — and the
+    // same full-screen reading page everywhere else. `CoineProListDetail` measures the space it
+    // was actually given rather than asking the window, so a phone, a phone in landscape and a
+    // tablet with the rail taken off the front all get the right answer without this screen
+    // knowing which one it is on.
+    CoineProListDetail(
+        detail = if (openArticleId != null) readingSurface else null,
+    ) { twoPane ->
+        if (!twoPane && openArticleId != null) readingSurface() else listPane()
     }
 }
 

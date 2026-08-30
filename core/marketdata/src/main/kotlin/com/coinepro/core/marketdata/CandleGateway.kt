@@ -36,6 +36,40 @@ interface CandleGateway {
     val sourceName: String get() = ""
 
     /**
+     * The bar lengths **this** venue serves directly, coarsest first.
+     *
+     * ### The assumption this replaces, and the chart it broke
+     *
+     * This used to be one list for both backends, on the stated grounds that the two agreed on
+     * eight timeframes. They do not. Measured live against each venue's own route, on five symbols
+     * each: TradeYar answers `200` on all eight, and CoinePro-FX answers
+     * `404 {"detail":"دادهٔ این نماد نیست."}` on `M1`, `M30` and `W1` for every symbol it carries —
+     * it is fed by an EA that writes five bar lengths and no others.
+     *
+     * Because the resolver picked a source from that one shared list, the damage was wider than
+     * those three keys: `M2` and `M3` resolve to `M1`, and every custom minute count that is a
+     * multiple of thirty resolves to `M30`, so on forex those failed too — as a `404` turned into
+     * `ChartError.NETWORK`, which is «چارت بارگیری نشد» over a «تلاش دوباره» that could never
+     * succeed. The fix is that a gateway now says what its own venue serves, and the resolver folds
+     * `M30` out of `M15` and `W1` out of `D1` there instead of asking for a feed that is not on.
+     *
+     * Coarsest first, because [sourceTimeframeFor] takes the first entry that divides the requested
+     * interval and that is what makes it pick the cheapest correct source.
+     */
+    val nativeTimeframes: List<Timeframe> get() = SERVER_NATIVE_TIMEFRAMES
+
+    /**
+     * The largest `limit` this venue accepts on one request.
+     *
+     * Per gateway rather than one constant, because the three routes in this app disagree and the
+     * disagreement is enforced server-side: TradeYar's mobile route caps at 1000, its public route
+     * at 500 — which answers `422`, not a truncated page — and CoinePro-FX takes 3000. A fold
+     * multiplies the request, so this ceiling is reached by ordinary intervals rather than
+     * pathological ones, and asking above it is a failed chart rather than a short one.
+     */
+    val sourceLimitMax: Int get() = SOURCE_LIMIT_MAX
+
+    /**
      * One page, newest at the end.
      *
      * [before] pages backwards: pass the `t` of the oldest bar held and the answer is the page
@@ -58,9 +92,13 @@ interface CandleGateway {
      * minute count. Forwarding one of those verbatim gets an error from CoinePro-FX and, from
      * TradeYar, an echo of whatever spelling it decided the request meant — which is the dangerous
      * case, because a series of the wrong length still draws. So this overload does not forward the
-     * interval at all. It resolves the interval to the coarsest [Timeframe] both servers do serve
-     * and that divides it exactly (see [resolveCandleRequest]), asks for enough of *those* bars,
-     * and folds them with [foldBars].
+     * interval at all. It resolves the interval to the coarsest [Timeframe] **this venue** serves
+     * and that divides it exactly (see [resolveCandleRequest] and [nativeTimeframes]), asks for
+     * enough of *those* bars, and folds them with [foldBars].
+     *
+     * Where no feed the venue has can produce the interval — a two-minute bar on a venue whose
+     * finest is five minutes — it throws [CandleIntervalUnavailableException] rather than sending
+     * a request that will 404. That is a refusal a caller can word for a reader; a `404` is not.
      *
      * [limit] counts bars the caller wants **after** folding, not bars fetched, so the meaning
      * matches the other [load]. [before] is likewise the folded series' own oldest open time:
@@ -89,20 +127,45 @@ interface CandleGateway {
         const val DEFAULT_LIMIT = 300
 
         /**
-         * The largest source page a fold is allowed to ask for, which is the *smaller* of the two
-         * backends' caps rather than an average of them.
+         * The largest source page a fold is allowed to ask for by default, which is TradeYar's cap.
          *
-         * TradeYar stops at 1000 because LBank does; CoinePro-FX allows 3000. A fold multiplies the
-         * request — 205 minutes off a five-minute feed is forty-one source bars per drawn bar — so
-         * this ceiling is reached by ordinary intervals, not by pathological ones, and reaching it
-         * means the chart draws fewer bars than were asked for. That is a real limit of asking a
-         * minute feed for a very long bar, and it is reported through
-         * [CandleRequestPlan.truncated] rather than hidden: a caller that wants more must page
-         * back, because no single request can produce it.
+         * TradeYar stops at 1000 because LBank does; CoinePro-FX allows 3000 and TradeYar's public
+         * route allows 500. A fold multiplies the request — 205 minutes off a five-minute feed is
+         * forty-one source bars per drawn bar — so this ceiling is reached by ordinary intervals,
+         * not by pathological ones, and reaching it means the chart draws fewer bars than were
+         * asked for. That is a real limit of asking a minute feed for a very long bar, and it is
+         * reported through [CandleRequestPlan.truncated] rather than hidden: a caller that wants
+         * more must page back, because no single request can produce it.
+         *
+         * A gateway whose venue disagrees overrides [sourceLimitMax]; this is what the ones that
+         * have not, and every test double, get.
          */
         const val SOURCE_LIMIT_MAX = 1_000
     }
 }
+
+/**
+ * Thrown when the venue has no feed that can produce the interval asked for.
+ *
+ * Not every refusal is a failure worth a retry, and this is the clearest example: CoinePro-FX's
+ * finest bar is five minutes, so a one-, two- or three-minute chart on a forex symbol is not slow,
+ * not offline and not broken — it does not exist, and it will not exist on the next tap either.
+ * Before this type the app sent the request anyway, got a `404`, mapped it to a network error and
+ * offered «تلاش دوباره», which is the worst of the three possible answers: it is wrong, and it asks
+ * the reader to keep proving it wrong.
+ *
+ * The message carries the stable token `interval_unavailable` because the chart's error mapping
+ * reads exception text rather than types — see `ChartController.toChartError` — and a token is the
+ * one part of a message that survives being wrapped by an outer layer.
+ */
+class CandleIntervalUnavailableException(
+    /** What the reader asked for. */
+    val interval: ChartInterval,
+    /** The venue that cannot serve it, named as [CandleGateway.sourceName] names it. */
+    val venue: String,
+    /** The finest bar this venue does serve, so a caller can suggest it. Null on a venue with none. */
+    val finest: Timeframe?,
+) : Exception("interval_unavailable: ${interval.wire} at $venue")
 
 // ── crypto ───────────────────────────────────────────────────────────────────────────────────
 
@@ -154,7 +217,10 @@ class TradeYarCandleGateway(retrofit: Retrofit) : CandleGateway {
         limit: Int,
         before: Long?,
     ): CandlePage {
-        val response = api.candles(symbol.uppercase(), timeframe.wire, limit, before)
+        // Clamped rather than forwarded. The route validates `limit` and answers `422` above its
+        // ceiling — not a truncated page — so an over-sized request is a failed chart, and the one
+        // caller that can produce one is a fold multiplying the count it was given.
+        val response = api.candles(symbol.uppercase(), timeframe.wire, limit.coerceIn(1, sourceLimitMax), before)
         return CandlePage(
             symbol = response.symbol ?: symbol.uppercase(),
             // The server echoes back the canonical spelling of whatever was sent, so this is what
@@ -214,6 +280,10 @@ class CoineProFxCandleGateway(
     // exactly the distinction a reader asking about «کندل‌سازی» wants settled.
     override val sourceName: String = "MetaTrader 5"
 
+    override val nativeTimeframes: List<Timeframe> = ACADEMY_NATIVE_TIMEFRAMES
+
+    override val sourceLimitMax: Int = FX_LIMIT_MAX
+
     override suspend fun load(
         symbol: String,
         timeframe: Timeframe,
@@ -228,18 +298,25 @@ class CoineProFxCandleGateway(
             limit = limit.coerceAtMost(FX_LIMIT_MAX),
             before = before,
         )
+        // CoinePro-FX sends no `closed` flag, so it is derived: a bar whose period has not elapsed
+        // against the clock is still forming. Deriving it here rather than assuming every bar is
+        // closed matters because the last one usually is not.
+        val bars = response.candles.toBars(timeframe, nowSeconds())
+            // `before` is **inclusive** on this route and exclusive on TradeYar's — asking for the
+            // page before bar `t` hands back a page whose newest bar *is* `t`. Verified live. One
+            // repeated bar is not cosmetic: a caller that prepends the page adds a second copy of a
+            // bar it already holds, which draws as a spike the market never printed, and a fold
+            // counts its volume twice. Trimmed here so both venues keep the same promise.
+            .filter { before == null || it.t < before }
         return CandlePage(
             symbol = response.symbol ?: symbol.uppercase(),
             timeframe = Timeframe.of(response.timeframe) ?: timeframe,
-            // CoinePro-FX sends no `closed` flag, so it is derived: a bar whose period has not
-            // elapsed against the clock is still forming. Deriving it here rather than assuming
-            // every bar is closed matters because the last one usually is not.
-            candles = response.candles.toBars(timeframe, nowSeconds()),
+            candles = bars,
             // No paging metadata on this route. `hasMore` is inferred from the page being full,
             // which is the weaker signal TradeYar's `has_more` exists to replace — stated rather
             // than hidden, so a caller knows the two backends differ here.
-            oldest = response.candles.minOfOrNull { it.t ?: Long.MAX_VALUE }?.takeIf { it != Long.MAX_VALUE },
-            hasMore = response.candles.size >= limit.coerceAtMost(FX_LIMIT_MAX),
+            oldest = bars.firstOrNull()?.t,
+            hasMore = bars.isNotEmpty() && response.candles.size >= limit.coerceAtMost(FX_LIMIT_MAX),
             limitMax = FX_LIMIT_MAX,
         )
     }
@@ -297,12 +374,17 @@ internal fun List<WireBarDto>.toBars(timeframe: Timeframe, nowSeconds: Long? = n
 // ── client-side folding ──────────────────────────────────────────────────────────────────────
 
 /**
- * The eight intervals both backends actually serve, coarsest first.
+ * The eight intervals **TradeYar** serves, coarsest first.
  *
  * Everything else the picker offers is built from one of these. The order is not cosmetic: the
  * resolver walks this list and takes the first entry that divides the requested interval, so
  * coarsest-first is what makes it pick the *cheapest* correct source — two hundred H1 bars rather
  * than twelve thousand M1 bars for the same two hundred H2 bars.
+ *
+ * This was called "the eight both backends serve" and that was not true; see
+ * [CandleGateway.nativeTimeframes] for what it cost. It remains the default for a gateway that has
+ * not said otherwise, because it is the crypto venue's set and the crypto venue is most of the
+ * catalogue.
  */
 val SERVER_NATIVE_TIMEFRAMES: List<Timeframe> = listOf(
     Timeframe.W1,
@@ -315,7 +397,26 @@ val SERVER_NATIVE_TIMEFRAMES: List<Timeframe> = listOf(
     Timeframe.M1,
 )
 
-/** Whether a request for this interval can be forwarded to a server unchanged. */
+/**
+ * The five **CoinePro-FX** serves, coarsest first.
+ *
+ * Not a subset chosen for caution: it is what the route answers. `M1`, `M30` and `W1` return
+ * `404 {"detail":"دادهٔ این نماد نیست."}` on every symbol on that platform, because the candles
+ * there are written by the broker's EA and it writes these five. A weekly bar is still offered to
+ * the reader — it is folded out of `D1`, seven bars to one, which is what a terminal does anyway —
+ * and so is a half-hour bar, folded out of `M15`. What cannot be offered is anything finer than
+ * five minutes, and that refusal is [CandleIntervalUnavailableException] rather than a failed
+ * request.
+ */
+val ACADEMY_NATIVE_TIMEFRAMES: List<Timeframe> = listOf(
+    Timeframe.D1,
+    Timeframe.H4,
+    Timeframe.H1,
+    Timeframe.M15,
+    Timeframe.M5,
+)
+
+/** Whether a request for this interval can be forwarded to the crypto venue unchanged. */
 val Timeframe.isServerNative: Boolean get() = this in SERVER_NATIVE_TIMEFRAMES
 
 /**
@@ -352,6 +453,19 @@ data class CandleRequestPlan(
      * inventing bars.
      */
     val truncated: Boolean,
+    /**
+     * Whether [source] is a feed the venue actually has.
+     *
+     * False means no bar length this venue serves divides the requested interval, so [source] is
+     * the finest it has rather than one that would work, and the request must not be sent. It is a
+     * field rather than a null [source] because every caller that only wants to size or explain a
+     * request — the provenance line, the "load more" decision — has a sensible answer either way,
+     * and a nullable source would put a branch at each of them for the one case that must not
+     * reach the network at all.
+     *
+     * Defaulted to true so a plan built by hand, in a test or a preview, is a plan that works.
+     */
+    val available: Boolean = true,
 ) {
     /** Whether anything is folded at all, which is the cheap test for "can this be forwarded". */
     val foldsOnClient: Boolean get() = factor > 1
@@ -390,8 +504,12 @@ fun resolveCandleRequest(
     interval: ChartInterval,
     limit: Int = CandleGateway.DEFAULT_LIMIT,
     sourceLimitMax: Int = CandleGateway.SOURCE_LIMIT_MAX,
+    natives: List<Timeframe> = SERVER_NATIVE_TIMEFRAMES,
 ): CandleRequestPlan {
-    val source = sourceTimeframeFor(interval)
+    val resolved = sourceTimeframeFor(interval, natives)
+    // The finest the venue has, for a plan nobody may send: it is the only honest thing to name
+    // when the answer to "which feed" is "none of them", and it is what a caller suggests instead.
+    val source = resolved ?: natives.lastOrNull() ?: Timeframe.M1
     val factor = foldFactorFor(interval, source)
     val wanted = limit.coerceAtLeast(1).toLong() * factor
     val requestLimit = wanted.coerceAtMost(sourceLimitMax.coerceAtLeast(1).toLong()).toInt()
@@ -402,20 +520,48 @@ fun resolveCandleRequest(
         requestLimit = requestLimit,
         expectedBars = (requestLimit / factor).coerceAtLeast(1),
         truncated = requestLimit < wanted,
+        available = resolved != null,
     )
 }
 
-/** The feed [interval] is fetched from. Split out of [resolveCandleRequest] so it can be asserted alone. */
-fun sourceTimeframeFor(interval: ChartInterval): Timeframe = when (interval) {
+/**
+ * The feed [interval] is fetched from at a venue serving [natives], or null when none of them can.
+ *
+ * Split out of [resolveCandleRequest] so it can be asserted alone, and nullable because "this venue
+ * cannot draw this bar" is a real answer on one of the two backends and used to be answered with
+ * [Timeframe.M1] whether or not the venue had one.
+ *
+ * The three calendar intervals are resolved separately from the arithmetic ones, and not as a
+ * special case for its own sake. A day, a week and a month open at the reader's midnight, and
+ * Tehran's is 20:30 UTC — half an hour off the grid every server lays its intraday bars on. So an
+ * `H4` source folded into weekly buckets would put its bars on both sides of a Saturday boundary,
+ * and there is no way to split one that is not a guess. A daily bar is the coarsest thing that
+ * belongs to exactly one week and one month, so `D1` is the only source these three accept; a venue
+ * without it cannot draw them at all.
+ */
+fun sourceTimeframeFor(
+    interval: ChartInterval,
+    natives: List<Timeframe> = SERVER_NATIVE_TIMEFRAMES,
+): Timeframe? = when (interval) {
     is ChartInterval.Preset -> when {
-        interval.timeframe.isServerNative -> interval.timeframe
-        interval.timeframe == Timeframe.MN1 -> Timeframe.D1
-        else -> largestNativeDividing(interval.seconds, Timeframe.H4.seconds)
+        interval.timeframe in natives -> interval.timeframe
+        interval.timeframe in CALENDAR_TIMEFRAMES -> Timeframe.D1.takeIf { it in natives }
+        else -> largestNativeDividing(interval.seconds, Timeframe.H4.seconds, natives)
     }
     // The half-hour ceiling. See the KDoc on `resolveCandleRequest` for why an hourly source is
     // wrong here even when it divides the interval perfectly.
-    is ChartInterval.Custom -> largestNativeDividing(interval.seconds, Timeframe.M30.seconds)
+    is ChartInterval.Custom -> largestNativeDividing(interval.seconds, Timeframe.M30.seconds, natives)
 }
+
+/**
+ * The three whose boundary is a calendar rather than a multiple of seconds.
+ *
+ * [Timeframe.D1] is in the list even though it is its own source everywhere both venues are
+ * concerned: the rule is about which *sources* may be folded into these buckets, and a venue that
+ * one day serves H4 but not D1 must be told it cannot draw a daily bar rather than quietly drawing
+ * one three and a half hours out of step.
+ */
+private val CALENDAR_TIMEFRAMES = setOf(Timeframe.D1, Timeframe.W1, Timeframe.MN1)
 
 /**
  * How many [source] bars make one [interval] bar, for sizing a request.
@@ -433,9 +579,18 @@ private fun foldFactorFor(interval: ChartInterval, source: Timeframe): Int =
 
 private const val LONGEST_MONTH_DAYS = 31
 
-private fun largestNativeDividing(seconds: Long, ceilingSeconds: Long): Timeframe =
-    SERVER_NATIVE_TIMEFRAMES.firstOrNull { it.seconds <= ceilingSeconds && seconds % it.seconds == 0L }
-        ?: Timeframe.M1
+/**
+ * The coarsest of [natives] that is no longer than [ceilingSeconds] and divides [seconds] exactly.
+ *
+ * Null rather than a fallback to [Timeframe.M1]. The fallback was the bug: it named a feed the
+ * venue might not have, and the request went out anyway.
+ */
+private fun largestNativeDividing(
+    seconds: Long,
+    ceilingSeconds: Long,
+    natives: List<Timeframe>,
+): Timeframe? =
+    natives.firstOrNull { it.seconds <= ceilingSeconds && seconds % it.seconds == 0L }
 
 /**
  * Aggregates finer bars into the bars of [interval], grouping by calendar bucket.
@@ -535,9 +690,16 @@ suspend fun CandleGateway.loadFolded(
     limit: Int = CandleGateway.DEFAULT_LIMIT,
     before: Long? = null,
     zone: ZoneId = CHART_TIME_ZONE,
-    sourceLimitMax: Int = CandleGateway.SOURCE_LIMIT_MAX,
+    sourceLimitMax: Int = this.sourceLimitMax,
+    natives: List<Timeframe> = nativeTimeframes,
 ): CandlePage {
-    val plan = resolveCandleRequest(interval, limit, sourceLimitMax)
+    val plan = resolveCandleRequest(interval, limit, sourceLimitMax, natives)
+    // Refused here rather than at the server. This venue has no feed that divides the interval, so
+    // the request that used to go out could only ever come back a `404`, and a `404` reaches the
+    // reader as «چارت بارگیری نشد» with a retry that cannot work.
+    if (!plan.available) {
+        throw CandleIntervalUnavailableException(interval, sourceName, natives.lastOrNull())
+    }
     val page = load(symbol, plan.source, plan.requestLimit, before)
     if (!plan.foldsOnClient) return page
 

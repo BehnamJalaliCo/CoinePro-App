@@ -58,6 +58,7 @@ import com.coinepro.core.datastore.ProfileStore
 import com.coinepro.core.datastore.UserPreferencesStore
 import com.coinepro.app.widget.MarketsWidget
 import com.coinepro.app.widget.WidgetRefreshEngine
+import com.coinepro.core.marketdata.CandleArchive
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.network.NetworkStatus
 import com.coinepro.core.datastore.WatchlistStore
@@ -108,6 +109,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var networkStatus: NetworkStatus
     @Inject lateinit var widgetRefreshEngine: WidgetRefreshEngine
     @Inject lateinit var candleCache: CandleCache
+    @Inject lateinit var candleArchive: CandleArchive
     @Inject lateinit var notificationSettingsStore: NotificationSettingsStore
     @Inject lateinit var localAlertStore: LocalAlertStore
     @Inject lateinit var localAlertScheduler: LocalAlertScheduler
@@ -222,6 +224,7 @@ class MainActivity : FragmentActivity() {
                 userPreferencesStore = userPreferencesStore,
                 networkStatus = networkStatus,
                 candleCache = candleCache,
+                candleArchive = candleArchive,
                 notificationSettingsStore = notificationSettingsStore,
                 localAlertStore = localAlertStore,
                 localAlertScheduler = localAlertScheduler,
@@ -296,7 +299,11 @@ class MainActivity : FragmentActivity() {
         super.onResume()
         updateNotificationPermissionState()
         refreshWidgets()
-        if (sessionController.state.value !is SessionState.SignedIn) return
+        // The reader's session, not TradeYar's. The unqualified controller is bound to the
+        // crypto platform, so a reader whose only account is on CoinePro-FX got no refresh on
+        // resume at all — the same class of mistake as the shell's own gate. See
+        // `PlatformSessions.sessionForShell`.
+        if (platformSessions.signedIn.value.isEmpty()) return
         // Only the platform on screen is refreshed; the other one is not running, and reading it
         // would spend requests on screens nobody is looking at.
         lifecycleScope.launch {

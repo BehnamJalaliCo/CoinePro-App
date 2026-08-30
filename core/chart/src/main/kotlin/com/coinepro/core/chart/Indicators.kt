@@ -314,9 +314,21 @@ object Indicators {
             defined[index] = true
         }
         val smoothed = sma(raw, smoothing)
+        // %D is a mean of %K, so it is not a reading until its whole window is one. The head of
+        // `raw` is zero because that is what an empty `DoubleArray` holds, not because price sat at
+        // the bottom of its range, and averaging that in drags the first `smoothing - 1` values of
+        // %D down towards zero — where they cross %K, on a chart that is only warming up, and every
+        // strategy reading that cross takes a trade on it.
+        //
+        // Settled at `period - 1` — where %K itself becomes real — plus the smoothing's own
+        // `smoothing - 1`. Before that it is null, which is a value the whole `Line` machinery
+        // already knows how to not draw.
+        val settled = period - 1 + smoothing - 1
         return StochasticResult(
             k = Line.of(close.size) { if (defined[it]) raw[it] else null },
-            d = Line.of(close.size) { if (defined[it] && smoothed.isPresent(it)) smoothed.raw(it) else null },
+            d = Line.of(close.size) {
+                if (it >= settled && defined[it] && smoothed.isPresent(it)) smoothed.raw(it) else null
+            },
         )
     }
 
@@ -446,10 +458,20 @@ object Indicators {
             val middle = (high[index] + low[index]) / 2
             var upper = middle + multiplier * range.raw(index)
             var lower = middle - multiplier * range.raw(index)
-            // The bands ratchet: they only ever tighten towards price while the trend holds, which
-            // is what stops the stop from walking backwards on a pullback.
-            if (upperBand != null && close[index - 1] > upperBand) upper = max(upper, upperBand)
-            if (lowerBand != null && close[index - 1] < lowerBand) lower = min(lower, lowerBand)
+            // Wilder's rule, and it runs the other way from the one that reads naturally here. A
+            // band keeps its previous reading unless the last close went through it, and while a
+            // trend holds the surviving band is the one *nearer* price — the higher of the two
+            // lower bands, the lower of the two upper ones. That is the ratchet: it tightens as the
+            // trend runs, so an ordinary pullback into it ends the trend, which is the whole
+            // signal.
+            //
+            // Taken the other way round, as it was, the band walks away from price instead: it
+            // settles a fixed multiple of ATR from the current mid and stays there, and the trend
+            // can then only flip on a single bar that travels several average ranges. Measured
+            // against a recorded fixture, it flipped on synthetic shock bars and on nothing else —
+            // an indicator that was on every chart and had stopped saying anything.
+            if (upperBand != null && close[index - 1] <= upperBand) upper = min(upper, upperBand)
+            if (lowerBand != null && close[index - 1] >= lowerBand) lower = max(lower, lowerBand)
             if (direction == 1 && close[index] < (lowerBand ?: lower)) {
                 direction = -1
             } else if (direction == -1 && close[index] > (upperBand ?: upper)) {

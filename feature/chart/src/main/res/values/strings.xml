@@ -48,4 +48,33 @@
     <string name="chart_reading_bias">سوگیری</string>
     <string name="chart_reading_volatility_why">%1$s دامنهٔ اخیر</string>
     <string name="chart_reading_bias_why">%1$s فاصلهٔ میانگین‌ها</string>
+
+    <!-- The multi-pane chart screen. Two panes on a phone, up to eight on a tablet — see
+         ChartPanesScreen for why one argument gives both numbers. -->
+    <string name="panes_title">%1$s نمودار</string>
+    <string name="panes_single">یک نمودار</string>
+    <string name="panes_count_label">تعداد قاب</string>
+    <string name="panes_no_chart">این نماد در این پنجره چارت ندارد.</string>
+    <string name="panes_interval_title">بازهٔ زمانی</string>
+    <string name="panes_symbol_title">نماد این قاب</string>
+    <string name="panes_sync_title">هم‌گام‌سازی</string>
+    <string name="panes_sync_none">هیچ‌کدام</string>
+    <string name="panes_sync_open">باز کردن</string>
+    <string name="panes_sync_close">بستن</string>
+    <string name="panes_sync_unavailable">بوم نمودار هنوز موقعیت نشانگر و پنجرهٔ دید را بیرون نمی‌دهد، پس این هم‌گام‌سازی فعلاً در دسترس نیست.</string>
+
+    <!-- The four ties. Each one runs from the first pane outward; with eight panes «the other
+         one» is not a thing that exists. -->
+    <string name="pane_sync_symbol">نماد</string>
+    <string name="pane_sync_symbol_note">انتخاب نماد در قاب اول، همان نماد را در بقیه باز می‌کند.</string>
+    <string name="pane_sync_interval">بازهٔ زمانی</string>
+    <string name="pane_sync_interval_note">تغییر بازه در یک قاب، بازهٔ بقیه را هم عوض می‌کند.</string>
+    <string name="pane_sync_crosshair">نشانگر</string>
+    <string name="pane_sync_crosshair_note">نشانگر روی یک نمودار، همان لحظه را روی بقیهٔ نمودارها هم نشان می‌دهد.</string>
+    <string name="pane_sync_time_range">محدودهٔ زمانی</string>
+    <string name="pane_sync_time_range_note">جابه‌جایی و بزرگ‌نمایی یک قاب، بقیه را روی همان کندل‌ها می‌برد.</string>
+
+    <!-- The permanent tool column a tablet gets in place of the drawing-tools sheet. -->
+    <string name="chart_tools_column_title">ابزارهای ترسیم</string>
+    <string name="chart_tools_column_count">%1$s ابزار</string>
 </resources>

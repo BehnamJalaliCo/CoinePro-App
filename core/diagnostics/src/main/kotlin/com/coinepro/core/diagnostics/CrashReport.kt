@@ -66,6 +66,17 @@ class CrashReport(
     }
 
     private fun write(thread: Thread, error: Throwable) {
+        // Recorded in the log as well as in the file, so the timeline has the death in it rather
+        // than simply stopping. Best effort by nature: a persisted log writes on a background
+        // thread, and the process may not survive long enough for that thread to be scheduled —
+        // which is exactly why the tail is copied into the crash file below rather than relied on.
+        appLog?.error(
+            tag = LogTag.LIFECYCLE,
+            message = "uncaught exception, process is going down",
+            error = error,
+            fields = mapOf("thread" to thread.name),
+        )
+
         val writer = StringWriter()
         PrintWriter(writer).use { out ->
             out.println("thread: ${thread.name}")

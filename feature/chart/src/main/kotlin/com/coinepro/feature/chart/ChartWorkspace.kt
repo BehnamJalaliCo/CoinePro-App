@@ -1,12 +1,15 @@
 package com.coinepro.feature.chart
 
+import androidx.annotation.StringRes
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.coinepro.core.designsystem.CoineProWindowClass
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -90,26 +93,32 @@ object ChartSplit {
 }
 
 /**
- * Which of the two panes' properties are tied together.
+ * Which of the panes' properties are tied together.
  *
  * Four independent switches rather than one "link" button, because the four answer four different
- * questions and a reader almost never wants all of them. Two charts of the *same* symbol on two
- * intervals wants the symbol tied and the interval free; two charts of *different* symbols on the
- * same interval wants the opposite; comparing where two markets were at one moment wants the
- * crosshair tied and nothing else. A single toggle would serve one of those three and get in the
- * way of the other two.
+ * questions and a reader almost never wants all of them. Several charts of the *same* symbol on
+ * different intervals wants the symbol tied and the interval free; several charts of *different*
+ * symbols on one interval wants the opposite; comparing where two markets were at one moment wants
+ * the crosshair tied and nothing else. A single toggle would serve one of those three and get in
+ * the way of the other two.
  *
- * Everything defaults off. Two panes that immediately overwrite each other's symbol the moment they
- * open would be one chart drawn twice, which is the opposite of why the reader split the screen.
+ * Everything defaults off. Panes that immediately overwrite each other's symbol the moment they
+ * open would be one chart drawn several times, which is the opposite of why the reader split the
+ * screen.
+ *
+ * A tie always runs **from the first pane outward**. With two panes "the other one" was unambiguous;
+ * with eight it is not, and a tie that propagated from whichever pane was touched last would let two
+ * readers of the same screen disagree about which chart is the subject. The first pane is the chart
+ * the reader split from, so it is the one the rest follow.
  */
 data class PaneSync(
-    /** Choosing a symbol in one pane puts it in the other. */
+    /** Choosing a symbol in the first pane puts it in all the others. */
     val symbol: Boolean = false,
-    /** Changing the bar length in one changes it in the other. */
+    /** Changing the bar length in the first changes it in all the others. */
     val interval: Boolean = false,
-    /** The crosshair in one draws its time in the other, so one moment can be read on both. */
+    /** The crosshair in one draws its time in the rest, so one moment can be read across them. */
     val crosshair: Boolean = false,
-    /** Panning or zooming one moves the other to the same window of bars. */
+    /** Panning or zooming one moves the rest to the same window of bars. */
     val timeRange: Boolean = false,
 ) {
     /** Whether one named field is tied. The switch row reads this rather than four properties. */
@@ -160,7 +169,7 @@ data class PaneSync(
 }
 
 /**
- * The four things two panes can share, named so a switch row can be built by iterating them.
+ * The four things panes can share, named so a switch row can be built by iterating them.
  *
  * The order is the order the switches are drawn in and the order [PaneSync.encode] writes, and it
  * is deliberately from the coarsest tie to the finest: which market, then which bar length, then
@@ -168,15 +177,23 @@ data class PaneSync(
  * so new fields go on the end.
  */
 enum class PaneSyncField(
-    /** What the switch is called, in Persian. */
-    val label: String,
-    /** One line saying what the tie actually does to the second pane. */
-    val note: String,
+    /**
+     * What the switch is called.
+     *
+     * A resource rather than the Persian literal these two fields used to hold. The literals were
+     * written when the screen had exactly two panes and every one of them said «دیگری» — *the other
+     * one* — which stopped being true the moment a tablet could open eight. Rewriting them meant
+     * touching the words anyway, and a word this app shows a reader belongs in both `values` and
+     * `values-en` like every other.
+     */
+    @StringRes val labelRes: Int,
+    /** One line saying what the tie actually does to the panes that are not the first. */
+    @StringRes val noteRes: Int,
 ) {
-    SYMBOL("نماد", "انتخاب نماد در یکی، همان نماد را در دیگری باز می‌کند."),
-    INTERVAL("بازهٔ زمانی", "تغییر بازه در یکی، بازهٔ دیگری را هم عوض می‌کند."),
-    CROSSHAIR("نشانگر", "نشانگر روی یک نمودار، همان لحظه را روی نمودار دیگر هم نشان می‌دهد."),
-    TIME_RANGE("محدودهٔ زمانی", "جابه‌جایی و بزرگ‌نمایی یکی، دیگری را روی همان کندل‌ها می‌برد."),
+    SYMBOL(R.string.pane_sync_symbol, R.string.pane_sync_symbol_note),
+    INTERVAL(R.string.pane_sync_interval, R.string.pane_sync_interval_note),
+    CROSSHAIR(R.string.pane_sync_crosshair, R.string.pane_sync_crosshair_note),
+    TIME_RANGE(R.string.pane_sync_time_range, R.string.pane_sync_time_range_note),
 }
 
 /**
@@ -244,9 +261,82 @@ class ChartWorkspaceStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[SECOND_PANE] = ticker }
     }
 
+    /**
+     * The instruments every pane **after the first** was left on, in pane order.
+     *
+     * The first pane is still deliberately absent, for the reason [secondPaneSymbol] gives: it is
+     * whatever chart the reader split *from*, and restoring a remembered symbol over it would take
+     * them somewhere they did not ask to go.
+     *
+     * Falls back to [secondPaneSymbol] when this key has never been written, so a reader upgrading
+     * from the two-pane build keeps the pane they had rather than opening on a duplicate of the
+     * first. [setExtraPaneSymbols] writes both keys for the same reason in the other direction — a
+     * downgrade, or a build that only knows about two panes, still finds a second pane it can read.
+     *
+     * Capped at seven entries on the way out as well as on the way in. A hand-edited or corrupted
+     * record is otherwise a list this screen would faithfully turn into that many live controllers,
+     * each with its own websocket.
+     */
+    val extraPaneSymbols: Flow<List<String>> = dataStore.data
+        .map { preferences ->
+            val stored = preferences[PANE_SYMBOLS]
+            val symbols = if (stored != null) {
+                stored.split(PANE_SEPARATOR)
+            } else {
+                listOfNotNull(preferences[SECOND_PANE])
+            }
+            symbols.map { it.trim().uppercase() }.filter(String::isNotEmpty).take(MAX_EXTRA_PANES)
+        }
+        .distinctUntilChanged()
+
+    /** Records where the panes after the first were left. One write for the whole row. */
+    suspend fun setExtraPaneSymbols(symbols: List<String>) {
+        val tickers = symbols.map { it.trim().uppercase() }
+            .filter(String::isNotEmpty)
+            .take(MAX_EXTRA_PANES)
+        dataStore.edit { preferences ->
+            preferences[PANE_SYMBOLS] = tickers.joinToString(PANE_SEPARATOR.toString())
+            // The legacy key, kept in step. See [extraPaneSymbols].
+            tickers.firstOrNull()?.let { preferences[SECOND_PANE] = it }
+        }
+    }
+
+    /**
+     * How many panes the reader last had open.
+     *
+     * Clamped to at least two on the way out, because a stored one is a screen whose whole reason
+     * for existing is a second chart, and the single-chart screen is one tap away for anybody who
+     * wants that. The upper bound is not applied here: it depends on the glass this record is being
+     * read on, and a tablet layout stored on a tablet must not be truncated by a phone that happens
+     * to read it first — the screen coerces against its own window instead.
+     */
+    val paneCount: Flow<Int> = dataStore.data
+        .map { preferences -> (preferences[PANE_COUNT] ?: MIN_PANES).coerceAtLeast(MIN_PANES) }
+        .distinctUntilChanged()
+
+    /** Records how many panes the reader chose. */
+    suspend fun setPaneCount(count: Int) {
+        dataStore.edit { it[PANE_COUNT] = count.coerceAtLeast(MIN_PANES) }
+    }
+
     private companion object {
         val SPLIT_RATIO = floatPreferencesKey("chart_split_ratio")
         val PANE_SYNC = stringPreferencesKey("chart_pane_sync")
         val SECOND_PANE = stringPreferencesKey("chart_second_pane_symbol")
+        val PANE_SYMBOLS = stringPreferencesKey("chart_pane_symbols")
+        val PANE_COUNT = intPreferencesKey("chart_pane_count")
+
+        /**
+         * A comma, which is safe here because a wire symbol is letters and digits — `SymbolCatalog`
+         * has never carried one with punctuation in it — and because every entry is trimmed and
+         * uppercased on both sides of the store.
+         */
+        const val PANE_SEPARATOR = ','
+
+        /** The first pane is not stored, so this is [CoineProWindowClass.TABLET_MAX_PANES] less one. */
+        const val MAX_EXTRA_PANES = CoineProWindowClass.TABLET_MAX_PANES - 1
+
+        /** Two is what makes this screen a pane screen at all. */
+        const val MIN_PANES = CoineProWindowClass.PHONE_MAX_PANES
     }
 }

@@ -1,10 +1,92 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
+    <!-- the door -->
+    <string name="admin_lock_title">Admin panel</string>
+    <string name="admin_lock_body">This screen does not only report; it acts. It signs both platforms out, restarts the market feed, drops caches and exports a file describing this install. That is why it asks for a username and a password.</string>
+    <string name="admin_lock_username">Username</string>
+    <string name="admin_lock_password">Password</string>
+    <string name="admin_lock_enter">Sign in</string>
+    <string name="admin_lock_refused">That username and password do not match.</string>
+    <string name="admin_lock_locked">Closed after five failed attempts. Try again in %1$s minutes.</string>
+    <string name="admin_lock_unprovisioned">This build has no key for this door. Until a credential is configured at build time the panel will not open — which is the correct behaviour for a door.</string>
+    <string name="admin_lock_now">Lock the panel</string>
+
+    <!-- sections -->
+    <string name="admin_section_overview">Overview</string>
+    <string name="admin_section_log">Log</string>
+    <string name="admin_section_network">Network</string>
+    <string name="admin_section_system">System</string>
+
+    <!-- the verdict -->
     <string name="admin_title">This install</string>
     <string name="admin_subtitle">This app on this handset, and the two servers it talks to</string>
-    <string name="admin_verdict_healthy">Healthy</string>
-    <string name="admin_verdict_failures">Failing calls</string>
-    <string name="admin_verdict_missing">Missing routes</string>
+    <string name="admin_verdict_healthy">Nothing wrong found</string>
+    <string name="admin_verdict_faulty">Something is wrong</string>
+    <string name="admin_verdict_note">401 and 403 are not counted as faults: while you are signed out they are the correct answer.</string>
+    <string name="admin_finding_crash">Recorded crash</string>
+    <string name="admin_finding_route">A route the server does not serve</string>
+    <string name="admin_finding_server">Server error</string>
+    <string name="admin_finding_transport">A request that never got an answer</string>
+    <string name="admin_finding_gateway">Base URL not configured in this build</string>
+    <string name="admin_finding_errors">Errors logged in the last hour</string>
+    <string name="admin_finding_count">%1$s of them</string>
+
+    <string name="admin_counter_errors">Errors</string>
+    <string name="admin_counter_warnings">Warnings</string>
+    <string name="admin_counter_lines">Log lines</string>
+    <string name="admin_counter_failures">Failed calls</string>
+
+    <!-- the export -->
+    <string name="admin_export_title">Export</string>
+    <string name="admin_export_body">A text file with the build, the handset, the state at the moment of export, the failing requests, the last crash, and the log exactly as you have filtered it. What a developer actually needs to fix something.</string>
+    <string name="admin_export_share">Share the file</string>
+    <string name="admin_export_save">Save the file</string>
+    <string name="admin_export_copy">Copy the log</string>
+    <string name="admin_export_done_share">Handed to the app you picked.</string>
+    <string name="admin_export_done_save">Saved.</string>
+    <string name="admin_export_failed">The file could not be written.</string>
+    <string name="admin_export_copied">Copied to the clipboard.</string>
+    <string name="admin_export_redaction">Tokens, keys, passwords and email addresses are never written into the file. The variable name stays and its value is dropped.</string>
+
+    <!-- the log -->
+    <string name="admin_log_title">System log</string>
+    <string name="admin_log_count">%1$s lines of %2$s</string>
+    <string name="admin_log_search">Search the message, the tag and the fields</string>
+    <string name="admin_log_level">Minimum level</string>
+    <string name="admin_log_window">Time window</string>
+    <string name="admin_log_tags">Tags</string>
+    <string name="admin_window_5m">5 minutes</string>
+    <string name="admin_window_1h">1 hour</string>
+    <string name="admin_window_1d">1 day</string>
+    <string name="admin_window_all">All</string>
+    <string name="admin_log_clear_filter">Clear the filters</string>
+    <string name="admin_log_empty">Nothing recorded yet.</string>
+    <string name="admin_log_empty_filtered">Nothing matches these filters.</string>
+    <string name="admin_log_copy">Copy</string>
+    <string name="admin_log_copy_entry">Copy this line</string>
+    <string name="admin_log_wipe">Wipe the log</string>
+    <string name="admin_log_verbosity">Verbosity</string>
+    <string name="admin_log_verbosity_note">Set this to TRACE to reproduce something, then put it back. TRACE writes on every tick and every frame and fills the ring in seconds.</string>
+    <string name="admin_log_persisted">Log on disk</string>
+    <string name="admin_log_persisted_note">The log is written to disk as well, otherwise every crash that kills the process takes its own log with it. Wiping clears both the memory and the file.</string>
+    <string name="admin_log_thread">Thread</string>
+    <string name="admin_log_sequence">Sequence</string>
+
+    <!-- the crash -->
+    <string name="admin_crash_title">Last crash</string>
+    <string name="admin_crash_none">No crash since the file was last cleared.</string>
+    <string name="admin_crash_at">When</string>
+    <string name="admin_crash_where">First frame in this app</string>
+    <string name="admin_crash_copy">Copy the trace</string>
+    <string name="admin_crash_clear">Clear</string>
+
+    <!-- the network -->
+    <string name="admin_failures_title">Failing requests</string>
+    <string name="admin_failures_body">Identical failures are grouped. Forty retries of one broken route is one row, not forty.</string>
+    <string name="admin_failures_empty">No failing request recorded.</string>
+    <string name="admin_failures_expected">Expected; the session is signed out</string>
+    <string name="admin_failures_count">%1$s times</string>
 
     <string name="admin_build_title">Build details</string>
     <string name="admin_version">Version</string>
@@ -13,15 +95,25 @@
     <string name="admin_debuggable">Debuggable</string>
     <string name="admin_firebase">Firebase</string>
 
+    <string name="admin_device_title">Device</string>
+    <string name="admin_device_model">Model</string>
+    <string name="admin_device_android">Android</string>
+    <string name="admin_device_abi">ABI</string>
+    <string name="admin_device_locale">System language</string>
+    <string name="admin_device_direction">Layout direction</string>
+    <string name="admin_device_heap">App memory</string>
+    <string name="admin_device_storage">Free space</string>
+    <string name="admin_device_note">None of this identifies anybody. Model, version and language describe a class of device, not its owner.</string>
+
     <string name="admin_platform_title">Connection</string>
     <string name="admin_platform_forex">Forex</string>
     <string name="admin_platform_crypto">Crypto</string>
     <string name="admin_base_url">Base URL</string>
     <string name="admin_platform_configured">Configuration</string>
     <string name="admin_install_id">Install id</string>
-    <string name="admin_masking_note">Hosts and identifiers are masked. This screen opens in a shipping build and gets screenshotted.</string>
+    <string name="admin_masking_note">Hosts and identifiers are masked. This screen gets screenshotted.</string>
 
-    <string name="admin_probe_title">Route reachability</string>
+    <string name="admin_probe_title">Routes against the server</string>
     <string name="admin_probe_body">Every read-only route is called once. Routes that write or spend quota are listed but never fired. A 401 means the address really exists; a 404 means the path is wrong.</string>
     <string name="admin_probe_run">Run the check</string>
     <string name="admin_probe_running">Running…</string>
@@ -36,8 +128,8 @@
     <string name="admin_outcome_unreachable">Could not be reached</string>
     <string name="admin_outcome_skipped">Not fired</string>
 
-    <string name="admin_requests_title">Recent requests</string>
-    <string name="admin_requests_count">%1$d requests in memory</string>
+    <string name="admin_requests_title">Every request</string>
+    <string name="admin_requests_count">%1$s requests in memory</string>
     <string name="admin_requests_failures">Failures only</string>
     <string name="admin_requests_all">All</string>
     <string name="admin_requests_clear">Clear</string>
@@ -50,13 +142,15 @@
     <string name="admin_on">On</string>
     <string name="admin_off">Off</string>
     <string name="admin_unknown">Unknown</string>
+    <string name="admin_rtl">Right to left</string>
+    <string name="admin_ltr">Left to right</string>
 
     <string name="admin_tile_session">Session</string>
     <string name="admin_tile_feed">Market feed</string>
     <string name="admin_tile_push">Push</string>
     <string name="admin_tile_venue">Venue</string>
     <string name="admin_tile_routes">Missing routes</string>
-    <string name="admin_tile_requests">Recent failures</string>
+    <string name="admin_tile_requests">Unexplained failures</string>
 
     <string name="admin_session_title">Sessions</string>
     <string name="admin_session_in">Signed in</string>
@@ -104,13 +198,4 @@
     <string name="admin_capability_symbols">Symbols offered</string>
     <string name="admin_capabilities_refresh">Read again from the server</string>
     <string name="admin_capabilities_note">The server declares these. The app draws only what it says is on.</string>
-
-    <string name="admin_appearance_title">Language</string>
-    <string name="admin_language_fa">فارسی</string>
-    <string name="admin_language_en">English</string>
-    <string name="admin_language_note">Changing the language restarts the app.</string>
-    <string name="admin_log_title">App log</string>
-    <string name="admin_log_count">%1$d lines</string>
-    <string name="admin_log_copy">Copy</string>
-    <string name="admin_log_empty">Nothing recorded yet.</string>
 </resources>
