@@ -47,6 +47,7 @@ import com.coinepro.core.chart.CoineProChart
 import com.coinepro.core.chart.SignalOverlay
 import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.common.MarketNumberFormatter
+import com.coinepro.core.common.parseWireInstant
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.designsystem.CoineProCard
@@ -253,6 +254,14 @@ private fun SignalContent(
                                 stopLoss = signal.stopLoss?.takeIf(Double::isFinite),
                                 takeProfits = drawn.map { it.price!! },
                                 isLong = signal.direction != SignalDirection.SELL,
+                                // The bands begin at the bar the call was published on and stop at
+                                // the bar it closed on, so a closed signal is not still shaded
+                                // green across the week after it ended. Seconds, because that is
+                                // what `Candle.t` is on both feeds. A signal whose server sent
+                                // neither draws its levels and no shading, which is the honest
+                                // picture rather than a band asserting a time nobody knows.
+                                issuedAt = parseWireInstant(signal.createdAt)?.epochSecond,
+                                closedAt = parseWireInstant(signal.closedAt)?.epochSecond,
                                 entryLabel = stringResource(R.string.detail_entry),
                                 stopLabel = stringResource(R.string.detail_stop),
                                 // Named by the server's own level number, not by position in the

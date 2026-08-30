@@ -355,24 +355,37 @@ fun CoineProChart(
      */
     var savedPriceZoom by rememberSaveable { mutableFloatStateOf(1f) }
 
+    /**
+     * Whether the saved trio has already been spent on this composition.
+     *
+     * A plain holder rather than a `mutableStateOf`, and deliberately not `rememberSaveable`: it is
+     * a fact about *this composition*, so a fresh one — process death, rotation, navigating back
+     * from the studio — starts false and restores, and writing it must not invalidate anything. The
+     * file uses the same array idiom for `dirty` and `paneTop`.
+     */
+    val seeded = remember { booleanArrayOf(false) }
+
     // Follow the live edge as bars arrive, but never drag the view out from under a reader who has
     // panned back. ChartViewport.withSeries decides which of those applies.
     //
-    // The saved pair is applied on the same pass rather than in a separate effect: an effect runs
-    // after the first frame, so the chart would draw once at the default and then jump.
+    // The saved trio is applied on the same pass rather than in a separate effect: an effect runs
+    // after the first frame, so the chart would draw once at the default and then jump. And it is
+    // applied on the *first* pass only — see [seedViewport] for the pan bug that fixed.
     remember(display) {
-        val restored = viewport
-            .withSeries(display)
-            .copy(barsPerView = savedZoom, priceZoom = savedPriceZoom)
-        viewport = when {
-            savedOffset != UNSET_OFFSET -> restored.atOffset(savedOffset)
+        viewport = seedViewport(
+            current = viewport,
+            series = display,
+            seeded = seeded[0],
+            savedZoom = savedZoom,
+            savedOffset = savedOffset,
+            savedPriceZoom = savedPriceZoom,
             // A chart with an axis rests with air at the live edge; one without is a thumbnail or a
             // list-row sparkline, which has no gutter to breathe into and every pixel spent on the
             // shape. `showAxes` is the one bit that already separates the two everywhere else in
             // this file.
-            decoration.showAxes -> restored.atRest()
-            else -> restored.atOffset(0)
-        }
+            restAtEdge = decoration.showAxes,
+        )
+        seeded[0] = true
     }
 
     // Applied separately from the series, because it changes on its own — a reader toggling the
@@ -415,9 +428,17 @@ fun CoineProChart(
     // the request goes out once per position rather than on every frame of a drag — and, because
     // the index changes as bars are prepended, again once the reader keeps going past the new
     // oldest bar.
+    //
+    // Keyed on the *oldest bar's timestamp* rather than on the series, and that is the half of «چارت
+    // خیلی کنده» that lives in this file. `display` is a new object on every prepend — and on every
+    // frame of a replay — so keying on it restarted the effect and asked again immediately, which
+    // once the candle archive started answering `loadMore` from disk meant a page request per frame
+    // for as long as the reader stayed near the left edge. The oldest timestamp changes exactly once
+    // per page that actually arrives, which is the rate this should run at.
     if (onLoadMore != null) {
         val nearStart = viewport.firstVisible <= LOAD_MORE_MARGIN
-        LaunchedEffect(nearStart, display) {
+        val oldestBar = if (display.isEmpty) 0L else display.time.first()
+        LaunchedEffect(nearStart, oldestBar) {
             if (nearStart && !display.isEmpty) onLoadMore()
         }
     }
@@ -1748,7 +1769,7 @@ fun CoineProChart(
                 if (decoration.showAxes) drawGrid(view, plotWidth, palette, ticks, timeTicks)
                 // The setup goes *under* the price. It is context for the bars, and drawn over them
                 // it tints every candle it covers — which on a full-height risk band is most of them.
-                decoration.signal?.let { drawSignal(view, it, plotWidth, palette, measurer) }
+                decoration.signal?.let { drawSignal(view, it, palette, measurer) }
                 // Volume sits in the foot of the price pane rather than in a band of its own — the
                 // way every terminal draws it. A separate band cost a fifth of the canvas to say
                 // something the reader glances at, and on a chart with three oscillators the volume
@@ -3573,46 +3594,107 @@ private fun DrawScope.drawMarker(view: ChartViewport, marker: ChartMarker, densi
     }
 }
 
+/**
+ * The setup, anchored to the bar the position opened on.
+ *
+ * ### What changed and why
+ *
+ * These bands used to be drawn from x zero to the plot's right edge whatever the setup was — a
+ * full-width green wash above the entry and a red one below it, on every chart in the app that
+ * carries a [SignalOverlay]. On screen that says "this whole chart is a long position", which is
+ * false: before the entry bar there was no stop and no target to be inside, and after a close there
+ * is no position left to be in. That is the report — «حد سود و ضرر از کندلی که پوزیشن باز شده ستاپ
+ * چیده بشه … نه کل چارت رو».
+ *
+ * So [setupSpan] decides the horizontal reach and this only fills it, and [setupBands] decides which
+ * side of the entry each colour goes on — which is what makes a short invert without a branch here.
+ * Both are pure and both are asserted in `SetupZoneTest`; this function is a draw pass and cannot be.
+ *
+ * The hairline and its label travel with the band rather than spanning the plot, for the same reason
+ * the fill does: a dashed stop drawn back across forty bars of history is the same claim as the
+ * shading, in less ink. A setup with no [SignalOverlay.issuedAt] is the one case that still reaches
+ * both edges, and it reaches them with no fill at all — see [SetupSpan.anchored].
+ */
 private fun DrawScope.drawSignal(
     view: ChartViewport,
     signal: SignalOverlay,
-    plotWidth: Float,
     palette: ChartPalette,
     measurer: TextMeasurer,
 ) {
+    val span = setupSpan(view, signal)
+    // A setup whose whole life is off one side of the plot. Nothing at all rather than a sliver
+    // pinned to the edge, which would put a position at a time it was not open.
+    if (span.isEmpty) return
     val entryY = view.yOf(signal.entry)
+    val labelX = span.left + AXIS_PADDING_DP.toPx()
+
     // The band from entry to stop is the money at risk, and the band from entry to target is the
-    // money on offer. Drawn as areas because their relative size is the whole judgement.
+    // money on offer. Drawn as areas because their relative size is the whole judgement — but only
+    // over the bars the position was actually open across.
+    if (span.anchored) {
+        setupBands(signal).forEach { band ->
+            val fromY = view.yOf(band.from)
+            val toY = view.yOf(band.to)
+            drawRect(
+                color = colourOf(band.role, palette).copy(alpha = ZONE_ALPHA),
+                topLeft = Offset(span.left, min(fromY, toY)),
+                size = Size(span.width, abs(toY - fromY)),
+            )
+        }
+    }
+
     signal.stopLoss?.let { stop ->
         val stopY = view.yOf(stop)
-        drawRect(
-            color = palette.down.copy(alpha = ZONE_ALPHA),
-            topLeft = Offset(0f, min(entryY, stopY)),
-            size = Size(plotWidth, abs(stopY - entryY)),
-        )
-        drawDashedLevel(stopY, plotWidth, palette.down)
-        drawLevelLabel(signal.stopLabel, stopY, palette.down, measurer)
-    }
-    signal.takeProfits.firstOrNull()?.let { target ->
-        val targetY = view.yOf(target)
-        drawRect(
-            color = palette.up.copy(alpha = ZONE_ALPHA),
-            topLeft = Offset(0f, min(entryY, targetY)),
-            size = Size(plotWidth, abs(targetY - entryY)),
-        )
+        drawDashedLevel(stopY, span.left, span.right, palette.down)
+        drawLevelLabel(signal.stopLabel, stopY, labelX, palette.down, measurer)
     }
     signal.takeProfits.forEachIndexed { index, price ->
         val y = view.yOf(price)
-        drawDashedLevel(y, plotWidth, palette.up)
-        drawLevelLabel(signal.targetLabels.getOrNull(index), y, palette.up, measurer)
+        drawDashedLevel(y, span.left, span.right, palette.up)
+        drawLevelLabel(signal.targetLabels.getOrNull(index), y, labelX, palette.up, measurer)
     }
     drawLine(
         color = palette.crosshair,
-        start = Offset(0f, entryY),
-        end = Offset(plotWidth, entryY),
+        start = Offset(span.left, entryY),
+        end = Offset(span.right, entryY),
         strokeWidth = LINE_WIDTH_DP.toPx(),
     )
-    drawLevelLabel(signal.entryLabel, entryY, palette.crosshair, measurer)
+    drawLevelLabel(signal.entryLabel, entryY, labelX, palette.crosshair, measurer)
+    drawEntryMark(view, signal, span, entryY, palette)
+}
+
+/** The sell colour for the risk, the buy colour for the reward. The whole of the mapping. */
+private fun colourOf(role: SetupBandRole, palette: ChartPalette): Color =
+    if (role == SetupBandRole.RISK) palette.down else palette.up
+
+/**
+ * The tick that says the position opened *here*.
+ *
+ * Small on purpose: a rule from the top of the plot to the bottom would be a second crosshair, and
+ * the reader already has one. What is needed is only the left end of the band identified with the
+ * candle underneath it — so the mark spans the setup's own prices and stops, and a dot sits on the
+ * entry itself.
+ *
+ * Nothing is drawn when the entry bar has scrolled off the left. The band still reaches the edge,
+ * because the position really was open across every bar on screen; a mark pinned to the edge would
+ * instead say it opened at a bar it did not.
+ */
+private fun DrawScope.drawEntryMark(
+    view: ChartViewport,
+    signal: SignalOverlay,
+    span: SetupSpan,
+    entryY: Float,
+    palette: ChartPalette,
+) {
+    val x = span.entryX?.takeIf { span.anchored } ?: return
+    val ys = signal.levels().filter { it.isFinite() }.map { view.yOf(it) }
+    drawLine(
+        color = palette.crosshair,
+        start = Offset(x, ys.minOrNull() ?: entryY),
+        end = Offset(x, ys.maxOrNull() ?: entryY),
+        strokeWidth = HAIRLINE_DP.toPx(),
+    )
+    drawCircle(palette.crosshair, ENTRY_MARK_DP.toPx(), Offset(x, entryY))
 }
 
 /**
@@ -3625,6 +3707,7 @@ private fun DrawScope.drawSignal(
 private fun DrawScope.drawLevelLabel(
     text: String?,
     y: Float,
+    x: Float,
     colour: Color,
     measurer: TextMeasurer,
 ) {
@@ -3632,14 +3715,20 @@ private fun DrawScope.drawLevelLabel(
     val measured = measurer.measure(text, axisStyle(colour))
     val top = y - measured.size.height - 1f
     if (top < 0f || y > size.height) return
-    drawText(measured, topLeft = Offset(AXIS_PADDING_DP.toPx(), top))
+    drawText(measured, topLeft = Offset(x, top))
 }
 
-private fun DrawScope.drawDashedLevel(y: Float, width: Float, colour: Color) {
+/**
+ * A dashed rule between two x's rather than across the plot.
+ *
+ * It takes both ends because a setup's lines are only true between them — see [drawSignal]. A caller
+ * that wants the whole width passes zero and the plot width, which is what a timeless level is.
+ */
+private fun DrawScope.drawDashedLevel(y: Float, startX: Float, endX: Float, colour: Color) {
     drawLine(
         color = colour,
-        start = Offset(0f, y),
-        end = Offset(width, y),
+        start = Offset(startX, y),
+        end = Offset(endX, y),
         strokeWidth = HAIRLINE_DP.toPx(),
         pathEffect = dashEffect(LineStyleKind.LARGE_DASHED, HAIRLINE_DP.toPx()),
     )
@@ -4085,6 +4174,55 @@ internal fun axisStyle(
  */
 internal fun focusOffset(size: Int, index: Int): Int = (size - 1 - index).coerceAtLeast(0)
 
+/**
+ * The viewport a new series should produce, given where the reader is and what was saved.
+ *
+ * ### The bug this shape exists to stop
+ *
+ * «چارت اصلا روش اسکرول میکنم به عقب برمیگرده دیگه به جلو برنمیگرده» — panning back is sticky and
+ * panning forward makes no progress at all.
+ *
+ * The saved trio is written from a `LaunchedEffect`, which runs *after* composition, and was read
+ * from a `remember(display)` block, which runs *during* it. So whenever a series replacement landed
+ * in the same frame as a pan, the restore threw the reader's movement away and put them back where
+ * they had been a frame earlier. Panning back, the stale offset is behind them, so they still crept
+ * forward and it merely felt sticky; panning *forward*, the stale offset is also behind them — which
+ * is precisely where they are trying to leave — so every frame undid the drag and the chart could
+ * not be moved right at all. It only became visible when the candle archive started answering
+ * `loadMore` from disk, which replaces the series on almost every frame near the left edge instead
+ * of once per network round trip.
+ *
+ * ### The rule
+ *
+ * The saved trio restores a *fresh composition* — process death, a rotation, coming back from the
+ * studio — and nothing else. After that first pass [ChartViewport.withSeries] alone decides what a
+ * new series does to a reader who has panned, which is the job it was written for and which it does
+ * correctly at both ends: it follows the live edge when the reader is on it, and re-anchors on the
+ * right-hand bar's own timestamp when they are not, so a prepend of a thousand bars moves nothing.
+ *
+ * A symbol switch is unaffected: it arrives as a new series through the same `withSeries`, which
+ * keeps the reader on the same *moment* rather than the same bar count, and that is what switching
+ * instrument on a chart should do.
+ */
+internal fun seedViewport(
+    current: ChartViewport,
+    series: CandleSeries,
+    seeded: Boolean,
+    savedZoom: Int,
+    savedOffset: Int,
+    savedPriceZoom: Float,
+    restAtEdge: Boolean,
+): ChartViewport {
+    val followed = current.withSeries(series)
+    if (seeded) return followed
+    val restored = followed.copy(barsPerView = savedZoom, priceZoom = savedPriceZoom)
+    return when {
+        savedOffset != UNSET_OFFSET -> restored.atOffset(savedOffset)
+        restAtEdge -> restored.atRest()
+        else -> restored.atOffset(0)
+    }
+}
+
 internal fun dashEffect(style: LineStyleKind, lineWidth: Float): PathEffect? {
     val intervals = dashIntervals(style, lineWidth)
     return if (intervals.isEmpty()) null else PathEffect.dashPathEffect(intervals)
@@ -4272,7 +4410,7 @@ private val TAG_RADIUS_DP = 2.dp
  * [Int.MIN_VALUE] rather than a negative number that could be a real position: every value from
  * `-barsPerView / 2` upward is somewhere a reader can legitimately be.
  */
-private const val UNSET_OFFSET = Int.MIN_VALUE
+internal const val UNSET_OFFSET = Int.MIN_VALUE
 
 /**
  * How close to the oldest loaded bar a reader has to get before more history is fetched.
@@ -4496,6 +4634,14 @@ internal val AXIS_PADDING_DP = 4.dp
 private const val GRID_ALPHA = 0.35f
 private const val VOLUME_ALPHA = 0.30f
 private const val ZONE_ALPHA = 0.12f
+
+/**
+ * The dot on the entry bar of a setup.
+ *
+ * Two points, which is a shade under a wick at the default zoom: enough to find, small enough that
+ * it does not hide the candle it is identifying.
+ */
+private val ENTRY_MARK_DP = 2.dp
 
 /** How far a marker sits from the bar's high or low, so it points rather than covers. */
 private const val MARKER_CLEARANCE = 8f

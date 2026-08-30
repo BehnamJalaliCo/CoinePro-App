@@ -466,8 +466,14 @@ fun DrawScope.drawDrawing(
             val reward = if (risk > 0) abs(target - entry) / risk else 0.0
             val left = min(a.x, end.x)
             val right = max(a.x, end.x) + POSITION_OVERHANG.toPx()
-            band(left, right, view.yOf(entry), view.yOf(target), buyColour().copy(alpha = ZONE))
-            band(left, right, view.yOf(entry), view.yOf(stop), sellColour().copy(alpha = ZONE))
+            // Which colour goes above the entry and which below is [setupBands]' decision, shared
+            // with the signal overlay in `drawSignal`. Two files agreeing by coincidence about
+            // where the red goes is the one disagreement a trading chart may not have — and a
+            // short's bands land the other way up here for free, exactly as they do there.
+            setupBands(entry, stop, target).forEach { zone ->
+                val fill = if (zone.role == SetupBandRole.RISK) sellColour() else buyColour()
+                band(left, right, view.yOf(zone.from), view.yOf(zone.to), fill.copy(alpha = ZONE))
+            }
             // Latin digits on the multiple: it is a market figure sitting on the chart's own
             // canvas beside prices, and «هدف ۲٫۵R» in a column of Latin numbers reads as a
             // different kind of thing from what it is.

@@ -96,6 +96,14 @@ data class ChartMarker(
  * The zones are drawn as filled bands rather than lines because the distance between entry and stop
  * *is* the information: a reader has to see the risk as an area against the reward, not read two
  * numbers and do the subtraction.
+ *
+ * ### The bands are anchored in time
+ *
+ * They start at the bar named by [issuedAt] and run to [closedAt] or to the live edge — never
+ * further left than the entry bar. They used to run the full width of the plot, and a reader looking
+ * at a chart shaded green above the entry and red below it from the first visible bar reads it as
+ * "this whole chart is a long position", which was false on every chart that drew one. See
+ * [setupSpan] for the rule and `SetupZoneTest` for what it guarantees.
  */
 data class SignalOverlay(
     val entry: Double,
@@ -104,8 +112,28 @@ data class SignalOverlay(
     val takeProfits: List<Double> = emptyList(),
     /** Long or short. Decides which side of entry is the loss. */
     val isLong: Boolean,
-    /** When the setup was issued, so the drawing can start at that bar rather than at the edge. */
+    /**
+     * When the setup was issued, so the drawing starts at that bar rather than at the plot's edge.
+     *
+     * This is the anchor the whole zone hangs off — see [setupSpan]. Without it the renderer draws
+     * the levels and no shading at all, which is the honest picture of a setup whose start nobody
+     * recorded: the prices are true, the claim that they were true across the visible history is
+     * not.
+     *
+     * A moment rather than a bar index, because the caller has a signal's `createdAt` and does not
+     * have this chart's bar grid — and because the two must not drift when the reader switches the
+     * timeframe under a setup that is already drawn.
+     */
     val issuedAt: Long? = null,
+    /**
+     * When it closed, or null while it is still open.
+     *
+     * An open position's zone runs to the right-hand edge of the plot, blank slots included: it is
+     * still open, and the air at the live edge is the near future it is open into. A closed one
+     * stops at the bar it closed on. Painting a closed setup all the way to the edge is the same
+     * false claim as painting an open one all the way to the left, in the other direction.
+     */
+    val closedAt: Long? = null,
     /**
      * What to write beside each line — entry, stop, then one per take-profit in order.
      *

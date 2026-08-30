@@ -71,6 +71,14 @@ internal fun AiCandleChart(
             stopLoss = stopLoss?.takeIf(Double::isFinite),
             takeProfits = targets.filter(Double::isFinite),
             isLong = isLong,
+            // The evidence is what the model read; the setup is what it said afterwards, so it is
+            // anchored to the last of those bars and runs forward from there. Without this the
+            // bands are drawn across the whole window, which claims a position was open over the
+            // very price action that was used to decide whether to open one.
+            //
+            // Read the same way the series above builds `t`, index fallback included, for
+            // CoinePro-FX's untimed bars — the two have to agree or the zone lands nowhere.
+            issuedAt = candles.lastOrNull()?.time ?: (candles.size - 1).toLong(),
         )
     }
 
