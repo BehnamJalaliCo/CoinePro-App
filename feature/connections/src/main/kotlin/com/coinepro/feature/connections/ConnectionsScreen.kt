@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,7 +26,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
@@ -48,15 +46,30 @@ import androidx.annotation.StringRes
 import com.coinepro.core.designsystem.CoineProConfirmDialog
 
 /**
- * Where a reader links the account their signals will execute through.
+ * Where a reader links the exchange account their signals will execute through.
  *
- * Scoped to one venue, because a platform has one: MetaTrader 5 executes CoinePro-FX, LBank
- * executes TradeYar. Showing both at once invited someone in a crypto session to hand over their
- * broker password to a screen that would never use it.
+ * ### One venue, and the one that used to be a lie
  *
- * The screen is careful about a distinction the product depends on and readers routinely miss:
- * entering credentials is *setup*, not connection. Only the backend can say a venue verified them,
- * so nothing here turns green on a successful save.
+ * A platform has one venue: LBank executes TradeYar. CoinePro-FX has none — it does not place
+ * orders from the app at all, it links a broker account once and a service trades it, which is copy
+ * trading and lives on its own screen against `user/account/link`.
+ *
+ * This screen used to draw a MetaTrader 5 card beside the exchange one: four fields ending in a
+ * live **trading password**, and a gold button wired to `ExecutionController.connectMt5` — which
+ * throws `ExecutionUnsupportedException` unconditionally, on both platforms, because no backend
+ * ever had that route. It could not have worked on the day it was written. The reader who found it
+ * was asked to type the most dangerous credential the product touches into a form that could only
+ * ever refuse it, on the strength of a heading that promised MetaTrader.
+ *
+ * So the card is gone and the screen says instead where a forex account is actually linked. That
+ * sentence is the whole answer to «اتصال حساب اگر اینجا باشه» — it is, for crypto; it is not, for
+ * forex — and a reader who came looking for MetaTrader leaves knowing where to go rather than
+ * having filled in a form that went nowhere.
+ *
+ * ### Setup is not connection
+ *
+ * A distinction the product depends on and readers routinely miss: entering credentials is *setup*.
+ * Only the backend can say a venue verified them, so nothing here turns green on a successful save.
  */
 @Composable
 fun ConnectionsScreen(
@@ -109,115 +122,78 @@ fun ConnectionsScreen(
         state.error?.let { item { Caution(it, CoineProColors.Sell) } }
         state.message?.let { item { Caution(it, CoineProColors.Buy) } }
 
-        if (state.unsupported) {
-            // Said plainly, not as a failure. This platform never had a venue-connection surface —
-            // it links a broker through copy trading, which lives somewhere else — so a card
-            // offering a connection that cannot be made would be worse than none.
-            item {
-                CoineProCard(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = stringResource(R.string.connections_unsupported_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = CoineProColors.TextPrimary,
-                    )
-                    Text(
-                        text = stringResource(R.string.connections_unsupported_body),
-                        modifier = Modifier.padding(top = CoineProSpacing.One),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = CoineProColors.TextSecondary,
-                    )
-                }
-            }
+        if (connectionsSurface(platform, state.unsupported) == ConnectionsSurface.LINKED_ELSEWHERE) {
+            item { ElsewhereCard() }
         } else {
             item {
-                when (platform) {
-                    MarketPlatform.COINEPRO_FX -> Mt5Card(
-                        connection = state.mt5,
-                        onConnect = controller::connectMt5,
-                        onDisconnect = controller::disconnectMt5,
-                    )
-
-                    MarketPlatform.TRADEYAR -> LbankCard(
-                        connection = state.lbank,
-                        onConnect = controller::connectLbank,
-                        onDisconnect = controller::disconnectLbank,
-                    )
-                }
+                LbankCard(
+                    connection = state.lbank,
+                    onConnect = controller::connectLbank,
+                    onDisconnect = controller::disconnectLbank,
+                )
             }
+            // Under the card the reader came for, because the question it answers is the one they
+            // ask after finding only an exchange here: the forex account is linked by copy trading
+            // and not by a key, so there is nothing on this screen that would ever connect it.
+            item { Caution(stringResource(R.string.connections_forex_elsewhere), CoineProColors.TextSecondary) }
         }
     }
 }
 
+/**
+ * The two things this screen can be, and there is deliberately no third.
+ *
+ * The third used to exist: a MetaTrader 5 form, over `ExecutionController.connectMt5`, which throws
+ * on every platform because no backend ever served that route. Naming the surfaces as a closed set
+ * is what stops it coming back — a venue this app can offer is one it can also complete, and the
+ * only one of those is the exchange key.
+ */
+internal enum class ConnectionsSurface {
+    /** LBank, on TradeYar: a key pair the reader mints at the exchange. */
+    EXCHANGE_KEY,
+
+    /** No venue here. CoinePro-FX links its broker account through copy trading instead. */
+    LINKED_ELSEWHERE,
+}
+
+/**
+ * Absent is not failed, and the two arrive as one answer.
+ *
+ * CoinePro-FX has no venue-connection route at all, so its gateway refuses the call rather than
+ * answering it emptily — which reaches the controller as its `unsupported` state. The platform is
+ * checked as well because the screen has to be honest before the first read returns, and because a
+ * form drawn for a platform that cannot use it is the bug this whole file was rewritten for.
+ */
+internal fun connectionsSurface(
+    platform: MarketPlatform,
+    unsupported: Boolean,
+): ConnectionsSurface = when {
+    unsupported -> ConnectionsSurface.LINKED_ELSEWHERE
+    platform == MarketPlatform.COINEPRO_FX -> ConnectionsSurface.LINKED_ELSEWHERE
+    else -> ConnectionsSurface.EXCHANGE_KEY
+}
+
+/**
+ * What a platform with no venue connection says for itself.
+ *
+ * Neither a failure nor an empty list: nothing went wrong, retrying will not help, and the account
+ * this reader wants to link is linked somewhere real. Naming that somewhere is the difference
+ * between an honest absence and a dead end.
+ */
 @Composable
-private fun Mt5Card(
-    connection: VenueConnection?,
-    onConnect: (String, String, String, String) -> Unit,
-    onDisconnect: () -> Unit,
-) {
-    // Saveable, because a broker name, a server address and a login are things the reader had to
-    // go and look up — and `remember` threw all three away on a rotation or a trip to the app that
-    // has them. Every other form in this app already uses `rememberSaveable`; these two screens
-    // were the exception, and they are the two with the most to retype.
-    var broker by rememberSaveable { mutableStateOf("") }
-    var server by rememberSaveable { mutableStateOf("") }
-    var login by rememberSaveable { mutableStateOf("") }
-    // The password is *not* saveable. Saved instance state is written to disk by the platform, and
-    // a trading password does not belong there to save somebody one retype.
-    var password by remember { mutableStateOf("") }
-
+private fun ElsewhereCard() {
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
-        VenueHeader("MetaTrader 5", connection)
         Text(
-            text = stringResource(R.string.connections_mt5_body),
-            modifier = Modifier.padding(top = CoineProSpacing.One),
-            style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextMuted,
+            text = stringResource(R.string.connections_unsupported_title),
+            style = MaterialTheme.typography.titleSmall,
+            color = CoineProColors.TextPrimary,
         )
-
-        if (connection == null) {
-            Column(
-                modifier = Modifier.padding(top = CoineProSpacing.OneHalf),
-                verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
-            ) {
-                CoineProTextField(broker, { broker = it }, stringResource(R.string.connections_broker), Modifier.fillMaxWidth())
-                CoineProTextField(server, { server = it }, stringResource(R.string.connections_server), Modifier.fillMaxWidth())
-                CoineProTextField(
-                    value = login,
-                    onValueChange = { login = it },
-                    label = stringResource(R.string.connections_login),
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                )
-                CoineProTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = stringResource(R.string.connections_trading_password),
-                    modifier = Modifier.fillMaxWidth(),
-                    secret = true,
-                )
-                val ready = broker.isNotBlank() && server.isNotBlank() &&
-                    login.isNotBlank() && password.isNotBlank()
-                Submit(
-                    text = stringResource(R.string.connections_mt5_connect),
-                    enabled = ready,
-                ) {
-                    onConnect(broker.trim(), server.trim(), login.trim(), password)
-                    // Cleared the moment it is handed over: nothing keeps a trading password in
-                    // composition state a second longer than the request needs it.
-                    password = ""
-                }
-            }
-        } else {
-            Column(
-                modifier = Modifier.padding(top = CoineProSpacing.OneHalf),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                connection.broker?.let { Detail(stringResource(R.string.connections_broker), it) }
-                connection.server?.let { Detail(stringResource(R.string.connections_server), it) }
-                connection.loginMasked?.let { Detail(stringResource(R.string.connections_login), it) }
-                DisconnectButton(label = R.string.connections_disconnect, onDisconnect = onDisconnect)
-            }
-        }
+        Text(
+            text = stringResource(R.string.connections_unsupported_body),
+            modifier = Modifier.padding(top = CoineProSpacing.One),
+            style = MaterialTheme.typography.bodyMedium,
+            color = CoineProColors.TextSecondary,
+        )
     }
 }
 

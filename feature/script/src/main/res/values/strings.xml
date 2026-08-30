@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="script_strategies_title">ستاپ‌های آماده</string>
+    <string name="script_strategies_count">%1$s ستاپ</string>
+    <string name="script_strategies_disclaimer">نشانه‌ها گزارش‌اند، نه توصیه. هر ستاپ فقط یک نماد را روی یک تایم‌فریم می‌بیند و روی کندلی که هنوز بسته نشده چیزی نمی‌گذارد.</string>
+    <string name="script_strategy_based_on">بر پایهٔ «%1$s»</string>
+
+    <string name="script_strategy_hull_cross_name">کراس دو میانگین هال</string>
+    <string name="script_strategy_hull_cross_description">خرید روی کندلی که هال تند بالای هال کند بسته شد، و فروش روی عکسش. هیچ فیلتر روندی ندارد، پس در بازار بی‌جهت پشت سر هم سیگنال می‌دهد.</string>
+
+    <string name="script_strategy_supertrend_flip_name">برگشت سوپرترند</string>
+    <string name="script_strategy_supertrend_flip_description">کندلی که سوپرترند سمتش را عوض کرد، با حد ضرر روی خودِ خط. در بازار بدون روند، مدام برمی‌گردد.</string>
+
+    <string name="script_strategy_channel_breakout_name">شکست کانال ۲۰ کندلی</string>
+    <string name="script_strategy_channel_breakout_description">بسته شدن بالای سقف یا زیر کف کانالی که کندل شکننده در آن نیست، هم‌جهت با میانگین بلندمدت. کانال یک پنجره است، نه سطحی که کسی تماشایش کند.</string>
+
+    <string name="script_strategy_band_reversion_name">بازگشت از باند بولینگر</string>
+    <string name="script_strategy_band_reversion_description">برگشت قیمت به داخل باند در حالی که RSI هنوز کشیده است. در روند قوی، هر سیگنالش زیان است.</string>
+
+    <string name="script_strategy_trend_pullback_name">پولبک در روند</string>
+    <string name="script_strategy_trend_pullback_description">در جهت میانگین بلندمدت، ورود وقتی استوکاستیک از ناحیهٔ اشباع برمی‌گردد. نمی‌داند پولبک یک مکث است یا آغاز برگشت.</string>
+
+    <string name="script_strategy_triple_confluence_name">همگرایی سه‌گانه</string>
+    <string name="script_strategy_triple_confluence_description">کندلی که روند، مومنتوم و نوسان برای اولین بار با هم موافق شدند. هر سه از همان قیمت‌های بسته‌شدن ساخته شده‌اند، پس موافقتشان کمتر از آن است که به نظر می‌رسد.</string>
+
+    <string name="script_strategy_confluence_score_name">امتیاز همگرایی</string>
+    <string name="script_strategy_confluence_score_description">چهار خواندن بله یا خیر که با هم جمع می‌شوند، و نشانه روی کندلی که جمعشان به آستانه رسید. امتیاز 4 چهار برابرِ شواهدِ امتیاز 1 نیست.</string>
+
+    <string name="script_strategy_supertrend_momentum_name">روند، سوپرترند و مومنتوم</string>
+    <string name="script_strategy_supertrend_momentum_description">اولین کندلی که هر سه موافق شدند، با حد ضرر و هدفی که از نوسان خودِ نماد می‌آید. آغاز را نشانه می‌گذارد و دربارهٔ پایان چیزی نمی‌گوید.</string>
+
+    <string name="script_strategy_channel_momentum_name">شکست کانال با CCI و شتاب</string>
+    <string name="script_strategy_channel_momentum_description">شکست کانال با تأیید CCI و شتاب قیمت. نام قدیمی‌اش کلمهٔ حجم را داشت؛ هیچ بخشی از آن هرگز حجم را نمی‌خواند.</string>
+
+    <string name="script_strategy_ichimoku_cloud_name">ابر ایچیموکو</string>
+    <string name="script_strategy_ichimoku_cloud_description">تقاطع تنکان و کیجون، فقط وقتی قیمت در سمت درست ابر است — ابری که نمودار روی همان کندل می‌کشد، نه محاسبه‌ای که در آن کندل انجام شده. چیکو عمداً در کار نیست.</string>
+
+    <string name="script_strategy_directional_strength_name">قدرت و جهت روند</string>
+    <string name="script_strategy_directional_strength_description">تقاطع ‎+DI و ‎−DI، فقط وقتی ADX می‌گوید روندی در کار است. ADX دیر می‌رسد: تا از آستانه بگذرد، بخشی از حرکت رفته است.</string>
+</resources>

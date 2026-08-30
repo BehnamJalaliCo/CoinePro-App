@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="script_strategies_title">Ready-made setups</string>
+    <string name="script_strategies_count">%1$s setups</string>
+    <string name="script_strategies_disclaimer">A mark is a report, not advice. Every setup sees one symbol on one timeframe, and none of them marks a bar that has not closed.</string>
+    <string name="script_strategy_based_on">Based on “%1$s”</string>
+
+    <string name="script_strategy_hull_cross_name">Hull average cross</string>
+    <string name="script_strategy_hull_cross_description">Buys the bar the fast Hull average closed above the slow one, and sells the mirror. It has no trend filter, so it fires repeatedly in a market going nowhere.</string>
+
+    <string name="script_strategy_supertrend_flip_name">SuperTrend flip</string>
+    <string name="script_strategy_supertrend_flip_description">The bar on which SuperTrend changed side, with the stop on the line itself. In a market without a trend it flips again and again.</string>
+
+    <string name="script_strategy_channel_breakout_name">Twenty-bar channel break</string>
+    <string name="script_strategy_channel_breakout_description">A close above the roof or below the floor of the channel formed by the bars before it, in the direction of a long average. A channel is a window, not a level anybody is watching.</string>
+
+    <string name="script_strategy_band_reversion_name">Bollinger band reversion</string>
+    <string name="script_strategy_band_reversion_description">Price turning back inside the band while the RSI is still stretched. In a strong trend every one of its signals loses.</string>
+
+    <string name="script_strategy_trend_pullback_name">Pullback inside a trend</string>
+    <string name="script_strategy_trend_pullback_description">Entry in the direction of a long average when the stochastic turns back out of its extreme. It cannot tell a pause from the start of a reversal.</string>
+
+    <string name="script_strategy_triple_confluence_name">Triple confluence</string>
+    <string name="script_strategy_triple_confluence_description">The bar on which trend, momentum and volatility first agree. All three are built from the same closes, so their agreement counts for less than it looks.</string>
+
+    <string name="script_strategy_confluence_score_name">Confluence score</string>
+    <string name="script_strategy_confluence_score_description">Four yes-or-no readings added together, marked on the bar the total reached the threshold. A score of 4 is not four times the evidence of a score of 1.</string>
+
+    <string name="script_strategy_supertrend_momentum_name">Trend, SuperTrend and momentum</string>
+    <string name="script_strategy_supertrend_momentum_description">The first bar all three agree, with a stop and target taken from the symbol own volatility. It marks the beginning and says nothing about the end.</string>
+
+    <string name="script_strategy_channel_momentum_name">Channel break with CCI and momentum</string>
+    <string name="script_strategy_channel_momentum_description">A channel break confirmed by CCI and by rate of change. Its old name carried the word volume; no part of it ever read volume.</string>
+
+    <string name="script_strategy_ichimoku_cloud_name">Ichimoku cloud</string>
+    <string name="script_strategy_ichimoku_cloud_description">A Tenkan and Kijun cross taken only on the right side of the cloud — the cloud the chart draws at that bar, not the calculation made on it. The Chikou span is deliberately absent.</string>
+
+    <string name="script_strategy_directional_strength_name">Trend strength and direction</string>
+    <string name="script_strategy_directional_strength_description">A +DI and −DI cross taken only while the ADX says a trend is present. The ADX lags: by the time it clears its threshold, part of the move has already happened.</string>
+</resources>

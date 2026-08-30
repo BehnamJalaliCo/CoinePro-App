@@ -112,6 +112,17 @@ internal class AiSignalPaths(private val prefix: String) {
  *   vestige of the Phase 7 contract that `risk_appetite` replaced.
  * * **`riskPct` serialised as `risk_pct`.** Both contracts say `risk_percent`.
  *
+ * ### The half that was left behind, and came back as `TYR-017`
+ *
+ * `lot` was read out of the same two contracts, found in one of them, and sent to both anyway — on
+ * the strength of a note here saying TradeYar would ignore it. Nothing establishes that. TradeYar
+ * answers an unacceptable request field with `422` and `TYR-017 Validation Field Invalid`, naming
+ * the field, which is precisely what the AI screen was reporting; and `risk` had already proved
+ * that this validator refuses rather than ignores. So the field is sent to the platform whose
+ * contract lists it and to no other, which is why [toWire] now takes a [MarketPlatform] instead of
+ * trusting a comment. A lot is an MT5 position size in the first place: it means nothing to a
+ * server matching orders in USDT.
+ *
  * ### Why the names are written out rather than left to the naming policy
  *
  * `NetworkFactory` configures Gson with `LOWER_CASE_WITH_UNDERSCORES`, so `tradeStyle` did already
@@ -141,7 +152,7 @@ internal data class AiSignalCreateJobDto(
     val directionBias: String? = null,
     @SerializedName("min_rr")
     val minRr: Double? = null,
-    /** CoinePro-FX only. TradeYar's contract has no lot, and ignores one rather than refusing it. */
+    /** CoinePro-FX only. TradeYar's contract has no `lot` and refuses one — see the note above. */
     @SerializedName("lot")
     val lot: Double? = null,
     @SerializedName("risk_percent")
@@ -354,6 +365,13 @@ internal data class AiSignalJobResponseDto(
 class NetworkAiSignalGateway private constructor(
     private val api: AiSignalApi,
     private val paths: AiSignalPaths,
+    /**
+     * Carried as well as [paths], because the platform decides more than the address.
+     *
+     * The two contracts differ by one request field — see [AiSignalCreateJobDto] — and a gateway
+     * that knew only where to post would go on sending it to both.
+     */
+    private val platform: MarketPlatform,
 ) : AiSignalGateway {
     override suspend fun quota(): AiSignalQuota = translate {
         requireNotNull(api.quota(paths.quota).toDomain()) { "Invalid AI Signal quota response" }
@@ -363,7 +381,7 @@ class NetworkAiSignalGateway private constructor(
         val safeSymbol = requireNotNull(AiSignalProductScope.normalizeSymbol(request.symbol)) {
             "Unsupported AI Signal symbol"
         }
-        val response = api.createJob(paths.generate, request.toWire(safeSymbol))
+        val response = api.createJob(paths.generate, request.toWire(safeSymbol, platform))
         requireNotNull(response.toDomain(request, fallbackId = null)) {
             "Invalid AI Signal job response"
         }
@@ -405,6 +423,7 @@ class NetworkAiSignalGateway private constructor(
             NetworkAiSignalGateway(
                 api = retrofit.create(AiSignalApi::class.java),
                 paths = AiSignalPaths.of(platform),
+                platform = platform,
             )
     }
 }
@@ -421,15 +440,22 @@ class NetworkAiSignalGateway private constructor(
  * field the reader left alone, and a balance of zero would have the model size every trade at
  * nothing. A balance is allowed to be any positive figure; the rest must be positive to mean
  * anything at all.
+ *
+ * [platform] appears here for one field. `lot` is CoinePro-FX's alone and TradeYar refuses it with
+ * `TYR-017`, so it is dropped on the way out rather than being left to the screen to remember — a
+ * request built anywhere in the app is then correct for wherever it is posted.
  */
-internal fun AiSignalRequest.toWire(safeSymbol: String): AiSignalCreateJobDto = AiSignalCreateJobDto(
+internal fun AiSignalRequest.toWire(
+    safeSymbol: String,
+    platform: MarketPlatform,
+): AiSignalCreateJobDto = AiSignalCreateJobDto(
     symbol = safeSymbol,
     timeframe = timeframe.wireValue,
     tradeStyle = tradeStyle?.wireValue,
     riskAppetite = riskAppetite?.wireValue,
     directionBias = directionBias?.wireValue,
     minRr = minRiskReward?.takeIf { it.isFinite() && it > 0.0 },
-    lot = lot?.takeIf { it.isFinite() && it > 0.0 },
+    lot = lot?.takeIf { platform == MarketPlatform.COINEPRO_FX && it.isFinite() && it > 0.0 },
     riskPercent = riskPercent?.takeIf { it.isFinite() && it > 0.0 },
     balance = balance?.takeIf { it.isFinite() && it > 0.0 },
 )

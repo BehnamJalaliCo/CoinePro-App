@@ -14,6 +14,7 @@
     <string name="calendar_impact_unknown">Impact unknown</string>
     <string name="calendar_loading">Loading economic events…</string>
     <string name="calendar_unavailable">The calendar is unavailable.</string>
+    <string name="calendar_none_published">The server sent no events for this calendar. The economic calendar comes from the server; the app invents none of its own.</string>
     <string name="calendar_empty">No events match this filter.</string>
     <string name="calendar_retry">Retry</string>
     <string name="calendar_refresh">Refresh</string>

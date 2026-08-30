@@ -128,6 +128,8 @@ fun AiStudioScreen(
     var riskPercent by rememberSaveable { mutableStateOf("") }
     var balance by rememberSaveable { mutableStateOf("") }
     var pickerOpen by rememberSaveable { mutableStateOf(false) }
+    // Whether this platform sizes a position in lots at all. See the sizing panel below.
+    val sizesInLots = platform == MarketPlatform.COINEPRO_FX
 
     LaunchedEffect(controller) { controller.refreshQuota() }
 
@@ -247,11 +249,19 @@ fun AiStudioScreen(
 
         item {
             AiPanel(title = stringResource(R.string.ai_group_size)) {
-                AiNumberField(
-                    label = stringResource(R.string.ai_lot),
-                    value = lot,
-                    onValueChange = { lot = it },
-                )
+                // A lot is an MT5 position size, and only CoinePro-FX's contract has the field.
+                // TradeYar refuses the request outright when it arrives — `422` and
+                // `TYR-017 Validation Field Invalid`, which is what the AI section was answering —
+                // so on crypto the box is not drawn at all. A control whose value the server will
+                // not take is worse than a missing one: the reader fills it in, presses the button
+                // and is refused for something they did on purpose.
+                if (sizesInLots) {
+                    AiNumberField(
+                        label = stringResource(R.string.ai_lot),
+                        value = lot,
+                        onValueChange = { lot = it },
+                    )
+                }
                 AiNumberField(
                     label = stringResource(R.string.ai_risk_percent),
                     value = riskPercent,
@@ -262,7 +272,15 @@ fun AiStudioScreen(
                     value = balance,
                     onValueChange = { balance = it },
                 )
-                AiFootnote(stringResource(R.string.ai_group_size_hint))
+                AiFootnote(
+                    stringResource(
+                        if (sizesInLots) {
+                            R.string.ai_group_size_hint
+                        } else {
+                            R.string.ai_group_size_hint_no_lot
+                        },
+                    ),
+                )
             }
         }
 

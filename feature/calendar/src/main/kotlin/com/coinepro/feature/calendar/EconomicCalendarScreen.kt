@@ -64,6 +64,7 @@ import com.coinepro.core.chartevents.ChartEventSymbols
 import com.coinepro.core.marketintel.EconomicEvent
 import com.coinepro.core.marketintel.MarketImpact
 import com.coinepro.core.marketintel.MarketIntelController
+import com.coinepro.core.marketintel.MarketIntelState
 import com.coinepro.core.marketintel.MarketRelevance
 import java.time.ZoneId
 
@@ -124,12 +125,7 @@ fun EconomicCalendarScreen(
         )
 
         AnimatedContent(
-            targetState = when {
-                state.loading -> "loading"
-                state.error != null && state.calendar.isEmpty() -> "error"
-                filtered.isEmpty() -> "empty"
-                else -> "content"
-            },
+            targetState = calendarMode(state, filtered),
             transitionSpec = {
                 (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 8 }) togetherWith
                     (fadeOut(tween(150)) + slideOutVertically(tween(150)) { -it / 12 })
@@ -137,20 +133,27 @@ fun EconomicCalendarScreen(
             label = "calendar-state",
         ) { mode ->
             when (mode) {
-                "loading" -> CenterState(stringResource(R.string.calendar_loading), showProgress = true)
+                CalendarMode.LOADING ->
+                    CenterState(stringResource(R.string.calendar_loading), showProgress = true)
                 // Server wording when there is any.
-                "error" -> CenterState(
+                CalendarMode.ERROR -> CenterState(
                     state.error ?: stringResource(R.string.calendar_unavailable),
                     stringResource(R.string.calendar_retry),
                     controller::refresh,
                 )
-                "empty" -> CoineProEmptyState(
+                CalendarMode.NOTHING_PUBLISHED -> CoineProEmptyState(
+                    icon = CoineProIcons.Calendar,
+                    message = stringResource(R.string.calendar_none_published),
+                    action = stringResource(R.string.calendar_refresh),
+                    onAction = controller::refresh,
+                )
+                CalendarMode.FILTERED_OUT -> CoineProEmptyState(
                     icon = CoineProIcons.Calendar,
                     message = stringResource(R.string.calendar_empty),
                     action = stringResource(R.string.calendar_refresh),
                     onAction = controller::refresh,
                 )
-                else -> CoineProPullToRefresh(
+                CalendarMode.EVENTS -> CoineProPullToRefresh(
                     refreshing = state.refreshing,
                     onRefresh = controller::refresh,
                 ) {
@@ -170,6 +173,40 @@ fun EconomicCalendarScreen(
             }
         }
     }
+}
+
+/**
+ * What the calendar is showing, which is four things and was drawn as three.
+ *
+ * The missing distinction is the one the owner reported as «تقویم داده ندارد»: a server that
+ * published no events and a filter that hid them both landed on «رویدادی با این فیلتر پیدا نشد» —
+ * so a reader looking at an empty calendar with the filter on «همه» was told their filter was the
+ * problem. It was not; both backends currently send an empty `calendar` array, for two different
+ * reasons of their own, and the screen should say what it was actually given rather than blame a
+ * control the reader never touched.
+ *
+ * An error only counts while there is nothing to show. A refresh that fails over a calendar already
+ * on screen leaves the events there and reports the failure in the strip above them, because stale
+ * release times are still the release times.
+ */
+internal enum class CalendarMode {
+    LOADING,
+    ERROR,
+
+    /** The server answered and its calendar was empty. Nothing here is filtered out. */
+    NOTHING_PUBLISHED,
+
+    /** The server sent events and the impact filter matched none of them. */
+    FILTERED_OUT,
+    EVENTS,
+}
+
+internal fun calendarMode(state: MarketIntelState, filtered: List<EconomicEvent>): CalendarMode = when {
+    state.loading -> CalendarMode.LOADING
+    state.error != null && state.calendar.isEmpty() -> CalendarMode.ERROR
+    state.calendar.isEmpty() -> CalendarMode.NOTHING_PUBLISHED
+    filtered.isEmpty() -> CalendarMode.FILTERED_OUT
+    else -> CalendarMode.EVENTS
 }
 
 @Composable

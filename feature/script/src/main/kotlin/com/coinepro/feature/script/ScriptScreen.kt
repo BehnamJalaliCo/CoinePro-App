@@ -41,6 +41,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,6 +68,8 @@ import com.coinepro.core.script.ScriptLessons
 import com.coinepro.core.script.ScriptPreset
 import com.coinepro.core.script.ScriptPresets
 import com.coinepro.core.script.ScriptReference
+import com.coinepro.core.script.ScriptStrategies
+import com.coinepro.core.script.ScriptStrategy
 import com.coinepro.core.script.toOverlay
 
 /**
@@ -133,6 +136,10 @@ fun ScriptScreen(
                 onDelete = controller::delete,
                 onOpenPreset = {
                     controller.openPreset(it)
+                    tab = ScriptTab.EDITOR
+                },
+                onOpenStrategy = { strategy, name ->
+                    controller.openStrategy(strategy, name)
                     tab = ScriptTab.EDITOR
                 },
                 onNew = {
@@ -510,6 +517,7 @@ private fun LibraryTab(
     onOpen: (SavedScriptEntity) -> Unit,
     onDelete: (Long) -> Unit,
     onOpenPreset: (ScriptPreset) -> Unit,
+    onOpenStrategy: (ScriptStrategy, String) -> Unit,
     onNew: () -> Unit,
 ) {
     LazyColumn(
@@ -546,14 +554,19 @@ private fun LibraryTab(
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(script.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                        script.presetId?.let { id ->
-                            ScriptPresets.byId(id)?.let {
-                                Text(
-                                    "بر پایهٔ «${it.title}»",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = CoineProColors.TextMuted,
-                                )
-                            }
+                        // A saved script remembers what it was started from, and that may be a
+                        // preset or one of the shipped strategies — the two id spaces are separate
+                        // and a saved copy of a strategy should not lose its lineage.
+                        val origin = script.presetId?.let { id ->
+                            ScriptPresets.byId(id)?.title
+                                ?: ScriptStrategies.byId(id)?.let { stringResource(nameOf(it)) }
+                        }
+                        origin?.let {
+                            Text(
+                                stringResource(R.string.script_strategy_based_on, it),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = CoineProColors.TextMuted,
+                            )
                         }
                     }
                     TextButton(onClick = { onDelete(script.id) }) {
@@ -563,7 +576,33 @@ private fun LibraryTab(
             }
         }
         item {
-            SectionTitle("آماده", "${ScriptPresets.ALL.size.toPersianDigits()} اسکریپت آماده")
+            SectionTitle(
+                stringResource(R.string.script_strategies_title),
+                stringResource(R.string.script_strategies_count, ScriptStrategies.ALL.size.toPersianDigits()),
+            )
+        }
+        item {
+            // Said once, at the top of the list, rather than on every card. Eleven copies of the
+            // same sentence is wallpaper, and wallpaper is not read.
+            Text(
+                stringResource(R.string.script_strategies_disclaimer),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+            )
+        }
+        items(ScriptStrategies.ALL, key = ScriptStrategy::id) { strategy ->
+            val name = stringResource(nameOf(strategy))
+            CoineProCard(modifier = Modifier.fillMaxWidth().clickable { onOpenStrategy(strategy, name) }) {
+                Text(name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Text(
+                    stringResource(descriptionOf(strategy)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = CoineProColors.TextSecondary,
+                )
+            }
+        }
+        item {
+            SectionTitle("آموزشی", "${ScriptPresets.ALL.size.toPersianDigits()} اسکریپت آماده")
         }
         items(ScriptPresets.ALL, key = ScriptPreset::id) { preset ->
             CoineProCard(modifier = Modifier.fillMaxWidth().clickable { onOpenPreset(preset) }) {

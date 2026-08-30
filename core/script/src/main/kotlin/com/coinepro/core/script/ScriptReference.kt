@@ -38,6 +38,11 @@ object ScriptReference {
         ScriptFunction("time", "زمان هر کندل، به ثانیهٔ یونیکس.", "سری عددی"),
         ScriptFunction("bar_index", "شمارهٔ کندل، از صفر.", "سری عددی"),
         ScriptFunction("n", "تعداد کل کندل‌های نمودار.", "عدد"),
+        ScriptFunction(
+            "confirmed",
+            "روی هر کندلی که بسته شده درست است و روی آخرین کندل نادرست. شرط سیگنال را با «and confirmed» ببندید تا نشانه روی کندلِ در حال شکل‌گیری ننشیند و بعداً جابه‌جا نشود.",
+            "سری شرطی",
+        ),
     )
 
     val GROUPS: List<ScriptReferenceGroup> = listOf(
@@ -47,6 +52,7 @@ object ScriptReference {
                 ScriptFunction("ta.sma(close, 20)", "میانگین متحرک ساده روی طول داده‌شده.", "سری عددی"),
                 ScriptFunction("ta.ema(close, 20)", "میانگین متحرک نمایی؛ به کندل‌های تازه وزن بیشتری می‌دهد.", "سری عددی"),
                 ScriptFunction("ta.wma(close, 20)", "میانگین متحرک وزنی خطی.", "سری عددی"),
+                ScriptFunction("ta.hma(close, 21)", "میانگین متحرک هال؛ کم‌تأخیرتر از نمایی، اما دورهٔ گرم شدن بلندتری دارد.", "سری عددی"),
             ),
         ),
         ScriptReferenceGroup(
@@ -66,6 +72,43 @@ object ScriptReference {
                 ScriptFunction("ta.bb_basis(close, 20, 2)", "میانهٔ باند بولینگر.", "سری عددی"),
                 ScriptFunction("ta.bb_upper(close, 20, 2)", "لبهٔ بالای باند بولینگر.", "سری عددی"),
                 ScriptFunction("ta.bb_lower(close, 20, 2)", "لبهٔ پایین باند بولینگر.", "سری عددی"),
+                ScriptFunction("ta.donchian_upper(20)", "سقف کانال دانچیان. برای شکست، یک کندل عقب بخوانیدش: ta.donchian_upper(20)[1].", "سری عددی"),
+                ScriptFunction("ta.donchian_lower(20)", "کف کانال دانچیان.", "سری عددی"),
+            ),
+        ),
+        ScriptReferenceGroup(
+            "روند و جهت",
+            listOf(
+                ScriptFunction("ta.supertrend(10, 3)", "خط سوپرترند: باندی به اندازهٔ ATR که سمتش را با قیمت عوض می‌کند.", "سری عددی"),
+                ScriptFunction("ta.supertrend_trend(10, 3)", "جهت سوپرترند: ۱ صعودی، ۱− نزولی. تغییر جهت، همان برگشت است.", "سری عددی"),
+                ScriptFunction("ta.adx(14)", "قدرت روند بدون جهت. زیر آستانه یعنی روندی در کار نیست.", "سری عددی"),
+                ScriptFunction("ta.di_plus(14)", "شاخص جهت‌دار صعودی.", "سری عددی"),
+                ScriptFunction("ta.di_minus(14)", "شاخص جهت‌دار نزولی.", "سری عددی"),
+                ScriptFunction("ta.stoch_k(14, 3)", "خط ‎%K استوکاستیک.", "سری عددی"),
+                ScriptFunction("ta.stoch_d(14, 3)", "خط ‎%D استوکاستیک؛ میانگین ‎%K.", "سری عددی"),
+            ),
+        ),
+        ScriptReferenceGroup(
+            "ایچیموکو",
+            listOf(
+                ScriptFunction("ta.ichimoku_conversion(9, 26)", "تنکان‌سن.", "سری عددی"),
+                ScriptFunction("ta.ichimoku_base(9, 26)", "کیجون‌سن.", "سری عددی"),
+                ScriptFunction(
+                    "ta.ichimoku_span_a(9, 26)",
+                    "سنکو A، بدون جابه‌جایی. ابری که نمودار روی این کندل می‌کشد، ۲۶ کندل قبل محاسبه شده: ta.ichimoku_span_a(9, 26)[26].",
+                    "سری عددی",
+                ),
+                ScriptFunction("ta.ichimoku_span_b(9, 26, 52)", "سنکو B، بدون جابه‌جایی.", "سری عددی"),
+            ),
+        ),
+        ScriptReferenceGroup(
+            "حجم",
+            listOf(
+                ScriptFunction(
+                    "ta.vwap()",
+                    "میانگین وزنیِ حجمِ قیمت، از اولین کندل بارگذاری‌شده. روی فیدی که حجم نمی‌دهد بی‌مقدار است، نه صفر.",
+                    "سری عددی",
+                ),
             ),
         ),
         ScriptReferenceGroup(

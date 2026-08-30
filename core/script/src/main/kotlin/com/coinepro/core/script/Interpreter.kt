@@ -120,6 +120,19 @@ internal class Interpreter(
         "time" -> Value.NumberSeries(Line.of(size) { series.bars[it].t.toDouble() })
         "bar_index" -> Value.NumberSeries(Line.of(size) { it.toDouble() })
         "n" -> Value.Num(size.toDouble())
+        // True on every bar whose values can no longer change, false on the last one.
+        //
+        // A series arrives here as a plain list of bars with nothing marking which of them is still
+        // forming, and the last bar of a live chart is the one being traded right now: its close is
+        // the current price and its high and low are still moving. Any condition read off it is a
+        // guess that will be revised, and an arrow drawn from that guess appears, moves and
+        // disappears while the reader watches — which is the single worst thing a signal can do,
+        // because a reader who scrolls back sees only the arrows that survived and concludes the
+        // study was right every time.
+        //
+        // So the last bar is treated as unconfirmed unconditionally. It costs one bar of lateness
+        // and buys the guarantee that a mark, once drawn, is permanent.
+        "confirmed" -> Value.FlagSeries(Line.of(size) { index -> if (index < size - 1) 1.0 else 0.0 })
         else -> null
     }
 
@@ -330,7 +343,7 @@ internal class Interpreter(
 
         val BUILTIN_SERIES = setOf(
             "open", "high", "low", "close", "volume",
-            "hl2", "hlc3", "ohlc4", "time", "bar_index", "n",
+            "hl2", "hlc3", "ohlc4", "time", "bar_index", "n", "confirmed",
         )
 
         /**

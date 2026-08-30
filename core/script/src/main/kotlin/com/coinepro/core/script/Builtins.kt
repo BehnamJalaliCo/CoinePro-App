@@ -38,6 +38,7 @@ internal object Builtins {
             "ta.sma" -> series(interpreter, arguments.source(0).through { Indicators.sma(it, arguments.length(1)) })
             "ta.ema" -> series(interpreter, arguments.source(0).through { Indicators.ema(it, arguments.length(1)) })
             "ta.wma" -> series(interpreter, arguments.source(0).through { Indicators.wma(it, arguments.length(1)) })
+            "ta.hma" -> series(interpreter, arguments.source(0).through { Indicators.hma(it, arguments.length(1)) })
 
             /* ---------------------------------------------------------- oscillators */
             "ta.rsi" -> series(interpreter, arguments.source(0).through { Indicators.rsi(it, arguments.length(1, default = 14)) })
@@ -97,6 +98,31 @@ internal object Builtins {
             "ta.bb_upper" -> series(interpreter, band(arguments).upper)
             "ta.bb_lower" -> series(interpreter, band(arguments).lower)
             "ta.bb_basis" -> series(interpreter, band(arguments).basis)
+            "ta.donchian_upper" -> series(interpreter, donchian(interpreter, arguments).upper)
+            "ta.donchian_lower" -> series(interpreter, donchian(interpreter, arguments).lower)
+
+            /* ---------------------------------------------------------- trend engines */
+            "ta.supertrend" -> series(interpreter, superTrend(interpreter, arguments).line)
+            "ta.supertrend_trend" -> series(interpreter, superTrend(interpreter, arguments).trend)
+            "ta.adx" -> series(interpreter, directional(interpreter, arguments).adx)
+            "ta.di_plus" -> series(interpreter, directional(interpreter, arguments).plusDi)
+            "ta.di_minus" -> series(interpreter, directional(interpreter, arguments).minusDi)
+            "ta.stoch_k" -> series(interpreter, stochastic(interpreter, arguments).k)
+            "ta.stoch_d" -> series(interpreter, stochastic(interpreter, arguments).d)
+
+            /* ---------------------------------------------------------- ichimoku */
+            // Four separate accessors rather than one call with a field, because the language has
+            // no record type. The spans come back **undisplaced**: what `ta.ichimoku_span_a` gives
+            // at bar i is the value computed from bars up to i, and a script that wants the cloud
+            // a chart draws *at* bar i asks for `ta.ichimoku_span_a(9, 26)[26]`. Shifting it here
+            // instead would hand every caller a series whose bar i was computed from bar i+26.
+            "ta.ichimoku_conversion" -> series(interpreter, ichimoku(interpreter, arguments).tenkan)
+            "ta.ichimoku_base" -> series(interpreter, ichimoku(interpreter, arguments).kijun)
+            "ta.ichimoku_span_a" -> series(interpreter, ichimoku(interpreter, arguments).spanA)
+            "ta.ichimoku_span_b" -> series(interpreter, ichimoku(interpreter, arguments).spanB)
+
+            /* ---------------------------------------------------------- volume */
+            "ta.vwap" -> series(interpreter, vwap(interpreter))
 
             /* ---------------------------------------------------------- statistics */
             "ta.stdev" -> series(interpreter, rolling(interpreter, arguments.source(0), arguments.length(1)) { window ->
@@ -196,6 +222,73 @@ internal object Builtins {
             source.realign(band.upper),
             source.realign(band.lower),
         )
+    }
+
+    private fun donchian(interpreter: Interpreter, arguments: Arguments): com.coinepro.core.chart.Band =
+        Indicators.donchian(
+            interpreter.candles.high,
+            interpreter.candles.low,
+            arguments.length(0, default = 20),
+        )
+
+    private fun superTrend(
+        interpreter: Interpreter,
+        arguments: Arguments,
+    ): com.coinepro.core.chart.SuperTrendResult = Indicators.supertrend(
+        interpreter.candles.high,
+        interpreter.candles.low,
+        interpreter.candles.close,
+        arguments.length(0, default = 10),
+        if (arguments.size > 1) arguments.constant(1, "ضریب") else 3.0,
+    )
+
+    private fun directional(
+        interpreter: Interpreter,
+        arguments: Arguments,
+    ): com.coinepro.core.chart.AdxResult = Indicators.adx(
+        interpreter.candles.high,
+        interpreter.candles.low,
+        interpreter.candles.close,
+        arguments.length(0, default = 14),
+    )
+
+    private fun stochastic(
+        interpreter: Interpreter,
+        arguments: Arguments,
+    ): com.coinepro.core.chart.StochasticResult = Indicators.stochastic(
+        interpreter.candles.high,
+        interpreter.candles.low,
+        interpreter.candles.close,
+        arguments.length(0, default = 14),
+        arguments.length(1, default = 3),
+    )
+
+    private fun ichimoku(
+        interpreter: Interpreter,
+        arguments: Arguments,
+    ): com.coinepro.core.chart.IchimokuResult = Indicators.ichimoku(
+        interpreter.candles.high,
+        interpreter.candles.low,
+        arguments.length(0, default = 9),
+        arguments.length(1, default = 26),
+        arguments.length(2, default = 52),
+    )
+
+    /**
+     * Volume-weighted average price, or nothing at all where the feed reports no volume.
+     *
+     * The library's own VWAP falls back to the close on a bar with no volume, which is the right
+     * answer for a *drawn* line — it keeps the curve continuous through a quiet bar. It is the
+     * wrong answer for a *condition*: on the MT5 side no bar carries volume, so the fallback makes
+     * `close > ta.vwap()` compare the close against itself and return false on every bar of every
+     * chart. A filter that is silently and permanently false is worse than one that is absent,
+     * because `and` propagates absence and a reader sees a strategy that draws nothing rather than
+     * a strategy that quietly lost a third of its evidence.
+     */
+    private fun vwap(interpreter: Interpreter): Line {
+        val candles = interpreter.candles
+        if (!candles.hasVolume) return Line.empty(interpreter.barCount)
+        return Indicators.vwap(candles.high, candles.low, candles.close, candles.volume)
     }
 
     private fun cross(interpreter: Interpreter, node: Call, arguments: Arguments, upward: Boolean): Value {

@@ -1,5 +1,6 @@
 package com.coinepro.core.aisignal
 
+import com.coinepro.core.model.MarketPlatform
 import com.google.gson.FieldNamingPolicy
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
@@ -39,8 +40,11 @@ class AiSignalWireTest {
         .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
         .create()
 
-    private fun body(request: AiSignalRequest): JsonObject =
-        JsonParser.parseString(gson.toJson(request.toWire(request.symbol))).asJsonObject
+    private fun body(
+        request: AiSignalRequest,
+        platform: MarketPlatform = MarketPlatform.COINEPRO_FX,
+    ): JsonObject =
+        JsonParser.parseString(gson.toJson(request.toWire(request.symbol, platform))).asJsonObject
 
     private val fullRequest = AiSignalRequest(
         symbol = "XAUUSD",
@@ -87,7 +91,38 @@ class AiSignalWireTest {
             "balance",
         )
 
-        assertEquals(documented, body(fullRequest).keySet())
+        assertEquals(documented, body(fullRequest, MarketPlatform.COINEPRO_FX).keySet())
+    }
+
+    @Test
+    fun `lot belongs to CoinePro-FX and never reaches TradeYar`() {
+        // The `TYR-017` the owner reported. `lot` is in CoinePro-FX's contract and in neither line
+        // of TradeYar's part 11, and it went to both — on the strength of a comment claiming
+        // TradeYar would ignore it. `risk` had already shown that this validator refuses unknown
+        // fields rather than ignoring them, and `TYR-017` is what refusing one is called.
+        val crypto = body(
+            fullRequest.copy(symbol = "BTCUSDT"),
+            MarketPlatform.TRADEYAR,
+        )
+
+        assertFalse(crypto.has("lot"))
+        assertEquals(
+            setOf(
+                "symbol",
+                "timeframe",
+                "trade_style",
+                "risk_appetite",
+                "direction_bias",
+                "min_rr",
+                "risk_percent",
+                "balance",
+            ),
+            crypto.keySet(),
+        )
+        // The rest of the sizing controls do belong to both, so dropping one must not have dropped
+        // the pair beside it — that would swap a refusal for a setup sized against nothing.
+        assertEquals(1.5, crypto["risk_percent"].asDouble, 0.0)
+        assertEquals(5_000.0, crypto["balance"].asDouble, 0.0)
     }
 
     @Test

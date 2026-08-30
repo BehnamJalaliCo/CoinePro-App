@@ -130,6 +130,25 @@ class ScriptController(
         run()
     }
 
+    /**
+     * Opens one of the shipped strategies.
+     *
+     * [name] is handed in rather than read off the strategy, because a strategy's name is shown to
+     * a reader and so lives in `feature:script`'s twinned resources. This module has no resources
+     * of its own and could only carry a Persian literal, which is not a name for half the audience.
+     *
+     * The strategy's id goes into [ScriptEditorState.presetId] exactly as a preset's does: a saved
+     * copy has to remember what it was started from, and the two id spaces do not overlap.
+     */
+    fun openStrategy(strategy: ScriptStrategy, name: String) {
+        _state.value = ScriptEditorState(
+            name = name,
+            source = strategy.source,
+            presetId = strategy.id,
+        )
+        run()
+    }
+
     /** Opens a blank script. */
     fun openBlank() {
         _state.value = ScriptEditorState(name = "", source = ScriptPresets.BLANK)

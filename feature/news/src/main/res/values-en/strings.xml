@@ -37,7 +37,7 @@
     <string name="news_no_summary">The server sent no summary for this story.</string>
     <string name="news_summary_is_all">What you have just read is the whole of the text the source published.</string>
     <string name="news_published_by">Published by %1$s</string>
-    <string name="news_open_source">The source's page</string>
+    <string name="news_open_source">The source\'s page</string>
     <string name="news_open_failed">No browser was found to open this address.</string>
     <string name="news_context_eyebrow">What this bears on</string>
     <string name="news_context_markets">This story bears on %1$s.</string>

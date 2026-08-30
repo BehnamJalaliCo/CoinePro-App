@@ -72,3 +72,40 @@ class PlatformSessions(
         controllers.values.forEach { it.logout() }
     }
 }
+
+/**
+ * The session the shell gates on, given the platform currently on screen.
+ *
+ * ### The bug this function is
+ *
+ * «فارکس» and «کریپتو» are a **market** switch in the reader's hands and were an **account** switch
+ * in the code: the shell read `states[activePlatform]`, so tapping a platform the reader held no
+ * token for put the whole app into its signed-out branch. That is not a corner case, it is the only
+ * case — registration deliberately does not federate (see [FederatedEmailAuthGateway]), so a sign-in
+ * mints exactly one session and *every* reader is signed out of exactly one of the two platforms.
+ * Tapping the other tab therefore dropped a perfectly good session to the guest shell, which draws
+ * no platform switcher, so the switch was one-way and read as being logged out.
+ *
+ * ### The rule
+ *
+ * A session belongs to the *reader*, not to the tab they are looking at. So the platform on screen
+ * is asked first — somebody signed in to both must see the account that matches the market above it
+ * — and where that platform has no session the reader's other one answers instead. Switching market
+ * can then change what is on screen and can never change whether there is anybody there.
+ *
+ * A platform with no entry yet reads as [SessionState.Loading] rather than signed out: the map is
+ * empty for the first frame of a cold start, and answering "signed out" there would flash the guest
+ * shell at every reader on every launch.
+ *
+ * What this deliberately does **not** do is lend one platform's token to the other. Each backend
+ * still holds its own credential and refuses what it does not know; a screen on a platform this
+ * reader has no account with reports that for itself, which is a gap the reader can see and act on
+ * rather than a sign-out they cannot explain.
+ */
+fun Map<MarketPlatform, SessionState>.sessionForShell(active: MarketPlatform): SessionState {
+    val here = this[active] ?: SessionState.Loading
+    if (here is SessionState.SignedIn) return here
+    // Declaration order rather than map order, so a reader holding both always resolves to the same
+    // one and the shell does not depend on how the map happened to be built.
+    return MarketPlatform.entries.firstNotNullOfOrNull { this[it] as? SessionState.SignedIn } ?: here
+}

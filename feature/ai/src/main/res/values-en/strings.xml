@@ -12,6 +12,7 @@
     <string name="ai_group_size">Position sizing</string>
     <string name="ai_group_how_hint">Anything you leave unset is the model\'s to decide. Tap an active chip again to clear it.</string>
     <string name="ai_group_size_hint">All three are optional. Give a balance and a risk percentage and the server sizes the position; leave them and no lot is suggested.</string>
+    <string name="ai_group_size_hint_no_lot">Both are optional. Give a balance and a risk percentage and the server sizes the position; leave them and no size is suggested. A lot is a MetaTrader figure and this platform does not accept one.</string>
 
     <string name="ai_symbol">Symbol</string>
     <string name="ai_symbol_change">Change symbol</string>
