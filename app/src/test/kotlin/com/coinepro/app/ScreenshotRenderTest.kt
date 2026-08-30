@@ -167,6 +167,8 @@ import com.coinepro.feature.home.HomeScreen
 import com.coinepro.feature.home.HomeSubscription
 import com.coinepro.feature.journal.JournalScreen
 import com.coinepro.feature.kyc.KycScreen
+import com.coinepro.feature.menu.MenuAccess
+import com.coinepro.feature.menu.MenuScreen
 import com.coinepro.feature.news.NewsScreen
 import com.coinepro.feature.notifications.AlertComposerBody
 import com.coinepro.feature.notifications.NotificationSection
@@ -954,6 +956,37 @@ class ScreenshotRenderTest {
                 onOpenSignal = {},
             )
         }
+    }
+
+    @Test
+    fun menu() = capture("96-menu") {
+        MenuScreen(
+            access = MenuAccess(platform = MarketPlatform.TRADEYAR, signedIn = true),
+            onOpen = {},
+            name = "بهنام",
+            email = "trader@example.com",
+            planLabel = "حرفه‌ای",
+            platformLabel = "کریپتو",
+            watchlistCount = 12,
+        )
+    }
+
+    /**
+     * The same page with nobody signed in, and it is the case worth having a picture of.
+     *
+     * Every account-only row is still on it, marked rather than missing — so a capture that came
+     * back shorter than the member's would be the bug this screen exists to prevent.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun menuGuestPersian() = capture("97-menu-guest-fa") {
+        MenuScreen(
+            access = MenuAccess(platform = MarketPlatform.TRADEYAR, signedIn = false),
+            onOpen = {},
+            platformLabel = "کریپتو",
+            watchlistCount = 3,
+            onSignIn = {},
+        )
     }
 
     @Test

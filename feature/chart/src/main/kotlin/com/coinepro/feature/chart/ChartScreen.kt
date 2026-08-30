@@ -93,11 +93,15 @@ import com.coinepro.core.chart.PriceScaleMode
 import com.coinepro.core.chart.decimalsFor
 import com.coinepro.core.chart.formatPrice
 import com.coinepro.core.chartevents.ChartEventController
+import com.coinepro.core.chartevents.ChartEventSettings
 import com.coinepro.core.chartevents.ChartEventSheet
+import com.coinepro.core.chartevents.ChartEventState
+import com.coinepro.core.chartevents.SERVED_EVENT_KINDS
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.datastore.ChartColourTemplate
 import com.coinepro.core.datastore.ChartLayout
+import com.coinepro.core.datastore.ChartEventPrefsStore
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.DrawingTemplate
 import com.coinepro.core.datastore.DrawingImageStore
@@ -124,6 +128,7 @@ import com.coinepro.core.designsystem.LtrDirection
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.onPageAccent
 import com.coinepro.core.designsystem.pageAccent
+import com.coinepro.core.designsystem.pageAccentInk
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.help.CoineProHelpSheet
 import com.coinepro.core.help.HelpCatalog
@@ -320,6 +325,21 @@ fun ChartScreen(
      * fixture and is exactly what shipped for everybody else.
      */
     events: ChartEventController? = null,
+    /**
+     * Where the reader's own event switches are kept between launches.
+     *
+     * `ChartEventPrefsStore` is the third thing in this feature that was written, tested and
+     * provided in Hilt and then read by nobody: nothing in the app has ever called
+     * `ChartEventController.restoreVisibility`, so a reader who switched the economic calendar on
+     * found it off again at the next launch — which is indistinguishable from a switch that does
+     * not work. Null keeps the behaviour that shipped: the switches work for this visit and are
+     * forgotten, which is right for a preview and a fixture and is what every reader had.
+     *
+     * The loop is deliberately one-directional — the sheet writes a kind, the store emits, the
+     * controller takes the filter — so the stored row is the single answer and a failed write shows
+     * up as a switch that comes back rather than as two halves of the app disagreeing.
+     */
+    chartEventPrefs: ChartEventPrefsStore? = null,
 ) {
     /**
      * The instrument the reader switched to from the strip, or null while they are on the one this
@@ -400,6 +420,28 @@ fun ChartScreen(
     // places them, so this screen never re-places anything when a switch is flipped.
     val eventMarks by remember(events) { events?.marks ?: MutableStateFlow(emptyList()) }
         .collectAsStateWithLifecycle()
+    /**
+     * The switches themselves, and why the axis is bare when it is.
+     *
+     * Collected on the phone page and not only in the studio, because until now that is exactly
+     * where they were: `ChartEventSettings` had one call site, inside `ChartStudioScreen`, so a
+     * reader who never opened the professional terminal could not turn a kind on, could not turn
+     * one off, and — worse — was never told *why* the strip under their candles was empty. Four
+     * different answers were being collapsed into one blank axis: no network, this backend does not
+     * publish the document, the read failed, and nothing happened this week.
+     */
+    val eventState by remember(events) { events?.state ?: MutableStateFlow(ChartEventState()) }
+        .collectAsStateWithLifecycle()
+    // The stored switches, put back and then kept in step. Collected rather than read once: the
+    // sheet writes through the store, so this is also the path a tap on a switch takes back to the
+    // controller — one direction, one answer, and no chance of the axis and the sheet disagreeing.
+    if (events != null && chartEventPrefs != null) {
+        LaunchedEffect(events, chartEventPrefs) {
+            chartEventPrefs.kinds().collect { stored ->
+                events.setVisibility(ChartEventKinds.visibility(stored))
+            }
+        }
+    }
     /** The glyph a reader tapped, or null. Opens everything that landed in that bar. */
     var openedMark by remember { mutableStateOf<EventMark?>(null) }
     /**
@@ -892,6 +934,8 @@ fun ChartScreen(
             starred = starredWires,
             onOpenSheet = { sheet = it },
             onExit = { fullscreen = false },
+            symbols = watchlist,
+            onSelectSymbol = switchSymbol.takeIf { controllerFor != null || onSelectSymbol != null },
         )
     } else {
     // The page above, the reader's own watchlist below, and a handle they can reach with the thumb
@@ -941,14 +985,6 @@ fun ChartScreen(
     ) {
         Header(state, onOpenTerminal)
         CoineProTeachingStrip(TeachingSurface.CHART)
-        // The wheel is the strip's older, worse sibling and only appears where the split cannot:
-        // on a build with no controller holder, where switching is a navigation anyway. Drawing
-        // both would be the same list twice on one screen.
-        if (controllerFor == null) {
-            onSelectSymbol?.let { select ->
-                SymbolWheel(symbols = watchlist, current = state.symbol, onSelect = select)
-            }
-        }
 
         // The plot, bled to both edges of the phone.
         //
@@ -1055,6 +1091,15 @@ fun ChartScreen(
                 state.comparisons.isNotEmpty() ||
                 state.scaleMode != PriceScaleMode.REGULAR ||
                 axisAdjusted,
+            // The symbol switcher, in the band the owner was pointing at. `switchSymbol` already
+            // knows both routes — a controller swap where the app keeps one per symbol, a
+            // navigation where it does not — so this tier does not care which build it is in.
+            // Offered only where the screen was given a way to switch at all: on a preview or a
+            // fixture there is none, and a control that silently does nothing is worse than one
+            // that is absent.
+            symbols = watchlist,
+            symbol = state.symbol,
+            onSelectSymbol = switchSymbol.takeIf { controllerFor != null || onSelectSymbol != null },
         )
 
         // Only where they have nowhere better to be. On a window wide enough for the side column
@@ -1326,7 +1371,54 @@ fun ChartScreen(
                         open()
                     }
                 },
+                // Offered only where something actually fetches events. On a preview, a fixture or
+                // a platform this build was not configured for there is nothing behind the row,
+                // and a settings page for a feed that does not exist is worse than no row.
+                onEvents = { sheet = ChartSheet.EVENTS }.takeIf { events != null },
+                // Counted over what a backend serves rather than over all five, so the figure on
+                // the closed row is one the reader can actually reach. See `SERVED_EVENT_KINDS`.
+                eventKinds = eventState.visibility.kinds.count { it in SERVED_EVENT_KINDS },
+                // And why the strip under the candles is empty, when it is: said on the row rather
+                // than only behind it, so a reader on a backend that does not publish the document
+                // is told so instead of concluding nothing has happened.
+                eventNotice = eventState.notice,
             )
+        }
+
+        ChartSheet.EVENTS -> CoineProSheet(
+            title = stringResource(R.string.chart_events_title),
+            subtitle = stringResource(
+                R.string.chart_events_subtitle,
+                // A prose count, so Persian digits — unlike every figure on the chart above.
+                eventState.visibility.kinds.count { it in SERVED_EVENT_KINDS }.toPersianDigits(),
+            ),
+            onDismiss = { sheet = null },
+        ) {
+            events?.let { controllerForEvents ->
+                // The same section the studio draws, at its one other call site. No dismiss on a
+                // switch: turning two kinds on is two taps, and the marks appear on the axis behind
+                // the sheet either way — a sheet that closed after each one would make the reader
+                // reopen it to see what the first switch did.
+                ChartEventSettings(
+                    visibility = eventState.visibility,
+                    onChange = { next ->
+                        // Applied at once so the marks appear under the reader's finger, and
+                        // written kind by kind so an id this build does not know about — a newer
+                        // build's sixth kind — is left on the row rather than overwritten.
+                        controllerForEvents.setVisibility(next)
+                        chartEventPrefs?.let { store ->
+                            val moved = ChartEventKinds.changes(eventState.visibility, next)
+                            storeScope.launch {
+                                moved.forEach { (id, on) -> runCatching { store.setKind(id, on) } }
+                            }
+                        }
+                    },
+                    // Why the axis is bare, when it is: offline, this backend does not serve the
+                    // document, the read failed, or nothing happened in this window. Four
+                    // sentences, and «هیچ خبری نبود» is the only one that is not a fault.
+                    notice = eventState.notice,
+                )
+            }
         }
 
         ChartSheet.DRAWINGS -> CoineProSheet(
@@ -1552,6 +1644,10 @@ private fun FullscreenChart(
     starred: List<String>,
     onOpenSheet: (ChartSheet) -> Unit,
     onExit: () -> Unit,
+    /** The reader's list, for the switcher at the top of the bottom strip. See `SymbolWheelBar`. */
+    symbols: List<String> = emptyList(),
+    /** How a tap on a neighbour is taken, or null where this build cannot switch instrument. */
+    onSelectSymbol: ((String) -> Unit)? = null,
 ) {
     // Back leaves fullscreen before it leaves the chart. Without this the reader's first instinct
     // — the gesture that means "out of this" — takes them off the screen entirely, losing the
@@ -1593,6 +1689,12 @@ private fun FullscreenChart(
                 .fillMaxWidth()
                 .background(CoineProColors.Stage.copy(alpha = STRIP_ALPHA)),
         ) {
+            // The same switcher the page's command band carries, in the same place relative to the
+            // lengths. A control that disappears when the chart is made bigger is a control the
+            // reader stops trusting is there.
+            onSelectSymbol?.let { select ->
+                SymbolWheelBar(symbols = symbols, current = state.symbol, onSelect = select)
+            }
             IntervalRow(
                 selected = state.interval,
                 onSelect = controller::setInterval,
@@ -1670,7 +1772,7 @@ internal fun rememberHelpCatalog(wanted: Boolean): HelpCatalog? {
  * used to own a permanent band under the plot, and it is all behind that one word now. Internal
  * rather than private because `ChartChrome.kt` names these in the callbacks it hands back.
  */
-internal enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST, LAYOUTS, INTERVAL, SCALE, COMPARE, MORE }
+internal enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST, LAYOUTS, INTERVAL, SCALE, COMPARE, EVENTS, MORE }
 
 /**
  * Binds the stores and starts the controller, in that order and in one effect.
@@ -1724,12 +1826,24 @@ private fun Header(state: ChartUiState, onOpenTerminal: (() -> Unit)?) {
     ) {
         CoineProAssetLogo(symbol = state.symbol, size = 32.dp)
         Column(modifier = Modifier.weight(1f)) {
-            LtrDirection {
-                Text(
-                    text = state.symbol,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = CoineProColors.TextPrimary,
-                )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            ) {
+                LtrDirection {
+                    Text(
+                        text = state.symbol,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = CoineProColors.TextPrimary,
+                    )
+                }
+                // What the chart's own state is, beside the name it belongs to. See
+                // [chartHeaderStates] for why this is one chip most of the time and never a row of
+                // permanently-true ones.
+                chartHeaderStates(
+                    status = MarketHours.statusOf(state.symbol),
+                    replayOn = state.replay.isOn,
+                ).forEach { chip -> HeaderStateChip(chip) }
             }
             Text(
                 text = SymbolClassifier.classify(state.symbol).description,
@@ -1750,12 +1864,28 @@ private fun Header(state: ChartUiState, onOpenTerminal: (() -> Unit)?) {
                     color = CoineProColors.TextPrimary,
                 )
             }
-            state.changePercent?.let { move ->
+            // The move, then the ratio behind it — the order the two figures answer questions in.
+            // Until now this row carried only the percentage, which is the one number on the
+            // heading a reader cannot check against anything. See [ChartHeadline].
+            //
+            // A window that has not moved keeps the line and loses the colour: «0.00 (0.00%)» in
+            // neutral ink is a reading, and painting it in the sell colour would report a fall that
+            // did not happen.
+            if (state.changeAbsolute != null || state.changePercent != null) {
+                val up = ChartHeadline.rising(state.changeAbsolute, state.changePercent)
                 LtrDirection {
                     Text(
-                        text = MarketNumberFormatter.signedPercent(move),
+                        text = ChartHeadline.move(
+                            absolute = state.changeAbsolute,
+                            percent = state.changePercent,
+                            price = state.lastPrice,
+                        ),
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (move >= 0) CoineProColors.Buy else CoineProColors.Sell,
+                        color = when (up) {
+                            true -> CoineProColors.Buy
+                            false -> CoineProColors.Sell
+                            null -> CoineProColors.TextSecondary
+                        },
                     )
                 }
             }
@@ -1771,6 +1901,52 @@ private fun Header(state: ChartUiState, onOpenTerminal: (() -> Unit)?) {
             }
         }
     }
+}
+
+/**
+ * One state chip beside the instrument's name.
+ *
+ * ### Why it is a hairline and not a filled badge
+ *
+ * A chip in the heading is a *caption*, not a control and not an alert. Filled, at this size, it
+ * reads as a button next to a ticker somebody might tap, and there is nothing to tap. So it is an
+ * outline in the state's own colour with the words in the same colour: legible, and unmistakably
+ * not pressable.
+ *
+ * The three market states take the three colours the rest of the app already uses for the same
+ * meanings — trading in the rise colour, shut in the fall colour, the weekend in neutral ink,
+ * because a closed weekend is not a fault. Replay takes the page's accent, which is what this
+ * screen uses everywhere else for «the reader has put the chart into a mode».
+ *
+ * No dot: a coloured disc beside coloured words is the same fact drawn twice, and it is the first
+ * thing to become unreadable at labelSmall.
+ */
+@Composable
+private fun HeaderStateChip(state: ChartHeaderState) {
+    val ink = when (state) {
+        ChartHeaderState.MARKET_OPEN -> CoineProColors.Buy
+        ChartHeaderState.MARKET_CLOSED -> CoineProColors.Sell
+        ChartHeaderState.MARKET_WEEKEND -> CoineProColors.TextMuted
+        ChartHeaderState.REPLAY -> CoineProColors.pageAccentInk
+    }
+    val label = stringResource(
+        when (state) {
+            ChartHeaderState.MARKET_OPEN -> R.string.chart_state_open
+            ChartHeaderState.MARKET_CLOSED -> R.string.chart_state_closed
+            ChartHeaderState.MARKET_WEEKEND -> R.string.chart_state_weekend
+            ChartHeaderState.REPLAY -> R.string.chart_state_replay
+        },
+    )
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        color = ink,
+        fontWeight = FontWeight.Normal,
+        maxLines = 1,
+        modifier = Modifier
+            .border(width = 1.dp, color = CoineProTint.edge(ink), shape = CoineProShapes.small)
+            .padding(horizontal = CoineProSpacing.Half, vertical = 1.dp),
+    )
 }
 
 /**
@@ -2233,7 +2409,7 @@ private fun PriceScaleSheetBody(
 /**
  * Choosing a second instrument, from the strip the reader already keeps.
  *
- * The watchlist and nothing else, for the same reason [SymbolWheel] shows only the watchlist: a
+ * The watchlist and nothing else, for the same reason [SymbolWheelBar] shows only the watchlist: a
  * full market search inside this sheet would be a second search screen, and the set somebody
  * compares against is by definition the set they already follow. Anything already on the chart,
  * and the chart's own symbol, are absent rather than shown greyed — a row that cannot be tapped is

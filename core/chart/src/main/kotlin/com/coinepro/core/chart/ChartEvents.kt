@@ -61,11 +61,24 @@ data class ChartEvent(
 /**
  * Which kinds of event the reader has asked to see on the axis.
  *
- * News on and the other four off, which is [Default], and that is not timidity. All five at once on
- * a daily chart of an index puts a glyph under most bars, and a row of marks that is always there
- * stops being read at all — the reader learns to ignore the strip, which costs them the one purple
- * mark that mattered. The reader turns the rest on deliberately, from Settings → Events, and a
- * reader who has turned them on is a reader who is looking for them.
+ * ### What [Default] is, and why it changed
+ *
+ * News **and** the economic calendar — the two kinds any backend this app talks to actually
+ * publishes, which `SERVED_EVENT_KINDS` in `core:chartevents` names — with the other three off.
+ *
+ * It used to be news alone, on the argument that five kinds at once puts a glyph under most bars of
+ * a daily index chart and a strip that is always full stops being read. That argument is sound and
+ * it is about *five*. It was applied to a set of two, and the result is the failure it was written
+ * to prevent, inverted: the calendar was switched off for everybody, the only control that could
+ * switch it back on lived in the professional studio, and a reader on a phone therefore had a
+ * feature that could not be reached and an axis that was bare on almost every chart. The economic
+ * calendar is also the better half of the pair — it is dated to the second, it is the thing that
+ * moves both platforms, and it is the one source that is genuinely there today. Two kinds is a
+ * handful of marks a week on an intraday chart, not a second time axis made of noise.
+ *
+ * The other three stay off and stay off deliberately: no feed here carries an earnings date, a
+ * dividend or a split, so switching them on would change nothing and teach a reader that the
+ * switches do not work.
  *
  * ### Empty is a choice and must survive a restart
  *
@@ -97,8 +110,11 @@ data class EventVisibility(val kinds: Set<EventKind>) {
     fun encode(): String = EventKind.entries.filter(::isOn).joinToString(",", transform = EventKind::name)
 
     companion object {
-        /** News only. What a chart shows a reader who has never opened the settings. */
-        val Default: EventVisibility = EventVisibility(setOf(EventKind.NEWS))
+        /**
+         * News and the economic calendar: what a chart shows a reader who has never opened the
+         * settings, and the two kinds a backend here actually serves.
+         */
+        val Default: EventVisibility = EventVisibility(setOf(EventKind.NEWS, EventKind.ECONOMIC))
 
         /** Every kind. What a placement pass uses when the caller filters somewhere else. */
         val Everything: EventVisibility = EventVisibility(EventKind.entries.toSet())

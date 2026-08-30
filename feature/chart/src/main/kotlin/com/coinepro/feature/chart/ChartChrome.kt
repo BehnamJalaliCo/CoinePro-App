@@ -45,6 +45,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.chart.Candle
 import com.coinepro.core.chart.ChartReading
+import com.coinepro.core.chartevents.ChartEventNotice
+import com.coinepro.core.chartevents.reasonRes
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProCard
@@ -115,6 +117,15 @@ import kotlin.math.abs
  * Nine unlabelled glyphs in a scrolling row is a row nobody learns. Six labelled ones fit a phone
  * without scrolling, and a label is what makes an *active* state legible: «اندیکاتور ۴» says both
  * what the control is and what is on behind it, which no badge on a bare icon has ever managed.
+ *
+ * ### Why the symbol switcher joined it
+ *
+ * Because *which instrument* is the same kind of decision as *which bar length*, made about as
+ * often, and until now it had nowhere on this page to be made: `SymbolWheelBar` documents how the
+ * old strip came to be unreachable code and why the watchlist pane is not a substitute. It sits at
+ * the top of the band, nearest the plot, because it names what is drawn above it — the two tiers
+ * below change how that is drawn. It is absent entirely for a reader with nothing to switch to, so
+ * it costs a first-time reader no height at all.
  */
 @Composable
 internal fun ChartCommandBand(
@@ -148,8 +159,22 @@ internal fun ChartCommandBand(
      */
     moreActive: Boolean,
     modifier: Modifier = Modifier,
+    /**
+     * The reader's own list, for the switcher at the top of the band.
+     *
+     * Empty is the ordinary case for somebody who has starred nothing, and then the tier is not
+     * drawn — see `SymbolWheelBar`, which also drops any symbol this app has no artwork for.
+     */
+    symbols: List<String> = emptyList(),
+    /** The instrument on the plot above. Ignored when [onSelectSymbol] is null. */
+    symbol: String = "",
+    /** How a tap on a neighbour is taken. Null leaves the tier out; see `ChartScreen.switchSymbol`. */
+    onSelectSymbol: ((String) -> Unit)? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth().background(CoineProColors.Surface)) {
+        onSelectSymbol?.let { select ->
+            SymbolWheelBar(symbols = symbols, current = symbol, onSelect = select)
+        }
         IntervalRow(
             selected = interval,
             onSelect = onSelectInterval,
@@ -635,6 +660,25 @@ internal fun ChartMoreSheetBody(
     onBacktest: (() -> Unit)?,
     onShare: () -> Unit,
     onOpenStudio: (() -> Unit)?,
+    /**
+     * The way to the axis-event switches, or null where nothing fetches events.
+     *
+     * The row is the whole reason a phone reader can reach this at all: the switches had one call
+     * site and it was inside the professional studio, so the economic calendar was unreachable from
+     * the screen it draws on.
+     */
+    onEvents: (() -> Unit)? = null,
+    /** How many *served* kinds are on, for the row's count. Never all five. */
+    eventKinds: Int = 0,
+    /**
+     * Why the axis is bare, when it is — said on the closed row rather than only behind it.
+     *
+     * The four answers are not interchangeable and only one of them is the reader's own market
+     * being quiet. A row that said «۲ نوع روشن» over an axis with nothing on it, on a platform whose
+     * backend does not publish the document at all, is the exact failure `ChartEventNotice` was
+     * written to end — and until this row existed it was what a phone reader got.
+     */
+    eventNotice: ChartEventNotice? = null,
 ) {
     Column(
         modifier = Modifier
@@ -710,6 +754,14 @@ internal fun ChartMoreSheetBody(
             title = stringResource(R.string.chart_more_share),
             note = stringResource(R.string.chart_more_share_note),
             onClick = onShare,
+        )
+        MoreRow(
+            icon = DesignR.drawable.tv_calendar_days,
+            title = stringResource(R.string.chart_more_events),
+            note = eventNotice?.let { reason -> stringResource(reason.reasonRes()) }
+                ?: stringResource(R.string.chart_more_events_note),
+            count = eventKinds,
+            onClick = onEvents,
         )
         MoreRow(
             icon = DesignR.drawable.tv_layout_grid,

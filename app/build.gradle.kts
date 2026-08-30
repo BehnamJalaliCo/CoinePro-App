@@ -482,6 +482,7 @@ dependencies {
     implementation(project(":feature:screener"))
     implementation(project(":feature:tools"))
     implementation(project(":feature:activity"))
+    implementation(project(":feature:menu"))
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

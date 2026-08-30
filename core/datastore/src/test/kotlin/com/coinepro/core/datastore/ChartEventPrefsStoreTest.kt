@@ -16,12 +16,16 @@ import org.junit.Test
 class ChartEventPrefsStoreTest {
 
     @Test
-    fun `a reader who has never chosen gets news marks and nothing else on the axis`() = runTest {
+    fun `a reader who has never chosen gets the two kinds a backend here actually serves`() = runTest {
         val store = ChartEventPrefsStore(FakeEventPrefsPreferences())
 
-        // Five glyph types on one axis at once is a smear; news is the kind that pays for its
-        // space on any instrument.
-        assertEquals(setOf(ChartEventPrefsStore.KIND_NEWS), store.kinds().first())
+        // Five glyph types on one axis at once is a smear. These two are the ones a backend in this
+        // app publishes — and on a gold chart the calendar *is* the story, which is why it is on by
+        // default rather than waiting to be found in a sheet.
+        assertEquals(
+            setOf(ChartEventPrefsStore.KIND_NEWS, ChartEventPrefsStore.KIND_ECONOMIC),
+            store.kinds().first(),
+        )
     }
 
     @Test
@@ -31,16 +35,23 @@ class ChartEventPrefsStoreTest {
         store.setKind(ChartEventPrefsStore.KIND_EARNINGS, on = true)
 
         assertEquals(
-            setOf(ChartEventPrefsStore.KIND_NEWS, ChartEventPrefsStore.KIND_EARNINGS),
+            setOf(
+                ChartEventPrefsStore.KIND_NEWS,
+                ChartEventPrefsStore.KIND_ECONOMIC,
+                ChartEventPrefsStore.KIND_EARNINGS,
+            ),
             store.kinds().first(),
         )
     }
 
     @Test
-    fun `switching every kind off survives, instead of news coming back at the next launch`() = runTest {
+    fun `switching every kind off survives, instead of the default coming back at the next launch`() = runTest {
         val store = ChartEventPrefsStore(FakeEventPrefsPreferences())
 
+        // Both of them, one at a time, which is the only way a reader can reach the empty set — and
+        // the distinction the store exists to keep: "off" is a choice and is not "unset".
         store.setKind(ChartEventPrefsStore.KIND_NEWS, on = false)
+        store.setKind(ChartEventPrefsStore.KIND_ECONOMIC, on = false)
 
         assertEquals(emptySet<String>(), store.kinds().first())
     }
@@ -49,7 +60,9 @@ class ChartEventPrefsStoreTest {
     fun `an explicitly empty selection is not written as an empty string`() = runTest {
         val backing = FakeEventPrefsPreferences()
 
-        ChartEventPrefsStore(backing).setKind(ChartEventPrefsStore.KIND_NEWS, on = false)
+        val store = ChartEventPrefsStore(backing)
+        store.setKind(ChartEventPrefsStore.KIND_NEWS, on = false)
+        store.setKind(ChartEventPrefsStore.KIND_ECONOMIC, on = false)
 
         assertEquals(
             ChartEventPrefsStore.EMPTY_SELECTION,

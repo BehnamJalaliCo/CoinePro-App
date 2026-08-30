@@ -77,4 +77,25 @@
     <!-- The permanent tool column a tablet gets in place of the drawing-tools sheet. -->
     <string name="chart_tools_column_title">ابزارهای ترسیم</string>
     <string name="chart_tools_column_count">%1$s ابزار</string>
+
+    <!-- The two state chips beside the instrument name. One is always drawn — whether the market
+         is trading — and the second only when the reader has put the chart into replay. See
+         ChartHeaderState for why the row is not padded out to a fixed two. -->
+    <string name="chart_state_open">باز</string>
+    <string name="chart_state_closed">بسته</string>
+    <string name="chart_state_weekend">تعطیل</string>
+    <string name="chart_state_replay">بازپخش</string>
+
+    <!-- The symbol switcher in the chart command band: the neighbours in the reader watchlist,
+         faint, either side of the one on screen. -->
+    <string name="chart_wheel_previous">نماد قبلی: %1$s</string>
+    <string name="chart_wheel_next">نماد بعدی: %1$s</string>
+    <string name="chart_wheel_position">%1$s از %2$s</string>
+
+    <!-- Events on the time axis, reachable from the phone chart «بیشتر» sheet. Until now the
+         switches existed only in the studio, so a phone reader could not turn the calendar on. -->
+    <string name="chart_more_events">رویدادها روی محور زمان</string>
+    <string name="chart_more_events_note">خبر و تقویم اقتصادی، به شکل نشانه زیر کندل‌ها</string>
+    <string name="chart_events_title">رویدادها روی نمودار</string>
+    <string name="chart_events_subtitle">%1$s نوع روشن</string>
 </resources>

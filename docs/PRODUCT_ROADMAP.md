@@ -346,6 +346,7 @@ feature:news
 feature:calendar
 feature:tools
 feature:activity
+feature:menu
 ```
 
 This block must match `settings.gradle.kts` exactly; `scripts/quality/check-cross-phase-consistency.py` enforces that invariant in CI. Empty or phantom architecture modules are not listed.

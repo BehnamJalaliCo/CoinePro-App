@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="menu_title">Menu</string>
+
+    <string name="menu_guest_name">Guest</string>
+    <string name="menu_member_name">My account</string>
+    <string name="menu_guest_line">No account — the watchlist, the tools and practice are open.</string>
+    <string name="menu_member_line">Account active</string>
+    <string name="menu_plan_none">No subscription</string>
+    <string name="menu_guest_offer">An account also opens signals, the portfolio and the assistant. The watchlist and the tools stay free either way.</string>
+    <string name="menu_sign_in">Sign in or create an account</string>
+    <string name="menu_locked">Needs an account</string>
+    <string name="menu_footer">Everything this app contains is on this page. What needs an account is shown rather than hidden.</string>
+
+    <string name="menu_group_market">Markets and watchlist</string>
+    <string name="menu_group_trade">Trading and portfolio</string>
+    <string name="menu_group_analysis">Analysis and tools</string>
+    <string name="menu_group_learn">Learning and the app</string>
+    <string name="menu_group_account">My account</string>
+
+    <string name="menu_watchlist_title">Watchlist</string>
+    <string name="menu_watchlist_body">Several lists, colour flags, chosen columns, import and export.</string>
+    <string name="menu_search_title">Search markets</string>
+    <string name="menu_search_body">A Latin ticker or a Persian name; app sections are found here too.</string>
+    <string name="menu_screener_title">Screener</string>
+    <string name="menu_screener_body">Filter on price, volume, volatility and any indicator.</string>
+    <string name="menu_heatmap_title">Market heat map</string>
+    <string name="menu_heatmap_body">Each tile sized by market value, coloured by the day\'s move.</string>
+    <string name="menu_news_title">Market news</string>
+    <string name="menu_calendar_title">Economic calendar</string>
+    <string name="menu_calendar_body">Actual, forecast and previous — only where the source gives them.</string>
+
+    <string name="menu_portfolio_title">Portfolio</string>
+    <string name="menu_portfolio_body">Sharpe, deepest drawdown, the equity curve and the full report.</string>
+    <string name="menu_paper_title">Paper trading</string>
+    <string name="menu_paper_body">Practice at real prices with no real money.</string>
+    <string name="menu_journal_title">Trading journal</string>
+    <string name="menu_journal_body">Every trade with its reason for entry, its exit and its result.</string>
+    <string name="menu_connections_title">Account connections</string>
+    <string name="menu_connections_body">A broker or an exchange, only on the path of an approved signal.</string>
+    <string name="menu_copy_title">Copy trading</string>
+    <string name="menu_copy_body">Approved signals executed on your own MetaTrader account.</string>
+    <string name="menu_terminal_title">Web terminal</string>
+    <string name="menu_terminal_body">The full desktop version, inside this app.</string>
+
+    <string name="menu_studio_title">Chart studio</string>
+    <string name="menu_studio_body">Indicators, drawing tools, templates and multi-pane layouts.</string>
+    <string name="menu_backtest_title">Backtest and scripts</string>
+    <string name="menu_backtest_body">Write a strategy and run it over the same market\'s history.</string>
+    <string name="menu_alerts_title">Alert centre</string>
+    <string name="menu_alerts_body">Five condition types, frequency, webhooks and an audit trail.</string>
+    <string name="menu_tools_title">Trader\'s toolkit</string>
+    <string name="menu_tools_body">Risk, position size, pips and compounding — local and exact.</string>
+    <string name="menu_vision_title">Chart image analysis</string>
+    <string name="menu_vision_body">Send a picture of a chart and get its reading back.</string>
+    <string name="menu_assistant_title">Assistant</string>
+    <string name="menu_assistant_body">Ask about a market, a symbol, or this app itself.</string>
+
+    <string name="menu_academy_title">Academy</string>
+    <string name="menu_academy_body">Video and written lessons, from the basics to risk management.</string>
+    <string name="menu_safety_title">Safety and version</string>
+    <string name="menu_safety_body">Crash reports, the app version, privacy, and how to reach support.</string>
+
+    <string name="menu_profile_title">Profile and settings</string>
+    <string name="menu_profile_body">Theme, language, market colours, app lock and signing out.</string>
+    <string name="menu_membership_title">Membership</string>
+    <string name="menu_membership_body">Subscription standing, renewal, and what each plan opens.</string>
+    <string name="menu_verify_title">Identity verification</string>
+    <string name="menu_verify_body">Send documents once and the account\'s access opens.</string>
+    <string name="menu_activity_title">Activity</string>
+    <string name="menu_activity_body">Fired alerts, executions and signals on one timeline.</string>
+    <string name="menu_notifications_title">Notification settings</string>
+    <string name="menu_notifications_body">Each category on its own, with quiet hours and a way back from a denied permission.</string>
+    <string name="menu_delete_title">Delete account</string>
+</resources>

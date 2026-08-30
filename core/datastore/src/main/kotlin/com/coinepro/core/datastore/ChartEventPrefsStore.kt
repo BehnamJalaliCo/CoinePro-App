@@ -19,14 +19,19 @@ import kotlinx.coroutines.flow.map
  * glyphs under the price, none of them readable and none of them tappable. Every terminal that
  * draws events on the axis ships this switch for that reason.
  *
- * ### News on, the rest off, and that is not a coin toss
+ * ### Two kinds on, three off, and that is not a coin toss
  *
- * A headline is the only one of the five that can move a price on any instrument at any minute,
- * which is what an axis mark is for. Earnings, dividends and splits are equities events and are
- * simply not present on most of what this app's readers watch; an economic calendar is dense enough
- * that on an intraday chart it is the smear all by itself. So the default is the one kind that
- * pays for its space, and a reader who wants the others will find the setting — the reverse
- * mistake, shipping all five on, is one they meet as a broken chart rather than as a preference.
+ * A headline can move a price on any instrument at any minute, which is what an axis mark is for.
+ * The economic calendar is the other one: on a gold or a silver chart the releases *are* the story,
+ * and this app's forex reader is looking at nothing else. Earnings, dividends and splits are
+ * equities events and are simply not present on anything either backend quotes, so they start off
+ * and stay off until a feed carries them.
+ *
+ * The calendar was off here for a while on the argument that it is dense enough to be a smear on an
+ * intraday chart. That was true of a calendar in general and false of this one: what the app can
+ * actually fetch is a handful of high-impact releases, not a wire. Off, it meant the one source
+ * genuinely available today drew nothing on anybody's chart, and the reader read that as a feature
+ * that does not work rather than as a preference they could change.
  *
  * ### Every kind is a plain String
  *
@@ -109,8 +114,14 @@ class ChartEventPrefsStore(private val dataStore: DataStore<Preferences>) {
         val ALL_KINDS: List<String> =
             listOf(KIND_NEWS, KIND_ECONOMIC, KIND_EARNINGS, KIND_DIVIDEND, KIND_SPLIT)
 
-        /** News alone. See the class note for why the other four start off. */
-        val DEFAULT_KINDS: Set<String> = setOf(KIND_NEWS)
+        /**
+         * News and the economic calendar — the two kinds a backend this app talks to publishes.
+         *
+         * It has to agree with `EventVisibility.Default` in `core:chart`. This value is what a
+         * reader gets on their first launch and that one is what the chart gets on every launch
+         * after it, so two different defaults would be a chart that quietly changed its mind once.
+         */
+        val DEFAULT_KINDS: Set<String> = setOf(KIND_NEWS, KIND_ECONOMIC)
 
         /**
          * What "the reader switched every kind off" is written as.

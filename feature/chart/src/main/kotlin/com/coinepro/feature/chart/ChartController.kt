@@ -619,6 +619,26 @@ data class ChartUiState(
             val last = bars.lastOrNull()?.c ?: return null
             return if (first == 0.0) null else (last - first) / first * 100.0
         }
+
+    /**
+     * The same move in the instrument's own units.
+     *
+     * Beside [changePercent] rather than derived from it at the call site, and measured over the
+     * same window from the same two bars, because the two figures are printed next to each other
+     * and a reader who could reconstruct one from the other and get a different answer would be
+     * right to distrust both. A ratio on its own is the one figure that cannot be checked — see
+     * `ChartHeadline` for why the heading now leads with this one.
+     *
+     * Null on an empty window, and never on a zero first bar: unlike a percentage, a difference is
+     * perfectly well defined when the price started at nothing.
+     */
+    val changeAbsolute: Double?
+        get() {
+            val bars = visibleSeries.bars
+            val first = bars.firstOrNull()?.c ?: return null
+            val last = bars.lastOrNull()?.c ?: return null
+            return last - first
+        }
 }
 
 /**

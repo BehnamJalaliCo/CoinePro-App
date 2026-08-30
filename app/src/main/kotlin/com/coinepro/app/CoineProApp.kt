@@ -78,6 +78,7 @@ import com.coinepro.core.datastore.DrawingTemplateStore
 import com.coinepro.core.datastore.IndicatorTemplateStore
 import com.coinepro.core.datastore.DrawingImageStore
 import com.coinepro.core.datastore.DrawingSyncStore
+import com.coinepro.core.datastore.ChartEventPrefsStore
 import com.coinepro.core.datastore.TimeZonePrefStore
 import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.LocalAlertStore
@@ -229,6 +230,9 @@ import com.coinepro.feature.home.toHomeSubscription
 import com.coinepro.feature.journal.JournalScreen
 import com.coinepro.feature.kyc.KycScreen
 import com.coinepro.feature.membership.MembershipScreen
+import com.coinepro.feature.menu.MenuAccess
+import com.coinepro.feature.menu.MenuScreen
+import com.coinepro.feature.menu.R as MenuR
 import com.coinepro.feature.news.NewsScreen
 import com.coinepro.feature.news.PublicNewsScreen
 import com.coinepro.feature.notifications.AlertComposerSheet
@@ -244,6 +248,7 @@ import com.coinepro.feature.search.MarketsScreen
 import com.coinepro.feature.search.MarketsSignalStrip
 import com.coinepro.feature.search.SearchScreen
 import com.coinepro.feature.search.SurfaceAccess
+import com.coinepro.feature.search.WatchlistScreen
 import com.coinepro.feature.signaldetail.SignalChartController
 import com.coinepro.feature.signaldetail.SignalDetailScreen
 import com.coinepro.feature.signals.SignalsScreen
@@ -321,6 +326,30 @@ private const val SCREENER_ROUTE = "screener"
 /** The portfolio's own report: the curve, the attribution, the month matrix and the export. */
 private const val PORTFOLIO_REPORT_ROUTE = "portfolio-report"
 private const val ACTIVITY_ROUTE = "activity"
+
+/**
+ * The menu.
+ *
+ * Reached from the corner the avatar already occupied. That corner used to open the profile
+ * directly — one screen out of twenty-six — so the one place a reader instinctively presses to ask
+ * "what else is in here" answered with a page about themselves and nothing else. The profile is now
+ * the first row of the block this opens.
+ *
+ * Not a sixth tab: the bar is five destinations a reader has learned by position, and the
+ * cross-phase gate pins it.
+ */
+private const val MENU_ROUTE = "menu"
+
+/**
+ * The reader's own lists, as a destination.
+ *
+ * It has been a segment inside the markets tab since it was written, which is the right place for
+ * it to be *drawn* and the wrong place for it to be the only place it is *reachable*: nothing could
+ * navigate here, no deep link could land here, and the app's own search answered «دیده‌بان» by
+ * opening the markets tab and hoping. The screen wraps the same panel that segment draws, so there
+ * is one watchlist rather than two kept alike by hand.
+ */
+private const val WATCHLIST_ROUTE = "watchlist"
 private const val SCRIPT_PATTERN = "script/{symbol}"
 private const val STUDIO_PATTERN = "chart/{symbol}/studio"
 
@@ -395,8 +424,7 @@ private fun surfaceRoute(id: String, platform: MarketPlatform, watchlist: List<S
         "tools" -> TOOLS_ROUTE
         "chart-studio" -> studioRoute(defaultScriptSymbol(platform, watchlist))
         "alerts" -> ALERTS_ROUTE
-        // The watchlist is a segment inside the markets tab, not a destination of its own.
-        "watchlist" -> AppDestination.MARKETS.route
+        "watchlist" -> WATCHLIST_ROUTE
         "news" -> NEWS_ROUTE
         "calendar" -> CALENDAR_ROUTE
         "portfolio" -> PORTFOLIO_ROUTE
@@ -413,6 +441,23 @@ private fun surfaceRoute(id: String, platform: MarketPlatform, watchlist: List<S
         "notifications" -> NOTIFICATIONS_ROUTE
         "profile" -> PROFILE_ROUTE
         else -> PROFILE_ROUTE
+    }
+
+/**
+ * Where a menu row sends the reader.
+ *
+ * Delegates to [surfaceRoute] rather than repeating it: the menu and the search screen name the
+ * same places with the same ids on purpose, and two tables resolving one id would be two tables
+ * free to disagree. Only the three ids the search catalogue does not carry are answered here —
+ * search itself (a search result for "search" would be a joke), the safety page, and deletion,
+ * neither of which anybody hunts for by typing.
+ */
+private fun menuRoute(id: String, platform: MarketPlatform, watchlist: List<String>): String =
+    when (id) {
+        "search" -> MARKET_SEARCH_ROUTE
+        "safety" -> LAUNCH_READINESS_ROUTE
+        "delete" -> DELETE_ACCOUNT_ROUTE
+        else -> surfaceRoute(id, platform, watchlist)
     }
 
 /** The two-chart screen, on the symbol its upper pane opens with. */
@@ -468,6 +513,9 @@ private val SELF_TITLED: Set<String> = setOf(
     MEMBERSHIP_ROUTE,
     HEATMAP_ROUTE,
     SCREENER_ROUTE,
+    // The watchlist draws its own heading, in the markets tab's shape. The menu does not: it opens
+    // on the identity card, and a page of rows with no word above them is a page with no name.
+    WATCHLIST_ROUTE,
 )
 
 private fun accentFor(route: String?): PageAccent = when (route) {
@@ -483,6 +531,7 @@ private fun accentFor(route: String?): PageAccent = when (route) {
     DOM_PATTERN,
     HEATMAP_ROUTE,
     SCREENER_ROUTE,
+    WATCHLIST_ROUTE,
     AppDestination.MARKETS.route,
     AppDestination.CHART.route,
     AppDestination.AI.route,
@@ -533,6 +582,14 @@ fun CoineProApp(
     indicatorTemplateStore: IndicatorTemplateStore,
     drawingSyncStore: DrawingSyncStore,
     timeZonePrefStore: TimeZonePrefStore,
+    /**
+     * Where the reader's axis-event switches live between launches.
+     *
+     * Provided in Hilt since the feature was built and injected nowhere, so nothing ever called
+     * `ChartEventController.restoreVisibility` and a switch flipped in the studio was gone by the
+     * next launch. Both the chart and the studio take it and both restore from it.
+     */
+    chartEventPrefsStore: ChartEventPrefsStore,
     intervalFavouritesStore: IntervalFavouritesStore,
     /**
      * How the chart screen itself is arranged: the split with the watchlist, and what the two
@@ -993,6 +1050,7 @@ fun CoineProApp(
                 indicatorTemplateStore = indicatorTemplateStore,
                 drawingSyncStore = drawingSyncStore,
                 timeZonePrefStore = timeZonePrefStore,
+                chartEventPrefsStore = chartEventPrefsStore,
                 intervalFavouritesStore = intervalFavouritesStore,
                 chartWorkspaceStore = chartWorkspaceStore,
                 portfolioController = portfolioControllers.getValue(activePlatform),
@@ -1183,6 +1241,7 @@ fun CoineProApp(
                         indicatorTemplateStore = indicatorTemplateStore,
                         drawingSyncStore = drawingSyncStore,
                         timeZonePrefStore = timeZonePrefStore,
+                        chartEventPrefsStore = chartEventPrefsStore,
                         intervalFavouritesStore = intervalFavouritesStore,
                         chartWorkspaceStore = chartWorkspaceStore,
                         portfolioController = portfolioControllers.getValue(activePlatform),
@@ -1371,6 +1430,14 @@ private fun MainShell(
     indicatorTemplateStore: IndicatorTemplateStore,
     drawingSyncStore: DrawingSyncStore,
     timeZonePrefStore: TimeZonePrefStore,
+    /**
+     * Where the reader's axis-event switches live between launches.
+     *
+     * Provided in Hilt since the feature was built and injected nowhere, so nothing ever called
+     * `ChartEventController.restoreVisibility` and a switch flipped in the studio was gone by the
+     * next launch. Both the chart and the studio take it and both restore from it.
+     */
+    chartEventPrefsStore: ChartEventPrefsStore,
     intervalFavouritesStore: IntervalFavouritesStore,
     /**
      * How the chart screen itself is arranged: the split with the watchlist, and what the two
@@ -1646,6 +1713,9 @@ private fun MainShell(
         AI_VISION_ROUTE -> R.string.screen_ai_vision
         AI_ASSISTANT_ROUTE -> R.string.screen_ai_assistant
         MARKET_SEARCH_ROUTE -> R.string.screen_market_search
+        // Borrowed from the module that owns the screen rather than duplicated into `app`, the same
+        // way the depth ladder's heading is. One string, one translation, no drift.
+        MENU_ROUTE -> MenuR.string.menu_title
         // The chart names itself: its header is the symbol, which is more use than the word
         // "chart" over a screen that is obviously one.
         CHART_PATTERN -> R.string.screen_chart
@@ -1807,13 +1877,15 @@ private fun MainShell(
                         // sign-out, verification and deletion are rows on the page it opens. A
                         // guest gets the same control with the same avatar; what differs is that
                         // their page offers an account instead of listing one.
-                        if (!isSubScreen) {
-                            IconButton(onClick = { navController.navigate(PROFILE_ROUTE) }) {
+                        // Not on the menu itself: this corner opens the menu, and a control that
+                        // reopens the page it is standing on is a dead button with a face on it.
+                        if (!isSubScreen && currentRoute != MENU_ROUTE) {
+                            IconButton(onClick = { navController.navigate(MENU_ROUTE) }) {
                                 CoineProAvatar(
                                     spec = profile.avatar,
                                     initial = (profile.displayName ?: accountName)?.take(1) ?: "",
                                     size = 30.dp,
-                                    contentDescription = stringResource(R.string.screen_profile),
+                                    contentDescription = stringResource(MenuR.string.menu_title),
                                 )
                             }
                         }
@@ -2005,6 +2077,7 @@ private fun MainShell(
                 intervalFavourites = intervalFavouritesStore,
                 drawingSync = drawingSyncStore,
                 events = chartEventController,
+                chartEventPrefs = chartEventPrefsStore,
                 timeZones = timeZonePrefStore,
                 onOpenStudio = { navController.navigate(studioRoute(activeChartSymbol)) },
                 onOpenTerminal = if (terminalController.isConfigured) {
@@ -2717,6 +2790,7 @@ private fun MainShell(
                     indicatorTemplates = indicatorTemplateStore,
                     drawingSync = drawingSyncStore,
                     events = chartEventController,
+                    chartEventPrefs = chartEventPrefsStore,
                     layouts = chartLayouts,
                     onSaveLayout = onSaveLayoutAnnounced,
                     onDeleteLayout = onDeleteLayoutAnnounced,
@@ -2909,6 +2983,42 @@ private fun MainShell(
                 // reading of the trades already loaded, and a second fetch would let the two
                 // screens disagree about what the account did.
                 PortfolioReportScreen(controller = portfolioController)
+            }
+            composable(MENU_ROUTE) {
+                MenuScreen(
+                    // What this deployment actually offers. `absent` drops a row rather than
+                    // locking it: a reader cannot sign their way into a chart-vision route the
+                    // server does not publish, so naming it would be advertising.
+                    access = MenuAccess(
+                        platform = activePlatform,
+                        signedIn = !guest,
+                        absent = buildSet {
+                            if (!chartVisionAvailable) add("ai-vision")
+                            if (!assistantAvailable) add("ai-assistant")
+                            if (!terminalController.isConfigured) add("terminal")
+                            if (!hasAcademy) add("academy")
+                            if (!accountDeletionAvailable) add("delete")
+                        },
+                    ),
+                    onOpen = { id -> navController.navigate(menuRoute(id, activePlatform, watchlist)) },
+                    avatar = profile.avatar,
+                    name = profile.displayName ?: accountName,
+                    email = accountEmail,
+                    planLabel = subscription?.planLabel,
+                    platformLabel = stringResource(activePlatform.labelRes()),
+                    watchlistCount = watchlist.size,
+                    onSignIn = onSignIn.takeIf { guest },
+                )
+            }
+            composable(WATCHLIST_ROUTE) {
+                WatchlistScreen(
+                    controller = marketSearchController,
+                    store = watchlistStore,
+                    sparklines = sparklineStore,
+                    onOpenSymbol = { navController.navigate(chartRoute(it)) },
+                    onOpenSearch = { navController.navigate(MARKET_SEARCH_ROUTE) },
+                    watchlistSync = watchlistSyncController,
+                )
             }
             composable(ACTIVITY_ROUTE) {
                 ActivityScreen(

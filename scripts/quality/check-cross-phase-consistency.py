@@ -154,6 +154,11 @@ def check_learned_surfaces() -> None:
         "INTERVAL",
         "SCALE",
         "COMPARE",
+        # The marks on the time axis, given somewhere to be listed. A glyph on an axis can say that
+        # something happened at a moment and cannot say what; this is the sheet that answers the
+        # tap, and it sits before MORE because it is the newest entry and this list is ordered by
+        # the enum rather than by importance.
+        "EVENTS",
         # Added when the chart's six control bands became one: everything a reader touches monthly
         # rather than every session moved behind this one entry. See `ChartMoreSheetBody`.
         "MORE",

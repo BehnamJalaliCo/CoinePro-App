@@ -55,19 +55,39 @@ class ChartEventVisibilityTest {
     }
 
     @Test
-    fun `the default filter is news alone, so a release is not drawn until it is switched on`() {
+    fun `the default filter draws both kinds a backend actually serves`() {
+        // It used to be news alone, which left the economic calendar — the one source that is
+        // genuinely there and dated to the second — switched off for every reader who never opened
+        // the professional studio, which on a phone was every reader.
         val events = listOf(event(1_200, EventKind.NEWS), event(2_200, EventKind.ECONOMIC))
 
-        val hidden = ChartEvents.place(events, series, 0, 3, EventVisibility.Default)
+        val shown = ChartEvents.place(events, series, 0, 3, EventVisibility.Default)
+
+        assertEquals(listOf(0, 1), shown.map(EventMark::barIndex))
+    }
+
+    @Test
+    fun `the default leaves off the three kinds no feed here publishes`() {
+        // Switching on a kind nothing serves would change nothing on the axis and teach a reader
+        // that the switches do not work.
+        val events = listOf(
+            event(1_200, EventKind.EARNINGS),
+            event(2_200, EventKind.DIVIDEND),
+            event(3_200, EventKind.SPLIT),
+        )
+
+        assertTrue(ChartEvents.place(events, series, 0, 3, EventVisibility.Default).isEmpty())
+    }
+
+    @Test
+    fun `a kind switched off is not drawn until it is switched back on`() {
+        val events = listOf(event(1_200, EventKind.NEWS), event(2_200, EventKind.ECONOMIC))
+        val quiet = EventVisibility.Default.with(EventKind.ECONOMIC, false)
+
+        val hidden = ChartEvents.place(events, series, 0, 3, quiet)
         assertEquals(listOf(0), hidden.map(EventMark::barIndex))
 
-        val shown = ChartEvents.place(
-            events,
-            series,
-            0,
-            3,
-            EventVisibility.Default.with(EventKind.ECONOMIC, true),
-        )
+        val shown = ChartEvents.place(events, series, 0, 3, quiet.with(EventKind.ECONOMIC, true))
         assertEquals(listOf(0, 1), shown.map(EventMark::barIndex))
     }
 

@@ -49,6 +49,7 @@ import com.coinepro.core.chartevents.ChartEventState
 import com.coinepro.core.chartevents.SERVED_EVENT_KINDS
 import com.coinepro.core.datastore.ChartColourTemplate
 import com.coinepro.core.datastore.ChartLayout
+import com.coinepro.core.datastore.ChartEventPrefsStore
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.DrawingTemplate
 import com.coinepro.core.datastore.DrawingSyncMode
@@ -154,6 +155,15 @@ fun ChartStudioScreen(
      * Null hides the section entirely rather than showing switches that steer nothing.
      */
     events: ChartEventController? = null,
+    /**
+     * Where the switches below are kept between launches.
+     *
+     * The same store `ChartScreen` takes, and for the same reason: nothing in the app had ever
+     * called `ChartEventController.restoreVisibility`, so this section's switches worked for a
+     * visit and were forgotten. Null keeps that behaviour, which is what a preview and a fixture
+     * want.
+     */
+    chartEventPrefs: ChartEventPrefsStore? = null,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     /**
@@ -172,6 +182,16 @@ fun ChartStudioScreen(
     var section by rememberSaveable { mutableStateOf(StudioSection.NONE) }
     val eventState by remember(events) { events?.state ?: MutableStateFlow(ChartEventState()) }
         .collectAsStateWithLifecycle()
+    val eventPrefScope = rememberCoroutineScope()
+    // Stored switches in, one direction only. See `ChartScreen` for the same three lines and why
+    // the store rather than the controller is the single answer.
+    if (events != null && chartEventPrefs != null) {
+        LaunchedEffect(events, chartEventPrefs) {
+            chartEventPrefs.kinds().collect { stored ->
+                events.setVisibility(ChartEventKinds.visibility(stored))
+            }
+        }
+    }
     var helpId by rememberSaveable { mutableStateOf<String?>(null) }
     /** Which drawing's own settings are open, or null. Opened from the object tree's row. */
     var styling by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -510,7 +530,17 @@ fun ChartStudioScreen(
                     ) {
                         ChartEventSettings(
                             visibility = eventState.visibility,
-                            onChange = eventsController::setVisibility,
+                            onChange = { next ->
+                                eventsController.setVisibility(next)
+                                chartEventPrefs?.let { store ->
+                                    val moved = ChartEventKinds.changes(eventState.visibility, next)
+                                    eventPrefScope.launch {
+                                        moved.forEach { (id, on) ->
+                                            runCatching { store.setKind(id, on) }
+                                        }
+                                    }
+                                }
+                            },
                             // Why the axis is bare, when it is: offline, this backend does not
                             // serve the document yet, the read failed, or nothing happened in
                             // this window. Four different sentences, and «هیچ خبری نبود» is the
