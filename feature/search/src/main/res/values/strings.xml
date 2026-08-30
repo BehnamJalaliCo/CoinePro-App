@@ -128,6 +128,4 @@
     <!-- ── پیش‌نمایش با فشار طولانی ──────────────────────────────────────────────────────── -->
     <string name="preview_alert">هشدار</string>
     <string name="preview_chart">نمودار</string>
-    <string name="surface_free_title">اینجا رایگان است</string>
-    <string name="surface_free_body">چه چیزی را جای دیگر پولی می‌کنند و اینجا رایگان است</string>
 </resources>

@@ -85,8 +85,6 @@ fun LaunchReadinessScreen(
      *
      * Not a secret. It is derived from the APK, which anybody can download.
      */
-    signingFingerprints: List<Pair<String, String>> = emptyList(),
-    onCopyFingerprint: (String) -> Unit = {},
 ) {
     // Five taps, and they have to be consecutive: the counter resets whenever the gap between two
     // taps grows past a deliberate rhythm, so an ordinary stray tap on a scrolling screen never
@@ -103,9 +101,6 @@ fun LaunchReadinessScreen(
     ) {
         lastCrash?.let { crash ->
             CrashCard(crash = crash, onCopy = onCopyCrash, onClear = onClearCrash)
-        }
-        if (signingFingerprints.isNotEmpty()) {
-            SignatureCard(fingerprints = signingFingerprints, onCopy = onCopyFingerprint)
         }
         Column(
             modifier = Modifier.padding(horizontal = CoineProSpacing.Half),
@@ -269,51 +264,6 @@ private fun NotificationPermissionUiState.copyRes(): Int = when (this) {
  * rather than on screen, because forty frames of stack is not something to read on a phone and is
  * exactly what should be pasted into a message.
  */
-/**
- * What this install is signed with, in the two forms the Google consoles ask for.
- *
- * Copyable, because the alternative is reading sixty-four hexadecimal characters off a phone into
- * a browser — which is not a task anybody completes correctly the first time.
- */
-@Composable
-private fun SignatureCard(fingerprints: List<Pair<String, String>>, onCopy: (String) -> Unit) {
-    CoineProCard(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = stringResource(R.string.safety_signature_title),
-            style = MaterialTheme.typography.titleMedium,
-            color = CoineProColors.TextPrimary,
-        )
-        Text(
-            text = stringResource(R.string.safety_signature_note),
-            style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextMuted,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-        fingerprints.forEach { (algorithm, value) ->
-            Text(
-                text = algorithm,
-                style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextMuted,
-                modifier = Modifier.padding(top = CoineProSpacing.One),
-            )
-            Text(
-                // Isolated, or the bidi algorithm reorders a hex string inside a Persian screen and
-                // the reader copies a fingerprint that is not the one on the phone.
-                text = BidiText.isolateLtr(value),
-                style = MaterialTheme.typography.bodySmall,
-                color = CoineProColors.TextPrimary,
-            )
-        }
-        CoineProSecondaryButton(
-            text = stringResource(R.string.safety_signature_copy),
-            onClick = {
-                onCopy(fingerprints.joinToString("\n") { (algorithm, value) -> "$algorithm  $value" })
-            },
-            modifier = Modifier.padding(top = CoineProSpacing.One),
-        )
-    }
-}
-
 @Composable
 private fun CrashCard(crash: Crash, onCopy: (String) -> Unit, onClear: () -> Unit) {
     CoineProCard(modifier = Modifier.fillMaxWidth(), accent = CoineProColors.Sell) {

@@ -51,15 +51,18 @@ WORDMARK_MDPI = 168
 
 # The adaptive icon's safe zone: the launcher may mask anything outside the middle 66 of 108.
 #
-# 72, not 60. The first cut sat the mark at 60 to keep a hairline of ground inside every mask shape,
-# which is the cautious reading of the guideline — and on a real launcher it produced a small mark
-# adrift in a black square, which is what the owner saw. The safe zone is a circle of 66 units and
-# the mark is *not* a square: its own bounding box is taller than it is wide, so at 72 the widest
-# part still sits inside that circle and only the empty corners of the box cross it. Every mask
-# shape Android ships — circle, squircle, rounded square, teardrop — clips those corners and
-# nothing else.
+# **54, and this number has now been wrong in both directions.** The first cut sat the mark at 60,
+# reading the guideline cautiously, and on a real launcher that produced a small mark adrift in a
+# black square. The correction went to 72 on the argument that the mark is taller than it is wide,
+# so only the empty corners of its bounding box would cross the 66-unit safe circle — and on a real
+# device the owner saw the mark running off its own edges. The argument was right about the corners
+# and wrong about what a launcher does with them: several mask shapes clip closer than the circle,
+# and a mark sized to the safe zone has nothing left to lose when they do.
+#
+# 54 is 72 less a quarter. It sits comfortably inside 66 on both axes with room for any mask, which
+# is what the guideline asks for and what the two previous values each missed from one side.
 LAUNCHER_CANVAS = 432
-LAUNCHER_MARK = int(LAUNCHER_CANVAS * 72 / 108)
+LAUNCHER_MARK = int(LAUNCHER_CANVAS * 54 / 108)
 
 
 # Below this luminance a pixel is ground, not ink.
@@ -169,7 +172,7 @@ def main() -> int:
     play = Image.new("RGBA", (512, 512), (0, 0, 0, 255))
     # The same proportion the launcher uses, so the store icon and the one on the home screen are
     # the same drawing at two sizes rather than two different logos.
-    play_side = round(512 * 72 / 108)
+    play_side = round(512 * 54 / 108)
     play_mark = scaled_to_box(mark, play_side)
     play.paste(play_mark, ((512 - play_side) // 2, (512 - play_side) // 2), play_mark)
     write(play.convert("RGB").convert("RGBA"), ROOT / "design" / "play" / "icon-512.png")

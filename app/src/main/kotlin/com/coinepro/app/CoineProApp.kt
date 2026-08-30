@@ -46,7 +46,6 @@ import com.coinepro.app.chart.rememberChartControllers
 import com.coinepro.app.notifications.PushCoordinator
 import com.coinepro.app.notifications.channelDescriptionRes
 import com.coinepro.app.notifications.channelNameRes
-import com.coinepro.app.security.AppIntegrity
 import com.coinepro.app.sync.BackgroundSyncScheduler
 import com.coinepro.core.academy.AcademyController
 import com.coinepro.core.account.AccountController
@@ -200,7 +199,6 @@ import com.coinepro.feature.guest.GuestNewsScreen
 import com.coinepro.feature.guest.GuestScreen
 import com.coinepro.feature.home.HomeBriefing
 import com.coinepro.feature.home.HomePortfolio
-import com.coinepro.feature.free.FreeScreen
 import com.coinepro.feature.heatmap.CandleHeatmapBarSource
 import com.coinepro.feature.heatmap.MarketTickerHeatmapSource
 import com.coinepro.feature.heatmap.HeatmapScreen
@@ -259,7 +257,6 @@ private const val ACADEMY_ROUTE = "academy"
 private const val TERMINAL_ROUTE = "terminal"
 private const val LESSON_PATTERN = "academy/lesson/{slug}"
 private const val NEWS_ROUTE = "market/news"
-private const val FREE_ROUTE = "free"
 private const val CALENDAR_ROUTE = "market/calendar"
 private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
 private const val ADMIN_ROUTE = "diagnostics"
@@ -376,7 +373,6 @@ private fun surfaceRoute(id: String, platform: MarketPlatform, watchlist: List<S
         // The watchlist is a segment inside the markets tab, not a destination of its own.
         "watchlist" -> AppDestination.MARKETS.route
         "news" -> NEWS_ROUTE
-        "free" -> FREE_ROUTE
         "calendar" -> CALENDAR_ROUTE
         "portfolio" -> PORTFOLIO_ROUTE
         "signals" -> AppDestination.SIGNALS.route
@@ -446,7 +442,6 @@ private val SELF_TITLED: Set<String> = setOf(
     MEMBERSHIP_ROUTE,
     HEATMAP_ROUTE,
     SCREENER_ROUTE,
-    FREE_ROUTE,
 )
 
 private fun accentFor(route: String?): PageAccent = when (route) {
@@ -1603,7 +1598,6 @@ private fun MainShell(
         ACADEMY_ROUTE, LESSON_PATTERN -> R.string.screen_academy
         TERMINAL_ROUTE -> R.string.screen_terminal
         NEWS_ROUTE -> R.string.screen_news
-        FREE_ROUTE -> R.string.screen_free
         CALENDAR_ROUTE -> R.string.screen_calendar
         LAUNCH_READINESS_ROUTE -> R.string.screen_launch_readiness
         else -> R.string.app_name
@@ -1821,7 +1815,6 @@ private fun MainShell(
                         onOpenSymbol = { navController.navigate(chartRoute(it)) },
                         onOpenMarket = { navController.navigate(AppDestination.MARKETS.route) },
                         onOpenTools = { navController.navigate(TOOLS_ROUTE) },
-                        onOpenFree = { navController.navigate(FREE_ROUTE) },
                     )
                     return@composable
                 }
@@ -2602,12 +2595,6 @@ private fun MainShell(
                     onPickPrice = { price -> alertFromChart = activeChartSymbol to price },
                 )
             }
-            composable(FREE_ROUTE) {
-                // No controller and no gateway: everything on it is either a constant or a count
-                // read from the app's own catalogues, so it renders identically for a guest, on a
-                // dead connection, on either platform.
-                FreeScreen()
-            }
             composable(NEWS_ROUTE) {
                 // A guest reads the public headline route, which needs no account and which their
                 // own home screen was already showing twelve of. Pointing them at the members'
@@ -2674,9 +2661,6 @@ private fun MainShell(
                     // on this screen is local to the phone and opens for anybody.
                     onOpenConnections = if (guest) null else ({ navController.navigate(CONNECTIONS_ROUTE) }),
                     onOpenNews = { navController.navigate(NEWS_ROUTE) },
-                    // Never gated. The comparison page is the answer to «چرا این اپ؟» and a
-                    // reader who cannot reach it is the reader who most needed it.
-                    onOpenFree = { navController.navigate(FREE_ROUTE) },
                     onOpenCalendar = if (guest) null else ({ navController.navigate(CALENDAR_ROUTE) }),
                     onOpenPortfolio = if (guest) null else ({ navController.navigate(PORTFOLIO_ROUTE) }),
                     onOpenAcademy = if (hasAcademy && !guest) {
@@ -2736,13 +2720,6 @@ private fun MainShell(
             composable(LAUNCH_READINESS_ROUTE) {
                 val context = LocalContext.current
                 val crashes = remember(context, appLog) { CrashReport(context, appLog) }
-                // Read once: an install's certificate cannot change while it is running.
-                val fingerprints = remember(context) {
-                    listOf(
-                        "SHA-1" to AppIntegrity.fingerprints(context, "SHA-1").firstOrNull(),
-                        "SHA-256" to AppIntegrity.fingerprints(context, "SHA-256").firstOrNull(),
-                    ).mapNotNull { (algorithm, value) -> value?.let { algorithm to it } }
-                }
                 // Read once per visit rather than watched: a crash file cannot change while the
                 // app that would write it is the one on screen.
                 var lastCrash by remember { mutableStateOf(crashes.last()) }
@@ -2767,14 +2744,6 @@ private fun MainShell(
                         crashes.clear()
                         lastCrash = null
                     },
-                    signingFingerprints = fingerprints,
-                    onCopyFingerprint = { text ->
-                        val clipboard = context.getSystemService(ClipboardManager::class.java)
-                        clipboard?.setPrimaryClip(ClipData.newPlainText("CoinePro signature", text))
-                        // Android stopped showing its own "copied" toast in 13. Without one of our
-                        // own, a copy is completely invisible.
-                        toaster.show(copiedMessage, ToastTone.SUCCESS)
-                    },
                 )
             }
         }
@@ -2787,6 +2756,12 @@ private fun MainShell(
     }
 
     if (appearanceOpen) {
+        // The language lives on this sheet now rather than in the diagnostics panel, where it was
+        // behind five taps on a version number — see `AppearanceSheet`'s own note. Read here rather
+        // than hoisted because the store is the only thing that knows it, and the recreate below is
+        // what makes the change land: the locale is applied in `attachBaseContext`, so nothing
+        // already composed would pick it up.
+        val appearanceContext = LocalContext.current
         AppearanceSheet(
             selected = themeMode,
             onSelect = { mode ->
@@ -2798,6 +2773,11 @@ private fun MainShell(
             onDismiss = { appearanceOpen = false },
             colours = marketColors,
             onSelectColours = onSetMarketColors,
+            language = AppLanguageStore.current(appearanceContext),
+            onSelectLanguage = { chosen ->
+                AppLanguageStore.set(appearanceContext, chosen)
+                (appearanceContext as? Activity)?.recreate()
+            },
         )
     }
 

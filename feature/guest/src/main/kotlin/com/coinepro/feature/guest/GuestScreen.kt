@@ -86,17 +86,6 @@ fun GuestScreen(
     onOpenMarket: (() -> Unit)? = null,
     /** The local toolkit: journal, paper trading, NamaScript. None of it needs an account. */
     onOpenTools: (() -> Unit)? = null,
-    /**
-     * «اینجا رایگان است» — the comparison page.
-     *
-     * This screen's whole problem is that a stranger who found the app on Google Play has no idea
-     * what it is or why they should trust it, and the two blocks above answer neither question:
-     * the market shelf shows prices they can get anywhere, and the membership gate asks something
-     * of them before it has offered anything. The comparison page is the one surface that answers
-     * «چرا این اپ؟» in the reader's own terms — what other products charge for, and what this one
-     * does about it — which is why it sits at the bottom of the *guest's* home and nowhere else's.
-     */
-    onOpenFree: (() -> Unit)? = null,
 ) {
     val prices by controller.prices.collectAsStateWithLifecycle()
     val trackRecord by controller.trackRecord.collectAsStateWithLifecycle()
@@ -213,12 +202,6 @@ fun GuestScreen(
                 onSignIn = onSignIn,
                 terms = (membership as? GuestMembershipState.Ready)?.terms,
             )
-        }
-
-        onOpenFree?.let { open ->
-            item {
-                FreeCard(onClick = open)
-            }
         }
 
         // News is **not** here any more, on the owner's call, and it lives in Tools.
@@ -416,37 +399,3 @@ private const val HOME_PRICE_ROWS = 6
  */
 private val GUEST_WORDMARK_WIDTH = 176.dp
 
-/**
- * The last block on a stranger's first screen: what this app gives away that others sell.
- *
- * Deliberately placed after the membership gate rather than before it. A reader who has just been
- * asked to open an exchange account is exactly the reader who wants to know what they get, and
- * putting the answer above the ask would make the ask read as the price of it — which it is not.
- * Membership here is free and this page is free; the order says so.
- */
-@Composable
-private fun FreeCard(onClick: () -> Unit) {
-    CoineProCard(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = stringResource(R.string.guest_free_title),
-            style = MaterialTheme.typography.titleSmall,
-            color = CoineProColors.TextPrimary,
-            textAlign = TextAlign.Right,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Text(
-            text = stringResource(R.string.guest_free_body),
-            style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextSecondary,
-            textAlign = TextAlign.Right,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = CoineProSpacing.Half, bottom = CoineProSpacing.One),
-        )
-        CoineProSecondaryButton(
-            text = stringResource(R.string.guest_free_open),
-            onClick = onClick,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}

@@ -127,6 +127,4 @@
     <!-- Long-press preview -->
     <string name="preview_alert">Alert</string>
     <string name="preview_chart">Chart</string>
-    <string name="surface_free_title">Free here</string>
-    <string name="surface_free_body">What other products charge for, and what is free here</string>
 </resources>

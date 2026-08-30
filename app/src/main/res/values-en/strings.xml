@@ -22,7 +22,6 @@
     <string name="screen_academy">Academy</string>
     <string name="screen_terminal">Pro terminal</string>
     <string name="screen_news">Market intelligence</string>
-    <string name="screen_free">Free here</string>
     <string name="screen_calendar">Economic calendar</string>
     <string name="screen_diagnostics">Diagnostics</string>
     <string name="screen_launch_readiness">Launch &amp; safety</string>
@@ -76,10 +75,6 @@
     <string name="tampered_body">This file has been modified and re-signed with a different key. We did not build it and we do not know what was changed inside it. Please delete it now and install Pro CHart only from its official channel.</string>
     <string name="tampered_fingerprint">This file\'s signing fingerprint</string>
     <string name="tampered_source">Do not sign in on this copy, and do not enter any password, code or exchange key.</string>
-    <string name="safety_signature_title">This build\'s signing fingerprint</string>
-    <string name="safety_signature_note">For the Google console. SHA-1 is what Google sign-in needs; SHA-256 is what Play needs.</string>
-    <string name="safety_signature_copy">Copy the fingerprint</string>
-    <string name="safety_signature_unsigned">This build is signed with the development key.</string>
     <string name="channel_group_trading">Signals and trades</string>
     <string name="channel_group_market">Market</string>
     <string name="channel_group_account">Account</string>

@@ -142,7 +142,6 @@ import com.coinepro.core.orderbook.DepthLevel
 import com.coinepro.core.orderbook.OrderBook
 import com.coinepro.core.orderbook.OrderBookState
 import com.coinepro.feature.dom.DepthOfMarketBody
-import com.coinepro.feature.free.FreeScreen
 import com.coinepro.feature.heatmap.HeatmapScreen
 import com.coinepro.feature.home.HomeScreen
 import com.coinepro.feature.home.HomeSubscription
@@ -912,7 +911,6 @@ class ScreenshotRenderTest {
         ToolsScreen(
             onOpenConnections = {},
             onOpenNews = {},
-            onOpenFree = {},
             onOpenCalendar = {},
             onOpenJournal = {},
             onOpenPaperTrade = {},
@@ -986,7 +984,6 @@ class ScreenshotRenderTest {
         ToolsScreen(
             onOpenConnections = {},
             onOpenNews = {},
-            onOpenFree = {},
             onOpenCalendar = {},
             onOpenJournal = {},
             onOpenPaperTrade = {},
@@ -1326,22 +1323,6 @@ class ScreenshotRenderTest {
         val controller = MarketSearchController(ScreenshotFixtures.searchCatalog(), scope)
         controller.start()
         capture("34-heatmap-fa") { HeatmapScreen(controller = controller, onOpenSymbol = {}) }
-    }
-
-    /**
-     * The comparison page a stranger from Google Play lands on.
-     *
-     * Worth a render case for one reason that no assertion reaches: this screen is a wall of
-     * Persian prose in a right-to-left column with Latin company names embedded in it, and the
-     * failure mode is a rival's name reordering inside a sentence, or a verdict pill sitting on
-     * the wrong side of the row it judges. Both are invisible to a unit test and obvious in a
-     * render. The counts it prints come from the app's own catalogues, so this also shows whether
-     * a real figure like «۸۳» fits the sentence it was substituted into.
-     */
-    @Test
-    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1800dp-xxhdpi")
-    fun freeComparison() {
-        capture("94-free-fa") { FreeScreen() }
     }
 
     /**

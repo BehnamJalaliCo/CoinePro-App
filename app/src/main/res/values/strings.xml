@@ -25,7 +25,6 @@
     <string name="screen_academy">آکادمی</string>
     <string name="screen_terminal">ترمینال حرفه‌ای</string>
     <string name="screen_news">اخبار بازار</string>
-    <string name="screen_free">اینجا رایگان است</string>
     <string name="screen_calendar">تقویم اقتصادی</string>
     <string name="screen_diagnostics">پنل تشخیص</string>
     <string name="screen_launch_readiness">ایمنی و انتشار</string>
@@ -79,10 +78,6 @@
     <string name="tampered_body">این فایل دستکاری و با کلید دیگری امضا شده است. ما آن را نساخته‌ایم و نمی‌دانیم داخلش چه تغییری داده شده. لطفاً همین حالا پاکش کنید و نسخه را فقط از کانال رسمی پرو چارت بگیرید.</string>
     <string name="tampered_fingerprint">اثر انگشت امضای این فایل</string>
     <string name="tampered_source">در این نسخه وارد حساب نشوید و هیچ رمز، کد یا کلید صرافی وارد نکنید.</string>
-    <string name="safety_signature_title">اثر انگشت امضای این نسخه</string>
-    <string name="safety_signature_note">برای ثبت در کنسول گوگل. SHA-1 برای ورود با گوگل و SHA-256 برای گوگل پلی.</string>
-    <string name="safety_signature_copy">کپی اثر انگشت</string>
-    <string name="safety_signature_unsigned">این نسخه با کلید توسعه امضا شده است.</string>
     <string name="channel_group_trading">سیگنال و معامله</string>
     <string name="channel_group_market">بازار</string>
     <string name="channel_group_account">حساب</string>

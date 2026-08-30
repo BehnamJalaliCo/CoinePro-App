@@ -42,7 +42,4 @@
     <string name="guest_news_count">%1$s fresh headlines</string>
     <string name="guest_news_retry">Retry</string>
     <string name="guest_news_empty">No headlines published.</string>
-    <string name="guest_free_title">Free here</string>
-    <string name="guest_free_body">If you do not know us, this is the shortest way in: a list of what other products charge for, and which of those things are here and which are not.</string>
-    <string name="guest_free_open">See what is free</string>
 </resources>

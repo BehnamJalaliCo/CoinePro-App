@@ -25,7 +25,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.coinepro.core.common.AppLanguage
+import com.coinepro.core.common.BidiText
 import com.coinepro.core.datastore.MarketColorScheme
 import com.coinepro.core.datastore.ThemeMode
 import com.coinepro.core.designsystem.CoineProColors
@@ -55,6 +58,17 @@ fun AppearanceSheet(
     /** Which colour a rise is drawn in. See [MarketColorScheme]. */
     colours: MarketColorScheme = MarketColorScheme.GREEN_UP,
     onSelectColours: (MarketColorScheme) -> Unit = {},
+    /**
+     * The reader's language.
+     *
+     * It lives here because it is the reader's setting and this is where the reader's settings
+     * are. It used to sit in the diagnostics panel, which is reached by tapping the version number
+     * five times — so the one control in the app that a Persian speaker who opened an English
+     * build would need most was behind a gesture nobody would find, in a screen written for an
+     * operator. That is not a placement, it is a hiding place.
+     */
+    language: AppLanguage = AppLanguage.Default,
+    onSelectLanguage: (AppLanguage) -> Unit = {},
 ) {
     CoineProSheet(
         title = stringResource(R.string.appearance_title),
@@ -67,6 +81,8 @@ fun AppearanceSheet(
             onSelect = onSelect,
             colours = colours,
             onSelectColours = onSelectColours,
+            language = language,
+            onSelectLanguage = onSelectLanguage,
         )
     }
 }
@@ -78,6 +94,8 @@ fun ColumnScope.AppearanceOptions(
     onSelect: (ThemeMode) -> Unit,
     colours: MarketColorScheme = MarketColorScheme.GREEN_UP,
     onSelectColours: (MarketColorScheme) -> Unit = {},
+    language: AppLanguage = AppLanguage.Default,
+    onSelectLanguage: (AppLanguage) -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -109,8 +127,88 @@ fun ColumnScope.AppearanceOptions(
                 onSelect = { onSelectColours(scheme) },
             )
         }
+
+        // Last, and under the same roof as the other two, because all three answer the same
+        // question — how this app should look and read to *this* person — and a reader who has
+        // come here to change one of them has come to the right place for the others.
+        //
+        // Changing it restarts the activity, which is why the note under it says so. Android
+        // re-bases the context on the new locale and every string in the tree is resolved again;
+        // a change that silently left half the app in the old language would be worse than a
+        // visible blink.
+        Text(
+            text = stringResource(R.string.appearance_language),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+            modifier = Modifier.padding(top = CoineProSpacing.Row),
+        )
+        AppLanguage.entries.forEach { option ->
+            LanguageOption(
+                language = option,
+                selected = option == language,
+                onSelect = { onSelectLanguage(option) },
+            )
+        }
+        Text(
+            text = stringResource(R.string.appearance_language_note),
+            style = MaterialTheme.typography.bodySmall,
+            color = CoineProColors.TextMuted,
+            textAlign = TextAlign.Right,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
+
+/**
+ * One language, named in itself.
+ *
+ * «فارسی» and "English", never «فارسی / Persian» — a reader looking for their own language finds it
+ * by recognising the word, and a translation is for somebody who does not need this row at all.
+ *
+ * Drawn as the same filled-and-bordered card [ThemeOption] and [ColourOption] use, because these
+ * are three answers to one question and a fourth visual language for the third of them would make
+ * the sheet read as three unrelated settings that happen to share a screen.
+ */
+@Composable
+private fun LanguageOption(language: AppLanguage, selected: Boolean, onSelect: () -> Unit) {
+    val haptics = rememberCoineProHaptics()
+    val accent = CoineProColors.Gold
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .background(
+                if (selected) {
+                    CoineProTint.fill(accent, CoineProColors.SurfaceElevated)
+                } else {
+                    CoineProColors.Surface
+                },
+            )
+            .border(
+                width = 1.dp,
+                color = if (selected) CoineProTint.edge(accent) else CoineProColors.Border,
+                shape = MaterialTheme.shapes.medium,
+            )
+            .clickable {
+                haptics.select()
+                onSelect()
+            }
+            .padding(horizontal = CoineProSpacing.CardHorizontal, vertical = CoineProSpacing.Row),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Row),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            // A language name is the one string on this screen that must not be reordered by the
+            // row it sits in: "English" inside a right-to-left row loses its own direction without
+            // this, and the row whose whole job is to be recognised becomes the one that is not.
+            text = BidiText.isolateLtr(language.displayName),
+            style = MaterialTheme.typography.bodyMedium,
+            color = CoineProColors.TextPrimary,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
 
 /**
  * One of the two conventions, shown as the thing itself.

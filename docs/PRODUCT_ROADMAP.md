@@ -335,7 +335,6 @@ feature:membership
 feature:notifications
 feature:alerts
 feature:dom
-feature:free
 feature:heatmap
 feature:journal
 feature:papertrade

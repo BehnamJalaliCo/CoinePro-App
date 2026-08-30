@@ -104,4 +104,6 @@
     <string name="profile_library_intervals">Starred timeframes</string>
     <string name="profile_library_alerts">Price alerts</string>
     <string name="profile_library_scripts">Saved scripts</string>
+    <string name="appearance_language">Language</string>
+    <string name="appearance_language_note">Changing the language rebuilds the screen once.</string>
 </resources>

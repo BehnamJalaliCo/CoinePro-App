@@ -201,21 +201,6 @@ object AppSurfaces {
             ),
         ),
         AppSurface(
-            // The comparison page. Findable by what a reader would actually type when they are
-            // deciding whether to keep the app — «رایگان», «اشتراک», «قیمت» — rather than only by
-            // its own title, which nobody knows yet. No account and no platform: it is constants
-            // and counts read from the app's own catalogues, so it answers on any connection.
-            id = "free",
-            titleRes = R.string.surface_free_title,
-            bodyRes = R.string.surface_free_body,
-            icon = CoineProIcons.Success,
-            keywords = listOf(
-                "رایگان", "اشتراک", "پولی", "قیمت", "هزینه", "پلن", "مقایسه", "تریدینگ ویو",
-                "کوین گکو", "چرا این اپ",
-                "free", "pricing", "subscription", "premium", "paywall", "compare", "plans",
-            ),
-        ),
-        AppSurface(
             id = "calendar",
             titleRes = R.string.surface_calendar_title,
             bodyRes = R.string.surface_calendar_body,
