@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+      The privacy policy is published in both languages and ships as two assets. The terms exist in
+      Persian only, so this locale names the same file the default one does and legal_untranslated
+      below says why.
+    -->
+    <string name="legal_asset_privacy" translatable="false">legal/privacy-en.md</string>
+
+    <string name="legal_title_terms">Terms of use</string>
+    <string name="legal_title_privacy">Privacy policy</string>
+
+    <string name="legal_untranslated">This document is published in Persian only, and the Persian text is the one that governs. Support can answer questions about it in English.</string>
+
+    <string name="legal_unavailable">This document is not available in this build.</string>
+
+</resources>

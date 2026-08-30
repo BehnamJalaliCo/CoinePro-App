@@ -185,6 +185,9 @@ import com.coinepro.core.signals.SignalController
 import com.coinepro.feature.academy.AcademyScreen
 import com.coinepro.feature.academy.LessonScreen
 import com.coinepro.feature.account.DeleteAccountScreen
+import com.coinepro.feature.legal.LegalDocument
+import com.coinepro.feature.legal.LegalScreen
+import com.coinepro.feature.legal.R as LegalR
 import com.coinepro.feature.activity.ActivityScreen
 import com.coinepro.feature.admin.AdminScreen
 import com.coinepro.feature.ai.AiStudioScreen
@@ -295,6 +298,16 @@ private const val NOTIFICATIONS_ROUTE = "notifications"
 private const val MEMBERSHIP_ROUTE = "membership"
 private const val KYC_ROUTE = "account/verify"
 private const val DELETE_ACCOUNT_ROUTE = "account/delete"
+
+// The terms and the privacy policy, read in the app rather than in a browser — a browser's address
+// bar is the only place this app's hosting address was ever visible to a reader. Two routes rather
+// than one with the document in the path, so each has its own back-stack entry and a reader who
+// crossed from one to the other goes back to where they were.
+private const val TERMS_ROUTE = "legal/terms"
+private const val PRIVACY_ROUTE = "legal/privacy"
+
+private fun legalRoute(document: LegalDocument) =
+    if (document == LegalDocument.TERMS) TERMS_ROUTE else PRIVACY_ROUTE
 private const val ALERTS_ROUTE = "alerts"
 private const val JOURNAL_ROUTE = "journal"
 private const val PAPER_TRADE_ROUTE = "paper-trade"
@@ -457,6 +470,8 @@ private fun menuRoute(id: String, platform: MarketPlatform, watchlist: List<Stri
         "search" -> MARKET_SEARCH_ROUTE
         "safety" -> LAUNCH_READINESS_ROUTE
         "delete" -> DELETE_ACCOUNT_ROUTE
+        "terms" -> TERMS_ROUTE
+        "privacy" -> PRIVACY_ROUTE
         else -> surfaceRoute(id, platform, watchlist)
     }
 
@@ -1668,6 +1683,8 @@ private fun MainShell(
         AI_ASSISTANT_ROUTE,
         KYC_ROUTE,
         DELETE_ACCOUNT_ROUTE,
+        TERMS_ROUTE,
+        PRIVACY_ROUTE,
         ALERTS_ROUTE,
         JOURNAL_ROUTE,
         PAPER_TRADE_ROUTE,
@@ -1703,6 +1720,10 @@ private fun MainShell(
         MEMBERSHIP_ROUTE -> R.string.screen_membership
         KYC_ROUTE -> R.string.screen_kyc
         DELETE_ACCOUNT_ROUTE -> R.string.screen_delete_account
+        // Borrowed from the module that owns the screen rather than duplicated into `app`, the
+        // same way the menu's heading is. One string, one translation, no drift.
+        TERMS_ROUTE -> LegalR.string.legal_title_terms
+        PRIVACY_ROUTE -> LegalR.string.legal_title_privacy
         ALERTS_ROUTE -> R.string.screen_alerts
         JOURNAL_ROUTE -> R.string.screen_journal
         PAPER_TRADE_ROUTE -> R.string.screen_paper_trade
@@ -2139,6 +2160,7 @@ private fun MainShell(
                         onOpenSymbol = { navController.navigate(chartRoute(it)) },
                         onOpenMarket = { navController.navigate(AppDestination.MARKETS.route) },
                         onOpenTools = { navController.navigate(TOOLS_ROUTE) },
+                        onOpenTerms = { navController.navigate(TERMS_ROUTE) },
                     )
                     return@composable
                 }
@@ -2249,6 +2271,7 @@ private fun MainShell(
                     // when the server refuses the list.
                     membershipController = membershipController,
                     guestController = guestController,
+                    onOpenTerms = { navController.navigate(TERMS_ROUTE) },
                 )
                 }
             }
@@ -2467,6 +2490,7 @@ private fun MainShell(
                         ?.terms
                         ?.uidExchanges
                         .orEmpty(),
+                    onOpenTerms = { navController.navigate(TERMS_ROUTE) },
                 )
             }
             composable(NOTIFICATIONS_ROUTE) {
@@ -2586,6 +2610,19 @@ private fun MainShell(
                     // an account that no longer exists, and the next request with it would be
                     // answered 401 and reported to the reader as an expired session.
                     onDeleted = onLogout,
+                    onOpenPolicy = { navController.navigate(PRIVACY_ROUTE) },
+                )
+            }
+            composable(TERMS_ROUTE) {
+                LegalScreen(
+                    document = LegalDocument.TERMS,
+                    onOpenDocument = { navController.navigate(legalRoute(it)) },
+                )
+            }
+            composable(PRIVACY_ROUTE) {
+                LegalScreen(
+                    document = LegalDocument.PRIVACY,
+                    onOpenDocument = { navController.navigate(legalRoute(it)) },
                 )
             }
             composable(CONNECTIONS_ROUTE) {

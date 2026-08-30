@@ -108,6 +108,8 @@ fun SignalsScreen(
     membershipController: MembershipController? = null,
     /** The public terms and the track record. Null costs the links and the evidence, not the steps. */
     guestController: GuestController? = null,
+    /** Opens the terms in the app from the locked state's panel. Null falls back to the browser. */
+    onOpenTerms: (() -> Unit)? = null,
 ) {
     LaunchedEffect(controller) { controller.start() }
     LaunchedEffect(controller, platform) { controller.selectMarket(platform.toFilter()) }
@@ -147,6 +149,7 @@ fun SignalsScreen(
                 guestController = guestController,
                 serverMessage = state.membershipMessage,
                 onRetry = controller::refresh,
+                onOpenTerms = onOpenTerms,
             )
 
             state.error != null && state.items.isEmpty() -> Placeholder {
@@ -403,6 +406,7 @@ private fun ColumnScope.MembershipLocked(
     guestController: GuestController?,
     serverMessage: String?,
     onRetry: () -> Unit,
+    onOpenTerms: (() -> Unit)? = null,
 ) {
     if (membershipController == null || platform != MarketPlatform.TRADEYAR) {
         Placeholder { MembershipRequiredCard(serverMessage, onRetry) }
@@ -419,6 +423,7 @@ private fun ColumnScope.MembershipLocked(
             membershipController = membershipController,
             guestController = guestController,
             onAccessGranted = onRetry,
+            onOpenTerms = onOpenTerms,
         )
     }
 }
@@ -440,6 +445,7 @@ private fun MembershipJourney(
     membershipController: MembershipController,
     guestController: GuestController?,
     onAccessGranted: () -> Unit,
+    onOpenTerms: (() -> Unit)? = null,
 ) {
     // Not «سیگنال‌های ویژه». That title belongs to the fallback card and to a platform that
     // genuinely sells a plan; over a screen whose first sentence is that membership is free, the
@@ -450,6 +456,7 @@ private fun MembershipJourney(
             controller = membershipController,
             modifier = Modifier.fillMaxWidth(),
             onAccessGranted = onAccessGranted,
+            onOpenTerms = onOpenTerms,
             headline = headline,
         )
         return
@@ -466,6 +473,7 @@ private fun MembershipJourney(
         terms = (terms as? GuestMembershipState.Ready)?.terms,
         trackRecord = (record as? GuestTrackRecordState.Ready)?.record,
         onAccessGranted = onAccessGranted,
+        onOpenTerms = onOpenTerms,
         headline = headline,
     )
 }

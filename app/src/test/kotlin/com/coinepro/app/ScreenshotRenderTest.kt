@@ -167,6 +167,9 @@ import com.coinepro.feature.home.HomeScreen
 import com.coinepro.feature.home.HomeSubscription
 import com.coinepro.feature.journal.JournalScreen
 import com.coinepro.feature.kyc.KycScreen
+import com.coinepro.feature.legal.LegalDocument
+import com.coinepro.feature.legal.LegalDocumentBody
+import com.coinepro.feature.legal.LegalMarkdown
 import com.coinepro.feature.menu.MenuAccess
 import com.coinepro.feature.menu.MenuScreen
 import com.coinepro.feature.news.NewsScreen
@@ -956,6 +959,24 @@ class ScreenshotRenderTest {
                 onOpenSignal = {},
             )
         }
+    }
+
+    /**
+     * The in-app legal reader, on an excerpt carrying every construct the two documents use:
+     * title, revision line, blockquote, rule, headings, a paragraph with bold and inline code,
+     * bullets, a Persian-numbered list, a table and a named link.
+     *
+     * Parsed from a literal rather than read through the AssetManager, so the picture is identical
+     * on every run and does not depend on where a merged library asset landed.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun legalReader() = capture("98-legal-fa") {
+        LegalDocumentBody(
+            document = LegalDocument.TERMS,
+            reading = LegalMarkdown.read(LEGAL_EXCERPT),
+            onOpenDocument = {},
+        )
     }
 
     @Test
@@ -2588,3 +2609,36 @@ private class FakeScreenshotPreferences : DataStore<Preferences> {
         return next
     }
 }
+
+/** Every construct the legal documents use, in the order the screen draws them. */
+private val LEGAL_EXCERPT = """
+    # شرایط استفاده — پرو چارت
+
+    **آخرین بازنگری:** ۱۴۰۵/۰۶/۰۴
+
+    > پایهٔ این متن، سند حقوقیِ خودِ مالک است. برند و شرح محصول عوض شده‌اند.
+
+    ---
+
+    ## ۲) ماهیت سرویس — ابزار تحلیل، نه توصیهٔ مالی
+
+    پرو چارت **کارگزار نیست**، پول شما را نگه نمی‌دارد و مشاورهٔ مالی نمی‌دهد. شرح کامل در
+    [سیاست حریم خصوصی](PRIVACY_POLICY.md) آمده است.
+
+    * ما کارگزار نیستیم و پول یا دارایی شما را نگه نمی‌داریم.
+    * خروجی هوش مصنوعی می‌تواند خطا داشته باشد و باید مستقل بازبینی شود.
+
+    ### ۶-۲) شرایط عضویت
+
+    ۱. در **LBank** یا **Ourbit** از طریق لینک اختصاصی ثبت‌نام کنید.
+    ۲. موجودی حساب را حداقل به **۵۰ تتر (USDT)** برسانید.
+
+    | داده | کجا | چرا |
+    | --- | --- | --- |
+    | توکن نشست | DataStore رمزنگاری‌شده با `AES-GCM` | شما را وارد نگه می‌دارد |
+    | کش قیمت و سیگنال | Room | نمایش آخرین وضعیت وقتی شبکه نیست |
+
+    ## ۱۰) تماس و پشتیبانی
+
+    پشتیبانی در تلگرام: <https://t.me/CoinePro_Admin>
+""".trimIndent()

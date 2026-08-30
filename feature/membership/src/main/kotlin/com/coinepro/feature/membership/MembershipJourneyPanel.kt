@@ -121,6 +121,13 @@ fun MembershipJourneyPanel(
      * already looking at is a button that does nothing.
      */
     onAccessGranted: (() -> Unit)? = null,
+    /**
+     * Opens the terms inside the app.
+     *
+     * Null keeps the old behaviour — the published page in a browser — so a caller that has not
+     * been wired to `:feature:legal` still works.
+     */
+    onOpenTerms: (() -> Unit)? = null,
     headline: String = stringResource(R.string.membership_access_title),
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
@@ -177,7 +184,9 @@ fun MembershipJourneyPanel(
 
         CoineProSecondaryButton(
             text = stringResource(R.string.membership_access_terms),
-            onClick = { context.openHttps(TERMS_URL) },
+            // In the app where the caller can show it. A browser is the fallback, not the route:
+            // its address bar is the only place this app's hosting address was ever visible.
+            onClick = { if (onOpenTerms != null) onOpenTerms() else context.openHttps(TERMS_URL) },
             modifier = Modifier.fillMaxWidth(),
         )
     }

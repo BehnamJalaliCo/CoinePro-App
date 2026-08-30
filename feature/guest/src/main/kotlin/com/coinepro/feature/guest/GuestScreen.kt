@@ -86,6 +86,8 @@ fun GuestScreen(
     onOpenMarket: (() -> Unit)? = null,
     /** The local toolkit: journal, paper trading, NamaScript. None of it needs an account. */
     onOpenTools: (() -> Unit)? = null,
+    /** Opens the terms in the app from the membership gate. */
+    onOpenTerms: (() -> Unit)? = null,
 ) {
     val prices by controller.prices.collectAsStateWithLifecycle()
     val trackRecord by controller.trackRecord.collectAsStateWithLifecycle()
@@ -201,6 +203,7 @@ fun GuestScreen(
             MembershipGate(
                 onSignIn = onSignIn,
                 terms = (membership as? GuestMembershipState.Ready)?.terms,
+                onOpenTerms = onOpenTerms,
             )
         }
 

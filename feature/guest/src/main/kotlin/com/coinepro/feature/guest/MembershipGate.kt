@@ -56,6 +56,8 @@ fun MembershipGate(
     headline: String = stringResource(R.string.membership_headline),
     /** The server's terms, or null before they have arrived or where the server sent none. */
     terms: MembershipTerms? = null,
+    /** Opens the terms in the app. Null falls back to the published page in a browser. */
+    onOpenTerms: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     CoineProCard(modifier = modifier.fillMaxWidth(), accent = CoineProColors.Accent) {
@@ -157,7 +159,7 @@ fun MembershipGate(
             )
             CoineProSecondaryButton(
                 text = stringResource(R.string.membership_read_terms),
-                onClick = { context.open(TERMS_URL) },
+                onClick = { if (onOpenTerms != null) onOpenTerms() else context.open(TERMS_URL) },
                 modifier = Modifier.fillMaxWidth(),
             )
         }

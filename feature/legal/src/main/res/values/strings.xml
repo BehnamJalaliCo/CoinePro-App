@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default language: Persian. -->
+<resources>
+
+    <!--
+      Which packaged document this locale reads.
+
+      A path in a string resource rather than a locale check in Kotlin: Android already knows how to
+      pick a file per language, and doing it here means the app has no `if (locale == "en")` in it
+      and a new translation is a new `values-xx` folder plus a new asset. The files themselves are
+      written by scripts/release/sync-legal-documents.py from docs/legal/, which is the source of
+      truth for both these and the published website.
+    -->
+    <!-- Persian only, so it is the same file in every locale and is not a translatable string. -->
+    <string name="legal_asset_terms" translatable="false">legal/terms.md</string>
+    <!-- Overridden in values-en, so this one is deliberately translatable: the "translation" is the
+         name of the English file, not English prose. -->
+    <string name="legal_asset_privacy">legal/privacy.md</string>
+
+    <string name="legal_title_terms">شرایط استفاده</string>
+    <string name="legal_title_privacy">سیاست حریم خصوصی</string>
+
+    <!--
+      Shown above a right-to-left document, and empty here because a Persian reader reading Persian
+      needs no explanation. values-en fills it in.
+    -->
+    <string name="legal_untranslated"></string>
+
+    <string name="legal_unavailable">متن این سند در این نسخه از برنامه در دسترس نیست.</string>
+
+</resources>

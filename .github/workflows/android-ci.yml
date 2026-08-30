@@ -43,6 +43,12 @@ jobs:
       - name: Enforce Kotlin style
         run: bash scripts/quality/check-kotlin-style.sh
 
+      # `docs/legal/` is the only place the two documents are written; the app reads committed
+      # copies of them. Without this check a revision nobody re-synced ships an out-of-date
+      # document to readers while the published site shows the new one.
+      - name: The in-app legal documents match their sources
+        run: python3 scripts/release/sync-legal-documents.py --check
+
       - name: Validate release scripts and version contract
         shell: bash
         run: |

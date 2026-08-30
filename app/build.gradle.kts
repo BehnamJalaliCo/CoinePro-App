@@ -483,6 +483,7 @@ dependencies {
     implementation(project(":feature:tools"))
     implementation(project(":feature:activity"))
     implementation(project(":feature:menu"))
+    implementation(project(":feature:legal"))
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

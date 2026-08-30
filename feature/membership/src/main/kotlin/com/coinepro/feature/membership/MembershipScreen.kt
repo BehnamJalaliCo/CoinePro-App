@@ -43,6 +43,8 @@ fun MembershipScreen(
     terms: MembershipTerms? = null,
     /** Closed signals with their real outcome, where the server has a gradeable record. */
     trackRecord: GuestTrackRecord? = null,
+    /** Opens the terms in the app. Null leaves the panel's browser fallback in place. */
+    onOpenTerms: (() -> Unit)? = null,
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize().background(CoineProColors.Stage),
@@ -66,6 +68,7 @@ fun MembershipScreen(
                 // object, and an empty list here means the terms had not arrived when it looked.
                 uidExchanges = uidExchanges.ifEmpty { terms?.uidExchanges.orEmpty() },
                 trackRecord = trackRecord,
+                onOpenTerms = onOpenTerms,
                 // Nothing sits behind this screen to reload. On the signals list there is, which
                 // is the one place the approved state needs a button rather than a sentence.
                 onAccessGranted = null,

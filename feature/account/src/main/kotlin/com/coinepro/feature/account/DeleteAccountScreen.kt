@@ -66,6 +66,14 @@ fun DeleteAccountScreen(
     /** From `auth/methods`. False shows the out-of-app route rather than a button. */
     supported: Boolean,
     onDeleted: () -> Unit,
+    /**
+     * Opens the privacy policy in the app.
+     *
+     * The two deletion buttons below are deliberately **not** given the same treatment: Google Play
+     * requires a deletion route reachable without the app, and somebody choosing to finish an
+     * irreversible act at a desk has asked for the web. The policy is reading, not an act.
+     */
+    onOpenPolicy: (() -> Unit)? = null,
 ) {
     val state by controller.deletion.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -213,7 +221,7 @@ fun DeleteAccountScreen(
         )
         CoineProSecondaryButton(
             text = stringResource(R.string.delete_account_open_policy),
-            onClick = { context.open(POLICY_URL) },
+            onClick = { if (onOpenPolicy != null) onOpenPolicy() else context.open(POLICY_URL) },
             modifier = Modifier.fillMaxWidth(),
         )
     }

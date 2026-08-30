@@ -237,14 +237,23 @@ PRIVACY = ROOT / "docs/legal/PRIVACY_POLICY.md"
 # two documents: an English paragraph inside an RTL column has its punctuation on the wrong side and
 # reads badly. So the file is split at the English title and each half gets a page in its own
 # direction, cross-linked.
-ENGLISH_TITLE = "# Privacy Policy — CoinePro"
+#
+# Matched on the words rather than on the whole line: the product name in that heading has already
+# changed once, and the exact-string match this used to do turned a rename into a crash in the Pages
+# workflow rather than a rebuilt page. `scripts/release/sync-legal-documents.py` splits the same file
+# with the same expression, so the site and the in-app reader cut at the same line.
+ENGLISH_HEADING = re.compile(r"^# Privacy Policy\b.*$", re.MULTILINE)
 
 
 def split_privacy() -> tuple[str, str]:
     text = PRIVACY.read_text(encoding="utf-8")
-    cut = text.index(ENGLISH_TITLE)
-    persian = text[:cut].rstrip().rstrip("-").rstrip()
-    return persian, text[cut:]
+    match = ENGLISH_HEADING.search(text)
+    if match is None:
+        raise SystemExit(
+            f"{PRIVACY.relative_to(ROOT)} has no English half: expected a '# Privacy Policy' heading."
+        )
+    persian = text[: match.start()].rstrip().rstrip("-").rstrip()
+    return persian, text[match.start() :]
 
 
 def build() -> dict[Path, str]:
@@ -258,7 +267,8 @@ def build() -> dict[Path, str]:
         "/CoinePro-App/privacy/",
     )
     files[OUT / "privacy/en/index.html"] = page(
-        "Privacy Policy — CoinePro",
+        # The document's own heading, so a rename in the source reaches the browser tab too.
+        english.splitlines()[0].lstrip("# ").strip(),
         render(english) + '\n<hr>\n<p><a href="/CoinePro-App/privacy/">خواندن این سیاست به فارسی</a></p>',
         "/CoinePro-App/privacy/", lang="en",
     )
