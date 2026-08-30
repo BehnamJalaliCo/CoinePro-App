@@ -2090,13 +2090,22 @@ private fun MainShell(
                     onOpenActivity = { navController.navigate(ACTIVITY_ROUTE) },
                     onOpenNews = { navController.navigate(NEWS_ROUTE) },
                     onGenerateSignal = { navController.navigate(AppDestination.AI.route) },
-                    // Chart analysis is optional per deployment. Sending the reader to a screen the
-                    // server has switched off is a wait that ends in an error every time, so the
-                    // action falls back to the AI studio the server does serve.
+                    // **A pill labelled «چارت» opens the chart.**
+                    //
+                    // It used to open AI chart-analysis, on the reasoning that "send a chart" is
+                    // what a reader wants from a home screen. The owner tapped it expecting the
+                    // chart and got the AI section, which is the only evidence that matters: a
+                    // one-word label is read as the noun it is, and the reader had a chart tab two
+                    // centimetres below saying the same word. Chart analysis keeps its two honest
+                    // entries — inside the AI section and in the toolkit — where the surrounding
+                    // words say what it is.
+                    //
+                    // A tab switch rather than a push, the same as the bar's own: pressing it must
+                    // not build a stack the reader then has to press back out of.
                     onSendChart = {
-                        navController.navigate(
-                            if (chartVisionAvailable) AI_VISION_ROUTE else AppDestination.AI.route,
-                        )
+                        navController.navigate(AppDestination.CHART.route) {
+                            tabSwitch(navController, AppDestination.CHART.route)
+                        }
                     },
                     // The market card's own destination is the market list, not the signals
                     // feed. They were the same route while the app knew eight markets and there

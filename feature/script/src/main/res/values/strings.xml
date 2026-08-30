@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="script_strategies_title">ستاپ‌های آماده</string>
-    <string name="script_strategies_count">%1$s ستاپ</string>
+    <string name="script_strategies_title">اسکریپت‌های آمادهٔ نمااسکریپت</string>
+    <string name="script_strategies_count">%1$s اسکریپت آماده</string>
     <string name="script_strategies_disclaimer">نشانه‌ها گزارش‌اند، نه توصیه. هر ستاپ فقط یک نماد را روی یک تایم‌فریم می‌بیند و روی کندلی که هنوز بسته نشده چیزی نمی‌گذارد.</string>
     <string name="script_strategy_based_on">بر پایهٔ «%1$s»</string>
 

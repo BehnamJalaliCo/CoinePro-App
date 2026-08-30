@@ -64,6 +64,20 @@ WORDMARK_MDPI = 168
 LAUNCHER_CANVAS = 432
 LAUNCHER_MARK = int(LAUNCHER_CANVAS * 54 / 108)
 
+# The mark sits five percent of the icon's width to the **right** of centre.
+#
+# The owner asked for it after looking at the icon on a device, and it is the kind of call that is
+# made that way rather than derived: [scaled_to_box] centres the artwork by its bounding box, and a
+# box is only the optical centre when the ink inside it is evenly distributed. This artwork's is
+# not — the stem is a solid vertical on the left and the right half is the open bowl of the C with
+# a thin arrow through it — so the same box has much more weight on its left, and a box-centred
+# mark reads as sitting left. That is what was seen and this is the correction.
+#
+# Five percent of 432 is 22 pixels, and the result is measured rather than assumed: the ink lands
+# at 139..336 inside a safe zone of 84..348, so twelve pixels of margin remain on the side it moved
+# towards. A larger nudge spends that margin and puts the icon back where the 72 cut left it.
+LAUNCHER_NUDGE = 0.05
+
 
 # Below this luminance a pixel is ground, not ink.
 #
@@ -157,7 +171,8 @@ def main() -> int:
     foreground = Image.new("RGBA", (LAUNCHER_CANVAS, LAUNCHER_CANVAS), (0, 0, 0, 0))
     centred = scaled_to_box(mark, LAUNCHER_MARK)
     offset = (LAUNCHER_CANVAS - LAUNCHER_MARK) // 2
-    foreground.paste(centred, (offset, offset), centred)
+    nudge = round(LAUNCHER_CANVAS * LAUNCHER_NUDGE)
+    foreground.paste(centred, (offset + nudge, offset), centred)
     for bucket, factor in DENSITIES.items():
         side = round(108 * factor)
         write(ground.resize((side, side), Image.LANCZOS), APP_RES / f"mipmap-{bucket}" / "ic_launcher_background.png")
@@ -174,7 +189,14 @@ def main() -> int:
     # the same drawing at two sizes rather than two different logos.
     play_side = round(512 * 54 / 108)
     play_mark = scaled_to_box(mark, play_side)
-    play.paste(play_mark, ((512 - play_side) // 2, (512 - play_side) // 2), play_mark)
+    # The same nudge, in the same proportion. The store icon and the one on the home screen have to
+    # be the same drawing at two sizes; moving one and not the other would make them two logos.
+    play_nudge = round(512 * LAUNCHER_NUDGE)
+    play.paste(
+        play_mark,
+        ((512 - play_side) // 2 + play_nudge, (512 - play_side) // 2),
+        play_mark,
+    )
     write(play.convert("RGB").convert("RGBA"), ROOT / "design" / "play" / "icon-512.png")
 
     return 0

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="script_strategies_title">Ready-made setups</string>
-    <string name="script_strategies_count">%1$s setups</string>
+    <string name="script_strategies_title">Ready-made NamaScript strategies</string>
+    <string name="script_strategies_count">%1$s ready-made scripts</string>
     <string name="script_strategies_disclaimer">A mark is a report, not advice. Every setup sees one symbol on one timeframe, and none of them marks a bar that has not closed.</string>
     <string name="script_strategy_based_on">Based on “%1$s”</string>
 

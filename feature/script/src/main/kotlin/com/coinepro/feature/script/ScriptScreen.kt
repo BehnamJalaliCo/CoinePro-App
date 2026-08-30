@@ -95,6 +95,9 @@ fun ScriptScreen(
     val state by controller.state.collectAsStateWithLifecycle()
     val saved by controller.saved.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(ScriptTab.EDITOR) }
+    // Whether this composition has already decided where to land. One shot, and saveable, so a
+    // rotation does not throw the reader back to the library out of a script they are editing.
+    var landed by rememberSaveable { mutableStateOf(false) }
 
     // The controller runs against whatever the chart is showing. Re-running on a new series rather
     // than leaving the old drawing on the new bars: an overlay computed from yesterday's candles
@@ -104,9 +107,24 @@ fun ScriptScreen(
         if (state.source.isNotBlank() && !series.isEmpty) controller.run()
     }
 
-    // A first visit lands on a blank script rather than an empty screen. An empty editor is the
-    // hardest screen in any programming product.
+    // **A first visit lands in the library, not in the editor.**
+    //
+    // It used to land on a blank editor, on the reasoning that an empty screen is worse than an
+    // empty script. That was half right and it hid the whole point of the tab: eleven ready-made
+    // strategies ship in this build and the owner opened the studio, saw an empty editor, and
+    // reported that there were none. They were one tab across, and a reader with nothing written
+    // has no reason to look for a tab.
+    //
+    // A reader who has something — a saved script, or source restored from a previous session —
+    // still lands in the editor, because for them the library is a detour.
     LaunchedEffect(Unit) {
+        if (!landed) {
+            landed = true
+            if (state.source.isBlank() && saved.isEmpty()) tab = ScriptTab.LIBRARY
+        }
+        // The blank script is still prepared, so the editor is ready the moment they switch to it
+        // — an empty editor is the hardest screen in any programming product, and it is now the
+        // second thing they see rather than the first.
         if (state.source.isBlank()) controller.openBlank()
     }
 

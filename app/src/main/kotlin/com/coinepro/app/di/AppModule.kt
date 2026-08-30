@@ -107,6 +107,9 @@ import com.coinepro.core.marketdata.NetworkMarketSnapshotGateway
 import com.coinepro.core.marketdata.TradeYarCandleGateway
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.marketintel.MarketIntelGateway
+import com.coinepro.core.marketintel.AcademyCalendarSource
+import com.coinepro.core.marketintel.MarketIntelSnapshot
+import com.coinepro.core.marketintel.NetworkAcademyCalendarSource
 import com.coinepro.core.marketintel.NetworkMarketIntelGateway
 import com.coinepro.core.membership.MembershipController
 import com.coinepro.core.membership.MembershipGateway
@@ -1095,11 +1098,28 @@ object AppModule {
     fun aiAssistantGateway(@ForexPlatform retrofit: Retrofit): AiAssistantGateway =
         NetworkAiAssistantGateway.create(retrofit)
 
+    /**
+     * The academy calendar, which is where CoinePro-FX's economic events have been all along.
+     *
+     * Built here because it needs two things that live in different modules — the forex Retrofit
+     * and the academy token minter — and the injector is the only place that holds both. See
+     * [AcademyCalendarSource].
+     */
+    @Provides
+    @Singleton
+    fun academyCalendarSource(
+        @ForexPlatform retrofit: Retrofit,
+        tokens: AcademyTokenStore,
+    ): AcademyCalendarSource = NetworkAcademyCalendarSource(retrofit) { tokens.token() }
+
     @Provides
     @Singleton
     @ForexPlatform
-    fun forexMarketIntelGateway(@ForexPlatform retrofit: Retrofit): MarketIntelGateway =
-        NetworkMarketIntelGateway.create(retrofit, MarketPlatform.COINEPRO_FX)
+    fun forexMarketIntelGateway(
+        @ForexPlatform retrofit: Retrofit,
+        academyCalendar: AcademyCalendarSource,
+    ): MarketIntelGateway =
+        NetworkMarketIntelGateway.create(retrofit, MarketPlatform.COINEPRO_FX, academyCalendar)
 
     @Provides
     @Singleton
@@ -1814,7 +1834,8 @@ object AppModule {
     fun forexMarketIntelController(
         @ForexPlatform gateway: MarketIntelGateway,
         scope: CoroutineScope,
-    ): MarketIntelController = MarketIntelController(gateway, scope)
+        log: AppLog,
+    ): MarketIntelController = MarketIntelController(gateway, scope) { it.record(log, MarketPlatform.COINEPRO_FX) }
 
     @Provides
     @Singleton
@@ -1822,7 +1843,8 @@ object AppModule {
     fun cryptoMarketIntelController(
         @CryptoPlatform gateway: MarketIntelGateway,
         scope: CoroutineScope,
-    ): MarketIntelController = MarketIntelController(gateway, scope)
+        log: AppLog,
+    ): MarketIntelController = MarketIntelController(gateway, scope) { it.record(log, MarketPlatform.TRADEYAR) }
 
     /**
      * Keyed by platform though only one key is ever present, exactly as the chart-event controllers
@@ -1997,4 +2019,47 @@ private class SymbolTimeframes(store: SymbolChartStateStore, scope: CoroutineSco
 
     /** The bar this symbol was left on, or null where the reader has never charted it. */
     fun of(symbol: String): String? = timeframes[symbol.uppercase()]
+}
+
+/**
+ * What a market-intelligence fetch actually contained, written where an operator will find it.
+ *
+ * Two reports, and each answers a question that was being argued about without evidence.
+ *
+ * **The news line carries the newest publication date.** "The news never updates" is not something
+ * an app can settle by looking at itself: this app holds no news cache, so whatever is on screen
+ * came from the server on this run. Printing the count and the newest `published_at` on every
+ * fetch turns the complaint into a fact — either that date moves between exports or it does not,
+ * and whichever it is, it is the server's answer and not a guess.
+ *
+ * **The calendar line carries the shape.** An empty calendar has two causes that call for opposite
+ * fixes — nothing was published, or rows arrived that this app could not read — and the screen says
+ * the same sentence for both. `keys` is the first row's field names, which is exactly what a reader
+ * of the exported log needs to close the second case in one edit.
+ */
+private fun MarketIntelSnapshot.record(log: AppLog, platform: MarketPlatform) {
+    log.info(
+        LogTag.NETWORK,
+        "market intelligence read",
+        mapOf(
+            "platform" to platform.name,
+            "news" to news.size.toString(),
+            "newest" to (news.maxOfOrNull { it.publishedAt }?.toString() ?: "—"),
+            "calendar" to calendar.size.toString(),
+        ),
+    )
+    val source = calendarSource ?: return
+    val fields = mapOf(
+        "platform" to platform.name,
+        "received" to source.received.toString(),
+        "kept" to source.events.size.toString(),
+        "dropped" to source.dropped.toString(),
+        "keys" to (source.sampleKeys ?: "—"),
+        "failure" to (source.failure ?: "—"),
+    )
+    if (source.failure != null || source.dropped > 0) {
+        log.warn(LogTag.NETWORK, "academy calendar unusable", fields)
+    } else {
+        log.info(LogTag.NETWORK, "academy calendar read", fields)
+    }
 }

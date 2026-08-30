@@ -57,6 +57,14 @@ data class MarketIntelSnapshot(
     val news: List<MarketNewsItem>,
     val calendar: List<EconomicEvent>,
     val serverTime: Instant?,
+    /**
+     * What the second calendar source did, where one was asked. Null where it was not.
+     *
+     * Carried rather than logged here because this module has no log — and carried at all because
+     * "the calendar is empty" has two causes with opposite fixes: nothing was published, or rows
+     * arrived in a shape this app could not read. See [CalendarSourceOutcome].
+     */
+    val calendarSource: CalendarSourceOutcome? = null,
 )
 
 data class MarketIntelState(
@@ -66,6 +74,8 @@ data class MarketIntelState(
     val calendar: List<EconomicEvent> = emptyList(),
     val serverTime: Instant? = null,
     val error: String? = null,
+    /** See [MarketIntelSnapshot.calendarSource]. Reported, never drawn as data. */
+    val calendarSource: CalendarSourceOutcome? = null,
 )
 
 fun List<EconomicEvent>.highImpactWarningsFor(

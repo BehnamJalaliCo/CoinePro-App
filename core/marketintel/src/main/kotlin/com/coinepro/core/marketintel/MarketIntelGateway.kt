@@ -24,18 +24,43 @@ interface MarketIntelGateway {
 class NetworkMarketIntelGateway private constructor(
     private val api: MarketIntelApi,
     private val platform: MarketPlatform,
+    /**
+     * Where the calendar comes from when the primary route sends none.
+     *
+     * CoinePro-FX only, and see [AcademyCalendarSource] for why it exists: `market-intelligence`
+     * has been answering `calendar: []` since it was built, and the data has been on the same host
+     * the whole time under a route the web product already reads.
+     */
+    private val academyCalendar: AcademyCalendarSource = NoAcademyCalendarSource,
 ) : MarketIntelGateway {
-    override suspend fun snapshot(): MarketIntelSnapshot = when (platform) {
-        // The prefix is not decoration: TradeYar serves every mobile route under `api/mobile/v1`
-        // and CoinePro-FX under `user`. A path built for one reaches nothing on the other, and
-        // arrives as an ordinary HTTP error rather than as anything resembling a wiring mistake.
-        MarketPlatform.COINEPRO_FX -> api.forexSnapshot()
-        MarketPlatform.TRADEYAR -> api.cryptoSnapshot()
-    }.toDomain()
+
+    override suspend fun snapshot(): MarketIntelSnapshot {
+        val primary = when (platform) {
+            // The prefix is not decoration: TradeYar serves every mobile route under
+            // `api/mobile/v1` and CoinePro-FX under `user`. A path built for one reaches nothing on
+            // the other, and arrives as an ordinary HTTP error rather than as anything resembling a
+            // wiring mistake.
+            MarketPlatform.COINEPRO_FX -> api.forexSnapshot()
+            MarketPlatform.TRADEYAR -> api.cryptoSnapshot()
+        }.toDomain()
+        // Only when the primary sends nothing. A route that starts filling its own calendar wins
+        // immediately and without a code change, which is the whole point of asking second rather
+        // than instead — the fallback must not outlive the gap it was built for.
+        if (primary.calendar.isNotEmpty()) return primary
+        val fallback = academyCalendar.events()
+        return primary.copy(calendar = fallback.events, calendarSource = fallback)
+    }
 
     companion object {
-        fun create(retrofit: Retrofit, platform: MarketPlatform): MarketIntelGateway =
-            NetworkMarketIntelGateway(retrofit.create(MarketIntelApi::class.java), platform)
+        fun create(
+            retrofit: Retrofit,
+            platform: MarketPlatform,
+            academyCalendar: AcademyCalendarSource = NoAcademyCalendarSource,
+        ): MarketIntelGateway = NetworkMarketIntelGateway(
+            api = retrofit.create(MarketIntelApi::class.java),
+            platform = platform,
+            academyCalendar = academyCalendar,
+        )
     }
 }
 
@@ -161,10 +186,22 @@ internal fun EconomicEventDto.toDomain(): EconomicEvent? {
     )
 }
 
+/**
+ * How much a release is expected to move a market.
+ *
+ * The three English words are the agreed contract and the rest are what a second source turns out
+ * to speak. `academy/bn/calendar` was written for the web product years before this contract
+ * existed, so it may well grade an event `1`/`2`/`3` or in Persian; reading those costs six lines
+ * and the alternative is a calendar where every row says «نامشخص» — which looks like a broken app
+ * rather than like a feed with its own vocabulary.
+ *
+ * Anything genuinely unrecognised is still [MarketImpact.UNKNOWN] and is printed as such. Guessing
+ * an impact is not this function's business: the high-impact warning on the chart is built on it.
+ */
 internal fun parseImpact(value: String?): MarketImpact = when (value?.trim()?.lowercase()) {
-    "low" -> MarketImpact.LOW
-    "medium" -> MarketImpact.MEDIUM
-    "high" -> MarketImpact.HIGH
+    "low", "1", "کم", "پایین" -> MarketImpact.LOW
+    "medium", "moderate", "2", "متوسط", "میانه" -> MarketImpact.MEDIUM
+    "high", "3", "زیاد", "بالا", "پرتأثیر", "پرتاثیر" -> MarketImpact.HIGH
     else -> MarketImpact.UNKNOWN
 }
 
