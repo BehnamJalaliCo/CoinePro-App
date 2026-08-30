@@ -68,6 +68,7 @@ import com.coinepro.core.marketintel.MarketImpact
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.marketintel.MarketIntelState
 import com.coinepro.core.marketintel.MarketRelevance
+import com.coinepro.core.model.MarketPlatform
 import java.time.ZoneId
 
 
@@ -144,6 +145,14 @@ fun EconomicCalendarScreen(
                     stringResource(R.string.calendar_retry),
                     controller::refresh,
                 )
+                // No refresh button. A control whose every press repeats the same answer teaches
+                // the reader the app is broken, and this answer is not going to change: the
+                // platform has no calendar to fetch.
+                CalendarMode.NOT_ON_THIS_PLATFORM -> CoineProEmptyState(
+                    icon = CoineProIcons.Calendar,
+                    message = stringResource(R.string.calendar_not_on_platform),
+                    hint = stringResource(R.string.calendar_not_on_platform_hint),
+                )
                 CalendarMode.NOTHING_PUBLISHED -> CoineProEmptyState(
                     icon = CoineProIcons.Calendar,
                     message = stringResource(R.string.calendar_none_published),
@@ -179,14 +188,19 @@ fun EconomicCalendarScreen(
 }
 
 /**
- * What the calendar is showing, which is four things and was drawn as three.
+ * What the calendar is showing, which is five things and was drawn as three.
  *
- * The missing distinction is the one the owner reported as «تقویم داده ندارد»: a server that
+ * The first missing distinction was the one the owner reported as «تقویم داده ندارد»: a server that
  * published no events and a filter that hid them both landed on «رویدادی با این فیلتر پیدا نشد» —
  * so a reader looking at an empty calendar with the filter on «همه» was told their filter was the
- * problem. It was not; both backends currently send an empty `calendar` array, for two different
- * reasons of their own, and the screen should say what it was actually given rather than blame a
- * control the reader never touched.
+ * problem. It was not.
+ *
+ * The second is the one that turned that report into three. **TradeYar has no economic calendar and
+ * never will.** Its API has no calendar route at all, and `docs/NEWS_REQUEST_TRADEYAR.md` asks them
+ * in as many words for `calendar: []` — «کلید باید باشد، محتوایش نه» — because a rate decision has
+ * no bearing on a token listing. A crypto reader who opened this screen was therefore told the
+ * server had sent nothing, beside a refresh button, on a screen that could never fill however many
+ * times they pressed it. That reads as an outage and it is a fact about the product.
  *
  * An error only counts while there is nothing to show. A refresh that fails over a calendar already
  * on screen leaves the events there and reports the failure in the strip above them, because stale
@@ -195,6 +209,14 @@ fun EconomicCalendarScreen(
 internal enum class CalendarMode {
     LOADING,
     ERROR,
+
+    /**
+     * The backend that answered does not publish a calendar. Not an outage and not refreshable.
+     *
+     * Distinguished from [NOTHING_PUBLISHED] on the platform the snapshot itself reports, so this
+     * cannot drift out of step with which server the app is actually talking to.
+     */
+    NOT_ON_THIS_PLATFORM,
 
     /** The server answered and its calendar was empty. Nothing here is filtered out. */
     NOTHING_PUBLISHED,
@@ -207,6 +229,11 @@ internal enum class CalendarMode {
 internal fun calendarMode(state: MarketIntelState, filtered: List<EconomicEvent>): CalendarMode = when {
     state.loading -> CalendarMode.LOADING
     state.error != null && state.calendar.isEmpty() -> CalendarMode.ERROR
+    // Only once a fetch has actually answered. Before that the platform is unknown, and guessing it
+    // would put "this platform has no calendar" in front of a forex reader whose calendar is still
+    // on its way.
+    state.calendar.isEmpty() && state.platform == MarketPlatform.TRADEYAR ->
+        CalendarMode.NOT_ON_THIS_PLATFORM
     state.calendar.isEmpty() -> CalendarMode.NOTHING_PUBLISHED
     filtered.isEmpty() -> CalendarMode.FILTERED_OUT
     else -> CalendarMode.EVENTS

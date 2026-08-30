@@ -210,6 +210,9 @@ object AppSurfaces {
                 "calendar", "economic calendar", "events", "macro",
             ),
             account = true,
+            // Forex only. See the note beside the same id in `MenuCatalogue`: a crypto reader
+            // searching «تقویم» was being handed a door to a room that cannot exist.
+            platform = MarketPlatform.COINEPRO_FX,
         ),
         AppSurface(
             id = "portfolio",

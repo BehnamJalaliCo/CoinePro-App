@@ -91,6 +91,31 @@ class AcademyCalendarSourceTest {
     }
 
     @Test
+    fun `the body the route actually answers today is an empty publication, not a failure`() {
+        // Measured on 2026-08-30, with no credential of any kind:
+        //   GET https://coineprofx.com/api/academy/bn/calendar → 200 {"items":[]}
+        // Their OpenAPI marks the route public and says it reads Redis key `bn:calendar`, written
+        // by a `news-worker`. `academy/bn/news` answers `{"items":[]}` and `academy/bn/ads` answers
+        // `{"slots":{}}`, so the whole `bn:*` namespace is unwritten and the worker is not running.
+        // The distinction this asserts is the one that matters: `items` is recognised as an
+        // envelope, so this is nought rows published — not a body the app could not read.
+        val outcome = read("""{"items":[]}""")
+        assertTrue(outcome.events.isEmpty())
+        assertEquals(0, outcome.received)
+        assertNull(outcome.failure)
+    }
+
+    @Test
+    fun `which route answered is recorded, because there are two of them now`() {
+        val outcome = readCalendar(
+            JsonParser.parseString("""[{"title":"CPI","date":"2026-08-26T12:30:00Z"}]"""),
+            route = "user/economic-calendar",
+        )
+        assertEquals("user/economic-calendar", outcome.route)
+        assertEquals(1, outcome.events.size)
+    }
+
+    @Test
     fun `events come back oldest first`() {
         val outcome = read(
             """[{"title":"B","date":"2026-08-27T00:00:00Z"},{"title":"A","date":"2026-08-26T00:00:00Z"}]""",

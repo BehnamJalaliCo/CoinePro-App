@@ -1,5 +1,6 @@
 package com.coinepro.core.marketintel
 
+import com.coinepro.core.model.MarketPlatform
 import java.time.Duration
 import java.time.Instant
 
@@ -65,7 +66,100 @@ data class MarketIntelSnapshot(
      * arrived in a shape this app could not read. See [CalendarSourceOutcome].
      */
     val calendarSource: CalendarSourceOutcome? = null,
+    /**
+     * What the news half of this fetch actually contained, on the wire. See [NewsFeedOutcome].
+     *
+     * Carried for the same reason and by the same route as [calendarSource]: this module talks to
+     * a server and holds state, and the shell is where it meets the log.
+     */
+    val newsSource: NewsFeedOutcome? = null,
+    /**
+     * Which backend answered.
+     *
+     * Carried because one screen has to know, and asking the shell to pass it down would be a
+     * second source of truth for a fact the gateway already holds: **TradeYar publishes no economic
+     * calendar at all.** Their OpenAPI has no calendar route among its three hundred and forty-one
+     * paths, and `docs/NEWS_REQUEST_TRADEYAR.md` asks them in as many words to answer
+     * `calendar: []` — «کلید باید باشد، محتوایش نه» — because macro releases belong to the forex
+     * side and have no bearing on a token listing.
+     *
+     * So a crypto reader opening the calendar is looking at a screen that can never fill, and until
+     * now it told them «سرور رویدادی نفرستاد», which reads as an outage. See `CalendarMode`.
+     */
+    val platform: MarketPlatform? = null,
 )
+
+/**
+ * What one read of a `market-intelligence` route actually contained.
+ *
+ * ### Why this exists after two rounds of work on the same complaint
+ *
+ * «اخبار آپدیت نمی‌شود» has been reported four times and answered twice, both times from inside the
+ * app, because the authenticated route cannot be called from anywhere else. Each answer was
+ * plausible and neither was checked against a body, and the reason is that by the time anything in
+ * this app can see the feed it has already been mapped and sorted — which destroys precisely the
+ * three facts that tell the four candidate explanations apart:
+ *
+ * * **[received] against [kept].** A feed whose date format this app cannot read, or whose rows
+ *   arrive under keys it does not know, produces `received = 30, kept = 0` — an empty screen behind
+ *   a green request in the log, with nothing anywhere to say a single row was ever there. A feed
+ *   that is genuinely not publishing produces `received = 0`. Those are opposite problems and the
+ *   screen says the same sentence for both.
+ * * **[firstPublished] and [lastPublished], untouched, in the order the server sent them.** The
+ *   sort added in 4.11.0 makes an out-of-order feed harmless *and invisible*. If the server is
+ *   answering oldest-first, `first` is older than `last` and that is the whole diagnosis; if it is
+ *   answering newest-first and `first` has not moved between two exports, the server is not
+ *   publishing and no client change will ever fix it.
+ * * **[sampleKeys] and [envelope].** The first row's own field names, and the top-level ones. A
+ *   spelling this app does not read is the difference between an empty screen and a full one, and
+ *   it is a fact nobody here can obtain any other way — the route needs a token this side does not
+ *   hold.
+ *
+ * Nothing here is drawn. It is written to the log on every successful fetch, so the next export the
+ * owner takes settles the question rather than starting a third theory.
+ */
+data class NewsFeedOutcome(
+    /** The path that was asked, so an export says which of the two backends answered. */
+    val route: String,
+    /** The HTTP status. Present on every read that reached the server. */
+    val status: Int? = null,
+    /** How many objects the news array contained, before any were dropped. */
+    val received: Int = 0,
+    /** How many became stories. Anything less than [received] is a mapping failure, not an outage. */
+    val kept: Int = 0,
+    /** The **first** row's publication string, exactly as sent and before any sorting. */
+    val firstPublished: String? = null,
+    /** The **last** row's publication string, exactly as sent and before any sorting. */
+    val lastPublished: String? = null,
+    /** The first row's field names, comma separated, or null where no row arrived. */
+    val sampleKeys: String? = null,
+    /** The response object's own top-level keys. Null envelope names drop the array silently. */
+    val envelope: String? = null,
+    /** Why nothing came back, where that was a failure rather than an empty publication. */
+    val failure: String? = null,
+) {
+    val dropped: Int get() = (received - kept).coerceAtLeast(0)
+
+    /**
+     * The line, ready for [com.coinepro.core.marketintel] callers to hand to a log.
+     *
+     * Built here rather than at the call site so the field names are stable across every place that
+     * writes them — an exported log is only searchable if the keys do not drift.
+     */
+    fun logFields(platform: String): Map<String, String> = mapOf(
+        "platform" to platform,
+        "route" to route,
+        "status" to (status?.toString() ?: "—"),
+        "received" to received.toString(),
+        "kept" to kept.toString(),
+        "dropped" to dropped.toString(),
+        "first" to (firstPublished ?: "—"),
+        "last" to (lastPublished ?: "—"),
+        "keys" to (sampleKeys ?: "—"),
+        "envelope" to (envelope ?: "—"),
+        "failure" to (failure ?: "—"),
+    )
+}
 
 data class MarketIntelState(
     val loading: Boolean = false,
@@ -76,6 +170,10 @@ data class MarketIntelState(
     val error: String? = null,
     /** See [MarketIntelSnapshot.calendarSource]. Reported, never drawn as data. */
     val calendarSource: CalendarSourceOutcome? = null,
+    /** See [MarketIntelSnapshot.newsSource]. Reported, never drawn as data. */
+    val newsSource: NewsFeedOutcome? = null,
+    /** See [MarketIntelSnapshot.platform]. Null until a fetch has answered. */
+    val platform: MarketPlatform? = null,
 )
 
 fun List<EconomicEvent>.highImpactWarningsFor(

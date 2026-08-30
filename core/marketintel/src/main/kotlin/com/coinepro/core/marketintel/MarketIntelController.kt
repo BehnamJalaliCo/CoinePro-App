@@ -44,6 +44,8 @@ class MarketIntelController(
                         calendar = snapshot.calendar,
                         serverTime = snapshot.serverTime,
                         calendarSource = snapshot.calendarSource,
+                        newsSource = snapshot.newsSource,
+                        platform = snapshot.platform,
                     )
                     onSnapshot(snapshot)
                 }

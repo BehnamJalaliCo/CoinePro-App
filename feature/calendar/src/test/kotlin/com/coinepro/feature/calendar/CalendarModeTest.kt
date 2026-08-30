@@ -3,6 +3,7 @@ package com.coinepro.feature.calendar
 import com.coinepro.core.marketintel.EconomicEvent
 import com.coinepro.core.marketintel.MarketImpact
 import com.coinepro.core.marketintel.MarketIntelState
+import com.coinepro.core.model.MarketPlatform
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -68,6 +69,34 @@ class CalendarModeTest {
         val state = MarketIntelState(error = "سرور پاسخ نداد.")
 
         assertEquals(CalendarMode.ERROR, calendarMode(state, filtered = emptyList()))
+    }
+
+    @Test
+    fun `a platform that publishes no calendar says that, and offers no refresh`() {
+        // The other half of «تقویم خالی است», reported three times. TradeYar has no calendar route
+        // in its API at all and is asked for `calendar: []` by contract, so a crypto reader was
+        // being told the server had sent nothing — beside a refresh button that could never change
+        // the answer. That is a fact about the product, not an outage.
+        val state = MarketIntelState(platform = MarketPlatform.TRADEYAR)
+
+        assertEquals(CalendarMode.NOT_ON_THIS_PLATFORM, calendarMode(state, filtered = emptyList()))
+    }
+
+    @Test
+    fun `the forex platform with an empty calendar is still an empty publication`() {
+        val state = MarketIntelState(platform = MarketPlatform.COINEPRO_FX)
+
+        assertEquals(CalendarMode.NOTHING_PUBLISHED, calendarMode(state, filtered = emptyList()))
+    }
+
+    @Test
+    fun `before a fetch answers, the platform is unknown and nothing is claimed about it`() {
+        // Guessing here would put «this platform has no calendar» in front of a forex reader whose
+        // calendar is still in flight.
+        assertEquals(
+            CalendarMode.LOADING,
+            calendarMode(MarketIntelState(loading = true, platform = null), filtered = emptyList()),
+        )
     }
 
     @Test

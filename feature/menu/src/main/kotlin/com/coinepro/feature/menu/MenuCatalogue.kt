@@ -158,6 +158,10 @@ object MenuCatalogue {
             icon = CoineProIcons.Calendar,
             group = MenuGroup.MARKET,
             account = true,
+            // Forex only, and it is not a gate — it is an absence. TradeYar publishes no calendar
+            // route at all and was asked, by contract, to send `calendar: []`. The row was leading
+            // a crypto reader to a screen that could never fill, with a refresh button on it.
+            platform = MarketPlatform.COINEPRO_FX,
         ),
         // ── معامله ───────────────────────────────────────────────────────────────────────────
         MenuEntry(

@@ -63,6 +63,7 @@ import com.coinepro.core.marketintel.MarketImpact
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.marketintel.MarketNewsItem
 import com.coinepro.core.marketintel.MarketRelevance
+import com.coinepro.core.marketintel.NewsFeedOutcome
 import com.coinepro.core.marketintel.NewsSentiment
 import com.coinepro.core.model.MarketPlatform
 import java.time.Instant
@@ -189,6 +190,14 @@ fun NewsScreen(
     // `server_time` of right now.
     val newest = remember(filtered) { filtered.mapNotNull(NewsStory::publishedAt).maxOrNull() }
 
+    // What the wire actually carried, as opposed to what survived the mapping. See
+    // `NewsFeedOutcome`: `received` counts the objects in the response, `kept` counts the stories,
+    // and a gap between them is a shape this build could not read rather than an outage. Only ever
+    // read for the feed — the saved list is the reader's own and owes the server nothing.
+    val probe = state.newsSource?.takeIf { !savedOnly }
+    val unreadable = feedUnreadable(probe)
+    val partial = feedShortfall(probe)
+
     // Only the markets this platform serves. A crypto session filtering by "Gold" would be asking
     // the feed for a market its own signals never mention.
     val relevances = remember(platform) {
@@ -301,11 +310,20 @@ fun NewsScreen(
                             onClick = { showAnnouncements = true },
                         )
                     }
-                    CoineProHeaderAction(
-                        icon = DesignR.drawable.icon_calendar_dots,
-                        label = stringResource(R.string.news_calendar),
-                        onClick = onOpenCalendar,
-                    )
+                    // Only where there is a calendar to open, on exactly the terms the
+                    // announcements icon above already uses. TradeYar has no calendar route in its
+                    // API and `docs/NEWS_REQUEST_TRADEYAR.md` asks it for `calendar: []` by
+                    // contract — «کلید باید باشد، محتوایش نه» — so on crypto this icon led to a
+                    // screen that could never fill however many times it was pressed. Three of the
+                    // owner's «تقویم خالی است» reports are that door. The screen behind it now says
+                    // so as well, for the reader who arrives from the menu.
+                    if (platform != MarketPlatform.TRADEYAR) {
+                        CoineProHeaderAction(
+                            icon = DesignR.drawable.icon_calendar_dots,
+                            label = stringResource(R.string.news_calendar),
+                            onClick = onOpenCalendar,
+                        )
+                    }
                 },
             )
             CoineProTeachingStrip(TeachingSurface.NEWS, gutter = false)
@@ -328,6 +346,9 @@ fun NewsScreen(
                     savedOnly -> "content"
                     state.loading -> "loading"
                     state.error != null && state.news.isEmpty() -> "error"
+                    // Before the plain empty, because "nothing matched" is the wrong sentence for
+                    // a body that had thirty rows in it.
+                    filtered.isEmpty() && unreadable -> "unreadable"
                     filtered.isEmpty() -> "empty"
                     else -> "content"
                 },
@@ -352,6 +373,23 @@ fun NewsScreen(
                         action = stringResource(R.string.news_saved_back),
                         onAction = { savedOnly = false },
                     )
+                    // Two empties, and the difference is the whole of «اخبار آپدیت نمی‌شود».
+                    //
+                    // A feed the server did not publish and a feed that arrived in full and could
+                    // not be read look identical from here — same HTTP 200, same green line in the
+                    // request log, same blank list — and they call for opposite next moves. The
+                    // second is now said out loud on the screen the owner is actually looking at,
+                    // with the count, so it takes no export and no second person to see it.
+                    "unreadable" -> CoineProEmptyState(
+                        icon = CoineProIcons.News,
+                        message = stringResource(
+                            R.string.news_none_readable,
+                            (state.newsSource?.received ?: 0).toPersianDigits(),
+                        ),
+                        hint = stringResource(R.string.news_none_readable_hint),
+                        action = stringResource(R.string.news_refresh),
+                        onAction = controller::refresh,
+                    )
                     "empty" -> CoineProEmptyState(
                         icon = CoineProIcons.News,
                         message = stringResource(R.string.news_empty),
@@ -373,6 +411,11 @@ fun NewsScreen(
                                     FreshnessStrip(
                                         refreshing = state.refreshing,
                                         newest = newest,
+                                        // Where some of the feed was lost. The list is not empty,
+                                        // so nothing else on this screen would ever mention that
+                                        // two thirds of it never made it off the wire.
+                                        kept = partial?.kept,
+                                        received = partial?.received,
                                         // The failure the list itself cannot show. A refresh that
                                         // fails over stories already on screen leaves them there —
                                         // deliberately, because an error message where a feed used
@@ -414,6 +457,30 @@ fun NewsScreen(
         if (!twoPane && openArticleId != null) readingSurface() else listPane()
     }
 }
+
+/**
+ * Rows arrived and not one of them became a story.
+ *
+ * The single most expensive failure mode this screen has, because it is indistinguishable from an
+ * outage at every point an engineer would look: the request succeeds, the status is 200, the body
+ * is the right size, and the list is blank. It is what a feed whose date format
+ * `parseWireInstant` cannot read looks like, and what a feed spelling `publishedAt` where this app
+ * expects `published_at` looks like — TradeYar's own public headline route, on the same host,
+ * spells it the second way.
+ *
+ * Distinguishing it costs one comparison and turns «اخبار نمی‌آید» from a report into a fact.
+ */
+internal fun feedUnreadable(source: NewsFeedOutcome?): Boolean =
+    source != null && source.received > 0 && source.kept == 0
+
+/**
+ * Some of the feed was lost on the way in. Null where none was, or where all of it was.
+ *
+ * The partial case has no other symptom at all: the list is full, the stories are real, and nothing
+ * anywhere says a third of them were dropped for want of a field.
+ */
+internal fun feedShortfall(source: NewsFeedOutcome?): NewsFeedOutcome? =
+    source?.takeIf { it.kept in 1 until it.received }
 
 /**
  * The reading page, plus the one state the list cannot show: a story that is no longer anywhere.
@@ -527,6 +594,10 @@ private fun FreshnessStrip(
     refreshing: Boolean,
     newest: Instant?,
     failed: Boolean,
+    /** Stories read, where the server sent more than the app could use. Null when none were lost. */
+    kept: Int?,
+    /** Rows the server actually sent, alongside [kept]. */
+    received: Int?,
     onRefresh: () -> Unit,
 ) {
     CoineProCard(
@@ -545,6 +616,13 @@ private fun FreshnessStrip(
                     failed && newest != null ->
                         stringResource(R.string.news_refresh_failed, PersianDateTime.moment(newest))
                     failed -> stringResource(R.string.news_unavailable)
+                    // Ahead of the freshness line, because a list missing half its stories is a
+                    // bigger fact about this feed than the age of the half that arrived.
+                    kept != null && received != null -> stringResource(
+                        R.string.news_partly_readable,
+                        kept.toPersianDigits(),
+                        received.toPersianDigits(),
+                    )
                     newest != null -> stringResource(R.string.news_newest, PersianDateTime.moment(newest))
                     else -> stringResource(R.string.news_timestamp_note)
                 },

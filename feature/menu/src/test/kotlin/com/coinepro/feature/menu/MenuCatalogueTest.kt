@@ -44,8 +44,26 @@ class MenuCatalogueTest {
     @Test
     fun `row order within a group is the catalogue's`() {
         val market = MenuCatalogue.sections(member).first { it.group == MenuGroup.MARKET }
-        val expected = MenuCatalogue.ALL.filter { it.group == MenuGroup.MARKET }.map { it.id }
+        // Filtered by platform the same way the sections are. A row belonging to the other backend
+        // is not a row this reader is missing — it is a room that does not exist on their side, and
+        // the calendar is the case: TradeYar publishes no calendar route at all.
+        val expected = MenuCatalogue.ALL
+            .filter { it.group == MenuGroup.MARKET }
+            .filter { it.platform == null || it.platform == member.platform }
+            .map { it.id }
         assertEquals(expected, market.items.map { it.entry.id })
+    }
+
+    @Test
+    fun `a row that belongs to the other backend is absent rather than locked`() {
+        // The distinction the whole screen rests on. A locked row says "sign in and this is yours";
+        // an absent one says nothing, which is the only honest thing to say about a feature the
+        // reader's platform does not have. The calendar is forex-only because TradeYar has no
+        // calendar route — it was leading a crypto reader to a screen that could never fill.
+        assertTrue("calendar" !in ids(member))
+        assertTrue("calendar" !in ids(guest))
+        val forex = MenuAccess(platform = MarketPlatform.COINEPRO_FX, signedIn = true)
+        assertTrue("calendar" in ids(forex))
     }
 
     @Test

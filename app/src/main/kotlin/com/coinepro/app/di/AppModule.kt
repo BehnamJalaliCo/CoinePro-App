@@ -2059,6 +2059,18 @@ private fun MarketIntelSnapshot.record(log: AppLog, platform: MarketPlatform) {
             "calendar" to calendar.size.toString(),
         ),
     )
+    newsSource?.let { feed ->
+        // The three facts the mapped list can no longer show: how many rows arrived against how
+        // many survived, the first and last publication string in the server's own order, and the
+        // first row's field names. This is the line that tells "they are not publishing" apart
+        // from "we cannot read what they publish" — two complaints that look identical on a screen
+        // and have opposite fixes, which is how this one survived four reports.
+        if (feed.failure != null || feed.dropped > 0) {
+            log.warn(LogTag.GATEWAY, "news feed unusable", feed.logFields(platform.name))
+        } else {
+            log.info(LogTag.GATEWAY, "news feed read", feed.logFields(platform.name))
+        }
+    }
     val source = calendarSource ?: return
     val fields = mapOf(
         "platform" to platform.name,
@@ -2066,6 +2078,8 @@ private fun MarketIntelSnapshot.record(log: AppLog, platform: MarketPlatform) {
         "kept" to source.events.size.toString(),
         "dropped" to source.dropped.toString(),
         "keys" to (source.sampleKeys ?: "—"),
+        // Two calendar routes now, and which one answered is the whole question.
+        "route" to (source.route ?: "—"),
         "failure" to (source.failure ?: "—"),
     )
     if (source.failure != null || source.dropped > 0) {

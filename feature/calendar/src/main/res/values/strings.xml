@@ -15,6 +15,10 @@
     <string name="calendar_impact_unknown">تأثیر نامشخص</string>
     <string name="calendar_loading">در حال دریافت رویدادها…</string>
     <string name="calendar_unavailable">تقویم در دسترس نیست.</string>
+    <!-- TradeYar has no calendar route at all and asks the app for `calendar: []` by contract.
+         Not an outage, and not refreshable: see CalendarMode.NOT_ON_THIS_PLATFORM. -->
+    <string name="calendar_not_on_platform">تقویم اقتصادی روی تریدیار منتشر نمی‌شود.</string>
+    <string name="calendar_not_on_platform_hint">رویدادهای کلان — نرخ بهره، اشتغال، تورم — کارِ سمت فارکس است و بر لیست شدن یک توکن اثری ندارند. برای دیدن تقویم به کوینه‌پرو فارکس سوئیچ کنید.</string>
     <string name="calendar_none_published">سرور برای این تقویم رویدادی نفرستاد. تقویم اقتصادی از سمت سرور می‌آید و آپ رویدادی از خودش نمی‌سازد.</string>
     <string name="calendar_empty">رویدادی با این فیلتر پیدا نشد.</string>
     <string name="calendar_retry">تلاش دوباره</string>

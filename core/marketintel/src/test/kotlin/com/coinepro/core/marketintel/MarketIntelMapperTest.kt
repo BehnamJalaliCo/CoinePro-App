@@ -1,5 +1,6 @@
 package com.coinepro.core.marketintel
 
+import com.google.gson.JsonParser
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -25,19 +26,7 @@ class MarketIntelMapperTest {
 
     @Test
     fun `missing stale flag is treated as stale rather than fresh`() {
-        val item = MarketNewsDto(
-            id = "n1",
-            title = "Gold reacts to macro data",
-            summary = null,
-            source = "Provider",
-            url = "https://example.com/item",
-            publishedAt = "2026-08-23T10:00:00Z",
-            sentiment = "bullish",
-            impact = "high",
-            relevance = listOf("gold"),
-            stale = null,
-        ).toDomain()
-
+        val item = readNews(newsRow(stale = null))
         assertTrue(requireNotNull(item).isStale)
     }
 
@@ -51,10 +40,12 @@ class MarketIntelMapperTest {
     @Test
     fun `a picture and a body survive the mapping, and a cleartext picture does not`() {
         val item = requireNotNull(
-            newsDto(
-                imageUrl = "https://cdn.example.com/gold.jpg",
-                body = "بند اول.\n\nبند دوم.",
-            ).toDomain(),
+            readNews(
+                newsRow(
+                    imageUrl = "https://cdn.example.com/gold.jpg",
+                    body = "بند اول.\n\nبند دوم.",
+                ),
+            ),
         )
         assertEquals("https://cdn.example.com/gold.jpg", item.imageUrl)
         assertEquals("بند اول.\n\nبند دوم.", item.body)
@@ -62,7 +53,7 @@ class MarketIntelMapperTest {
         // The same rule the article link has, for the same reason: a cleartext fetch is the one
         // request in the app anybody on the path can rewrite, and a swapped picture is worse than
         // no picture because the reader trusts it precisely because the app drew it.
-        assertNull(newsDto(imageUrl = "http://cdn.example.com/gold.jpg").toDomain()?.imageUrl)
+        assertNull(readNews(newsRow(imageUrl = "http://cdn.example.com/gold.jpg"))?.imageUrl)
     }
 
     @Test
@@ -71,51 +62,67 @@ class MarketIntelMapperTest {
         // fields. Taken at face value the reading page would print the same paragraph twice, the
         // second time under a heading claiming it was more.
         val summary = "کمیتهٔ بازار باز رأی به توقف داد."
-        assertNull(newsDto(summary = summary, body = summary).toDomain()?.body)
-        assertNull(newsDto(summary = summary, body = "  $summary  ").toDomain()?.body)
+        assertNull(readNews(newsRow(summary = summary, body = summary))?.body)
+        assertNull(readNews(newsRow(summary = summary, body = "  $summary  "))?.body)
     }
 
     @Test
     fun `a body arriving as markup is refused rather than printed with its tags`() {
-        assertNull(newsDto(body = "<p>بند اول.</p><p>بند دوم.</p>").toDomain()?.body)
+        assertNull(readNews(newsRow(body = "<p>بند اول.</p><p>بند دوم.</p>"))?.body)
         // A lone angle bracket is not markup. Persian prose is allowed to contain one, and refusing
         // the whole story over it would lose real text to a rule aimed at HTML.
-        assertEquals("نرخ < ۲ درصد ماند.", newsDto(body = "نرخ < ۲ درصد ماند.").toDomain()?.body)
+        assertEquals("نرخ < ۲ درصد ماند.", readNews(newsRow(body = "نرخ < ۲ درصد ماند."))?.body)
     }
 
     @Test
     fun `a body written on Windows and padded with blank lines is normalised, not rejected`() {
-        val item = newsDto(body = "بند اول.\r\n\r\n\r\n  \r\nبند دوم.\r\n").toDomain()
+        val item = readNews(newsRow(body = "بند اول.\r\n\r\n\r\n  \r\nبند دوم.\r\n"))
         assertEquals("بند اول.\n\nبند دوم.", item?.body)
     }
 
     @Test
     fun `a story with neither picture nor body maps to a story that has neither`() {
-        val item = requireNotNull(newsDto().toDomain())
+        val item = requireNotNull(readNews(newsRow()))
         assertNull(item.imageUrl)
         assertNull(item.body)
     }
 
     @Test
+    fun `a story missing any of id title source or a readable date is dropped`() {
+        assertNull(readNews(newsRow(id = null)))
+        assertNull(readNews(newsRow(title = null)))
+        assertNull(readNews(newsRow(source = null)))
+        assertNull(readNews(newsRow(publishedAt = "next tuesday")))
+    }
+
+    @Test
     fun `the feed is ordered newest first whatever order the server sent it in`() {
-        // The owner has reported three times that «اخبار اصلاً آپدیت نمی‌شود، همان چیزی است که از
+        // The owner has reported four times that «اخبار اصلاً آپدیت نمی‌شود، همان چیزی است که از
         // ورژن ۱ بوده». An adapter answering `ORDER BY id`, or ascending, produces exactly that and
-        // nothing inside the app can tell it apart from a server that stopped publishing: the
+        // nothing inside the app could tell it apart from a server that stopped publishing: the
         // request goes out, the response is fresh, the count is right — and the only part of the
         // list anybody reads is the oldest rows, unchanged for ever.
-        val snapshot = MarketIntelSnapshotDto(
-            serverTime = "2026-08-30T13:00:00Z",
-            news = listOf(
-                newsDto(id = "oldest", publishedAt = "2026-08-24T09:00:00Z"),
-                newsDto(id = "newest", publishedAt = "2026-08-30T12:37:54.012304+00:00"),
-                newsDto(id = "middle", publishedAt = "2026-08-27T18:30:00+00:00"),
-            ),
-        ).toDomain()
-
-        assertEquals(
-            listOf("newest", "middle", "oldest"),
-            snapshot.news.map(MarketNewsItem::id),
+        val snapshot = snapshotOf(
+            """
+            {"server_time":"2026-08-30T13:00:00Z","calendar":[],"news":[
+              ${newsJson(id = "oldest", publishedAt = "2026-08-24T09:00:00Z")},
+              ${newsJson(id = "newest", publishedAt = "2026-08-30T12:37:54.012304+00:00")},
+              ${newsJson(id = "middle", publishedAt = "2026-08-27T18:30:00+00:00")}
+            ]}
+            """,
         )
+
+        assertEquals(listOf("newest", "middle", "oldest"), snapshot.news.map(MarketNewsItem::id))
+
+        // And the evidence of the server's own order survives the sort, which is the half that was
+        // missing: `first` older than `last` is an ascending adapter, and no amount of sorting here
+        // will ever make that visible again once the list has been reordered.
+        val probe = requireNotNull(snapshot.newsSource)
+        assertEquals("2026-08-24T09:00:00Z", probe.firstPublished)
+        assertEquals("2026-08-27T18:30:00+00:00", probe.lastPublished)
+        assertEquals(3, probe.received)
+        assertEquals(3, probe.kept)
+        assertEquals(0, probe.dropped)
     }
 
     @Test
@@ -152,27 +159,6 @@ class MarketIntelMapperTest {
         assertFalse(listOf(matching).highImpactWarningsFor("EURUSD", now).isNotEmpty())
     }
 
-    private fun newsDto(
-        summary: String? = null,
-        imageUrl: String? = null,
-        body: String? = null,
-        id: String = "n1",
-        publishedAt: String = "2026-08-23T10:00:00Z",
-    ) = MarketNewsDto(
-        id = id,
-        title = "Gold reacts to macro data",
-        summary = summary,
-        source = "Provider",
-        url = "https://example.com/item",
-        publishedAt = publishedAt,
-        sentiment = "bullish",
-        impact = "high",
-        relevance = listOf("gold"),
-        stale = false,
-        imageUrl = imageUrl,
-        body = body,
-    )
-
     private fun event(
         id: String,
         impact: MarketImpact,
@@ -193,3 +179,49 @@ class MarketIntelMapperTest {
         isStale = stale,
     )
 }
+
+/** The snapshot a body produces, read exactly as the gateway reads one. */
+internal fun snapshotOf(json: String, route: String = "test/route", status: Int = 200): MarketIntelSnapshot =
+    readSnapshot(JsonParser.parseString(json.trimIndent()), route, status)
+
+internal fun newsJson(
+    summary: String? = null,
+    imageUrl: String? = null,
+    body: String? = null,
+    id: String? = "n1",
+    title: String? = "Gold reacts to macro data",
+    source: String? = "Provider",
+    publishedAt: String? = "2026-08-23T10:00:00Z",
+    stale: Boolean? = false,
+): String {
+    val fields = buildList {
+        id?.let { add("\"id\":${quote(it)}") }
+        title?.let { add("\"title\":${quote(it)}") }
+        summary?.let { add("\"summary\":${quote(it)}") }
+        source?.let { add("\"source\":${quote(it)}") }
+        add("\"url\":\"https://example.com/item\"")
+        publishedAt?.let { add("\"published_at\":${quote(it)}") }
+        add("\"sentiment\":\"bullish\"")
+        add("\"impact\":\"high\"")
+        add("\"relevance\":[\"gold\"]")
+        stale?.let { add("\"stale\":$it") }
+        imageUrl?.let { add("\"image_url\":${quote(it)}") }
+        body?.let { add("\"body\":${quote(it)}") }
+    }
+    return fields.joinToString(",", "{", "}")
+}
+
+internal fun newsRow(
+    summary: String? = null,
+    imageUrl: String? = null,
+    body: String? = null,
+    id: String? = "n1",
+    title: String? = "Gold reacts to macro data",
+    source: String? = "Provider",
+    publishedAt: String? = "2026-08-23T10:00:00Z",
+    stale: Boolean? = false,
+) = JsonParser.parseString(
+    newsJson(summary, imageUrl, body, id, title, source, publishedAt, stale),
+).asJsonObject
+
+private fun quote(value: String): String = com.google.gson.JsonPrimitive(value).toString()
