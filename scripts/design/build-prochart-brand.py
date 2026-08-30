@@ -21,6 +21,14 @@ The owner also supplied a white-on-white variant. It is not used: it carries the
 usable channel to separate figure from ground, and the derived alpha above already gives a mark that
 can be tinted to anything.
 
+### Which masters this actually reads
+
+`prochart-mark-gold-master.png` (the mark, gold on black), `prochart-wordmark-fa-master.png` (the
+name in Persian, white on black) and `prochart-lockup-master.png` (the Latin lockup, for English).
+`prochart-mark-master.png` and `prochart-mark-light-master.png` are the earlier white artwork and are
+**no longer read** — kept in `design/brand/` because they are the owner's originals and deleting a
+supplied master to tidy a directory is not this script's call to make.
+
 Run:  python3 scripts/design/build-prochart-brand.py
 """
 
@@ -59,10 +67,20 @@ WORDMARK_MDPI = 168
 # and wrong about what a launcher does with them: several mask shapes clip closer than the circle,
 # and a mark sized to the safe zone has nothing left to lose when they do.
 #
-# 54 is 72 less a quarter. It sits comfortably inside 66 on both axes with room for any mask, which
-# is what the guideline asks for and what the two previous values each missed from one side.
+# 54 was 72 less a quarter, and it sat comfortably inside 66 with room for any mask.
+#
+# **It is 50 now, and the reason is the artwork rather than the guideline.** The mark this cuts from
+# used to be 626×682 — noticeably taller than wide, with empty margin down both sides of its own
+# bounding box, so a box-fitted mark had slack to spend on the nudge below. The owner's newer gold
+# mark is 951×975, near enough square, and fills its box edge to edge. At 54 plus the nudge the ink
+# reached 88 of 108 at mdpi, one unit outside the safe zone — invisible on the master and clipped by
+# a mask on a real launcher, which is the exact failure the 72 cut had.
+#
+# 50 restores the margin (about thirteen units at xxxhdpi, three at mdpi) and, because the new
+# artwork is wider, it also reads at about the same optical size the old mark did at 54. Measured,
+# not guessed: `main` prints every cut and the bounds are checked at all five densities.
 LAUNCHER_CANVAS = 432
-LAUNCHER_MARK = int(LAUNCHER_CANVAS * 54 / 108)
+LAUNCHER_MARK = int(LAUNCHER_CANVAS * 50 / 108)
 
 # The mark sits five percent of the icon's width to the **right** of centre.
 #
@@ -79,6 +97,24 @@ LAUNCHER_MARK = int(LAUNCHER_CANVAS * 54 / 108)
 LAUNCHER_NUDGE = 0.05
 
 
+# The brand gold, measured off the owner's own icon rather than typed in.
+#
+# `#FCBA26`, the modal colour of every pixel above half brightness in `prochart-mark-gold-master`.
+# It is close to the `#F0B90B` in the design tokens and it is **not the same**, and the artwork wins
+# on the launcher: an icon whose gold is a shade off the one in the file the owner drew is a
+# difference nobody can name and everybody can see, next to the original, on a home screen.
+#
+# Sampled by hand once and written here rather than recomputed on every run, so that a revision of
+# the artwork that shifts the hue shows up as a diff in this file instead of silently repainting the
+# icon. If the master changes, remeasure and edit this line.
+BRAND_GOLD = (252, 186, 38)
+
+# What [BRAND_GOLD] weighs in PIL's `L` conversion, which is ITU-R 601. Used as the divisor that
+# turns the artwork's luminance into coverage: a fully inked gold pixel has to come out at alpha
+# 255, and dividing by 255 instead would make the whole mark 26% transparent.
+GOLD_LUMA = 0.299 * BRAND_GOLD[0] + 0.587 * BRAND_GOLD[1] + 0.114 * BRAND_GOLD[2]
+
+
 # Below this luminance a pixel is ground, not ink.
 #
 # The masters are rendered artwork, not vector exports, and their "black" is not zero — it runs one
@@ -90,6 +126,18 @@ LAUNCHER_NUDGE = 0.05
 # Eight is high enough to clear the noise floor and far below anything on the anti-aliased edge,
 # which climbs to 255 within a pixel or two. Nothing visible is lost.
 INK_FLOOR = 8
+
+# The same floor for the JPEG masters, which need a higher one.
+#
+# The white-on-black masters are PNGs and their ground is one to three. The owner's newer artwork
+# arrives as JPEG, and JPEG ringing puts a halo of eight to twenty around every hard edge on a black
+# ground — which [INK_FLOOR] would read as ink and the trim would read as the artwork's bounds,
+# giving a mark with a grey fog around it and a crop a dozen pixels too generous on every side.
+#
+# Twenty-four clears the ringing and is far below the anti-aliased edge, which climbs past a hundred
+# within a pixel. Deliberately a separate constant: raising the PNG floor to match would throw away
+# real edge detail on the masters that do not need it.
+JPEG_INK_FLOOR = 24
 
 
 def inked(master: Image.Image) -> Image.Image:
@@ -104,6 +152,47 @@ def inked(master: Image.Image) -> Image.Image:
     alpha = master.convert("L").point(lambda value: 0 if value < INK_FLOOR else value)
     white = Image.new("RGBA", master.size, (255, 255, 255, 255))
     white.putalpha(alpha)
+    return white
+
+
+def inked_jpeg(master: Image.Image) -> Image.Image:
+    """[inked], with the floor a JPEG master needs. See [JPEG_INK_FLOOR]."""
+    alpha = master.convert("L").point(lambda value: 0 if value < JPEG_INK_FLOOR else value)
+    white = Image.new("RGBA", master.size, (255, 255, 255, 255))
+    white.putalpha(alpha)
+    return white
+
+
+def golden(master: Image.Image) -> Image.Image:
+    """Gold artwork on black becomes flat [BRAND_GOLD] with its coverage as the alpha channel.
+
+    The same idea as [inked] and it cannot be the same function. [inked] assumes the ink is white,
+    so luminance *is* coverage; here the ink is gold, whose luminance is 189 rather than 255, and
+    reusing that function would produce a mark 26% transparent everywhere — which on the launcher's
+    black plate reads as a muddy brown and looks like a rendering fault rather than a colour choice.
+
+    So the luminance is divided by the gold's own before it becomes alpha, and the colour is set
+    flat rather than kept from the master. Keeping the master's RGB would carry JPEG's colour
+    ringing into every edge pixel: a fringe of green and magenta a pixel wide, invisible at 512 and
+    obvious at 48.
+    """
+    luma = master.convert("L").point(lambda value: 0 if value < JPEG_INK_FLOOR else value)
+    alpha = luma.point(lambda value: min(255, round(value * 255 / GOLD_LUMA)))
+    gold = Image.new("RGBA", master.size, BRAND_GOLD + (255,))
+    gold.putalpha(alpha)
+    return gold
+
+
+def coverage(image: Image.Image) -> Image.Image:
+    """The same shape in flat white, for the layer a launcher tints itself.
+
+    Android's themed icon paints the monochrome layer in the launcher's own colour, so what it wants
+    is coverage and nothing else. Handing it the gold layer would work — the tint replaces the
+    colour — but it would ship a file whose RGB is a lie about what is drawn, and the next person to
+    open it would reasonably conclude the themed icon is gold.
+    """
+    white = Image.new("RGBA", image.size, (255, 255, 255, 255))
+    white.putalpha(image.getchannel("A"))
     return white
 
 
@@ -143,8 +232,16 @@ def scaled_to_box(image: Image.Image, box: int) -> Image.Image:
 
 
 def main() -> int:
-    mark = trimmed(inked(Image.open(BRAND / "prochart-mark-master.png")))
     lockup = trimmed(inked(Image.open(BRAND / "prochart-lockup-master.png")))
+    # The owner's newer artwork: the mark in the brand gold, and the name set in Persian.
+    gold = trimmed(golden(Image.open(BRAND / "prochart-mark-gold-master.png")))
+    persian = trimmed(inked_jpeg(Image.open(BRAND / "prochart-wordmark-fa-master.png")))
+    # The in-app mark is the launcher's mark with its colour taken off, not a second drawing.
+    #
+    # It used to be cut from `prochart-mark-master.png`, which is the older white artwork. Two
+    # sources for one logo is how a home-screen icon and a sign-in screen end up subtly different —
+    # and nobody reports it, because each looks right on its own. One master, two treatments.
+    mark = coverage(gold)
 
     print("mark:")
     for bucket, factor in DENSITIES.items():
@@ -153,11 +250,28 @@ def main() -> int:
             DESIGNSYSTEM / f"drawable-{bucket}" / "prochart_mark.png",
         )
 
-    print("wordmark:")
+    # The wordmark, in the language the reader is actually in.
+    #
+    # Persian is this app's default locale and `values/` is Persian throughout, so the unqualified
+    # drawable is the Persian one and `drawable-en-*` carries the Latin lockup — the same convention
+    # the strings already use, applied to the one image that is also a piece of writing.
+    #
+    # A single Latin wordmark on a Persian screen was the old behaviour and it was wrong in a way
+    # that is easy to miss from outside the audience: the product's name in this market is «پروچارت»,
+    # written, and a reader who has never seen the Latin form does not recognise it as the name of
+    # the app they opened.
+    print("wordmark (fa, default):")
+    for bucket, factor in DENSITIES.items():
+        write(
+            scaled_to_width(persian, round(WORDMARK_MDPI * factor)),
+            DESIGNSYSTEM / f"drawable-{bucket}" / "prochart_wordmark.png",
+        )
+
+    print("wordmark (en):")
     for bucket, factor in DENSITIES.items():
         write(
             scaled_to_width(lockup, round(WORDMARK_MDPI * factor)),
-            DESIGNSYSTEM / f"drawable-{bucket}" / "prochart_wordmark.png",
+            DESIGNSYSTEM / f"drawable-en-{bucket}" / "prochart_wordmark.png",
         )
 
     # The launcher, in three layers.
@@ -169,7 +283,10 @@ def main() -> int:
     print("launcher:")
     ground = Image.new("RGBA", (LAUNCHER_CANVAS, LAUNCHER_CANVAS), (0, 0, 0, 255))
     foreground = Image.new("RGBA", (LAUNCHER_CANVAS, LAUNCHER_CANVAS), (0, 0, 0, 0))
-    centred = scaled_to_box(mark, LAUNCHER_MARK)
+    # The **gold** mark on the launcher, which is the owner's own icon rather than a tint of ours.
+    # In the app the mark stays white coverage so a screen can paint it whatever the theme asks for;
+    # a launcher icon has no theme to follow and is the one place the brand colour is the design.
+    centred = scaled_to_box(gold, LAUNCHER_MARK)
     offset = (LAUNCHER_CANVAS - LAUNCHER_MARK) // 2
     nudge = round(LAUNCHER_CANVAS * LAUNCHER_NUDGE)
     foreground.paste(centred, (offset + nudge, offset), centred)
@@ -177,9 +294,13 @@ def main() -> int:
         side = round(108 * factor)
         write(ground.resize((side, side), Image.LANCZOS), APP_RES / f"mipmap-{bucket}" / "ic_launcher_background.png")
         write(foreground.resize((side, side), Image.LANCZOS), APP_RES / f"mipmap-{bucket}" / "ic_launcher_foreground.png")
-        # Themed icons are tinted by the launcher, so the layer supplies coverage only. The same
-        # white mark is already exactly that: opaque where the ink is, transparent everywhere else.
-        write(foreground.resize((side, side), Image.LANCZOS), APP_RES / f"mipmap-{bucket}" / "ic_launcher_monochrome.png")
+        # Themed icons are tinted by the launcher, so the layer supplies coverage only — see
+        # [coverage]. The same shape as the gold foreground, in flat white, so nothing downstream
+        # has to know that the layer beside it happens to be gold.
+        write(
+            coverage(foreground).resize((side, side), Image.LANCZOS),
+            APP_RES / f"mipmap-{bucket}" / "ic_launcher_monochrome.png",
+        )
 
     # The Play listing wants one flat 512 square with no transparency at all — an alpha channel is
     # rejected at upload — so this is the only place the black ground is baked in.
@@ -188,7 +309,7 @@ def main() -> int:
     # The same proportion the launcher uses, so the store icon and the one on the home screen are
     # the same drawing at two sizes rather than two different logos.
     play_side = round(512 * 54 / 108)
-    play_mark = scaled_to_box(mark, play_side)
+    play_mark = scaled_to_box(gold, play_side)
     # The same nudge, in the same proportion. The store icon and the one on the home screen have to
     # be the same drawing at two sizes; moving one and not the other would make them two logos.
     play_nudge = round(512 * LAUNCHER_NUDGE)

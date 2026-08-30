@@ -2,7 +2,8 @@ package com.coinepro.core.designsystem
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
@@ -23,10 +24,21 @@ import androidx.compose.ui.unit.dp
  *
  * ### One asset per shape, and the colour comes from the theme
  *
- * The artwork the owner supplied is white ink on a black ground. Both are cut by
- * `scripts/design/build-prochart-brand.py` into flat white with the luminance as the alpha channel,
- * which is what makes a single file work everywhere: the shape lives in the alpha, so a tint paints
- * it any colour without a second export, an outline variant or a plate behind it.
+ * The artwork the owner supplied is ink on a black ground — the mark in the brand gold, the name in
+ * white. Both are cut by `scripts/design/build-prochart-brand.py` into flat white with the coverage
+ * as the alpha channel, which is what makes a single file work everywhere: the shape lives in the
+ * alpha, so a tint paints it any colour without a second export, an outline variant or a plate
+ * behind it. The launcher is the one place the gold is baked in, because a home-screen icon has no
+ * theme to follow and there the brand colour *is* the design.
+ *
+ * ### The wordmark is written, so it follows the reader's language
+ *
+ * `drawable-<density>` carries the Persian «پروچارت» and `drawable-en-<density>` the Latin
+ * lockup — the same convention `values/` and `values-en/` already use, applied to the one image
+ * that is also a piece of writing. A single Latin wordmark on a Persian screen was the old
+ * behaviour and it was wrong in a way that is easy to miss from outside the audience: the product's
+ * name in this market is «پروچارت», written, and a reader who has never seen the Latin form does
+ * not recognise it as the name of the app they just opened.
  *
  * That is the whole difference from the brand this replaces. The old wordmark was a bevelled metal
  * raster whose highlights were near white, so on a pale surface half the name disappeared and it
@@ -83,41 +95,84 @@ fun ProChartWordmarkText(
 /** The brand name in Latin, in one place so a rename is one edit. */
 const val PRO_CHART = "Pro CHart"
 
-/*
- * There is deliberately no `ProChartMark` composable.
+/**
+ * The brand name in Persian, which is what almost every reader of this app calls it.
  *
- * The mark on its own had one, and after the lockup stopped stacking it above a wordmark that
- * already contains it, nothing in the app drew it — a public component with no call site, which is
- * the shape of thing this codebase has spent a whole wave deleting. `prochart_mark.png` stays in
- * `res/`, because the launcher's three layers, the Play icon and the README banner are all cut from
- * it by `scripts/design/build-prochart-brand.py`; if a screen ever wants the mark alone, this is
- * four lines coming back.
+ * One word, as the owner's artwork sets it — «پروچارت», not «پرو چارت». It is a proper noun and it
+ * is written the way the logo is written; a space here and none in the logo is the kind of
+ * inconsistency that makes a product look like two products.
  */
+const val PRO_CHART_FA = "پروچارت"
 
 /**
- * The brand at the head of a full-screen surface such as sign-in.
+ * The mark on its own, in the brand gold.
  *
- * The wordmark **and nothing above it**. The supplied artwork already carries the mark to the left
- * of the name, so the mark-over-wordmark stack this used to draw put the same drawing on screen
- * twice — which is how a logo stops reading as a logo and starts reading as a mistake. One asset,
- * one lockup, at a size that fills the space a stack used to.
+ * This was deleted once, correctly, when nothing drew it — a public component with no call site.
+ * It is back because [ProChartLockup] needs it: the owner's lockup is a **two-colour** drawing, the
+ * mark in gold beside the name in white, and a single tinted image cannot be two colours. Composing
+ * the two here instead of shipping a flat raster is also what keeps the light theme working, since
+ * the name follows [CoineProColors.TextPrimary] while the mark stays gold on both grounds.
  *
- * [markSize] is gone with it rather than kept as a parameter nothing reads.
+ * Gold by default and not [CoineProColors.TextPrimary], which is the opposite of [ProChartWordmark]
+ * and deliberate: the name is type and behaves like the heading it sits beside, the mark is a logo
+ * and has a colour of its own.
+ */
+@Composable
+fun ProChartMark(
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null,
+    tint: Color = CoineProColors.Gold,
+) {
+    Image(
+        painter = painterResource(R.drawable.prochart_mark),
+        contentDescription = contentDescription,
+        colorFilter = ColorFilter.tint(tint),
+        modifier = modifier,
+    )
+}
+
+/**
+ * The brand at the head of a full-screen surface such as sign-in: the mark beside the name.
+ *
+ * ### Why a row of two assets rather than one picture of the lockup
+ *
+ * The owner's lockup is two colours — a gold mark and a white name — and one tinted PNG cannot be
+ * two colours. Shipping it flat would work on the dark theme and break on the light one, which is
+ * exactly the fault the brand this replaces had: a raster whose highlights were near white, given a
+ * dark plate to sit on, reading as a sticker on every pale screen.
+ *
+ * Composed, the name follows the theme and the mark keeps its own colour, on both grounds.
+ *
+ * ### The order is the reader's, not the file's
+ *
+ * A `Row` lays its first child at the **start** edge, which is the right in Persian and the left in
+ * English. So the mark leads in both directions without this file naming a side — the same reason
+ * nothing in `CoineProListDetail` says left or right either.
  */
 @Composable
 fun ProChartLockup(
     modifier: Modifier = Modifier,
-    wordmarkWidth: Dp = 240.dp,
+    wordmarkWidth: Dp = 200.dp,
     contentDescription: String? = null,
 ) {
-    Column(
+    Row(
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
+        // Sized off the wordmark rather than fixed, so the two stay in proportion at whatever width
+        // a caller asks for. 0.34 is the ratio in the owner's own artwork, measured.
+        ProChartMark(
+            modifier = Modifier.size(wordmarkWidth * MARK_TO_WORDMARK),
+            contentDescription = contentDescription,
+        )
         ProChartWordmark(
             modifier = Modifier.width(wordmarkWidth),
-            contentDescription = contentDescription,
+            // Named once. Two content descriptions on one lockup is two announcements of one thing.
+            contentDescription = null,
         )
     }
 }
+
+/** The mark's height as a fraction of the wordmark's width, measured off the owner's lockup. */
+private const val MARK_TO_WORDMARK = 0.34f
