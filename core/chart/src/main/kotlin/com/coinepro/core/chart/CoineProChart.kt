@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
@@ -44,11 +45,13 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
@@ -612,6 +615,28 @@ fun CoineProChart(
      */
     var lineMove by remember { mutableStateOf(false) }
 
+    /**
+     * Which handle of the selected drawing a finger is on, and how far its grab has animated.
+     *
+     * Two indices rather than one, because the shrink has to outlive the gesture: the moment the
+     * finger lifts, `grabbedHandle` goes to −1 while `paintedHandle` keeps the index for the two
+     * hundred milliseconds the ring takes to come back down. One index would make the handle snap
+     * to its resting size the instant the reader let go, which reads as the drawing having been
+     * dropped rather than placed.
+     */
+    var grabbedHandle by remember { mutableIntStateOf(-1) }
+    var paintedHandle by remember { mutableIntStateOf(-1) }
+    val grabGrow = remember { Animatable(0f) }
+    LaunchedEffect(grabbedHandle) {
+        if (grabbedHandle >= 0) {
+            paintedHandle = grabbedHandle
+            grabGrow.animateTo(1f, tween(HANDLE_GRAB_MS))
+        } else {
+            grabGrow.animateTo(0f, tween(HANDLE_GRAB_MS))
+            paintedHandle = -1
+        }
+    }
+
     /** Momentum after a flick. See [KineticScroll] for why it is touch-only. */
     val kinetic = remember { KineticScroll() }
     var flinging by remember { mutableStateOf(false) }
@@ -1042,7 +1067,6 @@ fun CoineProChart(
                                 // one cover the same ground, which is the whole of what "the pan
                                 // feels wrong" means.
                                 var panResidue = 0f
-                                var zoomResidue = 1f
                                 // The fling is not here, and that is still deliberate.
                                 //
                                 // `detectTransformGestures` offers no release callback and no
@@ -1065,28 +1089,13 @@ fun CoineProChart(
                                         // would move the chart sideways while compressing it.
                                         val axisTop = timeAxisTop[0]
                                         val onTimeAxis = axisTop > 0f && centroid.y >= axisTop
-                                        if (abs(zoom - 1f) > ZOOM_DEADZONE) {
-                                            zoomResidue *= zoom
-                                            val before = viewport.barsPerView
-                                            val zoomed = viewport.zoomedBy(zoomResidue)
-                                            if (zoomed.barsPerView != before) {
-                                                viewport = zoomed
-                                                zoomResidue = 1f
-                                            }
-                                            // Stage one of the zoom: a pinch magnifies the picture,
-                                            // which means both axes. Price alone is the gutter drag
-                                            // and time alone is the drag on the time axis, so the
-                                            // two-finger gesture is the only one that has to mean
-                                            // "closer" rather than "taller" or "wider".
-                                            //
-                                            // Inverted, because `priceZoom` above one *widens* the
-                                            // range and so flattens the candles: pinching outward
-                                            // has to shrink it. Bounded by the viewport at a
-                                            // quarter and eight, and a double tap on the gutter
-                                            // puts it back.
-                                            viewport = viewport.priceZoomedBy(1f / zoom)
-                                            invalidate(Invalidation.FULL)
-                                        }
+                                        // The zoom is not here. `detectTransformGestures` reports
+                                        // one scalar for the pinch — the ratio of the centroid's
+                                        // *radius* — and a single number cannot say whether the
+                                        // fingers separated sideways or up and down. That
+                                        // distinction is the whole of stage two, so the pinch is
+                                        // measured per axis by the observer below and this handler
+                                        // is left with the pan.
                                         if (!onTimeAxis && abs(pan.x) > 0f) {
                                             panResidue += pan.x
                                             val width = drawn().barWidth
@@ -1108,6 +1117,106 @@ fun CoineProChart(
                                         }
                                     },
                                 )
+                            }
+                            .pointerInput(display) {
+                                // Stage two of the zoom: a pinch that means one axis, or both,
+                                // depending on which way the fingers went.
+                                //
+                                // ### Why this is a separate handler and not a parameter
+                                //
+                                // `detectTransformGestures` hands its callback a single `zoom`,
+                                // computed from the ratio of the *centroid size* — the mean
+                                // distance of the pointers from their centre. That number is a
+                                // radius, and a radius has thrown away the direction. Fingers
+                                // separating sideways and fingers separating vertically produce
+                                // the same scalar, so a gesture built on it can only ever mean
+                                // "closer", and the chart magnifies uniformly like a photograph.
+                                //
+                                // On a desk that is survivable, because the price gutter and the
+                                // date strip are both a mouse-drag away. On a phone it is the
+                                // difference between a chart and a picture of a chart: the reader
+                                // holding the glass in one hand has two fingers and no third
+                                // gesture, and "let me see this swing taller without changing how
+                                // many bars I can see" is the most common thing they want.
+                                //
+                                // So the spans are measured per axis here — the mean horizontal
+                                // distance from the centroid, and the mean vertical one — and each
+                                // ratio drives its own scale. A pinch that widens horizontally and
+                                // not vertically changes the bar count and leaves the candles
+                                // exactly as tall. A pinch that grows in both, which is what a
+                                // reader who simply wants "closer" does, still changes both, so
+                                // nothing anybody had learned has been taken away.
+                                //
+                                // Watched on the Final pass and consuming nothing, for the same
+                                // reason the momentum observer below does: the transform gesture
+                                // above is a working multi-touch implementation and there is no
+                                // reason to rewrite it in order to read two more numbers off the
+                                // same pointers.
+                                awaitEachGesture {
+                                    awaitFirstDown(requireUnconsumed = false)
+                                    var lastX = 0f
+                                    var lastY = 0f
+                                    var timeResidue = 1f
+                                    while (true) {
+                                        val event = awaitPointerEvent(PointerEventPass.Final)
+                                        val down = event.changes.count { it.pressed }
+                                        if (down == 0) break
+                                        // One finger is a pan, and tracking mode is a reading of a
+                                        // single bar that a rescale would answer for a different
+                                        // one. Either way the spans are forgotten rather than
+                                        // carried, so putting a second finger down starts a fresh
+                                        // measurement instead of jumping by whatever changed while
+                                        // the gesture was not a pinch.
+                                        if (down < 2 || tracking) {
+                                            lastX = 0f
+                                            lastY = 0f
+                                            timeResidue = 1f
+                                            continue
+                                        }
+                                        val spanX = event.axisSpan(vertical = false)
+                                        val spanY = event.axisSpan(vertical = true)
+                                        val floor = PINCH_AXIS_FLOOR_DP.toPx()
+                                        // An axis the fingers barely straddle carries no signal —
+                                        // two fingers side by side have a vertical span of almost
+                                        // nothing, and a ratio of two nearly-zero numbers is noise
+                                        // that would make the price scale jitter for the whole
+                                        // gesture. Below the floor that axis simply does not move,
+                                        // which is also exactly the behaviour a reader pinching
+                                        // horizontally is asking for.
+                                        if (lastX >= floor && spanX >= floor) {
+                                            val ratio = spanX / lastX
+                                            if (abs(ratio - 1f) > ZOOM_DEADZONE) {
+                                                // Accumulated, because the bar count is a whole
+                                                // number: a slow pinch whose every frame rounds
+                                                // back to the count it started on would move
+                                                // nothing at all while a fast one jumped.
+                                                timeResidue = (timeResidue * ratio)
+                                                    .coerceIn(MIN_SCALE_RESIDUE, MAX_SCALE_RESIDUE)
+                                                val before = viewport.barsPerView
+                                                val zoomed = viewport.zoomedBy(timeResidue)
+                                                if (zoomed.barsPerView != before) {
+                                                    viewport = zoomed
+                                                    timeResidue = 1f
+                                                    invalidate(Invalidation.FULL)
+                                                }
+                                            }
+                                        }
+                                        if (lastY >= floor && spanY >= floor) {
+                                            val ratio = spanY / lastY
+                                            if (abs(ratio - 1f) > ZOOM_DEADZONE) {
+                                                // Inverted, because `priceZoom` above one *widens*
+                                                // the range and so flattens the candles: fingers
+                                                // moving apart vertically have to shrink it.
+                                                // Bounded by the viewport at a quarter and eight,
+                                                // and a double tap on the gutter puts it back.
+                                                viewport = viewport.priceZoomedBy(1f / ratio)
+                                                invalidate(Invalidation.FULL)
+                                            }
+                                        }
+                                        lastX = spanX
+                                        lastY = spanY
+                                    }
+                                }
                             }
                             .pointerInput(display, armed) {
                                 // Momentum, and the one thing that had to be built for it: a
@@ -1300,6 +1409,10 @@ fun CoineProChart(
                                         // line instead of translating it.
                                         val plot = frameOf(size.width.toFloat()).toPlot(position)
                                         handle = if (lineMove) -1 else handleIndexAt(target, view, plot, tolerancePx)
+                                        // Published so the draw pass can grow the one being held.
+                                        // Only a handle: dragging the whole object moves everything
+                                        // under the finger and there is no single anchor to mark.
+                                        grabbedHandle = handle
                                         origin = view.chartPointAt(plot, display, state.magnetMode)
                                     },
                                     onDrag = { change, _ ->
@@ -1359,10 +1472,12 @@ fun CoineProChart(
                                             }
                                         }
                                         handle = -1
+                                        grabbedHandle = -1
                                         origin = null
                                     },
                                     onDragCancel = {
                                         handle = -1
+                                        grabbedHandle = -1
                                         origin = null
                                     },
                                 )
@@ -2009,6 +2124,11 @@ fun CoineProChart(
                                 // smudge. The renderer has no palette of its own; this is the one
                                 // colour it needs from ours.
                                 plate = palette.stage,
+                                grabbed = paintedHandle,
+                                // Read here, inside the draw, so the grab animation repaints the
+                                // canvas without recomposing a composable with nine gesture
+                                // handlers hanging off it.
+                                grabProgress = grabGrow.value,
                             )
                         }
                     }
@@ -4882,6 +5002,40 @@ private const val MARKER_SIZE = 7f
 
 /** Below this a pinch is a drag with slightly uneven fingers, not an intent to zoom. */
 private const val ZOOM_DEADZONE = 0.01f
+
+/**
+ * How far the fingers must straddle an axis before a pinch is allowed to scale it.
+ *
+ * Two fingers held side by side have a vertical span of a few pixels, and the ratio of two
+ * near-zero numbers is noise. Below this the axis is left alone — which is also the right answer
+ * for the gesture, because a reader whose fingers are level is asking about time.
+ */
+private val PINCH_AXIS_FLOOR_DP = 12.dp
+
+/** How long the handle takes to grow under a finger, and to come back down after it lifts. */
+private const val HANDLE_GRAB_MS = 200
+
+/**
+ * The mean distance of the pressed pointers from their centroid along one axis.
+ *
+ * The per-axis counterpart of Compose's `calculateCentroidSize`, which measures the same thing as a
+ * radius and so cannot tell a horizontal pinch from a vertical one. See the pinch observer in
+ * [CoineProChart] for why that distinction is the whole feature.
+ */
+private fun PointerEvent.axisSpan(vertical: Boolean): Float {
+    val centroid = calculateCentroid(useCurrent = true)
+    if (centroid == Offset.Unspecified) return 0f
+    var total = 0f
+    var counted = 0
+    changes.forEach { change ->
+        if (change.pressed) {
+            val position = change.position
+            total += abs(if (vertical) position.y - centroid.y else position.x - centroid.x)
+            counted++
+        }
+    }
+    return if (counted == 0) 0f else total / counted
+}
 
 /**
  * How far the picture may be pulled past the end of the history.

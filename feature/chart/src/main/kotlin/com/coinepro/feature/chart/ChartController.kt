@@ -112,6 +112,14 @@ data class ChartUiState(
     val error: ChartError? = null,
     val activeIndicators: Set<String> = emptySet(),
     /**
+     * Whether there is a step to take back, and one to put back.
+     *
+     * Published on the state rather than read off the controller so the buttons that offer them
+     * can be disabled the frame the stack empties. See [ChartHistory] for what a step is.
+     */
+    val canUndo: Boolean = false,
+    val canRedo: Boolean = false,
+    /**
      * What the price axis is measuring.
      *
      * Part of the apparatus rather than of the data, so it survives a timeframe change and a chart
@@ -860,6 +868,23 @@ class ChartController(
 
     private var loadJob: Job? = null
 
+    /**
+     * Everything on this chart a reader can take back, and put back.
+     *
+     * One per controller, and a controller is one symbol, so a stack can never offer to undo a
+     * change made to a different market.
+     */
+    private val history = ChartHistory()
+
+    /**
+     * True while [restore] is applying a step, so the setters it calls do not record it.
+     *
+     * Without this an undo would push the state it was undoing onto the stack as a new change, the
+     * redo stack would be cleared by the very action that exists to fill it, and a second undo
+     * would put the reader back where they started. Undo would work exactly once and then flip.
+     */
+    private var restoring = false
+
     /** The background deepening of the archive. One at a time; a switch cancels the last. */
     private var fillJob: Job? = null
 
@@ -1187,6 +1212,7 @@ class ChartController(
      * every interval, which is the whole reason they are stored that way.
      */
     fun setInterval(interval: ChartInterval) {
+        record()
         // Cleared before the guard, not inside the update below. A reader on the daily bar who
         // taps «D1» in the strip has chosen a length rather than a range, and the range row must
         // stop claiming «۶ ماه» even though nothing about the chart is going to reload.
@@ -1221,6 +1247,7 @@ class ChartController(
     fun setTimeframe(timeframe: Timeframe) = setInterval(ChartInterval.Preset(timeframe))
 
     fun setChartType(type: ChartType) {
+        record()
         _state.update { it.copy(chartType = type) }
         persistSymbolState()
     }
@@ -1250,6 +1277,7 @@ class ChartController(
     }
 
     fun toggleIndicator(id: String) {
+        record()
         _state.update { old ->
             val next = if (id in old.activeIndicators) {
                 old.activeIndicators - id
@@ -1279,6 +1307,7 @@ class ChartController(
      * allowed to change, and a stored copy of it would pin the old one forever.
      */
     fun setIndicatorPeriod(id: String, period: Int?) {
+        record()
         _state.update { old ->
             val bounds = ChartCatalog.periodOf(id) ?: return@update old
             old.copy(
@@ -1320,6 +1349,18 @@ class ChartController(
     }
 
     fun onDrawing(next: DrawingState) {
+        // A step, but not sixty of them. This is the one call in the controller that arrives at
+        // the rate of a drag, and what makes a step worth keeping is whether the *shape* of the
+        // layer changed — a drawing added or deleted, a tap placed or taken back — rather than
+        // whether a point moved. A move is a frame of a gesture, and [ChartHistory] collapses a
+        // run of those into one step per six hundred milliseconds. A selection change is not a
+        // step at all: nothing about the chart is different, and an undo that only deselected
+        // something would be an undo that appeared to do nothing.
+        val before = _state.value.drawing
+        val shapeChanged = next.drawings.size != before.drawings.size ||
+            next.pending.size != before.pending.size
+        val moved = !shapeChanged && next.drawings != before.drawings
+        if (shapeChanged || moved) record(coalescable = moved)
         // The one hot path. A drag emits a state per frame — that is what makes the line follow
         // the finger — and none of those frames touches the bars, the indicator set or a lookback.
         // Carrying the computed value forward is what stops each of them recomputing every
@@ -1560,6 +1601,11 @@ class ChartController(
      * longer on a range, and this is the one caller for which that is not true.
      */
     fun setRange(range: ChartRange) {
+        // Recorded here as well as inside [setInterval], and the duplicate costs nothing: the
+        // history drops a step identical to the one on top of it. What it buys is a range change
+        // that lands on the same bar length still being one step, so undoing «۶ ماه» gives back
+        // the span rather than silently doing nothing.
+        record()
         setInterval(range.interval)
         _state.update { it.copy(range = range) }
     }
@@ -1828,10 +1874,112 @@ class ChartController(
     fun setColourTemplate(template: ChartColourTemplate?) =
         _state.update { it.copy(colourTemplate = template) }
 
-    fun undoDrawing() {
-        _state.update { it.copy(drawing = DrawingActions.undo(it.drawing)) }
-        persistDrawings()
+    // ── taking it back, and putting it back ─────────────────────────────────────────
+
+    /** The chart's apparatus as it stands, for the stack. See [ChartStep]. */
+    private fun step(): ChartStep = _state.value.let { current ->
+        ChartStep(
+            interval = current.interval,
+            range = current.range,
+            chartType = current.chartType,
+            indicators = current.activeIndicators,
+            indicatorPeriods = current.indicatorPeriods,
+            drawing = current.drawing,
+        )
     }
+
+    /**
+     * Record where the chart is *before* a change.
+     *
+     * Called at the top of every action a reader can reverse, before the change is applied and
+     * before any guard that might decide the change is a no-op. That order is deliberate: a check
+     * that has to be right in a dozen places will eventually be wrong in one, and [ChartHistory]
+     * drops a step identical to the top of its stack anyway.
+     */
+    private fun record(coalescable: Boolean = false) {
+        if (restoring) return
+        history.record(step(), coalescable)
+        publishHistory()
+    }
+
+    private fun publishHistory() {
+        val undo = history.canUndo
+        val redo = history.canRedo
+        _state.update {
+            if (it.canUndo == undo && it.canRedo == redo) it else it.copy(canUndo = undo, canRedo = redo)
+        }
+    }
+
+    /**
+     * Put one step back on the chart.
+     *
+     * Routed through the ordinary setters rather than written straight into the state, because
+     * several of them do more than copy a field: a bar length has to refetch, an indicator set has
+     * to spend the visible window, and both have to be persisted so the chart the reader comes back
+     * to tomorrow is the one they undid to rather than the one they undid.
+     *
+     * The order is fixed and matters. The interval goes first because [setInterval] clears the
+     * range — restoring a range and then an interval would throw the range away — and the drawing
+     * layer goes last because a drawing carries the timeframe it was placed on, and
+     * [DrawingActions.setTimeframe] inside [setInterval] would otherwise restamp the layer we are
+     * in the middle of restoring.
+     */
+    private fun restore(from: ChartStep?) {
+        val target = from ?: return
+        restoring = true
+        try {
+            val current = _state.value
+            if (target.interval != current.interval) setInterval(target.interval)
+            if (target.range != _state.value.range) {
+                _state.update { it.copy(range = target.range) }
+            }
+            if (target.chartType != current.chartType) setChartType(target.chartType)
+            if (target.indicators != current.activeIndicators ||
+                target.indicatorPeriods != current.indicatorPeriods
+            ) {
+                _state.update {
+                    it.copy(
+                        activeIndicators = target.indicators,
+                        indicatorPeriods = target.indicatorPeriods,
+                        // The same spend [toggleIndicator] makes: a window-scoped study coming back
+                        // on has to measure the bars the reader is looking at now, not the ones
+                        // that were on screen when the window was last published.
+                        window = if (ChartDerived.readsWindow(target.indicators, it.chained)) {
+                            lastWindow
+                        } else {
+                            it.window
+                        },
+                    )
+                }
+                persistSymbolState()
+            }
+            if (target.drawing != _state.value.drawing) {
+                _state.update { it.copy(drawing = target.drawing) }
+                persistDrawings()
+            }
+        } finally {
+            restoring = false
+        }
+        publishHistory()
+    }
+
+    /** Take back the last change to the apparatus — a bar length, a study, a drawing, a span. */
+    fun undo() = restore(history.undo(step()))
+
+    /** Put back the last thing [undo] took. Cleared the moment the reader goes a different way. */
+    fun redo() = restore(history.redo(step()))
+
+    /**
+     * The drawing rail's «واگرد», which is now the chart's undo.
+     *
+     * It used to call `DrawingActions.undo`, a second mechanism with its own rules and no redo. The
+     * two produce the same outcome on the drawing layer — a step is recorded per tap, so the first
+     * undo after three taps of an XABCD takes back the tap and not somebody's trend line from ten
+     * minutes ago — and having one stack means the rail's button can also take back the indicator
+     * the reader switched on by accident thirty seconds earlier, which is what they were reaching
+     * for anyway.
+     */
+    fun undoDrawing() = undo()
 
     fun cancelDrawing() = _state.update { it.copy(drawing = DrawingActions.cancel(it.drawing)) }
 

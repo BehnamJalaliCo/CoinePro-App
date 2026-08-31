@@ -25,6 +25,10 @@
     <string name="chart_more_span">History shown</string>
     <string name="chart_more_span_note">How much history is in front of you. Each span also picks the bar length that fits it.</string>
     <string name="chart_more_goto">Go to a date</string>
+    <string name="chart_more_undo">Undo</string>
+    <string name="chart_more_undo_note">The last indicator, span, chart type or drawing change</string>
+    <string name="chart_more_redo">Redo</string>
+    <string name="chart_more_redo_note">What undo took back</string>
     <string name="chart_more_compare">Compare with another symbol</string>
     <string name="chart_more_compare_note">Draw a watchlist symbol over this one.</string>
     <string name="chart_more_scale">Price scale</string>

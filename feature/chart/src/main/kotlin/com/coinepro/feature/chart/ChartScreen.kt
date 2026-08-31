@@ -119,6 +119,8 @@ import com.coinepro.core.datastore.DrawingTemplateStore
 import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.designsystem.CoineProAssetLogo
+import com.coinepro.core.designsystem.SharedKeys
+import com.coinepro.core.designsystem.sharedElement
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
@@ -1026,6 +1028,7 @@ fun ChartScreen(
                 onStepBack = controller::replayStepBack,
                 onCancelDrawing = controller::cancelDrawing,
                 onUndoDrawing = controller::undoDrawing,
+                onRedo = controller::redo,
             ),
     ) {
         Header(state, onOpenTerminal)
@@ -1418,6 +1421,11 @@ fun ChartScreen(
                     controller.focusBar(index)
                     sheet = null
                 },
+                // The sheet stays open on both. Walking a change back is nearly always a sequence —
+                // "not that, nor the one before it" — and a sheet that closed on each tap would
+                // make a three-step undo six taps and three animations.
+                onUndo = if (state.canUndo) ({ controller.undo() }) else null,
+                onRedo = if (state.canRedo) ({ controller.redo() }) else null,
                 comparisons = state.comparisons.size,
                 scaleLabel = state.scaleMode.persianLabel,
                 scaleAdjusted = state.scaleMode != PriceScaleMode.REGULAR || axisAdjusted,
@@ -2043,7 +2051,13 @@ private fun Header(state: ChartUiState, onOpenTerminal: (() -> Unit)?) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
-        CoineProAssetLogo(symbol = state.symbol, size = 32.dp)
+        // The other end of the market row's disc. See `CoineProSharedElement`: it arrives from
+        // wherever the reader tapped rather than fading in beside a page that replaced theirs.
+        CoineProAssetLogo(
+            symbol = state.symbol,
+            size = 32.dp,
+            modifier = Modifier.sharedElement(SharedKeys.logo(state.symbol)),
+        )
         Column(modifier = Modifier.weight(1f)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -2054,6 +2068,7 @@ private fun Header(state: ChartUiState, onOpenTerminal: (() -> Unit)?) {
                         text = state.symbol,
                         style = MaterialTheme.typography.titleSmall,
                         color = CoineProColors.TextPrimary,
+                        modifier = Modifier.sharedElement(SharedKeys.ticker(state.symbol)),
                     )
                 }
                 // What the chart's own state is, beside the name it belongs to. See

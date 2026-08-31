@@ -92,6 +92,31 @@ fun DrawScope.drawDrawing(
      * smudge. The setup levels solved this the same way; see `drawLevelLabel`.
      */
     plate: Color = Color.Unspecified,
+    /**
+     * Which handle of this drawing a finger is holding, or −1 for none.
+     *
+     * The handle a reader is dragging is, by construction, the one thing on the chart they cannot
+     * see: it is underneath the fingertip. A five-point dot with a fingertip on it gives no
+     * feedback at all about *where* it landed, which is why placing a level exactly on a wick is
+     * so much harder on a phone than with a mouse — the reader is aiming at something they last
+     * saw a frame before they covered it.
+     *
+     * Growing the held handle puts its ring back out past the edge of the finger, so what the
+     * reader sees is a ring around their own fingertip with the price line running through it.
+     * That ring is the readout: the line's position relative to the ring's centre says whether the
+     * anchor is above or below where they meant it, and it is visible without lifting off.
+     *
+     * Only ever one, and only on the selected drawing. Every handle growing would be an animation
+     * that says a state changed rather than one that says *this* is what you are holding.
+     */
+    grabbed: Int = -1,
+    /**
+     * How far into the grab animation the held handle is, from 0 to 1.
+     *
+     * Separate from [grabbed] so the ring can shrink back after the finger lifts rather than
+     * vanishing: the caller keeps the index for the length of the return and drives this to zero.
+     */
+    grabProgress: Float = 0f,
 ): Boolean {
     val chart = drawing.points
     if (chart.isEmpty()) return false
@@ -630,9 +655,20 @@ fun DrawScope.drawDrawing(
     // The handles come last so they sit over whatever the tool drew, and only on the selected one:
     // eight white dots on every drawing would bury the chart under its own annotations.
     if (handled && selected) {
-        for (point in p) {
-            drawCircle(Color.White, HANDLE_RADIUS.toPx(), point)
-            drawCircle(colour, HANDLE_RADIUS.toPx(), point, style = Stroke(HANDLE_RING.toPx()))
+        val base = HANDLE_RADIUS.toPx()
+        val grow = grabProgress.coerceIn(0f, 1f)
+        p.forEachIndexed { index, point ->
+            val held = index == grabbed && grow > 0f
+            val radius = if (held) base * (1f + (HANDLE_GRAB_SCALE - 1f) * grow) else base
+            // A halo under the held one, and it is the part that does the work: at a radius wider
+            // than a fingertip it is the only thing about the anchor the reader can still see.
+            // Faint, because it is drawn over the bars the anchor is being aimed at, and a solid
+            // disc there would hide the very wick the handle is being placed on.
+            if (held) {
+                drawCircle(colour.copy(alpha = HANDLE_HALO_ALPHA * grow), radius * HANDLE_HALO_SCALE, point)
+            }
+            drawCircle(Color.White, radius, point)
+            drawCircle(colour, radius, point, style = Stroke(HANDLE_RING.toPx()))
         }
     }
     return handled
@@ -1387,6 +1423,18 @@ private const val TAG_ALPHA = 0.7f
 private val VERTEX_RADIUS = 8.dp
 
 private val HANDLE_RADIUS = 5.dp
+
+/**
+ * How much larger the handle under a finger gets.
+ *
+ * Two and a bit, which takes a five-point dot to eleven — past the edge of an average fingertip's
+ * contact patch, which is what it has to clear to be seen at all while it is being held.
+ */
+private const val HANDLE_GRAB_SCALE = 2.2f
+
+/** The halo around the held handle, as a multiple of its grown radius, and how faint it is. */
+private const val HANDLE_HALO_SCALE = 1.9f
+private const val HANDLE_HALO_ALPHA = 0.18f
 private val HANDLE_RING = 2.dp
 
 private val HIGHLIGHT_WIDTH = 12.dp

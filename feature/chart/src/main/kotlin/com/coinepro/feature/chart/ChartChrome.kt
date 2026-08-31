@@ -681,6 +681,20 @@ internal fun ChartMoreSheetBody(
     /** The bars «رفتن به تاریخ» resolves against. Empty leaves the field out — there is nothing to find. */
     bars: List<Candle>,
     onGoToDate: (Int) -> Unit,
+    /**
+     * Take one step back through the chart's own history, and put one forward.
+     *
+     * Null when the stack is empty in that direction, which dims the row rather than removing it:
+     * a reader looking for undo has to be able to find out that it exists and that there is
+     * nothing to undo, and a control that appears only once it would work is a control nobody
+     * knows the app has.
+     *
+     * They are here rather than on the plot because the plot is the product — see the chart
+     * screen's plot fraction — and because on a keyboard they are Z and Shift+Z, which is where a
+     * reader who uses them often will actually reach.
+     */
+    onUndo: (() -> Unit)?,
+    onRedo: (() -> Unit)?,
     comparisons: Int,
     /** What the price axis is measuring now, so the row can say it without being opened. */
     scaleLabel: String,
@@ -745,6 +759,21 @@ internal fun ChartMoreSheetBody(
                 GoToDateField(bars = bars, onGoTo = onGoToDate)
             }
         }
+
+        HorizontalDivider(color = CoineProColors.Border)
+
+        MoreRow(
+            icon = DesignR.drawable.icon_arrow_counter_clockwise,
+            title = stringResource(R.string.chart_more_undo),
+            note = stringResource(R.string.chart_more_undo_note),
+            onClick = onUndo,
+        )
+        MoreRow(
+            icon = DesignR.drawable.icon_arrow_clockwise,
+            title = stringResource(R.string.chart_more_redo),
+            note = stringResource(R.string.chart_more_redo_note),
+            onClick = onRedo,
+        )
 
         HorizontalDivider(color = CoineProColors.Border)
 

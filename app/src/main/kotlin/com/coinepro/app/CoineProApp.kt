@@ -2218,10 +2218,16 @@ private fun MainShell(
         // Forward pushes, back pulls, tabs cross-fade, and the pop is seekable so the system's
         // predictive-back gesture has something to preview. See [appEnter] for the whole argument.
         val motion = continuousMotionAllowed()
+        // One layout around the whole graph, so an object handed from a list to a chart has a
+        // single coordinate space to travel through. See `CoineProSharedElement` for what travels
+        // and why, and `sharedComposable` for which destinations take part.
+        SharedElementHost(modifier = Modifier.weight(1f)) {
         NavHost(
             navController = navController,
             startDestination = AppDestination.HOME.route,
-            modifier = Modifier.weight(1f),
+            // The weight is on the layout above, which is the direct child of the column; here the
+            // graph simply fills whatever that was given.
+            modifier = Modifier.fillMaxSize(),
             enterTransition = { appEnter(motion) },
             exitTransition = { appExit(motion) },
             popEnterTransition = { appPopEnter(motion) },
@@ -2759,7 +2765,7 @@ private fun MainShell(
                     available = assistantAvailable,
                 )
             }
-            composable(MARKETS_ROUTE) {
+            sharedComposable(MARKETS_ROUTE) {
                 val signals by signalController.state.collectAsStateWithLifecycle()
                 // The instrument in the detail pane, or null where there is only one pane and a
                 // row tap is still a navigation. Saveable, so a rotation on a tablet does not
@@ -2804,7 +2810,7 @@ private fun MainShell(
                 )
                 }
             }
-            composable(AppDestination.CHART.route) {
+            sharedComposable(AppDestination.CHART.route) {
                 // The tab opens the reader's own first market, or the platform's first quoted one.
                 // A tab that asked which symbol before showing anything would be a picker with a
                 // chart behind it, which is not what a chart tab is for.
@@ -2846,7 +2852,7 @@ private fun MainShell(
                     onCreateAlert = { symbol, price -> alertFromChart = symbol to price },
                 )
             }
-            composable(
+            sharedComposable(
                 route = CHART_PATTERN,
                 arguments = listOf(
                     navArgument("symbol") { type = NavType.StringType },
@@ -2997,7 +3003,7 @@ private fun MainShell(
                     announcements = announcementsController,
                 )
             }
-            composable(AppDestination.EXPLORE.route) {
+            sharedComposable(AppDestination.EXPLORE.route) {
                 ExploreScreen(
                     controller = marketSearchController,
                     intel = marketIntelController,
@@ -3167,7 +3173,7 @@ private fun MainShell(
                     onSignIn = onSignIn.takeIf { guest },
                 )
             }
-            composable(WATCHLIST_ROUTE) {
+            sharedComposable(WATCHLIST_ROUTE) {
                 WatchlistScreen(
                     controller = marketSearchController,
                     store = watchlistStore,
@@ -3216,6 +3222,7 @@ private fun MainShell(
                     },
                 )
             }
+        }
         }
         }
         }

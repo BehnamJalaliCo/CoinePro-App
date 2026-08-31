@@ -37,6 +37,8 @@ import com.coinepro.core.datastore.WatchlistColumn
 import com.coinepro.core.datastore.WatchlistColumnUnit
 import com.coinepro.core.datastore.WatchlistFlag
 import com.coinepro.core.designsystem.CoineProAssetLogo
+import com.coinepro.core.designsystem.SharedKeys
+import com.coinepro.core.designsystem.sharedElement
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPercentPill
 import com.coinepro.core.designsystem.CoineProPillShape
@@ -157,7 +159,15 @@ internal fun MarketListRow(
                 tint = if (starred) CoineProColors.Accent else CoineProColors.TextDisabled,
             )
         }
-        CoineProAssetLogo(symbol = row.meta.symbol, size = 30.dp)
+        // The disc travels to the chart's header when this row is tapped, so what opens is
+        // visibly the market the reader touched rather than a new page about it. A no-op
+        // everywhere the row is not drawn inside a navigation destination — a sheet, a preview,
+        // a render test. See `CoineProSharedElement`.
+        CoineProAssetLogo(
+            symbol = row.meta.symbol,
+            size = 30.dp,
+            modifier = Modifier.sharedElement(SharedKeys.logo(row.meta.symbol)),
+        )
         // Wider than it was. Eighty-four points fitted the ticker and cut every Persian name
         // under it; the sparkline beside it was floating in a weighted box with room to spare.
         Column(modifier = Modifier.width(SymbolColumn)) {
@@ -167,6 +177,7 @@ internal fun MarketListRow(
                 color = CoineProColors.TextPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.sharedElement(SharedKeys.ticker(row.meta.symbol)),
             )
             Text(
                 text = row.meta.listDescription,

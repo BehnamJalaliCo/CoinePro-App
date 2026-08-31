@@ -3,6 +3,7 @@ package com.coinepro.feature.chart
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
@@ -30,6 +31,7 @@ internal fun Modifier.chartShortcuts(
     onStepBack: () -> Unit,
     onCancelDrawing: () -> Unit,
     onUndoDrawing: () -> Unit,
+    onRedo: () -> Unit,
 ): Modifier = onKeyEvent { event ->
     if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
     when (event.key) {
@@ -57,7 +59,14 @@ internal fun Modifier.chartShortcuts(
         Key.DirectionLeft -> { onStepBack(); true }
 
         Key.Escape -> { onCancelDrawing(); true }
-        Key.Z -> { onUndoDrawing(); true }
+
+        // Z takes a step back, Shift+Z puts it forward, and Y does the same as Shift+Z for the
+        // hands that learned redo there. Deliberately *without* the control modifier: this chart
+        // has no text field to compete with, the drawing rail's button is the same action, and a
+        // reader on a tablet keyboard reaching for undo one-handed should not need two keys. Both
+        // now walk the whole chart's history, not only the drawing layer — see `ChartHistory`.
+        Key.Z -> { if (event.isShiftPressed) onRedo() else onUndoDrawing(); true }
+        Key.Y -> { onRedo(); true }
         else -> false
     }
 }

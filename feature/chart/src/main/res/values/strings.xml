@@ -27,6 +27,10 @@
     <string name="chart_more_span">بازهٔ نمایش</string>
     <string name="chart_more_span_note">چقدر تاریخچه جلوی چشم باشد. هر بازه، طول کندل مناسب خودش را هم انتخاب می‌کند.</string>
     <string name="chart_more_goto">رفتن به تاریخ</string>
+    <string name="chart_more_undo">واگرد</string>
+    <string name="chart_more_undo_note">آخرین تغییرِ اندیکاتور، بازه، نوعِ چارت یا ترسیم</string>
+    <string name="chart_more_redo">ازنو</string>
+    <string name="chart_more_redo_note">آنچه واگرد پس گرفت</string>
     <string name="chart_more_compare">مقایسه با نماد دیگر</string>
     <string name="chart_more_compare_note">یک نماد دیده‌بان را روی همین نمودار بیندازید.</string>
     <string name="chart_more_scale">مقیاس قیمت</string>

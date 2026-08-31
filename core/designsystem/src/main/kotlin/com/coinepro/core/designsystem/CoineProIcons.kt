@@ -65,6 +65,17 @@ object CoineProIcons {
     @DrawableRes val ChevronBackward = R.drawable.icon_caret_left
     @DrawableRes val ChevronForward = R.drawable.icon_caret_right
 
+    /**
+     * Take a step back, and put it forward.
+     *
+     * Arcs rather than the bent arrows most apps use, and never mirrored: an anticlockwise arc
+     * means "back" the way a clock does, which is the same in every script, while a left-pointing
+     * arrow means "back" only where the reading runs left to right. In Persian a left arrow is
+     * *forward*, so a mirrored undo icon would be a redo button.
+     */
+    @DrawableRes val Undo = R.drawable.icon_arrow_counter_clockwise
+    @DrawableRes val Redo = R.drawable.icon_arrow_clockwise
+
     /** A disclosure that is open, and one that is closed. Never mirrored: up is up in both scripts. */
     @DrawableRes val ChevronUp = R.drawable.icon_caret_up
 

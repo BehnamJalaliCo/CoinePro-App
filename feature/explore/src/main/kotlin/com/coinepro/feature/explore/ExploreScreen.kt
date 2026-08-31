@@ -43,6 +43,8 @@ import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.designsystem.CoineProAssetLogo
+import com.coinepro.core.designsystem.SharedKeys
+import com.coinepro.core.designsystem.sharedElement
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProEmptyState
@@ -478,7 +480,13 @@ private fun MarketCard(
                 // Every symbol that reaches here has artwork: the catalogue was filtered through
                 // `SymbolArtwork.covers` before it left the gateway. There is no blank square and
                 // no lettered disc to fall back to, by construction rather than by care.
-                CoineProAssetLogo(symbol = card.symbol, size = 26.dp)
+                // Explore's cards are the third door into a chart, so its discs travel too. See
+                // `CoineProSharedElement`.
+                CoineProAssetLogo(
+                    symbol = card.symbol,
+                    size = 26.dp,
+                    modifier = Modifier.sharedElement(SharedKeys.logo(card.symbol)),
+                )
                 Text(
                     // The ticker is Latin inside a right-to-left row, so it is isolated. Without
                     // this `BTC/USDT` renders with its legs swapped next to a Persian label.
