@@ -67,12 +67,15 @@ class ChartHistoryTest {
 
     @Test
     fun `re-slicing is asked for before the reader reaches the edge, not after`() {
-        val total = 50_000
-        val kept = requireNotNull(ChartHistory.residentRange(total, BarWindow.visible(20_000, 20_120)))
+        // Deeper than the ceiling, whatever it is — below it `residentRange` holds everything and
+        // there is nothing to slide.
+        val total = ChartHistory.MAX_RESIDENT_BARS * 2
+        val middle = total / 2
+        val kept = requireNotNull(ChartHistory.residentRange(total, BarWindow.visible(middle, middle + 120)))
 
         // Sitting in the middle of the window: nothing to do, and doing something would be an
         // allocation and a full indicator recompute on every frame of the drag that got here.
-        assertFalse(ChartHistory.needsReslice(kept, BarWindow.visible(20_000, 20_120), total))
+        assertFalse(ChartHistory.needsReslice(kept, BarWindow.visible(middle, middle + 120), total))
         // Within the headroom of the old edge: rebuild now, while there is still slack to draw from.
         assertTrue(ChartHistory.needsReslice(kept, BarWindow.visible(kept.first + 10, kept.first + 130), total))
         // Against the oldest bar the archive holds, there is nothing behind it to slide towards.
@@ -100,7 +103,10 @@ class ChartHistoryTest {
 
     @Test
     fun `what is held is a copy, so the rest of the history can be collected`() {
-        val deep = series(50_000)
+        // Deeper than the ceiling, whatever the ceiling is. It used to be a flat 50,000 against a
+        // 12,000 budget; the budget is 50,000 now, so a fixed number would have been asserting that
+        // the whole series is held — which is true and is not what this test is about.
+        val deep = series(ChartHistory.MAX_RESIDENT_BARS * 2)
 
         val held = deep.resident(BarWindow.visible(10_000, 10_100))
 
@@ -110,15 +116,22 @@ class ChartHistoryTest {
         assertEquals(ChartHistory.MAX_RESIDENT_BARS, held.size)
         val kept = requireNotNull(ChartHistory.residentRange(deep.size, BarWindow.visible(10_000, 10_100)))
         assertEquals(deep.bars[10_000], held.bars[10_000 - kept.first])
+        assertTrue(held.size < deep.size)
     }
 
     @Test
-    fun `the budget is one a phone can carry eight times over`() {
-        // Eight is `ChartControllers.MAX_CONTROLLERS`: a reader flipping between symbols keeps that
+    fun `the budget is one a phone can carry four times over`() {
+        // Four is `ChartControllers.MAX_CONTROLLERS`: a reader flipping between symbols keeps that
         // many charts alive so their zoom and drawings survive the trip. The number that has to be
-        // affordable is therefore eight of these, not one.
+        // affordable is therefore four of these, not one.
+        //
+        // It was eight against a twelve-thousand-bar ceiling. The ceiling is fifty thousand now,
+        // because a back-test over a year of hourly candles is not a back-test if the chart drops
+        // the far end of the year, and the controller count came down in the same change to pay for
+        // it. The two constants are one decision and this is where that is written down: raising
+        // either without lowering the other has to fail here rather than on somebody's phone.
         val perChart = ChartHistory.estimatedBytes(ChartHistory.MAX_RESIDENT_BARS)
-        assertTrue("one chart is $perChart bytes", perChart < 2L * 1_024 * 1_024)
-        assertTrue("eight charts are ${perChart * 8} bytes", perChart * 8 < 16L * 1_024 * 1_024)
+        assertTrue("one chart is $perChart bytes", perChart < 8L * 1_024 * 1_024)
+        assertTrue("four charts are ${perChart * 4} bytes", perChart * 4 < 32L * 1_024 * 1_024)
     }
 }

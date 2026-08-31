@@ -66,6 +66,21 @@ class Line(private val values: DoubleArray, private val present: BooleanArray) {
         fun from(source: List<Double?>): Line = of(source.size) { source[it] }
 
         fun empty(size: Int): Line = Line(DoubleArray(size), BooleanArray(size))
+
+        /**
+         * One value repeated, without the boxing.
+         *
+         * [of] takes a `(Int) -> Double?`, so it boxes a `Double` per bar. That is the right shape
+         * for a computed line and the wrong one for a constant: the volume profile draws three
+         * horizontal levels through this, and at fifty thousand resident bars a pan step was boxing
+         * a hundred and fifty thousand doubles to say three numbers.
+         */
+        fun constant(size: Int, value: Double): Line =
+            if (!value.isFinite()) {
+                empty(size)
+            } else {
+                Line(DoubleArray(size) { value }, BooleanArray(size) { true })
+            }
     }
 }
 

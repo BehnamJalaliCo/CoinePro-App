@@ -60,6 +60,18 @@ import com.coinepro.core.auth.EmailAuthStep
 import com.coinepro.core.auth.EmailAuthUiState
 import com.coinepro.core.auth.LoginConfigState
 import com.coinepro.core.auth.SessionState
+import com.coinepro.core.community.CommunityCategory
+import com.coinepro.core.community.CommunityController
+import com.coinepro.core.community.CommunityFeedPage
+import com.coinepro.core.community.CommunityGateway
+import com.coinepro.core.community.CommunityLeaderboard
+import com.coinepro.core.community.CommunityLikeOutcome
+import com.coinepro.core.community.CommunityLockedException
+import com.coinepro.core.community.CommunityPost
+import com.coinepro.core.community.CommunityReactionOutcome
+import com.coinepro.core.community.CommunityReply
+import com.coinepro.core.community.CommunityThread
+import com.coinepro.core.community.CommunityWriteOutcome
 import com.coinepro.core.common.UiMessage
 import com.coinepro.core.common.MessageKey
 import com.coinepro.core.chart.ActiveToolBar
@@ -149,6 +161,9 @@ import com.coinepro.feature.alerts.AlertsController
 import com.coinepro.feature.auth.AuthScreen
 import com.coinepro.feature.auth.EmailAuthScreen
 import com.coinepro.feature.calendar.EconomicCalendarScreen
+import com.coinepro.feature.community.CommunityScreen
+import com.coinepro.feature.community.CommunityThreadScreen
+import com.coinepro.feature.explore.ExploreScreen
 import com.coinepro.feature.chart.ChartScreen
 import com.coinepro.feature.chart.ChartController
 import com.coinepro.feature.chart.ChartPanesScreen
@@ -2379,6 +2394,91 @@ class ScreenshotRenderTest {
         assertTrue("these tools drew nothing: $missing", missing.isEmpty())
     }
 
+
+    /* ------------------------------------------------- explore and community */
+
+    /**
+     * Explore, on a viewport tall enough to reach the stories under the market strip.
+     *
+     * Everything on it comes from the fixtures the markets tab and the news screen already use —
+     * `searchCatalog` for the cards, `sparklineStore` for the lines, `FakeMarketIntelGateway` for
+     * the headlines — so a card that appeared here without artwork, or a headline that disagreed
+     * with the one on the news screen, would be a difference this render shows rather than one a
+     * reader finds.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1400dp-xxhdpi")
+    fun explorePersian() {
+        val markets = MarketSearchController(ScreenshotFixtures.searchCatalog(), scope)
+        val intel = MarketIntelController(FakeMarketIntelGateway(), scope)
+        markets.start()
+        intel.refresh()
+        capture("100-explore-fa") {
+            ExploreScreen(
+                controller = markets,
+                intel = intel,
+                sparklines = ScreenshotFixtures.sparklineStore(scope),
+                onOpenSymbol = {},
+                onOpenNews = {},
+                onOpenCalendar = {},
+                // Every optional entry supplied, so the capture shows the widest arrangement: three
+                // tiles rather than two, and the search affordance in the header.
+                onOpenHeatmap = {},
+                onOpenSearch = {},
+                onOpenStory = {},
+            )
+        }
+    }
+
+    /** The board with posts on it, which is the state the card design has to be legible in. */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1400dp-xxhdpi")
+    fun communityPersian() {
+        val controller = CommunityController(FakeCommunityGateway(), scope)
+        controller.start()
+        capture("101-community-fa") {
+            CommunityScreen(
+                controller = controller,
+                onOpenThread = {},
+                onSignIn = {},
+                onOpenMembership = {},
+            )
+        }
+    }
+
+    /**
+     * The tier refusal, which is the case worth having a picture of.
+     *
+     * A `403` from `require_vip` and a `401` from `current_student` are one line apart in the
+     * server and have opposite buttons — «تهیهٔ اشتراک» and «ورود». A render of the locked state is
+     * how a change that collapsed the two into one screen would be caught.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun communityLockedPersian() {
+        val locked = CommunityLockedException("این بخش ویژهٔ اعضای VIP است. برای دسترسی، اشتراک تهیه کنید.")
+        val controller = CommunityController(FakeCommunityGateway(failure = locked), scope)
+        controller.start()
+        capture("102-community-locked-fa") {
+            CommunityScreen(
+                controller = controller,
+                onOpenThread = {},
+                onSignIn = {},
+                onOpenMembership = {},
+            )
+        }
+    }
+
+    /** One thread: the post at full length, its replies, the crowned one, and the reply box. */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1400dp-xxhdpi")
+    fun communityThreadPersian() {
+        val controller = CommunityController(FakeCommunityGateway(), scope)
+        capture("103-community-thread-fa") {
+            CommunityThreadScreen(controller = controller, postId = 41L, onClose = {})
+        }
+    }
+
     private fun capture(
         name: String,
         darkTheme: Boolean = true,
@@ -2684,3 +2784,97 @@ private val LEGAL_EXCERPT = """
 
     پشتیبانی در تلگرام: <https://t.me/CoinePro_Admin>
 """.trimIndent()
+
+/**
+ * The board, without a server.
+ *
+ * Two posts rather than twenty: the render is checking the card, the strip and the composer, and a
+ * page of twenty renders the same first screen as one of two. [failure] is what every call throws
+ * instead, which is how the tier-locked capture is produced.
+ */
+private class FakeCommunityGateway(
+    private val failure: Throwable? = null,
+) : CommunityGateway {
+
+    private val posts = listOf(
+        CommunityPost(
+            id = 41L,
+            author = "رضا محمدی",
+            content = "طلا از سقف کانال روزانه برگشت و الان روی ۲۶۴۰ حمایت دارد. تا وقتی این سطح " +
+                "نگه داشته شود، سناریوی اصلی من ادامهٔ صعود تا ۲۶۹۰ است.",
+            category = CommunityCategory.ANALYSIS,
+            categoryLabel = "تحلیل",
+            likes = 12,
+            liked = true,
+            replyCount = 2,
+            reactions = mapOf("🔥" to 4, "👍" to 2),
+            bestReplyId = 88L,
+            createdAt = java.time.Instant.parse("2026-08-30T09:14:00Z"),
+            pending = false,
+        ),
+        CommunityPost(
+            id = 40L,
+            author = "sara",
+            content = "کسی با بروکر جدید کار کرده؟ اسپرد شب‌ها چطور است؟",
+            category = CommunityCategory.QUESTION,
+            categoryLabel = "سوال",
+            likes = 0,
+            liked = false,
+            replyCount = 0,
+            reactions = emptyMap(),
+            bestReplyId = null,
+            createdAt = java.time.Instant.parse("2026-08-30T08:02:11Z"),
+            pending = false,
+        ),
+    )
+
+    private fun <T> answer(value: T): T = failure?.let { throw it } ?: value
+
+    override suspend fun feed(page: Int, category: CommunityCategory?): CommunityFeedPage =
+        answer(CommunityFeedPage(posts = posts, page = page, received = posts.size))
+
+    override suspend fun search(query: String): List<CommunityPost> = answer(posts)
+
+    override suspend fun thread(id: Long): CommunityThread = answer(
+        CommunityThread(
+            post = posts.first(),
+            replies = listOf(
+                CommunityReply(
+                    id = 87L,
+                    author = "ali",
+                    content = "به کانال روزانه هم نگاه کن، سقفش دقیقاً همان‌جاست.",
+                    parentId = null,
+                    best = false,
+                    createdAt = java.time.Instant.parse("2026-08-30T09:20:00Z"),
+                ),
+                CommunityReply(
+                    id = 88L,
+                    author = "نگار",
+                    content = "حمایت بعدی ۲۶۳۰ است؛ زیر آن سناریو باطل می‌شود.",
+                    parentId = 87L,
+                    best = true,
+                    createdAt = java.time.Instant.parse("2026-08-30T09:31:00Z"),
+                ),
+            ),
+        ),
+    )
+
+    override suspend fun post(content: String, category: CommunityCategory): CommunityWriteOutcome =
+        answer(CommunityWriteOutcome(id = 42L, published = true, message = "منتشر شد."))
+
+    override suspend fun reply(postId: Long, content: String, parentId: Long?): CommunityWriteOutcome =
+        answer(CommunityWriteOutcome(id = null, published = true, message = null))
+
+    override suspend fun like(postId: Long, currentLikes: Int): CommunityLikeOutcome =
+        answer(CommunityLikeOutcome(likes = currentLikes + 1, liked = true))
+
+    override suspend fun react(postId: Long, emoji: String): CommunityReactionOutcome =
+        answer(CommunityReactionOutcome(counts = mapOf(emoji to 1), mine = setOf(emoji)))
+
+    override suspend fun report(postId: Long) = answer(Unit)
+
+    override suspend fun bestReply(postId: Long, replyId: Long) = answer(Unit)
+
+    override suspend fun leaderboard(): CommunityLeaderboard =
+        answer(CommunityLeaderboard(leaders = emptyList(), myRank = null, totalStudents = 0))
+}

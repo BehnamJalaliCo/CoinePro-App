@@ -198,6 +198,38 @@ class ChartArchiveTest {
     }
 
     @Test
+    fun `history on disk means more, whatever ended the fill`() = runTest {
+        // The regression the fifty-thousand ceiling exposed. `hasMore` used to consult the archive
+        // only when the *venue* was exhausted, and let the venue's own answer stand otherwise —
+        // but a fill that stops because the archive is **full** reports `venueExhausted = false`,
+        // which is the state with the most history behind it. So a chart over a full archive kept
+        // the venue's `hasMore = false` and refused to walk back through any of it.
+        val newest = bars(60, from = 1_700_000_000L, base = 100.0)
+        val full = bars(
+            ChartHistory.MAX_RESIDENT_BARS,
+            from = 1_700_000_000L - ChartHistory.MAX_RESIDENT_BARS * 3600L,
+            base = 50.0,
+        )
+        val archive = InMemoryCandleArchive()
+        archive.write("BTCUSDT", hourly, full)
+
+        val controller = ChartController(
+            "BTCUSDT",
+            OnePage(newest),
+            this,
+            cache = archiveless(),
+            archive = archive,
+        )
+        controller.start()
+        advanceUntilIdle()
+
+        assertTrue("the archive is full and the chart says there is nothing more", controller.state.value.hasMore)
+        controller.loadMore()
+        advanceUntilIdle()
+        assertTrue(controller.state.value.series.size > 60)
+    }
+
+    @Test
     fun `a page-back off the disk is not sized like a page off a network`() = runTest {
         // `HISTORY_PAGE_BARS` is five hundred because that is the smallest of the three venues'
         // page caps. It is a fact about a server, and it had no business deciding how much of our

@@ -155,6 +155,13 @@ internal fun symbolStep(symbols: List<String>, current: String, steps: Int): Str
  * to a ticker row pinned below everything. None of that is the control the owner was pointing at,
  * which is in the bar attached to the chart, beside the bar lengths.
  *
+ * ### Where this one is drawn now
+ *
+ * In the fullscreen mode's bottom strip, which is full width and has nothing beside it. The chart
+ * page's own command band carries [SymbolScrollWheel] instead — the vertical scroll the owner asked
+ * for, which fits in a toolbar cell where this does not. The two share [symbolNeighbours], so they
+ * can never disagree about what the reader's ring is.
+ *
  * ### Why the neighbours are drawn rather than a list
  *
  * The move being made cheap here is *the next one along*, and that is a single tap with no reading:

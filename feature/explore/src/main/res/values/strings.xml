@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default language: Persian. -->
+<resources>
+    <string name="explore_title">کاوش</string>
+    <string name="explore_subtitle">امروز در بازار چه خبر است</string>
+    <string name="explore_search">جست‌وجو</string>
+
+    <!-- The three doors. One word each: a tile a reader has to read is a tile that stopped a scan. -->
+    <string name="explore_door_news">اخبار</string>
+    <string name="explore_door_calendar">تقویم</string>
+    <string name="explore_door_heatmap">نقشهٔ بازار</string>
+
+    <!-- The category strip. Only the chips with markets behind them are drawn, so several of these
+         never appear on a given platform — «فارکس» is not shown to a کریپتو reader. -->
+    <string name="explore_category_all">همه</string>
+    <string name="explore_category_crypto">کریپتو</string>
+    <string name="explore_category_metal">فلزات</string>
+    <string name="explore_category_forex">فارکس</string>
+    <string name="explore_category_index">شاخص‌ها</string>
+    <string name="explore_category_energy">انرژی</string>
+    <string name="explore_category_other">سایر</string>
+
+    <string name="explore_markets_unavailable">فهرست بازارها در دسترس نیست.</string>
+    <string name="explore_markets_empty">بازاری برای نمایش در این دسته نیست.</string>
+    <string name="explore_retry">تلاش دوباره</string>
+
+    <string name="explore_stories">سرخط خبرها</string>
+    <string name="explore_stories_all">همهٔ اخبار</string>
+    <string name="explore_stories_empty">هنوز خبری منتشر نشده است.</string>
+</resources>

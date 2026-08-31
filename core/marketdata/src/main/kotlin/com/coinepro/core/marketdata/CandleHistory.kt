@@ -172,10 +172,18 @@ suspend fun CandleGateway.fillHistory(
 const val HISTORY_PAGE_BARS = 500
 
 /**
- * Requests one fill may make: twelve.
+ * Requests one fill may make: forty.
  *
- * Six thousand bars at [HISTORY_PAGE_BARS], which is deeper than any single reader will pan in one
- * sitting and shallow enough to be over in a few seconds on a connection that works. The ceiling is
- * reached across sessions, which is the design and not a compromise.
+ * Twenty thousand bars at [HISTORY_PAGE_BARS], and the target is **five years of hourly candles** —
+ * about 43,800 of them — because that is what a back-test worth running needs behind it.
+ *
+ * It was twelve, and "the ceiling is reached across sessions" was the design. Against five years it
+ * stops being a design and becomes a wait: six thousand bars per opening means an hourly chart
+ * reaches five years on the eighth time the app is opened, and the reader wants to back-test now.
+ * Forty pages is two openings for hourly and one for anything coarser.
+ *
+ * Nothing else about the fill changes. It is still fire-and-forget, still cancelled by a symbol or
+ * interval switch, and still stops early on `VENUE_EXHAUSTED` or `NO_PROGRESS` — so on a venue that
+ * only holds two thousand bars it costs exactly the handful of requests it costs today.
  */
-const val HISTORY_PAGE_BUDGET = 12
+const val HISTORY_PAGE_BUDGET = 40

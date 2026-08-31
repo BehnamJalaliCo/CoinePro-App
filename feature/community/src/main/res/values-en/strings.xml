@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="community_title">Community</string>
+    <string name="community_subtitle">Analysis and experience from other traders</string>
+    <string name="community_compose">Write</string>
+    <string name="community_compose_close">Close</string>
+    <string name="community_refresh">Refresh</string>
+    <string name="community_more">More</string>
+    <string name="community_retry">Retry</string>
+    <string name="community_send">Send</string>
+
+    <!-- Translated for the label only. The value that goes on the wire stays the server's own
+         Persian word; see CommunityCategory. -->
+    <string name="community_category_all">All</string>
+    <string name="community_category_analysis">Analysis</string>
+    <string name="community_category_question">Questions</string>
+    <string name="community_category_experience">Experience</string>
+    <string name="community_category_news">News</string>
+    <string name="community_category_general">General</string>
+
+    <string name="community_likes">%1$s likes</string>
+    <string name="community_replies">%1$s replies</string>
+    <string name="community_replies_heading">%1$s replies</string>
+
+    <string name="community_loading">Loading posts…</string>
+    <string name="community_unavailable">The community is unavailable.</string>
+    <string name="community_empty">Nothing has been posted in this category yet.</string>
+    <string name="community_empty_hint">You could be the first.</string>
+
+    <string name="community_signed_out">Sign in to read the community.</string>
+    <string name="community_signed_out_hint">The community is part of the academy and opens with the same account.</string>
+    <string name="community_sign_in">Sign in</string>
+    <string name="community_locked">The community is for VIP members.</string>
+    <string name="community_locked_hint">An active subscription opens both reading and writing.</string>
+    <string name="community_membership">Subscription</string>
+
+    <string name="community_unreadable">The server sent %1$s posts and none arrived in a shape this build can read.</string>
+    <string name="community_unreadable_hint">This is not an outage, it is a format mismatch. Take a diagnostics export and send it.</string>
+
+    <string name="community_compose_label">What did you see in the market?</string>
+    <string name="community_compose_hint">At least %1$s characters</string>
+    <string name="community_compose_count">%1$s of %2$s characters</string>
+    <string name="community_post_pending">This post has been sent for review and is not on the board yet.</string>
+
+    <string name="community_thread_title">Thread</string>
+    <string name="community_thread_gone">This post is no longer available.</string>
+    <string name="community_thread_back">Back</string>
+    <string name="community_reply_label">Your reply</string>
+    <string name="community_reply_to">In reply to %1$s</string>
+    <string name="community_best_mark">Mark as best reply</string>
+    <string name="community_best_clear">Remove the best-reply mark</string>
+</resources>

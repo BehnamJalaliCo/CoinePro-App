@@ -2418,7 +2418,26 @@ class ChartController(
                     old.copy(
                         archivedBars = depth.bars,
                         venueExhausted = depth.venueExhausted,
-                        hasMore = if (depth.venueExhausted) archiveHasOlder else old.hasMore,
+                        // **Older on disk always means more, whatever ended the fill.**
+                        //
+                        // This used to read `if (depth.venueExhausted) archiveHasOlder else
+                        // old.hasMore`, which handled one of the four ways a fill ends and let the
+                        // venue's own `hasMore` decide the other three. `HistoryStop.CEILING` is
+                        // the one that bites: a fill stops there when the archive is *full*, which
+                        // is the state with the most history behind it and precisely when
+                        // `venueExhausted` is false. So a chart whose venue serves one page, over
+                        // an archive holding fifty thousand bars, kept the venue's `hasMore = false`
+                        // and refused to walk back through any of them.
+                        //
+                        // Invisible until the ceiling was raised, because before that the archive
+                        // never reached it. The paragraph above this already names the failure —
+                        // "a chart with thirty thousand bars on disk refuse to show the reader the
+                        // second one" — and guarded only half of it.
+                        //
+                        // The honest rule needs no case analysis: there is more to show if there
+                        // are older bars anywhere, so the archive's own answer wins whenever it has
+                        // one and the venue's is kept only when it does not.
+                        hasMore = archiveHasOlder || old.hasMore,
                     )
                 }
             }

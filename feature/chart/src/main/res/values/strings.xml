@@ -104,4 +104,47 @@
     <!-- The vertical symbol scroll in the chart tool row — the control circled in the owner's
          screenshot. The count is a prose count, so Persian digits; the ticker is not. -->
     <string name="chart_wheel_scroll">نماد: %1$s، از %2$s نماد فهرست. برای تعویض بکشید.</string>
+    <!-- ── Bar replay: the reader's own trades, and the report that comes out of them ─────────
+         The replay used to step bars and stop there. These are the strings for the other half:
+         a position with a stop and a target, checked against every bar the cursor reveals, and
+         a five-tab report of how the reader traded — the same document the strategy tab shows,
+         about a different hand. -->
+    <string name="replay_ledger_show">معاملهٔ تمرینی</string>
+    <string name="replay_ledger_hide">بستن دفتر تمرین</string>
+    <string name="replay_size">حجم</string>
+    <string name="replay_size_stake">سرمایهٔ کامل</string>
+    <string name="replay_stop">حد ضرر</string>
+    <string name="replay_target">حد سود</string>
+    <string name="replay_buy">خرید</string>
+    <string name="replay_sell">فروش</string>
+    <string name="replay_position_close">بستن</string>
+    <string name="replay_break_even">سربه‌سر</string>
+    <string name="replay_run_up">سود میان‌راه</string>
+    <string name="replay_levels_wrong_side">حد ضرر باید پایین‌تر از قیمت این کندل باشد و حد سود بالاتر؛ برای فروش برعکس. تا وقتی درست نشده سفارش ثبت نمی‌شود، تا موقعیتی بدون حد باز نشود.</string>
+    <string name="replay_realised">نتیجهٔ بسته‌شده</string>
+    <string name="replay_closed_count">تعداد معاملهٔ بسته</string>
+    <string name="replay_wins">برد</string>
+    <string name="replay_wins_of">%1$s برد از %2$s معامله</string>
+    <string name="replay_end_session">پایان جلسه و بستن همه</string>
+    <string name="replay_report_open">گزارش این جلسه</string>
+    <string name="replay_ledger_note">این دفتر فقط برای همین جلسهٔ بازپخش است و در دفتر معاملهٔ آزمایشی ثبت نمی‌شود. با خروج از بازپخش پاک می‌شود. کارمزد هر طرف پنج صدم درصد حساب می‌شود، همان که بک‌تست حساب می‌کند. حد ضرر و حد سود روی کندل‌های بعدی بررسی می‌شوند: خرید با پایین‌ترین قیمت کندل استاپ می‌خورد، نه با قیمت بسته‌شدنش.</string>
+    <string name="replay_setup_entry">ورود تمرینی</string>
+    <string name="replay_setup_stop">حد ضرر</string>
+    <string name="replay_setup_target">حد سود</string>
+    <string name="replay_report_title">بک‌تست معامله‌های خودت</string>
+    <string name="replay_report_subtitle">همان سنجه‌های گزارش راهبرد، روی معامله‌هایی که خودت در این بازپخش گرفتی.</string>
+    <string name="replay_report_trades">معاملهٔ بسته‌شده</string>
+    <string name="replay_report_wins">برنده</string>
+    <string name="replay_report_losses">بازنده</string>
+    <string name="replay_report_open_positions">موقعیت باز</string>
+    <string name="replay_report_unrealised">سود شناور موقعیت‌های باز</string>
+    <string name="replay_report_exit_stop">با حد ضرر بسته شد</string>
+    <string name="replay_report_exit_target">با حد سود بسته شد</string>
+    <string name="replay_report_exit_manual">دستی بسته شد</string>
+    <string name="replay_report_exit_session">با پایان جلسه بسته شد</string>
+    <string name="replay_report_empty">هنوز معامله‌ای نبسته‌اید. یک موقعیت باز کنید، حد ضرر و حد سود بگذارید و کندل‌ها را جلو ببرید تا معلوم شود کدام‌یک زودتر خورد.</string>
+    <string name="replay_report_open_note">%1$s موقعیت هنوز باز است و در هیچ‌کدام از عددهای این گزارش نیست؛ سود شناورشان جدا نوشته شده.</string>
+    <string name="replay_report_sample">فقط %1$s معامله بسته شده. زیر %2$s معامله، درصد برد و ضریب سود اندازه‌گیری نیستند و به‌جای عدد خط تیره می‌بینید. برد و باخت را بشمارید، نه درصدشان را.</string>
+    <string name="replay_report_discipline">چند معامله را حد ضرر بست و چندتا را خودتان زودتر بستید: این همان چیزی است که بک‌تست یک راهبرد نمی‌تواند بگوید، چون راهبرد دستی ندارد که بترسد.</string>
+    <string name="replay_report_note">این گزارش فقط برای همین جلسهٔ بازپخش است و هیچ‌جا ذخیره نمی‌شود. کارمزد هر طرف پنج صدم درصد و سرمایهٔ اولیه همان است که بک‌تست راهبرد استفاده می‌کند تا دو گزارش کنار هم خوانده شوند. اگر یک کندل هم به حد ضرر و هم به حد سود رسیده باشد، حد ضرر حساب می‌شود؛ ترتیبشان درون کندل معلوم نیست و فرض بدبینانه تنها فرض درست است.</string>
 </resources>

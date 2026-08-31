@@ -3356,10 +3356,31 @@ internal fun previousSessionClose(series: CandleSeries, index: Int, zone: ZoneId
     val interval = times[times.size - 1] - times[times.size - 2]
     if (interval <= 0L || interval >= SECONDS_PER_DAY) return null
     val day = localDay(times[index], zone)
-    for (earlier in index - 1 downTo 0) {
-        if (localDay(times[earlier], zone) != day) return series.close[earlier]
+    // **A binary search, and the reason is the depth the archive now reaches.**
+    //
+    // This used to walk back one bar at a time, and the walk is bounded by a session — which is
+    // fine at three hundred bars and is not fine at fifty thousand. On a one-minute chart a session
+    // is fourteen hundred bars, and each step of the walk is an `Instant.atZone().toLocalDate()`:
+    // a calendar conversion, not a comparison. Fourteen hundred of those, on every frame of a
+    // drag, to find one number that hardly ever changes.
+    //
+    // The search is legitimate because `localDay` is monotone in the timestamps and the timestamps
+    // are required to ascend — `CandleSeries` checks that on construction. So "the last bar before
+    // [index] that belongs to an earlier day" can be found by halving, in seventeen conversions
+    // instead of fourteen hundred, and the answer is the same bar the walk returned.
+    var low = 0
+    var high = index - 1
+    var found = -1
+    while (low <= high) {
+        val middle = (low + high) / 2
+        if (localDay(times[middle], zone) < day) {
+            found = middle
+            low = middle + 1
+        } else {
+            high = middle - 1
+        }
     }
-    return null
+    return if (found < 0) null else series.close[found]
 }
 
 /** The calendar day a moment falls in, in [zone]. Whole days, so a comparison is one subtraction. */

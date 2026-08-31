@@ -122,10 +122,14 @@ import kotlin.math.abs
  *
  * Because *which instrument* is the same kind of decision as *which bar length*, made about as
  * often, and until now it had nowhere on this page to be made: `SymbolWheelBar` documents how the
- * old strip came to be unreachable code and why the watchlist pane is not a substitute. It sits at
- * the top of the band, nearest the plot, because it names what is drawn above it — the two tiers
- * below change how that is drawn. It is absent entirely for a reader with nothing to switch to, so
- * it costs a first-time reader no height at all.
+ * old strip came to be unreachable code and why the watchlist pane is not a substitute.
+ *
+ * It shares the bar-length row rather than taking a tier of its own — item 7, and the arrangement
+ * in the owner's own screenshot: a narrow vertical scroll of tickers at the leading edge, then the
+ * lengths, then the tools. See `SymbolScrollWheel` for why it is a drag rather than a list, and why
+ * the horizontal three-cell version is still the right shape in the fullscreen strip and not here.
+ * It is absent entirely for a reader with nothing to switch to, so it costs a first-time reader no
+ * height at all.
  */
 @Composable
 internal fun ChartCommandBand(

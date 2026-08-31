@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -56,6 +57,8 @@ import com.coinepro.core.backtest.BacktestExport
 import com.coinepro.core.backtest.BacktestFormat
 import com.coinepro.core.backtest.BacktestReport
 import com.coinepro.core.backtest.BacktestReports
+import com.coinepro.core.backtest.ReplayReport
+import com.coinepro.core.backtest.TradeReport
 import com.coinepro.core.chart.Candle
 import com.coinepro.core.chart.CandleSeries
 import com.coinepro.core.chart.Trade as EngineTrade
@@ -245,6 +248,165 @@ private enum class ReportTab(val label: String) {
 }
 
 /**
+ * The reader's own report: the same five tabs, about the hand that took the trades.
+ *
+ * ### Why this shares the strategy sheet rather than living beside it
+ *
+ * Because it is the same kind of answer. A session of the reader's own round trips has a win rate,
+ * a profit factor, an expectancy, an average win and an average loss, a worst drawdown, an equity
+ * curve and a list of trades — every one of them defined by `core:chart`'s single summariser, over
+ * the same starting equity and at the same five basis points a side. Writing a second screen for
+ * them would have meant a second set of statistics, and the day the two disagreed by a fee nobody
+ * could have said which was right. So the tabs below are the tabs above, handed a [TradeReport]
+ * that happens to be a replay session.
+ *
+ * ### What is different, and only what has to be
+ *
+ * **The rates are withheld on a rehearsal-sized sample.** Six trades is four and two; «۶۷٪» is a
+ * measurement, and nobody hand-trades three hundred practice trades. The percentage is a dash and
+ * the counts are on the card at the top, in words. See [rateFigure].
+ *
+ * **How each trade ended is counted.** Stopped out, target reached, closed by hand, closed with the
+ * session — the one thing a strategy backtest can never report, because a strategy has no hand to
+ * lose its nerve with. A reader with a dozen manual closes and no stop-outs has learned something
+ * about themselves that no metric on the other four tabs would have told them.
+ *
+ * **There is no export.** A rehearsal is not a document. A CSV of one would be the first step
+ * towards a rehearsal being filed as a record, which is exactly what `ReplayLedger` exists to
+ * prevent.
+ */
+@Composable
+internal fun ReplayReportBody(report: ReplayReport, modifier: Modifier = Modifier) {
+    var tab by rememberSaveable { mutableStateOf(ReportTab.OVERVIEW) }
+    val metrics = report.all
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+    ) {
+        ReplaySessionCard(report)
+
+        if (metrics.totalTrades == 0) {
+            // A position that is still open is not a result, so there is nothing to tabulate — but
+            // the card above has already said what is open and what it is worth, which is the
+            // honest half of the answer for a reader who is mid-session.
+            Text(
+                text = stringResource(R.string.replay_report_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = CoineProColors.TextMuted,
+            )
+            return@Column
+        }
+
+        CoineProSegmentedControl(
+            options = ReportTab.entries.map { it to it.label },
+            selected = tab,
+            onSelect = { tab = it },
+        )
+
+        when (tab) {
+            ReportTab.OVERVIEW -> OverviewTab(report, guardSample = true)
+            ReportTab.PERFORMANCE -> PerformanceTab(report, guardSample = true)
+            ReportTab.TRADES -> TradesTab(report, guardSample = true)
+            ReportTab.RISK -> RiskTab(report, guardSample = true)
+            ReportTab.LIST -> TradeListTab(report)
+        }
+
+        Text(
+            text = stringResource(R.string.replay_report_note),
+            style = MaterialTheme.typography.bodySmall,
+            color = CoineProColors.TextMuted,
+        )
+    }
+}
+
+/**
+ * What the session was, above what it concluded.
+ *
+ * The same position the window card holds on the strategy sheet, and for the same reason: every
+ * figure below it is stated to two decimals and reads like a verdict, and the count of trades that
+ * produced them is what decides whether it is one. The counts here are the answer the withheld win
+ * rate points at — «۴ برد از ۶ معامله» is a fact, and sixty-seven per cent is not.
+ */
+@Composable
+private fun ReplaySessionCard(report: ReplayReport) {
+    val metrics = report.all
+    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+            MetricRow(
+                stringResource(R.string.replay_realised),
+                BacktestFormat.money(metrics.netProfit, signed = true),
+                resultTint(metrics.netProfit),
+            )
+            MetricRow(
+                stringResource(R.string.replay_report_trades),
+                BacktestFormat.count(metrics.totalTrades),
+            )
+            MetricRow(
+                stringResource(R.string.replay_report_wins),
+                BacktestFormat.count(metrics.winningTrades),
+                CoineProColors.Buy,
+            )
+            MetricRow(
+                stringResource(R.string.replay_report_losses),
+                BacktestFormat.count(metrics.losingTrades),
+                CoineProColors.Sell,
+            )
+
+            if (report.openPositions > 0) {
+                MetricRow(
+                    stringResource(R.string.replay_report_open_positions),
+                    BacktestFormat.count(report.openPositions),
+                )
+                MetricRow(
+                    stringResource(R.string.replay_report_unrealised),
+                    BacktestFormat.money(report.unrealised, signed = true),
+                    resultTint(report.unrealised),
+                )
+                MutedNote(
+                    stringResource(
+                        R.string.replay_report_open_note,
+                        report.openPositions.toPersianDigits(),
+                    ),
+                )
+            }
+
+            if (report.roundTrips.isNotEmpty()) {
+                MetricRow(
+                    stringResource(R.string.replay_report_exit_stop),
+                    BacktestFormat.count(report.stoppedOut),
+                    CoineProColors.Sell,
+                )
+                MetricRow(
+                    stringResource(R.string.replay_report_exit_target),
+                    BacktestFormat.count(report.targetsHit),
+                    CoineProColors.Buy,
+                )
+                MetricRow(
+                    stringResource(R.string.replay_report_exit_manual),
+                    BacktestFormat.count(report.closedByHand),
+                )
+                MetricRow(
+                    stringResource(R.string.replay_report_exit_session),
+                    BacktestFormat.count(report.closedWithSession),
+                )
+                MutedNote(stringResource(R.string.replay_report_discipline))
+            }
+
+            val range = BacktestFormat.dateRange(
+                report.window.firstTime,
+                report.window.lastTime,
+                CHART_TIME_ZONE,
+            )
+            MetricRow("کندل‌های این جلسه", BacktestFormat.count(report.window.bars))
+            if (range.isNotEmpty()) {
+                MetricRow("بازهٔ زمانی", range)
+            }
+        }
+    }
+}
+
+/**
  * How much history this run covered, above everything it concluded.
  *
  * The bar count is a market figure and stays Latin — it is compared against another terminal's run
@@ -297,7 +459,7 @@ private fun WindowCard(
 
 /** Overview: the curve, the baseline it is measured against, and the six figures that qualify it. */
 @Composable
-private fun OverviewTab(report: BacktestReport) {
+private fun OverviewTab(report: TradeReport, guardSample: Boolean = false) {
     val metrics = report.all
     Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
         EquityChart(report)
@@ -326,8 +488,8 @@ private fun OverviewTab(report: BacktestReport) {
                     CoineProColors.Buy,
                 )
                 MetricRow("تعداد معامله", BacktestFormat.count(metrics.totalTrades))
-                MetricRow("درصد برد", BacktestFormat.percent(metrics.percentProfitable, 1))
-                MetricRow("ضریب سود", BacktestFormat.ratio(metrics.profitFactor))
+                MetricRow("درصد برد", rateFigure(metrics.percentProfitable, metrics.totalTrades, guardSample))
+                MetricRow("ضریب سود", ratioFigure(metrics.profitFactor, metrics.totalTrades, guardSample))
                 MetricRow(
                     "خرید و نگهداری",
                     BacktestFormat.signedPercent(metrics.buyAndHoldReturn),
@@ -335,7 +497,7 @@ private fun OverviewTab(report: BacktestReport) {
                 )
             }
         }
-        SampleWarning(metrics.totalTrades)
+        SampleWarning(metrics.totalTrades, guardSample)
     }
 }
 
@@ -347,7 +509,7 @@ private fun OverviewTab(report: BacktestReport) {
  * the whole rule, and the shorts are the evidence.
  */
 @Composable
-private fun PerformanceTab(report: BacktestReport) {
+private fun PerformanceTab(report: TradeReport, guardSample: Boolean = false) {
     var side by rememberSaveable { mutableStateOf(Side.ALL) }
     val metrics = when (side) {
         Side.ALL -> report.all
@@ -386,8 +548,8 @@ private fun PerformanceTab(report: BacktestReport) {
                 MetricRow("تعداد معامله", BacktestFormat.count(metrics.totalTrades))
                 MetricRow("برنده", BacktestFormat.count(metrics.winningTrades))
                 MetricRow("بازنده", BacktestFormat.count(metrics.losingTrades))
-                MetricRow("درصد برد", BacktestFormat.percent(metrics.percentProfitable, 1))
-                MetricRow("ضریب سود", BacktestFormat.ratio(metrics.profitFactor))
+                MetricRow("درصد برد", rateFigure(metrics.percentProfitable, metrics.totalTrades, guardSample))
+                MetricRow("ضریب سود", ratioFigure(metrics.profitFactor, metrics.totalTrades, guardSample))
                 MetricRow(
                     "بیشترین افت سرمایه",
                     BacktestFormat.percent(metrics.maxEquityDrawdownPercent, 1),
@@ -410,7 +572,7 @@ private fun PerformanceTab(report: BacktestReport) {
  * and shown nowhere for so long.
  */
 @Composable
-private fun TradesTab(report: BacktestReport) {
+private fun TradesTab(report: TradeReport, guardSample: Boolean = false) {
     val metrics = report.all
     Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
         CoineProCard(modifier = Modifier.fillMaxWidth()) {
@@ -422,7 +584,10 @@ private fun TradesTab(report: BacktestReport) {
                 )
                 MetricRow("میانگین برد", BacktestFormat.money(metrics.averageWin), CoineProColors.Buy)
                 MetricRow("میانگین باخت", BacktestFormat.money(metrics.averageLoss), CoineProColors.Sell)
-                MetricRow("نسبت برد به باخت", BacktestFormat.ratio(metrics.winLossRatio))
+                MetricRow(
+                    "نسبت برد به باخت",
+                    ratioFigure(metrics.winLossRatio, metrics.totalTrades, guardSample),
+                )
                 MetricRow("بزرگ‌ترین برد", BacktestFormat.money(metrics.largestWin), CoineProColors.Buy)
                 MetricRow("بزرگ‌ترین باخت", BacktestFormat.money(metrics.largestLoss), CoineProColors.Sell)
                 MetricRow(
@@ -452,7 +617,7 @@ private fun TradesTab(report: BacktestReport) {
                 )
             }
         }
-        SampleWarning(metrics.totalTrades)
+        SampleWarning(metrics.totalTrades, guardSample)
     }
 }
 
@@ -465,14 +630,14 @@ private fun TradesTab(report: BacktestReport) {
  * reader can check the run was scaled by the number they expected.
  */
 @Composable
-private fun RiskTab(report: BacktestReport) {
+private fun RiskTab(report: TradeReport, guardSample: Boolean = false) {
     val metrics = report.all
     Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
         CoineProCard(modifier = Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
-                MetricRow("شارپ (سالانه)", BacktestFormat.ratio(metrics.sharpeRatio))
-                MetricRow("سورتینو (سالانه)", BacktestFormat.ratio(metrics.sortinoRatio))
-                MetricRow("ضریب سود", BacktestFormat.ratio(metrics.profitFactor))
+                MetricRow("شارپ (سالانه)", ratioFigure(metrics.sharpeRatio, metrics.totalTrades, guardSample))
+                MetricRow("سورتینو (سالانه)", ratioFigure(metrics.sortinoRatio, metrics.totalTrades, guardSample))
+                MetricRow("ضریب سود", ratioFigure(metrics.profitFactor, metrics.totalTrades, guardSample))
                 MetricRow(
                     "امید ریاضی هر معامله",
                     BacktestFormat.money(metrics.expectancy, signed = true),
@@ -495,7 +660,7 @@ private fun RiskTab(report: BacktestReport) {
         MutedNote(
             "شارپ نوسان مثبت را هم مثل نوسان منفی جریمه می‌کند، پس قاعده‌ای که چند برد بزرگ دارد بدتر از یک قاعدهٔ کم‌جان امتیاز می‌گیرد. سورتینو فقط سمت زیان را می‌سنجد و وقتی کندل‌های زیان‌ده کم باشند بزرگ و بی‌معنا می‌شود — دقیقاً همان‌جا که بیشتر نقل می‌شود.",
         )
-        SampleWarning(metrics.totalTrades)
+        SampleWarning(metrics.totalTrades, guardSample)
     }
 }
 
@@ -508,7 +673,7 @@ private fun RiskTab(report: BacktestReport) {
  * silent truncation.
  */
 @Composable
-private fun TradeListTab(report: BacktestReport) {
+private fun TradeListTab(report: TradeReport) {
     var side by rememberSaveable { mutableStateOf(Side.ALL) }
     val listed = when (side) {
         Side.ALL -> report.trades
@@ -625,7 +790,7 @@ private fun Cell(text: String, width: Dp, header: Boolean = false, tint: Color? 
  * percentages makes as obvious as two lines crossing.
  */
 @Composable
-private fun EquityChart(report: BacktestReport) {
+private fun EquityChart(report: TradeReport) {
     val curve = report.equityCurve
     val hold = report.buyAndHoldCurve
     if (curve.size < 2) return
@@ -823,15 +988,48 @@ private fun exportFileName(symbol: String, extension: String): String =
  * so the caution has to be written out rather than implied by a small trade count.
  */
 @Composable
-private fun SampleWarning(trades: Int) {
+private fun SampleWarning(trades: Int, guarded: Boolean = false) {
     if (trades >= CONFIDENT_TRADES) return
     Text(
-        text = "فقط ${trades.toPersianDigits()} معامله بسته شد. زیر ${CONFIDENT_TRADES.toPersianDigits()} معامله، این عددها حکایت‌اند نه نتیجه.",
+        text = if (guarded) {
+            stringResource(
+                R.string.replay_report_sample,
+                trades.toPersianDigits(),
+                CONFIDENT_TRADES.toPersianDigits(),
+            )
+        } else {
+            "فقط ${trades.toPersianDigits()} معامله بسته شد. زیر ${CONFIDENT_TRADES.toPersianDigits()} معامله، این عددها حکایت‌اند نه نتیجه."
+        },
         style = MaterialTheme.typography.labelSmall,
         color = CoineProColors.Warning,
         fontWeight = FontWeight.Normal,
     )
 }
+
+/**
+ * A rate, withheld on a sample too small to have produced one.
+ *
+ * ### Why the two reports treat the same figure differently
+ *
+ * A strategy run over a thousand bars is *expected* to produce a large sample, so a small one is
+ * itself the finding: the figure is printed and the sentence under it says how thin the evidence
+ * is. A replay session is always a small sample — nobody hand-trades three hundred rehearsal
+ * trades — so the sentence would be a warning nobody can act on, which is a warning that gets read
+ * past. There the rate is not printed at all, and the reader is sent to the counts beside it.
+ *
+ * Both behaviours are one flag on one function, so the difference is a decision somebody made
+ * rather than two screens that drifted.
+ */
+private fun rateFigure(value: Double, trades: Int, guard: Boolean, decimals: Int = 1): String =
+    if (guard) {
+        BacktestFormat.percentIfSampled(value, trades, decimals)
+    } else {
+        BacktestFormat.percent(value, decimals)
+    }
+
+/** The same rule for a bare ratio — profit factor, win/loss, Sharpe, Sortino. */
+private fun ratioFigure(value: Double, trades: Int, guard: Boolean): String =
+    if (guard) BacktestFormat.ratioIfSampled(value, trades) else BacktestFormat.ratio(value)
 
 @Composable
 private fun MutedNote(text: String) {
@@ -903,8 +1101,14 @@ private enum class Side(val label: String) {
  */
 private const val MAX_LISTED_TRADES = 200
 
-/** Where a report stops being an anecdote. See [SampleWarning]. */
-private const val CONFIDENT_TRADES = 30
+/**
+ * Where a report stops being an anecdote. See [SampleWarning].
+ *
+ * Taken from `BacktestFormat` rather than restated, because that is where it is *enforced* — the
+ * replay report withholds its rates below this line — and two constants would be two different
+ * claims about the same evidence.
+ */
+private const val CONFIDENT_TRADES = BacktestFormat.CONFIDENT_TRADES
 
 private const val CSV_MIME = "text/csv"
 

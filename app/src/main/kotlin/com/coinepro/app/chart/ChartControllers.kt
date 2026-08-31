@@ -98,7 +98,14 @@ class ChartControllers(
     }
 
     private companion object {
-        const val MAX_CONTROLLERS = 8
+        // Four, not eight, and the cut pays for the resident ceiling.
+        //
+        // `ChartHistory.MAX_RESIDENT_BARS` is fifty thousand now, and one series at that depth is
+        // about six and a half megabytes across its six columns. Eight of them deep-paged in one
+        // session is ~51 MB; four holds the worst case near 26 MB, and four is still every symbol a
+        // reader flips between in one sitting. A background controller sits at its 300-bar load, so
+        // the typical cost is closer to a megabyte either way — this bounds the bad day.
+        const val MAX_CONTROLLERS = 4
     }
 }
 

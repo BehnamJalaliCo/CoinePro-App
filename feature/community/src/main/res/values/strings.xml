@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default language: Persian. -->
+<resources>
+    <string name="community_title">انجمن</string>
+    <string name="community_subtitle">تحلیل و تجربهٔ معامله‌گرها</string>
+    <string name="community_compose">نوشتن</string>
+    <string name="community_compose_close">بستن</string>
+    <string name="community_refresh">به‌روزرسانی</string>
+    <string name="community_more">بیشتر</string>
+    <string name="community_retry">تلاش دوباره</string>
+    <string name="community_send">ارسال</string>
+
+    <!-- The strip. These are the five categories the server itself stores on every post — the same
+         Persian words, because the route filters on membership of its own tuple and any other
+         spelling would quietly mean «همه». See CommunityCategory. -->
+    <string name="community_category_all">همه</string>
+    <string name="community_category_analysis">تحلیل</string>
+    <string name="community_category_question">سوال</string>
+    <string name="community_category_experience">تجربه</string>
+    <string name="community_category_news">اخبار</string>
+    <string name="community_category_general">عمومی</string>
+
+    <!-- Prose counts, so Persian digits — unlike a price, which stays Latin so it can be checked
+         against another terminal. Nothing on this screen is checkable against another terminal. -->
+    <string name="community_likes">%1$s پسند</string>
+    <string name="community_replies">%1$s پاسخ</string>
+    <string name="community_replies_heading">%1$s پاسخ</string>
+
+    <string name="community_loading">در حال گرفتن پست‌ها…</string>
+    <string name="community_unavailable">انجمن در دسترس نیست.</string>
+    <string name="community_empty">هنوز در این دسته چیزی نوشته نشده است.</string>
+    <string name="community_empty_hint">می‌توانید اولین نفر باشید.</string>
+
+    <!-- Two refusals, two buttons. A 401 is «ورود لازم است» and a 403 is the tier gate; folding
+         them into one message sends half the readers to a control that cannot help them. -->
+    <string name="community_signed_out">برای دیدن انجمن باید وارد شوید.</string>
+    <string name="community_signed_out_hint">انجمن بخشی از آکادمی است و با همان حساب باز می‌شود.</string>
+    <string name="community_sign_in">ورود</string>
+    <string name="community_locked">انجمن ویژهٔ اعضای VIP است.</string>
+    <string name="community_locked_hint">با اشتراک فعال، نوشتن و خواندن هر دو باز می‌شود.</string>
+    <string name="community_membership">اشتراک</string>
+
+    <!-- HTTP 200 with rows in the body, none of them in a shape this build can read. Counted rather
+         than described, because the count is the whole diagnosis. -->
+    <string name="community_unreadable">سرور %1$s پست فرستاد و هیچ‌کدام به شکلی نبود که این نسخه بتواند بخواند.</string>
+    <string name="community_unreadable_hint">این قطعی نیست، اختلافِ قالب است. از صفحهٔ تشخیص خروجی بگیرید و بفرستید.</string>
+
+    <string name="community_compose_label">چه چیزی در بازار دیدید؟</string>
+    <string name="community_compose_hint">دست‌کم %1$s نویسه</string>
+    <string name="community_compose_count">%1$s از %2$s نویسه</string>
+    <string name="community_post_pending">این پست برای بازبینی ارسال شده و هنوز روی تابلو نیست.</string>
+
+    <string name="community_thread_title">گفت‌وگو</string>
+    <string name="community_thread_gone">این پست دیگر در دسترس نیست.</string>
+    <string name="community_thread_back">بازگشت</string>
+    <string name="community_reply_label">پاسخ شما</string>
+    <string name="community_reply_to">در پاسخ به %1$s</string>
+    <string name="community_best_mark">انتخاب به‌عنوان بهترین پاسخ</string>
+    <string name="community_best_clear">برداشتن نشان بهترین پاسخ</string>
+</resources>

@@ -793,8 +793,7 @@ object ChartCatalog {
      * through it — the rows themselves travel on [ChartLine.profile]. Cheap enough at a few hundred
      * bars, and honest: the value really is the same on every bar.
      */
-    private fun flat(size: Int, price: Double): Line =
-        Line.of(size) { if (price.isFinite()) price else null }
+    private fun flat(size: Int, price: Double): Line = Line.constant(size, price)
 
     /** The window the chop zone normalises its slope over. Fixed; see the note under [PERIODS]. */
     private const val CHOP_ZONE_PERIOD = 30

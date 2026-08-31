@@ -673,7 +673,16 @@ fun ChartScreen(
         val target = stringResource(R.string.chart_position_target)
         remember(it, entry, stop, target) { positionOverlay(it, entry, stop, target) }
     }
-    val drawnSetup = positionSetup ?: signal
+    // The open rehearsal position, handed up by the replay bar.
+    //
+    // Held here rather than in the bar because the chart is what draws it, and *only* the drawing
+    // is held: the session itself stays inside `ReplayLedgerPanel` and dies with it, which is the
+    // rule `ReplayLedger` exists to enforce — a rehearsal must never become a record.
+    var replaySetup by remember { mutableStateOf<SignalOverlay?>(null) }
+    // The rehearsal wins over both. A reader in replay who has just opened a practice position is
+    // looking at that position; a live paper position's levels drawn over a chart rewound to last
+    // March would be two prices from a different month.
+    val drawnSetup = replaySetup ?: positionSetup ?: signal
 
     // The chart itself, written once and placed in one of two frames.
     //
@@ -1088,6 +1097,8 @@ fun ChartScreen(
                 onJumpToLive = controller::replayJumpToLive,
                 onGoTo = controller::replayGoTo,
                 onExit = controller::exitReplay,
+                // Cleared by the bar itself on dispose, so leaving replay takes the drawing with it.
+                onSetupOverlay = { replaySetup = it },
             )
         }
 

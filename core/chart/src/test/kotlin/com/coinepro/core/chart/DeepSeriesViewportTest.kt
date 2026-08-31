@@ -106,4 +106,27 @@ class DeepSeriesViewportTest {
         val shallow = CandleSeries(deep.bars.take(300))
         assertSame(shallow, shallow.resident(maxBars = 50_000))
     }
+
+    @Test
+    fun `the previous session close is found without walking a session of bars`() {
+        // The one per-frame walk that was linear in the *session* rather than in the window. On a
+        // one-minute chart a session is fourteen hundred bars and each step is a calendar
+        // conversion. The search halves instead; this pins the answer it gives against a series
+        // whose day boundary is in a known place.
+        val minute = CandleSeries(
+            (0 until 4_000).map { index ->
+                val price = 10.0 + index
+                // Two days of one-minute bars, starting at midnight UTC.
+                Candle(1_700_000_000L - 1_700_000_000L % 86_400L + index * 60L, price, price, price, price, 1.0)
+            },
+        )
+        val zone = java.time.ZoneId.of("UTC")
+        // Bar 1440 is the first of the second day, so the reference is the close of bar 1439.
+        val fromSecondDay = previousSessionClose(minute, 1_500, zone)
+
+        assertEquals(minute.close[1_439], requireNotNull(fromSecondDay), 0.0)
+        // And nothing to refer to on the first day of the series, which is an honest null rather
+        // than the oldest bar dressed up as yesterday.
+        assertEquals(null, previousSessionClose(minute, 100, zone))
+    }
 }

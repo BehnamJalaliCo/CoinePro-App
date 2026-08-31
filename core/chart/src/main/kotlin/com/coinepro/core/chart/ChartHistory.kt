@@ -37,14 +37,21 @@ package com.coinepro.core.chart
 object ChartHistory {
 
     /**
-     * How many bars one chart may hold: twelve thousand.
+     * How many bars one chart may hold: fifty thousand.
      *
-     * About a megabyte and a half with the columns, so eight live controllers come to twelve
-     * megabytes — the number that has to be affordable, since that is what this app actually keeps.
-     * It is also forty times a phone's widest zoom, so a reader who pans without re-zooming crosses
-     * it in something like a hundred screenfuls.
+     * About six and a half megabytes with the columns. It is `CandleArchive.MAX_BARS_PER_SERIES`,
+     * so the chart can now walk to the far end of everything the archive holds — which is the whole
+     * point, because a back-test over a year of hourly candles is not a back-test if the chart drops
+     * the far end of the year on the way there. `ChartControllers.MAX_CONTROLLERS` came down from
+     * eight to four in the same change to pay for it.
+     *
+     * The three costs this file's header lists are no longer paid per pan. Indicators are recomputed
+     * on a series or switch change only — `ChartDerived.matchesApartFromWindow` splits the window
+     * out of the key, because exactly one study in the catalogue reads it and it was invalidating
+     * every other one on every bar of a drag. The draw pass was already confined to the visible
+     * slice. What is left at this depth is memory, which is why the controller count moved with it.
      */
-    const val MAX_RESIDENT_BARS = 12_000
+    const val MAX_RESIDENT_BARS = 50_000
 
     /**
      * How close the viewport may come to the edge of what is resident before it is worth re-slicing:
@@ -52,11 +59,14 @@ object ChartHistory {
      *
      * The trigger, not the size — [residentRange] always spends the whole budget. It exists because
      * re-slicing when the reader has already reached the edge is too late: the frame that needs the
-     * next bars is the frame that has to wait for them. Two thousand is a dozen screenfuls at
-     * ordinary zoom, so the slice is rebuilt once, well before it is needed, rather than on every
-     * frame of a drag.
+     * next bars is the frame that has to wait for them.
+     *
+     * Five thousand, raised with the ceiling. Two thousand was a dozen screenfuls when the ceiling
+     * was twelve thousand; against fifty thousand it is four per cent of the window, which a reader
+     * dragging hard crosses inside a single fling — and then the re-slice is happening in the frame
+     * that needed it, which is the case this margin exists to prevent.
      */
-    const val HEADROOM_BARS = 2_000
+    const val HEADROOM_BARS = 5_000
 
     /** Roughly what [bars] loaded bars cost in memory, columns included. See the note above. */
     const val BYTES_PER_BAR = 128

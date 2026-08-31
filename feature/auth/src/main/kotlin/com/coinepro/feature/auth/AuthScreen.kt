@@ -59,7 +59,7 @@ fun AuthScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         ProChartLockup(
-            wordmarkWidth = 260.dp,
+            wordmarkWidth = 190.dp,
             contentDescription = stringResource(R.string.auth_wordmark_description),
         )
         Spacer(Modifier.height(12.dp))

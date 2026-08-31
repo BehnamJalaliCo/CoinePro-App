@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="explore_title">Explore</string>
+    <string name="explore_subtitle">What the market is doing today</string>
+    <string name="explore_search">Search</string>
+
+    <string name="explore_door_news">News</string>
+    <string name="explore_door_calendar">Calendar</string>
+    <string name="explore_door_heatmap">Heat map</string>
+
+    <string name="explore_category_all">All</string>
+    <string name="explore_category_crypto">Crypto</string>
+    <string name="explore_category_metal">Metals</string>
+    <string name="explore_category_forex">Forex</string>
+    <string name="explore_category_index">Indices</string>
+    <string name="explore_category_energy">Energy</string>
+    <string name="explore_category_other">Other</string>
+
+    <string name="explore_markets_unavailable">The market list is unavailable.</string>
+    <string name="explore_markets_empty">No markets to show in this category.</string>
+    <string name="explore_retry">Retry</string>
+
+    <string name="explore_stories">Top stories</string>
+    <string name="explore_stories_all">All news</string>
+    <string name="explore_stories_empty">Nothing has been published yet.</string>
+</resources>

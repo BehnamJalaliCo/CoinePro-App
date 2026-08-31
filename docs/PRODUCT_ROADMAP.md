@@ -299,6 +299,7 @@ core:execution
 core:copytrade
 core:portfolio
 core:academy
+core:community
 core:aisignal
 core:aivision
 core:aiassistant
@@ -344,6 +345,8 @@ feature:ai-vision
 feature:ai-assistant
 feature:news
 feature:calendar
+feature:explore
+feature:community
 feature:tools
 feature:activity
 feature:menu

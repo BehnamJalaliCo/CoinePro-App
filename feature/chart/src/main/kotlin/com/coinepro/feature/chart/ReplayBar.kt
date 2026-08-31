@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -20,7 +21,10 @@ import androidx.compose.material3.Text
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -39,10 +44,14 @@ import androidx.compose.ui.unit.dp
 import com.coinepro.core.backtest.BacktestFormat
 import com.coinepro.core.backtest.ReplayLedger
 import com.coinepro.core.backtest.ReplayPosition
+import com.coinepro.core.backtest.ReplayReport
+import com.coinepro.core.backtest.ReplayReports
 import com.coinepro.core.backtest.ReplaySession
+import com.coinepro.core.backtest.replaySetup
 import com.coinepro.core.chart.Candle
 import com.coinepro.core.chart.ReplaySpeed
 import com.coinepro.core.chart.ReplayState
+import com.coinepro.core.chart.SignalOverlay
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.JalaliDate
 import com.coinepro.core.common.foldDigitsToLatin
@@ -51,6 +60,7 @@ import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProShapes
+import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProToggleChip
 import com.coinepro.core.designsystem.CoineProTextField
@@ -58,6 +68,7 @@ import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.marketdata.CHART_TIME_ZONE
 import java.time.LocalDate
+import java.util.Locale
 
 /**
  * The replay transport, under the chart.
@@ -84,6 +95,17 @@ internal fun ReplayBar(
     /** Moves the cursor to a bar the reader named. See `Replay.goTo`. */
     onGoTo: (Int) -> Unit,
     onExit: () -> Unit,
+    /**
+     * The open rehearsal position, as the chart should draw it, or null when there is none.
+     *
+     * Hoisted out as a callback rather than held by the screen, because the session itself must not
+     * be: a rehearsal dies with the replay bar, and a chart screen holding it would be one refactor
+     * away from persisting it. What the screen needs is the *drawing*, which is a value with no
+     * lifetime of its own — it is handed up when it changes and cleared when this bar leaves.
+     *
+     * Defaulted, so a host that has not been wired for it draws nothing extra and still compiles.
+     */
+    onSetupOverlay: (SignalOverlay?) -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -166,7 +188,7 @@ internal fun ReplayBar(
 
         GoToDateField(bars = state.bars, onGoTo = onGoTo)
 
-        ReplayLedgerPanel(state)
+        ReplayLedgerPanel(state, onSetupOverlay)
     }
 }
 
@@ -229,10 +251,17 @@ internal fun GoToDateField(
 /**
  * The rehearsal ledger: trades taken during this replay session, and how they went.
  *
- * A paper trade could already be taken during a replay, because the setup card reads whatever price
- * the chart is showing and during replay that is the replay bar. Everything after the entry was
- * missing — no position, no running result, no ledger — so a reader could open a trade in a
- * rehearsal and had nowhere to see what happened to it.
+ * ### What this is, and what it used to be
+ *
+ * Replay used to step the bars and stop there. A reader could scrub back to March, watch a level
+ * break and tell themselves they would have taken it — which is the one claim a chart can never
+ * contradict. Everything after the entry was missing: no position, no stop, no target, no result.
+ *
+ * This is the other half. Open a long or a short at the bar you are looking at, name the price that
+ * says you are wrong and the price that says you are done, step forward, and find out which of the
+ * two the market reached first. What comes out at the end is «گزارش این جلسه» — the same five-tab
+ * document the strategy tab produces, about the reader's own hand, on the same starting equity and
+ * at the same fees, so the two can honestly be read side by side.
  *
  * ### Kept out of the paper-trading book, deliberately
  *
@@ -240,20 +269,37 @@ internal fun GoToDateField(
  * start again. The paper book is a record of decisions taken without knowing what came next. Mixing
  * a rehearsal into a record is how a journal stops being trusted, so nothing here is written
  * anywhere: the session lives for as long as replay is on, and leaving replay discards it. That is
- * the honest shape of a rehearsal — worth reading, not worth keeping — and it is why the result is
- * shown here, while the session is still running, rather than in a summary afterwards.
+ * the honest shape of a rehearsal — worth reading, not worth keeping — and it is why the report is
+ * offered here, while the session is still running, rather than as a summary afterwards.
  *
  * Collapsed until asked for. The transport above it is what a reader came to the bar for, and a
  * trading panel permanently open under the chart would push the chart itself off a phone.
  */
 @Composable
-private fun ReplayLedgerPanel(state: ReplayState) {
+private fun ReplayLedgerPanel(state: ReplayState, onSetupOverlay: (SignalOverlay?) -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
+    var reportOpen by rememberSaveable { mutableStateOf(false) }
     var sizeText by rememberSaveable { mutableStateOf("1") }
+    var stopText by rememberSaveable { mutableStateOf("") }
+    var targetText by rememberSaveable { mutableStateOf("") }
     // A new snapshot is a new session. Keyed on the first bar and the length, which together change
     // on every fresh entry into replay and on nothing else.
     var session by remember(state.bars.firstOrNull()?.t, state.bars.size) {
         mutableStateOf(ReplaySession())
+    }
+
+    // ── Stepping the bars is what resolves a stop ────────────────────────────────────────────────
+    //
+    // Committed to the session rather than derived beside it, and that is the whole difference
+    // between a ledger and a fiction. A derived stop-out would be recomputed from the raw session
+    // every time the cursor moved, so dragging the scrub back three bars would un-hit it — and a
+    // reader who can un-hit their stops by scrubbing has a report of the best version of every
+    // trade they took. See `ReplayLedger.advance`: a bar already walked stays walked.
+    //
+    // Assigning an equal session is a no-op for recomposition — `mutableStateOf` compares
+    // structurally — so this effect settles on the step where nothing triggered.
+    LaunchedEffect(state.cursor, state.bars) {
+        session = ReplayLedger.advance(session, state.bars, state.cursor)
     }
 
     // Marked rather than accumulated: stepping backwards un-reveals the bars that set an envelope,
@@ -263,8 +309,38 @@ private fun ReplayLedgerPanel(state: ReplayState) {
         ReplayLedger.mark(session, state.bars, state.cursor)
     }
     val price = state.bars.getOrNull(state.cursor)?.c
+
+    // ── The open position, drawn on the chart like any other ────────────────────────────────────
+    //
+    // Converted to the overlay the chart already knows how to draw — green above the entry, red
+    // below, and nothing at all left of the candle it was opened on — rather than given a renderer
+    // of its own. See `replaySetup` for why a second renderer would eventually disagree with this
+    // one about which side of a short's entry the red goes on.
+    //
+    // The newest open position wins, because the chart carries one setup and the newest is the one
+    // the reader just took. The rest are on the rows below, where they are labelled.
+    val entryLabel = stringResource(R.string.replay_setup_entry)
+    val stopLabel = stringResource(R.string.replay_setup_stop)
+    val targetLabel = stringResource(R.string.replay_setup_target)
+    val overlay = remember(marked.open.lastOrNull(), entryLabel, stopLabel, targetLabel) {
+        marked.open.lastOrNull()?.let { replaySetup(it, entryLabel, stopLabel, targetLabel) }
+    }
+    LaunchedEffect(overlay) { onSetupOverlay(overlay) }
+    // Leaving replay takes the drawing with it. A rehearsal's levels left on a live chart would be
+    // two prices nobody placed, drawn exactly like two prices somebody did.
+    DisposableEffect(Unit) { onDispose { onSetupOverlay(null) } }
+
     val size = sizeText.foldDigitsToLatin().trim().toDoubleOrNull() ?: 0.0
-    val tradable = price != null && size > 0
+    val stop = stopText.foldDigitsToLatin().trim().takeIf { it.isNotEmpty() }?.toDoubleOrNull()
+    val target = targetText.foldDigitsToLatin().trim().takeIf { it.isNotEmpty() }?.toDoubleOrNull()
+    // A level on the wrong side of the market refuses the order rather than being dropped from it —
+    // see `ReplayLedger.open`. The chip is dimmed for the same reason the ledger refuses: a reader
+    // who typed a stop and got a position without one is trading unprotected while believing they
+    // are not.
+    val canBuy = price != null && size > 0 && placeable(true, stop, target, price)
+    val canSell = price != null && size > 0 && placeable(false, stop, target, price)
+    val typedButUnusable = price != null && size > 0 && !canBuy && !canSell &&
+        (stopText.isNotBlank() || targetText.isNotBlank())
 
     Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
         Row(
@@ -273,7 +349,9 @@ private fun ReplayLedgerPanel(state: ReplayState) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = if (expanded) "بستن دفتر تمرین" else "معاملهٔ تمرینی",
+                text = stringResource(
+                    if (expanded) R.string.replay_ledger_hide else R.string.replay_ledger_show,
+                ),
                 style = MaterialTheme.typography.labelSmall,
                 color = if (expanded) CoineProColors.OnAccent else CoineProColors.TextSecondary,
                 modifier = Modifier
@@ -296,6 +374,17 @@ private fun ReplayLedgerPanel(state: ReplayState) {
             }
         }
 
+        // The report outlives the panel being collapsed: a reader who has ended their session wants
+        // the answer, not the order ticket that produced it.
+        if (reportOpen) {
+            ReplaySessionReport(
+                report = remember(marked, state.cursor, state.bars) {
+                    ReplayReports.build(marked, state.bars, state.cursor)
+                },
+                onDismiss = { reportOpen = false },
+            )
+        }
+
         if (!expanded) return@Column
 
         CoineProCard(modifier = Modifier.fillMaxWidth()) {
@@ -308,63 +397,175 @@ private fun ReplayLedgerPanel(state: ReplayState) {
                     CoineProTextField(
                         value = sizeText,
                         onValueChange = { sizeText = it },
-                        label = "حجم",
+                        label = stringResource(R.string.replay_size),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Decimal,
                             imeAction = ImeAction.Done,
                         ),
                         modifier = Modifier.weight(1f),
                     )
-                    ActionChip("خرید", CoineProColors.Buy, tradable) {
-                        session = ReplayLedger.open(marked, state.bars, state.cursor, true, size)
-                    }
-                    ActionChip("فروش", CoineProColors.Sell, tradable) {
-                        session = ReplayLedger.open(marked, state.bars, state.cursor, false, size)
+                    // The size a strategy run commits, in one tap. Without it a reader types «1»,
+                    // trades a thousandth of a stake on a forty-thousand-dollar instrument, and
+                    // reads a net profit that cannot be compared with anything on the backtest
+                    // sheet. See `ReplayLedger.stakeSize`.
+                    ActionChip(
+                        label = stringResource(R.string.replay_size_stake),
+                        colour = CoineProColors.AccentFill,
+                        enabled = price != null,
+                    ) {
+                        price?.let { sizeText = stakeText(it) }
                     }
                 }
 
-                if (price != null) {
-                    LedgerRow("قیمت این کندل", BacktestFormat.money(price))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CoineProTextField(
+                        value = stopText,
+                        onValueChange = { stopText = it },
+                        label = stringResource(R.string.replay_stop),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal,
+                            imeAction = ImeAction.Done,
+                        ),
+                        modifier = Modifier.weight(1f),
+                    )
+                    CoineProTextField(
+                        value = targetText,
+                        onValueChange = { targetText = it },
+                        label = stringResource(R.string.replay_target),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal,
+                            imeAction = ImeAction.Done,
+                        ),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ActionChip(stringResource(R.string.replay_buy), CoineProColors.Buy, canBuy) {
+                        session = ReplayLedger.open(
+                            session = marked,
+                            bars = state.bars,
+                            cursor = state.cursor,
+                            isLong = true,
+                            size = size,
+                            stopLoss = stop,
+                            takeProfit = target,
+                        )
+                    }
+                    ActionChip(stringResource(R.string.replay_sell), CoineProColors.Sell, canSell) {
+                        session = ReplayLedger.open(
+                            session = marked,
+                            bars = state.bars,
+                            cursor = state.cursor,
+                            isLong = false,
+                            size = size,
+                            stopLoss = stop,
+                            takeProfit = target,
+                        )
+                    }
+                    if (price != null) {
+                        Text(
+                            text = BacktestFormat.money(price),
+                            style = CoineProTextStyles.RowFigure,
+                            color = CoineProColors.TextSecondary,
+                            textAlign = TextAlign.Right,
+                            maxLines = 1,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+
+                if (typedButUnusable) {
+                    Text(
+                        text = stringResource(R.string.replay_levels_wrong_side),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CoineProColors.Warning,
+                        fontWeight = FontWeight.Normal,
+                    )
                 }
 
                 marked.open.forEach { position ->
-                    OpenPositionRow(position, price) {
-                        session = ReplayLedger.close(marked, state.bars, state.cursor, position.id)
-                    }
+                    OpenPositionRow(
+                        position = position,
+                        price = price,
+                        onBreakEven = {
+                            // The one in-flight edit worth a tap of its own: risk removed, trade
+                            // left running. Refused by the ledger when the market is already back
+                            // through the entry, which is exactly when it would fill instantly.
+                            session = ReplayLedger.protect(
+                                session = marked,
+                                bars = state.bars,
+                                cursor = state.cursor,
+                                id = position.id,
+                                stopLoss = position.entryPrice,
+                                takeProfit = position.takeProfit,
+                            )
+                        },
+                        onClose = {
+                            session = ReplayLedger.close(marked, state.bars, state.cursor, position.id)
+                        },
+                    )
                 }
 
                 if (marked.closed.isNotEmpty()) {
                     val summary = ReplayLedger.summary(marked, state.bars, state.cursor)
                     LedgerRow(
-                        "نتیجهٔ بسته‌شده",
+                        stringResource(R.string.replay_realised),
                         BacktestFormat.money(summary.netProfit, signed = true),
                         resultInk(summary.netProfit),
                     )
-                    LedgerRow("تعداد معاملهٔ بسته", BacktestFormat.count(summary.totalTrades))
-                    LedgerRow("درصد برد", BacktestFormat.percent(summary.percentProfitable, 1))
-                    // A rehearsal of three winning trades has an infinite profit factor. A dash,
-                    // never a number — see `BacktestFormat`.
-                    LedgerRow("ضریب سود", BacktestFormat.ratio(summary.profitFactor))
-                }
-
-                if (marked.open.isNotEmpty()) {
-                    Text(
-                        text = "پایان جلسه و بستن همه",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = CoineProColors.OnAccent,
-                        modifier = Modifier
-                            .minimumInteractiveComponentSize()
-                            .clip(CoineProShapes.small)
-                            .background(CoineProColors.AccentFill)
-                            .clickable {
-                                session = ReplayLedger.closeAll(marked, state.bars, state.cursor)
-                            }
-                            .padding(horizontal = CoineProSpacing.OneHalf, vertical = 6.dp),
+                    LedgerRow(
+                        stringResource(R.string.replay_closed_count),
+                        BacktestFormat.count(summary.totalTrades),
+                    )
+                    // Not a win rate. Four and two is what happened; «۶۷٪» is a measurement, and a
+                    // rehearsal has never taken enough trades to have made one. The full argument
+                    // is in `BacktestFormat.ratioIfSampled`, and the report says it in words.
+                    LedgerRow(
+                        stringResource(R.string.replay_wins),
+                        stringResource(
+                            R.string.replay_wins_of,
+                            summary.winningTrades.toPersianDigits(),
+                            summary.totalTrades.toPersianDigits(),
+                        ),
                     )
                 }
 
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (marked.open.isNotEmpty()) {
+                        // Ending a session closes everything at the cursor. A session that finishes
+                        // on an open position finishes on a hope, and the report would be taken
+                        // from a number that had not happened yet.
+                        ActionChip(
+                            label = stringResource(R.string.replay_end_session),
+                            colour = CoineProColors.AccentFill,
+                            enabled = true,
+                        ) {
+                            session = ReplayLedger.closeAll(marked, state.bars, state.cursor)
+                            reportOpen = true
+                        }
+                    }
+                    ActionChip(
+                        label = stringResource(R.string.replay_report_open),
+                        colour = CoineProColors.AccentFill,
+                        enabled = !marked.isEmpty,
+                    ) { reportOpen = true }
+                }
+
                 Text(
-                    text = "این دفتر فقط برای همین جلسهٔ بازپخش است و در دفتر معاملهٔ آزمایشی ثبت نمی‌شود. با خروج از بازپخش پاک می‌شود. کارمزد هر طرف پنج صدم درصد حساب می‌شود، همان که بک‌تست حساب می‌کند.",
+                    text = stringResource(R.string.replay_ledger_note),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,
                     fontWeight = FontWeight.Normal,
@@ -375,74 +576,195 @@ private fun ReplayLedgerPanel(state: ReplayState) {
 }
 
 /**
+ * The full-stake size as text a field can hold and this file can parse back.
+ *
+ * Deliberately not `BacktestFormat.money`, which is the obvious thing to reach for and is wrong
+ * here twice over: it groups thousands with commas and wraps the run in bidirectional isolates.
+ * Both are right for a figure being *read* and fatal for one being typed — `toDoubleOrNull` on
+ * "1,234.5678" is null, so the chip would fill the field with something the buy button then
+ * refuses, with nothing on screen to say why.
+ *
+ * Six decimals, trimmed. A stake on an instrument quoted in the tens of thousands is a fraction of
+ * a unit, and rounding it to two would commit a different amount from the one the report is scaled
+ * against.
+ */
+private fun stakeText(price: Double): String {
+    val stake = ReplayLedger.stakeSize(price)
+    if (!stake.isFinite() || stake <= 0) return ""
+    return String.format(Locale.US, "%.6f", stake).trimEnd('0').trimEnd('.')
+}
+
+/**
+ * Whether both typed levels can be placed on this side at this price.
+ *
+ * Blank is legitimate — a reader may take a position without a plan, and the ledger's job is to
+ * show them what that cost rather than to refuse it. Text that is not a number is not blank: it is
+ * a level the reader meant, and letting the chip fire would open a position without it.
+ */
+private fun placeable(isLong: Boolean, stop: Double?, target: Double?, price: Double): Boolean {
+    val stopOk = stop == null || ReplayLedger.stopIsPlaceable(isLong, stop, price)
+    val targetOk = target == null || ReplayLedger.targetIsPlaceable(isLong, target, price)
+    return stopOk && targetOk
+}
+
+/**
+ * The session's own backtest, in the sheet the strategy report uses.
+ *
+ * The same chrome and the same five tabs, because it is the same kind of answer about a different
+ * trader — and a reader who has learned to read one of them has learned to read the other. The
+ * export is deliberately absent: a rehearsal is not a document, and a CSV of one would be the first
+ * step towards a rehearsal being filed as a record.
+ */
+// The sheet's own `SheetState` default is the experimental API here, not anything this file uses.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReplaySessionReport(report: ReplayReport, onDismiss: () -> Unit) {
+    CoineProSheet(
+        title = stringResource(R.string.replay_report_title),
+        subtitle = stringResource(R.string.replay_report_subtitle),
+        onDismiss = onDismiss,
+    ) {
+        ReplayReportBody(
+            report = report,
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = CoineProSpacing.Gutter)
+                .padding(bottom = CoineProSpacing.Gutter),
+        )
+    }
+}
+
+/**
  * One open rehearsal position, marked against the replay bar.
  *
- * Run-up is on the row beside the profit, because on an open position the two together are the
- * whole decision: a position up ten that was up ninety is a position whose reader is already late,
- * and the profit alone does not say so.
+ * Two lines rather than one. The first is what the position is doing — side, entry, profit — and
+ * the second is the plan it is running under: the stop, the target and how far it went in the
+ * reader's favour before now. Squeezing all seven figures onto one row on a phone leaves each of
+ * them four characters wide, which is how a stop ends up unreadable at exactly the moment it
+ * matters.
+ *
+ * Run-up is beside the profit because on an open position the two together are the whole decision:
+ * a position up ten that was up ninety is a position whose reader is already late, and the profit
+ * alone does not say so.
  */
 @Composable
-private fun OpenPositionRow(position: ReplayPosition, price: Double?, onClose: () -> Unit) {
+private fun OpenPositionRow(
+    position: ReplayPosition,
+    price: Double?,
+    onBreakEven: () -> Unit,
+    onClose: () -> Unit,
+) {
     val profit = price?.let(position::profit) ?: 0.0
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = if (position.isLong) "خرید" else "فروش",
-            style = MaterialTheme.typography.labelSmall,
-            color = if (position.isLong) CoineProColors.Buy else CoineProColors.Sell,
-            modifier = Modifier.width(40.dp),
-        )
-        Text(
-            text = BacktestFormat.money(position.entryPrice),
-            style = CoineProTextStyles.RowFigure,
-            color = CoineProColors.TextSecondary,
-            textAlign = TextAlign.Right,
-            maxLines = 1,
-            modifier = Modifier.weight(1f),
-        )
-        // The amount and the percentage in one cell, stacked. Two columns would not fit beside the
-        // run-up on a phone, and dropping the percentage would leave a reader comparing a rehearsal
-        // on a two-hundred-dollar instrument against one on a forty-thousand-dollar instrument by
-        // the absolute number, which says nothing about which decision was better.
-        Column(modifier = Modifier.weight(1f)) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                text = BacktestFormat.money(profit, signed = true),
-                style = CoineProTextStyles.RowFigure,
-                color = resultInk(profit),
-                textAlign = TextAlign.Right,
-                maxLines = 1,
-                modifier = Modifier.fillMaxWidth(),
+                text = stringResource(
+                    if (position.isLong) R.string.replay_buy else R.string.replay_sell,
+                ),
+                style = MaterialTheme.typography.labelSmall,
+                color = if (position.isLong) CoineProColors.Buy else CoineProColors.Sell,
+                modifier = Modifier.width(40.dp),
             )
             Text(
-                text = BacktestFormat.signedPercent(price?.let(position::profitPercent) ?: 0.0),
-                style = MaterialTheme.typography.labelSmall,
-                color = resultInk(profit),
+                text = BacktestFormat.money(position.entryPrice),
+                style = CoineProTextStyles.RowFigure,
+                color = CoineProColors.TextSecondary,
                 textAlign = TextAlign.Right,
                 maxLines = 1,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.weight(1f),
+            )
+            // The amount and the percentage in one cell, stacked. Two columns would not fit on a
+            // phone, and dropping the percentage would leave a reader comparing a rehearsal on a
+            // two-hundred-dollar instrument against one on a forty-thousand-dollar instrument by
+            // the absolute number, which says nothing about which decision was better.
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = BacktestFormat.money(profit, signed = true),
+                    style = CoineProTextStyles.RowFigure,
+                    color = resultInk(profit),
+                    textAlign = TextAlign.Right,
+                    maxLines = 1,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    text = BacktestFormat.signedPercent(price?.let(position::profitPercent) ?: 0.0),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = resultInk(profit),
+                    textAlign = TextAlign.Right,
+                    maxLines = 1,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            Text(
+                text = stringResource(R.string.replay_position_close),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.OnAccent,
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .clip(CoineProShapes.small)
+                    .background(CoineProColors.AccentFill)
+                    .clickable(onClick = onClose)
+                    .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
             )
         }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // A dash where there is no stop, and it is the most important dash on the row: a
+            // position with no stop has unbounded risk, and a zero or a blank there would read as
+            // a level that exists.
+            LevelCell(
+                label = stringResource(R.string.replay_stop),
+                value = position.stopLoss?.let(BacktestFormat::money) ?: BacktestFormat.ABSENT,
+                colour = CoineProColors.Sell,
+            )
+            LevelCell(
+                label = stringResource(R.string.replay_target),
+                value = position.takeProfit?.let(BacktestFormat::money) ?: BacktestFormat.ABSENT,
+                colour = CoineProColors.Buy,
+            )
+            LevelCell(
+                label = stringResource(R.string.replay_run_up),
+                value = BacktestFormat.money(position.runUp),
+                colour = CoineProColors.Buy,
+            )
+            Text(
+                text = stringResource(R.string.replay_break_even),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextSecondary,
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .clip(CoineProShapes.small)
+                    .background(CoineProColors.SurfaceElevated)
+                    .clickable(onClick = onBreakEven)
+                    .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
+            )
+        }
+    }
+}
+
+/** A small labelled figure on the position's second line. */
+@Composable
+private fun LevelCell(label: String, value: String, colour: Color) {
+    Column(modifier = Modifier.width(76.dp)) {
         Text(
-            text = BacktestFormat.money(position.runUp),
-            style = CoineProTextStyles.RowFigure,
-            color = CoineProColors.Buy,
-            textAlign = TextAlign.Right,
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+            fontWeight = FontWeight.Normal,
             maxLines = 1,
-            modifier = Modifier.weight(1f),
         )
         Text(
-            text = "بستن",
-            style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.OnAccent,
-            modifier = Modifier
-                .minimumInteractiveComponentSize()
-                .clip(CoineProShapes.small)
-                .background(CoineProColors.AccentFill)
-                .clickable(onClick = onClose)
-                .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
+            text = value,
+            style = CoineProTextStyles.RowFigure,
+            color = colour,
+            maxLines = 1,
         )
     }
 }
