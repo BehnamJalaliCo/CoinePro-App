@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
@@ -73,7 +74,11 @@ internal fun DesignKit() {
         CoineProCard(modifier = Modifier.fillMaxWidth(), accent = CoineProColors.Warning) {
             Text("هشدار", style = MaterialTheme.typography.titleSmall, color = CoineProColors.Warning)
             Text(
-                "پس‌زمینه ۸٪ به سمت رنگ، حاشیه ۳۴٪ — نه آلفا روی زمینهٔ ناشناخته.",
+                // The signs are Latin and travel with their figures, which is the app's own rule — see
+                // BidiText.percent. Written «۸٪» this line drew «٪۸»: a neutral sign after a
+                // numeral, claimed by the Persian paragraph, on the page that documents the system.
+                BidiText.percent("8") + " پس‌زمینه به سمت رنگ، حاشیه " + BidiText.percent("34") +
+                    " — نه آلفا روی زمینهٔ ناشناخته.",
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextSecondary,
             )
