@@ -2,6 +2,7 @@ package com.coinepro.core.chart
 
 import android.graphics.BitmapFactory
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -79,6 +80,18 @@ fun DrawScope.drawDrawing(
      * the app holds two independent picture stores, this does not have to become a global again.
      */
     images: DrawingImageSource = DrawingImages,
+    /**
+     * What a drawing's own labels are plated with.
+     *
+     * The stage colour, from the caller, because this renderer has no palette and threading one
+     * through every shape for a plate would be a wide change for a narrow need. Unspecified draws
+     * no plate at all, which is what a caller with no theme to hand gets — a test, or a preview.
+     *
+     * The plate is why it exists: a Fibonacci retracement puts «2562.7 50.0%» straight over the
+     * bars, and a price in the tool's own blue on top of a red candle is not a figure, it is a
+     * smudge. The setup levels solved this the same way; see `drawLevelLabel`.
+     */
+    plate: Color = Color.Unspecified,
 ): Boolean {
     val chart = drawing.points
     if (chart.isEmpty()) return false
@@ -136,10 +149,10 @@ fun DrawScope.drawDrawing(
         fillBand(left, right, y0, y1, paint.wash(colour))
 
     fun label(measurer: TextMeasurer, text: String, x: Float, y: Float, colour: Color) =
-        paintLabel(measurer, text, x, y, paint.words(colour))
+        paintLabel(measurer, text, x, y, paint.words(colour), plate)
 
     fun labelAbove(measurer: TextMeasurer, text: String, x: Float, y: Float, colour: Color) =
-        paintLabelAbove(measurer, text, x, y, paint.words(colour))
+        paintLabelAbove(measurer, text, x, y, paint.words(colour), plate)
 
     fun boxLabel(
         measurer: TextMeasurer,
@@ -198,7 +211,7 @@ fun DrawScope.drawDrawing(
             val delta = chart[1].price - chart[0].price
             val percent = if (chart[0].price != 0.0) delta / chart[0].price * 100 else 0.0
             val bars = ((end.x - a.x) / max(1f, view.barWidth)).roundToInt()
-            val text = "Δ ${priceText(delta)}\n${fixed(percent, 2)}٪ | $bars بار\n${fixed(degreesOf(a, end), 1)}°"
+            val text = "Δ ${priceText(delta)}\n${fixed(percent, 2)}% | $bars بار\n${fixed(degreesOf(a, end), 1)}°"
             boxLabel(measurer, text, (a.x + end.x) / 2, (a.y + end.y) / 2, colour, Anchor.CENTER)
         } != null
 
@@ -248,6 +261,7 @@ fun DrawScope.drawDrawing(
                 colour = colour,
                 width = width,
                 paint = paint,
+                plate = plate,
             )
         } != null
         "fibext" -> b?.let {
@@ -262,6 +276,7 @@ fun DrawScope.drawDrawing(
                 colour = colour,
                 width = width,
                 paint = paint,
+                plate = plate,
             )
         } != null
         "fib3" -> p.getOrNull(2)?.let { third ->
@@ -280,6 +295,7 @@ fun DrawScope.drawDrawing(
                 colour = colour,
                 width = width,
                 paint = paint,
+                plate = plate,
             )
         } != null
         "fibfan" -> b?.let { end ->
@@ -294,7 +310,7 @@ fun DrawScope.drawDrawing(
             for (level in FIB_FAN) {
                 val y = a.y + (end.y - a.y) * level.toFloat()
                 ray(a, Offset(end.x, y), colour.copy(alpha = 0.85f), width, w, h, both = false)
-                label(measurer, "${fixed(level * 100, 1)}٪", end.x + 3, y, colour)
+                label(measurer, "${fixed(level * 100, 1)}%", end.x + 3, y, colour)
             }
             true
         } != null
@@ -336,7 +352,7 @@ fun DrawScope.drawDrawing(
                 val at = b + shift
                 val clear = lastLabel?.let { hypot(at.x - it.x, at.y - it.y) >= RATIO_LABEL_WIDTH.toPx() } ?: true
                 if (!clear) continue
-                label(measurer, "${fixed(level * 100, 1)}٪", at.x + 3, at.y, colour)
+                label(measurer, "${fixed(level * 100, 1)}%", at.x + 3, at.y, colour)
                 lastLabel = at
             }
             true
@@ -477,9 +493,9 @@ fun DrawScope.drawDrawing(
             // Latin digits on the multiple: it is a market figure sitting on the chart's own
             // canvas beside prices, and «هدف ۲٫۵R» in a column of Latin numbers reads as a
             // different kind of thing from what it is.
-            level(measurer, left, right, view.yOf(target), buyColour(), "هدف " + fixed(reward, 1) + "R", paint)
-            level(measurer, left, right, view.yOf(entry), colour, "ورود", paint)
-            level(measurer, left, right, view.yOf(stop), sellColour(), "حد ضرر", paint)
+            level(measurer, left, right, view.yOf(target), buyColour(), "هدف " + fixed(reward, 1) + "R", paint, plate)
+            level(measurer, left, right, view.yOf(entry), colour, "ورود", paint, plate)
+            level(measurer, left, right, view.yOf(stop), sellColour(), "حد ضرر", paint, plate)
             true
         } != null
 
@@ -492,7 +508,7 @@ fun DrawScope.drawDrawing(
             val delta = chart[1].price - chart[0].price
             val percent = if (chart[0].price != 0.0) delta / chart[0].price * 100 else 0.0
             band(min(a.x, end.x), max(a.x, end.x), a.y, end.y, gainColour(delta).copy(alpha = ZONE))
-            boxLabel(measurer, "${priceText(delta)}\n${fixed(percent, 2)}٪", centre, (a.y + end.y) / 2, colour, Anchor.CENTER)
+            boxLabel(measurer, "${priceText(delta)}\n${fixed(percent, 2)}%", centre, (a.y + end.y) / 2, colour, Anchor.CENTER)
         } != null
         "daterange" -> b?.let { end ->
             val centre = (a.y + end.y) / 2
@@ -510,7 +526,7 @@ fun DrawScope.drawDrawing(
             val delta = chart[1].price - chart[0].price
             val percent = if (chart[0].price != 0.0) delta / chart[0].price * 100 else 0.0
             val bars = abs((size.width / max(1f, view.barWidth)).roundToInt())
-            val text = "${priceText(delta)} (${fixed(percent, 2)}٪)\n$bars بار | ${spanText(abs(chart[1].time - chart[0].time))}"
+            val text = "${priceText(delta)} (${fixed(percent, 2)}%)\n$bars بار | ${spanText(abs(chart[1].time - chart[0].time))}"
             boxLabel(measurer, text, topLeft.x + size.width / 2, topLeft.y + size.height / 2, colour, Anchor.CENTER)
         } != null
         "forecast" -> b?.let { end ->
@@ -526,7 +542,7 @@ fun DrawScope.drawDrawing(
             drawPath(cone, gainColour(chart[1].price - chart[0].price).copy(alpha = ZONE))
             dashed(a, end, colour, width)
             val percent = if (chart[0].price != 0.0) (chart[1].price - chart[0].price) / chart[0].price * 100 else 0.0
-            boxLabel(measurer, "${fixed(percent, 2)}٪", end.x + 4, end.y, colour)
+            boxLabel(measurer, "${fixed(percent, 2)}%", end.x + 4, end.y, colour)
         } != null
         "ruler" -> b?.let { end ->
             dashed(a, end, colour, width)
@@ -537,7 +553,7 @@ fun DrawScope.drawDrawing(
             val arrow = if (delta >= 0) "▲" else "▼"
             boxLabel(
                 measurer = measurer,
-                text = "$arrow ${priceText(abs(delta))} (${fixed(percent, 2)}٪)\n$bars بار",
+                text = "$arrow ${priceText(abs(delta))} (${fixed(percent, 2)}%)\n$bars بار",
                 x = end.x,
                 y = end.y,
                 colour = gainColour(delta),
@@ -1037,10 +1053,41 @@ private fun DrawScope.arrowHead(from: Offset, to: Offset, colour: Color, size: F
 
 private enum class Anchor { START, CENTER, ABOVE }
 
-private fun DrawScope.paintLabel(measurer: TextMeasurer, text: String, x: Float, y: Float, colour: Color) {
+private fun DrawScope.paintLabel(
+    measurer: TextMeasurer,
+    text: String,
+    x: Float,
+    y: Float,
+    colour: Color,
+    plate: Color = Color.Unspecified,
+) {
     val measured = measurer.measure(text, boxStyle(colour))
+    drawLabelPlate(plate, x, y, measured.size.width.toFloat(), measured.size.height.toFloat())
     drawText(measured, topLeft = Offset(x, y))
 }
+
+/**
+ * The soft ground under a label that sits over the bars.
+ *
+ * Four-fifths rather than solid, so the candle underneath still shows through and the plate reads
+ * as a highlight over the chart rather than a hole cut in it — the same figure the setup levels
+ * use. Nothing at all when the caller had no colour to give.
+ */
+private fun DrawScope.drawLabelPlate(plate: Color, x: Float, y: Float, width: Float, height: Float) {
+    if (plate == Color.Unspecified) return
+    val padding = LABEL_PLATE_PADDING.toPx()
+    drawRoundRect(
+        color = plate.copy(alpha = LABEL_PLATE_ALPHA),
+        topLeft = Offset(x - padding, y - padding / 2f),
+        size = Size(width + padding * 2, height + padding),
+        cornerRadius = CornerRadius(LABEL_PLATE_RADIUS.toPx(), LABEL_PLATE_RADIUS.toPx()),
+    )
+}
+
+/** Matches the setup levels' plate, so two labels on one chart are the same object. */
+private val LABEL_PLATE_PADDING = 4.dp
+private const val LABEL_PLATE_ALPHA = 0.8f
+private val LABEL_PLATE_RADIUS = 3.dp
 
 /**
  * A label that clears the line it belongs to.
@@ -1056,9 +1103,12 @@ private fun DrawScope.paintLabelAbove(
     x: Float,
     y: Float,
     colour: Color,
+    plate: Color = Color.Unspecified,
 ) {
     val measured = measurer.measure(text, boxStyle(colour))
-    drawText(measured, topLeft = Offset(x, y - measured.size.height - LABEL_LIFT.toPx()))
+    val top = y - measured.size.height - LABEL_LIFT.toPx()
+    drawLabelPlate(plate, x, top, measured.size.width.toFloat(), measured.size.height.toFloat())
+    drawText(measured, topLeft = Offset(x, top))
 }
 
 /**
@@ -1132,9 +1182,10 @@ private fun DrawScope.level(
     colour: Color,
     text: String,
     paint: DrawingPaint,
+    plate: Color,
 ) {
     strokeSegment(colour, Offset(left, y), Offset(right, y), 1.5f, paint.dash)
-    paintLabelAbove(measurer, text, left + LABEL_INSET.toPx(), y, paint.words(colour))
+    paintLabelAbove(measurer, text, left + LABEL_INSET.toPx(), y, paint.words(colour), plate)
 }
 
 /**
@@ -1154,16 +1205,18 @@ private fun DrawScope.fibRows(
     colour: Color,
     width: Float,
     paint: DrawingPaint,
+    plate: Color,
 ): Boolean {
     for ((ratio, price) in levels) {
         val y = view.yOf(price)
         strokeSegment(colour.copy(alpha = 0.85f), Offset(fromX, y), Offset(toX, y), width, paint.dash)
         paintLabelAbove(
             measurer,
-            "${fixed(ratio * 100, 1)}٪  ${priceText(price)}",
+            "${fixed(ratio * 100, 1)}%  ${priceText(price)}",
             fromX + LABEL_INSET.toPx(),
             y,
             paint.words(colour),
+            plate,
         )
     }
     return true

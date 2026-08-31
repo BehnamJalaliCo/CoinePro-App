@@ -410,7 +410,7 @@ object Structure {
             PriceLevel(
                 price = if (rising) high - span * ratio else low + span * ratio,
                 colour = AUTO_FIB_COLOURS[position],
-                label = "${formatPrice(ratio * 100, 1)}٪",
+                label = "${formatPrice(ratio * 100, 1)}%",
             )
         }
     }

@@ -1922,6 +1922,10 @@ fun CoineProChart(
                                 view = view,
                                 measurer = measurer,
                                 selected = mark.id == highlighted,
+                                // So a Fibonacci price over a red candle is a figure rather than a
+                                // smudge. The renderer has no palette of its own; this is the one
+                                // colour it needs from ours.
+                                plate = palette.stage,
                             )
                         }
                     }
