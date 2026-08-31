@@ -197,6 +197,51 @@ class ChartArchiveTest {
         // saying there is no more would be a lie the «بیشتر» affordance is built on.
     }
 
+    @Test
+    fun `a page-back off the disk is not sized like a page off a network`() = runTest {
+        // `HISTORY_PAGE_BARS` is five hundred because that is the smallest of the three venues'
+        // page caps. It is a fact about a server, and it had no business deciding how much of our
+        // own archive one pull reads: at five hundred a time, walking back over a year of hourly
+        // candles the device already holds is ninety passes through `loadMore`, ninety series
+        // rebuilds and ninety recompositions. The owner wants a chart he can back-test on, which
+        // means walking to the far end of the archive.
+        val newest = bars(60, from = 1_700_000_000L, base = 100.0)
+        val deep = bars(
+            ChartHistory.MAX_RESIDENT_BARS + 500,
+            from = 1_700_000_000L - (ChartHistory.MAX_RESIDENT_BARS + 500) * 3600L,
+            base = 50.0,
+        )
+        val archive = InMemoryCandleArchive()
+        archive.write("BTCUSDT", hourly, deep)
+
+        val controller = ChartController(
+            "BTCUSDT",
+            OnePage(newest),
+            this,
+            cache = archiveless(),
+            archive = archive,
+        )
+        controller.start()
+        advanceUntilIdle()
+        controller.loadMore()
+        advanceUntilIdle()
+
+        val afterOne = controller.state.value.series.size
+        assertTrue(
+            "one pull off the disk brought $afterOne bars, no better than a network page",
+            afterOne > 60 + HISTORY_PAGE_BARS,
+        )
+
+        // And it lands *on* the ceiling rather than a page past it. The request is clamped to the
+        // room left, so the last pull is a partial one — a bound a chart overshoots by five
+        // thousand bars is not a bound.
+        repeat(20) {
+            controller.loadMore()
+            advanceUntilIdle()
+        }
+        assertEquals(ChartHistory.MAX_RESIDENT_BARS, controller.state.value.series.size)
+    }
+
     /** No cache, so every one of these tests is measuring the archive and not the other store. */
     private fun archiveless() = com.coinepro.core.marketdata.NoOpCandleCache
 }

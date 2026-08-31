@@ -18,7 +18,12 @@ val CoineProShapes = Shapes(
     extraSmall = RoundedCornerShape(6.dp),
     small = RoundedCornerShape(10.dp),
     medium = RoundedCornerShape(14.dp),
-    large = RoundedCornerShape(16.dp),
+    // Eighteen, up from sixteen. [large] is the card, and the card is what the owner named when he
+    // put this app beside TradingView's: a corner is the one part of a flat surface that is pure
+    // manner, and two points of it is the difference between a rectangle with rounded corners and a
+    // shape that was drawn. Not more than two: past about twenty a card at this width starts to
+    // read as a pill and the content inside it has to be inset to clear the curve.
+    large = RoundedCornerShape(18.dp),
     extraLarge = RoundedCornerShape(20.dp),
 )
 

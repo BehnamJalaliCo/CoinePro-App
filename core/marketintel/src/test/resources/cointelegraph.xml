@@ -1,0 +1,385 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:media="http://search.yahoo.com/mrss/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:wfw="http://wellformedweb.org/CommentAPI/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:sy="http://purl.org/rss/1.0/modules/syndication/" xmlns:slash="http://purl.org/rss/1.0/modules/slash/">
+  <channel>
+    <title>Cointelegraph.com News</title>
+    <link>https://cointelegraph.com</link>
+    <atom:link href="https://cointelegraph.com/rss" rel="self" type="application/rss+xml"/>
+    <description>Cointelegraph covers fintech, blockchain and Bitcoin bringing you the latest crypto news and analyses on the future of money.</description>
+    <generator>cointelegraph.com</generator>
+    <lastBuildDate>Mon, 31 Aug 2026 01:26:06 +0000</lastBuildDate>
+    <language>en</language>
+    <sy:updatePeriod>hourly</sy:updatePeriod>
+    <sy:updateFrequency>1</sy:updateFrequency>
+    <image>
+      <title>Cointelegraph.com News</title>
+      <link>https://cointelegraph.com</link>
+      <url>https://s3.cointelegraph.com/storage/uploads/view/b9ea15d46738b4df64e6e100ab59b373.png</url>
+      <description>Cointelegraph covers fintech, blockchain and Bitcoin bringing you the latest crypto news and analyses on the future of money.</description>
+    </image>
+    <item>
+      <title>Bitcoin’s new quantum defenses, 18.9M SOL cancelled: Hodler’s Digest</title>
+      <pubDate>Sun, 30 Aug 2026 23:36:16 +0000</pubDate>
+      <atom:updated>Mon, 31 Aug 2026 01:19:36 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/magazine/bitcoins-new-quantum-defenses-189m-sol-cancelled-hodlers-digest</guid>
+      <link><![CDATA[https://cointelegraph.com/magazine/bitcoins-new-quantum-defenses-189m-sol-cancelled-hodlers-digest?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M1ABTCJ2NCZ56B6Y07HVQZ2T/magazine-cover-collage.png" alt="Bitcoin’s new quantum defenses, 18.9M SOL cancelled: Hodler’s Digest" class="type:primaryImage"></p><p>Bitcoin moves toward a post quantum future, Solana validators agree to curb rampant inflation and the bull case from Bernstein is for Bitcoin to peak at $500K this cycle. </p>]]></description>
+      <dc:creator>Cointelegraph by Andrew Fenton</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M1ABTCJ2NCZ56B6Y07HVQZ2T/magazine-cover-collage.png" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M1ABTCJ2NCZ56B6Y07HVQZ2T/magazine-cover-collage.png" length="528" type="image/png"/>
+      <category>Magazine</category>
+    </item>
+    <item>
+      <title>Saylor signals Strategy is ‘Back’ to Bitcoin buying</title>
+      <pubDate>Sun, 30 Aug 2026 17:59:00 +0000</pubDate>
+      <atom:updated>Sun, 30 Aug 2026 18:09:49 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/saylor-signals-strategy-is-back-to-bitcoin-buying</guid>
+      <link><![CDATA[https://cointelegraph.com/news/saylor-signals-strategy-is-back-to-bitcoin-buying?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M19WS2MWX8WK42HTJNANTQJ5/hi-michael-saylor.png" alt="Saylor signals Strategy is ‘Back’ to Bitcoin buying" class="type:primaryImage"></p><p>Michael Saylor’s “We’re Back” post hints Strategy may resume Bitcoin buying after a two-month pause to strengthen its balance sheet.</p>]]></description>
+      <dc:creator>Cointelegraph by Robert Lakin</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M19WS2MWX8WK42HTJNANTQJ5/hi-michael-saylor.png" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M19WS2MWX8WK42HTJNANTQJ5/hi-michael-saylor.png" length="528" type="image/png"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>Here’s what happened in crypto today</title>
+      <pubDate>Sun, 30 Aug 2026 12:49:37 +0000</pubDate>
+      <atom:updated>Sun, 30 Aug 2026 13:43:36 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/what-happened-in-crypto-today</guid>
+      <link><![CDATA[https://cointelegraph.com/news/what-happened-in-crypto-today?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/article-covers-110589-what-happened-in-crypto-today.jpg" alt="Here’s what happened in crypto today" class="type:primaryImage"></p><p>Need to know what happened in crypto today? Here is the latest news on daily trends and events impacting Bitcoin price, blockchain, DeFi, Web3 and crypto regulation.</p>]]></description>
+      <dc:creator>Cointelegraph by Helen Partz</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/article-covers-110589-what-happened-in-crypto-today.jpg" width="528" medium="image">
+        <caption>what-happened-in-crypto-today</caption>
+      </media:content>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/article-covers-110589-what-happened-in-crypto-today.jpg" length="528" type="image/jpeg"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>Russia’s Sber eyes USDT loans, questions digital ruble demand</title>
+      <pubDate>Sun, 30 Aug 2026 09:55:00 +0000</pubDate>
+      <atom:updated>Sun, 30 Aug 2026 11:59:28 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/russia-sber-bank-bitcoin-ether-usdt-crypto-loans</guid>
+      <link><![CDATA[https://cointelegraph.com/news/russia-sber-bank-bitcoin-ether-usdt-crypto-loans?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M190WE0Y455BRFFWWXC00QY4/1-44.png" alt="Russia’s Sber eyes USDT loans, questions digital ruble demand" class="type:primaryImage"></p><p>Russia’s largest bank, Sber, plans to accept USDT and Ether alongside Bitcoin as loan collateral as the country introduces regulated crypto trading under a new law.</p>]]></description>
+      <dc:creator>Cointelegraph by Helen Partz</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M190WE0Y455BRFFWWXC00QY4/1-44.png" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M190WE0Y455BRFFWWXC00QY4/1-44.png" length="528" type="image/png"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>Real Trump Coins denies launching GOLD token, blames ‘bad actors’</title>
+      <pubDate>Sun, 30 Aug 2026 08:04:56 +0000</pubDate>
+      <atom:updated>Mon, 31 Aug 2026 00:59:49 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/real-trump-coins-denies-gold-token-launch</guid>
+      <link><![CDATA[https://cointelegraph.com/news/real-trump-coins-denies-gold-token-launch?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M18SAPB6CQTXR7T638XMWVRB/hi-top-crypto-cyber-threats.jpg" alt="Real Trump Coins denies launching GOLD token, blames ‘bad actors’" class="type:primaryImage"></p><p>Trump-linked Real Trump Coins said it never authorized GOLD or any digital token as questions persisted over its X account, associated domains and the concentrated token supply.</p>]]></description>
+      <dc:creator>Cointelegraph by Helen Partz</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M18SAPB6CQTXR7T638XMWVRB/hi-top-crypto-cyber-threats.jpg" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M18SAPB6CQTXR7T638XMWVRB/hi-top-crypto-cyber-threats.jpg" length="528" type="image/jpeg"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>Polygon discloses security flaws fixed in recent hard forks</title>
+      <pubDate>Sat, 29 Aug 2026 20:28:51 +0000</pubDate>
+      <atom:updated>Sat, 29 Aug 2026 20:33:01 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/polygon-discloses-security-flaws-fixed-in-recent-hard-forks</guid>
+      <link><![CDATA[https://cointelegraph.com/news/polygon-discloses-security-flaws-fixed-in-recent-hard-forks?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M17JHBKVPG032T0G1E4PGVX3/hi-quadrigacx-ceo-died-what-next.png" alt="Polygon discloses security flaws fixed in recent hard forks" class="type:primaryImage"></p><p>The vulnerabilities posed denial-of-service and validator resource risks but were patched before Polygon publicly disclosed them.</p>]]></description>
+      <dc:creator>Cointelegraph by Nate Kostar</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M17JHBKVPG032T0G1E4PGVX3/hi-quadrigacx-ceo-died-what-next.png" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M17JHBKVPG032T0G1E4PGVX3/hi-quadrigacx-ceo-died-what-next.png" length="528" type="image/png"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>Stellar tokenized RWA market more than quadruples to nearly $4B</title>
+      <pubDate>Sat, 29 Aug 2026 19:12:42 +0000</pubDate>
+      <atom:updated>Sat, 29 Aug 2026 19:21:13 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/markets/stellar-tokenized-rwa-market-nears-4b-after-fourfold-2026-growth</guid>
+      <link><![CDATA[https://cointelegraph.com/markets/stellar-tokenized-rwa-market-nears-4b-after-fourfold-2026-growth?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M17DHDVASPVRK9KZ8KYFMNK1/hi-how-binance-plans-to-bring-tokenized-us-stocks-3.png" alt="Stellar tokenized RWA market more than quadruples to nearly $4B" class="type:primaryImage"></p><p>Stellar’s real-world asset market has expanded rapidly this year as institutional adoption and tokenization activity grow across the network.</p>]]></description>
+      <dc:creator>Cointelegraph by Nate Kostar</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M17DHDVASPVRK9KZ8KYFMNK1/hi-how-binance-plans-to-bring-tokenized-us-stocks-3.png" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M17DHDVASPVRK9KZ8KYFMNK1/hi-how-binance-plans-to-bring-tokenized-us-stocks-3.png" length="528" type="image/png"/>
+      <category>Markets</category>
+    </item>
+    <item>
+      <title>Tokenized stock transfer volume jumps 415% in 30 days to $29.5B</title>
+      <pubDate>Sat, 29 Aug 2026 16:27:28 +0000</pubDate>
+      <atom:updated>Sat, 29 Aug 2026 16:36:43 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/markets/tokenized-stock-transfer-volume-jumps-416-in-30-days-to-295b</guid>
+      <link><![CDATA[https://cointelegraph.com/markets/tokenized-stock-transfer-volume-jumps-416-in-30-days-to-295b?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M174Y6XQHY999NVSQCZY6B3V/hi-cryptocurrency-vs-stocks-breaking-news-1.png" alt="Tokenized stock transfer volume jumps 415% in 30 days to $29.5B" class="type:primaryImage"></p><p>Tokenized equities saw a sharp rise in onchain activity as active addresses and holders more than doubled over the past month.</p>]]></description>
+      <dc:creator>Cointelegraph by Nate Kostar</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M174Y6XQHY999NVSQCZY6B3V/hi-cryptocurrency-vs-stocks-breaking-news-1.png" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M174Y6XQHY999NVSQCZY6B3V/hi-cryptocurrency-vs-stocks-breaking-news-1.png" length="528" type="image/png"/>
+      <category>Markets</category>
+    </item>
+    <item>
+      <title>Trump-promoted brand touts GOLD before token collapse</title>
+      <pubDate>Sat, 29 Aug 2026 10:53:41 +0000</pubDate>
+      <atom:updated>Sun, 30 Aug 2026 07:15:27 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/trump-linked-account-list-gold-token-crash</guid>
+      <link><![CDATA[https://cointelegraph.com/news/trump-linked-account-list-gold-token-crash?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M16D9NH0P7JYVR3ND526E5F5/trumps-influence-on-crypto.jpg" alt="Trump-promoted brand touts GOLD before token collapse" class="type:primaryImage"></p><p>Real Trump Coins promoted GOLD before deleting related X posts, while team-linked wallets sold 224.5 million tokens as its market value fell about 99%.</p>]]></description>
+      <dc:creator>Cointelegraph by Helen Partz</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M16D9NH0P7JYVR3ND526E5F5/trumps-influence-on-crypto.jpg" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M16D9NH0P7JYVR3ND526E5F5/trumps-influence-on-crypto.jpg" length="528" type="image/jpeg"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>Stablecoins not credible for payments at scale, BIS chief says</title>
+      <pubDate>Sat, 29 Aug 2026 08:01:04 +0000</pubDate>
+      <atom:updated>Sat, 29 Aug 2026 08:13:37 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/stablecoins-not-credible-payments-scale-bis-chief</guid>
+      <link><![CDATA[https://cointelegraph.com/news/stablecoins-not-credible-payments-scale-bis-chief?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M166CFV826H6EC9FT9NRRV7E/hi-stablecoin-has-been-listed-an-exchange-traded-note-in-europe.jpg" alt="Stablecoins not credible for payments at scale, BIS chief says" class="type:primaryImage"></p><p>BIS chief Pablo Hernández de Cos said stablecoins lack credibility for payments at scale, while a new FSI study highlights sharp differences in issuer rules.</p>]]></description>
+      <dc:creator>Cointelegraph by Helen Partz</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M166CFV826H6EC9FT9NRRV7E/hi-stablecoin-has-been-listed-an-exchange-traded-note-in-europe.jpg" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M166CFV826H6EC9FT9NRRV7E/hi-stablecoin-has-been-listed-an-exchange-traded-note-in-europe.jpg" length="528" type="image/jpeg"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>Bitcoin ETFs end 9-day inflow streak as BTC dips below $78K</title>
+      <pubDate>Sat, 29 Aug 2026 06:47:12 +0000</pubDate>
+      <atom:updated>Sat, 29 Aug 2026 07:00:54 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/markets/bitcoin-etf-end-9-day-inflow-streak-btc-below-78k</guid>
+      <link><![CDATA[https://cointelegraph.com/markets/bitcoin-etf-end-9-day-inflow-streak-btc-below-78k?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M162QNJPWZZW5MZ2NTH7GFQ2/hi-what-is-a-bitcoin-node-a-beginners-guide-on-blockchain-nodes-etf3-1.jpg" alt="Bitcoin ETFs end 9-day inflow streak as BTC dips below $78K" class="type:primaryImage"></p><p>US spot Bitcoin ETFs posted $201.8 million in net outflows Friday, led by ARK 21Shares, as total fund assets slipped back below $100 billion.</p>]]></description>
+      <dc:creator>Cointelegraph by Helen Partz</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M162QNJPWZZW5MZ2NTH7GFQ2/hi-what-is-a-bitcoin-node-a-beginners-guide-on-blockchain-nodes-etf3-1.jpg" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M162QNJPWZZW5MZ2NTH7GFQ2/hi-what-is-a-bitcoin-node-a-beginners-guide-on-blockchain-nodes-etf3-1.jpg" length="528" type="image/jpeg"/>
+      <category>Markets</category>
+    </item>
+    <item>
+      <title>Solana validators approve proposal to accelerate SOL disinflation</title>
+      <pubDate>Fri, 28 Aug 2026 19:53:12 +0000</pubDate>
+      <atom:updated>Fri, 28 Aug 2026 20:01:48 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/solana-validators-approve-proposal-to-accelerate-sol-disinflation</guid>
+      <link><![CDATA[https://cointelegraph.com/news/solana-validators-approve-proposal-to-accelerate-sol-disinflation?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M14TAFCZGB4VMQ151R2N0EKE/hi-bitcoin-vs-fiat-currencies-over-the-past-several-years-have-they-been-hampered-by-the-inflation2-2.png" alt="Solana validators approve proposal to accelerate SOL disinflation" class="type:primaryImage"></p><p>The approved proposal doubles Solana’s annual disinflation rate from 15% to 30%, reducing future SOL issuance while leaving its long-term inflation target unchanged.</p>]]></description>
+      <dc:creator>Cointelegraph by Nate Kostar</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M14TAFCZGB4VMQ151R2N0EKE/hi-bitcoin-vs-fiat-currencies-over-the-past-several-years-have-they-been-hampered-by-the-inflation2-2.png" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M14TAFCZGB4VMQ151R2N0EKE/hi-bitcoin-vs-fiat-currencies-over-the-past-several-years-have-they-been-hampered-by-the-inflation2-2.png" length="528" type="image/png"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>Chelsea FC gets a stablecoin sponsor after UK FCA warning to clubs</title>
+      <pubDate>Fri, 28 Aug 2026 17:46:12 +0000</pubDate>
+      <atom:updated>Sat, 29 Aug 2026 12:15:06 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/chelsea-football-circle-sponsor-fca-warning-questionable-deals</guid>
+      <link><![CDATA[https://cointelegraph.com/news/chelsea-football-circle-sponsor-fca-warning-questionable-deals?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M14JXJEKJGWZPA4CPWG622Q2/gamecredits-football4.jpg" alt="Chelsea FC gets a stablecoin sponsor after UK FCA warning to clubs" class="type:primaryImage"></p><p>According to Circle, the USDC stablecoin name will appear on the front of club jerseys for Chelsea’s upcoming football season.</p>]]></description>
+      <dc:creator>Cointelegraph by Turner Wright</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M14JXJEKJGWZPA4CPWG622Q2/gamecredits-football4.jpg" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M14JXJEKJGWZPA4CPWG622Q2/gamecredits-football4.jpg" length="528" type="image/jpeg"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>Bullish provides USD.AI $100M stablecoin facility for GPU-backed lending</title>
+      <pubDate>Fri, 28 Aug 2026 16:17:09 +0000</pubDate>
+      <atom:updated>Fri, 28 Aug 2026 16:30:23 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/bullish-provides-usdai-100m-stablecoin-facility-gpu-backed-loans</guid>
+      <link><![CDATA[https://cointelegraph.com/news/bullish-provides-usdai-100m-stablecoin-facility-gpu-backed-loans?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M14HGFTCPWKB8SGHW3HW7DZ6/hi-what-is-a-masternode-and-ai.png" alt="Bullish provides USD.AI $100M stablecoin facility for GPU-backed lending" class="type:primaryImage"></p><p>The institutional crypto exchange is providing $100 million in stablecoin liquidity to support loans backed by AI computing infrastructure.</p>]]></description>
+      <dc:creator>Cointelegraph by Nate Kostar</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M14HGFTCPWKB8SGHW3HW7DZ6/hi-what-is-a-masternode-and-ai.png" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M14HGFTCPWKB8SGHW3HW7DZ6/hi-what-is-a-masternode-and-ai.png" length="528" type="image/png"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>Bitcoin dips to $78.4K as Fed’s Warsh downplays softer inflation prints</title>
+      <pubDate>Fri, 28 Aug 2026 15:31:25 +0000</pubDate>
+      <atom:updated>Fri, 28 Aug 2026 15:44:44 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/markets/bitcoin-dips-fed-warsh-dismisses-recent-low-inflation-prints</guid>
+      <link><![CDATA[https://cointelegraph.com/markets/bitcoin-dips-fed-warsh-dismisses-recent-low-inflation-prints?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M14FYEG846MR0X3M7RG3N9AD/hi-us-bitcoin-reserve-asset-bill-explained.jpg" alt="Bitcoin dips to $78.4K as Fed’s Warsh downplays softer inflation prints" class="type:primaryImage"></p><p>Bitcoin failed to make a decisive break above $80,000 as traders digested Fed Chair Kevin Warsh’s Jackson Hole keynote speech, which remained wary of US inflation trends.</p>]]></description>
+      <dc:creator>Cointelegraph by William Suberg</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M14FYEG846MR0X3M7RG3N9AD/hi-us-bitcoin-reserve-asset-bill-explained.jpg" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M14FYEG846MR0X3M7RG3N9AD/hi-us-bitcoin-reserve-asset-bill-explained.jpg" length="528" type="image/jpeg"/>
+      <category>Markets</category>
+    </item>
+    <item>
+      <title>Crypto Biz: Bitcoin pumps, Wall Street does the paperwork</title>
+      <pubDate>Fri, 28 Aug 2026 14:53:40 +0000</pubDate>
+      <atom:updated>Fri, 28 Aug 2026 15:08:52 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/crypto-biz-bitcoin-rally-crypto-stocks-circle-strategy-solana</guid>
+      <link><![CDATA[https://cointelegraph.com/news/crypto-biz-bitcoin-rally-crypto-stocks-circle-strategy-solana?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M14DS05X6DTJB5K7J056DP3A/hi-how-bitcoins-legal-victory-turned-it-into-wall-streets-favorite-crypto.jpg" alt="Crypto Biz: Bitcoin pumps, Wall Street does the paperwork" class="type:primaryImage"></p><p>Bitcoin’s $80,000 rebound lifts crypto stocks as Circle, Strategy and Solana show how capital markets, stablecoins and onchain growth are driving crypto’s recovery.</p>]]></description>
+      <dc:creator>Cointelegraph by Sam Bourgi</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M14DS05X6DTJB5K7J056DP3A/hi-how-bitcoins-legal-victory-turned-it-into-wall-streets-favorite-crypto.jpg" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M14DS05X6DTJB5K7J056DP3A/hi-how-bitcoins-legal-victory-turned-it-into-wall-streets-favorite-crypto.jpg" length="528" type="image/jpeg"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>Who is legally liable when an AI agent goes rogue? </title>
+      <pubDate>Fri, 28 Aug 2026 13:30:00 +0000</pubDate>
+      <atom:updated>Sun, 30 Aug 2026 22:53:21 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/magazine/who-is-legally-liable-when-an-ai-agent-goes-rogue</guid>
+      <link><![CDATA[https://cointelegraph.com/magazine/who-is-legally-liable-when-an-ai-agent-goes-rogue?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/charlyn-ho-2.webp" alt="Who is legally liable when an AI agent goes rogue? " class="type:primaryImage"></p><p>If your personal AI agent goes rogue and causes harm or financial damage in the real world, can you be held liable?</p>]]></description>
+      <dc:creator>Cointelegraph by Andrew Fenton</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/charlyn-ho-2.webp" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/charlyn-ho-2.webp" length="528" type="image/webp"/>
+      <category>Magazine</category>
+    </item>
+    <item>
+      <title>Polish Olympic chief charged in Zondacrypto probe, justice minister says</title>
+      <pubDate>Fri, 28 Aug 2026 13:16:37 +0000</pubDate>
+      <atom:updated>Fri, 28 Aug 2026 13:20:25 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/polish-olympic-chief-charged-zondacrypto-probe</guid>
+      <link><![CDATA[https://cointelegraph.com/news/polish-olympic-chief-charged-zondacrypto-probe?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M142BY4XYSTFGAKG0DFRP8JS/arrest-crime-cop-hack-thief-arrested-police-asian-1.jpg" alt="Polish Olympic chief charged in Zondacrypto probe, justice minister says" class="type:primaryImage"></p><p>Polish Olympic Committee president Radosław Piesiewicz faces charges as prosecutors investigate his ties to collapsed cryptocurrency exchange Zondacrypto.</p>]]></description>
+      <dc:creator>Cointelegraph by Helen Partz</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M142BY4XYSTFGAKG0DFRP8JS/arrest-crime-cop-hack-thief-arrested-police-asian-1.jpg" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M142BY4XYSTFGAKG0DFRP8JS/arrest-crime-cop-hack-thief-arrested-police-asian-1.jpg" length="528" type="image/jpeg"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>California Senate passes bill to ban memecoin issuance by public officials</title>
+      <pubDate>Fri, 28 Aug 2026 12:09:48 +0000</pubDate>
+      <atom:updated>Fri, 28 Aug 2026 12:16:48 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/california-bill-ban-memecoin-issuance-public-officials</guid>
+      <link><![CDATA[https://cointelegraph.com/news/california-bill-ban-memecoin-issuance-public-officials?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M142VHEYF1NJ88CYWK7HGE6J/hi-california-vs-maga-memecoins.jpg" alt="California Senate passes bill to ban memecoin issuance by public officials" class="type:primaryImage"></p><p>The bill seeks to prohibit the listing of memecoins issued by federal public officials to California residents, citing conflicts of interest and “pay-to-play arrangements.”</p>]]></description>
+      <dc:creator>Cointelegraph by Zoltan Vardai</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M142VHEYF1NJ88CYWK7HGE6J/hi-california-vs-maga-memecoins.jpg" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M142VHEYF1NJ88CYWK7HGE6J/hi-california-vs-maga-memecoins.jpg" length="528" type="image/jpeg"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>Capital B raises $24.5M for its Bitcoin treasury amid market uncertainty with BlockStream’s Adam Back chipping in</title>
+      <pubDate>Fri, 28 Aug 2026 11:36:43 +0000</pubDate>
+      <atom:updated>Fri, 28 Aug 2026 12:07:11 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/capital-b-raises-245m-for-its-bitcoin-treasury-amid-market-uncertainty-with-blockstreams-adam-back-chipping-in</guid>
+      <link><![CDATA[https://cointelegraph.com/news/capital-b-raises-245m-for-its-bitcoin-treasury-amid-market-uncertainty-with-blockstreams-adam-back-chipping-in?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M142AJ5B6BQSFDTHCF63GJPC/hi-five-bitcoin-narratives-analysts-are-watching-beyond-price-1.jpg" alt="Capital B raises $24.5M for its Bitcoin treasury amid market uncertainty with BlockStream’s Adam Back chipping in" class="type:primaryImage"></p><p>The French Bitcoin treasury firm’s private placement drew support from Adam Back and TOBAM, with warrant exercises potentially unlocking another $158 million.</p>]]></description>
+      <dc:creator>Cointelegraph by Adrian Zmudzinski</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M142AJ5B6BQSFDTHCF63GJPC/hi-five-bitcoin-narratives-analysts-are-watching-beyond-price-1.jpg" width="528" medium="image">
+        <caption>bitcoin treasurry</caption>
+        <credit>Cointelegraph</credit>
+      </media:content>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M142AJ5B6BQSFDTHCF63GJPC/hi-five-bitcoin-narratives-analysts-are-watching-beyond-price-1.jpg" length="528" type="image/jpeg"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>Bitcoin bear market ‘over’ as price metric copies 2023 recovery: CryptoQuant CEO</title>
+      <pubDate>Fri, 28 Aug 2026 11:22:59 +0000</pubDate>
+      <atom:updated>Fri, 28 Aug 2026 11:33:30 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/markets/bitcoin-bear-market-over-as-price-metric-copies-2023-recovery-cryptoquant-ceo</guid>
+      <link><![CDATA[https://cointelegraph.com/markets/bitcoin-bear-market-over-as-price-metric-copies-2023-recovery-cryptoquant-ceo?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M141DFYGGHJH8YZJHG8RN3NP/bitcoin-price-market-1.jpg" alt="Bitcoin bear market ‘over’ as price metric copies 2023 recovery: CryptoQuant CEO" class="type:primaryImage"></p><p>Bitcoin profitability data produced a bear-market reversal signal that was also present at the start of 2023.</p>]]></description>
+      <dc:creator>Cointelegraph by William Suberg</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M141DFYGGHJH8YZJHG8RN3NP/bitcoin-price-market-1.jpg" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/2026/08/01M141DFYGGHJH8YZJHG8RN3NP/bitcoin-price-market-1.jpg" length="528" type="image/jpeg"/>
+      <category>Markets</category>
+    </item>
+    <item>
+      <title>ENA token rises 10% as Ethena puts revenue-funded token buybacks to vote</title>
+      <pubDate>Fri, 28 Aug 2026 09:27:30 +0000</pubDate>
+      <atom:updated>Fri, 28 Aug 2026 09:36:07 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/markets/ena-rises-10-ethena-token-buyback-proposal</guid>
+      <link><![CDATA[https://cointelegraph.com/markets/ena-rises-10-ethena-token-buyback-proposal?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/hi-overview-of-synthetic-crypto-assets-for-ethena.jpg" alt="ENA token rises 10% as Ethena puts revenue-funded token buybacks to vote" class="type:primaryImage"></p><p>The Ethena Foundation proposed buying the token supply held by major early investors and revealed a fee switch to turn 95% of net protocol revenue into ENA buybacks.</p>]]></description>
+      <dc:creator>Cointelegraph by Zoltan Vardai</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/hi-overview-of-synthetic-crypto-assets-for-ethena.jpg" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/hi-overview-of-synthetic-crypto-assets-for-ethena.jpg" length="528" type="image/jpeg"/>
+      <category>Markets</category>
+    </item>
+    <item>
+      <title>BitGo buys NYDIG trading arm to deepen institutional crypto push</title>
+      <pubDate>Fri, 28 Aug 2026 09:21:44 +0000</pubDate>
+      <atom:updated>Fri, 28 Aug 2026 09:27:21 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/bitgo-nydig-trading-arm-acquisition</guid>
+      <link><![CDATA[https://cointelegraph.com/news/bitgo-nydig-trading-arm-acquisition?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/car-exchange-smartphone-blockchain-bitgo.jpg" alt="BitGo buys NYDIG trading arm to deepen institutional crypto push" class="type:primaryImage"></p><p>BitGo completed its acquisition of NYDIG’s institutional trading business, adding about 30 employees and expanding its derivatives and financing capabilities.</p>]]></description>
+      <dc:creator>Cointelegraph by Helen Partz</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/car-exchange-smartphone-blockchain-bitgo.jpg" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/car-exchange-smartphone-blockchain-bitgo.jpg" length="528" type="image/jpeg"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>OneKey reproduces transaction replacement attack on outdated Ledger Ethereum app</title>
+      <pubDate>Fri, 28 Aug 2026 08:21:16 +0000</pubDate>
+      <atom:updated>Fri, 28 Aug 2026 08:31:40 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/onekey-transaction-replacement-attack-old-version-ledger</guid>
+      <link><![CDATA[https://cointelegraph.com/news/onekey-transaction-replacement-attack-old-version-ledger?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/hi-how-great-big-companies-use-blockchain2.jpg" alt="OneKey reproduces transaction replacement attack on outdated Ledger Ethereum app" class="type:primaryImage"></p><p>OneKey said it reproduced an exploit against an older version of the Ledger app in its lab environment, which Ledger fixed in its Ethereum app 1.22.2, with no user funds lost.</p>]]></description>
+      <dc:creator>Cointelegraph by Zoltan Vardai</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/hi-how-great-big-companies-use-blockchain2.jpg" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/hi-how-great-big-companies-use-blockchain2.jpg" length="528" type="image/jpeg"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>Visa works with Upbit parent on stablecoin payments, AI commerce</title>
+      <pubDate>Fri, 28 Aug 2026 07:41:15 +0000</pubDate>
+      <atom:updated>Fri, 28 Aug 2026 07:44:46 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/visa-dunamu-stablecoin-payments-ai-commerce</guid>
+      <link><![CDATA[https://cointelegraph.com/news/visa-dunamu-stablecoin-payments-ai-commerce?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/hi-could-those-who-left-visa-come-back-stablecoin.jpg" alt="Visa works with Upbit parent on stablecoin payments, AI commerce" class="type:primaryImage"></p><p>Visa and Dunamu will explore stablecoin payments and remittances, with Open Standard’s proposed OUSD among several projects under review.</p>]]></description>
+      <dc:creator>Cointelegraph by Helen Partz</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/hi-could-those-who-left-visa-come-back-stablecoin.jpg" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/hi-could-those-who-left-visa-come-back-stablecoin.jpg" length="528" type="image/jpeg"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>The Sandbox pledges 1:1 repayment after $700K bridge exploit</title>
+      <pubDate>Fri, 28 Aug 2026 05:40:48 +0000</pubDate>
+      <atom:updated>Fri, 28 Aug 2026 05:47:02 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/the-sandbox-compensation-sand-bridge-exploit</guid>
+      <link><![CDATA[https://cointelegraph.com/news/the-sandbox-compensation-sand-bridge-exploit?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/sand-refund.png" alt="The Sandbox pledges 1:1 repayment after $700K bridge exploit" class="type:primaryImage"></p><p>Eligible holders on Base and BNB Chain will receive Ethereum-based SAND from the project’s treasury, with claims expected to open within two weeks.</p>]]></description>
+      <dc:creator>Cointelegraph by Ezra Reguerra</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/sand-refund.png" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/sand-refund.png" length="528" type="image/png"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>Abu Dhabi royal backs 49% stake in Trump-linked crypto bank venture: WSJ</title>
+      <pubDate>Fri, 28 Aug 2026 04:17:09 +0000</pubDate>
+      <atom:updated>Fri, 28 Aug 2026 10:31:05 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/abu-dhabi-royal-trump-world-liberty-crypto-bank-wsj</guid>
+      <link><![CDATA[https://cointelegraph.com/news/abu-dhabi-royal-trump-world-liberty-crypto-bank-wsj?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/hi-donald-trump-and-wlfi-crypto.jpg" alt="Abu Dhabi royal backs 49% stake in Trump-linked crypto bank venture: WSJ" class="type:primaryImage"></p><p>Sheikh Tahnoon’s group reportedly backs a 49% stake in the holding company behind World Liberty’s conditionally approved US trust bank.</p>]]></description>
+      <dc:creator>Cointelegraph by Ezra Reguerra</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/hi-donald-trump-and-wlfi-crypto.jpg" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/hi-donald-trump-and-wlfi-crypto.jpg" length="528" type="image/jpeg"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>Virtu, Tradeweb complete onchain repo using Marshall Islands digital bond</title>
+      <pubDate>Thu, 27 Aug 2026 20:39:40 +0000</pubDate>
+      <atom:updated>Fri, 28 Aug 2026 10:24:17 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/virtu-tradeweb-complete-onchain-repo-using-marshall-islands-digital-bond</guid>
+      <link><![CDATA[https://cointelegraph.com/news/virtu-tradeweb-complete-onchain-repo-using-marshall-islands-digital-bond?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/hi-bond-follow-up-bybit-2.png" alt="Virtu, Tradeweb complete onchain repo using Marshall Islands digital bond" class="type:primaryImage"></p><p>The transaction used the Marshall Islands-issued USDM1 bond as collateral and completed the full repo cycle on the Canton Network in under 10 minutes.</p>]]></description>
+      <dc:creator>Cointelegraph by Nate Kostar</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/hi-bond-follow-up-bybit-2.png" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/hi-bond-follow-up-bybit-2.png" length="528" type="image/png"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>Trump cost investors $4.7B through crypto ‘schemes’: Public Citizen</title>
+      <pubDate>Thu, 27 Aug 2026 19:22:14 +0000</pubDate>
+      <atom:updated>Fri, 28 Aug 2026 10:22:21 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/donald-trump-crypto-investors-losses-public-citizen</guid>
+      <link><![CDATA[https://cointelegraph.com/news/donald-trump-crypto-investors-losses-public-citizen?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/analytics-red-trump.jpg" alt="Trump cost investors $4.7B through crypto ‘schemes’: Public Citizen" class="type:primaryImage"></p><p>While investors in World Liberty Financial‘s USD1 stablecoin “haven’t suffered major losses,” many lost billions of dollars in other Trump ventures, according to Public Citizen.</p>]]></description>
+      <dc:creator>Cointelegraph by Turner Wright</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/analytics-red-trump.jpg" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/analytics-red-trump.jpg" length="528" type="image/jpeg"/>
+      <category>Latest News</category>
+    </item>
+    <item>
+      <title>Mirae Asset lays out crypto, stablecoin, tokenization plans for Digital X </title>
+      <pubDate>Thu, 27 Aug 2026 19:00:00 +0000</pubDate>
+      <atom:updated>Fri, 28 Aug 2026 10:23:31 +0000</atom:updated>
+      <guid isPermaLink="true">https://cointelegraph.com/news/mirae-asset-lays-out-crypto-stablecoin-and-tokenization-plans</guid>
+      <link><![CDATA[https://cointelegraph.com/news/mirae-asset-lays-out-crypto-stablecoin-and-tokenization-plans?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound]]></link>
+      <description><![CDATA[<p style="float:right; margin:0 0 10px 15px; width:240px;"><img src="https://s3-images.ctmedia.io/media/article-covers/hi-when-will-the-coinbase-ipo-take-place-and-what-effect-is-it-having-on-crypto.png" alt="Mirae Asset lays out crypto, stablecoin, tokenization plans for Digital X " class="type:primaryImage"></p><p>The South Korean financial group plans to build a $109 billion digital asset business spanning crypto, stablecoins and tokenized assets, according to The Korea Times.</p>]]></description>
+      <dc:creator>Cointelegraph by Nate Kostar</dc:creator>
+      <media:content url="https://s3-images.ctmedia.io/media/article-covers/hi-when-will-the-coinbase-ipo-take-place-and-what-effect-is-it-having-on-crypto.png" width="528" medium="image"/>
+      <enclosure url="https://s3-images.ctmedia.io/media/article-covers/hi-when-will-the-coinbase-ipo-take-place-and-what-effect-is-it-having-on-crypto.png" length="528" type="image/png"/>
+      <category>Latest News</category>
+    </item>
+  </channel>
+</rss>

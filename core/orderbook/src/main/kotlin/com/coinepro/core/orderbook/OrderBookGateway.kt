@@ -64,6 +64,43 @@ enum class DepthUnavailableReason {
      * retry, because there is nothing to come back to.
      */
     SYMBOL_DELISTED,
+
+    /**
+     * The relay wants a session this reader does not have, and pressing a button cannot mint one.
+     *
+     * ### This is the condition the depth screen was actually failing on
+     *
+     * `api/mobile/v1/market/depth` is behind `get_mobile_user_id` — the same bearer `market/candles`
+     * takes — and there is **no public twin of it**, where the chart has one:
+     * `api/v1/public/candles/{symbol}` and `api/v1/public/prices/{symbol}` both answer `200` with no
+     * token at all. Measured against the live host on 2026-08-31:
+     *
+     * | request | answer |
+     * |---|---|
+     * | `GET api/mobile/v1/market/depth?symbol=BTCUSDT&depth=100`, no token | `401` `TYR-004` |
+     * | the same with an invalid token | `401` `TYR-003` |
+     * | `GET api/v1/public/candles/BTCUSDT?tf=1m&limit=2` | `200` |
+     * | `GET api/v1/public/prices/BTCUSDT` | `200` |
+     * | a path that is not on the server | `404` |
+     *
+     * So a reader without a TradeYar session gets a working crypto chart, a working live price, and
+     * a `401` on the one route the ladder needs — and `docs/SERVER_ASK_ONE_ACCOUNT_TWO_BACKENDS.md`
+     * records that **no user has both sessions**: an account made before 1.27.0 lives on
+     * CoinePro-FX and not on TradeYar, and an account made in the app is the other way round. That
+     * is not an edge case, it is every guest and half the accounts.
+     *
+     * Before this value existed the `401` fell through to a bare [ErrorKind.AUTH] failure, which
+     * carries no reason at all, so the screen printed its generic transport sentence — «اتصال را
+     * بررسی کن و دوباره بگیر» — over an authentication problem, under a retry button that re-sent
+     * the same tokenless request and failed identically every time. The reader's connection was
+     * never the thing that was wrong.
+     *
+     * It sits in *this* enum rather than in [DepthOutageReason] because no amount of asking again
+     * changes it: it ends when the reader signs in on this platform, and nowhere else. It is the one
+     * member here whose failure keeps [ErrorKind.AUTH] rather than [ErrorKind.VALIDATION] — see
+     * [depthUnavailable] — so that anything watching for a lapsed session still sees one.
+     */
+    SESSION_REQUIRED,
 }
 
 /**
@@ -116,9 +153,23 @@ class DepthUnavailableException(val reason: DepthUnavailableReason) : Exception(
  * Built here rather than at each gateway so the three producers of it — the two platform gateways
  * and the network one, on a route that answers 404 — cannot drift into three different failures for
  * one condition.
+ *
+ * ### Why one of the reasons takes a different kind
+ *
+ * [ErrorKind] is the app-wide vocabulary, and [DepthUnavailableReason.SESSION_REQUIRED] is the one
+ * refusal here that is also a fact about the reader's session rather than about the market. Anything
+ * in this app that watches for a lapsed session keys on [ErrorKind.AUTH]; labelling this one
+ * `VALIDATION` would hide a `401` from every such watcher for the sake of tidiness in this file. The
+ * reason still rides in the cause, so [depthUnavailableReason] reads it back exactly as it reads the
+ * others, and the screen still withholds the retry — that decision is made on the reason, never on
+ * the kind. Choosing the kind here rather than at the call site is deliberate: a caller that had to
+ * remember the pairing is a caller that will one day forget it.
  */
 fun depthUnavailable(reason: DepthUnavailableReason): AppResult.Failure = AppResult.Failure(
-    kind = ErrorKind.VALIDATION,
+    kind = when (reason) {
+        DepthUnavailableReason.SESSION_REQUIRED -> ErrorKind.AUTH
+        else -> ErrorKind.VALIDATION
+    },
     cause = DepthUnavailableException(reason),
 )
 
@@ -158,6 +209,20 @@ fun depthOutage(reason: DepthOutageReason): AppResult.Failure = AppResult.Failur
  */
 val AppResult.Failure.depthOutageReason: DepthOutageReason?
     get() = (cause as? DepthOutageException)?.reason
+
+/**
+ * The one spelling of the crypto venue, used by both gateways that read it.
+ *
+ * Two of them read the same book — [TradeYarOrderBookGateway] through the platform's relay and
+ * [LBankPublicOrderBookGateway] straight from the exchange when the relay wants a session the reader
+ * has not got — and the reader must not be able to tell which answered by reading the provenance
+ * line. A second spelling would say the app has two ideas about where its numbers come from.
+ *
+ * "LBank" alone is not enough and never was: the same exchange's **spot** book stood 22.6 USDT from
+ * its futures book at one measured instant, about 0.03%, and a reader checking this ladder against
+ * the wrong half of the exchange would conclude the app was inventing prices.
+ */
+internal const val LBANK_FUTURES_VENUE = "LBank Futures"
 
 /**
  * Resting liquidity, from whichever backend owns the symbol.

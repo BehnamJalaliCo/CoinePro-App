@@ -170,17 +170,44 @@ internal fun ChartCommandBand(
     symbol: String = "",
     /** How a tap on a neighbour is taken. Null leaves the tier out; see `ChartScreen.switchSymbol`. */
     onSelectSymbol: ((String) -> Unit)? = null,
+    /**
+     * The feed's own move per symbol, for the middle row of the scroll.
+     *
+     * Empty is the ordinary first frame and stays legible: the wheel draws the tickers and leaves
+     * the figure out until a quote arrives, rather than waiting for one before drawing a control.
+     */
+    quotes: Map<String, WatchlistQuote> = emptyMap(),
 ) {
     Column(modifier = modifier.fillMaxWidth().background(CoineProColors.Surface)) {
-        onSelectSymbol?.let { select ->
-            SymbolWheelBar(symbols = symbols, current = symbol, onSelect = select)
+        // The instrument and the bar length in one row, in that order — item 7.
+        //
+        // This is the arrangement in the owner's screenshot: a narrow vertical scroll of tickers at
+        // the leading edge of the tool row, then the bar length, then the tools. It replaces a
+        // full-width `SymbolWheelBar` tier, so the band does not grow a row to gain the control; it
+        // grows by the difference between a three-row wheel and a strip of length keys, which is
+        // about twenty points.
+        //
+        // Leading rather than trailing because the wheel names *what* is drawn and the keys beside
+        // it say *how*, and a Persian reader meets the leading edge first — the same order the two
+        // tiers were in when they were stacked.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            onSelectSymbol?.let { select ->
+                SymbolScrollWheel(
+                    symbols = symbols,
+                    current = symbol,
+                    quotes = quotes,
+                    onSelect = select,
+                    modifier = Modifier.padding(start = CoineProSpacing.One),
+                )
+            }
+            IntervalRow(
+                selected = interval,
+                onSelect = onSelectInterval,
+                onMore = onMoreIntervals,
+                starred = starred,
+                modifier = Modifier.weight(1f),
+            )
         }
-        IntervalRow(
-            selected = interval,
-            onSelect = onSelectInterval,
-            onMore = onMoreIntervals,
-            starred = starred,
-        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()

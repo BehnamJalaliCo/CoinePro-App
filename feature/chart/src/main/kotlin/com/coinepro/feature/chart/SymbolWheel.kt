@@ -3,6 +3,12 @@ package com.coinepro.feature.chart
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -14,10 +20,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -25,6 +35,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
+import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProColors
@@ -103,6 +114,33 @@ internal fun symbolNeighbours(symbols: List<String>, current: String): SymbolNei
         position = index + 1,
         total = ring.size,
     )
+}
+
+/**
+ * The symbol [steps] places along the ring from [current].
+ *
+ * The arithmetic behind the flick, and it is separate from the composable for the reason
+ * [symbolNeighbours] is: a ring index that wraps the wrong way is not something anybody notices
+ * until the ninth symbol of somebody else's watchlist, and it is two lines to test.
+ *
+ * Positive is *forward* — down the reader's list, which is the direction a finger dragging **up**
+ * moves a scroll through. Null when there is nothing to step to: an empty list, or one with a
+ * single entry, where every step lands back where it started and a control that appears to move and
+ * does not is worse than one that does not move.
+ *
+ * A symbol the reader is looking at but has not starred is not in the ring at all. Stepping from
+ * there enters the list at its first entry going forward and its last going back, which is the same
+ * answer [symbolNeighbours] gives and for the same reason: one flick should take somebody *into*
+ * their watchlist rather than do nothing.
+ */
+internal fun symbolStep(symbols: List<String>, current: String, steps: Int): String? {
+    val ring = symbols.filter(SymbolArtwork::covers).distinctBy(String::uppercase)
+    if (ring.isEmpty() || steps == 0) return null
+    val index = ring.indexOfFirst { it.equals(current, ignoreCase = true) }
+    if (index < 0) return if (steps > 0) ring.first() else ring.last()
+    if (ring.size == 1) return null
+    val moved = ((index + steps) % ring.size + ring.size) % ring.size
+    return ring[moved].takeIf { moved != index }
 }
 
 /**
@@ -279,3 +317,188 @@ private val WHEEL_TOUCH = 32.dp
 private val WHEEL_NEIGHBOUR_LOGO = 16.dp
 private val WHEEL_CURRENT_LOGO = 20.dp
 private val WHEEL_CARET = 12.dp
+
+
+/**
+ * The reader's watchlist as a scroll, in the chart's own tool row — item 7.
+ *
+ * ### The control the owner circled, and why the one already here is not it
+ *
+ * «هنوز نمادها به‌صورت اسکرول اضافه نشده به آپ». The screenshot is TradingView's mobile chart
+ * toolbar: one row under the plot holding, from the leading edge, a narrow column with the previous
+ * ticker faint above, the current one solid in the middle and the next faint below — a wheel you
+ * flick **vertically** — and then the bar length, the pencil, the studies and the overflow.
+ *
+ * [SymbolWheelBar] is a different control that happens to share the arithmetic. It lays the same
+ * three symbols out *horizontally* across a whole tier of the command band: it costs a full-width
+ * row, it is stepped by tapping a caret rather than by dragging, and it is a page-level strip
+ * rather than a cell in a toolbar. It is the right shape in the fullscreen mode, where the bottom
+ * strip is full width and there is nothing beside it; it is not what the owner pointed at. So both
+ * exist, each where it belongs, and they share [symbolNeighbours] so they can never disagree about
+ * what the reader's ring is.
+ *
+ * ### Why a drag and not a scrolling list
+ *
+ * A `LazyColumn` with a snapping fling would be the literal reading of "scroll", and it brings a
+ * loop with it: the settle emits a symbol, the symbol changes the current entry, the current entry
+ * re-centres the list, the re-centre settles. Every version of that has a frame in it where the
+ * chart is loading an instrument the reader did not stop on. A drag that steps once per row of
+ * travel is the same gesture from the reader's side — flick and the tickers move — with no state
+ * to keep in step: the wheel has no scroll position of its own, only the symbol the chart is on.
+ *
+ * Dragging **up** moves forward through the list, which is what dragging up does to any scroll:
+ * the content rises and the entry below becomes the one in the middle.
+ *
+ * ### What it never does
+ *
+ * Navigate. `onSelect` is `ChartScreen.switchSymbol`, which swaps the *controller* for the symbol
+ * and leaves the screen standing — the drawings, the bar length, the armed tool, the scroll
+ * position and the reader's place in the page all survive. That is the entire value of putting the
+ * switcher here rather than sending somebody back to a market list, and it is why this takes a
+ * callback rather than a route.
+ */
+@Composable
+internal fun SymbolScrollWheel(
+    symbols: List<String>,
+    current: String,
+    /** The feed's own move per symbol, for the middle row. Absent is ordinary; see [WatchlistQuote]. */
+    quotes: Map<String, WatchlistQuote>,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val ring = remember(symbols, current) { symbolNeighbours(symbols, current) }
+    if (ring.isEmpty) return
+    val haptics = rememberCoineProHaptics()
+    // One row of travel is one step. Taken from the row height rather than from a number of its
+    // own, so the tickers move at the speed the finger does — a threshold larger than the row
+    // would make the wheel lag the drag, and a smaller one would step twice in a flick nobody
+    // meant as two.
+    val stepPixels = with(LocalDensity.current) { WHEEL_SCROLL_ROW.toPx() }
+    // Read in composition, not inside the semantics lambda: `stringResource` is a composable and
+    // the semantics block is not one.
+    val wheelLabel = stringResource(R.string.chart_wheel_scroll, current, ring.total.toPersianDigits())
+    // Held across the frames of one drag, exactly as the chart's own pan holds its residue: throwing
+    // the remainder away every frame turns a slow drag into a control that does nothing at all.
+    var travel by remember(current) { mutableStateOf(0f) }
+    val drag = rememberDraggableState { delta ->
+        travel += delta
+        // One step per frame at most, and the residue dropped when one is taken. `current` is the
+        // symbol the *chart* is on and it comes back through recomposition, so a second step in the
+        // same frame would be measured from a symbol the reader has already left — which on a hard
+        // flick is how a wheel skips two instruments and loads a chart nobody asked for.
+        if (travel <= -stepPixels || travel >= stepPixels) {
+            val forward = travel <= -stepPixels
+            travel = 0f
+            symbolStep(symbols, current, if (forward) 1 else -1)?.let { landed ->
+                haptics.select()
+                onSelect(landed)
+            }
+        }
+    }
+    Column(
+        modifier = modifier
+            .width(WHEEL_SCROLL_WIDTH)
+            .height(WHEEL_SCROLL_ROW * 3)
+            .clip(CoineProShapes.small)
+            .draggable(state = drag, orientation = Orientation.Vertical)
+            .semantics { contentDescription = wheelLabel },
+        verticalArrangement = Arrangement.Center,
+    ) {
+        WheelSide(symbol = ring.previous, onSelect = onSelect)
+        WheelCurrent(symbol = current, move = quotes[current.uppercase()]?.changePercent)
+        WheelSide(symbol = ring.next, onSelect = onSelect)
+    }
+}
+
+/**
+ * A neighbour, faint, above or below the middle.
+ *
+ * Still pressable: a reader who can see the ticker they want should not have to drag to it, and the
+ * two ways of reaching it cost nothing beside each other. Muted ink rather than an alpha on the
+ * primary — alpha on text is what makes a live control look disabled — and clipped to one line, so
+ * a long ticker shortens rather than pushing the wheel wider than the cell it sits in.
+ *
+ * An absent neighbour still takes its row. A wheel whose middle jumps up when the list is short is
+ * a control that moves while you are reading it.
+ */
+@Composable
+private fun WheelSide(symbol: String?, onSelect: (String) -> Unit) {
+    val haptics = rememberCoineProHaptics()
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(WHEEL_SCROLL_ROW)
+            .then(
+                if (symbol == null) {
+                    Modifier
+                } else {
+                    Modifier.clickable {
+                        haptics.select()
+                        onSelect(symbol)
+                    }
+                },
+            ),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        if (symbol == null) return@Box
+        LtrDirection {
+            Text(
+                text = BidiText.isolateLtr(symbol),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextDisabled,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/**
+ * The instrument the chart is drawing, and what it has done.
+ *
+ * The move is beside the ticker rather than under it, because the wheel is three rows and a fourth
+ * would make it taller than the tool row it sits in. Latin digits and the buy/sell inks, as every
+ * market figure in this app is; a feed that has not answered leaves the figure out rather than
+ * printing a zero, which is a claim that the market has not moved.
+ */
+@Composable
+private fun WheelCurrent(symbol: String, move: Double?) {
+    Row(
+        modifier = Modifier.fillMaxWidth().height(WHEEL_SCROLL_ROW),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        LtrDirection {
+            Text(
+                text = BidiText.isolateLtr(symbol),
+                style = MaterialTheme.typography.labelMedium,
+                color = CoineProColors.pageAccentInk,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        move?.let { percent ->
+            LtrDirection {
+                Text(
+                    text = MarketNumberFormatter.signedPercent(percent),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (percent >= 0) CoineProColors.Buy else CoineProColors.Sell,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * One row of the scroll: nineteen points.
+ *
+ * Three of them is fifty-seven, which is what the tool row can hold beside a bar-length key without
+ * the band growing a tier. It is under the forty-eight-point touch minimum on its own, and it is
+ * allowed to be: the target is the whole wheel, which is dragged, and the two faint rows are a
+ * shortcut on top of that rather than the only way to reach a neighbour.
+ */
+private val WHEEL_SCROLL_ROW = 19.dp
+
+/** Wide enough for a six-letter ticker and a signed percentage beside it, at the label sizes. */
+private val WHEEL_SCROLL_WIDTH = 104.dp

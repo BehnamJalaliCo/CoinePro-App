@@ -38,12 +38,26 @@ object CoineProSpacing {
      * It has to be **larger than the padding inside a card** or the cards read as slabs rather than
      * as a rhythm. Profile and Notifications had it inverted — 8dp between, 20dp within — which is
      * exactly what made those two screens the heaviest in the app.
+     *
+     * Twenty-four, up from twenty, and it is the cheapest half of what the owner was asking for
+     * when he said TradingView's screens are calm enough to work in for hours. Calm is not a
+     * colour; it is the ratio between the space *around* a group and the space *inside* it. At
+     * 20-against-16 that ratio was 1.25 and the eye has to work to find the seam between two cards;
+     * at 24-against-18 it is 1.33, which is where a stack reads as separate objects at a glance.
      */
-    val Stack = 20.dp
+    val Stack = 24.dp
 
-    /** Inside a card, edge to content. */
-    val CardHorizontal = 16.dp
-    val CardVertical = 16.dp
+    /**
+     * Inside a card, edge to content.
+     *
+     * Eighteen on both axes, up from sixteen. One number for both, and the same number in every
+     * card in the app, because the thing that reads as cheap is not a padding that is too small —
+     * it is a padding that is 16 here and 20 there and 12 in the card underneath. The pair is kept
+     * as two named values rather than one so that a future direction can set them apart
+     * deliberately; nothing should set them apart by accident.
+     */
+    val CardHorizontal = 18.dp
+    val CardVertical = 18.dp
 
     /** Above and below one row inside a card. */
     val Row = 10.dp

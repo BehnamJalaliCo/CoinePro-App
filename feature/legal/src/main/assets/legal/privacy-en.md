@@ -49,7 +49,13 @@ image-analysis screen. The image is not kept on the device after it is sent.
 Your data is **not sold**. It is shared only with Google (Firebase Cloud Messaging carries
 notification tokens and payloads — inherent to Android notifications); the LBank or Ourbit exchange
 and an MT5 broker if *you* connect those accounts or submit a UID for membership verification; and
-where the law requires it. A UID check asks the exchange one question — is this account linked to
+where the law requires it.
+
+Where our own server returns no news or no calendar events, the app reads that section directly from
+public sources — `nfs.faireconomy.media` for the weekly economic calendar, and the `investing.com`
+and `cointelegraph.com` RSS feeds for news. Those requests carry no token, no identifier and nothing
+about you. As with any web request the host can see your device's IP address; nothing else reaches
+them. A UID check asks the exchange one question — is this account linked to
 Pro-Chart, and is it funded — and gets back a yes/no and a balance state. It grants no access to your
 exchange account.
 

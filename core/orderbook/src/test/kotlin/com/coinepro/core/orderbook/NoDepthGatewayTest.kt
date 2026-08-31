@@ -42,11 +42,41 @@ class NoDepthGatewayTest {
 
     @Test
     fun `every refusal stays distinguishable, because they have different futures`() {
-        // Four sentences on screen, four reasons here, and the screen picks by value. Collapsed to
-        // one they would all read as the most pessimistic of them.
+        // One sentence on screen per reason here, and the screen picks by value. Collapsed to one
+        // they would all read as the most pessimistic of them.
         DepthUnavailableReason.entries.forEach { reason ->
             assertEquals(reason, depthUnavailable(reason).depthUnavailableReason)
         }
+    }
+
+    @Test
+    fun `a missing session is a refusal that still reads as an auth failure`() {
+        // The one reason whose kind is not VALIDATION, and both halves of that matter. AUTH so that
+        // anything in the app watching for a lapsed session still sees one on a 401; a readable
+        // reason so the screen says «sign in» instead of «check your connection» and withholds the
+        // retry — the button that, before this existed, re-sent the same tokenless request for as
+        // long as the reader kept pressing it.
+        val failure = depthUnavailable(DepthUnavailableReason.SESSION_REQUIRED)
+
+        assertEquals(ErrorKind.AUTH, failure.kind)
+        assertEquals(DepthUnavailableReason.SESSION_REQUIRED, failure.depthUnavailableReason)
+        assertNull("a missing session is not an upstream outage", failure.depthOutageReason)
+    }
+
+    @Test
+    fun `a controller told the session is missing settles without a retry`() = runTest {
+        val controller = OrderBookController(
+            gateway = NoDepthGateway(DepthUnavailableReason.SESSION_REQUIRED, sourceName = "LBank Futures"),
+            scope = this,
+        )
+
+        controller.start("BTCUSDT")
+        testScheduler.runCurrent()
+
+        val state = controller.state.value
+        assertEquals(DepthUnavailableReason.SESSION_REQUIRED, state.unavailable)
+        assertTrue("an authentication problem must not be dressed as a transport one", !state.failed)
+        assertTrue(!state.loading)
     }
 
     @Test

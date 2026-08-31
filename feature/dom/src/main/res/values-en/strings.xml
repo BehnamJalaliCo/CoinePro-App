@@ -25,6 +25,8 @@
     <string name="dom_unavailable_symbol_hint">The symbol requested is outside this platform\'s list of markets. Trying again will not help; open a different market from the list.</string>
     <string name="dom_unavailable_delisted">This market has been removed by the exchange.</string>
     <string name="dom_unavailable_delisted_hint">The exchange has delisted this contract, so there is no order book for it any more.</string>
+    <string name="dom_unavailable_session">Sign in on the crypto market to see the order book.</string>
+    <string name="dom_unavailable_session_hint">The price and the chart for this market are public and work without an account, but the order book comes from a route that needs this platform\'s own session. Trying again without signing in gives the same answer.</string>
 
     <string name="dom_failed">The order book is unavailable.</string>
     <string name="dom_failed_hint">Check the connection and load it again.</string>

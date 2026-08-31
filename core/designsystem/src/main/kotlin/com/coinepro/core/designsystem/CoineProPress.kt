@@ -22,8 +22,20 @@ object CoineProPress {
     /** A full-width primary action — the largest control, so the deepest press. */
     const val CTA = 0.955f
 
-    /** A card. Barely moves. */
-    const val CARD = 0.995f
+    /**
+     * A card. Barely moves.
+     *
+     * Nine hundred and ninety, up from nine hundred and ninety-five. At 0.995 a 360dp-wide card
+     * travels 0.9dp on each edge, which is under a physical pixel on most of the phones this ships
+     * to — a press state that is real in the file and absent under the thumb. A full point of scale
+     * is still a tenth of what the primary action does, so the hierarchy the numbers encode is
+     * intact: the card acknowledges, the button commits.
+     *
+     * The scale is not the whole press state and never was the important half of it. See
+     * [CoineProCard], which also moves its fill to `surfacePressed` — a change in value is what the
+     * eye actually reads as contact, and it works at any card size.
+     */
+    const val CARD = 0.99f
 
     /** A chip. */
     const val CHIP = 0.98f

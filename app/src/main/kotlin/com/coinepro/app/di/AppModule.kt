@@ -112,6 +112,9 @@ import com.coinepro.core.marketintel.AcademyCalendarSource
 import com.coinepro.core.marketintel.MarketIntelSnapshot
 import com.coinepro.core.marketintel.NetworkAcademyCalendarSource
 import com.coinepro.core.marketintel.NetworkMarketIntelGateway
+import com.coinepro.core.marketintel.OkHttpPublicFeedClient
+import com.coinepro.core.marketintel.PublicFeedClient
+import com.coinepro.core.marketintel.PublicMarketIntel
 import com.coinepro.core.membership.MembershipController
 import com.coinepro.core.membership.MembershipGateway
 import com.coinepro.core.membership.NetworkMembershipGateway
@@ -124,6 +127,7 @@ import com.coinepro.core.notifications.NotificationGateway
 import com.coinepro.core.orderbook.DepthUnavailableReason
 import com.coinepro.core.orderbook.NoDepthGateway
 import com.coinepro.core.orderbook.OrderBookGateway
+import com.coinepro.core.orderbook.SessionFallbackOrderBookGateway
 import com.coinepro.core.orderbook.TradeYarOrderBookGateway
 import com.coinepro.core.papertrade.PaperLedgerStore
 import com.coinepro.core.papertrade.PaperTradeController
@@ -1123,20 +1127,56 @@ object AppModule {
         tokens: AcademyTokenStore,
     ): AcademyCalendarSource = NetworkAcademyCalendarSource(retrofit) { tokens.token() }
 
+    /**
+     * The public newswires and the published economic calendar.
+     *
+     * Built on a **plain** OkHttp client, and that is the whole reason it is provided here rather
+     * than reusing either platform's. Both of those carry an auth interceptor that appends a bearer
+     * token to every request they make; handing one of them to a third-party newswire would send a
+     * reader's session token to a publisher. This client has no interceptor, no token and nothing
+     * that identifies the reader.
+     *
+     * See `PublicMarketIntel` for why the app reads these at all: `academy/bn/news` and
+     * `academy/bn/calendar` are public, are documented to carry exactly this data in Persian, and
+     * have answered `{"items":[]}` every time they have been measured, because the worker that
+     * fills them has never been deployed.
+     */
+    @Provides
+    @Singleton
+    fun publicFeedClient(): PublicFeedClient = OkHttpPublicFeedClient(OkHttpClient())
+
     @Provides
     @Singleton
     @ForexPlatform
     fun forexMarketIntelGateway(
         @ForexPlatform retrofit: Retrofit,
         academyCalendar: AcademyCalendarSource,
-    ): MarketIntelGateway =
-        NetworkMarketIntelGateway.create(retrofit, MarketPlatform.COINEPRO_FX, academyCalendar)
+        publicFeeds: PublicFeedClient,
+    ): MarketIntelGateway = NetworkMarketIntelGateway.create(
+        retrofit = retrofit,
+        platform = MarketPlatform.COINEPRO_FX,
+        academyCalendar = academyCalendar,
+        publicSources = PublicMarketIntel(publicFeeds, MarketPlatform.COINEPRO_FX),
+    )
 
     @Provides
     @Singleton
     @CryptoPlatform
-    fun cryptoMarketIntelGateway(@CryptoPlatform retrofit: Retrofit): MarketIntelGateway =
-        NetworkMarketIntelGateway.create(retrofit, MarketPlatform.TRADEYAR)
+    fun cryptoMarketIntelGateway(
+        @CryptoPlatform retrofit: Retrofit,
+        publicFeeds: PublicFeedClient,
+    ): MarketIntelGateway = NetworkMarketIntelGateway.create(
+        retrofit = retrofit,
+        platform = MarketPlatform.TRADEYAR,
+        publicSources = PublicMarketIntel(
+            client = publicFeeds,
+            platform = MarketPlatform.TRADEYAR,
+            // TradeYar's own `api/v1/news/list` is public, Persian and has pictures — it is what
+            // the guest news screen has been reading all along, which is why a signed-out reader
+            // saw stories and a signed-in one saw nothing.
+            platformBaseUrl = BuildConfig.TRADEYAR_API_BASE_URL,
+        ),
+    )
 
     /**
      * The announcements channel exists on TradeYar only.
@@ -1407,10 +1447,14 @@ object AppModule {
     /**
      * Order-book depth, per platform, where the two answers are not the same *kind* of answer.
      *
-     * TradeYar relays LBank, which publishes a public book, so crypto gets a real network gateway
-     * pointed at the depth route asked for in `docs/SERVER_ASKS_DOM.md`. Until that route is
-     * relayed it answers 404, which [TradeYarOrderBookGateway] reads as
-     * [DepthUnavailableReason.ENDPOINT_NOT_SERVED] — «هنوز سرو نمی‌شود», not «در حال دریافت».
+     * TradeYar relay LBank's futures book and the route has been live since 2026-08-29, so `404` is
+     * no longer the everyday answer — `401` is. `api/mobile/v1/market/depth` wants a TradeYar
+     * session and has no public twin, while the chart and the price on the same screen do
+     * (`api/v1/public/candles/{symbol}`, `api/v1/public/prices/{symbol}`), and no reader holds both
+     * platforms' sessions — see `docs/SERVER_ASK_ONE_ACCOUNT_TWO_BACKENDS.md`. So the relay is
+     * wrapped in [SessionFallbackOrderBookGateway], which reads the exchange's own public book on
+     * that one condition and on no other. Every other refusal the relay gives is passed through
+     * untouched.
      *
      * The default poll cadence is taken rather than tuned here: the ladder's refresh rate is a
      * property of the feed, and a number chosen in the injector is a number nobody reading the
@@ -1420,7 +1464,7 @@ object AppModule {
     @Singleton
     @CryptoPlatform
     fun cryptoOrderBookGateway(@CryptoPlatform retrofit: Retrofit): OrderBookGateway =
-        TradeYarOrderBookGateway(retrofit)
+        SessionFallbackOrderBookGateway(TradeYarOrderBookGateway(retrofit))
 
     /**
      * CoinePro-FX has no order book, and that is the finished answer rather than a gap to fill.

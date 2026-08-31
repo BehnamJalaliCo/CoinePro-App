@@ -1,12 +1,14 @@
 package com.coinepro.core.designsystem
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +24,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,6 +35,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -41,32 +46,58 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
+import kotlin.math.pow
 
 /**
  * The surfaces of the "آرام" direction.
  *
  * Two rules hold the whole direction together, and both are easy to break by accident:
  *
- * 1. A card is an opaque block with a large radius and **one hairline**. No shadow in the dark
- *    theme, no gradient, ever. What separates it from its neighbour is still the gap; what says it
- *    is a surface at all is the edge.
+ * 1. A card is an opaque block with a large radius, separated from the page by its **ground** and,
+ *    only where the ground cannot do it, by a hairline. No shadow in the dark theme, no gradient,
+ *    ever. What separates it from its neighbour is still the gap.
  * 2. Gold appears **once** per screen, on [CoineProPrimaryButton]. Every other control is neutral.
  *    A second gold object on the same screen is a design bug, not a variation.
  *
- * ### The hairline, and why rule 1 used to say the opposite
+ * ### The hairline, and the two times this rule has now been wrong
  *
- * It said "no border", and the argument was that gap is enough to separate two cards. That is true
- * and it answers the wrong question. Two cards are separated by the gap; a card is separated from
- * the *page* by nothing at all, and in the light theme "nothing at all" was a three-percent
- * difference in value — #F7F8FA on #FFFFFF. So a screen was a white sheet with slightly-less-white
- * regions printed on it, which is precisely the reading the owner gave it: dry, dead, nothing
- * sitting on anything.
+ * It first said "no border", and the argument was that gap is enough to separate two cards. That is
+ * true and it answers the wrong question. Two cards are separated by the gap; a card is separated
+ * from the *page* by nothing at all, and in the light theme "nothing at all" was a three-percent
+ * difference in value. So a screen was a white sheet with slightly-less-white regions printed on
+ * it, which is precisely the reading the owner gave it: dry, dead, nothing sitting on anything.
  *
- * A hairline costs one device pixel and it is the cheapest thing in interface design: it converts a
- * region into an object. It is `borderSubtle`, which is the weight that closes a shape rather than
- * the weight that divides a list — the direction's discipline is intact, it just has an edge now.
+ * The correction was to give every card an edge, unconditionally, and that is the second version
+ * that is wrong — because the diagnosis was right about the symptom and wrong about the cause. The
+ * card had no ground; drawing a line around a card that has no ground gives you an outline, and an
+ * interface of outlined rectangles is the look every cheap template has. The reference the owner
+ * put beside this app does not outline its cards. It gives them a ground of ΔL* 4.7 against the
+ * page and then draws nothing at all.
+ *
+ * So the ground was fixed first — see [CoineProPalette.surface] — and the rule here is now
+ * conditional and states its own condition: **a card draws a hairline exactly when its own fill
+ * does not separate it from the page.** [SEPARATING_LIGHTNESS] is the threshold, in CIE L*, which
+ * is the only scale on which "far enough apart to see" means the same thing on a near-black stage
+ * and a white one. On the current palettes that resolves to:
+ *
+ * ```
+ *   dark   surface  ΔL*  2.4  → hairline.  #10141B on #0B0E11 is a difference an OLED panel
+ *                               resolves at about one value step; it needs the edge.
+ *   light  surface  ΔL*  4.5  → no hairline. The ground carries it.
+ *   either raised   ΔL*  0.0  → hairline, in the light theme, because raised *is* white on white.
+ * ```
+ *
+ * It is not a switch on the theme, and that matters: a palette that moves brings the answer with
+ * it, and a card whose fill is a tint rather than a rung is measured like everything else.
+ *
+ * ### The pressed state
+ *
+ * A card that is a button moves its **fill**, not only its scale. The scale is 1% and a 360dp card
+ * travels less than a pixel on it; a change in value is what the eye actually reads as contact, and
+ * it reads the same on a card of any size. `surfacePressed` is the rung the palette already keeps
+ * for exactly this and nothing else was using it.
  */
-
 /** A block of content on the stage. */
 @Composable
 fun CoineProCard(
@@ -84,14 +115,20 @@ fun CoineProCard(
      * — the surface pulled 8% toward it, with a hairline pulled 34% — which is how a warning, a
      * selected row and a premium block are told apart from the cards around them without any of
      * them being *coloured*. See [CoineProTint] for why those two numbers and not alpha.
+     *
+     * A tinted card always carries its edge. The tint is the meaning and the edge is what makes it
+     * legible as one rather than as a card somebody spilled something on; that is a different job
+     * from the structural hairline below and it is not subject to the same test.
      */
     accent: Color? = null,
     /**
-     * Whether the card carries its hairline.
+     * Whether the card may carry a hairline **at all**.
      *
-     * On by default, which is the change: every card in the app gains an edge at once. Pass false
-     * for a card drawn *inside* another card, where a second concentric outline reads as a mistake
-     * rather than as depth.
+     * It is a veto rather than an instruction, and the difference is the change: true no longer
+     * means "draw an edge", it means "draw one if the ground cannot do the job" — which on the
+     * light theme is now nowhere and on the dark theme is the ordinary card. Pass false for a card
+     * drawn *inside* another card, where a second concentric outline reads as a mistake rather than
+     * as depth, and the ground is somebody else's problem.
      */
     outlined: Boolean = true,
     /**
@@ -120,14 +157,26 @@ fun CoineProCard(
         elevated -> CoineProColors.SurfaceElevated
         else -> CoineProColors.Surface
     }
-    val fill = if (accent == null) base else CoineProTint.fill(accent, base)
+    val interaction = remember { MutableInteractionSource() }
+    val isPressed by interaction.collectIsPressedAsState()
+    // The pressed rung, tinted the same way the resting one is, so a warning card under a thumb is
+    // still a warning card rather than briefly a neutral one.
+    val ground = if (isPressed && onClick != null) CoineProColors.SurfacePressed else base
+    val target = if (accent == null) ground else CoineProTint.fill(accent, ground)
+    val fill by animateColorAsState(
+        targetValue = target,
+        animationSpec = CoineProMotionSpecs.press(),
+        label = "cardFill",
+    )
     val edge = when {
         accent != null -> CoineProTint.edge(accent)
         raised -> CoineProColors.Border
         else -> CoineProColors.BorderSubtle
     }
+    // Measured against the page rather than assumed from the theme — see this file's header. A
+    // tinted card keeps its edge whatever its ground does, because there the edge carries meaning.
+    val hairline = outlined && (accent != null || !separatesFromStage(base))
     val lightTheme = !LocalCoineProPalette.current.isDark
-    val interaction = remember { MutableInteractionSource() }
     val haptics = rememberCoineProHaptics()
     Column(
         modifier = modifier
@@ -144,13 +193,45 @@ fun CoineProCard(
                 } ?: base2
             }
             .background(fill, shape)
-            .let { plain ->
-                if (accent == null && !outlined) plain else plain.border(1.dp, edge, shape)
-            }
+            .let { plain -> if (hairline) plain.border(1.dp, edge, shape) else plain }
             .padding(contentPadding),
         content = content,
     )
 }
+
+/**
+ * Whether a fill is far enough from the page for the page to be what separates it.
+ *
+ * CIE L* rather than the raw luminance the rest of the app compares with, and the reason is the
+ * whole point of having a threshold at all: relative luminance is linear in light, and the eye is
+ * not. The dark theme's card sits 0.002 of luminance above its stage and the light theme's sits
+ * 0.041 below its own — twenty times as far by that measure, and about twice as far to a reader.
+ * L* is the scale on which one number means the same thing at both ends, so it is the scale the
+ * rule is written on.
+ */
+@Composable
+@ReadOnlyComposable
+private fun separatesFromStage(fill: Color): Boolean =
+    abs(perceptualLightness(fill) - perceptualLightness(CoineProColors.Stage)) >=
+        SEPARATING_LIGHTNESS
+
+/** CIE L*, from relative luminance. The linear branch below the knee is the standard one. */
+private fun perceptualLightness(colour: Color): Float {
+    val y = colour.luminance()
+    return if (y <= 0.008856f) 903.3f * y else 116f * y.pow(1f / 3f) - 16f
+}
+
+/**
+ * How far apart, in L*, two surfaces have to be before one reads as sitting on the other.
+ *
+ * Three and a half, and it is a measured number rather than a taste. TradingView's light theme —
+ * the reference the owner set this app against — separates a tile from its page by ΔL* 4.7 and
+ * draws no border; this app's light card is now 4.5 and clears the bar. Its dark card is 2.4 and
+ * does not, which is correct: on a near-black stage a two-step difference is inside the range a
+ * panel's own gamma and a reader's own room light move it by, and there the hairline is the only
+ * thing that is certain.
+ */
+private const val SEPARATING_LIGHTNESS = 3.5f
 
 /**
  * How far a raised card lifts, in the light theme.

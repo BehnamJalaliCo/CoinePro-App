@@ -133,11 +133,11 @@ class TradeYarOrderBookGateway(
 
     private val api = retrofit.create(CryptoDepthApi::class.java)
 
-    // The exchange and the half of it these levels are from, not the relay. "LBank" alone would be
-    // ambiguous now that the same exchange's spot book is 22.6 USDT away and a reader checking this
-    // ladder against the wrong one of the two would conclude the app was inventing prices. See
-    // `OrderBookGateway.sourceName`.
-    override val sourceName: String = "LBank Futures"
+    // The exchange and the half of it these levels are from, not the relay. Taken from the shared
+    // constant rather than written out again here, because `LBankPublicOrderBookGateway` names the
+    // same venue and a reader must not be able to tell which of the two answered by reading the
+    // provenance line. See `LBANK_FUTURES_VENUE` and `OrderBookGateway.sourceName`.
+    override val sourceName: String = LBANK_FUTURES_VENUE
 
     override suspend fun load(symbol: String, depth: Int): AppResult<OrderBook> = try {
         val requested = depth.coerceIn(1, MAX_DEPTH)
@@ -175,7 +175,17 @@ class TradeYarOrderBookGateway(
                 depthOutage(DepthOutageReason.EXCHANGE_UNREACHABLE)
             }
             503 -> depthOutage(DepthOutageReason.RELAY_NOT_CONFIGURED)
-            401, 403 -> AppResult.Failure(ErrorKind.AUTH, cause = error)
+            // The route wants the mobile bearer and there is no public twin of it, so this is a
+            // settled "not for you, yet" and not a transport hiccup. It used to fall through to a
+            // bare `AUTH` failure, which carries no reason, and the screen then printed its generic
+            // «اتصال را بررسی کن» over an authentication problem with a retry button that re-sent
+            // the same tokenless request for as long as the reader kept pressing it. Named, it gets
+            // a true sentence and no button. See `DepthUnavailableReason.SESSION_REQUIRED` for the
+            // measurements and for why this is the everyday case rather than a rare one.
+            //
+            // `403` joins `401` because the two are the same fact to a reader: the token that
+            // reached the route was not one the route accepts. Neither ends by asking again.
+            401, 403 -> depthUnavailable(DepthUnavailableReason.SESSION_REQUIRED)
             429 -> AppResult.Failure(ErrorKind.RATE_LIMIT, cause = error)
             in 500..599 -> AppResult.Failure(ErrorKind.SERVER, cause = error)
             else -> AppResult.Failure(ErrorKind.UNKNOWN, cause = error)

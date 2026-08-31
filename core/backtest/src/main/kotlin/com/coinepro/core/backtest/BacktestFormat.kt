@@ -78,6 +78,45 @@ object BacktestFormat {
         if (!exists(value)) ABSENT else MarketNumberFormatter.price(value, 1)
 
     /**
+     * Where a report stops being an anecdote, in closed round trips.
+     *
+     * Thirty is the conventional number and it is conventional for a reason: below it the sampling
+     * error on a win rate is wider than any edge a reader is trying to measure. It lives here
+     * rather than in a screen because two screens quoting different thresholds would be two
+     * different claims about the same evidence.
+     */
+    const val CONFIDENT_TRADES: Int = 30
+
+    /** Whether a sample of this many closed trades can carry a rate at all. */
+    fun sampled(trades: Int): Boolean = trades >= CONFIDENT_TRADES
+
+    /**
+     * A ratio, or [ABSENT] when the sample is too small to have produced one.
+     *
+     * ### Why a small sample is treated exactly like a division by zero
+     *
+     * Because it is one, in every way that matters to the reader. «۶۷٪» off six trades is not a
+     * win rate — it is four and two, dressed as a measurement, and printing it is the same lie the
+     * infinite profit factor above is: a figure that reads as a finding where there is no finding.
+     * The reader who has just practised six trades in a replay is the single most likely person in
+     * the app to over-read a percentage, because it is *their* six trades and they remember each
+     * one.
+     *
+     * A dash sends them to the trade count beside it, which is the number that actually settles it,
+     * and the screen states the count in words underneath. This is deliberately stricter than the
+     * strategy report, which prints its rates and carries a warning: a strategy run over a thousand
+     * bars is expected to produce a large sample and a small one is itself the finding, whereas a
+     * rehearsal is *always* a small sample and a warning nobody can act on is a warning that gets
+     * read past.
+     */
+    fun ratioIfSampled(value: Double, trades: Int, decimals: Int = 2): String =
+        if (!sampled(trades)) ABSENT else ratio(value, decimals)
+
+    /** A percentage, or [ABSENT] on a sample too small to carry one. See [ratioIfSampled]. */
+    fun percentIfSampled(value: Double, trades: Int, decimals: Int = 2): String =
+        if (!sampled(trades)) ABSENT else percent(value, decimals)
+
+    /**
      * The percentage text without the bidirectional isolate, for a file rather than a screen.
      *
      * A CSV cell must contain the digits and nothing else: the isolate characters [percent] adds

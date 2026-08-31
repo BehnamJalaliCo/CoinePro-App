@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    English: `drawable-en/prochart_wordmark` is cut from `design/brand/prochart-lockup-master.png`,
+    which is the whole Latin lockup — the mark and «Pro CHart» together, one colour. Composing a
+    second, gold mark in front of it drew the mark twice, which is what this flag stops.
+-->
+<resources>
+    <bool name="prochart_wordmark_is_lockup">true</bool>
+</resources>

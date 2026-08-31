@@ -20,7 +20,7 @@
     <string name="dom_max_age">این دفتر حداکثر %1$s ثانیه کهنه است، به‌اضافهٔ زمان رفت‌وبرگشت شبکه.</string>
     <string name="dom_loading">در حال دریافت دفتر سفارش…</string>
 
-    <!-- The honest answers. None of them is a spinner, and none of the four below has a retry. -->
+    <!-- The honest answers. None of them is a spinner, and none of the five below has a retry. -->
     <string name="dom_unavailable_feed">این فید عمق بازار منتشر نمی‌کند.</string>
     <string name="dom_unavailable_feed_hint">کارگزارِ متاتریدر ۵ سطح دوم را منتشر نکرده است. تا وقتی منتشر نشود، دفتر سفارشی برای این بازار وجود ندارد.</string>
     <string name="dom_unavailable_endpoint">دفتر سفارش این بازار هنوز سرو نمی‌شود.</string>
@@ -29,6 +29,12 @@
     <string name="dom_unavailable_symbol_hint">نمادی که خواسته شد بیرون از فهرست بازارهای این پلتفرم است. تلاش دوباره جواب نمی‌دهد؛ از فهرست بازارها یک نماد دیگر باز کن.</string>
     <string name="dom_unavailable_delisted">این بازار از صرافی حذف شده است.</string>
     <string name="dom_unavailable_delisted_hint">صرافی این قرارداد را دلیست کرده، پس دیگر دفتر سفارشی برایش وجود ندارد.</string>
+    <!-- Not a connection problem, which is what this screen used to say about it. The depth route
+         needs a TradeYar session; the chart and the price on the same market do not, so a reader
+         without one saw a live chart above a ladder blaming their network. No retry: the request is
+         refused identically until they sign in. -->
+    <string name="dom_unavailable_session">برای دیدن دفتر سفارش باید روی بازار کریپتو وارد حساب شوی.</string>
+    <string name="dom_unavailable_session_hint">قیمت و چارت این بازار عمومی‌اند و بدون حساب هم کار می‌کنند، ولی دفتر سفارش از مسیری می‌آید که نشستِ همین پلتفرم را می‌خواهد. تلاش دوباره بدون ورود، همین جواب را می‌دهد.</string>
 
     <!-- Real failures. Each keeps its retry, and each says whose problem it is. -->
     <string name="dom_failed">دفتر سفارش در دسترس نیست.</string>

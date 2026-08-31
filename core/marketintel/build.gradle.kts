@@ -22,6 +22,10 @@ dependencies {
     // puts the annotation on the compile classpath rather than adding a library to the app.
     implementation(libs.gson)
     implementation(libs.kotlinx.coroutines.core)
+    // The public-feed client. `core:network` builds the app's OkHttp instances and this module now
+    // makes one request of its own — to a third party, with the plain client, deliberately without
+    // the auth interceptor. See `OkHttpPublicFeedClient`.
+    implementation(libs.okhttp.core)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
 }

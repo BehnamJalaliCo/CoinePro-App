@@ -252,6 +252,13 @@ fun DepthOfMarketBody(
  * them also point at different people: the delisting is the exchange's doing and the out-of-scope
  * symbol is this app's, so the second says so rather than blaming the backend for a request it was
  * right to refuse.
+ *
+ * [DepthUnavailableReason.SESSION_REQUIRED] is the one whose sentence names something the reader can
+ * do, and it is the reason this screen was reported broken: the depth route wants a TradeYar session
+ * and the crypto chart and price beside it do not, so a reader without one saw a live chart above a
+ * ladder that told them to check their connection. It still gets no retry button — the request will
+ * be refused identically until they sign in — but the copy says signing in rather than the network,
+ * because the network was never the thing that was wrong.
  */
 @Composable
 private fun DepthUnavailable(reason: DepthUnavailableReason) {
@@ -260,12 +267,14 @@ private fun DepthUnavailable(reason: DepthUnavailableReason) {
         DepthUnavailableReason.ENDPOINT_NOT_SERVED -> R.string.dom_unavailable_endpoint
         DepthUnavailableReason.SYMBOL_NOT_SERVED -> R.string.dom_unavailable_symbol
         DepthUnavailableReason.SYMBOL_DELISTED -> R.string.dom_unavailable_delisted
+        DepthUnavailableReason.SESSION_REQUIRED -> R.string.dom_unavailable_session
     }
     val hint = when (reason) {
         DepthUnavailableReason.FEED_PUBLISHES_NO_DEPTH -> R.string.dom_unavailable_feed_hint
         DepthUnavailableReason.ENDPOINT_NOT_SERVED -> R.string.dom_unavailable_endpoint_hint
         DepthUnavailableReason.SYMBOL_NOT_SERVED -> R.string.dom_unavailable_symbol_hint
         DepthUnavailableReason.SYMBOL_DELISTED -> R.string.dom_unavailable_delisted_hint
+        DepthUnavailableReason.SESSION_REQUIRED -> R.string.dom_unavailable_session_hint
     }
     CoineProEmptyState(
         message = stringResource(message),

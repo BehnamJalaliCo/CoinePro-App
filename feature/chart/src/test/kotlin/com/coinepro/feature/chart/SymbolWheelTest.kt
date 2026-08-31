@@ -103,4 +103,52 @@ class SymbolWheelTest {
         assertEquals(2, ring.total)
         assertEquals("BTCUSDT", ring.next)
     }
+
+    // ── the flick, which is item 7 ────────────────────────────────────────────────────────────
+
+    @Test
+    fun `a flick forward is the next entry and a flick back is the previous one`() {
+        assertEquals("EURUSD", symbolStep(list, "XAGUSD", 1))
+        assertEquals("XAUUSD", symbolStep(list, "XAGUSD", -1))
+    }
+
+    @Test
+    fun `the flick wraps at both ends, exactly as the taps do`() {
+        // The wheel is a ring. A drag that stops dead on the last entry is a control the reader
+        // reports as broken, and they are right to.
+        assertEquals("XAUUSD", symbolStep(list, "BTCUSDT", 1))
+        assertEquals("BTCUSDT", symbolStep(list, "XAUUSD", -1))
+    }
+
+    @Test
+    fun `a hard flick lands the right number of places along`() {
+        assertEquals("BTCUSDT", symbolStep(list, "XAUUSD", 3))
+        // And past the end it keeps going round rather than clamping at the last entry.
+        assertEquals("XAGUSD", symbolStep(list, "XAUUSD", 5))
+        assertEquals("EURUSD", symbolStep(list, "XAUUSD", -2))
+    }
+
+    @Test
+    fun `a flick from a symbol the reader never starred steps into their list`() {
+        // Same rule as the neighbours: one gesture should take somebody *into* their watchlist
+        // rather than do nothing at all.
+        assertEquals("XAUUSD", symbolStep(list, "SOLUSDT", 1))
+        assertEquals("BTCUSDT", symbolStep(list, "SOLUSDT", -1))
+    }
+
+    @Test
+    fun `there is nowhere to flick to on a list of one, and nothing is emitted`() {
+        // Null rather than the symbol already on screen. Emitting it would swap the controller for
+        // the one it already holds and reload the chart the reader is looking at.
+        assertNull(symbolStep(listOf("XAUUSD"), "XAUUSD", 1))
+        assertNull(symbolStep(emptyList(), "XAUUSD", 1))
+        assertNull(symbolStep(list, "XAUUSD", 0))
+        // A whole turn of the ring is where you started, and that is not a switch either.
+        assertNull(symbolStep(list, "XAUUSD", 4))
+    }
+
+    @Test
+    fun `a symbol with no artwork is not a place the flick can land`() {
+        assertEquals("BTCUSDT", symbolStep(listOf("XAUUSD", "ZZZQQQ", "BTCUSDT"), "XAUUSD", 1))
+    }
 }

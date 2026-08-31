@@ -67,48 +67,56 @@ data class EquityExcursion(
 )
 
 /**
- * Everything the five-tab report shows, computed once.
+ * What the five-tab report needs, whoever traded.
  *
- * TradingView's own tabs, because they are the right ones and a trader arriving from it already
- * knows where to look: Overview, Performance, Trades analysis, Risk ratios, List of trades.
- * Everything that terminal charges its Essential tier for — the advanced metrics, the CSV, the
- * XLSX — is free here, deliberately. A backtest of a reader's own idea over public candles is not
- * a premium good.
+ * ### Why the report is an interface rather than one class
  *
- * [longs] and [shorts] are the Performance tab. They are not slices of [all]: a subset of trades
- * has its own equity curve, so its drawdown and its ratios have to be computed from that curve
- * rather than pulled out of the whole run's. See [BacktestReports.markedCurve] for the one place
- * the subset curve is weaker than the engine's own.
+ * Because there are two traders now and only one right answer. A strategy run and a reader's own
+ * replay session are the same kind of document — a list of round trips, an equity curve marked to
+ * every bar, the same buy-and-hold baseline, the same twenty-five metrics — about different hands.
+ * Giving the reader's session its own report type with its own screen would mean a second set of
+ * statistics, and a second set of statistics is a second definition of a win: the day the two
+ * disagreed by a fee, nobody would be able to say which of them was right, and the reader would
+ * have learned a win rate that does not mean what the strategy tab's win rate means.
  *
- * The two `DoubleArray` fields make this class compare by identity, exactly as
- * `com.coinepro.core.chart.BacktestResult` does and for the same reason: the generated `equals` on
- * an array field compares references, which is correct for a result object nobody diffs and would
- * be quietly wrong for a value somebody expected to compare by content.
+ * So both implement this, `BacktestSheet` renders whichever it is handed, and every figure in the
+ * app comes out of `core:chart`'s one summariser.
+ *
+ * The derived properties below have bodies here rather than in each implementation, for the same
+ * reason: "which trades are the longs" is not a question two report types should be allowed to
+ * answer differently.
  */
-data class BacktestReport(
-    /** How much history this run covered. Read before anything below it. */
-    val window: BacktestWindow,
-    /** The rule and the cost the run was made with, so a report can say what produced it. */
-    val settings: Backtest.Settings,
-    /** Whether the run was allowed to take the short side. See [StrategyRules.directions]. */
-    val allowShorts: Boolean,
-    /** The stake every percentage below is a percentage of. */
-    val startingEquity: Double,
+interface TradeReport {
+    /** How much history this report covered. Read before anything below it. */
+    val window: BacktestWindow
+
+    /** Whether the short side was available. Decides what an empty short column means. */
+    val allowShorts: Boolean
+
+    /** The stake every percentage is a percentage of. */
+    val startingEquity: Double
+
     /** Every round trip that closed, in the order it closed. */
-    val trades: List<EngineTrade>,
+    val trades: List<EngineTrade>
+
     /** One point per bar, marked to that bar's close, open position included. */
-    val equityCurve: DoubleArray,
+    val equityCurve: DoubleArray
+
     /** The same money in the same instrument, held from the first bar to the last. */
-    val buyAndHoldCurve: DoubleArray,
+    val buyAndHoldCurve: DoubleArray
+
     /** Where the curve made its best run and its worst fall, with the bars. Drawn, not tabulated. */
-    val excursion: EquityExcursion,
+    val excursion: EquityExcursion
+
     /** Every trade. The Overview, Trades analysis and Risk tabs all read this one. */
-    val all: EngineMetrics,
+    val all: EngineMetrics
+
     /** The long trades alone, summarised over their own equity curve. */
-    val longs: EngineMetrics,
+    val longs: EngineMetrics
+
     /** The short trades alone. All zeros on a long-only run, which is a fact rather than a gap. */
-    val shorts: EngineMetrics,
-) {
+    val shorts: EngineMetrics
+
     /** Trades taken long. The Performance tab's first column, and the list tab's filter. */
     val longTrades: List<EngineTrade> get() = trades.filter { it.isLong }
 
@@ -131,6 +139,50 @@ data class BacktestReport(
             return if (losers.isEmpty()) 0.0 else losers.sumOf { it.runUp } / losers.size
         }
 }
+
+/**
+ * Everything the five-tab report shows, computed once.
+ *
+ * TradingView's own tabs, because they are the right ones and a trader arriving from it already
+ * knows where to look: Overview, Performance, Trades analysis, Risk ratios, List of trades.
+ * Everything that terminal charges its Essential tier for — the advanced metrics, the CSV, the
+ * XLSX — is free here, deliberately. A backtest of a reader's own idea over public candles is not
+ * a premium good.
+ *
+ * [longs] and [shorts] are the Performance tab. They are not slices of [all]: a subset of trades
+ * has its own equity curve, so its drawdown and its ratios have to be computed from that curve
+ * rather than pulled out of the whole run's. See [BacktestReports.markedCurve] for the one place
+ * the subset curve is weaker than the engine's own.
+ *
+ * The two `DoubleArray` fields make this class compare by identity, exactly as
+ * `com.coinepro.core.chart.BacktestResult` does and for the same reason: the generated `equals` on
+ * an array field compares references, which is correct for a result object nobody diffs and would
+ * be quietly wrong for a value somebody expected to compare by content.
+ */
+data class BacktestReport(
+    /** How much history this run covered. Read before anything below it. */
+    override val window: BacktestWindow,
+    /** The rule and the cost the run was made with, so a report can say what produced it. */
+    val settings: Backtest.Settings,
+    /** Whether the run was allowed to take the short side. See [StrategyRules.directions]. */
+    override val allowShorts: Boolean,
+    /** The stake every percentage below is a percentage of. */
+    override val startingEquity: Double,
+    /** Every round trip that closed, in the order it closed. */
+    override val trades: List<EngineTrade>,
+    /** One point per bar, marked to that bar's close, open position included. */
+    override val equityCurve: DoubleArray,
+    /** The same money in the same instrument, held from the first bar to the last. */
+    override val buyAndHoldCurve: DoubleArray,
+    /** Where the curve made its best run and its worst fall, with the bars. Drawn, not tabulated. */
+    override val excursion: EquityExcursion,
+    /** Every trade. The Overview, Trades analysis and Risk tabs all read this one. */
+    override val all: EngineMetrics,
+    /** The long trades alone, summarised over their own equity curve. */
+    override val longs: EngineMetrics,
+    /** The short trades alone. All zeros on a long-only run, which is a fact rather than a gap. */
+    override val shorts: EngineMetrics,
+) : TradeReport
 
 /**
  * Building a report, in pure arithmetic over bars.

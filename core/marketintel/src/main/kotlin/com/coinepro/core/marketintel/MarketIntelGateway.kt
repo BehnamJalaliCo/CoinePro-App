@@ -59,6 +59,14 @@ class NetworkMarketIntelGateway private constructor(
      * has been answering `calendar: []` since it was built.
      */
     private val academyCalendar: AcademyCalendarSource = NoAcademyCalendarSource,
+    /**
+     * News and the calendar from public sources, for whichever section the backend left empty.
+     *
+     * Null in the tests and in any build that would rather show nothing than show a third party's
+     * feed. See [PublicMarketIntel] for the measurement that made it necessary and for why it is
+     * consulted per section rather than instead.
+     */
+    private val publicSources: PublicMarketIntel? = null,
 ) : MarketIntelGateway {
 
     override suspend fun snapshot(): MarketIntelSnapshot {
@@ -74,32 +82,88 @@ class NetworkMarketIntelGateway private constructor(
             MarketPlatform.COINEPRO_FX -> api.forexSnapshot()
             MarketPlatform.TRADEYAR -> api.cryptoSnapshot()
         }
-        // Rethrown rather than reported, so the controller still shows the server's own words and
-        // the request table still shows the code. What this reader adds is the case that table
-        // cannot see: a 200 whose body the app could not use.
-        if (!response.isSuccessful) throw HttpException(response)
+        // A refusal is not the end of the screen any more, and this is the change that matters most
+        // to a reader who is not signed in.
+        //
+        // Both `market-intelligence` routes are behind auth and answer 401 to a guest. This used to
+        // throw here, which meant the public sources below were never reached — so the one reader
+        // who has not yet decided whether to trust the product was shown an empty news screen and an
+        // empty calendar, worded as an outage, for content that is public everywhere else. The same
+        // held for a member whose token had merely expired.
+        //
+        // So a failure becomes an *empty* snapshot that remembers what happened, the fallbacks get
+        // their turn, and the error is only rethrown if they had nothing either. The reader still
+        // ends up with the server's own words when there is genuinely nothing to show — see
+        // [orRethrow] — and gets a full screen the rest of the time.
+        val failure = if (response.isSuccessful) null else HttpException(response)
+        val primary = if (failure != null) {
+            MarketIntelSnapshot(
+                news = emptyList(),
+                calendar = emptyList(),
+                serverTime = null,
+                newsSource = NewsFeedOutcome(
+                    route = route,
+                    status = response.code(),
+                    failure = failure.message(),
+                ),
+            )
+        } else {
+            readSnapshot(response.body(), route, response.code(), platform)
+        }
+        return primary
+            .withCalendar()
+            .withNews()
+            .orRethrow(failure)
+    }
 
-        val primary = readSnapshot(response.body(), route, response.code(), platform)
-        // Only when the primary sends nothing. A route that starts filling its own calendar wins
-        // immediately and without a code change, which is the whole point of asking second rather
-        // than instead — the fallback must not outlive the gap it was built for.
-        if (primary.calendar.isNotEmpty()) return primary
-        val fallback = academyCalendar.events()
-        return primary.copy(calendar = fallback.events, calendarSource = fallback)
+    private fun MarketIntelSnapshot.orRethrow(failure: HttpException?): MarketIntelSnapshot =
+        if (failure != null && shouldRethrow()) throw failure else this
+
+    /**
+     * The calendar, from the first source that has one.
+     *
+     * Three in order, and the order is the order of authority: this backend's own route, then
+     * CoinePro-FX's public academy route, then the published week. Each is asked only because the
+     * one before it sent nothing — a route that starts filling its own calendar wins immediately and
+     * without a code change, which is the whole point of asking second rather than instead. A
+     * fallback must not outlive the gap it was built for.
+     */
+    private suspend fun MarketIntelSnapshot.withCalendar(): MarketIntelSnapshot {
+        if (calendar.isNotEmpty()) return this
+        val academy = academyCalendar.events()
+        if (academy.events.isNotEmpty()) return copy(calendar = academy.events, calendarSource = academy)
+        return withPublicCalendar(publicSources?.calendar().orEmpty(), academy)
+    }
+
+    /**
+     * The news, from the wires, when the backend sent no stories.
+     *
+     * Same rule and same reason as the calendar above. [NewsFeedOutcome.route] records the public
+     * source so a reader of the diagnostics screen — or of a bug report — can tell at a glance
+     * whether what they are looking at came from this product's own servers or from a wire.
+     */
+    private suspend fun MarketIntelSnapshot.withNews(): MarketIntelSnapshot {
+        if (news.isNotEmpty()) return this
+        return withPublicNews(publicSources?.news().orEmpty())
     }
 
     companion object {
         internal const val FOREX_ROUTE = "user/mobile/market-intelligence"
         internal const val CRYPTO_ROUTE = "api/mobile/v1/market-intelligence"
 
+        /** Not a URL, because there are two of them per platform. See [PublicNewsFeed.feeds]. */
+        internal const val PUBLIC_NEWS_ROUTE = "public-rss"
+
         fun create(
             retrofit: Retrofit,
             platform: MarketPlatform,
             academyCalendar: AcademyCalendarSource = NoAcademyCalendarSource,
+            publicSources: PublicMarketIntel? = null,
         ): MarketIntelGateway = NetworkMarketIntelGateway(
             api = retrofit.create(MarketIntelApi::class.java),
             platform = platform,
             academyCalendar = academyCalendar,
+            publicSources = publicSources,
         )
     }
 }
@@ -399,3 +463,67 @@ private val MARKUP = Regex("</?[A-Za-z][A-Za-z0-9]*[^<>]*>")
 
 /** Two or more line breaks with nothing but whitespace between them. */
 private val BLANK_LINES = Regex("\n[ \\t]*(\n[ \\t]*)+")
+
+// ── what to do with a section the backend left empty ──────────────────────────────────────────
+//
+// Three decisions, lifted out of the suspend orchestration above so they can be asserted. Each is
+// one `if`, and each is one of the five rounds this screen has been reported broken in: the app was
+// right about the wire and wrong about what to do when the wire had nothing on it.
+
+/**
+ * The calendar the reader ends up with.
+ *
+ * [academy] is kept as the recorded outcome even when it was empty and [published] filled the
+ * screen, because it carries which route answered and what it said — the evidence the diagnostics
+ * screen exists to show. An empty calendar with no explanation is exactly what this module was
+ * written to stop producing.
+ */
+internal fun MarketIntelSnapshot.withPublicCalendar(
+    published: List<EconomicEvent>,
+    academy: CalendarSourceOutcome = CalendarSourceOutcome.None,
+): MarketIntelSnapshot = when {
+    calendar.isNotEmpty() -> this
+    published.isEmpty() -> copy(calendarSource = academy)
+    else -> copy(
+        calendar = published,
+        calendarSource = CalendarSourceOutcome(
+            events = published,
+            received = published.size,
+            route = PublicCalendarFeed.URL,
+        ),
+    )
+}
+
+/**
+ * The stories the reader ends up with.
+ *
+ * `kept == received` deliberately, and it is not a formality: `feedUnreadable` in `feature:news`
+ * shows «هیچ خبری خوانده نشد» exactly when `received > 0 && kept == 0`, and `feedShortfall` warns
+ * when they differ. Nothing was dropped on the way in here, so neither line should appear.
+ */
+internal fun MarketIntelSnapshot.withPublicNews(wires: List<MarketNewsItem>): MarketIntelSnapshot =
+    if (news.isNotEmpty() || wires.isEmpty()) {
+        this
+    } else {
+        copy(
+            news = wires,
+            newsSource = NewsFeedOutcome(
+                route = NetworkMarketIntelGateway.PUBLIC_NEWS_ROUTE,
+                received = wires.size,
+                kept = wires.size,
+                firstPublished = wires.firstOrNull()?.publishedAt?.toString(),
+                lastPublished = wires.lastOrNull()?.publishedAt?.toString(),
+                envelope = "rss",
+            ),
+        )
+    }
+
+/**
+ * Whether the server's refusal is still the reader's business once the fallbacks have run.
+ *
+ * The distinction: a 401 with a wire full of stories behind it is not something to put in front of a
+ * reader — they have a screen of news, and the fact that they are signed out is for the sign-in
+ * button to say. A 401 with nothing behind it is exactly what they need told, in the server's own
+ * wording, and the request table needs the code.
+ */
+internal fun MarketIntelSnapshot.shouldRethrow(): Boolean = news.isEmpty() && calendar.isEmpty()

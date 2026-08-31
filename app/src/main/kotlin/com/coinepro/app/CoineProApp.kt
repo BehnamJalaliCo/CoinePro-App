@@ -1241,10 +1241,13 @@ fun CoineProApp(
                         marketSearchController = guestSearch,
                         screenerController = guestScreener,
                         candleGateway = guestCandles,
-                        // The signed-in gateway, not a guest one, because there is no guest depth
-                        // route to build one against. On crypto it answers 404 today and the
-                        // ladder says «هنوز سرو نمی‌شود» — the same sentence a member gets, which
-                        // is the truth for both of them.
+                        // The signed-in gateway, because there is no guest depth route to build one
+                        // against — the relay's `market/depth` answers 401 to a reader with no
+                        // session, where the public candle and price routes answer 200. That gap is
+                        // why the gateway this resolves to is wrapped in
+                        // `SessionFallbackOrderBookGateway`: on a 401, and only on a 401, it reads
+                        // the same book from LBank directly, so a guest gets the ladder their chart
+                        // already implies rather than a sentence about their connection.
                         orderBookGateway = orderBookGateways.getValue(activePlatform),
                         candleCache = candleCache,
                         candleArchive = candleArchive,
@@ -2986,7 +2989,10 @@ private fun MainShell(
                     // on this screen is local to the phone and opens for anybody.
                     onOpenConnections = if (guest) null else ({ navController.navigate(CONNECTIONS_ROUTE) }),
                     onOpenNews = { navController.navigate(NEWS_ROUTE) },
-                    onOpenCalendar = if (guest) null else ({ navController.navigate(CALENDAR_ROUTE) }),
+                    // Open to a guest now. The week's economic calendar is public information and
+                    // the app reads it from the published file when the server sends nothing — so
+                    // there is no longer a 401 behind this entry, and no reason to hide the door.
+                    onOpenCalendar = { navController.navigate(CALENDAR_ROUTE) },
                     onOpenPortfolio = if (guest) null else ({ navController.navigate(PORTFOLIO_ROUTE) }),
                     onOpenAcademy = if (hasAcademy && !guest) {
                         { navController.navigate(ACADEMY_ROUTE) }

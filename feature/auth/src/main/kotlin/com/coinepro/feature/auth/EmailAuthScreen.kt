@@ -90,11 +90,25 @@ fun EmailAuthScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        // 168, down from 220, and the number changed because what it measures did.
+        //
+        // `wordmarkWidth` is the width of the *name*, and until `ProChartLockup` was fixed the name
+        // ignored it: the artwork drew at its own intrinsic 168dp inside whatever box the caller
+        // asked for. So 220 was never the width of anything on screen — it was 168dp of name, 26dp
+        // of empty box, and a mark sized off a number the name was not obeying. Now that the name
+        // fills what it is given, 220 would put a 335dp lockup on a 363dp-wide column: the brand
+        // running the full width of a sign-in screen, which is a splash screen rather than a
+        // heading. 168 draws the name at exactly the size the artwork was cut for and the whole
+        // lockup at 256dp — about seventy percent of the column, which is where a logo sits above a
+        // form without becoming the form's subject.
         ProChartLockup(
-            wordmarkWidth = 220.dp,
+            wordmarkWidth = 168.dp,
             contentDescription = stringResource(R.string.auth_wordmark_description),
         )
-        Spacer(Modifier.height(CoineProSpacing.Three))
+        // Four rather than three. The brand needs its own air or it reads as the card's cap rather
+        // than as the product's name — the same gap TradingView leaves under a sheet's title, and
+        // the cheapest thing on this screen that makes it feel unhurried.
+        Spacer(Modifier.height(CoineProSpacing.Four))
 
         CoineProCard(modifier = Modifier.fillMaxWidth()) {
             when (state.step) {
@@ -107,7 +121,7 @@ fun EmailAuthScreen(
             }
         }
 
-        Spacer(Modifier.height(CoineProSpacing.Two))
+        Spacer(Modifier.height(CoineProSpacing.Three))
         // The risk line stays outside the card and keeps its warning colour. It belongs to the
         // product, not to whichever step happens to be showing.
         Text(
@@ -476,14 +490,27 @@ private fun PasswordField(
     )
 }
 
+/**
+ * The card's own heading — «ورود به حساب», «ثبت‌نام», «بازیابی رمز».
+ *
+ * `headlineSmall`, up from `titleMedium`. This is the only heading on the screen and it names the
+ * one thing the reader came to do; at 17sp it was the same size as a field's label and the card
+ * opened with no subject at all. Twenty-two is the size a sheet's title is set at in every
+ * reference this was measured against, and it is what gives the card a top rather than just an
+ * edge.
+ *
+ * The gap under it grows with it. A heading needs the space below it to belong to the heading — at
+ * 8dp under a 22sp line the title read as glued to the first field, which is the specific thing
+ * that makes a form look thrown together.
+ */
 @Composable
 private fun StepTitle(@StringRes title: Int) {
     Text(
         text = stringResource(title),
-        style = MaterialTheme.typography.titleMedium,
+        style = MaterialTheme.typography.headlineSmall,
         color = CoineProColors.TextPrimary,
     )
-    Spacer(Modifier.height(CoineProSpacing.One))
+    Spacer(Modifier.height(CoineProSpacing.Two))
 }
 
 @Composable

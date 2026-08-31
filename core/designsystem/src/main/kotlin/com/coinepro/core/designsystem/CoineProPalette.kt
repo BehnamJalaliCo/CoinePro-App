@@ -174,7 +174,24 @@ val CoineProLightPalette = CoineProPalette(
     // Pulled off the surface it used to share a value with. A chart ground identical to a card is
     // a chart with no ground.
     terminal = Color(0xFFF1F3F7),
-    surface = Color(0xFFF6F7FA),
+    // **#F1F2F6, and the four points it moved are the difference between a card and a region.**
+    //
+    // It was #F6F7FA. Against a white stage that is a difference of 4.5 units of luminance and
+    // about two units of CIE lightness — a step that exists in the file, survives a colour picker
+    // and does not survive a phone in a lit room. So the light theme's whole structure rested on
+    // the hairline, and a screen read exactly as the owner described it: a white sheet with
+    // slightly-less-white shapes printed on it.
+    //
+    // Measured against the reference the owner put beside it: TradingView's light theme sets its
+    // tiles at #F2F2F2 on a white page, which is ΔL* 4.7. This is ΔL* 4.5 — the same step, in this
+    // app's own cooler neutral. That is enough for the ground to carry the card on its own, which
+    // is what lets `CoineProCard` drop the hairline in this theme; see its note on when an edge is
+    // drawn at all.
+    //
+    // Every ink was re-measured against it rather than assumed. The ramp loses about 4% of its
+    // contrast on the darker ground and the tightest of them, the ink gold, still reads 4.84:1
+    // against a 4.5 bar. `SurfaceLadderTest` holds all of it.
+    surface = Color(0xFFF1F2F6),
     surfaceElevated = Color(0xFFEBEEF3),
     // White, because in a light theme the thing that is lifted is the thing that is brightest.
     surfaceRaised = Color(0xFFFFFFFF),

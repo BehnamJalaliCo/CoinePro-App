@@ -68,6 +68,27 @@ private fun coineProTextStyle(
  * row titles, button text, captions — come back to where a terminal puts them. The hero balance
  * stays a hero at 36sp, which is still twice the next-largest thing on its screen.
  *
+ * ### The steps have to be steps
+ *
+ * A scale is not a list of sizes, it is a list of *differences*, and one of them was not a
+ * difference at all: `headlineSmall` sat at 22 and `titleLarge` at 21. A single point is below what
+ * anybody can see, so the two roles were the same role wearing two names, and a screen that used
+ * both looked like a screen with a heading it had forgotten to make into a heading. `titleLarge` is
+ * 19 now, which puts the ladder at
+ *
+ * ```
+ *   52  42  34   30  25  22   19  17  15   16  14  13   15  13  11
+ *   └ display ┘  └ headline ┘ └  title  ┘  └  body  ┘   └ label ┘
+ * ```
+ *
+ * and every neighbouring pair inside a family is a tenth or more apart. Nineteen also gives the
+ * screen title an audible gap under `headlineSmall`, which is what a card's own title is measured
+ * against on the nineteen screens that set one.
+ *
+ * The families still overlap — `labelLarge` and `titleSmall` are both 15, `bodyLarge` and
+ * `RowFigure` are both 16 — and that is Material's design rather than an oversight here: those
+ * pairs differ in weight and in job, and collapsing them would cost a role rather than buy a step.
+ *
  * ### Letter spacing
  *
  * Material's positive tracking is tuned for Latin and pushes Persian glyphs apart at the joins, so
@@ -84,7 +105,7 @@ val CoineProTypography = Typography(
     headlineMedium = coineProTextStyle(25, 32, FontWeight.Bold),
     headlineSmall = coineProTextStyle(22, 29, FontWeight.Bold),
 
-    titleLarge = coineProTextStyle(21, 28, FontWeight.Bold),
+    titleLarge = coineProTextStyle(19, 26, FontWeight.Bold),
     titleMedium = coineProTextStyle(17, 23, FontWeight.Bold),
     titleSmall = coineProTextStyle(15, 20, FontWeight.Bold),
 

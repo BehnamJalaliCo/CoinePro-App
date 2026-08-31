@@ -58,12 +58,26 @@ class MenuCatalogueTest {
     fun `a row that belongs to the other backend is absent rather than locked`() {
         // The distinction the whole screen rests on. A locked row says "sign in and this is yours";
         // an absent one says nothing, which is the only honest thing to say about a feature the
-        // reader's platform does not have. The calendar is forex-only because TradeYar has no
-        // calendar route — it was leading a crypto reader to a screen that could never fill.
-        assertTrue("calendar" !in ids(member))
-        assertTrue("calendar" !in ids(guest))
+        // reader's platform does not have. The academy and copy trading are the cases — see below.
         val forex = MenuAccess(platform = MarketPlatform.COINEPRO_FX, signedIn = true)
-        assertTrue("calendar" in ids(forex))
+        assertTrue("academy" !in ids(member))
+        assertTrue("academy" in ids(forex))
+    }
+
+    @Test
+    fun `the calendar is on both backends and open to a guest`() {
+        // It was forex-only, on the argument that TradeYar publishes no calendar route and the row
+        // therefore led a crypto reader to a screen that could never fill. The argument was sound
+        // and the conclusion was wrong: a room that cannot be filled from one backend gets filled
+        // from somewhere else, and the app now reads the published week itself. A rate decision is
+        // more consequential for a leveraged USDT pair than for a metal, not less.
+        assertTrue("calendar" in ids(member))
+        assertTrue("calendar" in ids(guest))
+        assertTrue("calendar" in ids(MenuAccess(platform = MarketPlatform.COINEPRO_FX, signedIn = true)))
+        val locked = MenuCatalogue.sections(guest)
+            .flatMap { it.items }
+            .single { it.entry.id == "calendar" }
+        assertFalse(locked.locked)
     }
 
     @Test

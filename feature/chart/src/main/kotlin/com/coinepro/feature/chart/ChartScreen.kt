@@ -25,6 +25,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -1131,6 +1137,9 @@ fun ChartScreen(
             symbols = watchlist,
             symbol = state.symbol,
             onSelectSymbol = switchSymbol.takeIf { controllerFor != null || onSelectSymbol != null },
+            // The same quotes the watchlist strip below the page draws from, so the figure beside
+            // the ticker in the scroll and the figure in the row it came from are one number.
+            quotes = watchlistQuotes,
         )
 
         // Only where they have nowhere better to be. On a window wide enough for the side column
@@ -1649,14 +1658,47 @@ private fun DrawingTextSheet(
 /**
  * The chart with the whole screen, and the four controls that still have to be reachable.
  *
+ * ### It is a window of its own now, and that is the fix for two reported defects at once
+ *
+ * This used to be a branch inside the page: `if (fullscreen) FullscreenChart(...) else page`. The
+ * page is composed inside the app shell's `NavHost`, and that `NavHost` is one child of a `Column`
+ * inside a `Scaffold` — under a `TopAppBar`, the offline bar and the venue-feed bar. So
+ * `fillMaxSize()` here filled *the slot the page had*, and «تمام‌صفحه» was a chart with the page's
+ * own furniture taken off and the **app's** furniture still standing above it.
+ *
+ * That is the whole of «می‌ره تو صفحهٔ خانه». The system Back was being intercepted correctly — the
+ * [BackHandler] below has been here all along — but the reader was not pressing the system Back.
+ * They were pressing the arrow they could *see*, in the top bar that fullscreen never covered, and
+ * that arrow is the shell's own `popBackStack()`. The chart route is entered with the chart tab
+ * popped inclusive, so the entry behind it is the home tab: press it and you land on «خانه». No
+ * amount of work on `BackHandler` could have fixed a button that is not a back handler.
+ *
+ * A `Dialog` with the platform width and the decor fitting both switched off is a window over the
+ * activity, so it covers the top bar, the bars above it and the navigation bar. There is now no
+ * stray arrow to press, the system Back and the gesture both land on `onDismissRequest`, and the
+ * `BackHandler` stays as the belt to that brace. It is also the only way to reach the whole glass
+ * from inside this module: the `Scaffold` belongs to the app shell, and a screen cannot climb out
+ * of its own slot.
+ *
+ * The sheets this mode opens — tools, bar lengths — are composed in [ChartScreen]'s body, outside
+ * this window, and they are shown *after* it: a later window is the one on top, so they open over
+ * the fullscreen chart exactly as they open over the page.
+ *
  * ### What is kept and what goes
  *
  * Kept: the timeframe strip, the tool bar, the symbol and its price, and a way out. Everything
- * else — the statistics, the setup card, the studio card, the symbol wheel — is a *page* around a
- * chart, and the point of this mode is that there is no page.
+ * else — the statistics, the setup card, the studio card — is a *page* around a chart, and the
+ * point of this mode is that there is no page.
  *
  * The controls float over the chart rather than taking rows from it: a fullscreen mode that spent
- * a fifth of its height on chrome would be the card again with fewer features.
+ * a fifth of its height on chrome would be the card again with fewer features. What has changed is
+ * that the top corner is no longer two bare round buttons over the candles — it carries a plate
+ * naming the instrument, its price and its move, because with the app's own header gone there was
+ * nothing on this screen that said *what* was being drawn. A chart with no name on it is the one
+ * thing a full-screen chart must not be.
+ *
+ * Everything is inset past the system bars. The window fits no decor, so without it the plate
+ * would sit under the status bar's clock and the bottom strip under the gesture handle.
  *
  * ### It does not force landscape
  *
@@ -1680,10 +1722,28 @@ private fun FullscreenChart(
     /** How a tap on a neighbour is taken, or null where this build cannot switch instrument. */
     onSelectSymbol: ((String) -> Unit)? = null,
 ) {
-    // Back leaves fullscreen before it leaves the chart. Without this the reader's first instinct
-    // — the gesture that means "out of this" — takes them off the screen entirely, losing the
-    // viewport, the armed tool and whatever they were reading.
-    BackHandler(onBack = onExit)
+    Dialog(
+        onDismissRequest = onExit,
+        properties = DialogProperties(
+            // The three that turn a dialog into a window. Without the first it is a card in the
+            // middle of the screen; without the third it stops at the system bars and the thing
+            // this mode is named after does not happen.
+            usePlatformDefaultWidth = false,
+            // A tap on the plot is a chart gesture, never a way out. The only ways out are the
+            // control that says so and the system's own back.
+            dismissOnClickOutside = false,
+            dismissOnBackPress = true,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        // Back leaves fullscreen before it leaves the chart. Without this the reader's first
+        // instinct — the gesture that means "out of this" — takes them off the screen entirely,
+        // losing the viewport, the armed tool and whatever they were reading.
+        //
+        // Kept even though the window's own `dismissOnBackPress` would do it: this is the handler
+        // that runs while a chart gesture has the pointer, and it is the one that is here in the
+        // source for the next person who reads this looking for the back behaviour.
+        BackHandler(onBack = onExit)
 
     Box(
         modifier = Modifier
@@ -1695,6 +1755,7 @@ private fun FullscreenChart(
         Row(
             modifier = Modifier
                 .align(Alignment.TopEnd)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(CoineProSpacing.One),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
             verticalAlignment = Alignment.CenterVertically,
@@ -1711,6 +1772,20 @@ private fun FullscreenChart(
             )
         }
 
+        // What is being drawn, said in the corner the app's own header used to occupy.
+        //
+        // The leading corner rather than the trailing one, because the trailing corner is where
+        // the two controls are and the price gutter is under them. It sits above the chart's own
+        // legend plate and repeats none of it: the legend names the *studies*, this names the
+        // *instrument* — which in this mode nothing else does.
+        FullscreenIdentity(
+            state = state,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(CoineProSpacing.One),
+        )
+
         // The timeframe strip at the bottom, where a thumb already is on a phone held in one
         // hand — and out of the top-left corner where the legend plate draws. The quick ranges go
         // under it, for the same reason and in the same order as on the page.
@@ -1718,8 +1793,16 @@ private fun FullscreenChart(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(CoineProColors.Stage.copy(alpha = STRIP_ALPHA)),
+                .background(CoineProColors.Stage.copy(alpha = STRIP_ALPHA))
+                // Past the gesture handle and the navigation bar. The window fits no decor, so
+                // without this the range pills sit under the bar a reader swipes on and the last
+                // row of the mode is the one row they cannot press.
+                .windowInsetsPadding(WindowInsets.navigationBars),
         ) {
+            // A hairline where the strip meets the plot. It is the whole of the elevation this
+            // design system gives a floating surface, and without it the strip's translucent
+            // ground blends into the volume bars at the foot of the chart.
+            HorizontalDivider(thickness = HAIRLINE, color = CoineProColors.Border)
             // The same switcher the page's command band carries, in the same place relative to the
             // lengths. A control that disappears when the chart is made bigger is a control the
             // reader stops trusting is there.
@@ -1740,6 +1823,74 @@ private fun FullscreenChart(
                 onSelect = controller::setRange,
                 modifier = Modifier.padding(bottom = CoineProSpacing.Half),
             )
+        }
+    }
+    }
+}
+
+/**
+ * The instrument, its price and its move, on a plate over the plot.
+ *
+ * In this mode and not on the page, where the header already says all three. It exists because
+ * fullscreen is now a window of its own: the app's top bar, which carried the symbol on every other
+ * chart surface, is covered, and a full-screen chart with nothing on it naming the market is a
+ * picture of candles.
+ *
+ * A plate rather than bare text. The ink has to stay legible over whatever the candles do
+ * underneath it, and a translucent ground at the stage colour is what every other floating surface
+ * in this file uses — no blur, no shadow, one hairline. Latin digits for the two figures, because
+ * they are market figures and are read against the axis a few points to the right of them.
+ */
+@Composable
+private fun FullscreenIdentity(state: ChartUiState, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(CoineProShapes.small)
+            .background(CoineProColors.Stage.copy(alpha = STRIP_ALPHA))
+            .border(HAIRLINE, CoineProColors.Border, CoineProShapes.small)
+            .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CoineProAssetLogo(symbol = state.symbol, size = 18.dp)
+        LtrDirection {
+            Text(
+                text = BidiText.isolateLtr(state.symbol),
+                style = MaterialTheme.typography.labelLarge,
+                color = CoineProColors.TextPrimary,
+                maxLines = 1,
+            )
+        }
+        state.lastPrice?.let { price ->
+            LtrDirection {
+                Text(
+                    text = formatPrice(price, decimalsFor(price)),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = CoineProColors.TextPrimary,
+                    maxLines = 1,
+                )
+            }
+        }
+        // The move keeps its colour and loses it when there is none — a flat window drawn in the
+        // sell red would report a fall that did not happen. Same rule as the page's header.
+        if (state.changeAbsolute != null || state.changePercent != null) {
+            val up = ChartHeadline.rising(state.changeAbsolute, state.changePercent)
+            LtrDirection {
+                Text(
+                    text = ChartHeadline.move(
+                        absolute = state.changeAbsolute,
+                        percent = state.changePercent,
+                        price = state.lastPrice,
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = when (up) {
+                        true -> CoineProColors.Buy
+                        false -> CoineProColors.Sell
+                        null -> CoineProColors.TextSecondary
+                    },
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
@@ -2019,12 +2170,20 @@ internal fun IntervalRow(
     onMore: () -> Unit,
     /** The lengths pinned to the strip, in wire spellings. See [TimeframeFavourites]. */
     starred: List<String> = TimeframeFavourites.DEFAULT,
+    /**
+     * How much of the row this strip gets.
+     *
+     * It shares its row with the symbol scroll in the command band — see `ChartCommandBand` — and
+     * takes the whole width everywhere else. `fillMaxWidth` stays below it because a weight already
+     * bounds the width where one is given, and where none is the row still has to reach both edges.
+     */
+    modifier: Modifier = Modifier,
 ) {
     // Rebuilt only when the starred list or the selection changes, which are the two things that
     // change the row's contents.
     val shown = remember(selected, starred) { TimeframeFavourites.resolve(starred, selected) }
     LazyRow(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             // Top as well as bottom. The row had only the bottom gap, so the first key's edge sat
             // hard against whatever was above it and the two read as one shape. Ten points on both
@@ -3194,6 +3353,15 @@ private const val FLOATING_ALPHA = 0.72f
 
 /** The same, for the timeframe strip along the bottom. */
 private const val STRIP_ALPHA = 0.82f
+
+/**
+ * The one-pixel rule this design system calls elevation.
+ *
+ * A hairline and nothing else: no blur behind a floating surface and no shadow under it, which is
+ * the surface rule the whole app is built on and the one the gate in `check-motion-policy.sh`
+ * enforces. One device pixel would disappear on a three-times-density phone, so it is a point.
+ */
+private val HAIRLINE = 1.dp
 
 /**
  * The last bar's clock time, in the reader's own zone.

@@ -157,11 +157,17 @@ object MenuCatalogue {
             bodyRes = R.string.menu_calendar_body,
             icon = CoineProIcons.Calendar,
             group = MenuGroup.MARKET,
-            account = true,
-            // Forex only, and it is not a gate — it is an absence. TradeYar publishes no calendar
-            // route at all and was asked, by contract, to send `calendar: []`. The row was leading
-            // a crypto reader to a screen that could never fill, with a refresh button on it.
-            platform = MarketPlatform.COINEPRO_FX,
+            // On both backends again, and open to a guest.
+            //
+            // It was made forex-only on the argument that TradeYar publishes no calendar route, so
+            // the row led a crypto reader to a screen that could never fill. The argument was sound
+            // and the conclusion was wrong: the answer to a room that cannot be filled from one
+            // backend is not to lock the door, it is to fill it from somewhere else. The app now
+            // reads the published week itself when neither server sends events — see
+            // `PublicMarketIntel` — and a rate decision is *more* consequential for a leveraged
+            // USDT pair than for a metal, not less. Nor does it need an account: the week's
+            // economic calendar is public information and gating it taught a smaller app than the
+            // one the reader installed.
         ),
         // ── معامله ───────────────────────────────────────────────────────────────────────────
         MenuEntry(

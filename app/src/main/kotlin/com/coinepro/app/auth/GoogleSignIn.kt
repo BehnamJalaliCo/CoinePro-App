@@ -1,13 +1,19 @@
 package com.coinepro.app.auth
 
 import android.content.Context
+import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
+import androidx.credentials.CredentialOption
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
 import com.coinepro.app.R
+import com.coinepro.core.auth.GoogleSignInAttempt
+import com.coinepro.core.auth.GoogleSignInRefusal
+import com.coinepro.core.auth.googleSignInRefusal
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 
 /**
@@ -23,7 +29,7 @@ sealed interface GoogleSignInOutcome {
 
     data object Cancelled : GoogleSignInOutcome
 
-    /** [message] is what to tell the reader. See `explain` for why it is not always Google's. */
+    /** [message] is what to tell the reader — see `googleSignInRefusal`; it is not always Google's. */
     data class Failed(val message: String?) : GoogleSignInOutcome
 }
 
@@ -40,80 +46,132 @@ sealed interface GoogleSignInOutcome {
  */
 class GoogleSignInClient(private val context: Context) {
 
+    /**
+     * Asks Google who this is, and asks twice before believing a no.
+     *
+     * The first ask is [GoogleSignInAttempt.ONE_TAP], because for a reader who has signed in before
+     * it is the better experience by a wide margin: the sheet names their account and there is no
+     * picker to wade through. Its cost is that Play services answers it out of state the app cannot
+     * see, and on the first ask of a fresh install that state is not there yet — so it throws, and
+     * the app used to hand that straight to the reader as a failure.
+     *
+     * It was never a no. Tapping again worked, every time, because the first ask is what put the
+     * state there. That is a retry, and a retry the app can perform is not one to make the reader
+     * perform — least of all with an error message in between telling them the build is broken.
+     *
+     * So the second ask happens here, inside the one tap, and it is a different question:
+     * [GoogleSignInAttempt.ACCOUNT_PICKER] is the option meant for a button, and it opens the picker
+     * without consulting any of that state. Only its refusal is the reader's to see. `core:auth`
+     * owns the decision and is where the test for it lives.
+     */
     suspend fun requestIdToken(serverClientId: String): GoogleSignInOutcome {
         val audience = serverClientId.trim()
         if (audience.isEmpty()) return GoogleSignInOutcome.Failed(null)
 
-        val option = GetGoogleIdOption.Builder()
-            .setServerClientId(audience)
-            // False, so the sheet also offers accounts that have never used this app. Limiting it
-            // to previously authorised ones shows an empty sheet to every new reader, which looks
-            // like sign-in being broken rather than like a first visit.
-            .setFilterByAuthorizedAccounts(false)
-            .build()
+        var attempt = GoogleSignInAttempt.ONE_TAP
+        while (true) {
+            when (val round = ask(attempt, audience)) {
+                is Round.Done -> return round.outcome
+                is Round.Refused -> when (
+                    val refusal = googleSignInRefusal(attempt, round.type, round.message)
+                ) {
+                    is GoogleSignInRefusal.RetryWith ->
+                        // A retry that does not change the question is an app asking Google the
+                        // same thing for ever. The decision never returns one; this loop does not
+                        // take its word for it.
+                        if (refusal.attempt == attempt) {
+                            return GoogleSignInOutcome.Failed(round.message)
+                        } else {
+                            attempt = refusal.attempt
+                        }
 
-        return try {
-            val response = CredentialManager.create(context).getCredential(
-                context = context,
-                request = GetCredentialRequest.Builder().addCredentialOption(option).build(),
-            )
-            val credential = response.credential
-            if (
-                credential is CustomCredential &&
-                credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
-            ) {
-                val token = GoogleIdTokenCredential.createFrom(credential.data).idToken
-                token.takeIf { it.isNotBlank() }
-                    ?.let(GoogleSignInOutcome::Token)
-                    ?: GoogleSignInOutcome.Failed(null)
-            } else {
-                // Something other than a Google credential came back. Nothing here can use it, and
-                // guessing would mean sending the server something it did not ask for.
-                GoogleSignInOutcome.Failed(null)
+                    GoogleSignInRefusal.Misconfigured ->
+                        return GoogleSignInOutcome.Failed(
+                            context.getString(R.string.auth_google_not_registered),
+                        )
+
+                    GoogleSignInRefusal.PassThrough ->
+                        return GoogleSignInOutcome.Failed(round.message)
+                }
             }
-        } catch (_: GetCredentialCancellationException) {
-            GoogleSignInOutcome.Cancelled
-        } catch (error: GetCredentialException) {
-            GoogleSignInOutcome.Failed(explain(context, error))
         }
     }
-}
 
-/**
- * What to show a reader when Credential Manager refuses.
- *
- * Google's own wording is passed through for anything that plainly describes the reader's
- * situation. One family is replaced, and the replacement has to name **two** causes rather than
- * one, because Google reports them with the same exception and there is no way from inside the app
- * to tell them apart:
- *
- *  * the app's signing certificate is not registered against the Google Cloud project that issued
- *    the audience, so Google will not mint a token for this build whoever is signed in; or
- *  * the phone genuinely has no Google account on it.
- *
- * The first version of this message named only the first cause. That was right while the console
- * was known to be missing an Android client and wrong the moment it is not: a reader with no Google
- * account would be told the app is broken, and would have no idea that adding an account fixes it.
- * Naming both is the only honest wording, and it costs nothing — the reader can check one and act
- * on the other.
- *
- * `docs/PLAY_LISTING.md` carries the console side, and «ایمنی و نسخه» in the app shows the
- * fingerprint the console needs.
- */
-private fun explain(context: Context, error: GetCredentialException): String? {
-    val text = (error.errorMessage?.toString().orEmpty() + " " + error.type).lowercase()
-    val misconfigured = listOf(
-        "developer console",
-        "10:",
-        "no credentials available",
-        "type_no_credential",
-    ).any { it in text }
-    return if (misconfigured) {
-        context.getString(R.string.auth_google_not_registered)
-    } else {
-        error.errorMessage?.toString()
+    /**
+     * One round trip: either something to report, or a refusal for `core:auth` to weigh.
+     *
+     * Cancellation is caught by type rather than by reading the refusal, and finishes the tap here.
+     * The reader closing the sheet is a decision; retrying it would reopen the sheet they just shut,
+     * which is the one outcome worse than the message this change removes.
+     */
+    private suspend fun ask(attempt: GoogleSignInAttempt, audience: String): Round = try {
+        val response = CredentialManager.create(context).getCredential(
+            context = context,
+            request = GetCredentialRequest.Builder()
+                .addCredentialOption(option(attempt, audience))
+                .build(),
+        )
+        Round.Done(read(response.credential))
+    } catch (_: GetCredentialCancellationException) {
+        Round.Done(GoogleSignInOutcome.Cancelled)
+    } catch (error: GetCredentialException) {
+        Round.Refused(error.type, error.errorMessage?.toString())
+    }
+
+    /**
+     * The two shapes of the same question.
+     *
+     * `setFilterByAuthorizedAccounts(false)` stays on the One Tap option and is still right — with
+     * it true the sheet is empty for every new reader. It was never the cause of the double tap,
+     * though: the option itself consults prior state whatever the filter says, and that is what the
+     * picker below is for.
+     */
+    private fun option(attempt: GoogleSignInAttempt, audience: String): CredentialOption =
+        when (attempt) {
+            GoogleSignInAttempt.ONE_TAP -> GetGoogleIdOption.Builder()
+                .setServerClientId(audience)
+                .setFilterByAuthorizedAccounts(false)
+                .build()
+
+            GoogleSignInAttempt.ACCOUNT_PICKER -> GetSignInWithGoogleOption.Builder(audience).build()
+        }
+
+    /** Both options answer with a Google ID token credential, so both are read the same way. */
+    private fun read(credential: Credential): GoogleSignInOutcome =
+        if (
+            credential is CustomCredential &&
+            credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+        ) {
+            GoogleIdTokenCredential.createFrom(credential.data).idToken
+                .takeIf { it.isNotBlank() }
+                ?.let(GoogleSignInOutcome::Token)
+                ?: GoogleSignInOutcome.Failed(null)
+        } else {
+            // Something other than a Google credential came back. Nothing here can use it, and
+            // guessing would mean sending the server something it did not ask for.
+            GoogleSignInOutcome.Failed(null)
+        }
+
+    private sealed interface Round {
+        data class Done(val outcome: GoogleSignInOutcome) : Round
+
+        data class Refused(val type: String, val message: String?) : Round
     }
 }
+
+/*
+ * What used to live here was `explain`: one pass over Credential Manager's wording, deciding on the
+ * spot whether to show it. It is `googleSignInRefusal` in `core:auth` now, and it takes one more
+ * argument — which attempt was refused — because that argument is the whole bug. The same
+ * `TYPE_NO_CREDENTIAL` means "ask again properly" the first time and "there is genuinely nothing
+ * here" the second, and a function that could not see the difference had to guess, and guessed
+ * wrong on the tap that mattered.
+ *
+ * The copy it selects is unchanged and still names two causes, because Google reports them
+ * identically: the app's signing certificate is not registered against the Google Cloud project
+ * that issued the audience, or the phone has no Google account on it. `docs/PLAY_LISTING.md` carries
+ * the console side, and «ایمنی و نسخه» in the app shows the fingerprint the console needs.
+ */
 
 /*
  * It *was* deliberately not a string resource, on the argument that a build-configuration fault is

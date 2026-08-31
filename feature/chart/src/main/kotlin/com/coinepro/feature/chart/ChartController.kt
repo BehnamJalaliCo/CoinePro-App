@@ -247,8 +247,12 @@ data class ChartUiState(
      * One study reads it — the visible-range volume profile — and reads nothing else, which is why
      * it is a whole field rather than a flag: its answer is a function of where the reader has
      * panned to, and until the viewport crossed back over this boundary the profile was computed
-     * once against the whole series and never followed a pan. It is part of [ChartDerived]'s key
-     * for the same reason, or the first answer would be cached forever.
+     * once against the whole series and never followed a pan.
+     *
+     * It is in [ChartDerived]'s key, but it is checked *apart* from the other five and repaired
+     * rather than invalidated — see [ChartDerived.rewindowed]. And it is only published while
+     * something reads it, so on an ordinary chart this field does not move at all as the reader
+     * drags; see [ChartController.setVisibleWindow] for both, and for the drag they were costing.
      */
     val window: BarWindow = BarWindow.WHOLE_SERIES,
     /**
@@ -417,7 +421,27 @@ data class ChartUiState(
         // they meant when they switched a correlation on. The rest are drawn as overlays and take
         // no part in it.
         val partner = comparisons.firstOrNull()
-        carried?.takeIf { it.matches(visibleSeries, activeIndicators, indicatorPeriods, partner, window, chained) }
+        // **The window is checked last and separately, and that is the fix for «چارت وحشتناک کنده».**
+        //
+        // It used to be one comparison: a carried value matched only if all six inputs agreed, the
+        // window among them. But the window changes on *every bar of a drag*, and exactly one study
+        // in the whole catalogue reads it — the visible-range volume profile. So one indicator's
+        // input was invalidating all of them, and a reader dragging a chart with five studies on it
+        // was paying for a complete recomputation of every one of them, over every resident bar,
+        // per bar of movement, on the main thread inside composition. Measured on a desktop JVM at
+        // twelve thousand resident bars and five ordinary indicators that is fifteen milliseconds a
+        // step; on the phone this app is built for it is several frames, and it is why the drag
+        // "went backwards and forwards horribly slowly" rather than merely dropping the odd frame.
+        //
+        // Now the five inputs that describe *what is computed* are checked together, and the one
+        // that describes *where the reader is looking* is applied afterwards by [rewindowed], which
+        // recomputes the window-scoped study alone and keeps every other line by reference. A chart
+        // with no window-scoped study on it — which is every chart in this app until somebody
+        // switches the profile on — reuses the carried value whole.
+        val reusable = carried?.takeIf {
+            it.matchesApartFromWindow(visibleSeries, activeIndicators, indicatorPeriods, partner, chained)
+        }
+        reusable?.rewindowed(visibleSeries, activeIndicators, indicatorPeriods, chained, window)
             ?: ChartDerived.of(visibleSeries, activeIndicators, indicatorPeriods, partner, window, chained)
     }
 
@@ -1227,12 +1251,21 @@ class ChartController(
 
     fun toggleIndicator(id: String) {
         _state.update { old ->
+            val next = if (id in old.activeIndicators) {
+                old.activeIndicators - id
+            } else {
+                old.activeIndicators + id
+            }
             old.copy(
-                activeIndicators = if (id in old.activeIndicators) {
-                    old.activeIndicators - id
-                } else {
-                    old.activeIndicators + id
-                },
+                activeIndicators = next,
+                // The window, spent here and only here. [setVisibleWindow] stops publishing it
+                // while nothing reads it, so a reader who pans across a week and *then* switches
+                // the visible-range profile on would otherwise get a profile of the bars they were
+                // looking at before the pan — a "visible range" study measuring an invisible range,
+                // which is the exact defect the window was added to fix. Taking the remembered
+                // window at the moment the study comes on closes that, and costs a chart with no
+                // window-scoped study nothing: the field is already equal.
+                window = if (ChartDerived.readsWindow(next, old.chained)) lastWindow else old.window,
             )
         }
         persistSymbolState()
@@ -1536,14 +1569,51 @@ class ChartController(
     /**
      * The bars on screen, reported by the renderer.
      *
-     * The one input to [ChartDerived] that no other part of this controller can know. Guarded
-     * against a no-op because the canvas reports it on every frame of a pan and each distinct value
-     * invalidates the derived cache — publishing an equal window would rebuild every indicator for
-     * nothing, which is the opposite of what the window is for.
+     * The one input to [ChartDerived] that no other part of this controller can know, and the one
+     * that arrives at the rate of a drag: the canvas calls this once per bar the reader moves, so
+     * on a fast pan it is called tens of times a second.
+     *
+     * ### Why most calls now publish nothing at all
+     *
+     * Because on most charts nothing reads the answer. Exactly one study is scoped to the window —
+     * see [ChartDerived.WINDOW_SCOPED] — and until a reader switches it on, every one of these
+     * calls was allocating a [ChartUiState], pushing it through the flow, recomposing the whole
+     * chart page and re-answering `overlays`, `panes`, `levels` and `markers` in order to record a
+     * number with no consumer. That is the second half of «چارت وحشتناک کنده»: not the arithmetic,
+     * the state churn behind it.
+     *
+     * The window is still *remembered* on every call — [lastWindow] — so that the moment somebody
+     * does switch the profile on it is computed against where they are actually looking rather
+     * than against wherever the chart happened to be the last time the window was published. See
+     * [toggleIndicator], which spends it.
+     *
+     * ### And why the published state carries the previous answer with it
+     *
+     * `carried` is what lets the next state reuse this one's indicators, and until now it was
+     * written in exactly one place — the drawing drag. A pan therefore arrived at a state whose
+     * carry was null or stale, so the reuse this whole apparatus exists for could not happen on the
+     * one gesture that needs it most. Forcing `current.derived` here is not extra work: it is the
+     * computation the very next frame was going to do anyway, done once and handed forward.
      */
-    fun setVisibleWindow(window: BarWindow) = _state.update {
-        if (it.window == window) it else it.copy(window = window)
+    fun setVisibleWindow(window: BarWindow) {
+        lastWindow = window
+        _state.update { current ->
+            when {
+                current.window == window -> current
+                !ChartDerived.readsWindow(current.activeIndicators, current.chained) -> current
+                else -> current.copy(window = window, carried = current.derived)
+            }
+        }
     }
+
+    /**
+     * The last window the renderer reported, whether or not it was worth publishing.
+     *
+     * A plain field rather than state, deliberately: writing it must not recompose anything, and
+     * nothing reads it except the moment a window-scoped study is switched on. See
+     * [setVisibleWindow].
+     */
+    private var lastWindow: BarWindow = BarWindow.WHOLE_SERIES
 
     /**
      * What one indicator is computed on: the candles, or another indicator's output.
@@ -2129,8 +2199,24 @@ class ChartController(
             // is served from storage in a frame rather than from a server in a second — and it
             // works with no connection at all, which on the networks this app is used on is not a
             // small thing. Only when the archive comes back empty is the venue asked.
+            // **A disk page is not a network page, and it stopped being sized like one.**
+            //
+            // [HISTORY_PAGE_BARS] is five hundred because that is the smallest cap of the three
+            // venues this app talks to — it is a fact about a server, and it has no business
+            // deciding how much of our own archive we read in one go. Reading five hundred at a
+            // time from a local table meant a reader walking back through a year of hourly candles
+            // paid ninety round trips through this whole method, ninety series rebuilds and ninety
+            // recompositions, for bars that were already on the device. [ARCHIVE_PAGE_BARS] is what
+            // a page-back costs when nothing is waiting on a network.
+            //
+            // Clamped to the room left under the ceiling, so the last page is a partial one and the
+            // series lands exactly on [ChartHistory.MAX_RESIDENT_BARS] rather than a page past it.
+            // A chart that overshoots its own bound by five thousand bars is a bound that does not
+            // mean anything.
+            val room = (ChartHistory.MAX_RESIDENT_BARS - current.series.size)
+                .coerceIn(1, ARCHIVE_PAGE_BARS)
             val stored = runCatching {
-                archive.read(current.symbol, current.interval, HISTORY_PAGE_BARS, before = oldest)
+                archive.read(current.symbol, current.interval, room, before = oldest)
             }.getOrDefault(emptyList())
             if (stored.isNotEmpty()) {
                 prependOlder(current, stored, hasMore = true)
@@ -2393,6 +2479,23 @@ class ChartController(
          * operation and an absurd one for a round trip to a server over a mobile network in Iran.
          */
         const val FIRST_CANDLE_BUDGET_MS = 1_200L
+
+        /**
+         * How many bars one page-back takes off the **disk**: five thousand.
+         *
+         * Deliberately an order of magnitude above [HISTORY_PAGE_BARS], and the difference is the
+         * whole point — that constant is a venue's page cap, this one is a judgement about a local
+         * read. The archive holds up to `CandleArchive.MAX_BARS_PER_SERIES` bars and the owner
+         * wants a chart he can back-test on, which means walking to the far end of it: at five
+         * hundred a page that is a hundred passes through `loadMore`, each one rebuilding the
+         * series and every switched-on indicator over it. At five thousand it is ten.
+         *
+         * Not larger, because a page-back is still a thing that happens while a finger is on the
+         * glass. Five thousand hourly bars is about seven months and roughly sixty screenfuls at
+         * ordinary zoom, so it is far more than one drag can consume — the reader reaches the left
+         * edge, one page arrives, and they can go on dragging without meeting another wait.
+         */
+        const val ARCHIVE_PAGE_BARS = 5_000
     }
 }
 
@@ -2457,7 +2560,7 @@ data class ChartDerived internal constructor(
         val chained: Set<String> = emptySet(),
     )
 
-    /** Whether this value is still the right answer for these inputs. */
+    /** Whether this value is still the right answer for these inputs, the window included. */
     internal fun matches(
         series: CandleSeries,
         active: Set<String>,
@@ -2465,16 +2568,136 @@ data class ChartDerived internal constructor(
         comparison: ComparisonSeries? = null,
         window: BarWindow = BarWindow.WHOLE_SERIES,
         chained: Set<String> = emptySet(),
+    ): Boolean = matchesApartFromWindow(series, active, periods, comparison, chained) &&
+        key?.window == window
+
+    /**
+     * The same check with the window left out — everything that decides *what* is computed.
+     *
+     * Separate from [matches] because the window is not that kind of input. The other five say
+     * which lines exist and what arithmetic makes them; the window says which bars one study
+     * measures over, and it moves on every bar of a drag. Folding it in made a drag invalidate the
+     * whole answer sixty times a second, so it is checked on its own and repaired by [rewindowed]
+     * rather than thrown away with everything else.
+     */
+    internal fun matchesApartFromWindow(
+        series: CandleSeries,
+        active: Set<String>,
+        periods: Map<String, Int>,
+        comparison: ComparisonSeries? = null,
+        chained: Set<String> = emptySet(),
     ): Boolean = key != null &&
         key.series === series &&
         key.active == active &&
         key.periods == periods &&
         key.comparison == comparison &&
-        key.window == window &&
         key.chained == chained
+
+    /**
+     * This value re-answered for a new window, recomputing only the studies that read one.
+     *
+     * ### Why this can be surgery rather than a recomputation
+     *
+     * Because a window-scoped study is a study whose *values* depend on where the reader has panned
+     * to, and there is exactly one — see [WINDOW_SCOPED]. Every other line on the chart is a
+     * function of the bars, the switches and the lookbacks alone, all of which [matchesApartFromWindow]
+     * has already established are unchanged. So the correct new answer is the old one with one
+     * study's lines replaced, and the rest carried by reference.
+     *
+     * ### Why it rebuilds the list rather than patching it in place
+     *
+     * Because a window-scoped study may produce a different *number* of lines at a different
+     * window: `volumeProfileFor` answers null in a window where nothing traded, and the row
+     * disappears. Patching by index would leave `overlays` and [overlayOwners] one entry out of
+     * step — and those two being aligned is what makes the legend's remove button take off the
+     * study the reader pressed it on rather than the one after it. So the price lines are rebuilt
+     * in the order [of] builds them: catalogue order, price panes first, structure lines after,
+     * with each option's group taken from the carried value unless it is window-scoped.
+     *
+     * The panes, the levels and the markers are untouched, because nothing that produces them
+     * takes a window at all.
+     */
+    internal fun rewindowed(
+        series: CandleSeries,
+        active: Set<String>,
+        periods: Map<String, Int>,
+        chained: Set<String>,
+        window: BarWindow,
+    ): ChartDerived {
+        val previous = key ?: return this
+        if (previous.window == window) return this
+        // Nothing on this chart reads a window, so the new one changes nothing but the key. The
+        // key still has to move, or the *next* pan would compare against a stale window and take
+        // this branch again for ever — cheap, but a lie in the one field that exists to be checked.
+        if (!readsWindow(active, chained)) return copy(key = previous.copy(window = window))
+
+        val held = LinkedHashMap<String, MutableList<ChartLine>>()
+        overlayOwners.forEachIndexed { at, owner ->
+            overlays.getOrNull(at)?.let { held.getOrPut(owner) { ArrayList() } += it }
+        }
+        val chosen = ChartCatalog.INDICATORS.filter { it.id in active && it.id !in chained }
+        val lines = ArrayList<ChartLine>(overlays.size)
+        val owners = ArrayList<String>(overlayOwners.size)
+        fun emit(id: String, produced: List<ChartLine>) {
+            for (line in produced) {
+                lines += line
+                owners += id
+            }
+        }
+        for (option in chosen) {
+            if (option.pane != IndicatorPane.PRICE) continue
+            emit(
+                option.id,
+                if (option.id in WINDOW_SCOPED) {
+                    ChartCatalog.overlayFor(option, series, periods[option.id], window)
+                } else {
+                    held[option.id].orEmpty()
+                },
+            )
+        }
+        for (option in chosen) {
+            if (option.pane != IndicatorPane.STRUCTURE) continue
+            emit(option.id, held[option.id].orEmpty())
+        }
+        return copy(
+            key = previous.copy(window = window),
+            overlays = lines,
+            overlayOwners = owners,
+        )
+    }
 
     companion object {
         internal val EMPTY = ChartDerived()
+
+        /**
+         * The indicators whose answer depends on where the reader has panned to.
+         *
+         * One entry, and the whole performance argument above rests on that staying true, so it is
+         * held here as a set rather than written as an `if` — and `ChartDerivedTest` derives the
+         * same set from the catalogue by asking every indicator for its lines at two different
+         * windows and seeing which ones answer differently. A study added later that reads a window
+         * and is not named here would draw a profile of the bars the reader was looking at several
+         * pans ago; the test is what says so before a reader does.
+         *
+         * `volumeprofile_ind` is the visible-range volume profile. Its whole subject is the window
+         * — see `ChartCatalog.volumeProfileFor` — so it is the one line on the chart that genuinely
+         * has to be recomputed as the reader drags, and [rewindowed] recomputes it alone.
+         */
+        internal val WINDOW_SCOPED: Set<String> = setOf("volumeprofile_ind")
+
+        /**
+         * Whether anything actually switched on reads the visible window.
+         *
+         * Asked before the window is published at all — see [ChartController.setVisibleWindow].
+         * A chart with no window-scoped study is the ordinary chart, and for it the window is a
+         * number nothing reads: publishing it on every bar of a drag would allocate a state,
+         * recompose the whole page and re-answer six getters to record a fact with no consumer.
+         *
+         * A chained indicator is excluded for the same reason [of] excludes it: the chain is
+         * drawing that study, and this path is not.
+         */
+        internal fun readsWindow(active: Set<String>, chained: Set<String>): Boolean =
+            WINDOW_SCOPED.any { it in active && it !in chained }
 
         fun of(
             series: CandleSeries,

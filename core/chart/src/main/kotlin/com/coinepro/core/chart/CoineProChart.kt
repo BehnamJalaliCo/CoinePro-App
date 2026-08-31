@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
@@ -372,19 +373,36 @@ fun CoineProChart(
     // after the first frame, so the chart would draw once at the default and then jump. And it is
     // applied on the *first* pass only — see [seedViewport] for the pan bug that fixed.
     remember(display) {
-        viewport = seedViewport(
-            current = viewport,
-            series = display,
-            seeded = seeded[0],
-            savedZoom = savedZoom,
-            savedOffset = savedOffset,
-            savedPriceZoom = savedPriceZoom,
-            // A chart with an axis rests with air at the live edge; one without is a thumbnail or a
-            // list-row sparkline, which has no gutter to breathe into and every pixel spent on the
-            // shape. `showAxes` is the one bit that already separates the two everywhere else in
-            // this file.
-            restAtEdge = decoration.showAxes,
-        )
+        // **Read without subscribing, and that is not a micro-optimisation.**
+        //
+        // The three saved numbers are written from the effect below, which runs after every pan
+        // step. Read plainly here they would be read *during composition*, so this composable's
+        // recompose scope would subscribe to all three — and the effect's write would then
+        // invalidate the whole chart a second time for every bar the reader drags. One drag step
+        // cost two complete recompositions of a composable with nine gesture handlers, four
+        // measured labels and a thousand-line draw lambda in it, and the second one existed only to
+        // record that the first had happened.
+        //
+        // `withoutReadObservation` is exactly the right instrument rather than a trick: these are
+        // *seed* values, spent once on the first pass of a fresh composition — see [seedViewport] —
+        // and a seed that re-fires when its own consequence is written back is a loop, not a
+        // subscription worth having. A restore still works, because a fresh composition reads them
+        // on its first pass, which is the only pass that spends them.
+        viewport = Snapshot.withoutReadObservation {
+            seedViewport(
+                current = viewport,
+                series = display,
+                seeded = seeded[0],
+                savedZoom = savedZoom,
+                savedOffset = savedOffset,
+                savedPriceZoom = savedPriceZoom,
+                // A chart with an axis rests with air at the live edge; one without is a thumbnail
+                // or a list-row sparkline, which has no gutter to breathe into and every pixel
+                // spent on the shape. `showAxes` is the one bit that already separates the two
+                // everywhere else in this file.
+                restAtEdge = decoration.showAxes,
+            )
+        }
         seeded[0] = true
     }
 
@@ -801,8 +819,13 @@ fun CoineProChart(
      * on screen as the reader pans. A series-wide default would leave the base off the top of the
      * plot on any panned view and paint the whole chart one colour.
      */
-    val baseLevel = remember(display, typeConfig.baseLevel, viewport.firstVisible, viewport.lastVisible) {
-        typeConfig.baseLevel ?: if (display.isEmpty) {
+    // Keyed on the type as well, and that key is doing real work. This block builds a
+    // `CandleSeries` — which validates its bars' ordering on construction and grows six lazy
+    // columns on first read — and it is re-keyed on `firstVisible`, so it ran on *every bar of
+    // every drag*, on every chart in the app, to produce a number only the baseline type reads.
+    // Fifteen of the sixteen chart types were paying for a split level they never draw.
+    val baseLevel = remember(display, type, typeConfig.baseLevel, viewport.firstVisible, viewport.lastVisible) {
+        typeConfig.baseLevel ?: if (display.isEmpty || type != ChartType.BASELINE) {
             0.0
         } else {
             ChartTransforms.defaultBaseLevel(
@@ -868,6 +891,17 @@ fun CoineProChart(
 
     /** The plot rectangle the last draw published, for the overlays stacked on top of it. */
     val frames = remember { arrayOfNulls<PlotFrame>(1) }
+
+    /**
+     * The setup's own levels, which the price range has to open far enough to include.
+     *
+     * Hoisted out of the draw lambda, where it was `decoration.signal?.levels().orEmpty()` — a list
+     * built afresh on every frame, and then compared against the cached viewport by value to decide
+     * whether the frame's geometry had moved. So the allocation happened sixty times a second and
+     * its only consumer was an equality test it could never fail. Keyed on the signal, it is built
+     * when the signal changes and compares by identity the rest of the time.
+     */
+    val signalLevels = remember(decoration.signal) { decoration.signal?.levels().orEmpty() }
 
     // Kept fresh for the gesture handlers, which start once and then run across recompositions: a
     // block that captured `scaleSide` would go on measuring against the gutter the reader moved
@@ -1698,7 +1732,7 @@ fun CoineProChart(
 
             val candidate = viewport
                 .sized(plotWidth, plotHeight)
-                .copy(includedPrices = decoration.signal?.levels().orEmpty())
+                .copy(includedPrices = signalLevels)
             // The whole of what [Invalidation] buys. On a cursor-level change the previous
             // viewport *instance* is kept rather than an equal new one, so its lazily-computed
             // price range — a walk over every visible bar — and the tick ladder derived from it are
@@ -1916,7 +1950,11 @@ fun CoineProChart(
                 // a reader looks for without being asked, and before this it was only in the header —
                 // where it says nothing about *where* on the scale the market currently is.
                 val lastPriceY =
-                    if (decoration.showLastPrice && priceShown) lastPriceTagY(view, measurer) else null
+                    if (decoration.showLastPrice && priceShown) {
+                        lastPriceTagY(view, measurer, textCache)
+                    } else {
+                        null
+                    }
                 if (decoration.showAxes) {
                     // The ladder goes in every gutter the reader asked for; the tags go in one of
                     // them. Two live-price tags saying the same number is not two readings, and the
@@ -1946,7 +1984,17 @@ fun CoineProChart(
                         )
                     }
                     if (decoration.showTimeAxis) {
-                        drawTimeAxis(view, plotHeight + paneHeight, plotWidth, type, palette, measurer, zone, timeTicks)
+                        drawTimeAxis(
+                            view = view,
+                            top = plotHeight + paneHeight,
+                            plotWidth = plotWidth,
+                            type = type,
+                            palette = palette,
+                            measurer = measurer,
+                            zone = zone,
+                            ticks = timeTicks,
+                            cache = textCache,
+                        )
                         drawEventMarks(view, decoration.events, plotHeight + paneHeight, eventColours)
                     }
                 }
@@ -1970,7 +2018,7 @@ fun CoineProChart(
                     drawLastPrice(view, plotWidth, frame, palette, measurer, decoration.showAxes)
                 }
                 if (countdownLive && decoration.showAxes && nowSeconds > 0L) {
-                    drawCountdown(view, frame, nowSeconds, palette, measurer)
+                    drawCountdown(view, frame, textCache, nowSeconds, palette, measurer)
                 }
             }
         }
@@ -3219,13 +3267,31 @@ private fun DrawScope.drawEmptyAxis(
  * Computed separately rather than returned from [drawLastPrice], because the axis is drawn first —
  * the tag has to land on top of the gridline labels, not under them.
  */
-private fun DrawScope.lastPriceTagY(view: ChartViewport, measurer: TextMeasurer): Float? {
+private fun DrawScope.lastPriceTagY(
+    view: ChartViewport,
+    measurer: TextMeasurer,
+    cache: TextWidthCache<TextLayoutResult>,
+): Float? {
     val bar = view.series.bars.getOrNull(view.lastVisible) ?: return null
     val y = view.yOf(bar.c)
     if (y < 0f || y > view.plotHeight) return null
-    val height = measurer.measure("0", axisStyle(Color.White)).size.height + TAG_PADDING_DP.toPx() * 2
+    // A single glyph, in a fixed style, laid out to find one number: the line height of the axis
+    // font. It never changes and it was measured afresh on every frame — twice on a chart with a
+    // countdown. Through the cache it is measured once for the life of the screen.
+    val probe = axisStyle(Color.White)
+    val height = cache.measure(TAG_HEIGHT_PROBE to probe) { measurer.measure(TAG_HEIGHT_PROBE, probe) }
+        .size.height + TAG_PADDING_DP.toPx() * 2
     return (y - height / 2).coerceIn(0f, max(0f, view.plotHeight - height))
 }
+
+/**
+ * The one character the tag height is taken from.
+ *
+ * A digit rather than a letter because every string this tag ever holds is digits, and a font's
+ * line height for `0` is the height the tag has to clear. Named so the two places that probe it
+ * agree on the key they cache it under.
+ */
+private const val TAG_HEIGHT_PROBE = "0"
 
 /**
  * The price at the live edge, tagged against the axis.
@@ -3372,6 +3438,8 @@ private fun DrawScope.drawPreviousClose(
 private fun DrawScope.drawCountdown(
     view: ChartViewport,
     frame: PlotFrame,
+    /** The measured-label cache, for the fixed height probe. See [lastPriceTagY]. */
+    cache: TextWidthCache<TextLayoutResult>,
     nowSeconds: Long,
     palette: ChartPalette,
     measurer: TextMeasurer,
@@ -3390,7 +3458,12 @@ private fun DrawScope.drawCountdown(
     val height = label.size.height + TAG_PADDING_DP.toPx() * 2
     // Directly under the price tag, which is centred on the price. One hairline of air between
     // them, so they read as one stack rather than as two unrelated labels.
-    val priceTagHeight = measurer.measure("0", axisStyle(Color.White)).size.height + TAG_PADDING_DP.toPx() * 2
+    // The same fixed probe [lastPriceTagY] takes the tag height from, through the same cache and
+    // under the same key — so the countdown clears the tag by exactly the height the tag was drawn
+    // at, and neither of them lays a glyph out per frame to find it.
+    val probe = axisStyle(Color.White)
+    val priceTagHeight = cache.measure(TAG_HEIGHT_PROBE to probe) { measurer.measure(TAG_HEIGHT_PROBE, probe) }
+        .size.height + TAG_PADDING_DP.toPx() * 2
     val top = (priceY + priceTagHeight / 2 + COUNTDOWN_GAP_DP.toPx())
         .coerceIn(0f, max(0f, view.plotHeight - height))
     drawAxisChip(frame, top, height, palette.stage)
@@ -3504,6 +3577,17 @@ private fun DrawScope.drawTimeAxis(
     measurer: TextMeasurer,
     zone: ZoneId,
     ticks: List<TimeTick>,
+    /**
+     * The measured-label cache the price axis already uses.
+     *
+     * The dates were the last uncached text on this canvas, and they were the worst place for it
+     * to be left: laying a string out is font work rather than arithmetic, this loop does it up to
+     * [MAX_TIME_LABELS] times, and it ran on **every frame of a drag** for labels that do not
+     * change. A reader panning across an afternoon re-measures the same six dates sixty times a
+     * second — the ladder slides, it does not renumber — which is precisely the shape the cache in
+     * [TextWidthCache] was written for and the argument its own KDoc makes about the price gutter.
+     */
+    cache: TextWidthCache<TextLayoutResult>,
 ) {
     // How much time the plot is showing, which is what decides how much of a date a month label
     // needs. Taken from the visible window rather than the timeframe: the same daily chart zoomed
@@ -3518,14 +3602,17 @@ private fun DrawScope.drawTimeAxis(
     // against the bar area rather than the canvas: a label clamped to `plotWidth` would be dragged
     // into the empty slots at the live edge and would then be naming a bar it is not over.
     val barArea = view.xOf(view.lastVisible) + view.barWidth / 2
+    // The two styles this axis prints in, built once for the frame rather than once per label. They
+    // are also half the cache key — see [TextWidthCache] on why the key cannot be the text alone: a
+    // layout carries the colour it was measured with, so a palette change has to miss.
+    val plain = axisStyle(palette.text, axisFontSizeSp(isPriceAxis = false), bold = false)
+    val heavy = axisStyle(palette.text, axisFontSizeSp(isPriceAxis = false), bold = true)
     for (tick in ticks) {
         // A price-driven type has no clock, so its axis is numbered by bar. Printing a date there
         // would be a fabricated one — Renko bars carry synthetic timestamps.
         val text = if (type.isTimeBased) formatTimeTick(tick, span, zone) else "#${tick.index + 1}"
-        val label = measurer.measure(
-            text,
-            axisStyle(palette.text, axisFontSizeSp(isPriceAxis = false), bold = tick.isBoundary()),
-        )
+        val style = if (tick.isBoundary()) heavy else plain
+        val label = cache.measure(text to style) { measurer.measure(text, style) }
         val limit = max(0f, min(plotWidth, barArea) - label.size.width)
         val x = (view.xOf(tick.index) - label.size.width / 2).coerceIn(0f, limit)
         if (x < occupiedUntil) continue
