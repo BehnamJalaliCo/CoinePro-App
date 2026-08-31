@@ -4,6 +4,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -161,8 +162,6 @@ import com.coinepro.core.chart.DrawingActions
 import com.coinepro.core.chart.DrawingIconPicker
 import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.CoineProPrimaryButton
-import com.coinepro.core.designsystem.CoineProTeachingStrip
-import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.common.BidiText
 
 /**
@@ -1058,28 +1057,30 @@ fun ChartScreen(
                 },
         )
         HorizontalDivider(color = CoineProColors.Border)
+        // No teaching banner on this screen, and it is the only screen in the app without one.
+        //
+        // The banner is a good mechanism and it stays everywhere else: one sentence, in place, put
+        // away for good once read. But this page's entire product is vertical space. Even under the
+        // plot the strip cost about eight per cent of the glass on every visit until the day it was
+        // dismissed, on the one screen a reader opens ten times a day. What it said — that the last
+        // candle has not closed — is a fact about the *bars*, and it is already in the caption
+        // band immediately below, which is where a reader looking at a half-formed candle would
+        // look for it. The «؟» in the header still opens the help for anyone who wants it.
+        //
         // What the picture above is: the bar length and the span it is drawn at, its high and low,
-        // where the prices came from and when the last one arrived.
+        // where the prices came from and when the last one arrived. One caption band where there
+        // were two — the heading used to sit *above* the plot inside a card and the provenance
+        // below it, which put the same kind of quiet fact on both sides of the thing it describes.
         //
-        // One caption band where there were two. The heading used to sit *above* the plot inside
-        // the card and the provenance below it, which put the same kind of quiet fact on both sides
-        // of the thing it describes. Under it, in one block, it reads as a caption — and a caption
-        // is allowed to be small, which is what lets four facts share the room one control band
-        // used to take.
-        // **Under the plot, not over it.**
-        //
-        // It used to sit between the header and the chart, where on a phone it took about a third
-        // of the plot's height to explain what a chart is. This is the one screen whose whole
-        // product is vertical space: a reader opens it to see candles, and every point spent above
-        // them is a point of market they cannot see. It still puts itself away for good once read,
-        // and down here it reads as a caption on the thing it describes rather than as a preface a
-        // reader has to get past.
-        CoineProTeachingStrip(TeachingSurface.CHART)
-
+        // On a phone only the head is drawn here — the bar length, the span, the high and the low,
+        // the four facts that change every time the reader pans. The provenance half — the venue,
+        // the bar count, the clock, the repaint claim, the exclusions — is drawn once, inside the
+        // disclosure below, because it is answered once and then never looked at again.
         ChartUnderline(
             state = state,
             source = controller.sourceName,
             signalOnChart = drawnSetup != null,
+            detail = columns.hasReadings,
         )
 
         // Only when something is being compared, so a chart with one instrument on it pays
@@ -1165,7 +1166,23 @@ fun ChartScreen(
         // Only where they have nowhere better to be. On a window wide enough for the side column
         // these three are already drawn there, permanently, instead of below a plot the reader has
         // to scroll off the screen to reach them.
-        if (!columns.hasReadings) analysisBlocks()
+        //
+        // Closed by default, and that is the whole of what paid for the taller plot. These blocks
+        // are *read*, not touched: the trend reading, an open setup, the way into the studio. A
+        // reader who wants them taps once and the disclosure remembers for the rest of the session;
+        // a reader who came to look at candles never spends a point of glass on them. On a large
+        // window the question does not arise — they are a column beside the plot, always open.
+        if (!columns.hasReadings) {
+            ChartReadingsDisclosure(hasSetup = state.setup != null) {
+                ChartUnderline(
+                    state = state,
+                    source = controller.sourceName,
+                    signalOnChart = drawnSetup != null,
+                    head = false,
+                )
+                analysisBlocks()
+            }
+        }
         Spacer(Modifier.height(CoineProSpacing.Three))
     }
     }
@@ -3053,8 +3070,92 @@ private val ComparisonRefusal.persianMessage: String
  * The repaint mark sits in the same strip because it is the same kind of claim: this is the row
  * where the chart says what it knows and what it does not.
  */
+/**
+ * The readings, folded away until asked for.
+ *
+ * ### Why a disclosure rather than a delete
+ *
+ * The plot needed the glass and these blocks were what it was spending it on — but none of them is
+ * wrong, and two of them are the reason somebody stays on the page after they have looked at the
+ * candles. So they are still here, one tap down, with the tap costing a single 44-point row.
+ *
+ * ### Why it opens itself when there is a setup on the chart
+ *
+ * A setup is the one thing in here that is *news*. A reader with an open position drawn on their
+ * chart has a reason to see its numbers without hunting for them, and a fold that hid a live
+ * position behind a chevron would be hiding the very thing the page is about. Everything else —
+ * the trend reading, the studio row — is reference, and reference waits to be asked for.
+ *
+ * The state is remembered for the composition rather than persisted. A reader who opens it, scrolls
+ * and comes back finds it as they left it; a reader who returns tomorrow gets the plot back at full
+ * height, which is the state that is right nine visits out of ten.
+ */
 @Composable
-private fun ChartUnderline(state: ChartUiState, source: String, signalOnChart: Boolean) {
+private fun ChartReadingsDisclosure(hasSetup: Boolean, content: @Composable () -> Unit) {
+    var open by rememberSaveable(hasSetup) { mutableStateOf(hasSetup) }
+    val haptics = rememberCoineProHaptics()
+    Column(modifier = Modifier.fillMaxWidth()) {
+        HorizontalDivider(color = CoineProColors.Border)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    haptics.select()
+                    open = !open
+                }
+                .padding(
+                    horizontal = CoineProSpacing.Gutter,
+                    vertical = CoineProSpacing.OneHalf,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = stringResource(R.string.chart_readings_disclosure),
+                style = MaterialTheme.typography.labelLarge,
+                color = if (open) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
+            )
+            Icon(
+                painter = painterResource(
+                    if (open) CoineProIcons.ChevronUp else CoineProIcons.ChevronDown,
+                ),
+                contentDescription = null,
+                tint = CoineProColors.TextMuted,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        AnimatedVisibility(visible = open) {
+            Column { content() }
+        }
+    }
+}
+
+@Composable
+private fun ChartUnderline(
+    state: ChartUiState,
+    source: String,
+    signalOnChart: Boolean,
+    /**
+     * Whether the quiet half is drawn here too.
+     *
+     * The band is two kinds of fact. The **head** — bar length, span, and the window's high and low
+     * — changes every time the reader pans, so it belongs against the plot where their eye already
+     * is. The **detail** — the venue, the bar count, the clock on the last bar, the repaint claim
+     * and any exclusions — is provenance: read once, trusted after, and worth about a tenth of the
+     * glass on every visit thereafter.
+     *
+     * On a phone the detail moves into the readings disclosure and this is false. On a window with
+     * a side column there is nothing to compete for, so it stays true and the band is whole.
+     */
+    detail: Boolean = true,
+    /**
+     * Whether the changing half is drawn here.
+     *
+     * False exactly once: the copy inside the disclosure, which carries the detail alone so the
+     * bar length and the extremes are not printed twice on the same page.
+     */
+    head: Boolean = true,
+) {
     val series = state.series
     if (source.isEmpty() && series.isEmpty) return
     val lastBar = series.time.lastOrNull()
@@ -3082,30 +3183,33 @@ private fun ChartUnderline(state: ChartUiState, source: String, signalOnChart: B
         // the window's high and low are. The span is named beside the length on purpose — the two
         // controls that set them now sit in different places, and this is the line that says what
         // both of them currently are.
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = state.range?.let { span -> state.interval.label + "  ·  " + span.label }
-                    ?: state.interval.label,
-                style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextSecondary,
-                fontWeight = FontWeight.Normal,
-            )
-            extent?.let { (low, high) ->
-                LtrDirection {
-                    Text(
-                        text = "H " + formatPrice(high, decimalsFor(high)) +
-                            "  ·  L " + formatPrice(low, decimalsFor(low)),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = CoineProColors.TextDisabled,
-                        fontWeight = FontWeight.Normal,
-                    )
+        if (head) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = state.range?.let { span -> state.interval.label + "  ·  " + span.label }
+                        ?: state.interval.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextSecondary,
+                    fontWeight = FontWeight.Normal,
+                )
+                extent?.let { (low, high) ->
+                    LtrDirection {
+                        Text(
+                            text = "H " + formatPrice(high, decimalsFor(high)) +
+                                "  ·  L " + formatPrice(low, decimalsFor(low)),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = CoineProColors.TextDisabled,
+                            fontWeight = FontWeight.Normal,
+                        )
+                    }
                 }
             }
         }
+        if (!detail) return@Column
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -3334,10 +3438,22 @@ private val INTERVAL_KEY_WIDTH = 44.dp
  * of a tall phone and two-fifths of a short one — the same layout looking like two different
  * designs. The bounds are what keep it sane at the extremes: a very short phone in landscape does
  * not get a chart with no page under it, and a tablet does not get a plot that runs off the glass.
+ *
+ * ### Why 0.72 and not 0.46
+ *
+ * Measured, on the rendered page at 411dp: the plot had about a third of the glass and the six
+ * things under it had the rest. A charting app whose chart is a third of the screen reads as a
+ * preview of a chart rather than as a terminal, and that one number explained more of "it does not
+ * look finished" than every other finding put together.
+ *
+ * Nothing was deleted to pay for it. The teaching banner left this one screen, and the readings —
+ * which are *read* rather than *touched* — went behind a disclosure that opens with one tap and
+ * remembers. What is left above the fold is the header, the plot, its caption and the one control
+ * band a thumb actually uses.
  */
-private const val PLOT_SCREEN_FRACTION = 0.46f
+private const val PLOT_SCREEN_FRACTION = 0.72f
 private val PLOT_MIN = 260.dp
-private val PLOT_MAX = 460.dp
+private val PLOT_MAX = 780.dp
 
 /**
  * The same three numbers for a window that is not a phone.

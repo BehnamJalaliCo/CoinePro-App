@@ -126,4 +126,5 @@
     <string name="replay_report_sample">Only %1$s trades have closed. Under %2$s, a win rate and a profit factor are not measurements, so a dash is shown instead of a number. Count the wins and the losses rather than reading a percentage of them.</string>
     <string name="replay_report_discipline">How many were closed by the stop and how many you closed early is the one thing a strategy backtest can never report, because a strategy has no hand to lose its nerve with.</string>
     <string name="replay_report_note">This report belongs to this replay session and is saved nowhere. The fee and the starting equity are the ones the strategy backtest uses, so the two documents can be read side by side. Where a single candle reached both the stop and the target, the stop is taken: their order inside the candle is unknowable, and the pessimistic assumption is the only defensible one.</string>
+    <string name="chart_readings_disclosure">Market reading and tools</string>
 </resources>

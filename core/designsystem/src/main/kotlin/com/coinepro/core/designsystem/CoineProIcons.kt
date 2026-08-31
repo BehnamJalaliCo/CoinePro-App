@@ -65,6 +65,11 @@ object CoineProIcons {
     @DrawableRes val ChevronBackward = R.drawable.icon_caret_left
     @DrawableRes val ChevronForward = R.drawable.icon_caret_right
 
+    /** A disclosure that is open, and one that is closed. Never mirrored: up is up in both scripts. */
+    @DrawableRes val ChevronUp = R.drawable.icon_caret_up
+
+    @DrawableRes val ChevronDown = R.drawable.icon_caret_down
+
     /* ---------------------------------------------------------------- actions */
 
     @DrawableRes val Refresh = R.drawable.icon_arrows_clockwise
