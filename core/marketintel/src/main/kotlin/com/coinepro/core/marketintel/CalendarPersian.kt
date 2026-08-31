@@ -1,5 +1,7 @@
 package com.coinepro.core.marketintel
 
+import com.coinepro.core.common.BidiText
+
 /**
  * The economic calendar, in Persian.
  *
@@ -39,6 +41,21 @@ internal object CalendarPersian {
      */
     fun country(code: String?): String? = when (code?.trim()?.uppercase()) {
         null, "" -> null
+        // The long forms too. A server that sends `United States` rather than `USD` is naming the
+        // same country in the same language, and the reader is owed the same Persian for it.
+        "UNITED STATES", "US", "USA" -> "آمریکا"
+        "EURO AREA", "EUROZONE", "EUROPEAN UNION", "EU" -> "منطقهٔ یورو"
+        "UNITED KINGDOM", "UK", "GREAT BRITAIN" -> "بریتانیا"
+        "JAPAN" -> "ژاپن"
+        "SWITZERLAND" -> "سوئیس"
+        "CANADA" -> "کانادا"
+        "AUSTRALIA" -> "استرالیا"
+        "NEW ZEALAND" -> "نیوزیلند"
+        "CHINA" -> "چین"
+        "GERMANY" -> "آلمان"
+        "FRANCE" -> "فرانسه"
+        "ITALY" -> "ایتالیا"
+        "SPAIN" -> "اسپانیا"
         "USD" -> "آمریکا"
         "EUR" -> "منطقهٔ یورو"
         "GBP" -> "بریتانیا"
@@ -52,10 +69,19 @@ internal object CalendarPersian {
         else -> code
     }
 
-    /** The whole title, in Persian, assembled from its pieces. */
+    /**
+     * The whole title, in Persian, assembled from its pieces.
+     *
+     * **A title that is already Persian is returned untouched**, and that is what lets this run on
+     * every source rather than only on the published file. Where a server does the translating its
+     * words win, which is the same rule the whole module follows; where it does not — which is
+     * every server, today — the reader still gets Persian instead of «US Core CPI (MoM)» on a
+     * Persian screen.
+     */
     fun title(raw: String): String {
         val trimmed = raw.trim()
         if (trimmed.isEmpty()) return trimmed
+        if (!BidiText.isLatinSentence(trimmed)) return trimmed
         var rest = trimmed
 
         // The period comes off the end first, because it is the one piece whose position in Persian
@@ -107,6 +133,11 @@ internal object CalendarPersian {
         "y/y" to "سال‌به‌سال",
         "q/q" to "فصل‌به‌فصل",
         "q/y" to "فصلی سالانه",
+        // The bracketed spelling, which is what the app's own backends send where the published
+        // file sends `m/m`. Same event, same period, two houses' punctuation.
+        "(mom)" to "ماه‌به‌ماه",
+        "(yoy)" to "سال‌به‌سال",
+        "(qoq)" to "فصل‌به‌فصل",
     )
 
     /** Leading qualifiers. Longest first, so «German Final» does not stop at a shorter match. */
@@ -225,5 +256,18 @@ internal object CalendarPersian {
         "30-y bond auction" to "حراج اوراق ۳۰ ساله",
         "bank holiday" to "تعطیلی بانکی",
         "g20 meetings" to "نشست گروه بیست",
+        "fomc member speech" to "سخنرانی عضو فدرال‌رزرو",
+        "fomc statement" to "بیانیهٔ فدرال‌رزرو",
+        "fomc press conference" to "نشست خبری فدرال‌رزرو",
+        "fomc meeting minutes" to "صورت‌جلسهٔ فدرال‌رزرو",
+        "federal funds rate" to "نرخ بهرهٔ فدرال‌رزرو",
+        "initial jobless claims" to "درخواست‌های اولیهٔ بیمهٔ بیکاری",
+        "continuing jobless claims" to "درخواست‌های مستمر بیمهٔ بیکاری",
+        "us core cpi" to "شاخص قیمت مصرف‌کننده هستهٔ آمریکا",
+        "nonfarm payrolls" to "اشتغال غیرکشاورزی",
+        "ecb press conference" to "نشست خبری بانک مرکزی اروپا",
+        "ecb rate statement" to "بیانیهٔ نرخ بهرهٔ بانک مرکزی اروپا",
+        "boe rate statement" to "بیانیهٔ نرخ بهرهٔ بانک مرکزی انگلستان",
+        "boj policy rate" to "نرخ سیاستی بانک مرکزی ژاپن",
     )
 }

@@ -66,26 +66,37 @@ data class SymbolMeta(
     /**
      * [description], cut to something that fits under a ticker in a list.
      *
-     * A forex pair's full description is two spelled-out currency names — «دلار آمریکا / فرانک
-     * سوئیس» is twenty-four characters, and no column narrow enough to leave room for a price will
-     * ever hold it. What shipped was every forex row ending in an ellipsis: «دلار آمریکا / ف..»,
-     * «پوند انگلیس …», a column of cut words that says nothing and looks like a rendering fault.
+     * ### Both legs, in short names
      *
-     * So for a pair this is the **base** alone. The line above already spells both legs out in
-     * Latin, and the two flags say the same thing again in a third way; the name is there to tell a
-     * reader who does not read tickers *what the first asset is*, and «یورو» does that in full
-     * where «یورو / دلار آمر…» does it in part.
+     * A pair's full description is two spelled-out currencies — «دلار آمریکا / فرانک سوئیس», twenty-
+     * four characters — and no column narrow enough to leave room for a price will hold it. What
+     * shipped first was every forex row ending in an ellipsis.
+     *
+     * The fix for *that* was to print the **base** alone, and it was wrong in a way the ellipsis at
+     * least was not: USDJPY, USDCHF and USDCAD all came out «دلار آمریکا». Three instruments, one
+     * subtitle, in the column whose entire job is telling them apart — and a reader seeing the same
+     * words on three consecutive rows reads it as a bug, correctly.
+     *
+     * A pair is two things and the row has to say both, so both are said in the short names
+     * [SymbolNames.shortDisplayOf] keeps: «دلار/ین» is seven characters and fits under any ticker.
      *
      * Everything else keeps its description, which is already short: a coin's is its name and its
      * ticker, an index's is its name.
      *
-     * Search still matches on [description] — a reader typing «فرانک» must still find USDCHF, and
-     * would not if the quote leg had been dropped from the thing being searched rather than from
-     * the thing being drawn.
+     * Search still matches on [description] — a reader typing «فرانک سوئیس» must still find USDCHF,
+     * and would not if the long name had been dropped from the thing being searched rather than
+     * from the thing being drawn.
      */
     val listDescription: String get() = when (category) {
-        SymbolCategory.FOREX, SymbolCategory.METAL ->
-            base?.let(SymbolNames::displayOf) ?: description
+        SymbolCategory.FOREX, SymbolCategory.METAL -> {
+            val first = base?.let(SymbolNames::shortDisplayOf)
+            val second = quote?.let(SymbolNames::shortDisplayOf)
+            when {
+                first != null && second != null && first != second -> "$first/$second"
+                first != null -> first
+                else -> description
+            }
+        }
         else -> description
     }
 }

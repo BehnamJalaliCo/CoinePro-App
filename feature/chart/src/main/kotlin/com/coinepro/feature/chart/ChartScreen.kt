@@ -1030,7 +1030,6 @@ fun ChartScreen(
             ),
     ) {
         Header(state, onOpenTerminal)
-        CoineProTeachingStrip(TeachingSurface.CHART)
 
         // The plot, bled to both edges of the phone.
         //
@@ -1067,6 +1066,16 @@ fun ChartScreen(
         // of the thing it describes. Under it, in one block, it reads as a caption — and a caption
         // is allowed to be small, which is what lets four facts share the room one control band
         // used to take.
+        // **Under the plot, not over it.**
+        //
+        // It used to sit between the header and the chart, where on a phone it took about a third
+        // of the plot's height to explain what a chart is. This is the one screen whose whole
+        // product is vertical space: a reader opens it to see candles, and every point spent above
+        // them is a point of market they cannot see. It still puts itself away for good once read,
+        // and down here it reads as a caption on the thing it describes rather than as a preface a
+        // reader has to get past.
+        CoineProTeachingStrip(TeachingSurface.CHART)
+
         ChartUnderline(
             state = state,
             source = controller.sourceName,

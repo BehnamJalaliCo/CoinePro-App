@@ -44,6 +44,7 @@ import com.coinepro.core.announcements.AnnouncementsController
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProCard
+import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProListDetail
 import com.coinepro.core.designsystem.CoineProEmptyState
@@ -705,24 +706,31 @@ internal fun NewsCard(
                 // Staleness is said, not implied by a dimmer grey nobody reads as a claim.
                 if (story.isStale) MetaPill(stringResource(R.string.news_stale), CoineProColors.Warning)
             }
+            // **The paragraph's direction follows the story's own script.**
+            //
+            // Both backends serve Persian and neither is serving any, so these arrive from an
+            // English wire — and an English sentence laid out right-to-left comes back with its
+            // final full stop at the beginning: «.lifting precious metals», on every row. An
+            // isolate does not fix that, because an isolate is for a *run* inside a paragraph and
+            // this is the paragraph. See `BidiText.isLatinSentence`.
             Text(
-                text = story.title,
+                text = paragraphOf(story.title),
                 style = NewsTextStyles.CardHeadline,
                 color = CoineProColors.TextPrimary,
                 maxLines = 3,
-                textAlign = TextAlign.Right,
+                textAlign = alignmentFor(story.title),
                 modifier = Modifier.fillMaxWidth(),
             )
             story.summary?.let { summary ->
                 Text(
-                    text = summary,
+                    text = paragraphOf(summary),
                     style = MaterialTheme.typography.bodyMedium,
                     color = CoineProColors.TextSecondary,
                     // Two lines. The whole summary is on the story's own page, and a card that
                     // prints all of it is a card that has already been read — which is precisely
                     // what made the old list feel like it had nowhere to go.
                     maxLines = 2,
-                    textAlign = TextAlign.Right,
+                    textAlign = alignmentFor(summary),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -759,3 +767,27 @@ private fun CenterState(
         }
     }
 }
+
+/**
+ * Which edge a piece of the server's copy hangs from.
+ *
+ * `TextAlign.Right` is this app's rule and it is right for Persian — but it is a rule about
+ * *Persian*, and a wire story is whatever language the wire wrote it in.
+ */
+internal fun alignmentFor(text: String): TextAlign =
+    if (BidiText.isLatinSentence(text)) TextAlign.Left else TextAlign.Right
+
+/**
+ * The same copy, laid out in its own direction.
+ *
+ * Alignment alone is not enough and that was the first attempt: moving an English sentence to the
+ * left edge left the *paragraph* right-to-left, so its full stop stayed at the visual start —
+ * «.lifting precious metals», now against the left margin instead of the right. The period is a
+ * direction-neutral character and the paragraph decides where it goes, so the paragraph is what has
+ * to change. An isolate does exactly that for everything between its two marks.
+ *
+ * Persian copy is returned untouched: it is already in the paragraph's own direction, and isolating
+ * it would be wrapping a sentence against the very thing it agrees with.
+ */
+internal fun paragraphOf(text: String): String =
+    if (BidiText.isLatinSentence(text)) BidiText.isolateLtr(text) else text

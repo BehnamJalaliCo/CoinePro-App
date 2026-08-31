@@ -169,10 +169,10 @@ fun NewsArticleScreen(
                     }
                 }
                 Text(
-                    text = story.title,
+                    text = paragraphOf(story.title),
                     style = NewsTextStyles.Headline,
                     color = CoineProColors.TextPrimary,
-                    textAlign = TextAlign.Right,
+                    textAlign = alignmentFor(story.title),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 NewsByline(story)
@@ -229,19 +229,24 @@ private fun ArticleText(story: NewsStory, modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
+        // The lede and the body follow the story's own script — see `BidiText.isLatinSentence` and
+        // `alignmentFor`. Our own fallback sentence is Persian and lands on the right either way;
+        // the wire's is not, and right-aligning it in an RTL paragraph puts its full stop at the
+        // start of the line.
+        val lede = story.summary ?: stringResource(R.string.news_no_summary)
         Text(
-            text = story.summary ?: stringResource(R.string.news_no_summary),
+            text = paragraphOf(lede),
             style = NewsTextStyles.Lede,
             color = if (story.summary == null) CoineProColors.TextMuted else CoineProColors.TextSecondary,
-            textAlign = TextAlign.Right,
+            textAlign = alignmentFor(lede),
             modifier = Modifier.fillMaxWidth(),
         )
         paragraphs.forEach { paragraph ->
             Text(
-                text = paragraph,
+                text = paragraphOf(paragraph),
                 style = NewsTextStyles.Body,
                 color = CoineProColors.TextSecondary,
-                textAlign = TextAlign.Right,
+                textAlign = alignmentFor(paragraph),
                 modifier = Modifier.fillMaxWidth(),
             )
         }

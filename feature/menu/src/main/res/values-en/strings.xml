@@ -78,4 +78,5 @@
     <string name="menu_community_body">Analysis and experience from other traders.</string>
     <string name="menu_markets_title">Markets</string>
     <string name="menu_markets_body">Every symbol this platform quotes.</string>
+    <string name="menu_news_body">Market news with a named source, newest first.</string>
 </resources>

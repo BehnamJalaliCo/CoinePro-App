@@ -67,6 +67,7 @@ import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.SignalDirection
 import com.coinepro.core.signals.SignalController
+import com.coinepro.core.signals.SignalStrategyPersian
 import com.coinepro.core.signals.SignalMarketFilter
 import com.coinepro.core.signals.SignalStatusFilter
 import com.coinepro.core.signals.TradingSignal
@@ -255,7 +256,12 @@ private fun SignalRow(signal: TradingSignal, onClick: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
         ) {
             CoineProAssetLogo(symbol = signal.symbol, size = 30.dp)
-            Column(modifier = Modifier.width(96.dp)) {
+            // Weighted rather than a fixed 96dp. That width was set when this line said «H1» and
+            // an English word, and it truncated the moment the strategy became a Persian phrase —
+            // «H1 · واکنش به سق…». The direction pill below wants only its own width, so giving the
+            // name the slack instead costs the row nothing and stops it cutting the one thing on it
+            // that says *why*.
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = BidiText.isolateLtr(signal.symbol),
                     style = MaterialTheme.typography.labelMedium,
@@ -263,21 +269,29 @@ private fun SignalRow(signal: TradingSignal, onClick: () -> Unit) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                val context = listOfNotNull(signal.timeframe, signal.strategy).joinToString(" · ")
+                // The strategy in Persian where it is a name this app knows, and the server's
+                // own words where it is not — see `SignalStrategyPersian`. It used to render as
+                // «H1 · Range rejec…»: the only English on the page, cut mid-word, standing
+                // where the reason for the trade should be.
+                val context = listOfNotNull(
+                    signal.timeframe,
+                    SignalStrategyPersian.of(signal.strategy),
+                ).joinToString(" · ")
                 if (context.isNotBlank()) {
                     Text(
                         text = context,
                         style = MaterialTheme.typography.labelSmall,
                         color = CoineProColors.TextMuted,
                         fontWeight = FontWeight.Normal,
-                        maxLines = 1,
+                        // Two, because a strategy name is a phrase and a phrase does not always fit
+                        // on one line at this size. A second line costs nine points on a row that is
+                        // already two lines tall; a cut phrase costs the reader the reason.
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
-            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                DirectionPill(signal.direction)
-            }
+            DirectionPill(signal.direction)
             signal.currentQuote?.let { quote ->
                 Column(
                     horizontalAlignment = Alignment.End,
@@ -520,7 +534,14 @@ private fun SignalCard(signal: TradingSignal, onClick: () -> Unit) {
                     style = MaterialTheme.typography.titleSmall,
                     color = CoineProColors.TextPrimary,
                 )
-                val context = listOfNotNull(signal.timeframe, signal.strategy).joinToString(" · ")
+                // The strategy in Persian where it is a name this app knows, and the server's
+                // own words where it is not — see `SignalStrategyPersian`. It used to render as
+                // «H1 · Range rejec…»: the only English on the page, cut mid-word, standing
+                // where the reason for the trade should be.
+                val context = listOfNotNull(
+                    signal.timeframe,
+                    SignalStrategyPersian.of(signal.strategy),
+                ).joinToString(" · ")
                 if (context.isNotBlank()) {
                     Text(
                         text = context,

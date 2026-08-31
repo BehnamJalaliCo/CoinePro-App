@@ -190,8 +190,8 @@ private fun readFallbackEvent(row: JsonObject): EconomicEvent? {
         // not an identity the server round-trips, so a title and a moment make a perfectly good
         // one — and dropping a real event for want of a synthetic field would be absurd.
         id = row.text("id", "event_id", "eventId", "slug") ?: (title + "@" + scheduled.epochSecond),
-        title = title,
-        country = row.text("country", "country_code", "countryCode", "region"),
+        title = CalendarPersian.title(title),
+        country = CalendarPersian.country(row.text("country", "country_code", "countryCode", "region")),
         currency = row.text("currency", "ccy", "currency_code"),
         scheduledAt = scheduled,
         // `importance` is aliased here and deliberately not on the news feed: a calendar grades an

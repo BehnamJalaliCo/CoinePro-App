@@ -4654,8 +4654,20 @@ private const val LAST_PRICE_ALPHA = 0.75f
  */
 private const val PREVIOUS_CLOSE_ALPHA = 0.42f
 
-/** Rows the corner legend will print before it starts counting instead. */
-internal const val LEGEND_LINES = 4
+/**
+ * Rows the corner legend will print before it starts counting instead.
+ *
+ * Two, not four. The legend is drawn *over the candles*, and four rows of it — the OHLC line, the
+ * change, and two studies, each with its own visibility, settings and remove glyph — was covering
+ * the top third of the plot with chrome on the one screen whose product is the plot. A reader who
+ * wants every study's value at a bar puts the crosshair down, and that is what
+ * [TRACKING_LEGEND_LINES] is for: there the legend has stopped being a legend and become the
+ * reading, and ten rows is the right answer to a question actually asked.
+ *
+ * The count that replaces the hidden rows is not a loss — «+۹» is one glyph saying there are nine
+ * more, which is what the reader needs to know before deciding to ask.
+ */
+internal const val LEGEND_LINES = 2
 
 /**
  * And how many it will print in tracking mode.

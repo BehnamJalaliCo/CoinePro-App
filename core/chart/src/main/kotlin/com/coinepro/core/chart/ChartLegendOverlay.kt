@@ -505,7 +505,15 @@ internal fun ChartLegendOverlay(
     // The caller's figure is a statement about now, so it is only true of the last bar. Anywhere
     // else the crosshair has taken the legend into history and the bar answers for itself.
     val session = change?.takeIf { index == series.bars.lastIndex }
+    // **Only while the crosshair is down.**
+    //
+    // At rest this row said «Δ −27.1 −1.04%» over the candles — the same two numbers the page
+    // header prints in large type a centimetre above the plot. Two statements of one fact, and the
+    // duplicate was the one costing a row of chart. The header cannot answer for a *historical*
+    // bar, though, so the moment the reader puts the crosshair down the row is the only thing that
+    // can say what that bar did, and it comes back.
     val move = legendChangeRow(bar = bar, decimals = decimalsFor(bar.c), change = session)
+        .takeIf { tracking }
     val movedUp = (session?.absolute ?: (bar.c - bar.o)) >= 0.0
     val rising = bar.up
     val lines = if (tracking) TRACKING_LEGEND_LINES else LEGEND_LINES
@@ -532,7 +540,7 @@ internal fun ChartLegendOverlay(
             // sliced off at the plate's edge.
             val heights = buildList {
                 add(rowDp)
-                add(textDp)
+                if (move != null) add(textDp)
                 body.forEach { add(if (it.primary) rowDp else textDp) }
             }
             val room = legendRowsThatFit(
@@ -601,7 +609,7 @@ internal fun ChartLegendOverlay(
                     // an affordance that has to refuse is worse than one that is not offered.
                     onRemove = null,
                 )
-                if (fit > 1) {
+                if (move != null && fit > 1) {
                     LegendRow(
                         row = move,
                         // The direction of the *move*, which is not always the direction of the bar

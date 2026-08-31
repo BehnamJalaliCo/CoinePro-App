@@ -565,11 +565,15 @@ object ScreenshotFixtures {
                 isStale = true,
             ),
         ),
+        // Persian, because that is what a reader is handed: `CalendarPersian` runs at the gateway
+        // on **every** source, so an English title never survives as far as a screen. Writing the
+        // wire's English here would have made this render lie about the app — which is exactly what
+        // it did until the translation was extended past the published-file path.
         calendar = listOf(
             EconomicEvent(
                 id = "cal_1",
-                title = "US Core CPI (MoM)",
-                country = "United States",
+                title = "شاخص قیمت مصرف‌کننده هستهٔ آمریکا ماه‌به‌ماه",
+                country = "آمریکا",
                 currency = "USD",
                 scheduledAt = NOW.plusSeconds(9_000),
                 impact = MarketImpact.HIGH,
@@ -581,8 +585,8 @@ object ScreenshotFixtures {
             ),
             EconomicEvent(
                 id = "cal_2",
-                title = "FOMC Member Speech",
-                country = "United States",
+                title = "سخنرانی عضو فدرال‌رزرو",
+                country = "آمریکا",
                 currency = "USD",
                 scheduledAt = NOW.plusSeconds(19_800),
                 impact = MarketImpact.MEDIUM,
@@ -594,8 +598,8 @@ object ScreenshotFixtures {
             ),
             EconomicEvent(
                 id = "cal_3",
-                title = "Initial Jobless Claims",
-                country = "United States",
+                title = "درخواست‌های اولیهٔ بیمهٔ بیکاری",
+                country = "آمریکا",
                 currency = "USD",
                 scheduledAt = NOW.minusSeconds(3_600),
                 impact = MarketImpact.MEDIUM,

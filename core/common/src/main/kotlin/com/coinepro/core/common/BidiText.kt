@@ -25,4 +25,37 @@ object BidiText {
 
     /** Removes any isolates previously added by [isolateLtr]. */
     fun strip(value: String): String = value.replace(LRI.toString(), "").replace(PDI.toString(), "")
+
+    /**
+     * Whether a whole sentence is Latin, and therefore a paragraph rather than a run.
+     *
+     * ### Why this is a different question from [isolateLtr]
+     *
+     * An isolate is for a *run* — a price, a ticker, a percentage — sitting inside Persian copy.
+     * It keeps the run's own characters in order and the surrounding paragraph stays right-to-left,
+     * which is correct, because the paragraph really is Persian.
+     *
+     * A whole English sentence is not a run. Laid out in a right-to-left paragraph it comes back
+     * with its **final full stop at the beginning**: «.lifting precious metals». That is what a news
+     * card looked like the moment its stories started arriving from an English wire — the words in
+     * order, the sentence-ending punctuation on the wrong end of the line, on every row.
+     *
+     * So a caller asks this and sets the paragraph's own direction, rather than isolating a
+     * sentence that has nothing around it to be isolated from.
+     *
+     * ### Where the line is drawn
+     *
+     * On the letters only, ignoring digits, spaces and punctuation — those are direction-neutral
+     * and counting them would call «۱۲ BTC» Latin. A string with no letters at all is not Latin: a
+     * bare figure is a run and belongs to whatever paragraph it sits in.
+     */
+    fun isLatinSentence(value: String): Boolean {
+        var latin = 0
+        var other = 0
+        for (character in value) {
+            if (!character.isLetter()) continue
+            if (character.code < 0x0250) latin++ else other++
+        }
+        return latin > 0 && latin > other
+    }
 }

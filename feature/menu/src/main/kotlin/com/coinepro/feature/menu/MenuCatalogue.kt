@@ -162,9 +162,13 @@ object MenuCatalogue {
             icon = DesignR.drawable.icon_sparkle,
             group = MenuGroup.MARKET,
         ),
+        // The one row in this block that carried no second line, so it sat as a bare title in a
+        // column of two-line rows and read as unfinished. It also now has something worth saying:
+        // when neither backend publishes, the app reads the wires itself.
         MenuEntry(
             id = "news",
             titleRes = R.string.menu_news_title,
+            bodyRes = R.string.menu_news_body,
             icon = CoineProIcons.News,
             group = MenuGroup.MARKET,
         ),

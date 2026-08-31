@@ -37,6 +37,49 @@ internal object SymbolNames {
         "HUF" to "فورینت مجارستان",
     )
 
+    /**
+     * The same currencies, in the shortest form a Persian trader still recognises.
+     *
+     * ### Why a second map exists
+     *
+     * A list row cannot hold «دلار آمریکا / فرانک سوئیس» — twenty-four characters under a ticker,
+     * beside a price. The first answer to that was to print the **base** alone, and it produced
+     * something worse than the ellipsis it removed: USDJPY, USDCHF and USDCAD all read «دلار
+     * آمریکا», three different instruments with one subtitle, in the column whose whole job is to
+     * tell them apart.
+     *
+     * A pair is two things and the row has to say both. «دلار/ین» is seven characters and says
+     * them; «دلار آمریکا» is eleven and says half. Where a currency has no shorter name in use the
+     * long one stands — «رند» and «فورینت» are already as short as they get.
+     */
+    val CURRENCY_SHORT: Map<String, String> = mapOf(
+        "USD" to "دلار",
+        "EUR" to "یورو",
+        "GBP" to "پوند",
+        "JPY" to "ین",
+        "CHF" to "فرانک",
+        // The commodity dollars by their country alone. «دلار استرالیا/دلار» is eighteen characters
+        // and does not fit; «استرالیا/دلار» is thirteen and is not ambiguous, because the row above
+        // already reads AUDUSD in Latin and carries both flags. The word this drops — «دلار» — is
+        // the one word every entry in this half of the map would otherwise repeat.
+        "CAD" to "کانادا",
+        "AUD" to "استرالیا",
+        "NZD" to "نیوزیلند",
+        "TRY" to "لیر",
+        "SEK" to "کرون سوئد",
+        "NOK" to "کرون نروژ",
+        "DKK" to "کرون دانمارک",
+        "ZAR" to "رند",
+        "MXN" to "پزو",
+        "SGD" to "سنگاپور",
+        "HKD" to "هنگ‌کنگ",
+        "CNH" to "یوآن",
+        "CNY" to "یوآن",
+        "PLN" to "زلوتی",
+        "CZK" to "کرون چک",
+        "HUF" to "فورینت",
+    )
+
     /** The four precious metals, by their element symbols — which is how every terminal writes them. */
     val METAL: Map<String, String> = mapOf(
         "XAU" to "طلا",
@@ -178,4 +221,8 @@ internal object SymbolNames {
      */
     fun displayOf(code: String): String =
         CURRENCY[code] ?: METAL[code] ?: code
+
+    /** The same, in the short form a list row can hold. A metal's name is already short. */
+    fun shortDisplayOf(code: String): String =
+        CURRENCY_SHORT[code] ?: CURRENCY[code] ?: METAL[code] ?: code
 }

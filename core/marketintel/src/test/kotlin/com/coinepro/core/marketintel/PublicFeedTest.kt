@@ -98,6 +98,28 @@ class PublicFeedTest {
     }
 
     @Test
+    fun `a title the server already wrote in Persian is left alone`() {
+        // What lets this run on every source rather than only on the published file: where a server
+        // does the translating its words win, and where it does not the reader still gets Persian.
+        assertEquals("نرخ بهرهٔ فدرال‌رزرو", CalendarPersian.title("نرخ بهرهٔ فدرال‌رزرو"))
+        assertEquals("شاخص قیمت مصرف‌کننده هسته", CalendarPersian.title("شاخص قیمت مصرف‌کننده هسته"))
+    }
+
+    @Test
+    fun `the backends' own bracketed period is the same period`() {
+        assertEquals("شاخص قیمت مصرف‌کننده هستهٔ آمریکا ماه‌به‌ماه", CalendarPersian.title("US Core CPI (MoM)"))
+        assertEquals("سخنرانی عضو فدرال‌رزرو", CalendarPersian.title("FOMC Member Speech"))
+        assertEquals("درخواست‌های اولیهٔ بیمهٔ بیکاری", CalendarPersian.title("Initial Jobless Claims"))
+    }
+
+    @Test
+    fun `a country named in words is the same country as its code`() {
+        assertEquals("آمریکا", CalendarPersian.country("United States"))
+        assertEquals("آمریکا", CalendarPersian.country("USD"))
+        assertEquals("منطقهٔ یورو", CalendarPersian.country("Euro Area"))
+    }
+
+    @Test
     fun `the currency a row is filed under becomes a country a reader knows`() {
         assertEquals("آمریکا", CalendarPersian.country("USD"))
         assertEquals("منطقهٔ یورو", CalendarPersian.country("EUR"))

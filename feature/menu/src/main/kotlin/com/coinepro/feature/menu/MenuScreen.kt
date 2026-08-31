@@ -180,7 +180,12 @@ private fun Identity(
     // Isolated, because every one of these is a Latin run inside a Persian line: an address, a
     // backend's own name. Without the isolate the punctuation of an email walks to the wrong end.
     val second = when {
-        !signedIn -> stringResource(R.string.menu_guest_line)
+        // Nothing, for a guest. The card's own offer block two lines below already says which
+        // parts of the app need an account and which stay free, at greater length and to more
+        // purpose — so this line was the same sentence said twice, in a card that then had to fit
+        // a name, two paragraphs, a platform and a button. A member's second line is their address,
+        // which appears nowhere else.
+        !signedIn -> null
         email != null -> BidiText.isolateLtr(email)
         else -> stringResource(R.string.menu_member_line)
     }
@@ -207,11 +212,13 @@ private fun Identity(
                     fontWeight = FontWeight.Bold,
                     color = CoineProColors.TextPrimary,
                 )
-                Text(
-                    text = second,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = CoineProColors.TextSecondary,
-                )
+                second?.let { line ->
+                    Text(
+                        text = line,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CoineProColors.TextSecondary,
+                    )
+                }
                 if (standing.isNotEmpty()) {
                     Text(
                         text = standing,
@@ -298,25 +305,35 @@ private fun MenuRow(
         if (item.locked) {
             // Said in words rather than drawn as a padlock. A padlock is read as "you cannot",
             // which is wrong: this reader can, in two taps, and the sentence is what says so.
+            //
+            // **On a plate, and not bare.** Bare text in this row is vertically centred against a
+            // body that wraps to two lines, so «با ورود به حساب» landed level with the second line
+            // and read as its continuation — one sentence made of two unrelated halves. A plate
+            // says it is a badge about the row rather than more of the row's own words.
             Text(
                 text = stringResource(R.string.menu_locked),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextMuted,
-            )
-        } else {
-            value?.let { current ->
-                Text(
-                    text = current,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = CoineProColors.TextSecondary,
-                )
-            }
-            Icon(
-                // Forward in the reading direction, which the drawable mirrors for itself in RTL.
-                painter = painterResource(CoineProIcons.ChevronForward),
-                contentDescription = null,
-                tint = CoineProColors.TextMuted,
+                modifier = Modifier
+                    .background(CoineProColors.SurfaceRaised, MaterialTheme.shapes.small)
+                    .padding(horizontal = CoineProSpacing.Three.times(0.25f), vertical = 2.dp),
             )
         }
+        value?.takeIf { !item.locked }?.let { current ->
+            Text(
+                text = current,
+                style = MaterialTheme.typography.labelMedium,
+                color = CoineProColors.TextSecondary,
+            )
+        }
+        // **On every row, locked or not.** A locked row still goes somewhere — to the one screen
+        // that would unlock it — and stripping its chevron made it look like the one row on the
+        // page that does nothing, which is the opposite of what it is for.
+        Icon(
+            // Forward in the reading direction, which the drawable mirrors for itself in RTL.
+            painter = painterResource(CoineProIcons.ChevronForward),
+            contentDescription = null,
+            tint = CoineProColors.TextMuted,
+        )
     }
 }

@@ -202,9 +202,6 @@ fun HomeScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
         ) {
-            // What this screen is, once, for a reader who has just installed the app. See
-            // `CoineProTeachingStrip`: it puts itself away for good and leaves a way back.
-            item { CoineProTeachingStrip(TeachingSurface.HOME, gutter = false) }
             if (displayName != null) {
                 item { GreetingRow(displayName, avatar, onOpenProfile) }
             }
@@ -229,16 +226,6 @@ fun HomeScreen(
                     onToggleHidden = onToggleBalanceHidden,
                     onOpenPortfolio = onOpenPortfolio,
                 )
-            }
-
-            if (onOpenTools != null || onOpenActivity != null || onOpenNews != null) {
-                item {
-                    ShortcutRow(
-                        onOpenTools = onOpenTools,
-                        onOpenActivity = onOpenActivity,
-                        onOpenNews = onOpenNews,
-                    )
-                }
             }
 
             item {
@@ -271,6 +258,29 @@ fun HomeScreen(
                     )
                 }
             }
+
+            if (onOpenTools != null || onOpenActivity != null || onOpenNews != null) {
+                item {
+                    ShortcutRow(
+                        onOpenTools = onOpenTools,
+                        onOpenActivity = onOpenActivity,
+                        onOpenNews = onOpenNews,
+                    )
+                }
+            }
+
+            // **Below the account, not above it**, and the order of this screen was wrong.
+            //
+            // The strip was the first item, so the first thing a reader saw on opening the app was
+            // a paragraph explaining the screen, with their balance pushed under it. Nobody opens a
+            // trading app to be told what a home screen is; they open it to see a number. The
+            // teaching is worth keeping — it puts itself away for good once read — but it belongs
+            // after the thing it describes, where it reads as a caption rather than a preface.
+            //
+            // The two pill rows moved for the same reason. The gold pill is the primary action and
+            // it was in the *second* row, under three quieter shortcuts, so the loudest object on
+            // the page sat below the quietest ones.
+            item { CoineProTeachingStrip(TeachingSurface.HOME, gutter = false) }
 
             // Only in the week it matters. A subscription that is healthy is not news, and a card
             // on the home screen restating it every day for eleven months is 128dp spent saying

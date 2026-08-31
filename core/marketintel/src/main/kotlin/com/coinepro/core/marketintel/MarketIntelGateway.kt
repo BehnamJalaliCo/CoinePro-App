@@ -272,8 +272,12 @@ internal fun readEvent(row: JsonObject): EconomicEvent? {
     val scheduled = row.moment(SCHEDULED_KEYS) ?: return null
     return EconomicEvent(
         id = id,
-        title = title,
-        country = row.text(COUNTRY_KEYS),
+        // Persian, wherever the server did not already write it in Persian — see [CalendarPersian],
+        // which returns a Persian title untouched. Both routes are documented to translate and
+        // neither does, so without this the one Persian screen in the app that is entirely about
+        // macro data printed «US Core CPI (MoM)» on every row.
+        title = CalendarPersian.title(title),
+        country = CalendarPersian.country(row.text(COUNTRY_KEYS)),
         currency = row.text(CURRENCY_KEYS),
         scheduledAt = scheduled,
         impact = parseImpact(row.text(IMPACT_KEYS)),
