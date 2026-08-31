@@ -47,6 +47,7 @@ import com.coinepro.core.chartevents.ChartEventController
 import com.coinepro.core.chartevents.ChartEventSettings
 import com.coinepro.core.chartevents.ChartEventState
 import com.coinepro.core.chartevents.SERVED_EVENT_KINDS
+import com.coinepro.core.common.BidiText
 import com.coinepro.core.datastore.ChartColourTemplate
 import com.coinepro.core.datastore.ChartLayout
 import com.coinepro.core.datastore.ChartEventPrefsStore
@@ -881,7 +882,11 @@ private fun StudioHeader(symbol: String, timeframe: String, onBackToChart: (() -
                     color = CoineProColors.TextPrimary,
                 )
                 Text(
-                    text = "$symbol · $timeframe",
+                    // A space, not a separator dot. The timeframe begins with a Persian numeral
+                    // and the Persian zero **is** a dot, so «XAUUSD · ۱ ساعت» drew a numeral with
+                    // a dot pressed against it — the chart's own timeframe, reading as a different
+                    // number. The ticker is isolated so the pair stays in its own direction.
+                    text = BidiText.isolateLtr(symbol) + "  " + timeframe,
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,
                     fontWeight = FontWeight.Normal,

@@ -3822,8 +3822,16 @@ private fun DrawScope.drawLevelLabel(
 ) {
     if (text.isNullOrBlank()) return
     val measured = measurer.measure(text, axisStyle(colour))
-    val top = y - measured.size.height - 1f
-    if (top < 0f || y > size.height) return
+    // Above the line by default, and below it when above would be underneath the legend.
+    //
+    // The legend is a Compose overlay sitting on the top-left of the plot, so the canvas cannot see
+    // it — and a setup whose target is near the top of the visible range put «حد سود» straight
+    // under the OHLC row, where the plate and the legend's own plate stacked into a smudge. A level
+    // reads the same either side of its line; the legend does not move.
+    val reserved = LEGEND_LINES * measured.size.height + LEGEND_INSET_DP.toPx() * 2f
+    val above = y - measured.size.height - 1f
+    val top = if (above < reserved) y + 1f else above
+    if (top < 0f || top + measured.size.height > size.height) return
     // A plate under the word, because these labels sit *inside* the plot rather than out on the
     // axis: a setup anchored to its entry candle puts «ورود» straight over the bars, and three
     // characters in the sell red on top of a red candle is not a word, it is a smudge. The axis
