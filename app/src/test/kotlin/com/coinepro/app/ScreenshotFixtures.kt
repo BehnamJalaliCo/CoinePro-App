@@ -1722,7 +1722,22 @@ class FakeNotificationGateway : NotificationGateway {
 }
 
 class FakeMarketIntelGateway : MarketIntelGateway {
-    override suspend fun snapshot(): MarketIntelSnapshot = ScreenshotFixtures.marketIntel()
+    /**
+     * Sorted the way the real reader sorts, rather than in the order the fixture happens to list.
+     *
+     * `MarketIntelGateway.readSnapshot` orders the calendar by its scheduled moment and the news
+     * newest-first, and every fallback source does the same before handing anything back — there is
+     * no path on which the app shows an unsorted list. The fixture returns a canned snapshot, so it
+     * skipped all of that and the calendar render came back 08:43, 11:43, 05:13: a state the app
+     * cannot produce, in a review whose whole job is to say what the app looks like.
+     */
+    override suspend fun snapshot(): MarketIntelSnapshot {
+        val raw = ScreenshotFixtures.marketIntel()
+        return raw.copy(
+            news = raw.news.sortedByDescending(MarketNewsItem::publishedAt),
+            calendar = raw.calendar.sortedBy(EconomicEvent::scheduledAt),
+        )
+    }
 }
 
 class FakeAiSignalGateway(
