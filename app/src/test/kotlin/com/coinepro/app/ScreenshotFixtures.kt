@@ -1638,46 +1638,7 @@ object ScreenshotFixtures {
         )
     }
 
-    /**
-     * Category labels for the notification render.
-     *
-     * Written out here rather than resolved from resources: the screen takes them as parameters so
-     * that it can be rendered without a context, and a fixture that reached for `R.string` would
-     * put the dependency back.
-     */
-    fun notificationLabel(category: com.coinepro.core.notifications.NotificationCategory): String =
-        when (category) {
-            com.coinepro.core.notifications.NotificationCategory.NEW_SIGNAL -> "سیگنال جدید"
-            com.coinepro.core.notifications.NotificationCategory.TARGET_HIT -> "رسیدن به حد سود"
-            com.coinepro.core.notifications.NotificationCategory.STOP_HIT -> "خوردن حد ضرر"
-            com.coinepro.core.notifications.NotificationCategory.SIGNAL_CLOSED -> "بسته شدن سیگنال"
-            com.coinepro.core.notifications.NotificationCategory.COPY_OPENED -> "باز شدن کپی"
-            com.coinepro.core.notifications.NotificationCategory.COPY_CLOSED -> "بسته شدن کپی"
-            com.coinepro.core.notifications.NotificationCategory.COPY_FAILED -> "خطای کپی"
-            com.coinepro.core.notifications.NotificationCategory.PRICE_ALERT -> "هشدارهای قیمت من"
-            com.coinepro.core.notifications.NotificationCategory.WATCHLIST_MOVE -> "نوسان بازارهای ستاره‌دار"
-            com.coinepro.core.notifications.NotificationCategory.NEWS -> "اخبار مهم"
-            com.coinepro.core.notifications.NotificationCategory.ANNOUNCEMENT -> "اطلاعیه‌های سرویس"
-            com.coinepro.core.notifications.NotificationCategory.CALENDAR -> "تقویم اقتصادی"
-            com.coinepro.core.notifications.NotificationCategory.AI_SETUP -> "ستاپ هوش مصنوعی"
-            com.coinepro.core.notifications.NotificationCategory.SECURITY -> "امنیت حساب"
-            com.coinepro.core.notifications.NotificationCategory.ACCOUNT -> "وضعیت حساب"
-            com.coinepro.core.notifications.NotificationCategory.MARKETING -> "پیشنهادها و اطلاعیه‌ها"
-        }
-
-    fun notificationNote(category: com.coinepro.core.notifications.NotificationCategory): String =
-        when (category) {
-            com.coinepro.core.notifications.NotificationCategory.COPY_FAILED ->
-                "وقتی معامله‌ای روی حساب شما باز نشد — مهم‌ترین اعلان این فهرست"
-            com.coinepro.core.notifications.NotificationCategory.WATCHLIST_MOVE ->
-                "حرکت غیرعادی در بازارهایی که ستاره زده‌اید — بدون تعیین عدد"
-            com.coinepro.core.notifications.NotificationCategory.SECURITY ->
-                "ورود، تغییر رمز، دستگاه جدید. این یکی خاموش نمی‌شود."
-            com.coinepro.core.notifications.NotificationCategory.MARKETING -> "به‌صورت پیش‌فرض خاموش است"
-            else -> "توضیح کوتاه این دسته"
-        }
-
-    /** The membership terms the guest gateway serves, for the card's own render. */
+        /** The membership terms the guest gateway serves, for the card's own render. */
     val membershipTerms = MembershipTerms(
         lbankReferralUrl = "https://lbank.example/ref/CoinePro",
         ourbitReferralUrl = "https://ourbit.example/register?inviteCode=CoinePro",

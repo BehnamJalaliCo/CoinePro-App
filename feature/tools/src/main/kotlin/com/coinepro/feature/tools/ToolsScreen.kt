@@ -195,7 +195,16 @@ private fun ToolkitHeader(expanded: ToolId?, onQuickOpen: (ToolId) -> Unit) {
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricPill(8.toPersianDigits(), stringResource(R.string.tools_f_calculators), CoineProColors.Gold, Modifier.weight(1f))
-            MetricPill(0.toPersianDigits(), stringResource(R.string.tools_f_orders_sent), CoineProColors.Buy, Modifier.weight(1f))
+            // «هیچ», not «۰». The Persian zero is a small circle, and one of them alone at tile
+            // size reads as a status dot rather than as a number — the tile said nothing where it
+            // was meant to say the strongest thing on the screen: no order ever leaves here. It is
+            // a standing claim rather than a count, so it is a word.
+            MetricPill(
+                stringResource(R.string.tools_f_orders_none),
+                stringResource(R.string.tools_f_orders_sent),
+                CoineProColors.Buy,
+                Modifier.weight(1f),
+            )
             MetricPill(stringResource(R.string.tools_local), stringResource(R.string.tools_f_calculation), CoineProColors.Silver, Modifier.weight(1f))
         }
         Text(stringResource(R.string.tools_quick_open), color = CoineProColors.TextMuted, style = MaterialTheme.typography.labelSmall)

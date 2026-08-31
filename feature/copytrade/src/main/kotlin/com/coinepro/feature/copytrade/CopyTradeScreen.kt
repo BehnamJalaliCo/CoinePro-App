@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.PersianDateTime
+import com.coinepro.core.common.VenueStatusPersian
 import com.coinepro.core.copytrade.CopyAccount
 import com.coinepro.core.copytrade.CopyExecutionEvent
 import com.coinepro.core.copytrade.CopyPosition
@@ -718,24 +719,10 @@ private fun stamp(at: Instant): String =
     PersianDateTime.moment(at)
 
 /**
- * The link's state, in Persian.
+ * The copy-trading link's status word, in Persian.
  *
- * A closed set — these are the words the copy service writes into its own status column — so a flat
- * table rather than a translator, and anything outside it passes through with its underscores
- * opened out. See [Health] for why this is translated at all.
+ * The table itself is [VenueStatusPersian] — the connections screen shows the same words for the
+ * same venues, and two tables would have drifted the first time either backend added a status.
  */
-internal fun copyStatusLabel(status: String?): String {
-    val raw = status?.trim()?.takeIf(String::isNotBlank) ?: return ""
-    return when (raw.lowercase().replace('-', '_')) {
-        "connected", "active", "online", "running" -> "متصل"
-        "disconnected", "offline", "stopped" -> "قطع"
-        "pending", "connecting", "linking" -> "در حال اتصال"
-        "reconnecting" -> "در حال اتصال دوباره"
-        "error", "failed" -> "خطا"
-        "unauthorized", "invalid_credentials", "auth_failed" -> "اطلاعات ورود پذیرفته نشد"
-        "expired" -> "منقضی"
-        "suspended", "paused" -> "متوقف"
-        "account_mismatch" -> "حساب ناهم‌خوان"
-        else -> raw.replace('_', ' ')
-    }
-}
+internal fun copyStatusLabel(status: String?): String = VenueStatusPersian.label(status)
+

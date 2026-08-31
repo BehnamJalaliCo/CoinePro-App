@@ -32,6 +32,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
+import com.coinepro.core.common.VenueStatusPersian
 import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.copytrade.Mt5Link
 import com.coinepro.core.copytrade.Mt5LinkStage
@@ -542,13 +543,17 @@ private fun LbankCard(
 /**
  * The word beside the dot, for the exchange.
  *
- * Server status text wins when it has any, since only the venue knows why it is not connected. The
- * underscores are opened out and nothing else is touched — it is not the app's word to translate.
+ * Server status text wins when it has any, since only the venue knows why it is not connected —
+ * and it is put into Persian on the way through. Leaving it alone was the first rule and it put
+ * «awaiting provider confirmation», in English, at the top of a Persian reader's own connection
+ * card, beside the coloured dot, in the one place that says whether their account works. See
+ * [VenueStatusPersian]: a word the table knows is translated, a word it does not know still
+ * reaches the reader as the venue wrote it.
  */
 @Composable
 private fun VenueConnection?.headline(): String {
     val raw = this?.status?.takeIf { it.isNotBlank() && !connected }
-    return raw?.replace('_', ' ') ?: stringResource(
+    return raw?.let(VenueStatusPersian::label) ?: stringResource(
         when {
             this == null -> R.string.connections_status_not_configured
             connected -> R.string.connections_status_connected
@@ -568,12 +573,13 @@ private fun VenueConnection?.tone(): Color = when {
  * The word beside the dot, for MetaTrader — under the exchange card's rule, applied to a stage.
  *
  * The server's own word wins wherever the link is not proven connected, which is where it carries
- * anything worth reading: `login_failed` says more than "needs attention" ever could.
+ * anything worth reading: `login_failed` says more than "needs attention" ever could — and says it
+ * in Persian, through the same table the exchange card uses.
  */
 @Composable
 private fun Mt5Link.headline(): String {
     val raw = serverStatus?.takeIf { it.isNotBlank() && stage != Mt5LinkStage.CONNECTED }
-    return raw?.replace('_', ' ') ?: stringResource(
+    return raw?.let(VenueStatusPersian::label) ?: stringResource(
         when (stage) {
             Mt5LinkStage.CONNECTED -> R.string.connections_status_connected
             Mt5LinkStage.PENDING -> R.string.connections_mt5_status_pending

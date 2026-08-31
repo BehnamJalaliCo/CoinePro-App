@@ -47,6 +47,8 @@ import androidx.compose.ui.unit.sp
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
+import com.coinepro.app.notifications.channelDescriptionRes
+import com.coinepro.app.notifications.channelNameRes
 import com.coinepro.app.security.TamperedScreen
 import com.coinepro.core.academy.AcademyExtra
 import com.coinepro.core.account.AccountController
@@ -984,9 +986,15 @@ class ScreenshotRenderTest {
     }
 
     /**
-     * The in-app legal reader, on an excerpt carrying every construct the two documents use:
-     * title, revision line, blockquote, rule, headings, a paragraph with bold and inline code,
-     * bullets, a Persian-numbered list, a table and a named link.
+     * The in-app legal reader, on an excerpt carrying every construct the renderer supports: title,
+     * revision line, blockquote, rule, headings, a paragraph with bold and inline code, bullets, a
+     * Persian-numbered list, a table and a named link.
+     *
+     * The blockquote is a line from the risk warning. It used to be the editors' note that opened
+     * `TERMS.md` — and that note was not a construct being exercised, it was a note to us that
+     * shipped: the first paragraph a reader saw inside the app's own terms of use, and on the
+     * public site with it. It lives in `docs/legal/README.md` now. Neither document currently uses
+     * a blockquote at all; the construct stays covered here because the renderer supports it.
      *
      * Parsed from a literal rather than read through the AssetManager, so the picture is identical
      * on every run and does not depend on where a merged library asset landed.
@@ -1285,6 +1293,7 @@ class ScreenshotRenderTest {
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
     fun notificationSettings() = capture("89-notifications-fa") {
+        val context = LocalContext.current
         NotificationSettingsScreen(
             settings = NotificationSettings(
                 quietHours = QuietHours(enabled = true, fromMinuteOfDay = 23 * 60, toMinuteOfDay = 7 * 60),
@@ -1329,8 +1338,12 @@ class ScreenshotRenderTest {
                     active = false,
                 ),
             ),
-            labelFor = { category -> ScreenshotFixtures.notificationLabel(category) },
-            noteFor = { category -> ScreenshotFixtures.notificationNote(category) },
+            // The app's own strings, through the app's own mapping. The fixture had a second copy
+            // of this table and a fallback of «توضیح کوتاه این دسته» for the categories nobody had
+            // hand-written — so the review looked at placeholder copy on eight of the eleven rows
+            // and could not have caught a real string being wrong.
+            labelFor = { category -> context.getString(category.channelNameRes()) },
+            noteFor = { category -> context.getString(category.channelDescriptionRes()) },
         )
     }
 
@@ -2778,7 +2791,7 @@ private val LEGAL_EXCERPT = """
 
     **آخرین بازنگری:** ۱۴۰۵/۰۶/۰۴
 
-    > پایهٔ این متن، سند حقوقیِ خودِ مالک است. برند و شرح محصول عوض شده‌اند.
+    > هرگز با سرمایه‌ای که توان از دست دادنش را ندارید معامله نکنید.
 
     ---
 

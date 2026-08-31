@@ -160,6 +160,7 @@
     <string name="tools_f_calculators">ماشین‌حساب</string>
     <string name="tools_f_currency_pip_lot">واحد پول / پیپ / لات</string>
     <string name="tools_f_orders_sent">سفارش ارسالی</string>
+    <string name="tools_f_orders_none">هیچ</string>
     <string name="tools_u_periods">دوره</string>
     <string name="tools_f_pips">پیپ</string>
     <string name="tools_f_price_units_pip">واحد قیمت / پیپ</string>
