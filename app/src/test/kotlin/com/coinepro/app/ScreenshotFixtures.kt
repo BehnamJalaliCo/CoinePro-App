@@ -1161,7 +1161,17 @@ object ScreenshotFixtures {
                 },
                 volume = 0.08,
                 entry = 2_380.0 + index * 1.4,
-                exit = 2_380.0 + index * 1.4 + profit / 80.0,
+                // **The exit moves the way the trade's own direction requires.**
+                //
+                // It used to be `entry + profit / 80`, whatever the direction, so a fixture row
+                // could read «فروش · 2,380.00 ← 2,386.85 · +$547.77» — a sell that made money on a
+                // rising market. `ClosedTrade.netProfit` is the server's own figure and is
+                // deliberately never derived from these two prices, so nothing in the app catches
+                // it; it is only ever caught by somebody looking at the render, and what they
+                // conclude is that the app has a sign error. A picture that invents a bug costs as
+                // much time as one that hides a real one.
+                exit = 2_380.0 + index * 1.4 +
+                    (if (index % 3 == 0) -profit / 80.0 else profit / 80.0),
                 // Spread across about three months rather than a week: the monthly card only
                 // appears with more than one month in the window, and a fixture confined to one
                 // would leave that branch unrendered in every screenshot.

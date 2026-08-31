@@ -188,7 +188,6 @@ fun DepthOfMarketBody(
             .verticalScroll(rememberScrollState()),
     ) {
         DepthHeader(state)
-        CoineProTeachingStrip(TeachingSurface.DOM)
         when {
             unavailable != null -> DepthUnavailable(unavailable)
             state.failed -> CoineProEmptyState(
@@ -233,6 +232,16 @@ fun DepthOfMarketBody(
                 DepthLadderTable(ladder = ladder, figure = figure, onPickPrice = onPickPrice)
                 curve?.let { DepthCurvePanel(curve = it, ladder = ladder) }
                 DepthFootnotes(showOrdersNote = ladder.hasOrders, showStepNote = steps.isNotEmpty())
+                // With the other two explanations rather than above the ladder.
+                //
+                // It used to sit between the spread summary and the aggregation controls, so the
+                // thing this screen exists to show — the book — started a third of the way down a
+                // phone. And it was the *first* of three explanations on one page, the other two
+                // being the footnotes directly below this line: a reader met the prose, then the
+                // data, then more prose. All the prose is in one place now, under the data it is
+                // about, where somebody who wants it can find it and somebody who does not has
+                // already scrolled past.
+                CoineProTeachingStrip(TeachingSurface.DOM)
             }
         }
     }

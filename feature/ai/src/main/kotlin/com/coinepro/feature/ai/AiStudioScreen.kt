@@ -448,7 +448,13 @@ private fun AiSymbolField(
         AiChoiceRow(
             label = stringResource(R.string.ai_symbol),
             // A market's identity, in Latin, isolated so it does not reorder in a Persian row.
+            // Capped at what one line holds. Unbounded, the selected market plus its recents came
+            // to five, and five eight-character tickers wrap to four and **one** — a single chip
+            // alone on a second row, which reads as a layout fault rather than as a choice. The
+            // whole universe is one tap below in any case, so the row's job is the fast path and
+            // not completeness.
             options = (listOf(symbol).filter { it.isNotBlank() } + recents).distinct()
+                .take(SYMBOL_CHIPS)
                 .map { it to BidiText.isolateLtr(it) },
             selected = symbol,
             onSelect = { onSelect(it ?: symbol) },
@@ -897,3 +903,12 @@ private fun directionLabel(direction: SignalDirection): String = stringResource(
         SignalDirection.NEUTRAL -> R.string.ai_neutral
     },
 )
+
+/**
+ * Symbol chips on one line.
+ *
+ * Four eight-character tickers is what a 360dp phone fits at this chip size; the fifth starts a row
+ * of its own. Everything past them is behind «تغییر نماد», which is where the other four hundred
+ * markets already live.
+ */
+private const val SYMBOL_CHIPS = 4

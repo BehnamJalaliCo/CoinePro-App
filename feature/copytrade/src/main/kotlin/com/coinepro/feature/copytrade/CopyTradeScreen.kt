@@ -640,9 +640,18 @@ private fun Health(alive: Boolean, status: String?) {
     ) {
         Box(Modifier.size(6.dp).background(colour, CoineProPillShape))
         Text(
-            // The server's own status word, with its underscores opened out. Not translated: it is
-            // the term support will ask the reader to read back.
-            text = status?.replace('_', ' ').orEmpty(),
+            // **Persian where we know the word, the server's own where we do not.**
+            //
+            // It used to be the raw term, untranslated, on the argument that it is what support
+            // will ask the reader to read back. That argument holds for a *support* transcript and
+            // not for the reader: «connected», lower-case and in Latin, was the most prominent
+            // thing on a card whose every other line is Persian, and a reader who does not read
+            // English cannot tell it from «disconnected» at a glance — which is the one distinction
+            // this line exists to make.
+            //
+            // Support loses nothing. «متصل» maps back to `connected` one-for-one, and a status
+            // nobody has written down here still arrives in the server's own words.
+            text = copyStatusLabel(status),
             style = MaterialTheme.typography.labelMedium,
             color = colour,
         )
@@ -707,3 +716,26 @@ private fun amount(value: Double, currency: String, signed: Boolean = false): St
  */
 private fun stamp(at: Instant): String =
     PersianDateTime.moment(at)
+
+/**
+ * The link's state, in Persian.
+ *
+ * A closed set — these are the words the copy service writes into its own status column — so a flat
+ * table rather than a translator, and anything outside it passes through with its underscores
+ * opened out. See [Health] for why this is translated at all.
+ */
+internal fun copyStatusLabel(status: String?): String {
+    val raw = status?.trim()?.takeIf(String::isNotBlank) ?: return ""
+    return when (raw.lowercase().replace('-', '_')) {
+        "connected", "active", "online", "running" -> "متصل"
+        "disconnected", "offline", "stopped" -> "قطع"
+        "pending", "connecting", "linking" -> "در حال اتصال"
+        "reconnecting" -> "در حال اتصال دوباره"
+        "error", "failed" -> "خطا"
+        "unauthorized", "invalid_credentials", "auth_failed" -> "اطلاعات ورود پذیرفته نشد"
+        "expired" -> "منقضی"
+        "suspended", "paused" -> "متوقف"
+        "account_mismatch" -> "حساب ناهم‌خوان"
+        else -> raw.replace('_', ' ')
+    }
+}

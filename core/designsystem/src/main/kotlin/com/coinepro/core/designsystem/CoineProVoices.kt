@@ -8,6 +8,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -32,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /**
  * The app speaks two visual languages, and which one a screen speaks is decided by what the screen
@@ -178,13 +181,28 @@ fun CoineProReadingRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
+                BasicText(
                     text = reading.value,
                     // Eighteen against an eleven-point label. It was fifteen, and a tile whose
                     // answer is four points from its own caption is a tile you have to read
                     // rather than one you can glance at.
-                    style = CoineProTextStyles.TileFigure,
-                    color = reading.tone ?: CoineProColors.TextPrimary,
+                    //
+                    // **It shrinks rather than cutting.** These tiles are thirds of a phone and
+                    // the figures in them are money: the paper account read «موجودی $10,04…» and
+                    // «مارجین آزاد $9,517.…», which could be ten thousand or ten million. An
+                    // ellipsis is an acceptable answer for a name and never for a number — the
+                    // reader cannot recover what was removed, and a balance they have to guess at
+                    // is worse than one printed two points smaller. Fourteen is the floor, which is
+                    // still three points above the caption, so the tile keeps the contrast that
+                    // makes it glanceable.
+                    style = CoineProTextStyles.TileFigure.copy(
+                        color = reading.tone ?: CoineProColors.TextPrimary,
+                    ),
+                    autoSize = TextAutoSize.StepBased(
+                        minFontSize = 14.sp,
+                        maxFontSize = CoineProTextStyles.TileFigure.fontSize,
+                        stepSize = 1.sp,
+                    ),
                     modifier = Modifier.padding(top = 2.dp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
