@@ -18,6 +18,7 @@ import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.papertrade.PaperClosedTrade
 import com.coinepro.core.papertrade.PaperFill
 import com.coinepro.core.papertrade.PaperFillBasis
@@ -63,11 +64,15 @@ fun PaperHistory(
     ) {
         if (closed.isNotEmpty()) {
             item { SectionTitle(stringResource(R.string.paper_closed_title)) }
-            items(closed, key = PaperClosedTrade::id) { trade -> ClosedCard(trade, zone) }
+            items(closed, key = PaperClosedTrade::id) { trade ->
+                Column(modifier = rowMotion().fillMaxWidth()) { ClosedCard(trade, zone) }
+            }
         }
         if (fills.isNotEmpty()) {
             item { SectionTitle(stringResource(R.string.paper_fills_title)) }
-            items(fills, key = PaperFill::id) { fill -> FillCard(fill, zone) }
+            items(fills, key = PaperFill::id) { fill ->
+                Column(modifier = rowMotion().fillMaxWidth()) { FillCard(fill, zone) }
+            }
         }
     }
 }

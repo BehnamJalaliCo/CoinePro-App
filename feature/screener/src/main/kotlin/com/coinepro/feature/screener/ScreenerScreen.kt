@@ -54,11 +54,12 @@ import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.designsystem.coineProPriceFlash
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.designsystem.resolve
-import com.coinepro.core.designsystem.CoineProTeachingStrip
-import com.coinepro.core.designsystem.TeachingSurface
+import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.symbols.SymbolCategory
 import com.coinepro.feature.screener.model.ScreenerField
 import com.coinepro.feature.screener.model.ScreenerFilter
@@ -173,18 +174,20 @@ fun ScreenerScreen(
                 contentPadding = PaddingValues(bottom = CoineProSpacing.Two),
             ) {
                 items(state.rows, key = ScreenerRow::symbol) { row ->
-                    ScreenerTableRow(
-                        row = row,
-                        columns = state.columns,
-                        indicatorColumns = state.indicatorColumns,
-                        scroll = valuesScroll,
-                        onClick = { onOpenSymbol(row.symbol) },
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = CoineProSpacing.Two),
-                        thickness = 1.dp,
-                        color = CoineProColors.BorderSubtle,
-                    )
+                    Column(modifier = rowMotion().fillMaxWidth()) {
+                        ScreenerTableRow(
+                            row = row,
+                            columns = state.columns,
+                            indicatorColumns = state.indicatorColumns,
+                            scroll = valuesScroll,
+                            onClick = { onOpenSymbol(row.symbol) },
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = CoineProSpacing.Two),
+                            thickness = 1.dp,
+                            color = CoineProColors.BorderSubtle,
+                        )
+                    }
                 }
             }
         }

@@ -41,24 +41,25 @@ import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProColumnHeadings
+import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProHeaderAction
+import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProListHeader
+import com.coinepro.core.designsystem.CoineProPercentPill
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProPullToRefresh
 import com.coinepro.core.designsystem.CoineProRowDivider
-import com.coinepro.core.designsystem.CoineProEmptyState
-import com.coinepro.core.designsystem.CoineProIcons
-import com.coinepro.core.designsystem.CoineProPercentPill
 import com.coinepro.core.designsystem.CoineProSegmentTabs
 import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.CoineProSetupProgress
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.R as DesignR
-import com.coinepro.core.designsystem.resolve
-import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.TeachingSurface
+import com.coinepro.core.designsystem.resolve
+import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.guest.GuestMembershipState
 import com.coinepro.core.guest.GuestTrackRecordState
@@ -67,9 +68,9 @@ import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.SignalDirection
 import com.coinepro.core.signals.SignalController
-import com.coinepro.core.signals.SignalStrategyPersian
 import com.coinepro.core.signals.SignalMarketFilter
 import com.coinepro.core.signals.SignalStatusFilter
+import com.coinepro.core.signals.SignalStrategyPersian
 import com.coinepro.core.signals.TradingSignal
 import com.coinepro.feature.membership.MembershipJourneyPanel
 
@@ -202,8 +203,10 @@ fun SignalsScreen(
                 ) {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(state.items, key = { it.id }) { signal ->
-                            SignalRow(signal = signal, onClick = { onOpenSignal(signal.id) })
-                            CoineProRowDivider()
+                            Column(modifier = rowMotion().fillMaxWidth()) {
+                                SignalRow(signal = signal, onClick = { onOpenSignal(signal.id) })
+                                CoineProRowDivider()
+                            }
                         }
                         // The end of a truncated list, said out loud.
                         //

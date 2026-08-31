@@ -44,6 +44,7 @@ import com.coinepro.core.designsystem.CoineProSheetEmpty
 import com.coinepro.core.designsystem.CoineProSheetSearch
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextField
+import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.notifications.AlertChannel
 import com.coinepro.core.notifications.AlertFrequency
 import com.coinepro.core.notifications.AlertMessageTemplate
@@ -136,32 +137,34 @@ private fun SymbolPicker(
         contentPadding = PaddingValues(vertical = CoineProSpacing.One),
     ) {
         items(matches, key = { it.symbol }) { meta ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onPick(meta.symbol) }
-                    .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
-                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                CoineProAssetLogo(symbol = meta.symbol, size = 28.dp)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = BidiText.isolateLtr(meta.pretty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = CoineProColors.TextPrimary,
-                        textAlign = TextAlign.Right,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Text(
-                        text = meta.listDescription,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = CoineProColors.TextMuted,
-                        textAlign = TextAlign.Right,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+            Column(modifier = rowMotion().fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onPick(meta.symbol) }
+                        .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
+                    horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CoineProAssetLogo(symbol = meta.symbol, size = 28.dp)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = BidiText.isolateLtr(meta.pretty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = CoineProColors.TextPrimary,
+                            textAlign = TextAlign.Right,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text(
+                            text = meta.listDescription,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = CoineProColors.TextMuted,
+                            textAlign = TextAlign.Right,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
         }

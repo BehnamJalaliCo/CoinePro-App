@@ -31,6 +31,7 @@ import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.papertrade.PaperRecord
 import com.coinepro.core.papertrade.PaperTradeUiState
 import com.coinepro.core.portfolio.EquityPoint
@@ -84,7 +85,9 @@ fun PaperRecordTab(
         item { MetricsCard(record) }
         if (record.bySymbol.isNotEmpty()) {
             item { SectionTitle(stringResource(R.string.paper_by_symbol)) }
-            items(record.bySymbol, key = SymbolPerformance::symbol) { row -> SymbolRow(row) }
+            items(record.bySymbol, key = SymbolPerformance::symbol) { row ->
+                Column(modifier = rowMotion().fillMaxWidth()) { SymbolRow(row) }
+            }
         }
         if (record.byMonth.isNotEmpty()) {
             item { SectionTitle(stringResource(R.string.paper_by_month)) }

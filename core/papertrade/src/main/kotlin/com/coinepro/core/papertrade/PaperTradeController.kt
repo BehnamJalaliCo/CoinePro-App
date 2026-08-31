@@ -77,10 +77,14 @@ class PaperTradeController(
     /**
      * The constructor the app has always called.
      *
-     * Kept so that adding a real store is a one-line change in dependency injection rather than a
-     * change that has to land in the same commit as this module. What it costs until that line is
-     * written is stated plainly: [InMemoryPaperLedgerStore] does not survive the process, so the
-     * account resets when Android kills the app. See `## WIRING NEEDED` in this feature's report.
+     * Kept so that adding a real store was a one-line change in dependency injection rather than a
+     * change that had to land in the same commit as this module. That line is written: the app
+     * builds this controller on `PaperLedgerPrefStore`, so the book survives the process.
+     *
+     * This overload therefore no longer has a production caller, and what it costs is worth keeping
+     * stated: [InMemoryPaperLedgerStore] is emptied when Android reclaims the app, so an account
+     * built on it is a session, not an account. It stays for the render fixtures and for a host
+     * that genuinely wants a scratch book.
      */
     constructor(
         dao: PaperTradeDao,

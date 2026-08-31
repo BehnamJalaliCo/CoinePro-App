@@ -98,6 +98,28 @@ class ChartViewportTest {
     }
 
     @Test
+    fun `the rubber band moves the bars and nothing else`() {
+        val view = viewport()
+        val pulled = view.copy(pixelShift = 24f)
+
+        // Every bar moves by exactly the band, together — that is what makes it one picture
+        // sliding rather than a chart being redrawn at a different pan.
+        for (index in view.firstVisible..view.lastVisible step 23) {
+            assertEquals(view.xOf(index) + 24f, pulled.xOf(index), 0.001f)
+        }
+        // And the inverse follows it, so the bar under a finger is the bar the finger is over.
+        for (index in view.firstVisible..view.lastVisible step 23) {
+            assertEquals(index, pulled.indexAt(pulled.xOf(index)))
+        }
+        // The band is horizontal. Price has not moved, and neither has what is on screen: the
+        // stretch is a drawing offset, never a pan, so the visible window is the same window.
+        assertEquals(view.yOf(120.0), pulled.yOf(120.0), 0.001f)
+        assertEquals(view.firstVisible, pulled.firstVisible)
+        assertEquals(view.lastVisible, pulled.lastVisible)
+        assertEquals(view.offset, pulled.offset)
+    }
+
+    @Test
     fun `price rises up the screen`() {
         val view = viewport()
         assertTrue("a higher price must sit higher", view.yOf(140.0) < view.yOf(110.0))

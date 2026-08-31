@@ -203,8 +203,9 @@ internal fun ReplayBar(
  * a reader looking at a live chart who wants to see what happened in Mordad is doing exactly the
  * same hunt with a pan gesture. What it needs from the caller is a way to bring a bar index into
  * view, which is why [onGoTo] is an index rather than a scroll — the caller owns the viewport, and
- * on a live chart that is not this composable. See the report's WIRING NEEDED for what `ChartScreen`
- * has to pass.
+ * on a live chart that is not this composable. `ChartMoreSheetBody` carries the second call site and
+ * hands it `controller::focusBar`; it passes an empty bar list while replay is on, so the two copies
+ * of the field are never both on screen.
  */
 @Composable
 internal fun GoToDateField(

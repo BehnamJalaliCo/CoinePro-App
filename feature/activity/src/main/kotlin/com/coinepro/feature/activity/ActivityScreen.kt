@@ -57,10 +57,11 @@ import com.coinepro.core.designsystem.CoineProListHeader
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProPullToRefresh
 import com.coinepro.core.designsystem.CoineProSpacing
-import com.coinepro.core.designsystem.R as DesignR
-import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.TeachingSurface
+import com.coinepro.core.designsystem.resolve
+import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.ExecutionStatus
 import com.coinepro.core.execution.SignalExecution
@@ -258,7 +259,9 @@ fun ActivityScreen(
                 } else {
                     item { SectionHeader(stringResource(R.string.activity_history_title), stringResource(R.string.activity_history_subtitle)) }
                     items(filteredHistory, key = { "signal-${it.id}" }) { signal ->
-                        SignalHistoryCard(signal = signal, onClick = { onOpenSignal(signal.id) })
+                        Column(modifier = rowMotion().fillMaxWidth()) {
+                            SignalHistoryCard(signal = signal, onClick = { onOpenSignal(signal.id) })
+                        }
                     }
                 }
             }
@@ -290,7 +293,9 @@ fun ActivityScreen(
                     item { NoticePanel(stringResource(R.string.activity_execution_refresh_failed), error, CoineProColors.Warning) }
                 }
                 items(executionState.items, key = { "execution-${it.id}" }) { execution ->
-                    ExecutionHistoryCard(execution, onOpenSignal)
+                    Column(modifier = rowMotion().fillMaxWidth()) {
+                        ExecutionHistoryCard(execution, onOpenSignal)
+                    }
                 }
             }
             }

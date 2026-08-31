@@ -1,11 +1,10 @@
 package com.coinepro.core.chart
 
-import com.coinepro.core.common.toPersianDigits
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,14 +41,16 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSheetEmpty
 import com.coinepro.core.designsystem.CoineProSheetSearch
-import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.R as DesignR
+import com.coinepro.core.designsystem.rowMotion
 
 /**
  * The drawing tools.
@@ -673,47 +674,49 @@ fun DrawingList(
             .heightIn(max = LIST_MAX_HEIGHT),
     ) {
         items(drawings.size, key = { drawings[it].id }) { index ->
-            val drawing = drawings[index]
-            val tool = DrawingTools[drawing.toolId]
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onSelect(drawing) }
-                    .padding(
-                        horizontal = CoineProSpacing.Gutter,
-                        vertical = CoineProSpacing.OneHalf,
-                    ),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
-            ) {
-                if (tool != null) {
-                    Icon(
-                        painter = painterResource(tool.icon),
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = Color(drawing.colour),
+            Column(modifier = rowMotion().fillMaxWidth()) {
+                val drawing = drawings[index]
+                val tool = DrawingTools[drawing.toolId]
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(drawing) }
+                        .padding(
+                            horizontal = CoineProSpacing.Gutter,
+                            vertical = CoineProSpacing.OneHalf,
+                        ),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+                ) {
+                    if (tool != null) {
+                        Icon(
+                            painter = painterResource(tool.icon),
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = Color(drawing.colour),
+                        )
+                    }
+                    Text(
+                        text = tool?.label ?: drawing.toolId,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = CoineProColors.TextSecondary,
+                        modifier = Modifier.weight(1f),
                     )
-                }
-                Text(
-                    text = tool?.label ?: drawing.toolId,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = CoineProColors.TextSecondary,
-                    modifier = Modifier.weight(1f),
-                )
-                onSetLocked?.let { setLocked ->
+                    onSetLocked?.let { setLocked ->
+                        RailAction(
+                            if (drawing.locked) DesignR.drawable.tv_lock else DesignR.drawable.tv_unlock,
+                            if (drawing.locked) "باز کردن قفل" else "قفل کردن",
+                            tint = if (drawing.locked) CoineProColors.Gold else null,
+                        ) { setLocked(drawing, !drawing.locked) }
+                    }
+                    // Delete is refused on a locked drawing by `DrawingActions.delete`; the button is
+                    // dimmed here so the reader is told why rather than finding out by tapping.
                     RailAction(
-                        if (drawing.locked) DesignR.drawable.tv_lock else DesignR.drawable.tv_unlock,
-                        if (drawing.locked) "باز کردن قفل" else "قفل کردن",
-                        tint = if (drawing.locked) CoineProColors.Gold else null,
-                    ) { setLocked(drawing, !drawing.locked) }
+                        DesignR.drawable.tv_trash2,
+                        "حذف",
+                        enabled = !drawing.locked,
+                    ) { onDelete(drawing) }
                 }
-                // Delete is refused on a locked drawing by `DrawingActions.delete`; the button is
-                // dimmed here so the reader is told why rather than finding out by tapping.
-                RailAction(
-                    DesignR.drawable.tv_trash2,
-                    "حذف",
-                    enabled = !drawing.locked,
-                ) { onDelete(drawing) }
             }
         }
     }

@@ -33,9 +33,6 @@ import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.community.CommunityController
 import com.coinepro.core.community.CommunityError
 import com.coinepro.core.community.CommunityReply
-import com.coinepro.core.model.AvatarBase
-import com.coinepro.core.model.AvatarRing
-import com.coinepro.core.model.AvatarSpec
 import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -47,6 +44,10 @@ import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.designsystem.CoineProTint
+import com.coinepro.core.designsystem.rowMotion
+import com.coinepro.core.model.AvatarBase
+import com.coinepro.core.model.AvatarRing
+import com.coinepro.core.model.AvatarSpec
 
 /**
  * One post, everything published under it, and a box to add to it.
@@ -182,14 +183,16 @@ fun CommunityThreadScreen(
                 }
 
                 items(thread.replies, key = CommunityReply::id) { reply ->
-                    ReplyCard(
-                        reply = reply,
-                        parentAuthor = reply.parentId?.let { parent ->
-                            thread.replies.firstOrNull { it.id == parent }?.author
-                        },
-                        onCrown = { controller.chooseBestReply(reply.id) },
-                        onUncrown = { controller.chooseBestReply(CLEAR_BEST_REPLY) },
-                    )
+                    Column(modifier = rowMotion().fillMaxWidth()) {
+                        ReplyCard(
+                            reply = reply,
+                            parentAuthor = reply.parentId?.let { parent ->
+                                thread.replies.firstOrNull { it.id == parent }?.author
+                            },
+                            onCrown = { controller.chooseBestReply(reply.id) },
+                            onUncrown = { controller.chooseBestReply(CLEAR_BEST_REPLY) },
+                        )
+                    }
                 }
 
                 item("composer") {

@@ -47,7 +47,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.datastore.WatchlistStore
-import com.coinepro.core.watchlistsync.WatchlistSyncController
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
@@ -58,11 +57,12 @@ import com.coinepro.core.designsystem.CoineProSegmentTabs
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProSparkline
+import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.R as DesignR
+import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.designsystem.resolve
-import com.coinepro.core.designsystem.CoineProTeachingStrip
-import com.coinepro.core.designsystem.TeachingSurface
+import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketSearchRow
 import com.coinepro.core.marketdata.MarketTicker
@@ -70,6 +70,7 @@ import com.coinepro.core.marketdata.MarketTickerStore
 import com.coinepro.core.marketdata.SparklineStore
 import com.coinepro.core.symbols.MarketHours
 import com.coinepro.core.symbols.SymbolCategory
+import com.coinepro.core.watchlistsync.WatchlistSyncController
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
@@ -356,6 +357,7 @@ fun MarketsScreen(
                         // thousand markets would be a thousand requests nobody looked at.
                         LaunchedEffect(row.meta.symbol) { sparklines.request(row.meta.symbol) }
                         MarketListRow(
+                            modifier = rowMotion(),
                             row = row,
                             onClick = { onOpenSymbol(row.meta.symbol) },
                             starred = onToggleWatch?.let { row.meta.symbol.uppercase() in watched },

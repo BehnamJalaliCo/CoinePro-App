@@ -75,7 +75,10 @@ enum class PaperTab { TICKET, POSITIONS, ORDERS, HISTORY, RECORD }
  * @param priceFor the last price for a symbol, from the same feed the market list reads.
  * @param quoteFor the fuller observation where the host can supply one — bid, ask and the feed's
  *   own staleness. Null falls back to [priceFor], which costs the fill rules their real spread and
- *   makes them use the assumed one; see `## WIRING NEEDED` for the one-line upgrade.
+ *   makes them use the assumed one — and the screen says so, rather than presenting an assumption
+ *   as a quote. The app passes it: `marketState.quotes[symbol]?.asPaperQuote()`, so a reader
+ *   practising here crosses the spread the venue actually quoted. Null remains supported for a
+ *   host whose feed carries only a last price, and for the render tests.
  * @param onOpenSymbol opens the chart for a symbol. Null simply omits the affordance rather than
  *   showing a dead one.
  */

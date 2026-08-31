@@ -111,7 +111,9 @@ fun HeatmapScreen(
      *
      * Defaulted to null so this screen can be reached before its wiring exists, and so a preview or
      * a render test needs nothing. With it null every tile is honestly hatched and a line above the
-     * map says why; with it wired the map is a heatmap. See the module's `## WIRING NEEDED`.
+     * map says why; with it wired the map is a heatmap. The app wires it —
+     * `CandleHeatmapBarSource(candleGateway)`, whichever gateway this shell was built with, so the
+     * guest's map reads the guest's candles.
      */
     bars: HeatmapBarSource? = null,
     /**

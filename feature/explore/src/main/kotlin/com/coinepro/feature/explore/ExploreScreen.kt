@@ -49,16 +49,17 @@ import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProErrorState
 import com.coinepro.core.designsystem.CoineProHeaderAction
 import com.coinepro.core.designsystem.CoineProIcons
-import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProListHeader
 import com.coinepro.core.designsystem.CoineProPercentPill
-import com.coinepro.core.designsystem.CoineProProse
 import com.coinepro.core.designsystem.CoineProPillShape
+import com.coinepro.core.designsystem.CoineProProse
+import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProSparkline
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.rememberCoineProHaptics
+import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketTickerStore
 import com.coinepro.core.marketdata.SparklineStore
@@ -319,7 +320,9 @@ fun ExploreScreen(
             }
         } else {
             items(stories, key = { it.id }) { story ->
-                StoryRow(story = story, onClick = onOpenStory?.let { open -> { open(story) } })
+                Column(modifier = rowMotion().fillMaxWidth()) {
+                    StoryRow(story = story, onClick = onOpenStory?.let { open -> { open(story) } })
+                }
             }
         }
     }

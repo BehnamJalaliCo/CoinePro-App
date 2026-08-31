@@ -1,9 +1,9 @@
 package com.coinepro.feature.search
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -27,9 +27,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -64,18 +64,19 @@ import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
-import com.coinepro.core.designsystem.R as DesignR
-import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.TeachingSurface
+import com.coinepro.core.designsystem.rememberCoineProHaptics
+import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.marketdata.MarketSearchRow
 import com.coinepro.core.watchlistsync.R as SyncR
 import com.coinepro.core.watchlistsync.WatchlistSyncController
 import com.coinepro.core.watchlistsync.WatchlistSyncState
 import com.coinepro.core.watchlistsync.messageRes
 import com.coinepro.core.watchlistsync.noticeArguments
-import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlinx.coroutines.launch
 
 /**
  * The reader's own lists, on the markets tab's watchlist segment.
@@ -233,6 +234,7 @@ fun WatchlistPanel(
                     // has both.
                     LaunchedEffect(symbol) { onRequestLine(symbol) }
                     MarketListRow(
+                        modifier = rowMotion(),
                         row = row,
                         onClick = { onOpenSymbol(row.meta.symbol) },
                         onLongClick = { sheet = WatchlistSheet.RowMenu(symbol) },

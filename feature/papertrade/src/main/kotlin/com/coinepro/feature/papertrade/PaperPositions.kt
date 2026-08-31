@@ -30,6 +30,7 @@ import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextField
+import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.papertrade.PaperPosition
 import com.coinepro.core.papertrade.PaperTradeController
 import com.coinepro.core.papertrade.PaperTradeUiState
@@ -71,15 +72,17 @@ fun PaperPositions(
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
         items(state.book.positions, key = PaperPosition::id) { position ->
-            PositionCard(
-                position = position,
-                mark = state.marks[position.symbol],
-                onClose = { controller.closePosition(position.id, 1.0) },
-                onCloseHalf = { controller.closePosition(position.id, 0.5) },
-                onReverse = { controller.reverse(position.id) },
-                onProtect = { protecting = position.id },
-                onOpenSymbol = onOpenSymbol,
-            )
+            Column(modifier = rowMotion().fillMaxWidth()) {
+                PositionCard(
+                    position = position,
+                    mark = state.marks[position.symbol],
+                    onClose = { controller.closePosition(position.id, 1.0) },
+                    onCloseHalf = { controller.closePosition(position.id, 0.5) },
+                    onReverse = { controller.reverse(position.id) },
+                    onProtect = { protecting = position.id },
+                    onOpenSymbol = onOpenSymbol,
+                )
+            }
         }
         item {
             CoineProSecondaryButton(

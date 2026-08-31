@@ -44,19 +44,20 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
-import com.coinepro.core.designsystem.CoineProMarketRow
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
-import com.coinepro.core.designsystem.CoineProShapes
-import com.coinepro.core.designsystem.resolve
+import com.coinepro.core.designsystem.CoineProMarketRow
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPrimaryButton
+import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.CoineProTextStyles
-import com.coinepro.core.designsystem.rememberCoineProHaptics
-import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.TeachingSurface
+import com.coinepro.core.designsystem.rememberCoineProHaptics
+import com.coinepro.core.designsystem.resolve
+import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketSearchRow
 import com.coinepro.core.marketdata.SparklineStore
@@ -237,11 +238,13 @@ fun SearchScreen(
                         SectionHeader(title = stringResource(R.string.search_surfaces_header))
                     }
                     items(surfaces, key = { "surface:" + it.surface.id }) { match ->
-                        SurfaceRow(
-                            match = match,
-                            onOpen = onOpenSurface,
-                            onSignIn = onSignIn,
-                        )
+                        Column(modifier = rowMotion().fillMaxWidth()) {
+                            SurfaceRow(
+                                match = match,
+                                onOpen = onOpenSurface,
+                                onSignIn = onSignIn,
+                            )
+                        }
                     }
                     // The markets get a heading of their own only once something is above them.
                     // A single «بازارها» over the whole screen would be a label for a screen that

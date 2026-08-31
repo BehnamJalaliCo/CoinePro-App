@@ -1,5 +1,6 @@
 package com.coinepro.feature.portfolio
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -10,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
@@ -28,24 +28,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
-import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.JalaliDate
+import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
-import com.coinepro.core.designsystem.CoineProPageHeading
+import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProHeroFigure
+import com.coinepro.core.designsystem.CoineProPageHeading
+import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProReading
 import com.coinepro.core.designsystem.CoineProReadingRow
-import com.coinepro.core.designsystem.CoineProColors
-import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.CoineProThinkingDots
-import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.TeachingSurface
+import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.portfolio.ClosedTrade
 import com.coinepro.core.portfolio.MonthlyPerformance
 import com.coinepro.core.portfolio.PortfolioController
@@ -177,14 +178,16 @@ private fun Content(
         item { CardLabel(stringResource(R.string.portfolio_recent)) }
         // Keyed, so paging in older trades does not re-compose every row already on screen.
         items(state.trades, key = { it.id }) { trade ->
-            TradeRow(
-                trade = trade,
-                // Which stretch of the curve this trade fell in. Computed once for the whole list
-                // above and passed down as two booleans, so a row costs nothing to decide.
-                inRunUp = spans.runUp?.covers(trade.closedAt) == true,
-                inDrawdown = spans.drawdown?.let { trade.closedAt in it.peakAt..it.troughAt } == true,
-                zone = zone,
-            )
+            Column(modifier = rowMotion().fillMaxWidth()) {
+                TradeRow(
+                    trade = trade,
+                    // Which stretch of the curve this trade fell in. Computed once for the whole list
+                    // above and passed down as two booleans, so a row costs nothing to decide.
+                    inRunUp = spans.runUp?.covers(trade.closedAt) == true,
+                    inDrawdown = spans.drawdown?.let { trade.closedAt in it.peakAt..it.troughAt } == true,
+                    zone = zone,
+                )
+            }
         }
         if (state.hasMore) {
             item {

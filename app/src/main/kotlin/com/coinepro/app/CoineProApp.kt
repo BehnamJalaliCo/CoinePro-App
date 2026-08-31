@@ -126,6 +126,7 @@ import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.designsystem.ProvideToaster
 import com.coinepro.core.designsystem.PageAccent
 import com.coinepro.core.designsystem.ProvidePageAccent
+import com.coinepro.core.designsystem.continuousMotionAllowed
 import com.coinepro.core.diagnostics.AdminController
 import com.coinepro.core.diagnostics.DiagnosticExport
 import com.coinepro.core.diagnostics.AppLog
@@ -578,7 +579,13 @@ private fun accentFor(route: String?): PageAccent = when (route) {
     AppDestination.AI.route,
     -> PageAccent.ANALYSIS
 
-    CONNECTIONS_ROUTE, COPY_TRADE_ROUTE -> PageAccent.SOCIAL
+    // Copy trading, the venue links that feed it, and the feed itself. Community is social by the
+    // plainest reading there is: every pixel on it was put there by another reader.
+    CONNECTIONS_ROUTE,
+    COPY_TRADE_ROUTE,
+    COMMUNITY_ROUTE,
+    COMMUNITY_THREAD_PATTERN,
+    -> PageAccent.SOCIAL
 
     else -> PageAccent.BRAND
 }
@@ -2208,10 +2215,17 @@ private fun MainShell(
             )
         }
 
+        // Forward pushes, back pulls, tabs cross-fade, and the pop is seekable so the system's
+        // predictive-back gesture has something to preview. See [appEnter] for the whole argument.
+        val motion = continuousMotionAllowed()
         NavHost(
             navController = navController,
             startDestination = AppDestination.HOME.route,
             modifier = Modifier.weight(1f),
+            enterTransition = { appEnter(motion) },
+            exitTransition = { appExit(motion) },
+            popEnterTransition = { appPopEnter(motion) },
+            popExitTransition = { appPopExit(motion) },
         ) {
             composable(AppDestination.HOME.route) {
                 // The same tab, two homes. A guest's is the public feed's — real prices, the real

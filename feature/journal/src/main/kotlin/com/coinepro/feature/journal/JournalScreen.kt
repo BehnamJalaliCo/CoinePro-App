@@ -9,8 +9,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,10 +39,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
-import com.coinepro.core.common.foldDigitsToLatin
-import com.coinepro.core.common.countedLabel
-import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.common.PersianDateTime
+import com.coinepro.core.common.countedLabel
+import com.coinepro.core.common.foldDigitsToLatin
+import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.database.JournalEntryEntity
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -51,10 +51,11 @@ import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.CoineProToggleChip
-import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.TeachingSurface
+import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.journal.Journal
 import com.coinepro.core.journal.JournalController
 import com.coinepro.core.journal.JournalStats
@@ -275,24 +276,26 @@ fun JournalScreen(controller: JournalController) {
         }
 
         items(shown, key = JournalEntryEntity::id) { record ->
-            EntryCard(
-                record = record,
-                shot = screenshots.uriFor(record.id),
-                onAttach = {
-                    awaiting = record.id
-                    // A document rather than a gallery pick: only `OpenDocument` returns a URI the
-                    // app can hold on to across a reboot, which is what a journal needs.
-                    picker.launch(arrayOf("image/*"))
-                },
-                onOpenShot = { uri -> openImage(context, uri) },
-                onRemoveShot = { screenshots.detach(record.id) },
-                onDelete = {
-                    // The picture goes with the row. Left behind it would be a persisted read grant
-                    // on an image nothing can ever show again.
-                    screenshots.detach(record.id)
-                    controller.delete(record)
-                },
-            )
+            Column(modifier = rowMotion().fillMaxWidth()) {
+                EntryCard(
+                    record = record,
+                    shot = screenshots.uriFor(record.id),
+                    onAttach = {
+                        awaiting = record.id
+                        // A document rather than a gallery pick: only `OpenDocument` returns a URI the
+                        // app can hold on to across a reboot, which is what a journal needs.
+                        picker.launch(arrayOf("image/*"))
+                    },
+                    onOpenShot = { uri -> openImage(context, uri) },
+                    onRemoveShot = { screenshots.detach(record.id) },
+                    onDelete = {
+                        // The picture goes with the row. Left behind it would be a persisted read grant
+                        // on an image nothing can ever show again.
+                        screenshots.detach(record.id)
+                        controller.delete(record)
+                    },
+                )
+            }
         }
     }
 }

@@ -47,11 +47,12 @@ import com.coinepro.core.designsystem.CoineProListHeader
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.CoineProToast
 import com.coinepro.core.designsystem.LocalToaster
-import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.TeachingSurface
+import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.notifications.AlertFrequency
 import com.coinepro.core.notifications.AlertScope
 import com.coinepro.core.symbols.SymbolArtwork
@@ -161,11 +162,13 @@ fun AlertCenterScreen(controller: AlertsController, initialSymbol: String? = nul
                     SectionHeader(kind = section.kind, count = section.rows.size)
                 }
                 items(section.rows, key = { it.alert.id }) { row ->
-                    AlertListRow(
-                        row = row,
-                        onOpen = { controller.openAudit(row) },
-                        onActions = { controller.openActions(row) },
-                    )
+                    Column(modifier = rowMotion().fillMaxWidth()) {
+                        AlertListRow(
+                            row = row,
+                            onOpen = { controller.openAudit(row) },
+                            onActions = { controller.openActions(row) },
+                        )
+                    }
                 }
             }
         }

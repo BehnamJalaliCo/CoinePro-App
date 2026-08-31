@@ -130,6 +130,27 @@ data class ChartViewport(
     val plotWidth: Float = 0f,
     val plotHeight: Float = 0f,
     /**
+     * A horizontal offset in pixels applied to everything drawn in bar space, and to nothing else.
+     *
+     * This is the rubber band at the end of the history. [offset] is a whole number of bars and it
+     * is clamped, so when a fling reaches the oldest bar the chart simply stops — dead, mid-flight,
+     * with the momentum unspent and nothing on screen to say why. Every scrolling surface on the
+     * phone answers that the same way: the content follows a little further than it is allowed to,
+     * and springs back. That is the difference between "there is no more history" and "the app
+     * stopped responding to me".
+     *
+     * It is deliberately *not* part of the pan. It moves the bars, the grid's time lines, the
+     * drawings and the overlays together, because they are one picture; it leaves the price axis,
+     * the horizontal grid and the last-price tag exactly where they were, because those measure
+     * price and price has not moved. A translation of the whole canvas would have slid the axis
+     * too, which reads as a rendering fault rather than as elasticity.
+     *
+     * Transient, like [plotWidth] and [plotHeight]: it is set by the draw pass for the frames the
+     * band is stretched and is never persisted, never restored, and never part of what a viewport
+     * means when it is compared for equality across a save.
+     */
+    val pixelShift: Float = 0f,
+    /**
      * Prices that must stay on screen even though no bar reaches them.
      *
      * A trade setup is the case: its target sits above everything that has happened yet — that is
@@ -471,8 +492,8 @@ data class ChartViewport(
 
     // ---------------------------------------------------------------- chart space to screen
 
-    /** Screen x of the bar at [index], at the centre of its slot. */
-    fun xOf(index: Int): Float = (index - firstVisible) * barWidth + barWidth / 2
+    /** Screen x of the bar at [index], at the centre of its slot, plus any [pixelShift]. */
+    fun xOf(index: Int): Float = (index - firstVisible) * barWidth + barWidth / 2 + pixelShift
 
     /**
      * Screen y of a price.
@@ -532,7 +553,10 @@ data class ChartViewport(
     /** The bar under a screen x, clamped to the series. */
     fun indexAt(x: Float): Int {
         if (series.isEmpty || barWidth <= 0f) return 0
-        return (firstVisible + (x / barWidth).toInt()).coerceIn(firstVisible, lastVisible)
+        // The shift is taken back out first, so the bar under a finger is the bar the finger is
+        // actually over while the band is stretched — the exact inverse of [xOf], which is the
+        // property `ChartViewportTest` holds the pair to.
+        return (firstVisible + ((x - pixelShift) / barWidth).toInt()).coerceIn(firstVisible, lastVisible)
     }
 
     /**

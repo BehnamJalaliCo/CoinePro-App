@@ -12,6 +12,9 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
@@ -22,6 +25,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -63,6 +67,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.cos
@@ -612,6 +617,48 @@ fun CoineProChart(
     var flinging by remember { mutableStateOf(false) }
 
     /**
+     * How far past the end of the history the picture is currently stretched, in pixels.
+     *
+     * See [ChartViewport.pixelShift] for what it does to the drawing and why it is not the pan.
+     * This is the value itself and the spring that returns it: an [Animatable] rather than a plain
+     * float so that the release is one call and cannot be left half-sprung by a recomposition.
+     */
+    val edgePull = remember { Animatable(0f) }
+    val pullScope = rememberCoroutineScope()
+    val maxPull = with(density) { EDGE_PULL_MAX_DP.toPx() }
+
+    /**
+     * Stretch the band by [pixels] of refused travel, with the resistance a rubber band has.
+     *
+     * The gain falls off as the band stretches — at the cap it is zero — so the reader feels the
+     * end coming rather than arriving at it. A constant gain would make the band a second, slower
+     * chart that still slides forever, which says the opposite of what it is here to say.
+     */
+    fun stretchEdge(pixels: Float) {
+        if (maxPull <= 0f || pixels == 0f) return
+        val slack = 1f - abs(edgePull.value) / maxPull
+        if (slack <= 0f) return
+        val next = (edgePull.value + pixels * EDGE_PULL_GAIN * slack).coerceIn(-maxPull, maxPull)
+        pullScope.launch { edgePull.snapTo(next) }
+    }
+
+    /** Let the band go. A no-op when it was never stretched, which is nearly every gesture. */
+    fun releaseEdge() {
+        if (edgePull.value == 0f) return
+        pullScope.launch {
+            edgePull.animateTo(
+                targetValue = 0f,
+                animationSpec = spring(
+                    // Bouncy enough to be seen at forty pixels, and not so bouncy that the bars
+                    // oscillate: one overshoot, small, and settled.
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+            )
+        }
+    }
+
+    /**
      * How much of the chart the last change actually invalidated, merged since the last draw.
      *
      * A plain array rather than state, for the same reason [lastView] is one: it is written by a
@@ -717,7 +764,8 @@ fun CoineProChart(
         if (!flinging) return@LaunchedEffect
         var residue = 0f
         while (kinetic.isRunning) {
-            residue += withFrameMillis { now -> kinetic.tick(now) }
+            val step = withFrameMillis { now -> kinetic.tick(now) }
+            residue += step
             val width = drawn().barWidth
             if (width <= 0f) break
             val bars = (residue / width).toInt()
@@ -725,10 +773,20 @@ fun CoineProChart(
                 val before = viewport.offset
                 viewport = viewport.atOffset(before + bars)
                 residue -= bars * width
-                if (viewport.offset == before) kinetic.stop()
+                if (viewport.offset == before) {
+                    // The wall. The momentum is spent into the band rather than deleted: a fling
+                    // that stops in a single frame with nothing on screen to explain it is
+                    // indistinguishable from the app having stopped listening, and the reader's
+                    // next move is to flick again, harder, at a chart that has no more history.
+                    kinetic.stop()
+                    stretchEdge(step)
+                }
                 invalidate(Invalidation.FULL)
             }
         }
+        // Whether it ran out of momentum or hit the end, the band goes back either way — and
+        // `releaseEdge` costs nothing on the ordinary fling that never reached an edge.
+        releaseEdge()
         flinging = false
     }
 
@@ -1035,8 +1093,15 @@ fun CoineProChart(
                                             if (width > 0f) {
                                                 val bars = (panResidue / width).toInt()
                                                 if (bars != 0) {
-                                                    viewport = viewport.atOffset(viewport.offset + bars)
+                                                    val before = viewport.offset
+                                                    viewport = viewport.atOffset(before + bars)
                                                     panResidue -= bars * width
+                                                    // Refused travel goes into the band, so a
+                                                    // finger dragging into the end of the history
+                                                    // meets resistance instead of a dead surface.
+                                                    if (viewport.offset == before) {
+                                                        stretchEdge(bars * width)
+                                                    }
                                                     invalidate(Invalidation.FULL)
                                                 }
                                             }
@@ -1092,6 +1157,14 @@ fun CoineProChart(
                                         kinetic.start(tracker.calculateVelocity().x)
                                         flinging = kinetic.isRunning
                                     }
+                                    // The band goes back on the lift, whether or not a fling
+                                    // followed. A gesture that dragged into the end of the history
+                                    // and simply stopped there must not leave the picture held off
+                                    // its edge until the reader touches the glass again; and where
+                                    // a fling *did* start, its own loop releases the band again at
+                                    // the end, which is harmless because the release is a no-op on
+                                    // a band already at rest.
+                                    if (!flinging) releaseEdge()
                                 }
                             }
                             .pointerInput(Unit) {
@@ -1740,21 +1813,31 @@ fun CoineProChart(
             // "cursor" while the geometry has actually moved would draw the last frame's scale
             // under this frame's bars.
             val cached = scaleCache.view
-            val view =
+            val settled =
                 if (dirtyLevel <= Invalidation.CURSOR && cached == candidate) cached else candidate
-            val ticks = if (view === cached) scaleCache.ticks ?: priceTicks(view) else priceTicks(view)
+            val ticks = if (settled === cached) scaleCache.ticks ?: priceTicks(settled) else priceTicks(settled)
             // The time ladder is cached beside the price one and for the same reason: it walks every
             // visible bar asking what calendar boundary it opens, and a crosshair moving must not
             // pay for that. Both are keyed on the viewport *instance*, so the pair can only ever be
             // reused for the frame they were computed on.
-            val timeTicks = if (view === cached) {
-                scaleCache.timeTicks ?: timeAxisTicks(view, type, zone, timeLabelGapPx)
+            val timeTicks = if (settled === cached) {
+                scaleCache.timeTicks ?: timeAxisTicks(settled, type, zone, timeLabelGapPx)
             } else {
-                timeAxisTicks(view, type, zone, timeLabelGapPx)
+                timeAxisTicks(settled, type, zone, timeLabelGapPx)
             }
-            scaleCache.view = view
+            scaleCache.view = settled
             scaleCache.ticks = ticks
             scaleCache.timeTicks = timeTicks
+
+            // The rubber band, and the one place it enters the picture.
+            //
+            // The cache above is keyed on the settled viewport, without the band, so the frames a
+            // reader spends *not* at the edge — which is nearly all of them — reuse their price
+            // range and tick ladder exactly as before. Neither ladder depends on the shift anyway:
+            // the price ticks are prices and the time ticks are bar indices, and both are placed
+            // through `xOf`, which is where the shift is applied.
+            val pull = edgePull.value
+            val view = if (pull == 0f) settled else settled.copy(pixelShift = pull)
             lastView[0] = view
 
             // Everything below is in *plot* space: x zero is the plot's left edge, which is where
@@ -4799,6 +4882,18 @@ private const val MARKER_SIZE = 7f
 
 /** Below this a pinch is a drag with slightly uneven fingers, not an intent to zoom. */
 private const val ZOOM_DEADZONE = 0.01f
+
+/**
+ * How far the picture may be pulled past the end of the history.
+ *
+ * Forty points is the distance every scrolling surface on the phone uses, and the number matters
+ * less than the fact that it is small: this is a signal that there is nothing more, not a second
+ * way to pan.
+ */
+private val EDGE_PULL_MAX_DP = 40.dp
+
+/** The share of refused travel the band takes at rest. Falls to nothing as the band stretches. */
+private const val EDGE_PULL_GAIN = 0.45f
 
 /**
  * How much of the chart a change has actually invalidated.

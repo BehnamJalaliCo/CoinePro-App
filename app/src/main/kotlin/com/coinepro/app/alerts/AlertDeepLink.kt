@@ -31,9 +31,10 @@ package com.coinepro.app.alerts
  * timeframe is carried anyway because "the right bar" and "the bar this alert was evaluated on" are
  * not always the same thing — an alert with `AlertFrequency.ONCE_PER_BAR_CLOSE` is decided on a
  * specific interval, and if the reader has since left that symbol's chart on another one, the app
- * should be able to say which. Until the parser reads it, the query is ignored and the link behaves
- * exactly as it must; see `## WIRING NEEDED` in this change's report for the four lines that make
- * it act.
+ * should be able to say which. `parseCoineProDeepLink` reads it into `CoineProDeepLink.Market` and
+ * `MainActivity` sets the timeframe before the symbol, in the same frame — the chart's launch effect
+ * is keyed on the symbol, so a timeframe written after it would arrive a recomposition late and be
+ * applied to the *next* link instead of this one.
  *
  * ### Pure, and no `android.net.Uri`
  *

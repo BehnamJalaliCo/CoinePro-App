@@ -24,6 +24,7 @@ import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPullToRefresh
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
+import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.guest.GuestHeadline
 import com.coinepro.core.guest.GuestNewsState
@@ -88,7 +89,9 @@ fun GuestNewsScreen(controller: GuestController, modifier: Modifier = Modifier) 
                     verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
                 ) {
                     items(current.headlines, key = GuestHeadline::slug) { headline ->
-                        HeadlineCard(headline)
+                        Column(modifier = rowMotion().fillMaxWidth()) {
+                            HeadlineCard(headline)
+                        }
                     }
                 }
             }

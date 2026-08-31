@@ -15,6 +15,25 @@ import androidx.compose.ui.unit.sp
  * The Latin-numeral family is deliberate: prices, quantities and identifiers must stay comparable
  * with broker and exchange terminals, and [com.coinepro.core.common.MarketNumberFormatter] already
  * formats with Latin digits.
+ *
+ * ### Tabular figures: already true, and not by a feature tag
+ *
+ * A column of prices only reads as a column if every digit is the same width. The usual way to ask
+ * for that is `FontFeatureSettings("tnum")`, and it was measured here before being added, because
+ * a feature the font does not carry is a string that silently does nothing.
+ *
+ * The measurement: IRANYekanX (Eco) exposes `aalt calt ccmp dlig dnom fina frac init kern locl
+ * mark medi mkmk numr rlig salt ss01–ss04` — **no `tnum`.** It does not need one. Its Latin digits
+ * are already monospaced by design: all ten advance 562 units in Regular and 572 in Bold. Every
+ * price, quantity, percentage and identifier in the app is Latin-digit by the standing rule, so
+ * every column of numbers in the app is already tabular, and `tnum` here would have been a no-op
+ * that read as a fix.
+ *
+ * The Persian digits are the opposite — proportional, and dramatically so: ۱ advances 238 units
+ * against ۳'s 655, nearly three to one. There is no feature tag that would even them out. That is
+ * the second, quieter reason market figures are Latin: a column of Persian numerals in this face
+ * cannot be made to line up at all. Persian digits stay in prose, where nothing beneath them has
+ * to agree.
  */
 val CoineProFontFamily = FontFamily(
     Font(R.font.iranyekanx_regular, FontWeight.Normal),

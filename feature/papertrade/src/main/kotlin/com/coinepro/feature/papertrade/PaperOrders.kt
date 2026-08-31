@@ -31,6 +31,7 @@ import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextField
+import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.papertrade.PaperOrder
 import com.coinepro.core.papertrade.PaperOrderState
 import com.coinepro.core.papertrade.PaperTradeController
@@ -79,17 +80,21 @@ fun PaperOrders(
         if (working.isNotEmpty()) {
             item { SectionTitle(stringResource(R.string.paper_orders_working)) }
             items(working, key = PaperOrder::id) { order ->
-                WorkingCard(
-                    order = order,
-                    mark = state.marks[order.symbol],
-                    onCancel = { controller.cancel(order.id) },
-                    onAmend = { amending = order.id },
-                )
+                Column(modifier = rowMotion().fillMaxWidth()) {
+                    WorkingCard(
+                        order = order,
+                        mark = state.marks[order.symbol],
+                        onCancel = { controller.cancel(order.id) },
+                        onAmend = { amending = order.id },
+                    )
+                }
             }
         }
         if (settled.isNotEmpty()) {
             item { SectionTitle(stringResource(R.string.paper_orders_settled)) }
-            items(settled, key = PaperOrder::id) { order -> SettledRow(order, zone) }
+            items(settled, key = PaperOrder::id) { order ->
+                Column(modifier = rowMotion().fillMaxWidth()) { SettledRow(order, zone) }
+            }
         }
     }
 

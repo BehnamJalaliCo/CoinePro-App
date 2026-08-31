@@ -1,6 +1,5 @@
 package com.coinepro.feature.academy
 
-import com.coinepro.core.common.toPersianDigits
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,10 +32,12 @@ import com.coinepro.core.academy.Achievements
 import com.coinepro.core.academy.GlossaryTerm
 import com.coinepro.core.academy.Leaderboard
 import com.coinepro.core.common.BidiText
+import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProSheetSearch
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
+import com.coinepro.core.designsystem.rowMotion
 
 /**
  * The badges, earned and unearned together.
@@ -216,27 +217,29 @@ internal fun GlossaryBody(terms: List<GlossaryTerm>) {
             verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
         ) {
             items(shown, key = { it.term }) { term ->
-                Column {
-                    Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
-                        Text(
-                            text = term.term,
-                            style = MaterialTheme.typography.titleSmall,
-                            color = CoineProColors.TextPrimary,
-                        )
-                        term.english?.let {
+                Column(modifier = rowMotion().fillMaxWidth()) {
+                    Column {
+                        Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
                             Text(
-                                text = BidiText.isolateLtr(it),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = CoineProColors.TextMuted,
-                                fontWeight = FontWeight.Normal,
+                                text = term.term,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = CoineProColors.TextPrimary,
                             )
+                            term.english?.let {
+                                Text(
+                                    text = BidiText.isolateLtr(it),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = CoineProColors.TextMuted,
+                                    fontWeight = FontWeight.Normal,
+                                )
+                            }
                         }
+                        Text(
+                            text = term.definition,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = CoineProColors.TextSecondary,
+                        )
                     }
-                    Text(
-                        text = term.definition,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = CoineProColors.TextSecondary,
-                    )
                 }
             }
         }

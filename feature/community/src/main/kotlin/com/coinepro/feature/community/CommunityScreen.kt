@@ -54,6 +54,7 @@ import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.designsystem.rememberCoineProHaptics
+import com.coinepro.core.designsystem.rowMotion
 
 /**
  * The board.
@@ -244,6 +245,7 @@ private fun PostList(
     ) {
         items(posts, key = CommunityPost::id) { post ->
             CommunityPostCard(
+                modifier = rowMotion(),
                 post = post,
                 onOpen = { onOpenThread(post.id) },
                 onLike = { onLike(post.id) },

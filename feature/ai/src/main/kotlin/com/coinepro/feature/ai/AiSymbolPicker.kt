@@ -34,6 +34,7 @@ import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSheetEmpty
 import com.coinepro.core.designsystem.CoineProSheetSearch
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.symbols.SymbolCategory
 
 /**
@@ -109,13 +110,15 @@ internal fun AiSymbolPickerSheet(
             ),
         ) {
             items(results, key = { it.meta.symbol }) { match ->
-                AiSymbolRow(
-                    symbol = match.meta.symbol,
-                    title = match.meta.pretty,
-                    description = match.meta.listDescription,
-                    selected = match.meta.symbol == selected,
-                    onClick = { onSelect(match.meta.symbol) },
-                )
+                Column(modifier = rowMotion().fillMaxWidth()) {
+                    AiSymbolRow(
+                        symbol = match.meta.symbol,
+                        title = match.meta.pretty,
+                        description = match.meta.listDescription,
+                        selected = match.meta.symbol == selected,
+                        onClick = { onSelect(match.meta.symbol) },
+                    )
+                }
             }
         }
     }
