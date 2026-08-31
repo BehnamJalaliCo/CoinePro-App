@@ -40,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.foldDigitsToLatin
+import com.coinepro.core.common.countedLabel
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.database.JournalEntryEntity
@@ -393,7 +394,7 @@ private fun FilterCard(
                         Chip(
                             // The count is a prose count, so Persian digits. The figures in the
                             // card above are market numbers and stay Latin.
-                            label = "$tag · ${count.toPersianDigits()}",
+                            label = countedLabel(tag, count),
                             selected = tag in selected,
                             onClick = { onToggleTag(tag) },
                         )

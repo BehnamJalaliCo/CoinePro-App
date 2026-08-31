@@ -42,6 +42,7 @@ import com.coinepro.core.chart.Drawing
 import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.chart.ObjectGroup
 import com.coinepro.core.chart.ObjectNode
+import com.coinepro.core.common.countedLabel
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProShapes
@@ -161,7 +162,7 @@ private fun ObjectGroupBlock(
     val ids = group.nodes.map(ObjectNode::id)
 
     Text(
-        text = group.group.label + " · " + group.nodes.size.toPersianDigits(),
+        text = countedLabel(group.group.label, group.nodes.size),
         style = MaterialTheme.typography.labelSmall,
         color = CoineProColors.TextMuted,
         fontWeight = FontWeight.Normal,

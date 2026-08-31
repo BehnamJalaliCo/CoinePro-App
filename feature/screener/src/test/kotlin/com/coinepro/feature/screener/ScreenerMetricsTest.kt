@@ -49,6 +49,32 @@ class ScreenerMetricsTest {
     }
 
     @Test
+    fun `the catalogue's own day change fills the column when nothing better has arrived`() {
+        // The default sort is on «تغییر روزانه». With this thrown away, a screener over a catalogue
+        // and no candle source sorted a column of dashes by nothing — on every market the app
+        // already knew the day's move for.
+        val row = ScreenerMetrics.rowOf(
+            bitcoin,
+            quote(100.0).copy(changePercent = 25.0),
+        )
+        assertEquals(25.0, row.changePercent!!, 1e-9)
+        // Derived from the same percentage against the same price, so subtracting it from the price
+        // lands on the reference the percentage was measured from — never half from a bar.
+        assertEquals(20.0, row.changeAbsolute!!, 1e-9)
+    }
+
+    @Test
+    fun `a venue reading wins over the catalogue's`() {
+        val row = ScreenerMetrics.rowOf(
+            bitcoin,
+            quote(110.0).copy(changePercent = 25.0),
+            bars = listOf(bar(90.0, 101.0, 88.0, 100.0), bar(100.0, 112.0, 99.0, 110.0)),
+        )
+        assertEquals(10.0, row.changePercent!!, 1e-9)
+        assertEquals(10.0, row.changeAbsolute!!, 1e-9)
+    }
+
+    @Test
     fun `the day's move is measured against the previous close, not the current bar's open`() {
         val row = ScreenerMetrics.rowOf(
             meta = bitcoin,

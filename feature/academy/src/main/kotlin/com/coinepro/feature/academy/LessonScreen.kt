@@ -1,5 +1,6 @@
 package com.coinepro.feature.academy
 
+import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.toPersianDigits
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -223,7 +224,9 @@ private fun QuestionCard(
 ) {
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = (index + 1).toPersianDigits() + ". " + question.question,
+            // The question is the server's prose, so a ratio in it — «با اهرم ۱:۱۰۰» — needs its
+            // own direction or the paragraph reverses it into the opposite leverage.
+            text = (index + 1).toPersianDigits() + ". " + BidiText.isolateNumericRuns(question.question),
             style = MaterialTheme.typography.bodyMedium,
             color = CoineProColors.TextPrimary,
         )
@@ -256,7 +259,8 @@ private fun QuestionCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = option,
+                    // An answer is «۲۰٬۰۰۰ دلار» — the same rule as the question above it.
+                    text = BidiText.isolateNumericRuns(option),
                     style = MaterialTheme.typography.bodyMedium,
                     color = CoineProColors.TextPrimary,
                     modifier = Modifier.weight(1f),

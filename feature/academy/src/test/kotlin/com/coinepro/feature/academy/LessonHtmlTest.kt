@@ -2,6 +2,7 @@ package com.coinepro.feature.academy
 
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import com.coinepro.core.common.BidiText
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -21,7 +22,36 @@ class LessonHtmlTest {
     @Test
     fun `plain paragraphs keep their text and lose their tags`() {
         val out = htmlToAnnotated("<p>یک لات استاندارد ۱۰۰٬۰۰۰ واحد است.</p>")
-        assertEquals("یک لات استاندارد ۱۰۰٬۰۰۰ واحد است.", out.text)
+        // Stripped, because the converter also inserts the formatting-only isolates the next test
+        // is about; this one is asking whether the words and the tags came out right. The
+        // separator inside the number comes back Latin — that is the other half of the same fix,
+        // and it is pinned in the test below.
+        assertEquals("یک لات استاندارد ۱۰۰,۰۰۰ واحد است.", BidiText.strip(out.text))
+    }
+
+    @Test
+    fun `a ratio keeps its own direction, and the styles around it still land`() {
+        // «با اهرم ۱:۱۰۰» laid out in a right-to-left paragraph reads «۱۰۰:۱» — the opposite
+        // leverage, on a figure a reader sizes a position from.
+        val out = htmlToAnnotated("<p>با <b>اهرم</b> ۱:۱۰۰ کار کن</p>")
+        assertTrue("the ratio is not isolated", BidiText.LRI + "۱:۱۰۰" + BidiText.PDI in out.text)
+        // The marks are inserted in the same pass that carries the spans, so bold still covers the
+        // word it covered and not one character either side of it.
+        val bold = out.spanStyles.first { it.item.fontWeight == FontWeight.Bold }
+        assertEquals("اهرم", out.text.substring(bold.start, bold.end))
+    }
+
+    @Test
+    fun `a grouped number loses the separator that would not lay out`() {
+        // U+066C carries the bidi class of an Arabic number, so it does not merge with the Persian
+        // digits either side of it: «۱۰٬۰۰۰» drew as «۰۰۰٬۱۰» even inside an isolate. The Latin
+        // comma merges, and IRANYekanX draws the two identically.
+        val out = htmlToAnnotated("<p>با <b>۱۰۰</b> دلار ۱۰٬۰۰۰ دلار</p>")
+        assertFalse("the separator that would not lay out is still here", '٬' in out.text)
+        assertTrue(BidiText.LRI + "۱۰,۰۰۰" + BidiText.PDI in out.text)
+        // One character for one character, so the spans still land where they did.
+        val bold = out.spanStyles.first { it.item.fontWeight == FontWeight.Bold }
+        assertEquals("۱۰۰", out.text.substring(bold.start, bold.end))
     }
 
     @Test

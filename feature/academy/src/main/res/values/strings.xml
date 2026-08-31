@@ -6,6 +6,7 @@
     <string name="academy_streak">روز پیاپی</string>
     <string name="academy_streak_today">امروز انجام شد</string>
     <string name="academy_progress">%1$s از %2$s درس</string>
+    <string name="academy_level_progress">%1$s از %2$s</string>
     <string name="academy_badges">%1$s نشان</string>
 
     <string name="academy_locked_tier">نیازمند اشتراک</string>

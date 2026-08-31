@@ -86,8 +86,30 @@ object ScreenerMetrics {
             ?: last?.c
         val market = quote?.instrument?.marketType?.name ?: marketOf(meta)
 
+        // What the catalogue itself said the market has done today.
+        //
+        // Last in the order of authority and first in the order of *arrival*: it is already here,
+        // for every market the catalogue quotes, before a single candle or day table has landed.
+        // It was being thrown away, and the cost was the whole screen — the default sort is on
+        // «تغییر روزانه», so a screener with no bar source sorted a column of dashes by nothing.
+        //
+        // Its absolute is derived from the same percentage against the same price rather than
+        // borrowed from a bar, so the two still agree with each other in the one place a screener
+        // is checked. See the note on [reference] below for why that rule exists.
+        val catalogueChange = quote?.changePercent?.takeIf(Double::isFinite)
+        val catalogueAbsolute = catalogueChange
+            ?.let { percent -> price?.let { it - it / (1.0 + percent / 100.0) } }
+            ?.takeIf(Double::isFinite)
+
         if (last == null && ticker == null) {
-            return ScreenerRow(meta = meta, price = price, market = market, indicators = indicators)
+            return ScreenerRow(
+                meta = meta,
+                price = price,
+                changePercent = catalogueChange,
+                changeAbsolute = catalogueAbsolute,
+                market = market,
+                indicators = indicators,
+            )
         }
 
         // Widened by the live price in both directions, and null where neither source reported a
@@ -112,9 +134,13 @@ object ScreenerMetrics {
         // checked. So where the venue answered the percentage, the absolute is measured from the
         // venue's own reference or left unknown — never borrowed from the bar.
         val reference = if (venueChange != null) ticker?.open24h?.positive() else barReference
-        val changeAbsolute = reference?.let { from -> at?.minus(from) }?.takeIf(Double::isFinite)
-        val changePercent = venueChange
-            ?: reference?.let { from -> changeAbsolute?.div(from)?.times(100.0) }?.takeIf(Double::isFinite)
+        val measuredAbsolute = reference?.let { from -> at?.minus(from) }?.takeIf(Double::isFinite)
+        val measuredPercent = venueChange
+            ?: reference?.let { from -> measuredAbsolute?.div(from)?.times(100.0) }?.takeIf(Double::isFinite)
+        // The catalogue answers only where nothing better did, and when it does it answers both
+        // halves — never one half of its pair beside one half of the bar's.
+        val changePercent = measuredPercent ?: catalogueChange
+        val changeAbsolute = if (measuredPercent != null) measuredAbsolute else catalogueAbsolute
 
         // Zero is what the MT5 side sends when it has no volume to report, and it is not a claim
         // that nothing traded. Treated as unknown, so «حجم» sorts it to the end rather than

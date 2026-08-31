@@ -52,6 +52,7 @@ import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
+import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.designsystem.CoineProTeachingStrip
@@ -265,7 +266,11 @@ private fun PhoneNeeded(onOpenProfile: () -> Unit) {
             color = CoineProColors.TextSecondary,
         )
         Spacer(Modifier.height(CoineProSpacing.One))
-        CoineProPrimaryButton(
+        // Secondary, and the gold belongs to «ادامه بده» directly below it. Both drawn gold, the
+        // two full-width blocks sat one above the other with nothing to choose between them — and
+        // the wrong one won, because this card is a prerequisite for levels the reader has not
+        // reached yet while the button under it is the lesson they came back for.
+        CoineProSecondaryButton(
             text = stringResource(R.string.academy_add_phone),
             onClick = onOpenProfile,
             modifier = Modifier.fillMaxWidth(),
@@ -282,7 +287,15 @@ private fun LevelHeader(level: AcademyLevel) {
             color = CoineProColors.TextPrimary,
         )
         Text(
-            text = (level.completed).toPersianDigits() + " / " + (level.lessons.size).toPersianDigits(),
+            // «۳ از ۵», not «۳ / ۵». A slash is direction-neutral, so a right-to-left paragraph
+            // reorders the two numbers around it and the level that had three of five lessons done
+            // read «۵ / ۳» — five of three. The word cannot be reordered, and it is the same phrase
+            // the progress card at the top of this screen already uses.
+            text = stringResource(
+                R.string.academy_level_progress,
+                level.completed.toPersianDigits(),
+                level.lessons.size.toPersianDigits(),
+            ),
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
             fontWeight = FontWeight.Normal,

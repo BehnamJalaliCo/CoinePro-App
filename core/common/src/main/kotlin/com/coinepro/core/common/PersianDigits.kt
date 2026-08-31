@@ -51,7 +51,13 @@ fun Int.toPersianDigits(): String = toString().map { character ->
  */
 fun Long.toPersianGroupedDigits(): String {
     val digits = toString().removePrefix("-")
-    val grouped = digits.reversed().chunked(3).joinToString("٬").reversed()
+    // A Latin comma rather than U+066C ARABIC THOUSANDS SEPARATOR, which is the typographically
+    // Persian character and lays out wrong. U+066C carries the bidi class of an Arabic number, so
+    // between two runs of Persian digits it does not merge with them — it stays its own run and
+    // ends up on the far side, so «۵۲٬۳۴۰» draws as «۳۴۰٬۵۲». The comma is a common separator, it
+    // merges, and IRANYekanX draws the two glyphs identically. See BidiText.isolateNumericRuns,
+    // which does the same swap to the numbers inside the server's prose.
+    val grouped = digits.reversed().chunked(3).joinToString(",").reversed()
     val signed = if (this < 0) "−" + grouped else grouped
     return signed.map { character ->
         if (character in '0'..'9') '۰' + (character - '0') else character

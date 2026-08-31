@@ -8,6 +8,7 @@ import android.text.style.UnderlineSpan
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import com.coinepro.core.common.BidiText
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -52,19 +53,41 @@ internal fun htmlToAnnotated(html: String): AnnotatedString {
         .distinct()
         .sorted()
 
-    val text = StringBuilder(source.length + bulletStarts.size * BULLET.length)
+    // Where a compound number has to be held together against the paragraph's own direction. See
+    // [BidiText.numericRuns]: «با اهرم ۱:۱۰۰» laid out right-to-left reads «۱۰۰:۱», the opposite
+    // leverage. The marks are inserted in the same pass as the bullets so the offset table below
+    // carries the lesson's bold and italic spans across both.
+    val runs = BidiText.numericRuns(source)
+    val runOpens = runs.map { it.first }.toSet()
+    val runCloses = runs.map { it.last + 1 }.toSet()
+
+    val text = StringBuilder(source.length + bulletStarts.size * BULLET.length + runs.size * 2)
     // Source index → index in the rebuilt string. One entry per source position plus the end, so
     // a span ending at the last character still has somewhere to map to.
     val shifted = IntArray(source.length + 1)
     var cursor = 0
     for (index in 0..source.length) {
+        // Closed before anything else at this position, so the isolate ends on the last digit
+        // rather than swallowing whatever follows it.
+        if (index in runCloses) {
+            text.append(BidiText.PDI)
+            cursor++
+        }
         if (index in bulletStarts) {
             text.append(BULLET)
             cursor += BULLET.length
         }
+        if (index in runOpens) {
+            text.append(BidiText.LRI)
+            cursor++
+        }
         shifted[index] = cursor
         if (index < source.length) {
-            text.append(source[index])
+            // One character for one character, so the table above still lines up. Inside a number
+            // the Arabic separators are swapped for the Latin ones — see BidiText.numericSeparator,
+            // which is the other half of why «۱۰٬۰۰۰» did not come out in order.
+            val inRun = runs.any { index in it }
+            text.append(if (inRun) BidiText.numericSeparator(source[index]) else source[index])
             cursor++
         }
     }

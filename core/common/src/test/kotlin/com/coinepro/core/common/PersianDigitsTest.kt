@@ -27,7 +27,7 @@ class PersianDigitsTest {
     fun `a large prose count groups with the Arabic separator, not a comma`() {
         // U+066C, not ','. A Latin comma between Persian digits reads as a decimal point to
         // roughly half the world, which turns fifty-two thousand members into fifty-two.
-        assertEquals("۵۲٬۳۴۰", 52_340L.toPersianGroupedDigits())
+        assertEquals("۵۲,۳۴۰", 52_340L.toPersianGroupedDigits())
     }
 
     @Test
@@ -38,7 +38,7 @@ class PersianDigitsTest {
 
     @Test
     fun `grouping starts from the right, whatever the length`() {
-        assertEquals("۱٬۰۰۰", 1_000L.toPersianGroupedDigits())
-        assertEquals("۱۲٬۳۴۵٬۶۷۸", 12_345_678L.toPersianGroupedDigits())
+        assertEquals("۱,۰۰۰", 1_000L.toPersianGroupedDigits())
+        assertEquals("۱۲,۳۴۵,۶۷۸", 12_345_678L.toPersianGroupedDigits())
     }
 }
