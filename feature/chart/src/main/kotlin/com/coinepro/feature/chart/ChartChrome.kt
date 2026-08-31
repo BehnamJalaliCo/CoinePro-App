@@ -481,11 +481,11 @@ internal fun ChartReadingsPanel(
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextMuted,
             )
-            Text(
-                text = "·",
-                style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextDisabled,
-            )
+            // No separator dot here, and this is not a style preference. The timeframe that follows
+            // begins with a numeral, the Persian zero **is** a small dot, and «· ۱ ساعت» drew as
+            // «۱۰ ساعت» — the chart's own timeframe, misread by a factor of ten, in the caption
+            // over the readings taken at it. The label is muted and the timeframe is gold; the
+            // colour and the gap already say these are two things.
             // Crossfaded rather than replaced. The three readings below animate to their new
             // values on a timeframe change; a label that snapped while they travelled would be the
             // one part of the panel not taking part in the same movement.

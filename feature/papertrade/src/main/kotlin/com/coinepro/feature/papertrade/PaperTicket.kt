@@ -1,6 +1,7 @@
 package com.coinepro.feature.papertrade
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -35,10 +37,12 @@ import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextField
+import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.papertrade.PaperFills
 import com.coinepro.core.papertrade.PaperOrderRequest
 import com.coinepro.core.papertrade.PaperOrderType
@@ -102,7 +106,10 @@ fun PaperTicket(
                         label = stringResource(R.string.paper_symbol),
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    QuoteLine(quote)
+                    // Only once there is a symbol to have a price for. With the field empty the
+                    // ticket opened on «قیمتی برای این نماد نداریم», which is a report of a failure
+                    // that has not happened: there is no symbol yet, so nothing was looked up.
+                    if (symbol.isNotBlank()) QuoteLine(quote)
                     SideChips(side) { side = it }
                     TypeChips(type) { type = it }
                     CoineProTextField(
@@ -233,17 +240,53 @@ private fun QuoteLine(quote: PaperQuote?) {
     }
 }
 
+/**
+ * Buy or sell, in the colours the rest of the app gives those two words.
+ *
+ * Not the chip row. Drawn gold, «خرید» was a third gold object on a screen that already had the
+ * selected tab and the order type, and it said nothing about *which* side was chosen beyond being
+ * filled — the journal's own buy and sell chips are green and red, and the two screens disagreed
+ * about the same control. Direction is the one thing on this ticket that must be readable without
+ * reading, so it is the one thing that takes a semantic colour.
+ */
 @Composable
 private fun SideChips(selected: PaperSide, onSelect: (PaperSide) -> Unit) {
-    val options = listOf(
-        CoineProChip(PaperSide.BUY.name, stringResource(R.string.paper_buy)),
-        CoineProChip(PaperSide.SELL.name, stringResource(R.string.paper_sell)),
-    )
-    CoineProChipRow(
-        options = options,
-        selectedId = selected.name,
-        onSelect = { id -> id?.let { onSelect(PaperSide.valueOf(it)) } },
-        compact = true,
+    Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+        SideChip(
+            label = stringResource(R.string.paper_buy),
+            tone = CoineProColors.Buy,
+            selected = selected == PaperSide.BUY,
+        ) { onSelect(PaperSide.BUY) }
+        SideChip(
+            label = stringResource(R.string.paper_sell),
+            tone = CoineProColors.Sell,
+            selected = selected == PaperSide.SELL,
+        ) { onSelect(PaperSide.SELL) }
+    }
+}
+
+/** Filled in its own colour when chosen, an outline when not. */
+@Composable
+private fun SideChip(label: String, tone: Color, selected: Boolean, onClick: () -> Unit) {
+    val haptics = rememberCoineProHaptics()
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+        color = if (selected) CoineProColors.OnAccent else CoineProColors.TextSecondary,
+        maxLines = 1,
+        modifier = Modifier
+            .clickable {
+                haptics.select()
+                onClick()
+            }
+            .background(if (selected) tone else Color.Transparent, CoineProPillShape)
+            .border(
+                1.dp,
+                if (selected) Color.Transparent else CoineProColors.Border,
+                CoineProPillShape,
+            )
+            .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.Half),
     )
 }
 
