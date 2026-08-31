@@ -80,8 +80,16 @@ data class SymbolMeta(
      * A pair is two things and the row has to say both, so both are said in the short names
      * [SymbolNames.shortDisplayOf] keeps: «دلار/ین» is seven characters and fits under any ticker.
      *
-     * Everything else keeps its description, which is already short: a coin's is its name and its
-     * ticker, an index's is its name.
+     * ### A coin is a pair too
+     *
+     * The classifier's description for a coin is «بیت‌کوین (BTC)», which is right for search — a
+     * reader who types either half must find it — and wrong for a row, because the ticker `BTC/USDT`
+     * is already on the line above it. The parenthesis said the same thing twice and said nothing
+     * about the quote leg, so `BTC/USDT` and `BTC/USDC` came out identical underneath two different
+     * tickers. Drawn as «بیت‌کوین/تتر» it is the same shape as the forex rows above it and the two
+     * legs are the two legs.
+     *
+     * An index keeps its description, which is already its name.
      *
      * Search still matches on [description] — a reader typing «فرانک سوئیس» must still find USDCHF,
      * and would not if the long name had been dropped from the thing being searched rather than
@@ -94,6 +102,16 @@ data class SymbolMeta(
             when {
                 first != null && second != null && first != second -> "$first/$second"
                 first != null -> first
+                else -> description
+            }
+        }
+        SymbolCategory.CRYPTO -> {
+            val first = base?.let { SymbolNames.CRYPTO[it] }
+            val second = quote?.let { SymbolNames.CRYPTO[it] ?: SymbolNames.CURRENCY_SHORT[it] }
+            when {
+                first != null && second != null && first != second -> "$first/$second"
+                // No Persian name for the coin — a listing this app has never heard of — so the
+                // classifier's own answer stands rather than half a pair.
                 else -> description
             }
         }

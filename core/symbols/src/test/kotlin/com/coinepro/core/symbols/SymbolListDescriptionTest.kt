@@ -46,6 +46,22 @@ class SymbolListDescriptionTest {
     }
 
     @Test
+    fun `a coin names both of its legs too`() {
+        // The parenthesised ticker repeated the line above it and said nothing about the quote, so
+        // BTC/USDT and BTC/USDC came out identical under two different tickers.
+        assertEquals("بیت‌کوین/تتر", forex("BTCUSDT"))
+        assertEquals("اتریوم/تتر", forex("ETHUSDT"))
+        assertTrue(forex("BTCUSDT") != forex("BTCUSDC"))
+    }
+
+    @Test
+    fun `a coin this app has no name for keeps the classifier's answer`() {
+        // Half a pair would be worse than the ticker: «/تتر» names nothing.
+        val unknown = SymbolClassifier.classify("ZZZZUSDT")
+        assertEquals(unknown.description, unknown.listDescription)
+    }
+
+    @Test
     fun `the long names stay searchable`() {
         // A reader typing «فرانک سوئیس» must still find USDCHF. The long name was dropped from what
         // is *drawn*, not from what is matched.

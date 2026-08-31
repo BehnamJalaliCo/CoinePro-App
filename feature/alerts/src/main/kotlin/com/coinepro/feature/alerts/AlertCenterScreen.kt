@@ -148,6 +148,9 @@ fun AlertCenterScreen(controller: AlertsController, initialSymbol: String? = nul
                         hint = stringResource(R.string.alerts_centre_empty_hint),
                         action = stringResource(R.string.alerts_centre_empty_action),
                         onAction = { controller.openEditor() },
+                        // An invitation, not a retry: this is the only thing on the page worth
+                        // doing and the reason the reader opened it.
+                        actionIsPrimary = true,
                         modifier = Modifier.padding(top = CoineProSpacing.Four),
                     )
                 }

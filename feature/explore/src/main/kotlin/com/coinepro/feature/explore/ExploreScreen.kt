@@ -52,6 +52,7 @@ import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProListHeader
 import com.coinepro.core.designsystem.CoineProPercentPill
+import com.coinepro.core.designsystem.CoineProProse
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -551,13 +552,17 @@ private fun StoryRow(story: MarketNewsItem, onClick: (() -> Unit)?) {
                 modifier = Modifier.fillMaxWidth(),
             )
             Text(
-                text = story.title,
+                // A wire headline is a whole sentence, not a run, so it sets its own paragraph
+                // direction — an English one laid out right-to-left comes back with its full stop
+                // at the start of the line. The news list answers this the same way; the rule is
+                // shared so the two screens cannot drift apart on the same story.
+                text = CoineProProse.paragraph(story.title),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 color = CoineProColors.TextPrimary,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Right,
+                textAlign = CoineProProse.alignment(story.title),
                 modifier = Modifier.fillMaxWidth(),
             )
         }

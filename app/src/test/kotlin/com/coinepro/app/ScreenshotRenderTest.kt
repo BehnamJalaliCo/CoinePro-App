@@ -180,6 +180,7 @@ import com.coinepro.core.orderbook.DepthLevel
 import com.coinepro.core.orderbook.OrderBook
 import com.coinepro.core.orderbook.OrderBookState
 import com.coinepro.feature.dom.DepthOfMarketBody
+import com.coinepro.feature.heatmap.HeatmapController
 import com.coinepro.feature.heatmap.HeatmapScreen
 import com.coinepro.feature.home.HomeScreen
 import com.coinepro.feature.home.HomeSubscription
@@ -212,7 +213,10 @@ import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -1459,7 +1463,13 @@ class ScreenshotRenderTest {
     fun marketSearchQuery() {
         val controller = MarketSearchController(ScreenshotFixtures.searchCatalog(), scope)
         controller.start()
+        val browsed = controller.state.value.results.size
         controller.setQuery("eur")
+        // The controller debounces by 80 ms. A capture taken on the same tick rendered the whole
+        // browse list under a box with «eur» in it — a picture of the screen not searching, which
+        // is exactly what this case exists to rule out. Wait for the state a reader would be
+        // looking at instead of for a fixed number of milliseconds.
+        runBlocking { withTimeout(2_000) { controller.state.first { it.results.size != browsed } } }
         capture("33-search-query-fa") { SearchScreen(controller = controller) }
     }
 
@@ -1476,7 +1486,14 @@ class ScreenshotRenderTest {
     fun marketHeatmap() {
         val controller = MarketSearchController(ScreenshotFixtures.searchCatalog(), scope)
         controller.start()
-        capture("34-heatmap-fa") { HeatmapScreen(controller = controller, onOpenSymbol = {}) }
+        val heatmap = HeatmapController(controller, scope, ScreenshotFixtures.heatmapBars(), null)
+        heatmap.start()
+        // The bars resolve one symbol at a time, and a tile exists only once its market has a
+        // price. Captured before they land the map is eleven tiles — the handful the fixture
+        // catalogue quotes directly — which is a real state and not the one worth reviewing.
+        val covered = controller.state.value.results.size
+        runBlocking { withTimeout(30_000) { heatmap.state.first { it.assets.size >= covered } } }
+        capture("34-heatmap-fa") { HeatmapScreen(controller = heatmap, onOpenSymbol = {}) }
     }
 
     /**

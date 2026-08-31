@@ -26,12 +26,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.community.CommunityController
 import com.coinepro.core.community.CommunityError
 import com.coinepro.core.community.CommunityReply
+import com.coinepro.core.model.AvatarBase
+import com.coinepro.core.model.AvatarRing
+import com.coinepro.core.model.AvatarSpec
+import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProEmptyState
@@ -39,7 +44,6 @@ import com.coinepro.core.designsystem.CoineProErrorState
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProListHeader
 import com.coinepro.core.designsystem.CoineProPrimaryButton
-import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.designsystem.CoineProTint
@@ -207,9 +211,12 @@ fun CommunityThreadScreen(
 /**
  * One reply.
  *
- * The crowned one is a tinted card rather than a card with a badge on it, which is the system's own
- * way of saying "this one is different" without adding a colour to the screen — see
- * [com.coinepro.core.designsystem.CoineProTint].
+ * The crowned one is a tinted card — the system's own way of saying "this one is different" without
+ * adding a colour to the screen, see [com.coinepro.core.designsystem.CoineProTint] — *and* it says
+ * so in a word. The tint alone was not enough: on a phone, one step of surface between two cards is
+ * a difference a reader notices only when the two are adjacent, and the only thing naming the state
+ * was a button offering to undo it. A reader who had not marked it themselves had to read
+ * «برداشتن نشان بهترین پاسخ» backwards to learn what the card was.
  */
 @Composable
 private fun ReplyCard(
@@ -228,6 +235,15 @@ private fun ReplyCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
             ) {
+                // The same mark the post above carries, one size down. Without it the replies read
+                // as loose paragraphs under a card rather than as people answering somebody: the
+                // post had a face and the answers did not.
+                CoineProAvatar(
+                    spec = AvatarSpec(base = AvatarBase.Initial, ring = AvatarRing.NONE),
+                    initial = reply.author.trim().take(1),
+                    size = 24.dp,
+                    contentDescription = reply.author,
+                )
                 Text(
                     text = reply.author,
                     style = MaterialTheme.typography.labelLarge,
@@ -244,6 +260,7 @@ private fun ReplyCard(
                         maxLines = 1,
                     )
                 }
+                if (reply.best) TopicChip(label = stringResource(R.string.community_best_badge))
             }
 
             // Named rather than indented. See this file's header for why, on a 360dp right-to-left
@@ -271,13 +288,27 @@ private fun ReplyCard(
             // `community_best_reply` answers 403 to anybody else. Hiding it from everyone would take
             // the feature away from the one person it is for, and this app cannot tell which person
             // that is; a refusal is reported rather than pre-empted.
-            CoineProSecondaryButton(
-                text = stringResource(
-                    if (reply.best) R.string.community_best_clear else R.string.community_best_mark,
-                ),
-                onClick = if (reply.best) onUncrown else onCrown,
+            //
+            // A pill rather than a full-width button. Offering it on *every* reply is what makes
+            // the weight wrong: a thread of four answers drew four full-width blocks, and a page of
+            // stacked buttons reads as a form to fill in rather than as a conversation to read. The
+            // words are shorter for the same reason — the badge above now says which reply is the
+            // best one, so the control only has to say what pressing it does.
+            Row(
+                // Start, so it hangs from the same edge as the words above it. `End` put it against
+                // the far margin, where a lone pill reads as a floating control rather than as the
+                // last line of this reply.
                 modifier = Modifier.fillMaxWidth(),
-            )
+                horizontalArrangement = Arrangement.Start,
+            ) {
+                CountPill(
+                    label = stringResource(
+                        if (reply.best) R.string.community_best_clear else R.string.community_best_mark,
+                    ),
+                    active = reply.best,
+                    onClick = if (reply.best) onUncrown else onCrown,
+                )
+            }
         }
     }
 }

@@ -166,6 +166,8 @@ fun CommunityScreen(
                     hint = stringResource(R.string.community_signed_out_hint),
                     action = onSignIn?.let { stringResource(R.string.community_sign_in) },
                     onAction = onSignIn,
+                    // An invitation, not a retry: the board is behind this one press.
+                    actionIsPrimary = true,
                     modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
                 )
                 CommunityMode.LOCKED -> CoineProEmptyState(
@@ -174,6 +176,7 @@ fun CommunityScreen(
                     hint = stringResource(R.string.community_locked_hint),
                     action = onOpenMembership?.let { stringResource(R.string.community_membership) },
                     onAction = onOpenMembership,
+                    actionIsPrimary = true,
                     modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
                 )
 
@@ -203,6 +206,8 @@ fun CommunityScreen(
                     hint = stringResource(R.string.community_empty_hint),
                     action = stringResource(R.string.community_compose),
                     onAction = { composing = true },
+                    // "Be the first" is the whole page; grey would bury it.
+                    actionIsPrimary = true,
                     modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
                 )
 

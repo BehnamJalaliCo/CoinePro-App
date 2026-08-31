@@ -153,13 +153,25 @@ internal fun CommunityPostCard(
                 horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                // A zero is not a count, it is an absence, and «۰ پسند» reads as a tally of
+                // nothing where the pill is really an invitation to be the first. Both pills stay
+                // — they are the post's two actions and a card missing one would be a card with
+                // nothing to press — but at zero they say only what pressing them does.
                 CountPill(
-                    label = stringResource(R.string.community_likes, post.likes.toPersianDigits()),
+                    label = if (post.likes > 0) {
+                        stringResource(R.string.community_likes, post.likes.toPersianDigits())
+                    } else {
+                        stringResource(R.string.community_like)
+                    },
                     active = post.liked,
                     onClick = onLike,
                 )
                 CountPill(
-                    label = stringResource(R.string.community_replies, post.replyCount.toPersianDigits()),
+                    label = if (post.replyCount > 0) {
+                        stringResource(R.string.community_replies, post.replyCount.toPersianDigits())
+                    } else {
+                        stringResource(R.string.community_reply)
+                    },
                     active = false,
                     onClick = onOpen,
                 )
@@ -179,7 +191,7 @@ internal fun CommunityPostCard(
  * word on it instead of a second coloured object competing with the composer's gold button.
  */
 @Composable
-private fun TopicChip(label: String) {
+internal fun TopicChip(label: String) {
     Text(
         text = label,
         style = MaterialTheme.typography.labelSmall,
@@ -203,7 +215,7 @@ private fun TopicChip(label: String) {
  * the reader cannot have.
  */
 @Composable
-private fun CountPill(label: String, active: Boolean, onClick: (() -> Unit)?) {
+internal fun CountPill(label: String, active: Boolean, onClick: (() -> Unit)?) {
     val haptics = rememberCoineProHaptics()
     Text(
         text = label,

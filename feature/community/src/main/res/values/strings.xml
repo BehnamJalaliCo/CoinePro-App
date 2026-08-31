@@ -22,6 +22,8 @@
 
     <!-- Prose counts, so Persian digits — unlike a price, which stays Latin so it can be checked
          against another terminal. Nothing on this screen is checkable against another terminal. -->
+    <string name="community_like">پسند</string>
+    <string name="community_reply">پاسخ</string>
     <string name="community_likes">%1$s پسند</string>
     <string name="community_replies">%1$s پاسخ</string>
     <string name="community_replies_heading">%1$s پاسخ</string>
@@ -55,6 +57,7 @@
     <string name="community_thread_back">بازگشت</string>
     <string name="community_reply_label">پاسخ شما</string>
     <string name="community_reply_to">در پاسخ به %1$s</string>
-    <string name="community_best_mark">انتخاب به‌عنوان بهترین پاسخ</string>
-    <string name="community_best_clear">برداشتن نشان بهترین پاسخ</string>
+    <string name="community_best_badge">بهترین پاسخ</string>
+    <string name="community_best_mark">انتخاب بهترین</string>
+    <string name="community_best_clear">برداشتن نشان</string>
 </resources>

@@ -71,6 +71,39 @@ class HeatmapControllerTest {
     }
 
     @Test
+    fun `a market the catalogue quotes no price for still gets its candles asked for`() = runTest {
+        // The bug this pins: resolution used to be asked for over the *tiles already on the map*,
+        // and a market becomes a tile only once something has given it a price. A market with no
+        // catalogue quote therefore had no tile, so its candles were never requested, so it never
+        // got a price — a circle with no way in. On a catalogue where most markets carry no quote,
+        // which is exactly CoinePro-FX, the map drew the handful that did and called itself
+        // complete.
+        val unquoted = object : MarketCatalogGateway {
+            override suspend fun load() = MarketCatalog(
+                markets = symbols.map(SymbolClassifier::classify),
+                quotes = emptyMap(),
+                serverTimeEpochMillis = null,
+            )
+        }
+        val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
+        val search = MarketSearchController(unquoted, scope)
+        val asked = mutableListOf<String>()
+        val controller = HeatmapController(
+            search,
+            scope,
+            bars = HeatmapBarSource { symbol ->
+                asked += symbol
+                bars()
+            },
+        )
+        controller.start()
+        advanceUntilIdle()
+
+        assertEquals(symbols.toSet(), asked.toSet())
+        assertEquals(symbols.size, controller.state.value.assets.size)
+    }
+
+    @Test
     fun `bars turn into figures, and every market is asked for exactly once`() = runTest {
         val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
         val asked = mutableListOf<String>()

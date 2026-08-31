@@ -4,6 +4,8 @@ import com.coinepro.core.common.UiMessage
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketSearchRow
 import com.coinepro.core.marketdata.OhlcBar
+import com.coinepro.core.symbols.SymbolArtwork
+import com.coinepro.core.symbols.SymbolMeta
 import com.coinepro.core.symbols.SymbolRanking
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -200,10 +202,20 @@ class HeatmapController(
     private fun resolve() {
         val source = bars ?: return
         if (resolveJob?.isActive == true) return
-        val pending = _state.value.assets
-            .sortedBy { SymbolRanking.rank(it.meta) }
+        // Over the **catalogue**, not over the tiles already on the map. Asking the tiles was a
+        // circle with no way in: a market becomes a tile only once something has given it a price,
+        // the candles are what gives it one, and asking only the tiles meant the candles were never
+        // asked for. On a fixture catalogue of sixty markets where twelve carry a quote, the map
+        // drew twelve and reported «۱۲ از ۱۲» — the other forty-eight were not hatched, not
+        // pending, not counted; they were simply gone, and the map read as complete. That is the
+        // shape CoinePro-FX has in production, where the catalogue quotes very little and the
+        // candle route is the only source of a price at all.
+        val pending = search.state.value.results
+            .map(MarketSearchRow::meta)
+            .filter(SymbolArtwork::covers)
+            .sortedBy(SymbolRanking::rank)
             .take(RESOLUTION_BUDGET)
-            .map(HeatmapAsset::symbol)
+            .map(SymbolMeta::symbol)
             .filter { it !in asked }
         if (pending.isEmpty()) return
         asked.addAll(pending)

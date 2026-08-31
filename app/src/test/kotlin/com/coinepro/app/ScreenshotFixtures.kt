@@ -70,6 +70,7 @@ import com.coinepro.core.guest.TrackRecordEntry
 import com.coinepro.core.marketdata.MarketCatalog
 import com.coinepro.core.marketdata.MarketCatalogGateway
 import com.coinepro.core.marketdata.MarketConnectionState
+import com.coinepro.core.marketdata.OhlcBar
 import com.coinepro.core.marketdata.MarketDataOrigin
 import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.marketintel.EconomicEvent
@@ -105,6 +106,7 @@ import com.coinepro.core.signals.TradingSignal
 import com.coinepro.core.symbols.SymbolArtwork
 import com.coinepro.core.symbols.SymbolCategory
 import com.coinepro.core.symbols.SymbolClassifier
+import com.coinepro.feature.heatmap.HeatmapBarSource
 import com.coinepro.feature.home.HomeBriefing
 import com.coinepro.feature.home.HomeHolding
 import com.coinepro.feature.home.HomePortfolio
@@ -1482,12 +1484,7 @@ object ScreenshotFixtures {
             "US30", "US100", "US500", "GER40", "UK100", "JPN225",
             "USOIL", "UKOIL", "NATGAS",
         )
-        val prices = mapOf(
-            "BTCUSDT" to 91_248.30, "ETHUSDT" to 3_147.62, "SOLUSDT" to 172.45,
-            "XAUUSD" to 2_643.18, "XAGUSD" to 30.94, "EURUSD" to 1.0842,
-            "GBPUSD" to 1.2731, "USDJPY" to 156.28, "US500" to 5_918.40,
-            "PEPEUSDT" to 0.000018, "DOGEUSDT" to 0.3914, "USOIL" to 71.62,
-        )
+        val prices = SEARCH_PRICES
         val changes = mapOf(
             "BTCUSDT" to 1.84, "ETHUSDT" to -0.64, "SOLUSDT" to 4.10,
             "XAUUSD" to 0.42, "EURUSD" to -0.18, "PEPEUSDT" to 7.31,
@@ -1526,6 +1523,69 @@ object ScreenshotFixtures {
             }
         }
     }
+
+    /**
+     * Daily bars for the heat map, so the review sees a heat map rather than a wall of hatching.
+     *
+     * The map takes its colour from candles, and the render case passed none — so every tile came
+     * back hatched with «کندلی در دسترس این صفحه نیست» above it. That is an honest state and the
+     * app really does show it on a backend with no candle route, but it is the *one* state in which
+     * the two things this render exists to check — whether the ramp reads as a scale and whether a
+     * tile at phone width still carries its ticker — are both invisible.
+     *
+     * A deterministic walk per symbol: the drift comes from the symbol's own hash, so the same
+     * ticker gets the same return on every run and the map spreads across the ramp instead of
+     * landing in one colour.
+     *
+     * Every symbol answers. An earlier version had two return nothing, to keep the legend's
+     * «بدون داده» hatch in the picture — and it does not work, because a market with no bars *and*
+     * no catalogue quote has no price at all and so has no tile to hatch. It is simply absent from
+     * the map, which is the app's real behaviour and is why the hatch belongs to a different case.
+     */
+    fun heatmapBars(): HeatmapBarSource = HeatmapBarSource { symbol ->
+        // The walk **ends** at the catalogue's own price, and that is the whole point rather than a
+        // detail. The map takes its price from the quote and its reference close from these bars,
+        // so bars on their own scale made BTC read «+75384%»: a live 91,248 against a synthetic
+        // 100. On a real backend the two come from the same venue and cannot disagree; a fixture
+        // that lets them disagree is not the app.
+        val price = SEARCH_PRICES[symbol] ?: syntheticPrice(symbol)
+        // −4%…+4% over the window, stepped by the symbol's own hash so the same ticker gets the
+        // same return on every run and the map spreads across the ramp instead of clustering.
+        val step = 1.0 + ((symbol.hashCode().mod(81)) - 40) / 1_000.0 / 8.0
+        val opens = DoubleArray(HEATMAP_BARS)
+        opens[HEATMAP_BARS - 1] = price / step
+        for (index in HEATMAP_BARS - 2 downTo 0) opens[index] = opens[index + 1] / step
+        (0 until HEATMAP_BARS).map { index ->
+            val open = opens[index]
+            val close = open * step
+            OhlcBar(
+                t = 1_787_670_872L - (HEATMAP_BARS - 1L - index) * 86_400L,
+                o = open,
+                h = maxOf(open, close) * 1.004,
+                l = minOf(open, close) * 0.996,
+                c = close,
+                v = 1_000.0,
+            )
+        }
+    }
+
+    /** A stable level for a market the catalogue quotes no price for, so the bars are plausible. */
+    private fun syntheticPrice(symbol: String): Double = 1.0 + symbol.hashCode().mod(400) / 4.0
+
+    private const val HEATMAP_BARS = 40
+
+    /**
+     * What the fixture catalogue quotes, and what [heatmapBars] walks towards.
+     *
+     * One map rather than two, because the heat map reads a price from one source and a reference
+     * close from the other and computes a percentage between them.
+     */
+    private val SEARCH_PRICES = mapOf(
+        "BTCUSDT" to 91_248.30, "ETHUSDT" to 3_147.62, "SOLUSDT" to 172.45,
+        "XAUUSD" to 2_643.18, "XAGUSD" to 30.94, "EURUSD" to 1.0842,
+        "GBPUSD" to 1.2731, "USDJPY" to 156.28, "US500" to 5_918.40,
+        "PEPEUSDT" to 0.000018, "DOGEUSDT" to 0.3914, "USOIL" to 71.62,
+    )
 
     /**
      * Every `tv_*` drawable, found by name rather than listed.

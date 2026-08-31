@@ -74,6 +74,18 @@ fun CoineProEmptyState(
     /** At most one. Null where there is nothing the reader can do. */
     action: String? = null,
     onAction: (() -> Unit)? = null,
+    /**
+     * Whether that action is the gold one.
+     *
+     * Off by default, because most empty states end in «تلاش دوباره» and a retry is a quiet offer:
+     * gold would make the loudest thing on the page a button that may well fail again.
+     *
+     * On where the empty state is an **invitation** rather than a report — the alerts screen with
+     * no alerts, whose action is "make your first one". There the button is the only thing on the
+     * page worth doing and the whole reason the reader is standing there, and drawing it in the
+     * same grey as a retry leaves a screen with nothing on it at all.
+     */
+    actionIsPrimary: Boolean = false,
 ) {
     StateBlock(
         modifier = modifier,
@@ -83,6 +95,7 @@ fun CoineProEmptyState(
         hint = hint,
         action = action,
         onAction = onAction,
+        actionIsPrimary = actionIsPrimary,
     )
 }
 

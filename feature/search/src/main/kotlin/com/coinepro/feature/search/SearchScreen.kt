@@ -384,10 +384,15 @@ private fun MarketRow(
                 .takeIf { row.field != MatchField.DESCRIPTION }
                 ?.intoPretty(row.meta.base?.length),
         ),
-        subtitle = highlighted(
-            text = row.meta.description,
-            range = row.highlight.takeIf { row.field == MatchField.DESCRIPTION },
-        ),
+        // The long description only when the reader's own words are *in* it — the highlight range
+        // is an offset into that exact string, so the short form would put the mark on the wrong
+        // letters. Everywhere else the row shows what every other list shows: «بیت‌کوین/تتر» rather
+        // than «بیت‌کوین (BTC)», whose parenthesis repeats the ticker on the line above it.
+        subtitle = if (row.field == MatchField.DESCRIPTION) {
+            highlighted(text = row.meta.description, range = row.highlight)
+        } else {
+            highlighted(text = row.meta.listDescription, range = null)
+        },
         price = quote?.let { MarketNumberFormatter.price(it.price, it.decimals()) },
         changePercent = quote?.changePercent?.takeIf { status.open },
         // Closed, and otherwise nothing. A closed market explains a missing number and is worth a

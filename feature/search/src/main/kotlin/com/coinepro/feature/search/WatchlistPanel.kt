@@ -218,6 +218,9 @@ fun WatchlistPanel(
                     hint = stringResource(R.string.watchlist_empty_hint),
                     action = stringResource(R.string.watchlist_transfer),
                     onAction = { sheet = WatchlistSheet.Transfer },
+                    // An invitation, not a retry. An empty watchlist has nothing else on it, and
+                    // the one way to fill it should not be the quietest thing on the page.
+                    actionIsPrimary = true,
                 )
             }
         } else {
