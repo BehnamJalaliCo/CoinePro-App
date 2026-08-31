@@ -52,8 +52,8 @@
     <string name="teaching_home_lead">خلاصهٔ حساب و بازار در یک صفحه: موجودی، چند نماد و سیگنال‌های باز.</string>
     <string name="teaching_home_pitfall">هرچه اینجاست خلاصه است؛ رقم کامل هر بخش داخل صفحهٔ خودش است.</string>
 
-    <string name="teaching_markets_lead">قیمت لحظه‌ای و تغییر 24 ساعتهٔ همهٔ نمادها، در یک فهرست.</string>
-    <string name="teaching_markets_pitfall">درصد هر ردیف تغییر 24 ساعت گذشته است، نه تغییر از اول امروز.</string>
+    <string name="teaching_markets_lead">قیمت لحظه‌ای و تغییر ۲۴ ساعتهٔ همهٔ نمادها، در یک فهرست.</string>
+    <string name="teaching_markets_pitfall">درصد هر ردیف تغییر ۲۴ ساعت گذشته است، نه تغییر از اول امروز.</string>
 
     <string name="teaching_chart_lead">قیمت یک نماد در طول زمان، با تایم‌فریم، اندیکاتور و ابزار ترسیم.</string>
     <string name="teaching_chart_pitfall">آخرین کندل هنوز بسته نشده و تا پایان تایم‌فریم عوض می‌شود.</string>

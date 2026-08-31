@@ -295,7 +295,10 @@ private fun FeedCard(feed: FeedStatus, actions: HubActions) {
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         CardHead(CoineProIcons.TrendUp, R.string.admin_feed_title)
         Field(R.string.admin_feed_state, feed.label, feed.tone.colour())
-        Field(R.string.admin_feed_symbols, figure(feed.subscribedSymbols))
+        // A count of symbols, not a market figure — the counter tiles above this card already
+        // print «۱» and «۰», and one card down the page saying «8» made the same screen read in
+        // two number systems.
+        Field(R.string.admin_feed_symbols, count(feed.subscribedSymbols))
         Field(R.string.admin_feed_cache, feed.cacheAgeLabel ?: ABSENT)
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.One),
@@ -378,7 +381,7 @@ private fun CapabilitiesCard(
         Capability(R.string.admin_capability_vision, capabilities.chartVision)
         Field(
             R.string.admin_capability_symbols,
-            capabilities.symbolCount?.let { figure(it) } ?: ABSENT,
+            capabilities.symbolCount?.let { count(it) } ?: ABSENT,
         )
         CoineProSecondaryButton(
             text = stringResource(R.string.admin_capabilities_refresh),
