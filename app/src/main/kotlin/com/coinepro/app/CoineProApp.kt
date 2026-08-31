@@ -51,6 +51,7 @@ import com.coinepro.app.notifications.channelDescriptionRes
 import com.coinepro.app.notifications.channelNameRes
 import com.coinepro.app.sync.BackgroundSyncScheduler
 import com.coinepro.core.academy.AcademyController
+import com.coinepro.core.community.CommunityController
 import com.coinepro.core.account.AccountController
 import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aisignal.AiSignalController
@@ -198,6 +199,9 @@ import com.coinepro.feature.alerts.AlertsController
 import com.coinepro.feature.auth.AuthScreen
 import com.coinepro.feature.auth.EmailAuthScreen
 import com.coinepro.feature.calendar.EconomicCalendarScreen
+import com.coinepro.feature.community.CommunityScreen
+import com.coinepro.feature.community.CommunityThreadScreen
+import com.coinepro.feature.explore.ExploreScreen
 import com.coinepro.feature.chart.ChartController
 import com.coinepro.feature.chart.ChartPanesScreen
 import com.coinepro.feature.chart.ChartScreen
@@ -291,6 +295,25 @@ private const val TERMINAL_ROUTE = "terminal"
 private const val LESSON_PATTERN = "academy/lesson/{slug}"
 private const val NEWS_ROUTE = "market/news"
 private const val CALENDAR_ROUTE = "market/calendar"
+
+/**
+ * The full market list, which used to be a tab and is now one tap inside Explore.
+ *
+ * A constant of its own because `AppDestination.MARKETS` is gone: the tab position went to Explore,
+ * and the route a saved back stack may still hold has to keep resolving to the same screen.
+ */
+private const val MARKETS_ROUTE = "markets"
+
+/**
+ * The board, and one thread on it.
+ *
+ * CoinePro-FX only — not locked there, **absent**: TradeYar has no `/academy` surface and therefore
+ * no community routes at all, so the destination is not registered and the menu row is dropped.
+ */
+private const val COMMUNITY_ROUTE = "community"
+private const val COMMUNITY_THREAD_PATTERN = "community/{pid}"
+
+private fun communityThreadRoute(postId: Long) = "community/$postId"
 private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
 private const val ADMIN_ROUTE = "diagnostics"
 private const val PROFILE_ROUTE = "profile"
@@ -440,6 +463,9 @@ private fun surfaceRoute(id: String, platform: MarketPlatform, watchlist: List<S
         "watchlist" -> WATCHLIST_ROUTE
         "news" -> NEWS_ROUTE
         "calendar" -> CALENDAR_ROUTE
+        "explore" -> AppDestination.EXPLORE.route
+        "markets" -> MARKETS_ROUTE
+        "community" -> COMMUNITY_ROUTE
         "portfolio" -> PORTFOLIO_ROUTE
         "signals" -> AppDestination.SIGNALS.route
         "ai" -> AppDestination.AI.route
@@ -547,7 +573,7 @@ private fun accentFor(route: String?): PageAccent = when (route) {
     HEATMAP_ROUTE,
     SCREENER_ROUTE,
     WATCHLIST_ROUTE,
-    AppDestination.MARKETS.route,
+    AppDestination.EXPLORE.route,
     AppDestination.CHART.route,
     AppDestination.AI.route,
     -> PageAccent.ANALYSIS
@@ -640,6 +666,14 @@ fun CoineProApp(
     orderBookGateways: Map<MarketPlatform, OrderBookGateway>,
     portfolioControllers: Map<MarketPlatform, PortfolioController>,
     academyController: AcademyController,
+    /**
+     * The community, or null where this platform has none.
+     *
+     * Null on TradeYar and on the guest shell, and null means the destination is never registered
+     * — the same shape `announcementsController` uses, and the reason `community` also goes into
+     * the menu's `absent` set rather than being drawn and locked.
+     */
+    communityController: CommunityController?,
     terminalController: TerminalController,
     accountControllers: Map<MarketPlatform, AccountController>,
     adminController: AdminController,
@@ -1070,6 +1104,8 @@ fun CoineProApp(
                 chartWorkspaceStore = chartWorkspaceStore,
                 portfolioController = portfolioControllers.getValue(activePlatform),
                 academyController = academyController,
+                communityController = communityController
+                    .takeIf { activePlatform == MarketPlatform.COINEPRO_FX },
                 terminalController = terminalController,
                 hasAcademy = activePlatform == MarketPlatform.COINEPRO_FX,
                 adminController = adminController,
@@ -1264,6 +1300,8 @@ fun CoineProApp(
                         chartWorkspaceStore = chartWorkspaceStore,
                         portfolioController = portfolioControllers.getValue(activePlatform),
                         academyController = academyController,
+                        // And no community: it sits behind the same academy scope.
+                        communityController = null,
                         terminalController = terminalController,
                         // No academy for a guest: its routes are behind the academy scope, which is
                         // minted from a mobile token nobody here holds.
@@ -1465,6 +1503,14 @@ private fun MainShell(
     chartWorkspaceStore: ChartWorkspaceStore,
     portfolioController: PortfolioController,
     academyController: AcademyController,
+    /**
+     * The community, or null where this platform has none.
+     *
+     * Null on TradeYar and on the guest shell, and null means the destination is never registered
+     * — the same shape `announcementsController` uses, and the reason `community` also goes into
+     * the menu's `absent` set rather than being drawn and locked.
+     */
+    communityController: CommunityController?,
     terminalController: TerminalController,
     /**
      * Whether this platform has an academy at all.
@@ -1701,6 +1747,9 @@ private fun MainShell(
         // and stripping the bar made Tools in particular a dead end: it fans out to eight
         // destinations, so a reader who wanted Markets from there had to go back first. That is
         // most of why the toolkit felt buried.
+        // A thread is a room you are inside and leave by going back. The board is not — it is a
+        // place a reader goes, so it keeps the bar, like News and the calendar above.
+        COMMUNITY_THREAD_PATTERN,
         LAUNCH_READINESS_ROUTE,
         ADMIN_ROUTE,
     )
@@ -1711,6 +1760,9 @@ private fun MainShell(
 
     val subTitleRes = when (currentRoute) {
         ADMIN_ROUTE -> R.string.screen_diagnostics
+        MARKETS_ROUTE -> R.string.nav_markets_title
+        COMMUNITY_ROUTE -> R.string.screen_community
+        COMMUNITY_THREAD_PATTERN -> R.string.screen_community_thread
         SIGNAL_DETAIL_PATTERN -> R.string.screen_signal_detail
         EXECUTION_PATTERN -> R.string.screen_execution
         // No longer switched on the platform. Connections is genuinely Connections on both now —
@@ -2172,7 +2224,7 @@ private fun MainShell(
                         avatar = profile.avatar,
                         onOpenProfile = { navController.navigate(PROFILE_ROUTE) },
                         onOpenSymbol = { navController.navigate(chartRoute(it)) },
-                        onOpenMarket = { navController.navigate(AppDestination.MARKETS.route) },
+                        onOpenMarket = { navController.navigate(MARKETS_ROUTE) },
                         onOpenTools = { navController.navigate(TOOLS_ROUTE) },
                         onOpenTerms = { navController.navigate(TERMS_ROUTE) },
                     )
@@ -2693,7 +2745,7 @@ private fun MainShell(
                     available = assistantAvailable,
                 )
             }
-            composable(AppDestination.MARKETS.route) {
+            composable(MARKETS_ROUTE) {
                 val signals by signalController.state.collectAsStateWithLifecycle()
                 // The instrument in the detail pane, or null where there is only one pane and a
                 // row tap is still a navigation. Saveable, so a rotation on a tablet does not
@@ -2931,6 +2983,41 @@ private fun MainShell(
                     announcements = announcementsController,
                 )
             }
+            composable(AppDestination.EXPLORE.route) {
+                ExploreScreen(
+                    controller = marketSearchController,
+                    intel = marketIntelController,
+                    sparklines = sparklineStore,
+                    tickers = marketTickerStore,
+                    onOpenSymbol = { navController.navigate(chartRoute(it)) },
+                    onOpenNews = { navController.navigate(NEWS_ROUTE) },
+                    onOpenCalendar = { navController.navigate(CALENDAR_ROUTE) },
+                    onOpenHeatmap = { navController.navigate(HEATMAP_ROUTE) },
+                    onOpenSearch = { navController.navigate(MARKET_SEARCH_ROUTE) },
+                    onOpenMarkets = { navController.navigate(MARKETS_ROUTE) },
+                )
+            }
+            // Registered only where the routes exist. TradeYar has no `/academy` surface at all, so
+            // on that platform this is an absence rather than a lock — see the menu's `absent` set.
+            if (communityController != null) {
+                composable(COMMUNITY_ROUTE) {
+                    CommunityScreen(
+                        controller = communityController,
+                        onOpenThread = { navController.navigate(communityThreadRoute(it)) },
+                        onOpenMembership = { navController.navigate(MEMBERSHIP_ROUTE) },
+                    )
+                }
+                composable(
+                    route = COMMUNITY_THREAD_PATTERN,
+                    arguments = listOf(navArgument("pid") { type = NavType.LongType }),
+                ) { entry ->
+                    CommunityThreadScreen(
+                        controller = communityController,
+                        postId = entry.arguments?.getLong("pid") ?: 0L,
+                        onClose = { navController.popBackStack() },
+                    )
+                }
+            }
             composable(CALENDAR_ROUTE) {
                 EconomicCalendarScreen(
                     controller = marketIntelController,
@@ -3051,6 +3138,8 @@ private fun MainShell(
                             if (!assistantAvailable) add("ai-assistant")
                             if (!terminalController.isConfigured) add("terminal")
                             if (!hasAcademy) add("academy")
+                            // Absent rather than locked: TradeYar has no community routes at all.
+                            if (communityController == null) add("community")
                             if (!accountDeletionAvailable) add("delete")
                         },
                     ),

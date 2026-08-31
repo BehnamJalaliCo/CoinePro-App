@@ -5,6 +5,6 @@
     <string name="nav_ai">AI</string>
     <string name="nav_tools">Tools</string>
     <string name="nav_activity">Activity</string>
-    <string name="nav_markets">Markets</string>
+    <string name="nav_explore">Explore</string>
     <string name="nav_chart">Chart</string>
 </resources>

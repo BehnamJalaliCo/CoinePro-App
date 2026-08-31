@@ -19,7 +19,26 @@ enum class AppDestination(
     val mark: String,
 ) {
     HOME("home", R.string.nav_home, "H"),
-    MARKETS("markets", R.string.nav_markets, "M"),
+
+    /**
+     * The markets, plus what is moving them.
+     *
+     * It replaced `MARKETS` in this position rather than being added beside it, and both halves of
+     * that are deliberate. **Added** would have made a sixth tab, and the premise of this bar is
+     * that a reader learns five positions and they do not move. **This position** because Explore
+     * is the markets screen with more on it: the same catalogue, ranked the same way, with the
+     * day's move and a spark line on each card, plus the doors to news, the calendar and the heat
+     * map that a reader previously had to go looking for.
+     *
+     * The full list did not go anywhere — Explore's own «همهٔ بازارها» opens it, and the menu keeps
+     * its row. A strip of cards is a taste of a catalogue and not the catalogue, and a reader who
+     * came for all of them must not have to discover that the screen they used yesterday still
+     * exists.
+     *
+     * The route is `explore` rather than `markets`: they are different destinations and a saved
+     * back stack holding one must not resolve to the other.
+     */
+    EXPLORE("explore", R.string.nav_explore, "E"),
     CHART("chart-tab", R.string.nav_chart, "C"),
     SIGNALS("signals", R.string.nav_signals, "S"),
     AI("ai", R.string.nav_ai, "AI"),

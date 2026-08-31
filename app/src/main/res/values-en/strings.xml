@@ -162,4 +162,7 @@
     <string name="widget_stale">%1$s · offline</string>
     <string name="notify_announcement">Service announcements</string>
     <string name="notify_announcement_note">Things we announce ourselves — an outage, a release, a new market, a change to membership. Separate from news, because somebody who silences a busy news feed must not thereby stop hearing that the service is down.</string>
+    <string name="nav_markets_title">Markets</string>
+    <string name="screen_community">Community</string>
+    <string name="screen_community_thread">Thread</string>
 </resources>

@@ -104,7 +104,11 @@ def check_bottom_navigation() -> None:
     entries = re.findall(r'^\s*([A-Z]+)\("([^"]+)",', text, flags=re.MULTILINE)
     expected = [
         ("HOME", "home"),
-        ("MARKETS", "markets"),
+        # Explore took this position from MARKETS: it is the same catalogue with the day's move,
+        # a spark line and the news, calendar and heat-map doors on it, and the full list is one
+        # tap away from it. A sixth tab was the alternative, and the premise of this bar is that
+        # five positions are learned and do not move.
+        ("EXPLORE", "explore"),
         # Not "chart": that route belongs to the chart *of a symbol* and has for every release so
         # far. The tab is a different destination that redirects into it, and giving the two the
         # same name would break every saved back stack that holds one.

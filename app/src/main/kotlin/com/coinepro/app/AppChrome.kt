@@ -21,6 +21,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavOptionsBuilder
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.CoineProRailItem
 import com.coinepro.core.navigation.AppDestination
 
@@ -118,7 +119,10 @@ private fun AppDestination.icon(selected: Boolean): Int = when (this) {
     // which is where a reader has already met both shapes. They carry both weights like the rest —
     // before, these two alone kept the same outline whether selected or not, so on two of the five
     // tabs the selection was a shade of grey and nothing else.
-    AppDestination.MARKETS -> if (selected) CoineProIcons.Filled.Markets else CoineProIcons.Markets
+    // The compass, which is the one glyph in the set that means "look around" rather than
+    // "here is a list" — Explore replaced the markets tab and it is not the same promise.
+    AppDestination.EXPLORE ->
+        if (selected) DesignR.drawable.icon_compass_fill else DesignR.drawable.icon_compass
     AppDestination.CHART -> if (selected) CoineProIcons.Filled.Chart else CoineProIcons.Chart
 }
 

@@ -115,6 +115,7 @@ import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.CoineProListDetail
 import com.coinepro.core.designsystem.PriceFeedReading
 import com.coinepro.core.designsystem.CoineProPriceFeedBar
@@ -1978,7 +1979,7 @@ class ScreenshotRenderTest {
         Row(modifier = Modifier.fillMaxSize().background(CoineProColors.Stage)) {
             CoineProNavigationRail(
                 items = railItems(),
-                selectedKey = AppDestination.MARKETS.route,
+                selectedKey = AppDestination.EXPLORE.route,
                 onSelect = {},
                 header = {
                     CoineProRailHeader {
@@ -2037,7 +2038,8 @@ class ScreenshotRenderTest {
         AppDestination.HOME -> if (selected) CoineProIcons.Filled.Home else CoineProIcons.Home
         AppDestination.SIGNALS -> if (selected) CoineProIcons.Filled.Signals else CoineProIcons.Signals
         AppDestination.AI -> if (selected) CoineProIcons.Filled.Ai else CoineProIcons.Ai
-        AppDestination.MARKETS -> if (selected) CoineProIcons.Filled.Markets else CoineProIcons.Markets
+        AppDestination.EXPLORE ->
+            if (selected) DesignR.drawable.icon_compass_fill else DesignR.drawable.icon_compass
         AppDestination.CHART -> if (selected) CoineProIcons.Filled.Chart else CoineProIcons.Chart
     }
 
@@ -2425,6 +2427,7 @@ class ScreenshotRenderTest {
                 // tiles rather than two, and the search affordance in the header.
                 onOpenHeatmap = {},
                 onOpenSearch = {},
+                onOpenMarkets = {},
                 onOpenStory = {},
             )
         }

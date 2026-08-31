@@ -145,6 +145,23 @@ object MenuCatalogue {
             icon = DesignR.drawable.tv_layout_grid,
             group = MenuGroup.MARKET,
         ),
+        // The full list, which stopped being a tab when Explore took that position. Explore's own
+        // «همهٔ بازارها» is the primary door; this is the second one, because a reader looking for a
+        // screen they used yesterday looks in the menu.
+        MenuEntry(
+            id = "markets",
+            titleRes = R.string.menu_markets_title,
+            bodyRes = R.string.menu_markets_body,
+            icon = CoineProIcons.Markets,
+            group = MenuGroup.MARKET,
+        ),
+        MenuEntry(
+            id = "explore",
+            titleRes = R.string.menu_explore_title,
+            bodyRes = R.string.menu_explore_body,
+            icon = DesignR.drawable.icon_sparkle,
+            group = MenuGroup.MARKET,
+        ),
         MenuEntry(
             id = "news",
             titleRes = R.string.menu_news_title,
@@ -271,6 +288,18 @@ object MenuCatalogue {
             titleRes = R.string.menu_academy_title,
             bodyRes = R.string.menu_academy_body,
             icon = CoineProIcons.Help,
+            group = MenuGroup.LEARN,
+            platform = MarketPlatform.COINEPRO_FX,
+            account = true,
+        ),
+        // CoinePro-FX only, and behind the academy's own VIP gate — the screen says which of the
+        // two refusals it got. Absent on TradeYar via the shell's `absent` set, because that
+        // backend has no `/academy` surface at all: there is no room to be locked out of.
+        MenuEntry(
+            id = "community",
+            titleRes = R.string.menu_community_title,
+            bodyRes = R.string.menu_community_body,
+            icon = DesignR.drawable.brand_user,
             group = MenuGroup.LEARN,
             platform = MarketPlatform.COINEPRO_FX,
             account = true,

@@ -22,6 +22,7 @@ import com.coinepro.app.alerts.AlertDeepLink
 import com.coinepro.app.notifications.PushCoordinator
 import com.coinepro.app.sync.BackgroundSyncScheduler
 import com.coinepro.core.academy.AcademyController
+import com.coinepro.core.community.CommunityController
 import com.coinepro.core.chartevents.ChartEventController
 import com.coinepro.feature.terminal.TerminalController
 import com.coinepro.core.account.AccountController
@@ -151,6 +152,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var orderBookGateways: Map<MarketPlatform, @JvmSuppressWildcards OrderBookGateway>
     @Inject lateinit var portfolioControllers: Map<MarketPlatform, @JvmSuppressWildcards PortfolioController>
     @Inject lateinit var academyController: AcademyController
+    @Inject lateinit var communityController: CommunityController
     @Inject lateinit var terminalController: TerminalController
     @Inject lateinit var accountControllers: Map<MarketPlatform, @JvmSuppressWildcards AccountController>
     @Inject lateinit var adminController: AdminController
@@ -266,6 +268,7 @@ class MainActivity : FragmentActivity() {
                 orderBookGateways = orderBookGateways,
                 portfolioControllers = portfolioControllers,
                 academyController = academyController,
+                communityController = communityController,
                 terminalController = terminalController,
                 accountControllers = accountControllers,
                 adminController = adminController,

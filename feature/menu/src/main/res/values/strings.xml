@@ -80,4 +80,10 @@
     <string name="menu_notifications_title">تنظیمات اعلان</string>
     <string name="menu_notifications_body">هر دسته جدا، با ساعت سکوت و مسیر بازیابی مجوز.</string>
     <string name="menu_delete_title">حذف حساب</string>
+    <string name="menu_explore_title">کاوش</string>
+    <string name="menu_explore_body">امروز در بازار چه خبر است — بازارها، اخبار و تقویم در یک صفحه.</string>
+    <string name="menu_community_title">انجمن</string>
+    <string name="menu_community_body">تحلیل و تجربهٔ معامله‌گرهای دیگر.</string>
+    <string name="menu_markets_title">بازارها</string>
+    <string name="menu_markets_body">فهرست کامل نمادهایی که این پلتفرم قیمت می‌دهد.</string>
 </resources>

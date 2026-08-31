@@ -49,6 +49,7 @@ import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProErrorState
 import com.coinepro.core.designsystem.CoineProHeaderAction
 import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProListHeader
 import com.coinepro.core.designsystem.CoineProPercentPill
 import com.coinepro.core.designsystem.CoineProPillShape
@@ -126,6 +127,15 @@ fun ExploreScreen(
     tickers: MarketTickerStore? = null,
     /** The third tile. Null drops it rather than drawing a door with nothing behind it. */
     onOpenHeatmap: (() -> Unit)? = null,
+    /**
+     * The full market list.
+     *
+     * This screen shows a strip of cards, which is a *taste* of the catalogue and not the catalogue.
+     * When Explore took the markets tab's place in the bar, the list it replaced had to keep a door
+     * — a reader who came looking for "all of them" must not have to find the menu to discover that
+     * the app still has the screen they were using yesterday. Null drops the row entirely.
+     */
+    onOpenMarkets: (() -> Unit)? = null,
     /** The search affordance in the header. Null on a host with no search route. */
     onOpenSearch: (() -> Unit)? = null,
     /** Opens one story where it was published. Null leaves the list readable but inert. */
@@ -216,12 +226,28 @@ fun ExploreScreen(
                 )
                 onOpenHeatmap?.let { open ->
                     DoorTile(
-                        icon = DesignR.drawable.tv_layout_grid,
+                        // The Phosphor four-cell grid rather than the TradingView layout glyph the
+                        // menu row uses. They mean the same thing in a list, where the word beside
+                        // them carries it; on a tile the glyph is what a reader recognises before
+                        // reading, and `tv_layout_grid` is a plain rounded rectangle that reads as
+                        // an icon that failed to load.
+                        icon = DesignR.drawable.brand_grid,
                         label = stringResource(R.string.explore_door_heatmap),
                         onClick = open,
                         modifier = Modifier.weight(1f),
                     )
                 }
+            }
+        }
+        onOpenMarkets?.let { open ->
+            item("all-markets") {
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.explore_all_markets),
+                    onClick = open,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = CoineProSpacing.Gutter),
+                )
             }
         }
 

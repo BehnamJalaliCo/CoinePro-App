@@ -40,6 +40,9 @@ import com.coinepro.core.auth.SessionMemory
 import com.coinepro.core.auth.SessionTokenStorage
 import com.coinepro.core.chartevents.ChartEventController
 import com.coinepro.core.chartevents.MarketIntelChartEventFeed
+import com.coinepro.core.community.CommunityController
+import com.coinepro.core.community.CommunityGateway
+import com.coinepro.core.community.NetworkCommunityGateway
 import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.copytrade.CopyTradeGateway
 import com.coinepro.core.copytrade.NetworkCopyTradeGateway
@@ -1369,6 +1372,27 @@ object AppModule {
         @ForexPlatform retrofit: Retrofit,
         tokens: AcademyTokenStore,
     ): AcademyGateway = NetworkAcademyGateway(retrofit, tokens)
+
+    /**
+     * The community, on the one backend that has one.
+     *
+     * `@ForexPlatform` and the academy token, both for the same reason the academy gateway takes
+     * them: `/academy/community` is behind `require_vip`, which is `current_student` plus a tier
+     * test, and that is the identity `AcademyTokenStore` already mints. Bound unconditionally
+     * because the *route* is unconditional — what makes Community absent on TradeYar is the shell
+     * not registering its destination and the menu not offering its row, not a null here.
+     */
+    @Provides
+    @Singleton
+    fun communityGateway(
+        @ForexPlatform retrofit: Retrofit,
+        tokens: AcademyTokenStore,
+    ): CommunityGateway = NetworkCommunityGateway(retrofit, tokens)
+
+    @Provides
+    @Singleton
+    fun communityController(gateway: CommunityGateway, scope: CoroutineScope): CommunityController =
+        CommunityController(gateway, scope)
 
     /**
      * The web terminal.

@@ -72,4 +72,10 @@
     <string name="menu_notifications_title">Notification settings</string>
     <string name="menu_notifications_body">Each category on its own, with quiet hours and a way back from a denied permission.</string>
     <string name="menu_delete_title">Delete account</string>
+    <string name="menu_explore_title">Explore</string>
+    <string name="menu_explore_body">What the market is doing today — markets, news and the calendar on one page.</string>
+    <string name="menu_community_title">Community</string>
+    <string name="menu_community_body">Analysis and experience from other traders.</string>
+    <string name="menu_markets_title">Markets</string>
+    <string name="menu_markets_body">Every symbol this platform quotes.</string>
 </resources>
