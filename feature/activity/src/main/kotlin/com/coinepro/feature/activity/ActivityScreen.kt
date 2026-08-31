@@ -387,7 +387,23 @@ private fun ActivityHeader(
         CoineProTeachingStrip(TeachingSurface.ACTIVITY, gutter = false)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             HeaderMetric(
-                value = if (expectedSignals > loadedSignals) BidiText.isolateLtr("$loadedSignals / $expectedSignals") else loadedSignals.toString(),
+                // Persian digits, like the «اجرا» tile beside it. These are two counts of the same
+                // kind of thing sitting in one row of three, and they were drawn in two different
+                // scripts — «3» next to «۳».
+                //
+                // The partial form is «۳ از ۱۰» rather than «۳ / ۱۰»: a slash is direction-neutral
+                // and a right-to-left line reorders the two numbers around it, which is how the
+                // academy's level headers came to read «۵ از ۳». A word cannot be reordered, so no
+                // isolate is needed either.
+                value = if (expectedSignals > loadedSignals) {
+                    stringResource(
+                        R.string.activity_signals_loaded_partial,
+                        loadedSignals.toPersianDigits(),
+                        expectedSignals.toPersianDigits(),
+                    )
+                } else {
+                    loadedSignals.toPersianDigits()
+                },
                 label = stringResource(R.string.activity_signals_loaded),
                 accent = CoineProColors.Gold,
                 modifier = Modifier.weight(1f),

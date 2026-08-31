@@ -524,7 +524,10 @@ private fun alertSentence(alert: LocalPriceAlert): String {
     // figure is right and reads wrong, which is the worst of both.
     val amount = BidiText.isolateLtr(
         if (alert.condition.isPercent) {
-            stringRes(R.string.notifications_alert_percent, MarketNumberFormatter.price(alert.value, 1))
+            stringRes(
+                R.string.notifications_alert_percent,
+                BidiText.percent(MarketNumberFormatter.price(alert.value, 1)),
+            )
         } else {
             MarketNumberFormatter.priceAuto(alert.value)
         },

@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.JalaliDate
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -214,7 +215,7 @@ private fun SymbolRow(row: SymbolPerformance) {
                     text = stringResource(
                         R.string.paper_symbol_line,
                         PaperFormat.count(row.trades),
-                        PaperFormat.ratio(row.winRate),
+                        BidiText.percent(PaperFormat.ratio(row.winRate)),
                     ),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,

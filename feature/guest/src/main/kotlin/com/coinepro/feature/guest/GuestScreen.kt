@@ -352,7 +352,11 @@ fun TrackRecordSummary(record: GuestTrackRecord, modifier: Modifier = Modifier) 
                         R.string.guest_record_summary,
                         record.wins.toPersianDigits(),
                         record.entries.size.toPersianDigits(),
-                        MarketNumberFormatter.price(rate, 1),
+                        // The sign travels with the figure. Left in the resource as `%3$s٪` it is a
+                        // neutral character after a Latin run, which a Persian paragraph then puts
+                        // on the far side of it: «نرخ برد ٪66.7», with the sentence's full stop in
+                        // front of that.
+                        BidiText.percent(MarketNumberFormatter.price(rate, 1)),
                     ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = CoineProColors.TextSecondary,

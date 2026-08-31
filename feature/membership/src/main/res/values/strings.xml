@@ -64,7 +64,7 @@
 
     <!-- The evidence a locked reader is owed before anything is asked of them. -->
     <string name="membership_record_title">کارنامهٔ سیگنال‌های بسته‌شده</string>
-    <string name="membership_record_summary">از %2$s سیگنالِ بسته‌شدهٔ اخیر، %1$s تا با سود بسته شد — نرخ برد %3$s٪.</string>
+    <string name="membership_record_summary">از %2$s سیگنالِ بسته‌شدهٔ اخیر، %1$s تا با سود بسته شد — نرخ برد %3$s.</string>
     <string name="membership_record_note">این‌ها سیگنال‌های واقعیِ منتشرشده‌اند که بسته شده‌اند، نه نمونهٔ ساختگی. عملکرد گذشته تضمینی برای آینده نیست و هیچ‌کدام از این‌ها توصیهٔ مالی نیست.</string>
 
     <string name="membership_lbank_note">اگر می‌خواهید سرویس به‌جای شما معامله کند (کپی‌تریدینگ)، فقط این یکی:</string>

@@ -545,7 +545,8 @@ private fun TrackRecordCard(record: GuestTrackRecord) {
                         R.string.membership_record_summary,
                         record.wins.toPersianDigits(),
                         record.entries.size.toPersianDigits(),
-                        MarketNumberFormatter.price(rate, 1),
+                        // See the same line on the guest home: the sign is part of the run.
+                        BidiText.percent(MarketNumberFormatter.price(rate, 1)),
                     ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = CoineProColors.TextSecondary,

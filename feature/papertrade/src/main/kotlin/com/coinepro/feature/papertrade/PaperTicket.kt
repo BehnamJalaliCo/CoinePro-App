@@ -28,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.foldDigitsToLatin
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProChip
@@ -285,7 +286,13 @@ private fun SizeShares(
     val shares = listOf(25, 50, 75, 100)
     CoineProChipRow(
         options = shares.map { share ->
-            CoineProChip(share.toString(), stringResource(R.string.paper_share_of_margin, PaperFormat.count(share)))
+            CoineProChip(
+                share.toString(),
+                stringResource(
+                    R.string.paper_share_of_margin,
+                    BidiText.percent(PaperFormat.count(share)),
+                ),
+            )
         },
         selectedId = null,
         onSelect = { id ->

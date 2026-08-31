@@ -21,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.foldDigitsToLatin
 import com.coinepro.core.designsystem.CoineProCard
@@ -223,7 +224,14 @@ private fun plain(value: Double): String =
     BidiStrip.plain(MarketNumberFormatter.price(value, if (value >= 100.0) 0 else 2))
 
 /** The percentage inside a rule sentence, isolated so it survives inside right-to-left prose. */
-private fun percent(value: Double): String = MarketNumberFormatter.price(value, 2)
+/**
+ * A percentage for a sentence.
+ *
+ * Isolated with its sign: «٪» is neutral and a Persian paragraph puts a bare one on the far side of
+ * the figure it belongs to. See [BidiText.percent].
+ */
+private fun percent(value: Double): String =
+    BidiText.percent(MarketNumberFormatter.price(value, 2))
 
 /** Zero is a legitimate answer for a cost. [asNumber] refuses it, because a size of zero is not. */
 private fun String.asZeroOrMore(): Double? = foldDigitsToLatin()

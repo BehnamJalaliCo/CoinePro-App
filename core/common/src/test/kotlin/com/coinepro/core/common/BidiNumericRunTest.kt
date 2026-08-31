@@ -49,6 +49,22 @@ class BidiNumericRunTest {
     }
 
     @Test
+    fun `a percentage keeps its sign beside its figure`() {
+        // The guest home read «نرخ برد ٪66.7» — the sign in front of the number, and the sentence's
+        // full stop in front of that.
+        // And the sign is the Latin one, which is what the app's own percent pills have always
+        // printed: «٪» does not lay out beside the digits even inside the isolate.
+        assertEquals("${lri}66.7%$pdi", BidiText.percent("66.7"))
+    }
+
+    @Test
+    fun `a figure that arrives already isolated is not isolated twice`() {
+        // The formatters hand back an isolated run, and an isolate inside an isolate puts the sign
+        // outside the inner one — back where this started.
+        assertEquals("${lri}66.7%$pdi", BidiText.percent(BidiText.isolateLtr("66.7")))
+    }
+
+    @Test
     fun `text with no numbers comes back untouched`() {
         assertEquals("اهرم سود را بزرگ می‌کند", BidiText.isolateNumericRuns("اهرم سود را بزرگ می‌کند"))
         assertEquals("", BidiText.isolateNumericRuns(""))

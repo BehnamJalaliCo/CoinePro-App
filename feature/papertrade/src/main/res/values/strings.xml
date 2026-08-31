@@ -47,7 +47,7 @@
     <string name="paper_preview_resting">این سفارش منتظر می‌ماند و در قیمت خودش پر می‌شود، با کارمزد میکر.</string>
     <string name="paper_open">باز کردن معاملهٔ آزمایشی</string>
     <string name="paper_place">ثبت سفارش آزمایشی</string>
-    <string name="paper_share_of_margin">%1$s٪</string>
+    <string name="paper_share_of_margin">%1$s</string>
 
     <string name="paper_positions_empty">موقعیت بازی ندارید.</string>
     <string name="paper_entry">ورود</string>
@@ -107,12 +107,12 @@
     <string name="paper_curve_title">منحنی موجودی</string>
     <string name="paper_by_symbol">به تفکیک نماد</string>
     <string name="paper_by_month">به تفکیک ماه</string>
-    <string name="paper_symbol_line">%1$s معامله · نرخ برد %2$s٪</string>
+    <string name="paper_symbol_line">%1$s معامله · نرخ برد %2$s</string>
 
     <string name="paper_rules_title">قانون‌های پر شدن</string>
     <string name="paper_rules_intro">اینجا هیچ سفارشی در قیمت میانه پر نمی‌شود. هر عددی که می‌بینید از یکی از این قانون‌ها می‌آید.</string>
-    <string name="paper_rule_spread">خرید در قیمت فروشنده پر می‌شود و فروش در قیمت خریدار. اگر فید مظنه ندهد، %1$s٪ اسپرد فرضی دو طرف قیمت آخر باز می‌شود و روی همان پر شدن نوشته می‌شود که فرضی بوده.</string>
-    <string name="paper_rule_slippage">سفارش بازار و استاپِ فعال‌شده %1$s٪ لغزش هم می‌دهند. سفارشی که منتظر مانده هرگز لغزش نمی‌دهد.</string>
+    <string name="paper_rule_spread">خرید در قیمت فروشنده پر می‌شود و فروش در قیمت خریدار. اگر فید مظنه ندهد، %1$s اسپرد فرضی دو طرف قیمت آخر باز می‌شود و روی همان پر شدن نوشته می‌شود که فرضی بوده.</string>
+    <string name="paper_rule_slippage">سفارش بازار و استاپِ فعال‌شده %1$s لغزش هم می‌دهند. سفارشی که منتظر مانده هرگز لغزش نمی‌دهد.</string>
     <string name="paper_rule_resting">سفارش منتظر در قیمت خودش پر می‌شود و کارمزد میکر می‌دهد؛ سفارشی که از بازار می‌گیرد کارمزد تیکر.</string>
     <string name="paper_rule_stop">استاپ یک ماشه است، نه یک قیمت. وقتی فعال شود در قیمت بازار پر می‌شود، نه در عددی که نوشته‌اید — و همین است که بیشترین هزینه را به تازه‌کارها می‌زند.</string>
     <string name="paper_rule_unwatched">وقتی برنامه بسته بوده، هیچ‌کس گذر قیمت را ندیده. آن‌وقت بدترین قیمت ممکن حساب می‌شود: سفارش حد در قیمت خودش و استاپ در قیمت بازار. روی آن پر شدن هم نوشته می‌شود که دیده نشده.</string>

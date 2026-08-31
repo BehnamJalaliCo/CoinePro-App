@@ -7,6 +7,7 @@
     <string name="activity_refresh">به‌روزرسانی</string>
     <string name="activity_refreshing">در حال به‌روزرسانی</string>
     <string name="activity_signals_loaded">سیگنال بارگذاری‌شده</string>
+    <string name="activity_signals_loaded_partial">%1$s از %2$s</string>
     <string name="activity_truth_source">منبع حقیقت</string>
     <string name="activity_server">سرور</string>
     <string name="activity_history_loading">در حال دریافت تاریخچهٔ سیگنال‌های بسته از سرور…</string>

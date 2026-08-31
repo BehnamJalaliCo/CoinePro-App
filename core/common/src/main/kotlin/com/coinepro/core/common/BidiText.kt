@@ -32,6 +32,27 @@ object BidiText {
     fun strip(value: String): String = value.replace(LRI.toString(), "").replace(PDI.toString(), "")
 
     /**
+     * A percentage: the figure, its sign, and an isolate around both.
+     *
+     * ### Two separate things were wrong
+     *
+     * **The sign was in the resource string.** `%1$s٪` puts a neutral character after a Latin
+     * left-to-right run, and the surrounding Persian paragraph then claims it: the guest home read
+     * «نرخ برد ٪66.7», the sign in front of the number it belongs to, with the sentence's own full
+     * stop in front of that. Passing the figure and its sign as one isolated argument gives the
+     * paragraph nothing to claim.
+     *
+     * **And the sign was «٪».** U+066A ARABIC PERCENT SIGN does not lay out beside Persian digits
+     * the way the Latin `%` does — the same trouble U+066C causes inside a grouped number, and the
+     * isolate alone does not settle it. The Latin sign does, and it is what the rest of the app has
+     * always printed: every percent pill, every change column, «+2.14%». A percentage is a market
+     * figure, so it is Latin-digit and Latin-signed for the same reason a price is — a reader
+     * compares it against MetaTrader. The «٪» in a handful of resource strings was the exception,
+     * not the rule.
+     */
+    fun percent(figure: String): String = isolateLtr(strip(figure) + "%")
+
+    /**
      * Whether a whole sentence is Latin, and therefore a paragraph rather than a run.
      *
      * ### Why this is a different question from [isolateLtr]

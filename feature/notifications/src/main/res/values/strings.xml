@@ -33,7 +33,7 @@
     <string name="alert_condition_percent_down">%1$s %2$s پایین‌تر بیاید</string>
     <string name="alert_condition_24h_over">تغییر ۲۴ ساعته‌ی %1$s بیشتر از %2$s</string>
     <string name="alert_condition_24h_under">تغییر ۲۴ ساعته‌ی %1$s کمتر از منفی %2$s</string>
-    <string name="notifications_alert_percent">%1$s٪</string>
+    <string name="notifications_alert_percent">%1$s</string>
 
     <string name="alert_repeat_once">یک بار</string>
     <string name="alert_repeat_daily">روزی یک بار</string>
