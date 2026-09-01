@@ -78,6 +78,21 @@ class CandleSeries(val bars: List<Candle>) {
 
     operator fun get(index: Int): Candle = bars[index]
 
+    /**
+     * Build every column now, on the thread this is called from, and return the same series.
+     *
+     * The columns are lazy so that a series built only to be cached or counted never pays for
+     * them. The cost of that laziness is *where* they get paid for: the first read of `close` on a
+     * fresh series is the first indicator or the first draw, and both of those run on the main
+     * thread. On a twenty-thousand-bar minute chart that is six array builds and twenty thousand
+     * `any` steps in the middle of a frame — a visible hitch at exactly the moment the reader is
+     * looking. The controller calls this from a background dispatcher before it publishes, so the
+     * main thread finds the columns already there.
+     */
+    fun warm(): CandleSeries = apply {
+        time; open; high; low; close; volume; hasVolume
+    }
+
     companion object {
         val EMPTY = CandleSeries(emptyList())
     }

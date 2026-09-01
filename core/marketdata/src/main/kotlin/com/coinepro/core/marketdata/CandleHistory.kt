@@ -1,6 +1,7 @@
 package com.coinepro.core.marketdata
 
 import java.time.ZoneId
+import kotlinx.coroutines.delay
 
 /**
  * How a backward fill ended.
@@ -106,6 +107,16 @@ suspend fun CandleGateway.fillHistory(
     pageBars: Int = HISTORY_PAGE_BARS,
     /** How many requests this call may make. See the note on cost. */
     maxPages: Int = HISTORY_PAGE_BUDGET,
+    /**
+     * A pause between pages, in milliseconds. Zero asks as fast as the venue answers.
+     *
+     * The fill shares one connection pool, one server and one radio with the chart the reader is
+     * looking at. Back to back, forty page requests are a forty-page queue in front of the next
+     * thing the reader does — a timeframe tap, a page-back, a symbol switch — and on the minute
+     * chart, where the archive is deepest and the pages are worth least, that queue was the
+     * spinner. A short breath between pages keeps the fill under the reader's own traffic.
+     */
+    pageDelayMillis: Long = 0L,
     zone: ZoneId = CHART_TIME_ZONE,
 ): HistoryDepth {
     val ceiling = target.coerceIn(1, CandleArchive.MAX_BARS_PER_SERIES)
@@ -122,6 +133,7 @@ suspend fun CandleGateway.fillHistory(
             stop = HistoryStop.CEILING
             break
         }
+        if (pages > 0 && pageDelayMillis > 0) delay(pageDelayMillis)
         val page = load(symbol, interval, pageBars, before, zone)
         pages++
         if (page.candles.isEmpty()) {

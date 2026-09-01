@@ -47,6 +47,19 @@ internal object PublicCalendarFeed {
     const val URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
 
     /**
+     * The same file, relayed by our own host.
+     *
+     * [URL] answers from a container in Europe and does not answer from a handset in Iran — the
+     * host sits behind a CDN that is blocked or throttled into a timeout there, and the screen it
+     * feeds was reported empty with an NFP in the week. TradeYar fetches the file once an hour and
+     * hands it on, byte for byte, from the one host the app can always reach. Same shape, so the
+     * parser below does not know which host it is reading.
+     */
+    fun relayUrl(baseUrl: String): String = baseUrl.trimEnd('/') + "/" + RELAY_PATH
+
+    private const val RELAY_PATH = "api/v1/public/calendar/week"
+
+    /**
      * Every event in [body] that has a title and a time, newest last.
      *
      * Sorted ascending, unlike news: a calendar is read forwards. The two lists in this module sort

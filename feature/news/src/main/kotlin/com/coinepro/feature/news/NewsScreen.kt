@@ -348,7 +348,9 @@ fun NewsScreen(
                     savedOnly && filtered.isEmpty() -> "saved-empty"
                     savedOnly -> "content"
                     state.loading -> "loading"
-                    state.error != null && state.news.isEmpty() -> "error"
+                    // `failed`, not `error != null`: a timeout carries no server sentence and is
+                    // still a failure, not an empty newsroom.
+                    state.failed && state.news.isEmpty() -> "error"
                     // Before the plain empty, because "nothing matched" is the wrong sentence for
                     // a body that had thirty rows in it.
                     filtered.isEmpty() && unreadable -> "unreadable"
@@ -426,7 +428,7 @@ fun NewsScreen(
                                         // said so nowhere, so a reader whose every refresh had
                                         // failed since breakfast saw a list that simply never moved
                                         // and no reason for it.
-                                        failed = state.error != null,
+                                        failed = state.failed,
                                         onRefresh = controller::refresh,
                                     )
                                 }

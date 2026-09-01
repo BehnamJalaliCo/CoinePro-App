@@ -15,6 +15,59 @@ it is for.
 
 ---
 
+## [4.18.1] — 2026-09-01 — Five things from one phone, and the one bug under three of them
+
+Tested on a handset on an Iranian network, with screenshots. Five reports; three of them were one
+defect, and the other two were the chart doing too much on the wrong thread.
+
+### The news and the calendar were empty for the same reason
+
+`PublicFeedClient` fetched every public source with OkHttp's blocking `execute()` inside a
+`suspend fun`, and the caller runs on `Dispatchers.Main.immediate`. Android answers that with
+`NetworkOnMainThreadException`, the gateway's `runCatching` turned it into a null error, and both
+screens drew «چیزی منتشر نشده» — the empty state, not the failure state — over a source that had
+never been asked. Every earlier round of «هنوز خراب است» was this.
+
+* The client is asynchronous now (`enqueue`, awaited through a cancellable continuation), so no
+  request ever runs on the main thread again.
+* `MarketIntelState.failed` is a fact of its own rather than an inference from `error`, and both
+  screens draw their failure state on it. A refusal with no sentence is still a refusal.
+* A primary route that throws (timeout, unreachable, DNS) no longer aborts the snapshot before the
+  public sources ran; it is carried through and rethrown only when they too came back empty.
+* Every OkHttp client has a thirty-second `callTimeout` on top of its per-phase ones, so a stalled
+  connection can no longer hold a screen for the sum of all three.
+
+### The calendar comes from our own host
+
+The week's file on `nfs.faireconomy.media` answers from Europe and does not answer from Iran.
+TradeYar now relays it — `GET /api/v1/public/calendar/week`, fetched once an hour, stale copy over
+an error, never an empty array for "could not fetch" — and the app asks that host first on both
+platforms, falling through to the file's own host only when the relay has nothing. The parser does
+not know which host it is reading; the shape is identical.
+
+### The chart, on the minute timeframe and under a finger
+
+Switching to M1 did not cancel the previous timeframe's archive fill, so up to forty page requests
+queued in front of the new load on one connection pool, and the reader saw a spinner behind a
+timeout with no ceiling. The fill is cancelled with the load now, waits four seconds before it
+starts, breathes 400 ms between pages, and on anything finer than M15 stops after eight.
+
+Series were built and their columns filled on the main thread, once per load and once per
+page-back; both now run on `Dispatchers.Default` when the controller is given a worker dispatcher
+(the tests are not, so they stay deterministic). Two `LaunchedEffect`s restarted on every drag
+frame to persist the viewport; they are one `snapshotFlow` collector now, distinct on the three
+fields that matter.
+
+### Google sign-in
+
+The tap did nothing when the server offered Google without a client id. It now says so, in the
+failure area the e-mail form already has. The other cause — a build signed with a certificate the
+Google console has not seen, which is what a test-signed APK is — has always been named in the same
+sentence. Nothing in the app can fix that one; only the release keystore's fingerprint in the
+console can.
+
+---
+
 ## [4.18.0] — 2026-09-01 — The news had its pictures and its text all along
 
 Two of the three things reported here turned out to be the same shape: the data existed, on a

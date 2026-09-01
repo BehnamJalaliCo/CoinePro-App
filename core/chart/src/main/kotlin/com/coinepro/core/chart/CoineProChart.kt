@@ -64,6 +64,7 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.unit.sp
 import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.common.JalaliDate
@@ -440,16 +441,14 @@ fun CoineProChart(
             .withScaleSide(scaleSide)
     }
 
-    // Written back whenever the reader moves. Cheap — two ints into the saved-state bundle — and
-    // it has to be here rather than inside the gesture handlers, which do not all go through one
-    // place.
-    LaunchedEffect(viewport.barsPerView, viewport.offset, viewport.priceZoom) {
-        savedZoom = viewport.barsPerView
-        savedOffset = viewport.offset
-        savedPriceZoom = viewport.priceZoom
-    }
+    // The saved-state write-back for the viewport used to be here, as a `LaunchedEffect` keyed on
+    // the three numbers. It now shares one snapshot flow with the outward report — see the block
+    // beside `emitViewport` below — because two effects keyed on fields of a value that changes on
+    // every frame of a drag are two effect restarts per frame, and a restart is a coroutine
+    // cancelled and relaunched through the recomposer, in the frame. Neither needed to be in
+    // composition at all.
 
-    // Pan to the bar the caller asked for. After the saved-state block above rather than inside
+    // Pan to the bar the caller asked for. After the viewport restoration above rather than inside
     // it, so a jump is one more move of the same viewport — the restoration still runs first on a
     // fresh composition, and what it restores is then overridden only when a date was actually
     // asked for.
@@ -1043,10 +1042,27 @@ fun CoineProChart(
         snapshotFlow { crosshair }.collect { emitCrosshair.value?.invoke(it) }
     }
 
-    // And the window, reported outward on the same three numbers that are saved for a restart.
+    // And the window: saved for a restart and reported outward, on the same three numbers.
+    //
+    // One flow rather than two keyed effects, and read through a snapshot flow rather than in
+    // composition, for the reason on the crosshair above and one more: a drag moves the viewport
+    // once per frame, and a `LaunchedEffect` keyed on it is cancelled and relaunched once per
+    // frame — on the main thread, inside the frame that is also drawing the chart. The writes are
+    // two ints into a bundle and one callback; what cost the frames was the restart, not the
+    // work. `distinctUntilChanged` on the three fields keeps a crosshair move or a scale change,
+    // which are also viewport copies, from writing or reporting anything.
     val emitViewport = rememberUpdatedState(onViewportChange)
-    LaunchedEffect(viewport.barsPerView, viewport.offset, viewport.priceZoom) {
-        emitViewport.value?.invoke(viewport)
+    LaunchedEffect(Unit) {
+        snapshotFlow { viewport }
+            .distinctUntilChanged { a, b ->
+                a.barsPerView == b.barsPerView && a.offset == b.offset && a.priceZoom == b.priceZoom
+            }
+            .collect { window ->
+                savedZoom = window.barsPerView
+                savedOffset = window.offset
+                savedPriceZoom = window.priceZoom
+                emitViewport.value?.invoke(window)
+            }
     }
 
     // A window donated by another pane. Three numbers, not the whole viewport — see the parameter.

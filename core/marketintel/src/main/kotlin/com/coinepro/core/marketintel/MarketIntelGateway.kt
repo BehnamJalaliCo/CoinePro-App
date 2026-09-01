@@ -1,7 +1,9 @@
 package com.coinepro.core.marketintel
 
+import java.io.IOException
 import java.net.URI
 import java.time.Instant
+import kotlinx.coroutines.CancellationException
 import com.coinepro.core.common.parseWireInstant
 import com.coinepro.core.model.MarketPlatform
 import com.google.gson.JsonElement
@@ -78,10 +80,6 @@ class NetworkMarketIntelGateway private constructor(
             MarketPlatform.COINEPRO_FX -> FOREX_ROUTE
             MarketPlatform.TRADEYAR -> CRYPTO_ROUTE
         }
-        val response = when (platform) {
-            MarketPlatform.COINEPRO_FX -> api.forexSnapshot()
-            MarketPlatform.TRADEYAR -> api.cryptoSnapshot()
-        }
         // A refusal is not the end of the screen any more, and this is the change that matters most
         // to a reader who is not signed in.
         //
@@ -95,16 +93,35 @@ class NetworkMarketIntelGateway private constructor(
         // their turn, and the error is only rethrown if they had nothing either. The reader still
         // ends up with the server's own words when there is genuinely nothing to show — see
         // [orRethrow] — and gets a full screen the rest of the time.
-        val failure = if (response.isSuccessful) null else HttpException(response)
-        val primary = if (failure != null) {
+        //
+        // The same holds for a call that never got an HTTP status at all. A timeout, a DNS miss or
+        // a reset on the primary host is the *ordinary* case on the networks this app is used on —
+        // the backend hosts are the ones most likely to be throttled — and it was thrown straight
+        // out of here, past every fallback, exactly as the 401 used to be. Caught below, it becomes
+        // the same empty snapshot with the failure remembered, and the wires get their turn.
+        val response = runCatching {
+            when (platform) {
+                MarketPlatform.COINEPRO_FX -> api.forexSnapshot()
+                MarketPlatform.TRADEYAR -> api.cryptoSnapshot()
+            }
+        }.getOrElse { thrown ->
+            if (thrown is CancellationException) throw thrown
+            null
+        }
+        val failure: Throwable? = when {
+            response == null -> IOException("$route: no response")
+            response.isSuccessful -> null
+            else -> HttpException(response)
+        }
+        val primary = if (response == null || failure != null) {
             MarketIntelSnapshot(
                 news = emptyList(),
                 calendar = emptyList(),
                 serverTime = null,
                 newsSource = NewsFeedOutcome(
                     route = route,
-                    status = response.code(),
-                    failure = failure.message(),
+                    status = response?.code(),
+                    failure = (failure as? HttpException)?.message() ?: failure?.message,
                 ),
             )
         } else {
@@ -117,7 +134,7 @@ class NetworkMarketIntelGateway private constructor(
             .orRethrow(failure)
     }
 
-    private fun MarketIntelSnapshot.orRethrow(failure: HttpException?): MarketIntelSnapshot =
+    private fun MarketIntelSnapshot.orRethrow(failure: Throwable?): MarketIntelSnapshot =
         if (failure != null && shouldRethrow()) throw failure else this
 
     /**

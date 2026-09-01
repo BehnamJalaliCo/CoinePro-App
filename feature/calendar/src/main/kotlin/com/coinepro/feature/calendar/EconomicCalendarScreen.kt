@@ -260,7 +260,10 @@ internal enum class CalendarMode {
 
 internal fun calendarMode(state: MarketIntelState, filtered: List<EconomicEvent>): CalendarMode = when {
     state.loading -> CalendarMode.LOADING
-    state.error != null && state.calendar.isEmpty() -> CalendarMode.ERROR
+    // `failed`, not `error != null`: a timeout has no server sentence and is still a failure. Gated
+    // on the text, a fetch that never answered read as a quiet day — «چیزی منتشر نشده» beside a
+    // refresh button, for a calendar the app had not managed to read at all.
+    state.failed && state.calendar.isEmpty() -> CalendarMode.ERROR
     // Only once a fetch has actually answered. Before that the platform is unknown, and guessing it
     // would put "this platform has no calendar" in front of a forex reader whose calendar is still
     // on its way.

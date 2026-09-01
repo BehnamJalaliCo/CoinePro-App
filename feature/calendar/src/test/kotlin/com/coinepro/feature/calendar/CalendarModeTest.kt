@@ -59,14 +59,24 @@ class CalendarModeTest {
         // Stale release times are still the release times, and the strip above them reports the
         // failure. Replacing them with an error page would lose the only thing the reader came for.
         val events = listOf(event(MarketImpact.HIGH))
-        val state = MarketIntelState(calendar = events, error = "سرور پاسخ نداد.")
+        val state = MarketIntelState(calendar = events, failed = true, error = "سرور پاسخ نداد.")
 
         assertEquals(CalendarMode.EVENTS, calendarMode(state, events))
     }
 
     @Test
     fun `a failure with nothing to show is the failure`() {
-        val state = MarketIntelState(error = "سرور پاسخ نداد.")
+        val state = MarketIntelState(failed = true, error = "سرور پاسخ نداد.")
+
+        assertEquals(CalendarMode.ERROR, calendarMode(state, filtered = emptyList()))
+    }
+
+    @Test
+    fun `a failure without a server sentence is still the failure`() {
+        // The shape of «تقویم هنوز خراب بود». A timeout, a DNS miss or a fault on the main thread
+        // carries no HTTP body, so `error` stays null; the mode must come from `failed`, or the
+        // reader is told nothing was published about a week the app never managed to fetch.
+        val state = MarketIntelState(failed = true)
 
         assertEquals(CalendarMode.ERROR, calendarMode(state, filtered = emptyList()))
     }

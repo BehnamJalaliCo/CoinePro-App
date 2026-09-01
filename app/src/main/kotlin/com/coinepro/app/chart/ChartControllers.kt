@@ -10,6 +10,7 @@ import com.coinepro.core.marketdata.CandleArchive
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.marketdata.CandleGateway
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 
 /**
  * One chart controller per symbol, living above the navigation graph.
@@ -89,6 +90,9 @@ class ChartControllers(
             log = log,
             cache = cache,
             archive = archive,
+            // The scope above is the main dispatcher; a series is built and its columns filled on
+            // a worker so the tap that asked for it does not pay for it in a frame.
+            workers = Dispatchers.Default,
         )
         controllers[key] = created
         while (controllers.size > MAX_CONTROLLERS) {

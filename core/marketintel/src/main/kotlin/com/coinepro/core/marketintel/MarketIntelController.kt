@@ -1,6 +1,7 @@
 package com.coinepro.core.marketintel
 
 import java.time.Instant
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,6 +58,7 @@ class MarketIntelController(
         mutableState.value = current.copy(
             loading = current.news.isEmpty() && current.calendar.isEmpty(),
             refreshing = current.news.isNotEmpty() || current.calendar.isNotEmpty(),
+            failed = false,
             error = null,
         )
         scope.launch {
@@ -73,10 +75,15 @@ class MarketIntelController(
                     onSnapshot(snapshot)
                 }
                 .onFailure { error ->
+                    if (error is CancellationException) throw error
                     val latest = mutableState.value
                     mutableState.value = latest.copy(
                         loading = false,
                         refreshing = false,
+                        // `failed` is what the screens gate on; `error` is only the server's own
+                        // sentence when there was one. A timeout has no sentence and must still
+                        // read as a failure rather than as an empty day.
+                        failed = true,
                         error = error.serverTextOrNull(),
                     )
                 }

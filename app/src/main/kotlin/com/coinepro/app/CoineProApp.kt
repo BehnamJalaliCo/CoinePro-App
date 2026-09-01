@@ -263,6 +263,7 @@ import com.coinepro.feature.signals.SignalsScreen
 import com.coinepro.feature.terminal.TerminalController
 import com.coinepro.feature.terminal.TerminalScreen
 import com.coinepro.feature.tools.ToolsScreen
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -1398,7 +1399,14 @@ fun CoineProApp(
                         // deployments have separate Google configuration, and a token minted for
                         // one carries an `aud` the other refuses.
                         val audience = emailAuthState.methods.googleClientId
-                        if (!audience.isNullOrBlank()) {
+                        if (audience.isNullOrBlank()) {
+                            // A tap that does nothing reads as a broken button. The server offered
+                            // Google without an audience to mint for, and that is a failure to
+                            // say so about — the e-mail form beneath still works.
+                            emailAuthController.reportGoogleFailure(
+                                context.getString(R.string.auth_google_not_registered),
+                            )
+                        } else {
                             scope.launch {
                                 when (val outcome = googleSignIn.requestIdToken(audience)) {
                                     is GoogleSignInOutcome.Token ->
@@ -2882,7 +2890,12 @@ private fun MainShell(
                 // come from one place. A second fetcher here would be a second thing to keep in
                 // step with paging, timeframes and the academy-token failure modes.
                 val previewController = remember(symbol, candleGateway) {
-                    ChartController(symbol = symbol, gateway = candleGateway, scope = scope)
+                    ChartController(
+                        symbol = symbol,
+                        gateway = candleGateway,
+                        scope = scope,
+                        workers = Dispatchers.Default,
+                    )
                 }
                 val previewState by previewController.state.collectAsStateWithLifecycle()
                 LaunchedEffect(previewController) { previewController.start() }

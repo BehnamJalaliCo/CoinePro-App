@@ -178,6 +178,16 @@ data class MarketIntelState(
     val news: List<MarketNewsItem> = emptyList(),
     val calendar: List<EconomicEvent> = emptyList(),
     val serverTime: Instant? = null,
+    /**
+     * True when the last fetch threw — anything at all, not only an HTTP status.
+     *
+     * Separate from [error] because [error] carries the server's *words*, and a timeout, a DNS
+     * miss, or a runtime fault has none. Before this flag existed those failures left the state
+     * looking exactly like a quiet day — loading off, error null, lists empty — and the calendar
+     * said «چیزی منتشر نشده» about a feed it had never managed to read. The screens gate on this;
+     * they draw [error] when there is one and their own generic line when there is not.
+     */
+    val failed: Boolean = false,
     val error: String? = null,
     /** See [MarketIntelSnapshot.calendarSource]. Reported, never drawn as data. */
     val calendarSource: CalendarSourceOutcome? = null,

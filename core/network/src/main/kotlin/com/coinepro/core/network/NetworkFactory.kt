@@ -10,6 +10,10 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object NetworkFactory {
+
+    /** The most a single HTTP call may take, end to end. See the builder for why it exists. */
+    const val CALL_TIMEOUT_SECONDS = 30L
+
     /**
      * [installId] identifies this install to the server's rate limiter, which cannot use the client
      * IP for the purpose: carrier-grade NAT puts a very large number of Iranian mobile subscribers
@@ -57,6 +61,22 @@ object NetworkFactory {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
+            // **A ceiling on the whole call, and it is the one that was missing.**
+            //
+            // The three above bound single steps — one connect, one read, one write — and none
+            // of them bounds a DNS lookup, a connect that is retried across several addresses, or
+            // a body that keeps trickling a byte at a time. On the networks this app is used on
+            // those are exactly what a filtered or throttled host does: the request neither
+            // succeeds nor fails, it just sits. Every screen with a spinner on it — the chart on
+            // a fresh timeframe, the calendar, the headlines — waited on precisely that, which is
+            // what «گیر کرد» looked like from the glass.
+            //
+            // Thirty seconds is long enough for a slow mobile link to fetch a screenful of
+            // candles and short enough that a reader is shown the retry rather than a spinner
+            // they give up on. It does not touch the socket: OkHttp exits the call timeout the
+            // moment a WebSocket handshake completes, so the live feed is not cut every half
+            // minute.
+            .callTimeout(CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .pingInterval(20, TimeUnit.SECONDS)
             .apply { recorder?.let(::addInterceptor) }
             .addInterceptor(auth)

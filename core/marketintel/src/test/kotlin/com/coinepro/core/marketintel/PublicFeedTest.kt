@@ -351,6 +351,43 @@ class PublicFeedTest {
     }
 
     @Test
+    fun `the calendar is asked of our own host before the file's`() = runTest {
+        // From an Iranian handset the file's CDN does not answer; the relay on our host does. So
+        // the relay is asked first, and when it answers the file's host is not asked at all.
+        val asked = mutableListOf<String>()
+        val intel = PublicMarketIntel(
+            client = { url ->
+                asked += url
+                if (url.startsWith("https://tradeyar.example/")) fixture("ff-calendar-week.json") else null
+            },
+            platform = MarketPlatform.COINEPRO_FX,
+            calendarRelayBaseUrl = "https://tradeyar.example/",
+            now = { now },
+        )
+        assertTrue(intel.calendar().isNotEmpty())
+        assertEquals(listOf("https://tradeyar.example/api/v1/public/calendar/week"), asked)
+    }
+
+    @Test
+    fun `a relay that is down falls through to the file's own host`() = runTest {
+        val asked = mutableListOf<String>()
+        val intel = PublicMarketIntel(
+            client = { url ->
+                asked += url
+                if (url == PublicCalendarFeed.URL) fixture("ff-calendar-week.json") else null
+            },
+            platform = MarketPlatform.TRADEYAR,
+            calendarRelayBaseUrl = "https://tradeyar.example",
+            now = { now },
+        )
+        assertTrue(intel.calendar().isNotEmpty())
+        assertEquals(
+            listOf("https://tradeyar.example/api/v1/public/calendar/week", PublicCalendarFeed.URL),
+            asked,
+        )
+    }
+
+    @Test
     fun `the two platforms are asked different wires`() {
         val crypto = PublicNewsFeed.feeds(MarketPlatform.TRADEYAR).map { it.url }
         val forex = PublicNewsFeed.feeds(MarketPlatform.COINEPRO_FX).map { it.url }

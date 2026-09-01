@@ -54,6 +54,13 @@ class PublicMarketIntel(
      * so on the forex side this is skipped and the wires are the answer.
      */
     private val platformBaseUrl: String? = null,
+    /**
+     * The host that relays the week's calendar file — see [PublicCalendarFeed.relayUrl].
+     *
+     * Not [platformBaseUrl]: the relay lives on TradeYar and the forex reader needs it just as
+     * much, so both platforms are handed the same host here. Null asks the file's own host only.
+     */
+    private val calendarRelayBaseUrl: String? = null,
     private val now: () -> Instant = Instant::now,
 ) {
 
@@ -145,6 +152,16 @@ class PublicMarketIntel(
      * week. The relevance tag still says metals — see [PublicCalendarFeed] — so any screen that
      * filters by instrument keeps its own judgement.
      */
-    suspend fun calendar(): List<EconomicEvent> =
-        PublicCalendarFeed.parse(client.get(PublicCalendarFeed.URL), now())
+    suspend fun calendar(): List<EconomicEvent> {
+        val moment = now()
+        // Our own host first. From an Iranian handset it is the only one of the two that answers,
+        // and from anywhere else it is the nearer of the two; the file's own host is the answer
+        // for the hour the relay is down or has not yet fetched.
+        calendarRelayBaseUrl?.takeIf { it.startsWith("https://") }?.let { base ->
+            PublicCalendarFeed.parse(client.get(PublicCalendarFeed.relayUrl(base)), moment)
+                .takeIf { it.isNotEmpty() }
+                ?.let { return it }
+        }
+        return PublicCalendarFeed.parse(client.get(PublicCalendarFeed.URL), moment)
+    }
 }

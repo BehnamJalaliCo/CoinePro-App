@@ -1163,7 +1163,13 @@ object AppModule {
         retrofit = retrofit,
         platform = MarketPlatform.COINEPRO_FX,
         academyCalendar = academyCalendar,
-        publicSources = PublicMarketIntel(publicFeeds, MarketPlatform.COINEPRO_FX),
+        publicSources = PublicMarketIntel(
+            client = publicFeeds,
+            platform = MarketPlatform.COINEPRO_FX,
+            // The calendar relay is on TradeYar's host and the forex reader needs it more than
+            // anybody: the file it relays is the forex calendar.
+            calendarRelayBaseUrl = BuildConfig.TRADEYAR_API_BASE_URL,
+        ),
     )
 
     @Provides
@@ -1182,6 +1188,7 @@ object AppModule {
             // the guest news screen has been reading all along, which is why a signed-out reader
             // saw stories and a signed-in one saw nothing.
             platformBaseUrl = BuildConfig.TRADEYAR_API_BASE_URL,
+            calendarRelayBaseUrl = BuildConfig.TRADEYAR_API_BASE_URL,
         ),
     )
 

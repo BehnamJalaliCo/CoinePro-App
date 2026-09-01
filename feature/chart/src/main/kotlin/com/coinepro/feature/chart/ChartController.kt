@@ -65,6 +65,7 @@ import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.ChartInterval
 import com.coinepro.core.marketdata.HISTORY_PAGE_BARS
+import com.coinepro.core.marketdata.HISTORY_PAGE_BUDGET
 import com.coinepro.core.marketdata.NoOpCandleArchive
 import com.coinepro.core.marketdata.NoOpCandleCache
 import com.coinepro.core.marketdata.OhlcBar
@@ -74,6 +75,7 @@ import com.coinepro.core.marketdata.Timeframe
 import com.coinepro.core.marketdata.of
 import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -84,6 +86,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Everything the chart screen is showing.
@@ -856,6 +859,16 @@ class ChartController(
     symbolStates: SymbolChartStateStore? = null,
     /** See [bindStores]. Supplied here where a caller builds the controller itself. */
     layoutStore: ChartLayoutStore? = null,
+    /**
+     * Where a series is built and its columns filled in, or null to do it on [scope]'s own thread.
+     *
+     * The app passes `Dispatchers.Default`, because [scope] there is the main dispatcher and a
+     * twenty-thousand-bar series built on it is a dropped frame at the moment the reader tapped.
+     * The tests leave it null: their scope is a test dispatcher whose clock they drive by hand,
+     * and a hop to a real worker thread would put the series build outside that clock — the
+     * assertion would run before the bars landed, on some machines and not others.
+     */
+    private val workers: CoroutineDispatcher? = null,
 ) {
 
     /** The venue these bars come from, named. See [CandleGateway.sourceName]. */
@@ -2413,21 +2426,40 @@ class ChartController(
      * memory only for as long as one reader keeps pulling, and `CandleArchive.MAX_BARS_PER_SERIES`
      * is its ceiling.
      */
-    private fun prependOlder(request: ChartUiState, older: List<OhlcBar>, hasMore: Boolean) {
+    private suspend fun prependOlder(request: ChartUiState, older: List<OhlcBar>, hasMore: Boolean) {
+        // The reader may have switched symbol or interval while the page was in flight, and
+        // prepending this page onto that series would draw one instrument's history under
+        // another's label.
+        val base = _state.value
+        if (base.symbol != request.symbol || base.interval != request.interval) {
+            _state.update { it.copy(loadingMore = false) }
+            return
+        }
+        // Off the main thread, like the reload path: this concatenates and re-checks every bar
+        // held, which at the resident ceiling is fifty thousand of them, in the frame after the
+        // reader dragged to the left edge. The series it joins onto is read once here; if a live
+        // tick or a switch replaces it while the join runs, the join is thrown away rather than
+        // written over the newer series.
+        val joined = buildSeries { CandleSeries(older.map(OhlcBar::toCandle) + base.series.bars) }
         _state.update { old ->
-            // The reader may have switched symbol or interval while the page was in flight, and
-            // prepending this page onto that series would draw one instrument's history under
-            // another's label.
-            if (old.symbol != request.symbol || old.interval != request.interval) {
-                old.copy(loadingMore = false)
-            } else {
-                old.copy(
-                    series = CandleSeries(older.map(OhlcBar::toCandle) + old.series.bars),
-                    loadingMore = false,
-                    hasMore = hasMore,
-                )
+            when {
+                old.symbol != request.symbol || old.interval != request.interval -> old.copy(loadingMore = false)
+                old.series !== base.series -> old.copy(loadingMore = false)
+                else -> old.copy(series = joined, loadingMore = false, hasMore = hasMore)
             }
         }
+    }
+
+    /**
+     * Build a series on a worker thread with its columns already filled in.
+     *
+     * The controller's scope is the main dispatcher — it has to be, the state is read by
+     * composition — so any series built inline is built in a frame. This is the one place series
+     * are built for the chart, and everything that reaches the state flow comes through it warm.
+     */
+    private suspend fun buildSeries(build: () -> CandleSeries): CandleSeries {
+        val worker = workers ?: return build().warm()
+        return withContext(worker) { build().warm() }
     }
 
     /**
@@ -2444,6 +2476,16 @@ class ChartController(
 
     private fun reload() {
         loadJob?.cancel()
+        // **The fill goes too, and this is most of «تایم‌فریم یک دقیقه گیر کرد».**
+        //
+        // Only the load used to be cancelled here. The previous interval's archive fill — up to
+        // forty page requests and their Room writes — kept running, on the same connection pool
+        // and the same server as the load for the interval the reader had just tapped. On the
+        // minute chart, where every page is five hundred bars of a few hours, the new load queued
+        // behind the old fill and the spinner stayed. `deepenArchive` for the new interval will
+        // start its own fill once the new bars are on screen; nothing of the old one is wanted.
+        fillJob?.cancel()
+        fillJob = null
         _state.update { it.copy(loading = true, error = null) }
         loadJob = scope.launch {
             val current = _state.value
@@ -2462,6 +2504,12 @@ class ChartController(
             if (outcome.exceptionOrNull() is CancellationException) return@launch
             outcome
                 .onSuccess { page ->
+                    // Built and warmed off the main thread. This scope is the main dispatcher,
+                    // and a series is a map over every bar, an ordering check over every bar and,
+                    // on first use, six columns over every bar — a few thousand on the hourly
+                    // chart, twenty thousand on the minute one. Done here it was the frame the
+                    // reader's tap landed in.
+                    val series = buildSeries { CandleSeries(page.candles.map(OhlcBar::toCandle)).resident() }
                     _state.update {
                         it.copy(
                             // Bounded here and only here. This is the path eight live controllers
@@ -2469,7 +2517,7 @@ class ChartController(
                             // be handed a deep series without anybody asking for one. Below the
                             // ceiling `resident` returns the same object, so an ordinary chart
                             // pays one comparison and allocates nothing.
-                            series = CandleSeries(page.candles.map(OhlcBar::toCandle)).resident(),
+                            series = series,
                             loading = false,
                             error = null,
                             hasMore = page.hasMore,
@@ -2546,7 +2594,29 @@ class ChartController(
         if (archive === NoOpCandleArchive) return
         fillJob?.cancel()
         fillJob = scope.launch {
-            val depth = runCatching { gateway.fillHistory(symbol, interval, archive) }.getOrNull() ?: return@launch
+            // **Let the reader have the chart first.**
+            //
+            // The fill used to start the instant the first page landed, so the reader's first
+            // drag, first zoom and first indicator competed with a queue of page requests on the
+            // same pool and the same radio — and on the minute chart lost to it. A few seconds of
+            // quiet is what a chart needs to feel settled, and a fill that starts after them costs
+            // the reader nothing they would notice. A reader who taps another interval inside
+            // that window cancels this before it has sent a byte.
+            delay(FILL_SETTLE_MS)
+            // Paced, and shallower where the bars are cheapest. The budget is sized for hourly
+            // candles, where forty pages is five years and worth having tonight; on M1 and M5 it
+            // is a few days that the reader will page through by hand if they want them, and
+            // twenty thousand Room rows a session that nobody asked for.
+            val fine = interval.seconds < Timeframe.M15.seconds
+            val depth = runCatching {
+                gateway.fillHistory(
+                    symbol,
+                    interval,
+                    archive,
+                    maxPages = if (fine) FINE_FILL_PAGES else HISTORY_PAGE_BUDGET,
+                    pageDelayMillis = FILL_PAGE_PAUSE_MS,
+                )
+            }.getOrNull() ?: return@launch
             _state.update { old ->
                 if (old.symbol != symbol || old.interval != interval) {
                     old
@@ -2625,13 +2695,18 @@ class ChartController(
             // or one whose cache write lost a race, still comes up on real candles.
             .ifEmpty { runCatching { archive.read(symbol, interval) }.getOrDefault(emptyList()) }
         if (cached.isEmpty()) return
-        _state.update { current ->
-            if (current.symbol != symbol || current.interval != interval || !current.series.isEmpty) {
-                current
+        // Only if the chart is still empty — checked before the build, so a cache that lost the
+        // race to the network does not cost a worker thread a build that is then thrown away.
+        val current = _state.value
+        if (current.symbol != symbol || current.interval != interval || !current.series.isEmpty) return
+        val series = buildSeries { CandleSeries(cached.map(OhlcBar::toCandle)) }
+        _state.update { latest ->
+            if (latest.symbol != symbol || latest.interval != interval || !latest.series.isEmpty) {
+                latest
             } else {
                 // `loading` stays true: the fetch is still out, the spinner still belongs, and the
                 // reader now has something to look at while it runs. Those are not in conflict.
-                current.copy(series = CandleSeries(cached.map(OhlcBar::toCandle)))
+                latest.copy(series = series)
             }
         }
     }
@@ -2663,6 +2738,28 @@ class ChartController(
          * edge, one page arrives, and they can go on dragging without meeting another wait.
          */
         const val ARCHIVE_PAGE_BARS = 5_000
+
+        /**
+         * How long a freshly loaded chart is left alone before its archive fill starts.
+         *
+         * Four seconds: long enough for the first drag and the first zoom to happen on a quiet
+         * connection, short enough that a reader who stays on the chart still gets the fill in
+         * the same sitting. See [deepenArchive].
+         */
+        const val FILL_SETTLE_MS = 4_000L
+
+        /** The breath between two fill pages. See `fillHistory`'s `pageDelayMillis`. */
+        const val FILL_PAGE_PAUSE_MS = 400L
+
+        /**
+         * Pages one fill may fetch on an interval finer than M15: eight, or four thousand bars.
+         *
+         * On M1 that is under three days and on M5 two weeks — a reader who wants more pages
+         * back by hand and pays for exactly what they look at. The full [HISTORY_PAGE_BUDGET]
+         * on M1 was twenty thousand rows into Room and forty requests in a row, every time the
+         * timeframe was tapped, for history nobody back-tests on.
+         */
+        const val FINE_FILL_PAGES = 8
     }
 }
 
