@@ -113,6 +113,7 @@ class NetworkMarketIntelGateway private constructor(
         return primary
             .withCalendar()
             .withNews()
+            .withPictures()
             .orRethrow(failure)
     }
 
@@ -145,6 +146,26 @@ class NetworkMarketIntelGateway private constructor(
     private suspend fun MarketIntelSnapshot.withNews(): MarketIntelSnapshot {
         if (news.isNotEmpty()) return this
         return withPublicNews(publicSources?.news().orEmpty())
+    }
+
+    /**
+     * The stories with their illustrations, where the route that sent them left the field out.
+     *
+     * Runs after [withNews] rather than instead of it, and the ordering is the whole design: the
+     * question "did the backend publish anything" is settled first and completely, and only then is
+     * a story that *did* arrive asked whether it arrived whole. See [PublicMarketIntel.illustrate]
+     * for why a story can be complete in every other respect and still have no picture, and note
+     * that it returns the list untouched — with no request made — as soon as there is nothing
+     * missing, which is what makes this free on the day the server starts sending the column.
+     *
+     * The probe is deliberately not rewritten. [NewsFeedOutcome] records what the *route* did, and
+     * a picture found afterwards changes nothing about how many rows arrived or how many were read.
+     */
+    private suspend fun MarketIntelSnapshot.withPictures(): MarketIntelSnapshot {
+        val sources = publicSources ?: return this
+        if (news.isEmpty() || news.none { it.imageUrl == null }) return this
+        val illustrated = sources.illustrate(news)
+        return if (illustrated === news) this else copy(news = illustrated)
     }
 
     companion object {

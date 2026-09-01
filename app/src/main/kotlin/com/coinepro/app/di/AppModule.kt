@@ -114,6 +114,10 @@ import com.coinepro.core.marketintel.MarketIntelGateway
 import com.coinepro.core.marketintel.AcademyCalendarSource
 import com.coinepro.core.marketintel.MarketIntelSnapshot
 import com.coinepro.core.marketintel.NetworkAcademyCalendarSource
+import com.coinepro.core.marketintel.ForexNewsBodySource
+import com.coinepro.core.marketintel.NewsBodySource
+import com.coinepro.core.marketintel.NoNewsBodySource
+import com.coinepro.core.marketintel.TradeYarNewsBodySource
 import com.coinepro.core.marketintel.NetworkMarketIntelGateway
 import com.coinepro.core.marketintel.OkHttpPublicFeedClient
 import com.coinepro.core.marketintel.PublicFeedClient
@@ -1907,6 +1911,39 @@ object AppModule {
         scope: CoroutineScope,
     ): AiAssistantController = AiAssistantController(gateway, scope)
 
+    /**
+     * Where a story's full translated text comes from — one reader per backend, and they differ in
+     * every way two readers of the same thing can.
+     *
+     * **TradeYar** publishes it at a *public* route: `news_posts.body_fa`, served by
+     * `api/v1/news/{slug}` as `bodyFa`, in Persian, to anybody. So it is read through the plain
+     * [PublicFeedClient] — a client carrying a bearer token would be sending a session credential
+     * to a path that does not want one, and a signed-out reader gets the same article a member does.
+     *
+     * **CoinePro-FX** publishes it at a members' route beside the feed: `articles.content` rendered
+     * to plain text by `user/mobile/news/{id}`. That one needs the token, so it goes through the
+     * platform's own Retrofit. The rendering is the server's because the column is HTML and a
+     * Compose `Text` draws `<p>` as four characters.
+     *
+     * Neither route is called until a reader opens a story. See `NewsBodySource` for why a body
+     * belongs to the article rather than to the feed.
+     */
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexNewsBodySource(@ForexPlatform retrofit: Retrofit): NewsBodySource =
+        ForexNewsBodySource.create(retrofit)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoNewsBodySource(publicFeeds: PublicFeedClient): NewsBodySource =
+        if (isPlatformConfigured(BuildConfig.TRADEYAR_API_BASE_URL)) {
+            TradeYarNewsBodySource(publicFeeds, BuildConfig.TRADEYAR_API_BASE_URL)
+        } else {
+            NoNewsBodySource
+        }
+
     @Provides
     @Singleton
     @ForexPlatform
@@ -1914,7 +1951,13 @@ object AppModule {
         @ForexPlatform gateway: MarketIntelGateway,
         scope: CoroutineScope,
         log: AppLog,
-    ): MarketIntelController = MarketIntelController(gateway, scope) { it.record(log, MarketPlatform.COINEPRO_FX) }
+        @ForexPlatform bodies: NewsBodySource,
+    ): MarketIntelController = MarketIntelController(
+        gateway = gateway,
+        scope = scope,
+        onSnapshot = { it.record(log, MarketPlatform.COINEPRO_FX) },
+        bodies = bodies,
+    )
 
     @Provides
     @Singleton
@@ -1923,7 +1966,13 @@ object AppModule {
         @CryptoPlatform gateway: MarketIntelGateway,
         scope: CoroutineScope,
         log: AppLog,
-    ): MarketIntelController = MarketIntelController(gateway, scope) { it.record(log, MarketPlatform.TRADEYAR) }
+        @CryptoPlatform bodies: NewsBodySource,
+    ): MarketIntelController = MarketIntelController(
+        gateway = gateway,
+        scope = scope,
+        onSnapshot = { it.record(log, MarketPlatform.TRADEYAR) },
+        bodies = bodies,
+    )
 
     /**
      * Keyed by platform though only one key is ever present, exactly as the chart-event controllers

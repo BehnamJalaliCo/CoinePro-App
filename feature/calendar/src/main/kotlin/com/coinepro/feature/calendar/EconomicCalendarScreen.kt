@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -97,6 +98,36 @@ fun EconomicCalendarScreen(
         state.calendar.filter { event -> impact == null || event.impact == impact }
     }
 
+    // ── where the list opens ──────────────────────────────────────────────────────────────────
+    //
+    // On the next release, not on Monday's.
+    //
+    // The calendar is a *week*: the source it comes from publishes the whole of it at once, and it
+    // is sorted ascending because a calendar is read forwards. Both of those are right and together
+    // they produced a screen that opens on events that have already happened — on a Thursday, a
+    // reader saw three days of released figures and had to scroll past them to find out what was
+    // coming. That is most of what "the economic calendar does not work" means once the feed is
+    // actually arriving: the data was there and the useful half of it was below the fold.
+    //
+    // So the list opens at the first release that has not happened yet. Not at the top, and not at
+    // "today" either — a reader at nine in the evening is asking about tomorrow morning, and the
+    // day boundary is not the thing they are standing on. The past stays *above* rather than being
+    // filtered out, because what a figure came in at is half of what the next one means, and it is
+    // one flick away.
+    val listState = rememberLazyListState()
+    val firstUpcoming = remember(filtered) {
+        // `isStale` is the server's own judgement where it sent one, and `PublicCalendarFeed`
+        // computes it two hours past the release — which is the right boundary here too: a figure
+        // released twenty minutes ago is still the thing the market is trading.
+        filtered.indexOfFirst { !it.isStale }.takeIf { it > 0 }
+    }
+    LaunchedEffect(firstUpcoming) {
+        // The freshness strip is item zero, so the row's index in the list is one past its index in
+        // the data. Scrolled rather than animated: this is where the screen *starts*, and a screen
+        // that visibly travels on arrival reads as a screen that opened in the wrong place.
+        firstUpcoming?.let { listState.scrollToItem(it + 1) }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -170,6 +201,7 @@ fun EconomicCalendarScreen(
                     onRefresh = controller::refresh,
                 ) {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {

@@ -27,6 +27,110 @@ class PublicFeedTest {
         checkNotNull(javaClass.classLoader?.getResourceAsStream(name)) { "missing fixture $name" }
             .use { it.readBytes().toString(Charsets.UTF_8) }
 
+    // ── the pictures the members' route leaves out ───────────────────────────
+
+    /** A story as the members' route sends one: complete, and with no picture. */
+    private fun story(id: String, url: String?, image: String? = null) = MarketNewsItem(
+        id = id,
+        title = "عنوان",
+        summary = "خلاصه",
+        source = "decrypt",
+        url = url,
+        publishedAt = now,
+        sentiment = NewsSentiment.UNKNOWN,
+        impact = MarketImpact.UNKNOWN,
+        relevance = setOf(MarketRelevance.CRYPTO),
+        isStale = false,
+        imageUrl = image,
+    )
+
+    @Test
+    fun `a story with no picture is given the one the public route publishes for it`() = runTest {
+        // The asymmetry this closes, measured on the live host: both routes read `news_posts`, the
+        // public one selects `source_image_url` and the members' one does not — so a guest saw an
+        // illustrated feed and a signed-in reader saw the same stories with the pictures gone.
+        val intel = PublicMarketIntel(
+            client = { fixture("tradeyar-public-news.json") },
+            platform = MarketPlatform.TRADEYAR,
+            platformBaseUrl = "https://tradeyar.example",
+            now = { now },
+        )
+        val filled = intel.illustrate(
+            listOf(story("bitcoin-open-interest-price-short-squeeze-28bdde", url = null)),
+        )
+        assertEquals(
+            "https://cdn.decrypt.co/wp-content/uploads/2026/08/money-bitcoin-gID_7.jpg",
+            filled.single().imageUrl,
+        )
+    }
+
+    @Test
+    fun `a story is matched by its source url when its id is not the slug`() = runTest {
+        // `str(row.get("slug") or row.get("id"))` on the server means a row with no slug arrives
+        // identified by its numeric primary key, which addresses nothing. The source URL is the
+        // other thing both routes send for the same row.
+        val intel = PublicMarketIntel(
+            client = { fixture("tradeyar-public-news.json") },
+            platform = MarketPlatform.TRADEYAR,
+            platformBaseUrl = "https://tradeyar.example",
+            now = { now },
+        )
+        val filled = intel.illustrate(
+            listOf(
+                story(
+                    id = "35377",
+                    url = "https://decrypt.co/376473/bitcoin-open-interest-price-short-squeeze",
+                ),
+            ),
+        )
+        assertNotNull(filled.single().imageUrl)
+    }
+
+    @Test
+    fun `nothing is fetched when every story already has a picture`() = runTest {
+        // The day the server adds the column, this becomes dead weight on its own. A story that
+        // arrived complete must not cost a second request, and the server's own answer must win.
+        var asked = false
+        val intel = PublicMarketIntel(
+            client = { asked = true; fixture("tradeyar-public-news.json") },
+            platform = MarketPlatform.TRADEYAR,
+            platformBaseUrl = "https://tradeyar.example",
+            now = { now },
+        )
+        val theirs = story("anything", url = null, image = "https://example.test/theirs.jpg")
+        val filled = intel.illustrate(listOf(theirs))
+        assertFalse("no request should have been made", asked)
+        assertEquals("https://example.test/theirs.jpg", filled.single().imageUrl)
+    }
+
+    @Test
+    fun `a story the public route does not know is returned exactly as it arrived`() = runTest {
+        val intel = PublicMarketIntel(
+            client = { fixture("tradeyar-public-news.json") },
+            platform = MarketPlatform.TRADEYAR,
+            platformBaseUrl = "https://tradeyar.example",
+            now = { now },
+        )
+        // No stand-in image, and no placeholder drawn for the null: `NewsHero` emits nothing at
+        // all, and the layout under it is written to be right without a picture.
+        val filled = intel.illustrate(listOf(story("a-story-nobody-published", url = null)))
+        assertNull(filled.single().imageUrl)
+    }
+
+    @Test
+    fun `the forex platform is left alone, because it has no such public route`() = runTest {
+        var asked = false
+        val intel = PublicMarketIntel(
+            client = { asked = true; null },
+            platform = MarketPlatform.COINEPRO_FX,
+            platformBaseUrl = "https://coineprofx.example",
+            now = { now },
+        )
+        val original = listOf(story("12", url = null))
+        assertEquals(original, intel.illustrate(original))
+        assertFalse("no request should have been made", asked)
+    }
+
     // ── the calendar ─────────────────────────────────────────────────────────
 
     @Test

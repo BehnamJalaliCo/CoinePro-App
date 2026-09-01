@@ -52,6 +52,7 @@ import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
@@ -64,6 +65,10 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.unit.sp
+import com.coinepro.core.common.AppLanguage
+import com.coinepro.core.common.JalaliDate
+import com.coinepro.core.common.PersianDateTime
+import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProColors
 import java.time.Instant
 import java.time.ZoneId
@@ -80,6 +85,8 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.PI
 import kotlin.math.pow
+import kotlin.math.round
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
@@ -834,6 +841,19 @@ fun CoineProChart(
         crosshair = CoineProColors.TextSecondary,
         stage = CoineProColors.Stage,
     )
+
+    /**
+     * Whether the dates along the bottom are written in Solar Hijri. See [formatTimeTick].
+     *
+     * Read from the configuration rather than from `Locale.getDefault()`, and that is not a
+     * preference: this app sets its language per-app, so the process default and the configuration
+     * can legitimately disagree — and the configuration is the one every other date in the app is
+     * already drawn from, through `stringResource`. Resolved once here rather than per label,
+     * because it is read inside a draw pass that runs sixty times a second on a pan.
+     */
+    val jalaliDates =
+        LocalConfiguration.current.locales[0]?.language == AppLanguage.PERSIAN.tag
+
     /**
      * Which legend rows the reader has switched off.
      *
@@ -1930,7 +1950,11 @@ fun CoineProChart(
             val cached = scaleCache.view
             val settled =
                 if (dirtyLevel <= Invalidation.CURSOR && cached == candidate) cached else candidate
-            val ticks = if (settled === cached) scaleCache.ticks ?: priceTicks(settled) else priceTicks(settled)
+            val ticks = if (settled === cached) {
+                scaleCache.ticks ?: priceTicks(settled, density.density)
+            } else {
+                priceTicks(settled, density.density)
+            }
             // The time ladder is cached beside the price one and for the same reason: it walks every
             // visible bar asking what calendar boundary it opens, and a crosshair moving must not
             // pay for that. Both are keyed on the viewport *instance*, so the pair can only ever be
@@ -2200,6 +2224,7 @@ fun CoineProChart(
                             measurer = measurer,
                             zone = zone,
                             ticks = timeTicks,
+                            jalali = jalaliDates,
                             cache = textCache,
                         )
                         drawEventMarks(view, decoration.events, plotHeight + paneHeight, eventColours)
@@ -2556,9 +2581,15 @@ private fun DrawScope.drawCandles(
     metrics: CandleMetrics,
 ) {
     val body = metrics.body
+    val wick = crispStroke(metrics.wick)
     for (index in view.firstVisible..view.lastVisible) {
         val bar = view.series[index]
-        val x = view.xOf(index)
+        // Registered, and then everything else about this bar is measured from the registered edge
+        // rather than from the geometric centre — see the note on `barLeft`. A body snapped onto a
+        // pixel boundary with a wick still drawn at the unsnapped centre is a candle whose mast
+        // leans, which is more visible than either error alone.
+        val left = barLeft(view.xOf(index), body)
+        val x = strokeCentre(left + body / 2f, wick)
         // A hollow chart colours by the *previous close*, not by the bar's own open — that is what
         // makes a run of gaps up read as one colour even when individual bars closed down.
         val rising = if (hollow && index > 0) bar.c >= view.series.close[index - 1] else bar.up
@@ -2568,21 +2599,25 @@ private fun DrawScope.drawCandles(
             color = colour,
             start = Offset(x, view.yOf(bar.h)),
             end = Offset(x, view.yOf(bar.l)),
-            strokeWidth = metrics.wick,
+            strokeWidth = wick,
         )
         val top = min(view.yOf(bar.o), view.yOf(bar.c))
         // A doji has no body height at all, and a zero-height rectangle draws nothing — so it is
         // given a hairline. Without it a flat bar vanishes and the chart appears to have a gap.
-        val height = max(1f, abs(view.yOf(bar.c) - view.yOf(bar.o)))
+        // Snapped for the same reason the width is: an unsnapped top and bottom put a fifth of a
+        // pixel of the body's own colour into the row above it, which on a screen full of small
+        // bodies reads as a chart drawn slightly out of focus.
+        val bodyTop = round(top)
+        val height = max(1f, round(abs(view.yOf(bar.c) - view.yOf(bar.o))))
         if (hollow && rising && metrics.outlined) {
             drawRect(
                 color = colour,
-                topLeft = Offset(x - body / 2, top),
+                topLeft = Offset(left, bodyTop),
                 size = Size(body, height),
                 style = Stroke(width = metrics.border),
             )
         } else {
-            drawRect(color = colour, topLeft = Offset(x - body / 2, top), size = Size(body, height))
+            drawRect(color = colour, topLeft = Offset(left, bodyTop), size = Size(body, height))
         }
     }
 }
@@ -2751,14 +2786,21 @@ private val COMPARISON_WIDTH_DP = 1.6.dp
 
 private fun DrawScope.drawOhlcBars(view: ChartViewport, palette: ChartPalette, metrics: CandleMetrics) {
     val tick = metrics.body / 2
-    val stroke = metrics.wick
+    val stroke = crispStroke(metrics.wick)
     for (index in view.firstVisible..view.lastVisible) {
         val bar = view.series[index]
-        val x = view.xOf(index)
+        // Registered on both axes, and for the same reason as the candles: an OHLC bar is nothing
+        // but three strokes, so a bar chart is the type where a half-pixel offset is *all* the
+        // reader sees. The two ticks take the mast's own registered x so they meet it exactly.
+        val x = strokeCentre(view.xOf(index), stroke)
         val colour = if (bar.up) palette.up else palette.down
-        drawLine(colour, Offset(x, view.yOf(bar.h)), Offset(x, view.yOf(bar.l)), stroke)
-        drawLine(colour, Offset(x - tick, view.yOf(bar.o)), Offset(x, view.yOf(bar.o)), stroke)
-        drawLine(colour, Offset(x, view.yOf(bar.c)), Offset(x + tick, view.yOf(bar.c)), stroke)
+        val high = view.yOf(bar.h)
+        val low = view.yOf(bar.l)
+        val open = strokeCentre(view.yOf(bar.o), stroke)
+        val close = strokeCentre(view.yOf(bar.c), stroke)
+        drawLine(colour, Offset(x, high), Offset(x, low), stroke)
+        drawLine(colour, Offset(round(x - tick), open), Offset(x, open), stroke)
+        drawLine(colour, Offset(x, close), Offset(round(x + tick), close), stroke)
     }
 }
 
@@ -2924,12 +2966,17 @@ private fun DrawScope.drawVolume(
     }
     if (peak <= 0.0) return
     val band = plotHeight * VOLUME_INLINE
+    val floorY = round(plotHeight)
     for (index in view.firstVisible..view.lastVisible) {
         val bar = view.series[index]
-        val height = (view.series.volume[index] / peak * band).toFloat()
+        // Rounded up, not down: a bar whose volume is a hundredth of the session's peak is still a
+        // bar that traded, and flooring it to zero height draws nothing where the reader expects a
+        // stub. The floor of the band is a single snapped y for every column so the row of bars
+        // stands on one line rather than on a ragged one.
+        val height = max(1f, round((view.series.volume[index] / peak * band).toFloat()))
         drawRect(
             color = (if (bar.up) palette.up else palette.down).copy(alpha = VOLUME_ALPHA),
-            topLeft = Offset(view.xOf(index) - body / 2, plotHeight - height),
+            topLeft = Offset(barLeft(view.xOf(index), body), floorY - height),
             size = Size(body, height),
         )
     }
@@ -2959,12 +3006,7 @@ private fun DrawScope.drawPane(
     val top = band.top
     val height = band.height
     if (height <= 0f || plotWidth <= 0f) return
-    drawLine(
-        color = palette.grid.copy(alpha = GRID_ALPHA),
-        start = Offset(0f, top),
-        end = Offset(plotWidth, top),
-        strokeWidth = HAIRLINE_DP.toPx(),
-    )
+    drawRule(palette.grid.copy(alpha = GRID_ALPHA), top, 0f, plotWidth, HAIRLINE_DP.toPx())
 
     val bottom = band.bottom
     val ceiling = band.ceiling
@@ -2975,11 +3017,12 @@ private fun DrawScope.drawPane(
     clipRect(0f, top, plotWidth, top + height) {
         pane.levels.forEach { level ->
             val y = yOf(level.price)
-            drawLine(
-                color = Color(level.colour.toInt()),
-                start = Offset(0f, y),
-                end = Offset(plotWidth, y),
-                strokeWidth = HAIRLINE_DP.toPx(),
+            drawRule(
+                colour = Color(level.colour.toInt()),
+                y = y,
+                fromX = 0f,
+                toX = plotWidth,
+                stroke = HAIRLINE_DP.toPx(),
                 pathEffect = dashEffect(LineStyleKind.LARGE_DASHED, HAIRLINE_DP.toPx()),
             )
         }
@@ -2990,8 +3033,8 @@ private fun DrawScope.drawPane(
                 val y = yOf(value)
                 drawRect(
                     color = if (value >= 0) palette.up else palette.down,
-                    topLeft = Offset(view.xOf(index) - body / 2, min(y, zero)),
-                    size = Size(body, max(1f, abs(y - zero))),
+                    topLeft = Offset(barLeft(view.xOf(index), body), round(min(y, zero))),
+                    size = Size(body, max(1f, round(abs(y - zero)))),
                 )
             }
         }
@@ -3180,14 +3223,14 @@ private fun paneDecimals(span: Double): Int = when {
  * covered, but they are anchored to the ladder, so panning slides the labels rather than
  * renumbering them.
  */
-private fun priceTicks(view: ChartViewport): PriceTicks {
+private fun priceTicks(view: ChartViewport, density: Float = 0f): PriceTicks {
     val low = view.priceRange.start
     val high = view.priceRange.endInclusive
     val span = high - low
     if (span <= 0.0 || !span.isFinite()) return PriceTicks(emptyList(), 0.0)
     if (view.logScale && low > 0.0) return logPriceTicks(low, high)
 
-    val rough = span / GRID_ROWS
+    val rough = span / gridRows(view.plotHeight, density)
     val magnitude = 10.0.pow(floor(log10(rough)))
     val step = when {
         rough <= magnitude -> magnitude
@@ -3304,13 +3347,20 @@ private fun DrawScope.drawGrid(
     timeTicks: List<TimeTick>,
 ) {
     val grid = palette.grid.copy(alpha = GRID_ALPHA)
+    // One device pixel, registered. A grid is the most repeated mark on the chart and therefore the
+    // one whose softness the eye reads as the whole picture's: at 0.8dp on a 3× screen the renderer
+    // was asked for 2.4 pixels of ink at a fractional y, and painted three rows — one solid and two
+    // partial — for every horizontal rule on the screen. `crispStroke` takes it to a whole pixel and
+    // `strokeCentre` puts that pixel on a pixel. Nothing about the layout moves; the smear goes.
+    val hairline = crispStroke(HAIRLINE_DP.toPx())
     // On the round prices, not at even fractions of the plot. The two agree because they are the
     // same list — see `priceTicks` — and the list is now computed once per frame and handed to both
     // the grid and the axis rather than being built twice.
     for (price in ticks) {
         val y = view.yOf(price)
         if (y < 0f || y > view.plotHeight) continue
-        drawLine(grid, Offset(0f, y), Offset(plotWidth, y), HAIRLINE_DP.toPx())
+        val row = strokeCentre(y, hairline)
+        drawLine(grid, Offset(0f, row), Offset(plotWidth, row), hairline)
     }
     // Verticals stand where the time labels stand, not at even fractions of the width — and now
     // that the labels stand on calendar boundaries, so do the columns. A gridline at midnight or at
@@ -3319,8 +3369,36 @@ private fun DrawScope.drawGrid(
     for (tick in timeTicks) {
         val x = view.xOf(tick.index)
         if (x < 0f || x > plotWidth) continue
-        drawLine(grid, Offset(x, 0f), Offset(x, view.plotHeight), HAIRLINE_DP.toPx())
+        val column = strokeCentre(x, hairline)
+        drawLine(grid, Offset(column, 0f), Offset(column, view.plotHeight), hairline)
     }
+}
+
+/**
+ * A horizontal rule across the plot, on a device-pixel row.
+ *
+ * Every level this chart draws is horizontal — the pane lids, the reference lines inside a pane, the
+ * last price, the previous close, a setup's entry and target — and every one of them was being
+ * asked for at a fractional y, which the rasteriser answers by painting two rows at partial
+ * coverage. One dashed rule drawn that way looks like a slightly worn dashed rule; **seven** of
+ * them, at seven different fractions, look like a chart whose lines were drawn by different hands.
+ * The dash pattern makes it worse rather than better, because a soft edge on a short segment is a
+ * larger share of the segment.
+ *
+ * The width is the argument rather than a constant so a caller that has already thickened its line
+ * — a selected level, a wider style — keeps its weight and only gains the registration.
+ */
+private fun DrawScope.drawRule(
+    colour: Color,
+    y: Float,
+    fromX: Float,
+    toX: Float,
+    stroke: Float,
+    pathEffect: PathEffect? = null,
+) {
+    val width = crispStroke(stroke)
+    val row = strokeCentre(y, width)
+    drawLine(colour, Offset(fromX, row), Offset(toX, row), width, pathEffect = pathEffect)
 }
 
 /**
@@ -3452,11 +3530,13 @@ private fun DrawScope.drawEmptyAxis(
     // The hairline goes on the edge the plot is on, so the chart still has a boundary rather than a
     // strip of stage colour floating against it.
     val edge = if (gutterX < 0f) gutterX + width else gutterX
+    val axisRule = crispStroke(HAIRLINE_DP.toPx())
+    val axisEdge = strokeCentre(edge, axisRule)
     drawLine(
         color = palette.grid.copy(alpha = GRID_ALPHA),
-        start = Offset(edge, 0f),
-        end = Offset(edge, size.height),
-        strokeWidth = HAIRLINE_DP.toPx(),
+        start = Offset(axisEdge, 0f),
+        end = Offset(axisEdge, size.height),
+        strokeWidth = axisRule,
     )
     val mark = measurer.measure(NO_VALUE, axisStyle(palette.text))
     drawText(
@@ -3523,11 +3603,12 @@ private fun DrawScope.drawLastPrice(
     val y = view.yOf(bar.c)
     if (y < 0f || y > view.plotHeight) return
     val colour = if (bar.up) palette.up else palette.down
-    drawLine(
-        color = colour.copy(alpha = LAST_PRICE_ALPHA),
-        start = Offset(0f, y),
-        end = Offset(plotWidth, y),
-        strokeWidth = HAIRLINE_DP.toPx(),
+    drawRule(
+        colour = colour.copy(alpha = LAST_PRICE_ALPHA),
+        y = y,
+        fromX = 0f,
+        toX = plotWidth,
+        stroke = HAIRLINE_DP.toPx(),
         pathEffect = dashEffect(LineStyleKind.LARGE_DASHED, HAIRLINE_DP.toPx()),
     )
     if (!withAxis || frame.tagGutterWidth <= 0f) return
@@ -3625,11 +3706,12 @@ private fun DrawScope.drawPreviousClose(
 ) {
     val y = view.yOf(price)
     if (y < 0f || y > view.plotHeight) return
-    drawLine(
-        color = palette.text.copy(alpha = PREVIOUS_CLOSE_ALPHA),
-        start = Offset(0f, y),
-        end = Offset(plotWidth, y),
-        strokeWidth = HAIRLINE_DP.toPx(),
+    drawRule(
+        colour = palette.text.copy(alpha = PREVIOUS_CLOSE_ALPHA),
+        y = y,
+        fromX = 0f,
+        toX = plotWidth,
+        stroke = HAIRLINE_DP.toPx(),
         pathEffect = dashEffect(LineStyleKind.DOTTED, HAIRLINE_DP.toPx()),
     )
     if (!withAxis || frame.tagGutterWidth <= 0f) return
@@ -3805,6 +3887,8 @@ private fun DrawScope.drawTimeAxis(
     measurer: TextMeasurer,
     zone: ZoneId,
     ticks: List<TimeTick>,
+    /** Solar Hijri dates. See [formatTimeTick]; resolved once per frame from the composition. */
+    jalali: Boolean,
     /**
      * The measured-label cache the price axis already uses.
      *
@@ -3838,7 +3922,8 @@ private fun DrawScope.drawTimeAxis(
     for (tick in ticks) {
         // A price-driven type has no clock, so its axis is numbered by bar. Printing a date there
         // would be a fabricated one — Renko bars carry synthetic timestamps.
-        val text = if (type.isTimeBased) formatTimeTick(tick, span, zone) else "#${tick.index + 1}"
+        val text =
+            if (type.isTimeBased) formatTimeTick(tick, span, zone, jalali) else "#${tick.index + 1}"
         val style = if (tick.isBoundary()) heavy else plain
         val label = cache.measure(text to style) { measurer.measure(text, style) }
         val limit = max(0f, min(plotWidth, barArea) - label.size.width)
@@ -3867,11 +3952,12 @@ private fun DrawScope.drawLevel(
     if (y < 0f || y > view.plotHeight) return
     val colour = Color(level.colour.toInt())
     val right = if (level.extendRight) plotWidth else view.xOf(view.lastVisible)
-    drawLine(
-        color = colour,
-        start = Offset(0f, y),
-        end = Offset(right, y),
-        strokeWidth = HAIRLINE_DP.toPx(),
+    drawRule(
+        colour = colour,
+        y = y,
+        fromX = 0f,
+        toX = right,
+        stroke = HAIRLINE_DP.toPx(),
         pathEffect = dashEffect(LineStyleKind.LARGE_DASHED, HAIRLINE_DP.toPx()),
     )
     val text = level.label ?: return
@@ -4063,11 +4149,12 @@ private fun DrawScope.drawLevelLabel(
  * that wants the whole width passes zero and the plot width, which is what a timeless level is.
  */
 private fun DrawScope.drawDashedLevel(y: Float, startX: Float, endX: Float, colour: Color) {
-    drawLine(
-        color = colour,
-        start = Offset(startX, y),
-        end = Offset(endX, y),
-        strokeWidth = HAIRLINE_DP.toPx(),
+    drawRule(
+        colour = colour,
+        y = y,
+        fromX = startX,
+        toX = endX,
+        stroke = HAIRLINE_DP.toPx(),
         pathEffect = dashEffect(LineStyleKind.LARGE_DASHED, HAIRLINE_DP.toPx()),
     )
 }
@@ -4134,18 +4221,26 @@ private fun DrawScope.drawCrosshair(
     // A tighter pattern than the level rules use. The crosshair is transient and has to be
     // distinguishable at a glance from the dashed levels it crosses; a shorter dash is the cheapest
     // way to say "this one is yours and it is not part of the chart".
-    val dash = dashEffect(LineStyleKind.DASHED, HAIRLINE_DP.toPx())
+    val hairline = crispStroke(HAIRLINE_DP.toPx())
+    val dash = dashEffect(LineStyleKind.DASHED, hairline)
     when (mode) {
         DrawingMode.ARROW_CURSOR -> Unit
         DrawingMode.DOT -> {
             // A ring rather than a filled disc, so the pointer does not hide the pixel it is
             // pointing at — which on a dot pointer is the entire point of choosing it.
-            drawCircle(palette.crosshair, DOT_CURSOR_DP.toPx(), Offset(x, y), style = Stroke(HAIRLINE_DP.toPx()))
-            drawCircle(palette.crosshair, HAIRLINE_DP.toPx(), Offset(x, y))
+            drawCircle(palette.crosshair, DOT_CURSOR_DP.toPx(), Offset(x, y), style = Stroke(hairline))
+            drawCircle(palette.crosshair, hairline, Offset(x, y))
         }
         else -> {
-            drawLine(palette.crosshair, Offset(x, 0f), Offset(x, fullHeight), HAIRLINE_DP.toPx(), pathEffect = dash)
-            drawLine(palette.crosshair, Offset(0f, y), Offset(plotWidth, y), HAIRLINE_DP.toPx(), pathEffect = dash)
+            // Registered like the grid. The crosshair moves under a finger, so an unregistered one
+            // does not merely look soft — it *pulses*, alternating between one crisp pixel column
+            // and two grey ones as the touch point crosses each boundary. That flicker is the most
+            // conspicuous rendering artefact in the whole chart, because it is the one mark the
+            // reader is deliberately watching.
+            val column = strokeCentre(x, hairline)
+            val row = strokeCentre(y, hairline)
+            drawLine(palette.crosshair, Offset(column, 0f), Offset(column, fullHeight), hairline, pathEffect = dash)
+            drawLine(palette.crosshair, Offset(0f, row), Offset(plotWidth, row), hairline, pathEffect = dash)
         }
     }
 
@@ -4652,7 +4747,34 @@ internal fun formatTime(
  * `1 Jan` where every terminal on earth reads `2026`. Falls back to [formatTime] for a tick with no
  * boundary, which is the even-spread case.
  */
-internal fun formatTimeTick(tick: TimeTick, spanSeconds: Long, zone: ZoneId): String {
+internal fun formatTimeTick(
+    tick: TimeTick,
+    spanSeconds: Long,
+    zone: ZoneId,
+    /**
+     * Write the dates in Solar Hijri, which is what a Persian reader's calendar actually is.
+     *
+     * ### Why this parameter exists, when the note below says the opposite
+     *
+     * That note was right about the danger and wrong about the remedy. Rendering a *Gregorian*
+     * month in Persian script — «مارس» over a bar that opened on 12 March — is indeed a date wrong
+     * by eleven days, and refusing to do it was correct. But the conclusion drawn from it, that the
+     * axis must therefore print `12 Mar`, made this the **only** surface in the app on a Gregorian
+     * calendar. Every other date a reader sees — the economic calendar's rows, a headline's
+     * timestamp, the activity log, a signal's age — is Solar Hijri through [PersianDateTime]. So a
+     * reader comparing a CPI release at «۶ اسفند» against the candle it moved was asked to convert
+     * a calendar in their head, on the one screen where the whole point is lining two things up.
+     *
+     * The answer is neither of the two the note considered: convert the date properly and then name
+     * the month it lands in. «۱۲ اسفند» is the same instant as `2 March`, not a transliteration of
+     * it, and [JalaliDate] is the same conversion the rest of the app has always used.
+     *
+     * The clock is untouched in both calendars. See [PersianDateTime]: `14:30` is a market figure
+     * read against MetaTrader and LBank, and it stays Latin wherever it appears.
+     */
+    jalali: Boolean = false,
+): String {
+    if (jalali) return persianTimeTick(tick, spanSeconds, zone)
     val pattern = when (tick.unit) {
         TimeTickUnit.YEAR -> "yyyy"
         TimeTickUnit.MONTH -> if (spanSeconds >= SPAN_MULTI_YEAR) "MMM yy" else "MMM"
@@ -4665,6 +4787,38 @@ internal fun formatTimeTick(tick: TimeTick, spanSeconds: Long, zone: ZoneId): St
     return Instant.ofEpochSecond(tick.time)
         .atZone(zone)
         .format(DateTimeFormatter.ofPattern(pattern, Locale.US))
+}
+
+/**
+ * The same label, in Solar Hijri, shaped for the boundary it stands on.
+ *
+ * The four cases mirror the Gregorian ones exactly, so the axis has the same rhythm in both
+ * calendars: a year is a year, a month is a month with the year attached only across a long window,
+ * a day is a day and a month, and anything finer is the clock.
+ *
+ * A date outside [JalaliDate]'s break table returns [PersianDateTime.UNREPRESENTABLE] rather than
+ * throwing, which matters here more than anywhere: this runs inside a draw pass, where an exception
+ * is a dead frame and then a dead app, and a synthetic timestamp on a Renko bar is exactly the kind
+ * of value that reaches it. The axis prints an em dash for that one label and carries on.
+ */
+private fun persianTimeTick(tick: TimeTick, spanSeconds: Long, zone: ZoneId): String {
+    val moment = Instant.ofEpochSecond(tick.time)
+    val date = moment.atZone(zone).toLocalDate()
+    val day = JalaliDate.fromGregorianOrNull(date) ?: return PersianDateTime.UNREPRESENTABLE
+    return when (tick.unit) {
+        TimeTickUnit.YEAR -> day.year.toPersianDigits()
+        TimeTickUnit.MONTH ->
+            if (spanSeconds >= SPAN_MULTI_YEAR) day.monthName + " " + day.year.toPersianDigits()
+            else day.monthName
+        TimeTickUnit.WEEK, TimeTickUnit.DAY -> day.formatShort()
+        TimeTickUnit.HOUR, TimeTickUnit.MINUTE -> PersianDateTime.clock(moment, zone)
+        // The even-spread case, which is the one place the *span* rather than the boundary decides.
+        null -> when {
+            spanSeconds >= SPAN_MULTI_YEAR -> day.monthName + " " + day.year.toPersianDigits()
+            spanSeconds >= SPAN_MULTI_DAY -> day.formatShort()
+            else -> PersianDateTime.clock(moment, zone)
+        }
+    }
 }
 
 /** Beyond this much visible time, an axis label is a date rather than a clock. */
@@ -4872,17 +5026,25 @@ private const val PREVIOUS_CLOSE_ALPHA = 0.42f
 /**
  * Rows the corner legend will print before it starts counting instead.
  *
- * Two, not four. The legend is drawn *over the candles*, and four rows of it — the OHLC line, the
- * change, and two studies, each with its own visibility, settings and remove glyph — was covering
- * the top third of the plot with chrome on the one screen whose product is the plot. A reader who
- * wants every study's value at a bar puts the crosshair down, and that is what
+ * Four, and it was two, and the number that changed underneath it is the row height rather than
+ * this. The argument for two was that four rows of legend — the OHLC line, the change, and two
+ * studies, *each with its own visibility, settings and remove glyph* — covered the top third of the
+ * plot with chrome on the one screen whose product is the plot. That was true, and the glyphs were
+ * the reason: they lifted every study row from the height of its own text to a 24dp button.
+ *
+ * They are now behind a disclosure on the head row — see `ChartLegendOverlay` — so a study row is
+ * as tall as the words in it and four of them cost less ink than two did. Which is the shape the
+ * complaint had all along: the reader was not being shown too much of their own chart, they were
+ * being shown too much furniture around too little of it.
+ *
+ * A reader who wants every study's value at a bar still puts the crosshair down, and that is what
  * [TRACKING_LEGEND_LINES] is for: there the legend has stopped being a legend and become the
  * reading, and ten rows is the right answer to a question actually asked.
  *
  * The count that replaces the hidden rows is not a loss — «+۹» is one glyph saying there are nine
  * more, which is what the reader needs to know before deciding to ask.
  */
-internal const val LEGEND_LINES = 2
+internal const val LEGEND_LINES = 4
 
 /**
  * And how many it will print in tracking mode.
@@ -4936,7 +5098,52 @@ private val TAG_PADDING_DP = 3.dp
 /** Breathing room above and below a pane's extremes, so the line never touches the lid. */
 private const val PANE_PADDING = 0.06
 
+/**
+ * How many horizontal divisions the axis aims for, given how tall the plot actually is.
+ *
+ * ### The number that was wrong, and why it looked like nothing was
+ *
+ * This was a flat five. Five is a reasonable count for a chart in a card — the signal detail's
+ * inline plot, the setup preview — and it is the wrong count for the chart *screen*, which since
+ * the plot was taken to seventy per cent of the display is around six hundred device-independent
+ * pixels tall. Five divisions of that is a gridline every hundred and twenty points and four
+ * numbers down the whole axis, which is not a scale a reader can read a level off: to place a price
+ * between `2560.0` and `2570.0` they have to measure by eye across four centimetres of empty black.
+ *
+ * A count that does not follow the height is also the reason the same constant could not be right
+ * for both: the inline chart got a sensible five and the full screen got the same five stretched
+ * over four times the height.
+ *
+ * ### The rule
+ *
+ * One division per [GRID_PITCH_DP], clamped. The pitch is the distance at which a label and the
+ * line under it read as a scale rather than as decoration — close enough that the eye interpolates
+ * between two of them instead of measuring, far enough that the numbers are not a ladder of noise
+ * and the price axis' own labels never collide. Every terminal lands in the same band; this is at
+ * the roomier end of it.
+ *
+ * The clamps matter more than the pitch. [MIN_GRID_ROWS] keeps a short inline chart from resolving
+ * to one line or none, which is a plot with no scale at all; [MAX_GRID_ROWS] keeps a tall plot in a
+ * large-text accessibility setting from asking for more labels than the axis can print without
+ * [separateLabels] pushing them apart.
+ *
+ * A zero density is the caller that has none to give — the tests, which assert the ladder rather
+ * than the count — and falls back to the old flat five so nothing about their expectations moves.
+ */
+private fun gridRows(plotHeight: Float, density: Float): Int {
+    if (density <= 0f || plotHeight <= 0f) return GRID_ROWS
+    val dp = plotHeight / density
+    return (dp / GRID_PITCH_DP).roundToInt().coerceIn(MIN_GRID_ROWS, MAX_GRID_ROWS)
+}
+
+/** The fallback count, and the one a chart with no density to measure by still gets. */
 private const val GRID_ROWS = 5
+
+/** See [gridRows]. One horizontal division per this many device-independent pixels. */
+private const val GRID_PITCH_DP = 76f
+
+private const val MIN_GRID_ROWS = 3
+private const val MAX_GRID_ROWS = 12
 
 /** A ceiling on the tick loop, so a degenerate range cannot spin inside a draw pass. */
 private const val MAX_TICKS = 24

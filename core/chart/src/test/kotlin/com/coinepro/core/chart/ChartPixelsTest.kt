@@ -19,6 +19,57 @@ import org.junit.Test
  */
 class ChartPixelsTest {
 
+    // ------------------------------------------------------------------ pixel registration
+
+    @Test
+    fun `a body is placed on a whole pixel wherever its centre falls`() {
+        // The defect these close: `barWidth` is the plot divided by the visible bar count, so a
+        // body's geometric centre is a fraction and every candle on screen was rasterised with a
+        // different pair of partial columns. Eleven pixels of body asked for at 431.6 covered
+        // twelve columns; the next one covered twelve different ones.
+        assertEquals(426f, barLeft(431.6f, 11f), 0f)
+        assertEquals(443f, barLeft(448.2f, 11f), 0f)
+        // Rounded rather than floored, so the body never leans away from the centre it was given
+        // by more than half a pixel — and the error does not accumulate in one direction.
+        assertEquals(0f, barLeft(2.4f, 5f), 0f)
+        assertEquals(1f, barLeft(3.4f, 5f), 0f)
+    }
+
+    @Test
+    fun `an odd stroke is centred in a pixel and an even one on the boundary between two`() {
+        // Three pixels of ink has a middle pixel, so it is centred at `n + 0.5`; two pixels does
+        // not, so it is centred on the join. Getting this the wrong way round moves every line
+        // half a pixel and leaves them exactly as soft as they were.
+        assertEquals(12.5f, strokeCentre(12.7f, 1f), 0f)
+        assertEquals(12.5f, strokeCentre(12.2f, 3f), 0f)
+        assertEquals(13f, strokeCentre(12.7f, 2f), 0f)
+        assertEquals(12f, strokeCentre(12.2f, 4f), 0f)
+    }
+
+    @Test
+    fun `a fractional stroke is rounded before it is registered`() {
+        // 0.8dp on a 3x screen is 2.4 pixels, which is what the grid asked for on every rule.
+        // A fraction cannot be registered on anything: the rasteriser resolves the remainder into
+        // a partial column, at a position it picks itself.
+        assertEquals(2f, crispStroke(2.4f), 0f)
+        assertEquals(3f, crispStroke(2.6f), 0f)
+        // Never thinner than one pixel. Below that the platform draws a grey suggestion rather
+        // than a line, which is what a hairline looked like before it came through here.
+        assertEquals(1f, crispStroke(0.4f), 0f)
+        assertEquals(1f, crispStroke(0f), 0f)
+    }
+
+    @Test
+    fun `a registered stroke width decides the registration of its own centre`() {
+        // The pair has to be used together: `crispStroke` first, then `strokeCentre` with the
+        // result. Rounding 2.4 to 2 makes the line even, which puts it on a boundary — feeding
+        // the unrounded 2.4 to `strokeCentre` would round it to 2 as well and agree by luck, and
+        // the 3.4 case is where luck runs out.
+        val fat = crispStroke(3.4f)
+        assertEquals(3f, fat, 0f)
+        assertEquals(40.5f, strokeCentre(40.7f, fat), 0f)
+    }
+
     // ------------------------------------------------------------------ optimalBarWidth
 
     @Test

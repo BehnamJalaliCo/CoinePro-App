@@ -8,6 +8,7 @@ import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.math.round
 
 /**
  * The chart's pixel arithmetic, with nothing Compose in it.
@@ -120,6 +121,77 @@ fun borderWidth(barWidth: Float, pixelRatio: Float): Float {
  * reader zooms in.
  */
 fun drawBorder(barWidth: Float, borderWidth: Float): Boolean = barWidth > borderWidth * 2
+
+// ---------------------------------------------------------------------------- pixel registration
+//
+// The three functions below are the difference between a chart that was drawn and a chart that was
+// rendered, and none of them changes a single number the reader is being told — they change only
+// *where the ink lands*.
+//
+// ### The defect they close
+//
+// `optimalBarWidth` has always floored the body onto a whole device pixel, which is correct and was
+// not enough, because nothing ever floored the position it was drawn at. A bar's centre is
+// `(index − first) × barWidth + barWidth / 2`, and `barWidth` is the plot divided by however many
+// bars are in view — an irrational number for all practical purposes. So a body eleven device
+// pixels wide was asked to start at x = 431.6, the rasteriser spread it over twelve columns with
+// the two outer ones at partial coverage, and the *next* body started at 448.2 and got a different
+// pair of partial columns. Nothing is wrong in the arithmetic and every candle on screen is a
+// slightly different weight, with gaps that alternate between too tight and too open. That is the
+// single loudest reason a hand-written chart reads as a picture of a chart: the eye reads the
+// irregularity long before it reads the prices.
+//
+// The same thing happens to every hairline. A one-pixel rule asked for at y = 812.0 straddles the
+// boundary between rows 811 and 812 and is painted as two rows at half intensity — a 2px grey
+// smear where a 1px line was intended. A grid drawn that way looks soft and dirty at any density,
+// and looks *worse* the denser the screen, which is the opposite of what a reader expects from a
+// better phone.
+//
+// ### Why it is here rather than at the call sites
+//
+// Because there are six call sites — candles, OHLC bars, volume candles, the volume band, a pane's
+// histogram, and every rule and axis line — and a chart in which the volume bars are registered
+// half a pixel differently from the candles above them is mis-registered in exactly the way this
+// whole file exists to prevent. One named function each, tested, used everywhere.
+
+/**
+ * The left edge of a bar-shaped mark whose centre wants to be at [centreX], on a device pixel.
+ *
+ * Rounded rather than floored: rounding keeps the body within half a pixel of the centre the
+ * geometry asked for, so a candle never visibly leans away from its own wick, and it distributes
+ * the accumulated error evenly instead of biasing every bar in the chart to the left.
+ *
+ * The width is not adjusted. [optimalBarWidth] has already made it a whole number of device pixels,
+ * so a snapped left edge means both edges land on boundaries and every candle on screen is drawn
+ * with exactly the same weight — which is the whole of the effect.
+ */
+fun barLeft(centreX: Float, body: Float): Float = round(centreX - body / 2f)
+
+/**
+ * The centre a vertical or horizontal stroke of [stroke] pixels must be given to cover whole pixels.
+ *
+ * An odd-width stroke is centred on a pixel's middle — `floor(x) + 0.5` — because an odd number of
+ * pixels has a middle one; an even-width stroke is centred on the boundary between two. Getting
+ * this the wrong way round is worse than not doing it at all: it moves every line half a pixel and
+ * leaves them just as soft.
+ *
+ * [stroke] is rounded to a whole pixel first and never allowed below one, since a fractional stroke
+ * cannot be registered on anything — asking for 2.4 pixels of ink is asking the rasteriser to
+ * decide, and it decides differently at every position.
+ */
+fun strokeCentre(x: Float, stroke: Float): Float {
+    val width = max(MIN_STROKE, round(stroke))
+    return if (width.toInt() % 2 == 1) floor(x) + 0.5f else round(x)
+}
+
+/**
+ * A stroke width, rounded onto a whole device pixel and never thinner than one.
+ *
+ * The companion to [strokeCentre]: registering a line's position is pointless while its width is
+ * still fractional, because the rasteriser resolves the leftover fraction into a partial column at
+ * one end. Every rule, grid line and axis edge in the renderer goes through this.
+ */
+fun crispStroke(stroke: Float): Float = max(MIN_STROKE, round(stroke))
 
 /**
  * How wide the price gutter has to be for its labels.
@@ -244,6 +316,21 @@ fun dashIntervals(style: LineStyleKind, lineWidth: Float): FloatArray = when (st
  */
 fun axisFontSizeSp(isPriceAxis: Boolean): Float =
     if (isPriceAxis) PRICE_AXIS_FONT_SP else TIME_AXIS_FONT_SP
+
+/**
+ * The type size the legend prints at.
+ *
+ * A point under the time axis and two under the price axis, and it is the smallest type this app
+ * sets anywhere — which is right, because the legend is the only text drawn *over* the picture
+ * rather than beside it. Everything in the gutters has a clear ground and can afford to be read at
+ * a glance; the legend is read deliberately, by somebody who has already decided to look at it, and
+ * every point it gives back is a point of chart it stops covering.
+ *
+ * Not a hard-coded 10: it is still a `sp`, so a reader who has enlarged their system type gets a
+ * larger legend and the plate's own row arithmetic — which measures rather than assumes — makes
+ * room for it.
+ */
+fun legendFontSizeSp(): Float = LEGEND_FONT_SP
 
 /**
  * The eight corner radii of a label chip, in the order a rounded rectangle takes them: top-left,
@@ -488,3 +575,6 @@ private const val SEPARATOR_BAND = 9f
 /** See [axisFontSizeSp]. */
 private const val PRICE_AXIS_FONT_SP = 12f
 private const val TIME_AXIS_FONT_SP = 11f
+
+/** See [legendFontSizeSp]. */
+private const val LEGEND_FONT_SP = 10f

@@ -2991,7 +2991,16 @@ private fun MainShell(
                     // headline route. A guest is the one reader who has to find the product
                     // attractive, and until now they were the one reader who could not open a
                     // story at all.
-                    PublicNewsScreen(controller = guestController)
+                    // And the same full text. The route it comes from is public, so a guest is
+                    // entitled to the whole article on exactly the terms a member is — see
+                    // `NewsBodySource`. The controller for the active platform is the one that
+                    // knows whether this backend publishes bodies at all.
+                    PublicNewsScreen(
+                        controller = guestController,
+                        fetchBody = { story ->
+                            marketIntelController.articleBody(story.id, story.summary)
+                        },
+                    )
                     return@composable
                 }
                 NewsScreen(

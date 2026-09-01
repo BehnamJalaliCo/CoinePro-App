@@ -24,9 +24,32 @@ class MarketIntelController(
      * newest publication date, which no summary would have thought to carry.
      */
     private val onSnapshot: (MarketIntelSnapshot) -> Unit = {},
+    /**
+     * Where the reading page gets the whole of a story's text. See [NewsBodySource].
+     *
+     * On the controller rather than passed to the screen, because the screen is a plain composable
+     * taking a plain story — which is what lets the same page open a member's headline and a
+     * guest's — and because the answer is per platform, which is a fact this object already holds.
+     */
+    private val bodies: NewsBodySource = NoNewsBodySource,
 ) {
     private val mutableState = MutableStateFlow(MarketIntelState())
     val state: StateFlow<MarketIntelState> = mutableState.asStateFlow()
+
+    /**
+     * The story's own translated text, or null where the backend publishes none.
+     *
+     * Suspending and un-cached, which is right for something read once per opened article: the
+     * reading page holds what it got for as long as it is open, and a reader who comes back to the
+     * same story a minute later would rather have the paragraph the newsroom has since corrected
+     * than the one this object remembered.
+     *
+     * It cannot throw. A body that will not arrive leaves the page exactly as it is — the summary,
+     * well set, under a line saying that is what it is — and that page has to be good on its own
+     * anyway, because one of the two backends publishes no bodies at all.
+     */
+    suspend fun articleBody(id: String, summary: String?): String? =
+        runCatching { bodies.body(id, summary) }.getOrNull()
 
     fun refresh() {
         val current = mutableState.value

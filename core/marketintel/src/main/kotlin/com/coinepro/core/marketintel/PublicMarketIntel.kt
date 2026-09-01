@@ -76,6 +76,55 @@ class PublicMarketIntel(
         return TradeYarPublicNews.parse(client.get(TradeYarPublicNews.url(base)), now())
     }
 
+    /**
+     * The backend's own stories, with the pictures its route left out put back.
+     *
+     * ### Why this runs even when the backend answered perfectly well
+     *
+     * Because on this product "the backend answered" and "the reader got a news screen" have turned
+     * out to be different things, and the difference is a `SELECT` list. See
+     * [TradeYarPublicNews.media]: the members' route reads the same table as the public one and does
+     * not select `source_image_url`, so a signed-in reader gets every story stripped of its
+     * illustration while a signed-out one, reading the public route, gets all of them. The screen
+     * was designed around the picture. That asymmetry is what «هنوز روی خبرها عکس نیست» describes.
+     *
+     * So this is *not* a fallback in the sense the rest of this class uses the word. The other
+     * sources here answer a section the backend left **empty**; this one fills a field the backend
+     * left empty on rows it otherwise answered completely. Hence the different rule: per story
+     * rather than per section, and only ever into a null.
+     *
+     * ### What it costs, and what stops it costing that
+     *
+     * One extra GET, and only when there is something for it to do. A snapshot in which every story
+     * already carries a picture — which is what the day after `docs/SERVER_ASK_NEWS_MEDIA.md` is
+     * answered looks like — returns before the request is made, so this becomes dead weight on its
+     * own and needs no removing. The same is true of a snapshot with no stories in it at all, where
+     * `news()` above has already run and its result is what the reader is looking at.
+     *
+     * A story whose picture cannot be found is returned exactly as it arrived. Nothing here
+     * substitutes a stand-in image, and `NewsHero` draws no placeholder for a null, so a story with
+     * no illustration is laid out as a story with no illustration rather than as a broken one.
+     */
+    suspend fun illustrate(stories: List<MarketNewsItem>): List<MarketNewsItem> {
+        if (platform != MarketPlatform.TRADEYAR) return stories
+        if (stories.isEmpty() || stories.none { it.imageUrl == null }) return stories
+        val base = platformBaseUrl?.takeIf { it.startsWith("https://") } ?: return stories
+        val media = TradeYarPublicNews.media(client.get(TradeYarPublicNews.url(base)))
+        if (media.isEmpty()) return stories
+        // Two indexes rather than one pass per story: the feeds identify a row by slug on one route
+        // and by source URL on the other, and thirty stories against thirty rows is nine hundred
+        // string comparisons done the naive way for a screen that opens on a scroll.
+        val bySlug = media.mapNotNull { row -> row.slug?.let { it to row.imageUrl } }.toMap()
+        val byUrl = media.mapNotNull { row -> row.url?.let { it to row.imageUrl } }.toMap()
+        return stories.map { story ->
+            if (story.imageUrl != null) return@map story
+            // The id first: on this backend it *is* the slug, and a slug is exact where a URL can
+            // differ by a trailing slash or a tracking parameter the two routes disagree about.
+            val found = bySlug[story.id] ?: story.url?.let(byUrl::get) ?: return@map story
+            story.copy(imageUrl = found)
+        }
+    }
+
     private suspend fun wires(): List<MarketNewsItem> = coroutineScope {
         val moment = now()
         PublicNewsFeed.feeds(platform)

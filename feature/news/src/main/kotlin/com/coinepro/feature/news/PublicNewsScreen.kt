@@ -67,7 +67,19 @@ import com.coinepro.core.guest.GuestNewsState
  * the story is on this page, which is the whole point of the page existing.
  */
 @Composable
-fun PublicNewsScreen(controller: GuestController, modifier: Modifier = Modifier) {
+fun PublicNewsScreen(
+    controller: GuestController,
+    modifier: Modifier = Modifier,
+    /**
+     * The whole of a story's text, for the reading page. See `ReadingSurface`.
+     *
+     * A guest gets it on exactly the same terms a member does, because the route it comes from is
+     * public — and that symmetry is the point. The guest feed was the *illustrated* one all along
+     * while the members' feed had no pictures; shipping the body to one and not the other would be
+     * the same asymmetry pointing the other way.
+     */
+    fetchBody: (suspend (NewsStory) -> String?)? = null,
+) {
     val news by controller.news.collectAsStateWithLifecycle()
 
     // The news alone, rather than [GuestController.start], which also begins the ten-second price
@@ -108,6 +120,7 @@ fun PublicNewsScreen(controller: GuestController, modifier: Modifier = Modifier)
                 open = null
             },
             onSave = { _, _ -> },
+            fetchBody = fetchBody,
         )
         return
     }

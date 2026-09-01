@@ -51,16 +51,70 @@ internal object TradeYarPublicNews {
     /** Where to ask, given the host the app was built against. */
     fun url(baseUrl: String): String = baseUrl.trimEnd('/') + "/" + PATH
 
+    /**
+     * One row's picture, under both of the names the members' feed could match it by.
+     *
+     * See [media] for why this exists at all.
+     */
+    internal data class Illustration(val slug: String?, val url: String?, val imageUrl: String)
+
+    /**
+     * The pictures this route is publishing, addressed by slug and by source URL.
+     *
+     * ### Why the members' feed needs a second request to show a picture
+     *
+     * Because the two routes read the same table and select different columns. `news_posts` holds
+     * `source_image_url` and the public `api/v1/news/list` returns it as `sourceImageUrl` — every
+     * row, live, today. The members' `api/mobile/v1/market-intelligence` does not name that column
+     * in its `SELECT` at all, so a signed-in reader is served the same stories with the pictures
+     * removed, on a screen that was built around having one. A guest sees the illustrated feed and
+     * a member does not, which is the exact shape the owner reported: «هنوز روی خبرها عکس نیست».
+     *
+     * The server side of that is one column in one query and is asked for in
+     * `docs/SERVER_ASK_NEWS_MEDIA.md`. This is the half that does not need a deployment: the public
+     * route is already open, already fast, and already fetched on this platform for the guest feed,
+     * so one more read of it fills in what the members' route left out. The day the column is added
+     * every story arrives with a picture and [illustrate] finds nothing left to do — it fills gaps
+     * and never overwrites, so the server's own answer always wins and there is nothing here to
+     * undo.
+     *
+     * ### Two keys, because the feeds disagree about identity
+     *
+     * The members' route sets `id` to the slug and `url` to `source_url`; the public route sends
+     * both under their own names. Matching on the slug is exact where it is present, and the source
+     * URL is the fallback for a row whose id arrived as the numeric primary key instead — which is
+     * what `str(row.get("slug") or row.get("id"))` produces for any row with no slug.
+     */
+    fun media(body: String?): List<Illustration> {
+        val rows = rowsOf(body)
+        return rows.mapNotNull { row ->
+            val obj = row.takeIf(JsonElement::isJsonObject)?.asJsonObject ?: return@mapNotNull null
+            val image = obj.text("sourceImageUrl", "source_image_url", "imageUrl", "image_url")
+                ?.takeIf { it.startsWith("https://") }
+                ?: return@mapNotNull null
+            Illustration(
+                slug = obj.text("slug", "id"),
+                url = obj.text("sourceUrl", "source_url", "url"),
+                imageUrl = image,
+            )
+        }
+    }
+
     fun parse(body: String?, now: Instant): List<MarketNewsItem> {
+        val rows = rowsOf(body)
+        return rows.mapNotNull { row -> story(row, now) }
+            .sortedByDescending(MarketNewsItem::publishedAt)
+    }
+
+    /** The array, whichever envelope it arrived in, or empty for a body that is not one. */
+    private fun rowsOf(body: String?): List<JsonElement> {
         if (body.isNullOrBlank()) return emptyList()
         val root = runCatching { JsonParser.parseString(body) }.getOrNull() ?: return emptyList()
-        val rows = when {
+        return when {
             root.isJsonArray -> root.asJsonArray.toList()
             root.isJsonObject -> root.asJsonObject.rows()
             else -> emptyList()
         }
-        return rows.mapNotNull { row -> story(row, now) }
-            .sortedByDescending(MarketNewsItem::publishedAt)
     }
 
     /** `data` is what this route uses; the other two are what its siblings on the same host use. */

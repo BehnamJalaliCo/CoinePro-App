@@ -140,6 +140,33 @@ class TimeScaleTest {
     }
 
     @Test
+    fun `a Persian reader gets the same label in their own calendar`() {
+        // The chart was the last surface in the app on a Gregorian calendar. Every other date a
+        // reader sees — the economic calendar's rows, a headline's timestamp, the activity log —
+        // is Solar Hijri, so lining a CPI release up against the candle it moved meant converting
+        // a calendar in one's head on the one screen whose whole point is lining two things up.
+        //
+        // These are conversions, not transliterations: 12 March 2026 in Tehran *is* 21 Esfand
+        // 1404, eleven days from where a rendered-in-Persian Gregorian month would have put it —
+        // which is the mistake the old comment on `formatTimeTick` was right to refuse.
+        val newYear = ZonedDateTime.of(2026, 1, 1, 0, 0, 0, 0, tehran).toEpochSecond()
+        val month = ZonedDateTime.of(2026, 3, 1, 0, 0, 0, 0, tehran).toEpochSecond()
+        val day = ZonedDateTime.of(2026, 3, 12, 0, 0, 0, 0, tehran).toEpochSecond()
+        val hour = ZonedDateTime.of(2026, 3, 12, 14, 0, 0, 0, tehran).toEpochSecond()
+        val span = 0L
+        fun fa(tick: TimeTick) = formatTimeTick(tick, span, tehran, jalali = true)
+        assertEquals("۱۴۰۴", fa(TimeTick(0, newYear, TimeTickUnit.YEAR)))
+        assertEquals("اسفند", fa(TimeTick(0, month, TimeTickUnit.MONTH)))
+        assertEquals("۲۱ اسفند", fa(TimeTick(0, day, TimeTickUnit.DAY)))
+        // The clock is untouched. It is a market figure read against MetaTrader and LBank, and
+        // this is the same line `PersianDateTime` draws for the whole app.
+        assertTrue(
+            "the clock must stay Latin",
+            fa(TimeTick(0, hour, TimeTickUnit.HOUR)).contains("14:00"),
+        )
+    }
+
+    @Test
     fun `only a month and a year are set in bold`() {
         assertTrue(TimeTick(0, 0L, TimeTickUnit.YEAR).isBoundary())
         assertTrue(TimeTick(0, 0L, TimeTickUnit.MONTH).isBoundary())

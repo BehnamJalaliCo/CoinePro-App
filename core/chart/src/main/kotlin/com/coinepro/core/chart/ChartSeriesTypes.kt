@@ -16,6 +16,7 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.round
 import kotlin.math.roundToInt
 
 /**
@@ -407,20 +408,26 @@ internal fun DrawScope.drawVolumeCandles(
     metrics: CandleMetrics,
     widths: DoubleArray,
 ) {
+    val wick = crispStroke(metrics.wick)
     for (index in view.firstVisible..view.lastVisible) {
         val bar = view.series[index]
-        val x = view.xOf(index)
         val colour = if (bar.up) palette.up else palette.down
-        val body = max(1f, metrics.body * (widths.getOrNull(index) ?: 1.0).toFloat())
+        // Rounded, not merely scaled. This type's whole content is that one bar is wider than its
+        // neighbour, so a body left on a fraction of a pixel is a width difference the rasteriser
+        // reports as a difference in *softness* rather than in size — which is unreadable, and is
+        // the one thing this chart type exists to show.
+        val body = max(1f, round(metrics.body * (widths.getOrNull(index) ?: 1.0).toFloat()))
+        val left = barLeft(view.xOf(index), body)
+        val x = strokeCentre(left + body / 2f, wick)
         drawLine(
             color = colour,
             start = Offset(x, view.yOf(bar.h)),
             end = Offset(x, view.yOf(bar.l)),
-            strokeWidth = metrics.wick,
+            strokeWidth = wick,
         )
-        val top = min(view.yOf(bar.o), view.yOf(bar.c))
-        val height = max(1f, abs(view.yOf(bar.c) - view.yOf(bar.o)))
-        drawRect(color = colour, topLeft = Offset(x - body / 2, top), size = Size(body, height))
+        val top = round(min(view.yOf(bar.o), view.yOf(bar.c)))
+        val height = max(1f, round(abs(view.yOf(bar.c) - view.yOf(bar.o))))
+        drawRect(color = colour, topLeft = Offset(left, top), size = Size(body, height))
     }
 }
 

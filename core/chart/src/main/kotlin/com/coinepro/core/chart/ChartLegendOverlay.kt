@@ -18,7 +18,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +33,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
@@ -522,24 +526,52 @@ internal fun ChartLegendOverlay(
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         BoxWithConstraints(modifier = modifier) {
             val density = LocalDensity.current
+            /**
+             * Whether the per-row controls are on screen.
+             *
+             * Local state and deliberately not hoisted: it is a disclosure, not a setting. Nothing
+             * outside this overlay is different for it being open, it should not survive leaving the
+             * chart, and a caller that had to store it would be storing a fact about a plate.
+             *
+             * It resets on the study list, so removing the last indicator closes the panel it was
+             * removed from rather than leaving three buttons hanging beside the price.
+             */
+            var expanded by remember(body.size) { mutableStateOf(false) }
             val budget = maxHeight * if (tracking) TRACKING_LEGEND_BUDGET else LEGEND_BUDGET
             // How many buttons the widest row will carry. Every primary row reserves all of them,
             // including the price row, which has no remove — so the eyes line up in a column
             // instead of stepping sideways by one button per row.
-            val slots = 1 + (if (onOpenSettings != null) 1 else 0) + (if (onRemove != null) 1 else 0)
-            val size = axisFontSizeSp(isPriceAxis = true).sp
+            //
+            // **Zero unless the reader has asked for them.** Three buttons on every primary row is
+            // between forty and fifty per cent of the plate's width and it lifts each of those rows
+            // from the height of its own text to [LEGEND_BUTTON_DP], which on a phone meant a legend
+            // that covered the top-left quarter of the plot in order to show *two* studies out of
+            // ten and a «+8» underneath. The reading — swatch, name, value — is what a legend is
+            // for; the controls are what a reader reaches for occasionally, and they now cost
+            // nothing until they are reached for. See [expanded].
+            val slots = if (expanded) {
+                1 + (if (onOpenSettings != null) 1 else 0) + (if (onRemove != null) 1 else 0)
+            } else {
+                0
+            }
+            val size = legendFontSizeSp().sp
             val headStyle = axisStyle(if (rising) palette.up else palette.down)
             // Measured rather than assumed, because it follows the system font setting: a reader
             // at the largest text size has rows half again as tall and a plate that holds one
             // fewer, and a legend that decided this from a constant would go back to painting the
             // last one through the middle.
             val textDp = with(density) { measurer.measure("0", headStyle).size.height.toDp().value }
-            val rowDp = maxOf(textDp, LEGEND_BUTTON_DP.value)
+            // A row is as tall as its text until it has buttons in it. Collapsed, that is the whole
+            // saving: ten studies at text height fit in the budget two studies at button height did.
+            val rowDp = if (expanded) maxOf(textDp, LEGEND_BUTTON_DP.value) else textDp
+            // The head always carries the one control that opens the rest, so it is always the
+            // taller kind of row. One row of chrome instead of one per study.
+            val headDp = maxOf(textDp, LEGEND_BUTTON_DP.value)
             // The head first, then the move, then the studies — the order they are printed in, and
             // the order they are worth. A row that does not fit is folded into «+N» rather than
             // sliced off at the plate's edge.
             val heights = buildList {
-                add(rowDp)
+                add(headDp)
                 if (move != null) add(textDp)
                 body.forEach { add(if (it.primary) rowDp else textDp) }
             }
@@ -608,6 +640,13 @@ internal fun ChartLegendOverlay(
                     // The price is not removable. A chart with no series on it is not a chart, and
                     // an affordance that has to refuse is worse than one that is not offered.
                     onRemove = null,
+                    // The one control that is always on the plate, and the only one when it is
+                    // closed. It goes on the head row rather than on the plate as a whole because a
+                    // tappable plate is a tappable rectangle over the top-left of the plot, and the
+                    // plot underneath it has to keep taking pans and pinches — a legend that
+                    // swallowed a drag would be a worse defect than the one being fixed.
+                    disclosure = { expanded = !expanded },
+                    disclosed = expanded,
                 )
                 if (move != null && fit > 1) {
                     LegendRow(
@@ -688,8 +727,32 @@ private fun LegendRow(
     onToggleVisibility: (ChartLegendTarget) -> Unit,
     onOpenSettings: ((ChartLegendTarget) -> Unit)?,
     onRemove: ((ChartLegendTarget) -> Unit)?,
+    /**
+     * Opens and closes the per-row controls. Non-null on the head row only.
+     *
+     * It is drawn *after* the reserved button slots, so it keeps its column whether the panel is
+     * open or shut and the reader's thumb does not have to travel to close what it just opened.
+     */
+    disclosure: (() -> Unit)? = null,
+    /** Whether [disclosure] is currently showing the controls, which is what the glyph says. */
+    disclosed: Boolean = false,
 ) {
     val faded = if (dimmed) colour.copy(alpha = HIDDEN_ROW_ALPHA) else colour
+    // The line box, pinned to the letters rather than to the font's own metrics.
+    //
+    // IRANYekanX carries the tall ascent and deep descent a Persian face needs for its diacritics
+    // and its descenders, and Compose honours them: a 10sp legend row was laying out at close to
+    // 25dp, so three rows of eight-point-tall words occupied the height of five. That is invisible
+    // in the code and it is most of what made the legend feel like a panel rather than a caption.
+    //
+    // `Trim.Both` with a proportional alignment takes the leading off the top of the first line and
+    // the bottom of the last, which for a single-line row is the whole of it. Nothing about the
+    // glyphs changes; the empty space above and below them goes.
+    val lineHeight = fontSize * LEGEND_LINE_HEIGHT
+    val lineHeightStyle = LineHeightStyle(
+        alignment = LineHeightStyle.Alignment.Center,
+        trim = LineHeightStyle.Trim.Both,
+    )
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(LEGEND_GAP_DP),
@@ -707,6 +770,8 @@ private fun LegendRow(
                 text = row.label,
                 color = faded,
                 fontSize = fontSize,
+                lineHeight = lineHeight,
+                style = LocalTextStyle.current.copy(lineHeightStyle = lineHeightStyle),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -721,7 +786,11 @@ private fun LegendRow(
         // `maxWidth` *is* the space left after every sibling has taken its share.
         if (row.alternatives.any { it.isNotBlank() }) {
             BoxWithConstraints(modifier = Modifier.weight(1f, fill = false)) {
-                val style = LocalTextStyle.current.copy(fontSize = fontSize)
+                val style = LocalTextStyle.current.copy(
+                    fontSize = fontSize,
+                    lineHeight = lineHeight,
+                    lineHeightStyle = lineHeightStyle,
+                )
                 val room = constraints.maxWidth
                 val value = remember(row.alternatives, room, fontSize) {
                     row.alternatives.firstOrNull { text ->
@@ -732,13 +801,18 @@ private fun LegendRow(
                     text = value,
                     color = faded,
                     fontSize = fontSize,
+                    style = style,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Right,
                 )
             }
         }
-        if (row.primary) {
+        // `slots == 0` is the closed legend, and it means *no controls at all* rather than controls
+        // with no width reserved for them. Reserving zero columns and then drawing three buttons
+        // into them is the shape of the bug this gate closes: the plate came back to its old width
+        // with the row heights of the new one.
+        if (row.primary && slots > 0) {
             Spacer(modifier = Modifier.width(LEGEND_ACTIONS_GAP_DP))
             LegendButton(
                 glyph = if (dimmed) GLYPH_HIDDEN else GLYPH_VISIBLE,
@@ -766,6 +840,18 @@ private fun LegendRow(
             repeat((slots - carried).coerceAtLeast(0)) {
                 Spacer(modifier = Modifier.size(LEGEND_BUTTON_DP))
             }
+        }
+        disclosure?.let { toggle ->
+            // The gap is only added here when the buttons above did not already add one, so a
+            // closed legend puts exactly one control at the end of one row and nothing else.
+            if (!row.primary || slots == 0) Spacer(modifier = Modifier.width(LEGEND_ACTIONS_GAP_DP))
+            LegendButton(
+                glyph = if (disclosed) GLYPH_COLLAPSE else GLYPH_EXPAND,
+                description = if (disclosed) COLLAPSE_LABEL else EXPAND_LABEL,
+                colour = palette.text,
+                fontSize = fontSize,
+                onClick = toggle,
+            )
         }
     }
 }
@@ -860,6 +946,15 @@ private val LEGEND_TOUCH_DP = 44.dp
 private val LEGEND_ACTIONS_GAP_DP = 8.dp
 
 /** The colour dot that ties a row to its line. */
+/**
+ * The legend's line box, as a multiple of its type size.
+ *
+ * 1.15, which is a hair over the cap-to-descender reach of the Latin figures this row is mostly
+ * made of and tight enough that three rows read as three rows of one thing. See the note in
+ * [LegendRow] for why it has to be stated at all rather than left to the font.
+ */
+private const val LEGEND_LINE_HEIGHT = 1.15f
+
 private val SWATCH_DP = 6.dp
 
 /** How far a hidden row fades, so it reads as switched off rather than as missing. */
@@ -889,7 +984,20 @@ private const val GLYPH_HIDDEN = "◌"
 private const val GLYPH_SETTINGS = "⋮"
 private const val GLYPH_REMOVE = "✕"
 
+/**
+ * The disclosure, closed and open.
+ *
+ * A horizontal ellipsis for "there is more here" and a chevron for "put it away", which is the pair
+ * every dense interface uses and the pair that needs no label at four millimetres across. Neither
+ * collides with the three above: the eye is a disc, settings is a *vertical* ellipsis, and remove is
+ * a cross.
+ */
+private const val GLYPH_EXPAND = "⋯"
+private const val GLYPH_COLLAPSE = "⌃"
+
 private const val HIDE_LABEL = "پنهان کردن"
 private const val SHOW_LABEL = "نمایش دادن"
 private const val SETTINGS_LABEL = "تنظیمات"
 private const val REMOVE_LABEL = "حذف"
+private const val EXPAND_LABEL = "کنترل‌های اندیکاتورها"
+private const val COLLAPSE_LABEL = "بستن کنترل‌ها"

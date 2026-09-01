@@ -30,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -249,6 +250,7 @@ fun NewsScreen(
             store = store,
             feed = remember(state.news) { state.news.map(MarketNewsItem::asStory) },
             onOpenChart = onOpenChart,
+            fetchBody = { controller.articleBody(it.id, it.summary) },
             onOpen = { next ->
                 openArticle = next
                 openArticleId = next.id
@@ -501,6 +503,17 @@ internal fun ReadingSurface(
     onOpen: (NewsStory) -> Unit,
     onClose: () -> Unit,
     onSave: (NewsStory, Boolean) -> Unit,
+    /**
+     * Fetches the whole of this story's text, once, when it is opened.
+     *
+     * Here rather than in the feed for the reason `NewsBodySource` sets out: the list route nulls
+     * the body column on purpose, because thirty full articles is a payload to render thirty cards.
+     * The body is a thing a reader asks for by opening a story, so it is fetched when they do.
+     *
+     * Null where the platform publishes no bodies, and then nothing is fetched and nothing changes:
+     * the page has always had to read properly on a summary alone, and still does.
+     */
+    fetchBody: (suspend (NewsStory) -> String?)? = null,
 ) {
     if (story == null) {
         Column(
@@ -521,8 +534,17 @@ internal fun ReadingSurface(
         }
         return
     }
+    // Keyed on the story's id, so opening a *related* headline from the foot of the page fetches
+    // that one's text rather than leaving the previous article's paragraphs under the new headline.
+    // The initial value is what the story already carried, which is what makes this free on the day
+    // a backend starts sending the body with the feed — the page draws the real text on the first
+    // frame and the fetch below finds nothing to add.
+    val body by produceState(story.body, story.id, fetchBody) {
+        if (story.body != null || fetchBody == null) return@produceState
+        value = fetchBody(story)
+    }
     NewsArticleScreen(
-        story = story,
+        story = if (body == story.body) story else story.copy(body = body),
         onBack = onClose,
         saved = saved,
         // Two conditions, not one. There has to be somewhere to write the save, and the story has to
