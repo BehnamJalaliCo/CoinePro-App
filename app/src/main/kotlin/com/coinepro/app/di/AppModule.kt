@@ -1541,13 +1541,15 @@ object AppModule {
         NetworkMarketCatalogGateway.create(retrofit, MarketPlatform.TRADEYAR)
 
     /**
-     * The day's figures, per platform — and the two platforms genuinely differ here.
+     * The day's figures, per platform — and both platforms have them now.
      *
-     * `NetworkMarketTickerGateway.create` hands back an [UnsupportedMarketTickerGateway] for
-     * CoinePro-FX, because that backend has no such route: it would have to derive gold and
-     * silver's day from its own daily candle and has not. That is a different fact from "the
-     * request failed", and the two call for different screens, so the gateway says which rather
-     * than answering with an empty table that looks like an outage.
+     * This used to hand back an `UnsupportedMarketTickerGateway` for CoinePro-FX, because that
+     * backend had no such route: it would have had to derive gold and silver's day from its own
+     * candles and had not. The note recorded it honestly and the cost was not a missing field but
+     * three partly-empty screens — a market row with no twenty-four-hour change on one platform
+     * and a change on the other, a heatmap with nothing to colour, a screener with columns that
+     * never filled. `user/mobile/market/tickers` is that aggregate, over the hourly candles the
+     * chart has always read, with the live price from where `/ws/snapshot` takes it.
      */
     @Provides
     @Singleton

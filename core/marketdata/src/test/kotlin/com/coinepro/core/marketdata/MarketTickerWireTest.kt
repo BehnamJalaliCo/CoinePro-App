@@ -3,6 +3,7 @@ package com.coinepro.core.marketdata
 import com.google.gson.FieldNamingPolicy
 import com.google.gson.GsonBuilder
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -212,5 +213,33 @@ class MarketTickerWireTest {
         // a path written without it reaches a different server and answers plausibly.
         assertTrue(NetworkMarketTickerGateway.TRADEYAR_PATH.startsWith("api/mobile/v1/"))
         assertEquals("api/mobile/v1/market/tickers", NetworkMarketTickerGateway.TRADEYAR_PATH)
+    }
+
+    @Test
+    fun `the forex route sits under that platform's own prefix`() {
+        // The two backends do not share a prefix and nothing here tries to make them: CoinePro-FX
+        // mounts the app's whole surface under `user/`, and a path borrowed from the crypto side
+        // would 404 on it. This platform had no such route at all until 2026-09-01 — see the note
+        // on `create`, and the three screens that were half empty because of it.
+        assertTrue(NetworkMarketTickerGateway.FOREX_PATH.startsWith("user/mobile/"))
+        assertEquals("user/mobile/market/tickers", NetworkMarketTickerGateway.FOREX_PATH)
+        assertNotEquals(NetworkMarketTickerGateway.TRADEYAR_PATH, NetworkMarketTickerGateway.FOREX_PATH)
+    }
+
+    @Test
+    fun `a row with no day behind it still carries its price`() {
+        // What the forex route sends for a symbol whose hourly candles have not been written for
+        // the last day — a fresh listing, a gap in the resampler. The contract is that only
+        // `symbol` and `last` are guaranteed, and this is the case that exercises it: the market
+        // row draws the price and leaves the change column empty, rather than the row vanishing or
+        // the change reading a confident zero per cent.
+        val body = """{"tickers":[{"symbol":"XAUUSD","last":2643.18,"open_24h":null,
+            "high_24h":null,"low_24h":null,"change_percent_24h":null,"volume_24h":null,
+            "ts":1788261604779}]}"""
+        val row = gson.fromJson(body, MarketTickersDto::class.java).tickers.single().toDomain()!!
+        assertEquals("XAUUSD", row.symbol)
+        assertEquals(2643.18, row.last, 0.0)
+        assertNull(row.changePercent24h)
+        assertNull(row.open24h)
     }
 }

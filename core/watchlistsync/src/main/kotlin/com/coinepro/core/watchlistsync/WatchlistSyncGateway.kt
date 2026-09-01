@@ -145,12 +145,21 @@ internal interface WatchlistSyncApi {
 }
 
 /**
- * Where the watchlist document lives, which is on one of the two platforms.
+ * Where the watchlist document lives — on both platforms now, at each one's own prefix.
  *
  * TradeYar mounts it at `api/mobile/v1/watchlists`, beside the notification and alert routes that
- * already sit under that prefix. CoinePro-FX has no equivalent — the route was never built there —
- * so this is null and the gateway reports the feature absent rather than posting a reader's
- * watchlist to an address that answers 404 in wording that reads like an outage.
+ * already sit under that prefix; CoinePro-FX at `user/mobile/watchlists`, beside the rest of its
+ * app surface. The two prefixes are the servers' own and nothing here tries to reconcile them.
+ *
+ * The forex side used to be null, with a note saying the route was never built there. What that
+ * cost was not a missing setting: this audience installs from outside Google Play, so a reinstall
+ * is an ordinary event, and a forex reader's watchlist — several lists, colour flags, chosen
+ * columns, all of it built by hand — lived on one handset and went with it. A crypto reader's did
+ * not. The route is the same contract on both, down to the 409 that carries the winning document.
+ *
+ * Null is still a state this class can be in, for a build with no configured platform, and the
+ * gateway still reports the feature absent rather than posting a reader's watchlist to an address
+ * that answers 404 in wording that reads like an outage.
  */
 internal class WatchlistSyncPaths(prefix: String) {
     val document = "$prefix/watchlists"
@@ -158,7 +167,7 @@ internal class WatchlistSyncPaths(prefix: String) {
     companion object {
         fun of(platform: MarketPlatform): WatchlistSyncPaths? = when (platform) {
             MarketPlatform.TRADEYAR -> WatchlistSyncPaths("api/mobile/v1")
-            MarketPlatform.COINEPRO_FX -> null
+            MarketPlatform.COINEPRO_FX -> WatchlistSyncPaths("user/mobile")
         }
     }
 }
@@ -255,8 +264,13 @@ class NetworkWatchlistSyncGateway private constructor(
          * the whole reason this class is more than three lines, and they are the branches a reader
          * only reaches when two of their devices disagree.
          */
-        internal fun create(api: WatchlistSyncApi, platform: MarketPlatform): NetworkWatchlistSyncGateway =
-            NetworkWatchlistSyncGateway(api = api, paths = WatchlistSyncPaths.of(platform))
+        internal fun create(api: WatchlistSyncApi, platform: MarketPlatform?): NetworkWatchlistSyncGateway =
+            NetworkWatchlistSyncGateway(
+                api = api,
+                // Null platform is the no-route case, which both backends have grown out of — see
+                // [WatchlistSyncPaths] — and which a build with nothing configured is still in.
+                paths = platform?.let(WatchlistSyncPaths::of),
+            )
 
         private const val VERSION_FIELD = "version"
         private const val PAYLOAD_FIELD = "payload"

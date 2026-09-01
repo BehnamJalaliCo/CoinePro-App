@@ -36,16 +36,27 @@ class WatchlistSyncGatewayTest {
     private fun json(text: String) = JsonParser.parseString(text).asJsonObject
 
     @Test
-    fun `the document is served under TradeYar's mobile prefix and nowhere else`() {
+    fun `each platform serves the document under its own prefix`() {
+        // The two backends do not share one, and nothing in this module tries to make them: a path
+        // borrowed from either side 404s on the other, in wording that reads like an outage.
         assertEquals("api/mobile/v1/watchlists", WatchlistSyncPaths.of(MarketPlatform.TRADEYAR)?.document)
-        // CoinePro-FX has no such route. Posting a reader's watchlist to an address that does not
-        // exist answers 404 in wording that reads like an outage.
-        assertNull(WatchlistSyncPaths.of(MarketPlatform.COINEPRO_FX))
+        assertEquals("user/mobile/watchlists", WatchlistSyncPaths.of(MarketPlatform.COINEPRO_FX)?.document)
     }
 
     @Test
-    fun `on the platform with no route the feature is absent, not broken`() = runTest {
-        val gateway = gateway(RecordingApi(), MarketPlatform.COINEPRO_FX)
+    fun `both platforms support the feature now`() = runTest {
+        // The forex side had no such route until 2026-09-01, so a reader there kept a watchlist
+        // they had built by hand on one handset — and this audience installs from outside Google
+        // Play, where a reinstall is an ordinary event.
+        assertTrue(gateway(RecordingApi(), MarketPlatform.COINEPRO_FX).supported)
+        assertTrue(gateway(RecordingApi(), MarketPlatform.TRADEYAR).supported)
+    }
+
+    @Test
+    fun `a gateway with no route at all reports the feature absent rather than broken`() = runTest {
+        // Still reachable, and still the honest answer: a build with no configured platform must
+        // draw the control as missing rather than as failing.
+        val gateway = NetworkWatchlistSyncGateway.create(RecordingApi(), platform = null)
 
         assertFalse(gateway.supported)
         assertThrows(WatchlistSyncUnsupportedException::class.java) { runBlockingRead(gateway) }

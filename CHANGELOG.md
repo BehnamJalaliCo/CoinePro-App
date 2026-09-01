@@ -94,6 +94,27 @@ Three more on the same screen:
   one's head on the one screen whose point is lining two things up. A conversion, not a
   transliteration — 12 March 2026 is 21 Esfand 1404 — and the clock stays Latin, as everywhere.
 
+### Two features the forex platform simply did not have
+
+Both were recorded honestly in the code and both cost more than the note suggested.
+
+**The day's figures.** `NetworkMarketTickerGateway.create` handed back an
+`UnsupportedMarketTickerGateway` for CoinePro-FX — "not a stub standing in for work not yet done,
+there is no route to call". True, and the cost was not a missing field: a market row on the forex
+platform had **no twenty-four-hour change** while the identical row on TradeYar had one, the heatmap
+had nothing to colour, and the screener carried columns that never filled. A reader switching
+platform lost half the columns and was told nothing about why. The data had been there the whole
+time — `candles` holds an hourly bar per symbol and the chart routes have read it for years — so
+`user/mobile/market/tickers` is a day's aggregate over it, with the live price from where
+`/ws/snapshot` takes it, under the same field names the crypto route uses.
+
+**The watchlist.** `WatchlistSyncPaths.of(COINEPRO_FX)` was null: the route was never built there.
+This audience installs from outside Google Play, so a reinstall is an ordinary event — and an
+ordinary event destroyed the only thing in the app a forex reader had built by hand, several lists
+with colour flags and chosen columns, while a crypto reader's survived. `user/mobile/watchlists` is
+the same contract as TradeYar's, down to the 409 that carries the winning document so a second
+device can merge without another round trip on the connection that just failed.
+
 ### Renders
 
 The news fixtures are Persian now. They were three English headlines under a Persian heading, which

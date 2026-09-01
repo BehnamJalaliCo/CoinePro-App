@@ -242,7 +242,14 @@ interface MarketTickerGateway {
     suspend fun load(symbols: List<String>? = null): MarketTickerTable
 }
 
-/** The honest gateway for a platform that has no such route. Never fails, never claims. */
+/**
+ * The honest gateway for a platform that has no such route. Never fails, never claims.
+ *
+ * No longer reached from [NetworkMarketTickerGateway.create] — both backends serve the rollup now —
+ * and kept because it is what a caller with no configured platform, and every test that does not
+ * care about tickers, is handed. A screen that reads [MarketTickerGateway.supported] gets `false`
+ * and draws the columns it can rather than columns of dashes.
+ */
 class UnsupportedMarketTickerGateway : MarketTickerGateway {
     override val supported: Boolean = false
 
@@ -273,16 +280,29 @@ class NetworkMarketTickerGateway private constructor(
     }
 
     companion object {
+        /**
+         * One reader, two paths, and — since 2026-09-01 — two platforms.
+         *
+         * The forex branch used to be [UnsupportedMarketTickerGateway], with a comment saying it
+         * was not a stub standing in for unfinished work because there was no route to call. That
+         * was accurate and it was three screens' worth of missing product: a market row on
+         * CoinePro-FX had no twenty-four-hour change while the same row on TradeYar did, the
+         * heatmap had nothing to colour, and the screener carried columns that were always empty.
+         * A reader switching platform lost half the columns and was told nothing.
+         *
+         * The data was there the whole time — `candles` holds an hourly bar per symbol and the
+         * chart routes have read it for years — so the route is an aggregate over a day of it,
+         * with the live price from the same place `/ws/snapshot` takes it. Same field names as the
+         * crypto route, because this app has one model for both.
+         */
         fun create(retrofit: Retrofit, platform: MarketPlatform): MarketTickerGateway =
-            when (platform) {
-                MarketPlatform.TRADEYAR -> NetworkMarketTickerGateway(
-                    api = retrofit.create(MarketTickerApi::class.java),
-                    path = TRADEYAR_PATH,
-                )
-                // Not a stub standing in for work not yet done — there is no route to call. See
-                // the interface's own note.
-                MarketPlatform.COINEPRO_FX -> UnsupportedMarketTickerGateway()
-            }
+            NetworkMarketTickerGateway(
+                api = retrofit.create(MarketTickerApi::class.java),
+                path = when (platform) {
+                    MarketPlatform.TRADEYAR -> TRADEYAR_PATH
+                    MarketPlatform.COINEPRO_FX -> FOREX_PATH
+                },
+            )
 
         /**
          * Under the mobile prefix, like every other TradeYar route — its nginx has a `/ws` location
@@ -290,6 +310,12 @@ class NetworkMarketTickerGateway private constructor(
          * different server.
          */
         internal const val TRADEYAR_PATH = "api/mobile/v1/market/tickers"
+
+        /**
+         * And under `user/mobile` on the forex side, where the rest of that platform's app surface
+         * lives. The two prefixes are the servers' own and nothing here tries to reconcile them.
+         */
+        internal const val FOREX_PATH = "user/mobile/market/tickers"
     }
 }
 
