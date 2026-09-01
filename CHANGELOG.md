@@ -15,6 +15,91 @@ it is for.
 
 ---
 
+## [4.18.0] — 2026-09-01 — The news had its pictures and its text all along
+
+Two of the three things reported here turned out to be the same shape: the data existed, on a
+column the server had, and nothing in the app had ever asked for it. That is worth saying plainly,
+because three earlier rounds of work on «اخبار عکس ندارد» ended with an ask sent to the backends
+for a field one of them was already publishing.
+
+### The pictures
+
+`api/mobile/v1/market-intelligence` and `api/v1/news/list` on TradeYar read the same table with the
+same filters. The public one selects `source_image_url`; the members' one did not name the column.
+So a **signed-out** reader got the illustrated feed and a **signed-in** one got the same stories
+with the pictures removed — on a screen whose whole layout is built around a hero image above the
+headline. The asymmetry was the bug, and it is one column in one `SELECT`.
+
+Both halves are done. The server names the column now, and — because a server change is a
+deployment away — the app fills a missing picture from the public route it already reads for the
+guest feed: per story, only into a `null`, and only when something is actually missing, so the
+server's own answer always wins and there is nothing here to undo the day it lands.
+CoinePro-FX sends `articles.cover_image` the same way, with relative paths completed.
+
+### The full text
+
+`news_posts.body_fa` holds a page of Persian translation per story and `GET /api/v1/news/{slug}`
+has been serving it to anybody. `MarketNewsItem.body` said in as many words that no such thing
+existed. The reading page now fetches it **when a reader opens a story** — not with the feed, which
+is exactly why the list route nulls that column: thirty full articles is tens of kilobytes of prose
+to draw thirty cards nobody has opened. CoinePro-FX gets the same page through a new
+`user/mobile/news/{id}`, which renders its HTML `content` to plain text on the server, because a
+Compose `Text` draws `<p>` as the four characters it is.
+
+And a typography defect that only became visible once there was a body to see: a paragraph's own
+hard-wrap newlines were being honoured, so an article wrapped at seventy-two columns by the wire's
+editor was **set** at seventy-two columns on a phone — four full lines, a stub, four more. Inside a
+paragraph a line break is now a space, and where the lines break is decided by the measure.
+
+### The economic calendar opens on the next release
+
+The feed is a week and it is sorted forwards, both correctly. Together they meant a reader opening
+the screen on Thursday landed on three days of figures that had already come out. The past stays
+above rather than being filtered away — what the last figure came in at is half of what the next
+one means — and it is one flick up.
+
+`academy/bn/calendar` and `academy/bn/news` on CoinePro-FX also stop answering `{"items": []}` to
+everybody. Both are public, both read Redis keys a `news-worker` that has never been deployed is
+supposed to fill, and from outside that looked like "nothing was published" rather than "the
+service that writes this is not running" — which is the difference that sent three rounds of work
+to the wrong place. They now fall back to the live sources the panel and the app already read.
+
+### The chart is drawn on device pixels
+
+`optimalBarWidth` has always floored a candle body onto a whole device pixel. Nothing ever floored
+the **position** it was drawn at. A bar's centre is the plot divided by the visible bar count — a
+fraction, always — so eleven pixels of body asked for at x = 431.6 covered twelve columns with two
+of them at partial coverage, and the next body covered a different twelve. Every candle on screen a
+slightly different weight, gaps alternating between too tight and too open. The same for every
+hairline: 0.8dp on a 3× screen is 2.4 pixels of ink at a fractional y, painted as two rows at half
+intensity, on every grid line, every level, and the crosshair the reader is deliberately watching.
+
+`barLeft`, `strokeCentre` and `crispStroke` close it, at every site that draws a bar or a rule —
+candles, OHLC bars, volume candles, the volume band, a pane's histogram, the grid, the last price,
+the previous close, a setup's levels, and a drawing tool's own horizontal and vertical lines. Not
+diagonals: moving either end of a trend line changes its angle, which is the entire content of the
+drawing.
+
+Three more on the same screen:
+
+* **The legend's controls moved behind a disclosure.** Three buttons on every primary row lifted
+  each of them from the height of its own text to a 24dp button, so the plate covered the top-left
+  quarter of the plot in order to show two studies out of ten and a «+۸» underneath. Closed, a
+  study row is as tall as its words and four fit where two did.
+* **The horizontal grid follows the plot's height.** It was a flat five, which is right for a chart
+  in a card and, on the 600dp plot the chart screen has had since the plot went to 70%, meant a
+  line every 120dp and four numbers down the whole axis. One division per 76dp, clamped.
+* **The time axis is Solar Hijri.** It was the only surface left in the app on a Gregorian
+  calendar, so lining a CPI release up against the candle it moved meant converting a calendar in
+  one's head on the one screen whose point is lining two things up. A conversion, not a
+  transliteration — 12 March 2026 is 21 Esfand 1404 — and the clock stays Latin, as everywhere.
+
+### Renders
+
+The news fixtures are Persian now. They were three English headlines under a Persian heading, which
+is a picture of a product that does not exist — both feeds publish Persian and always have. The
+reading page has its first render at all, at phone height and full page, with a real article on it.
+
 ## [1.38.1] — 2026-08-28 — Four getters that were doing the work three times
 
 An audit of the chart against the review corpus turned up a performance defect in our own code —

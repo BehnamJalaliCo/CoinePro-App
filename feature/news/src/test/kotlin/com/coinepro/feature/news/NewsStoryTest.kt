@@ -135,9 +135,22 @@ class NewsStoryTest {
     }
 
     @Test
-    fun `a blank line breaks a paragraph and a single newline does not`() {
+    fun `a blank line breaks a paragraph and a single newline becomes a space`() {
+        // Not splitting on the single newline was always right. *Keeping* it was not: a Text
+        // honours every break it is handed, so a paragraph hard-wrapped by the wire's editor was
+        // set at the wire's column width on a phone — four full lines, a stub, four more.
         val paragraphs = newsParagraphs("بند اول\nهمان بند، ادامه\n\nبند دوم")
-        assertEquals(listOf("بند اول\nهمان بند، ادامه", "بند دوم"), paragraphs)
+        assertEquals(listOf("بند اول همان بند، ادامه", "بند دوم"), paragraphs)
+    }
+
+    @Test
+    fun `a hard wrap does not leave a double space behind it`() {
+        // The two shapes a hard wrap really arrives in: a trailing space before the break, and an
+        // indent after it. Either one kept would put a gap in the middle of a sentence.
+        assertEquals(
+            listOf("یک دو سه"),
+            newsParagraphs("یک \nدو\n    سه"),
+        )
     }
 
     @Test

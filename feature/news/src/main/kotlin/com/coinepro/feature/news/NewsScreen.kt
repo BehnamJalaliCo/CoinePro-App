@@ -623,6 +623,47 @@ private fun FreshnessStrip(
     received: Int?,
     onRefresh: () -> Unit,
 ) {
+    // ── notice, or line ───────────────────────────────────────────────────────────────────────
+    //
+    // Four things can be said here and only three of them are news. «تازه‌ترین خبرِ این فهرست:
+    // ۶ اسفند · 05:43» is the ordinary state — it is true on every visit, it asks the reader for
+    // nothing, and it was being given a full card with a border, its own padding and a
+    // «به‌روزرسانی» button, above the first story, on a screen that already pulls to refresh and
+    // already has actions in its header. That is a hundred and fifty pixels of furniture in front
+    // of the thing the reader opened the screen for, and it is most of why this feed reads as a
+    // settings page with articles under it.
+    //
+    // So the routine case is a line, at the type size a caption takes, with no plate and no
+    // control. A refresh in flight, a refresh that failed, and a feed the app could only partly
+    // read are all *events* — each one is something the reader did not know and may have to act
+    // on — and each keeps the card and the button it needs.
+    val notice = refreshing || failed || (kept != null && received != null)
+    val message = when {
+        refreshing -> stringResource(R.string.news_refreshing)
+        failed && newest != null ->
+            stringResource(R.string.news_refresh_failed, PersianDateTime.moment(newest))
+        failed -> stringResource(R.string.news_unavailable)
+        // Ahead of the freshness line, because a list missing half its stories is a
+        // bigger fact about this feed than the age of the half that arrived.
+        kept != null && received != null -> stringResource(
+            R.string.news_partly_readable,
+            kept.toPersianDigits(),
+            received.toPersianDigits(),
+        )
+        newest != null -> stringResource(R.string.news_newest, PersianDateTime.moment(newest))
+        else -> stringResource(R.string.news_timestamp_note)
+    }
+    if (!notice) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = CoineProSpacing.Half, vertical = CoineProSpacing.Half),
+        )
+        return
+    }
     CoineProCard(
         modifier = Modifier.fillMaxWidth().animateContentSize(),
         shape = MaterialTheme.shapes.medium,
@@ -634,21 +675,7 @@ private fun FreshnessStrip(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = when {
-                    refreshing -> stringResource(R.string.news_refreshing)
-                    failed && newest != null ->
-                        stringResource(R.string.news_refresh_failed, PersianDateTime.moment(newest))
-                    failed -> stringResource(R.string.news_unavailable)
-                    // Ahead of the freshness line, because a list missing half its stories is a
-                    // bigger fact about this feed than the age of the half that arrived.
-                    kept != null && received != null -> stringResource(
-                        R.string.news_partly_readable,
-                        kept.toPersianDigits(),
-                        received.toPersianDigits(),
-                    )
-                    newest != null -> stringResource(R.string.news_newest, PersianDateTime.moment(newest))
-                    else -> stringResource(R.string.news_timestamp_note)
-                },
+                text = message,
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextSecondary,
                 modifier = Modifier.weight(1f),

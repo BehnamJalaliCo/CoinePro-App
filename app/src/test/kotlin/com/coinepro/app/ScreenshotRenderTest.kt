@@ -193,6 +193,7 @@ import com.coinepro.feature.legal.LegalDocumentBody
 import com.coinepro.feature.legal.LegalMarkdown
 import com.coinepro.feature.menu.MenuAccess
 import com.coinepro.feature.menu.MenuScreen
+import com.coinepro.feature.news.NewsArticleScreen
 import com.coinepro.feature.news.NewsScreen
 import com.coinepro.feature.notifications.AlertComposerBody
 import com.coinepro.feature.notifications.NotificationSection
@@ -1178,6 +1179,50 @@ class ScreenshotRenderTest {
         val controller = MarketIntelController(FakeMarketIntelGateway(), scope)
         controller.refresh()
         capture("70-news-fa") { NewsScreen(controller = controller, onOpenCalendar = {}) }
+    }
+
+    /**
+     * The reading page, with a real article on it.
+     *
+     * There has never been a render of this screen, which is the one the owner has asked about
+     * twice — «متن کامل باید داخل خود اپ باشد» — and the one whose layout question is hardest: a
+     * page of Persian prose, set at a reading measure, with the byline and the source under it and
+     * the related stories after that. A screen with no picture of it is a screen nobody has
+     * reviewed.
+     *
+     * The story carries a `body`, which is now the ordinary case rather than the exceptional one:
+     * `NewsBodySource` fetches `body_fa` from the backend when a reader opens an article. The
+     * picture is absent here and only here — `NewsHero` fetches over the network and a Robolectric
+     * render has none, so what this shows is the layout's *worst* case, which is the one worth
+     * pinning.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun newsArticlePersian() {
+        val stories = ScreenshotFixtures.newsStories()
+        capture("104-news-article-fa") {
+            NewsArticleScreen(
+                story = stories.first(),
+                onBack = {},
+                related = stories.drop(1),
+                onOpenChart = { _, _ -> },
+            )
+        }
+    }
+
+    /** The same page scrolled through in full, so the prose below the fold is reviewable too. */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h2600dp-xxhdpi")
+    fun newsArticleFullPage() {
+        val stories = ScreenshotFixtures.newsStories()
+        capture("105-news-article-fa-full") {
+            NewsArticleScreen(
+                story = stories.first(),
+                onBack = {},
+                related = stories.drop(1),
+                onOpenChart = { _, _ -> },
+            )
+        }
     }
 
     @Test

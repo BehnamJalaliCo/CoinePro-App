@@ -976,7 +976,41 @@ private class DrawingPaint(
  * [drawDrawing] rely on that same rule from the other side: a *local* function does beat a member.
  */
 private fun DrawScope.strokeSegment(colour: Color, from: Offset, to: Offset, width: Float, dash: PathEffect?) {
-    drawLine(color = colour, start = from, end = to, strokeWidth = width, pathEffect = dash)
+    val (start, end) = registered(from, to, width)
+    drawLine(color = colour, start = start, end = end, strokeWidth = width, pathEffect = dash)
+}
+
+/**
+ * The two ends of a stroke, moved onto device pixels **only where doing so cannot rotate it**.
+ *
+ * ### Why the rule is "axis-aligned only"
+ *
+ * A horizontal line asked for at y = 812.0, one pixel wide, straddles the boundary between rows 811
+ * and 812 and is painted as two rows at half intensity — a soft grey smear where a crisp rule was
+ * intended. That is what a horizontal-line tool has looked like on this chart, and the horizontal
+ * line is the most-drawn tool there is: a reader marks a level, and the level they marked comes out
+ * blurrier than the gridline behind it.
+ *
+ * The same treatment applied to a *diagonal* would be a defect rather than a fix. Moving either end
+ * of a trend line by half a pixel changes its angle, by an amount that grows as the line gets
+ * shorter — and a trend line's angle is the entire content of the drawing. So a segment is
+ * registered only when it is already flat or already upright, where snapping moves the whole line
+ * together and cannot change what it says.
+ *
+ * The comparison is exact rather than tolerant, and deliberately: an `hline` and a `vline` are
+ * built from one anchor's coordinate used twice, so their two ends are the *same float*. Anything
+ * that is merely nearly-flat is a trend line the reader drew nearly flat, and it keeps its angle.
+ */
+private fun DrawScope.registered(from: Offset, to: Offset, width: Float): Pair<Offset, Offset> = when {
+    from.y == to.y -> {
+        val row = strokeCentre(from.y, width)
+        Offset(from.x, row) to Offset(to.x, row)
+    }
+    from.x == to.x -> {
+        val column = strokeCentre(from.x, width)
+        Offset(column, from.y) to Offset(column, to.y)
+    }
+    else -> from to to
 }
 
 /**
@@ -986,10 +1020,11 @@ private fun DrawScope.strokeSegment(colour: Color, from: Offset, to: Offset, wid
  * tool's own six-on-four, which is what a price label and a forecast have always looked like.
  */
 private fun DrawScope.strokeDashed(from: Offset, to: Offset, colour: Color, width: Float, dash: PathEffect?) {
+    val (start, end) = registered(from, to, width)
     drawLine(
         color = colour,
-        start = from,
-        end = to,
+        start = start,
+        end = end,
         strokeWidth = width,
         pathEffect = dash ?: PathEffect.dashPathEffect(floatArrayOf(DASH_ON.toPx(), DASH_OFF.toPx())),
     )

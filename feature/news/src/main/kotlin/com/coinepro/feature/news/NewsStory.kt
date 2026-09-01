@@ -110,20 +110,37 @@ internal fun GuestHeadline.asStory(): NewsStory = NewsStory(
 )
 
 /**
- * The story's text split into the paragraphs it was written in.
+ * The story's text split into the paragraphs it was written in, each one set as a single block.
  *
  * A blank line is the break, which is what a plain-text body means by one everywhere it is written
- * by hand, and it is what `articleBody` in the gateway normalises runs of blank lines down to. A
- * single newline is *not* a break: wire copy is full of them at the ends of hard-wrapped lines, and
- * treating those as paragraphs would set a story as a column of orphans.
+ * by hand, and it is what `articleBody` in the gateway normalises runs of blank lines down to.
+ *
+ * ### The single newline, which is the half this used to get wrong
+ *
+ * A single newline is not a paragraph break — wire copy is full of them at the ends of hard-wrapped
+ * lines — and it was correct not to split on one. Not splitting is not enough, though: a `Text`
+ * honours every line break it is handed, so a paragraph that arrived hard-wrapped at seventy-two
+ * columns was set *at seventy-two columns*, on a phone, inside a container whose width the layout
+ * had already decided. What comes out is a page whose lines end wherever the wire's editor happened
+ * to press return — four full lines, then a stub, then four more — and it reads as a broken
+ * renderer rather than as prose. It is the most visible thing on the reading page now that there is
+ * a real body on it to see.
+ *
+ * So a line break **inside** a paragraph becomes a space, and where the lines actually break is
+ * decided by the measure the text is set in, which is the only thing that knows. The whitespace
+ * around it goes too: a hard wrap commonly leaves a trailing space before the break and an indent
+ * after it, and keeping either would put a double space in the middle of a sentence.
  *
  * Returns an empty list for text that is only whitespace, so the caller draws nothing rather than a
  * paragraph of nothing.
  */
 internal fun newsParagraphs(body: String?): List<String> = body
     ?.split(PARAGRAPH_BREAK)
-    ?.map(String::trim)
+    ?.map { paragraph -> paragraph.replace(SOFT_WRAP, " ").trim() }
     ?.filter(String::isNotEmpty)
     .orEmpty()
+
+/** A line break inside a paragraph, with whatever whitespace was sitting either side of it. */
+private val SOFT_WRAP = Regex("""[ \t]*\n[ \t]*""")
 
 private val PARAGRAPH_BREAK = Regex("\n[ \\t]*\n")

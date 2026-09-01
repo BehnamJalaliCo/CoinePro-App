@@ -74,6 +74,7 @@ import com.coinepro.core.marketdata.OhlcBar
 import com.coinepro.core.marketdata.MarketDataOrigin
 import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.marketintel.EconomicEvent
+import com.coinepro.feature.news.NewsStory
 import com.coinepro.core.marketintel.MarketImpact
 import com.coinepro.core.marketintel.MarketIntelGateway
 import com.coinepro.core.marketintel.MarketIntelSnapshot
@@ -527,13 +528,77 @@ object ScreenshotFixtures {
         ),
     )
 
+    /**
+     * A story's own text, at the length one really arrives at.
+     *
+     * Taken from the shape `news_posts.body_fa` actually holds — four or five paragraphs of Persian
+     * running to fifteen hundred characters — because the reading page's whole layout question is
+     * how it sets *that*, not how it sets two lines. A one-paragraph stand-in would have made the
+     * render agree with the page's easiest case and say nothing about its real one.
+     */
+    private val NEWS_BODY = """
+        بازدهی اوراق خزانهٔ آمریکا پس از انتشار تازه‌ترین گزارش بازار کار کاهش یافت و شاخص دلار در
+        برابر سبد ارزهای اصلی عقب نشست. معامله‌گران با استناد به کندشدن رشد اشتغال، احتمال مسیر
+        ملایم‌تری برای نرخ بهره در ماه‌های پیش‌رو را قیمت‌گذاری کردند.
+
+        این تغییر انتظارات مستقیماً به سود فلزات گران‌بها تمام شد. طلا در معاملات روز جاری تا محدودهٔ
+        ۲٬۵۷۵ دلار بالا رفت و نقره هم مسیر مشابهی را دنبال کرد. دلیل این هم‌بستگی ساده است: هر دو فلز
+        به دلار قیمت‌گذاری می‌شوند، پس ضعیف‌شدن دلار قیمتشان را برای خریدار غیرآمریکایی ارزان‌تر
+        می‌کند و تقاضا را بالا می‌برد.
+
+        نکته‌ای که تحلیل‌گران روی آن تأکید دارند این است که گزارش اشتغال به‌تنهایی تصمیم بانک مرکزی را
+        تعیین نمی‌کند. داده‌های تورم هفتهٔ آینده و لحن اعضای فدرال‌رزرو در سخنرانی‌های پیشِ رو
+        می‌تواند همین انتظارات را به‌سرعت برگرداند، و بازاری که امروز مسیر ملایم را قیمت کرده است
+        بیشترین آسیب را از یک عدد تورمی بالاتر از انتظار می‌بیند.
+
+        برای معامله‌گر ایرانی، چیزی که در این خبر بیش از خودِ عدد اهمیت دارد، ساعت انتشار دادهٔ بعدی
+        است. تقویم اقتصادی همین برنامه رویدادهای پرتأثیر هفته را با ساعت دقیق نشان می‌دهد و می‌توان
+        از هر ردیف مستقیم به نمودار همان لحظه رفت.
+    """.trimIndent()
+
+    /**
+     * The same stories as [marketIntel], as the type the reading page takes.
+     *
+     * Built here rather than through `feature:news`'s own `asStory`, which is internal to that
+     * module — deliberately, since nothing outside it should be converting a wire item into a
+     * screen's model. This mapping is one for one and exists only so the render can reach the page.
+     */
+    fun newsStories(): List<NewsStory> = marketIntel().news.map { item ->
+        NewsStory(
+            id = item.id,
+            title = item.title,
+            summary = item.summary,
+            body = item.body,
+            source = item.source,
+            url = item.url,
+            imageUrl = item.imageUrl,
+            publishedAt = item.publishedAt,
+            sentiment = item.sentiment,
+            impact = item.impact,
+            relevance = item.relevance,
+            isStale = item.isStale,
+        )
+    }
+
     fun marketIntel(): MarketIntelSnapshot = MarketIntelSnapshot(
         serverTime = NOW,
+        // **Persian, with a body on the first one**, for the same reason the calendar below is
+        // Persian: this render is the only view of the news screen anybody has, and until now it
+        // showed three English headlines under a Persian heading — a picture of a product that does
+        // not exist. Both feeds publish Persian. TradeYar's rows are `title_fa` and `summary_fa`
+        // straight out of `news_posts`, and the forex side's are its own newsroom's.
+        //
+        // The first story carries a `body` because that is now an ordinary shape for a story rather
+        // than the exceptional one: `NewsBodySource` fetches `body_fa` when a reader opens an
+        // article, so the reading page has a page of prose on it and the render has to show that
+        // rather than the two-line summary it used to be stuck with. The third deliberately carries
+        // neither a summary nor a body, because a wire row with nothing but a headline is real and
+        // the card has to be right for it.
         news = listOf(
             MarketNewsItem(
                 id = "news_1",
-                title = "Dollar softens as traders price a slower tightening path",
-                summary = "Treasury yields eased after the latest labour print, lifting precious metals.",
+                title = "دلار عقب نشست؛ بازار مسیر ملایم‌تری برای نرخ بهره قیمت‌گذاری می‌کند",
+                summary = "بازدهی اوراق خزانه پس از تازه‌ترین گزارش اشتغال کاهش یافت و فلزات گران‌بها را بالا کشید.",
                 source = "Reuters",
                 url = "https://example.invalid/news/1",
                 publishedAt = NOW.minusSeconds(1_800),
@@ -541,11 +606,12 @@ object ScreenshotFixtures {
                 impact = MarketImpact.HIGH,
                 relevance = setOf(MarketRelevance.GOLD, MarketRelevance.SILVER),
                 isStale = false,
+                body = NEWS_BODY,
             ),
             MarketNewsItem(
                 id = "news_2",
-                title = "Spot Bitcoin ETFs post a fourth straight session of inflows",
-                summary = "Net creations reached 412M USD, concentrated in two issuers.",
+                title = "ورود سرمایه به ETFهای نقدی بیت‌کوین برای چهارمین روز پیاپی ادامه یافت",
+                summary = "خالص خرید تازه به ۴۱۲ میلیون دلار رسید و بیشترش در دو صندوق متمرکز بود.",
                 source = "Bloomberg",
                 url = "https://example.invalid/news/2",
                 publishedAt = NOW.minusSeconds(5_400),
@@ -556,7 +622,7 @@ object ScreenshotFixtures {
             ),
             MarketNewsItem(
                 id = "news_3",
-                title = "Silver industrial demand forecast trimmed for the coming quarter",
+                title = "پیش‌بینی تقاضای صنعتی نقره برای فصل پیش‌رو کاهش یافت",
                 summary = null,
                 source = "Kitco",
                 url = "https://example.invalid/news/3",

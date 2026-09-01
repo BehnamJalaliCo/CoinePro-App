@@ -206,7 +206,7 @@ fun EconomicCalendarScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         item {
-                            CalendarFreshnessStrip(state.refreshing, controller::refresh)
+                            CalendarFreshnessStrip(state.refreshing)
                         }
                         items(filtered, key = EconomicEvent::id) { event ->
                             TimelineEventCard(event, onOpenChart, Modifier.animateItem())
@@ -271,8 +271,28 @@ internal fun calendarMode(state: MarketIntelState, filtered: List<EconomicEvent>
     else -> CalendarMode.EVENTS
 }
 
+/**
+ * The strip above the first row: a notice while something is happening, a line the rest of the time.
+ *
+ * «زمان‌ها بر اساس منطقهٔ زمانی دستگاه» is a footnote, not an event. It was being given a full card
+ * with its own border and a «به‌روزرسانی» button, above the first release, on a screen that already
+ * pulls to refresh — the fourth block of furniture on a screen whose content starts a third of the
+ * way down. A refresh actually in flight is a different matter: that is something the reader started
+ * and is waiting on, and it keeps the plate.
+ */
 @Composable
-private fun CalendarFreshnessStrip(refreshing: Boolean, onRefresh: () -> Unit) {
+private fun CalendarFreshnessStrip(refreshing: Boolean) {
+    if (!refreshing) {
+        Text(
+            text = stringResource(R.string.calendar_timezone_note),
+            color = CoineProColors.TextMuted,
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = CoineProSpacing.Half, vertical = CoineProSpacing.Half),
+        )
+        return
+    }
     CoineProCard(
         modifier = Modifier.fillMaxWidth().animateContentSize(),
         shape = MaterialTheme.shapes.medium,
@@ -284,19 +304,11 @@ private fun CalendarFreshnessStrip(refreshing: Boolean, onRefresh: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = stringResource(
-                    if (refreshing) R.string.calendar_refreshing else R.string.calendar_timezone_note,
-                ),
+                text = stringResource(R.string.calendar_refreshing),
                 color = CoineProColors.TextSecondary,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.weight(1f),
             )
-            if (!refreshing) {
-                CoineProSecondaryButton(
-                    text = stringResource(R.string.calendar_refresh),
-                    onClick = onRefresh,
-                )
-            }
         }
     }
 }

@@ -60,23 +60,27 @@ import com.coinepro.core.marketintel.NewsSentiment
  *   is now a quiet line at the end of the text beside the publisher's name. It is a footnote. The
  *   story is the page.
  *
- * ### What "the full text" can honestly mean today, and what it will mean tomorrow
+ * ### The full text, which now actually arrives
  *
- * [NewsStory.body] is the story's own text and it is null on both feeds as they stand.
- * `news_posts` stores `summary_fa` and no body; the forex side is a cache of wire headlines. Two
- * answers to that were available and this page takes neither of the bad ones — it does not render
- * the source page in a WebView (see [NewsHandoff] for why an arbitrary third-party host must not
- * run in this process), and it does not write something that reads like the article, which would be
- * inventing a story and attributing it to a named publisher.
+ * [NewsStory.body] is the story's own text, and the claim that used to stand here — that neither
+ * feed had one — was wrong. `news_posts` has a `body_fa` column holding a full Persian translation
+ * and `api/v1/news/{slug}` has been serving it to anybody all along; the forex side's
+ * `articles.content` is its own newsroom's article, rendered to plain text by
+ * `user/mobile/news/{id}`. Neither is in the *list* route, deliberately — see [NewsBodySource] —
+ * so `ReadingSurface` fetches it when a reader opens the story, and this page is handed a story
+ * that has one.
  *
- * What it does instead is set what the server *did* send as text rather than as a caption: the
- * summary at eighteen points with reading leading, on a measure, under a rule, with a line under it
- * saying plainly that this is the summary the source published and not the whole of it. That is a
- * short article, honestly labelled — not a stub apologising for itself.
+ * Two bad answers were available and this page takes neither. It does not render the source page in
+ * a WebView (see [NewsHandoff] for why an arbitrary third-party host must not run in this process),
+ * and it does not write something that reads like the article, which would be inventing a story and
+ * attributing it to a named publisher.
  *
- * And [ArticleText] already has the shape for the other case: where a body arrives it is set below
- * the lede in paragraphs, and the sentence about the summary being all there is disappears, because
- * it would no longer be true. The ask that makes that happen is `docs/SERVER_ASK_NEWS_MEDIA.md`.
+ * Where a body does not arrive — a backend that publishes none, a fetch that failed — the page is
+ * still a page: the summary is set at eighteen points with reading leading, on a measure, under a
+ * rule, with a line beneath it saying plainly that this is the summary the source published and not
+ * the whole of it. A short article, honestly labelled, rather than a stub apologising for itself.
+ * [ArticleText] holds both shapes, and the sentence about the summary disappears when it stops
+ * being true.
  */
 @Composable
 fun NewsArticleScreen(

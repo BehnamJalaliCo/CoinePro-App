@@ -212,10 +212,11 @@ private sealed interface HeroImage {
  * a hero inset by sixteen points on every side is a thumbnail with delusions.
  *
  * It emits nothing at all for a story with no picture, an address that is not `https`, or a fetch
- * that failed. Nothing, not a placeholder: see [NewsImagePolicy] for why, and note that today
- * **every** story takes this path, because neither backend sends an image field yet —
- * `docs/SERVER_ASK_NEWS_MEDIA.md` is the ask, and `MarketNewsItem.imageUrl` is the field already
- * waiting for the answer. The layout below has to be good without one, and is.
+ * that failed. Nothing, not a placeholder: see [NewsImagePolicy] for why. That path is no longer
+ * the only one — TradeYar's rows carry `source_image_url` and the app fills it in even where the
+ * members' route leaves it out — but it is still an ordinary one, because a wire row can genuinely
+ * arrive without a picture and the forex side sends one only where the article has a cover. The
+ * layout below has to be good without one, and is.
  *
  * There is no scrim and no text over the picture, which is a design decision that also happens to
  * be the policy: `scripts/quality/check-motion-policy.sh` allow-lists gradients by file, a scrim is

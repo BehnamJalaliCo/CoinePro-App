@@ -27,15 +27,26 @@ data class MarketNewsItem(
      * to keep compiling. That is the only reason for the default; a story from the wire either has
      * an address here or genuinely has no picture, and every surface that draws one is written to
      * be right in the second case.
+     *
+     * On TradeYar a null here is filled from the platform's own public route before the snapshot
+     * leaves the gateway — see [PublicMarketIntel.illustrate], and see [TradeYarPublicNews.media]
+     * for why the members' route was the only one not sending it.
      */
     val imageUrl: String? = null,
     /**
      * The story's own text, or null where the feed sent only a summary.
      *
-     * Null on both feeds today, and that is a fact about the servers rather than about this app:
-     * TradeYar's `news_posts` stores `summary_fa` and no body, and the forex side is a cache of wire
-     * headlines. `docs/SERVER_ASK_NEWS_MEDIA.md` is the ask; `articleBody` is what decides whether
-     * what arrives under the name is really one.
+     * **Null in the feed by design, and filled when a reader opens the story.** The claim that used
+     * to stand here — that neither server had a body — was wrong: TradeYar's `news_posts` has a
+     * `body_fa` column carrying a full Persian translation, and CoinePro-FX's `articles.content` is
+     * its own newsroom's article. Both are fetched by [NewsBodySource] at the moment an article is
+     * opened, which is where a page of prose belongs; a list route that shipped thirty of them
+     * would be sending tens of kilobytes to draw thirty cards, and TradeYar's own public list
+     * selects `NULL AS body_fa` for exactly that reason.
+     *
+     * So a story that arrives here with a body has one because its feed volunteered it, and one
+     * without is ordinary rather than deficient. `articleBody` is what decides whether what arrives
+     * under the name is really one.
      */
     val body: String? = null,
 )
