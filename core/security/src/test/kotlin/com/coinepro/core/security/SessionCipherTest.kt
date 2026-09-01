@@ -7,6 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 /**
  * The envelope around an encrypted session, pinned.
@@ -16,8 +17,26 @@ import org.robolectric.RobolectricTestRunner
  * actually failed in products like this one — the string handling either side of the cipher. A
  * store that mangles its own envelope silently signs the reader out; one that throws on a mangled
  * envelope crashes them out on launch. Both are here.
+ *
+ * ### Why the SDK is pinned, when nothing in this file is about an SDK
+ *
+ * Because without it Robolectric takes the module's `targetSdk`, which is 36, and its image for
+ * that level requires **Java 21**. This repository's CI runs on Java 17, so `DefaultSdkProvider`
+ * refused the sandbox before a single assertion ran — `UnsupportedOperationException`, one failing
+ * "test" called `classMethod`, and a red `main`.
+ *
+ * The cost was not one test. `android-apk.yml` runs the unit tests before it assembles, so this
+ * turned every push to `main` into a build with **no APK published** — thirty consecutive runs of
+ * it — while every one of those tests passed on any developer machine with a newer JDK. A failure
+ * that only exists on the runner is the expensive kind.
+ *
+ * Every other Robolectric test in this repository already pins 34, which is the level they were all
+ * written against; this file was the one that was missed. Do not remove the pin to "keep up" with
+ * `compileSdk`: the two numbers answer different questions, and this one is answering "which
+ * Android does the sandbox emulate", not "which Android does the app build against".
  */
 @RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class SessionCipherTest {
 
     @Test
