@@ -13,6 +13,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import com.coinepro.core.designsystem.LtrDirection
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -134,231 +139,162 @@ import kotlin.math.abs
 @Composable
 internal fun ChartCommandBand(
     interval: ChartInterval,
-    /** The bar lengths pinned to the strip. See [TimeframeFavourites]. */
     starred: List<String>,
     onSelectInterval: (ChartInterval) -> Unit,
     onMoreIntervals: () -> Unit,
-    /** Whether a drawing tool is armed — the state that changes what the next tap on the plot does. */
     armedTool: Boolean,
-    /**
-     * Whether the band carries the drawing control at all.
-     *
-     * False on a window wide enough to keep the palette permanently open beside the plot — see
-     * `ChartWorkbench`. The button exists to open the tools and to report that one is armed, and an
-     * open column does both; leaving it would put a sheet on the screen that duplicates a column
-     * already on it. The other five keep their weights, so the band simply divides five ways.
-     */
+    /** Whether the draw button belongs here. False where a tool column already offers it. */
     showDraw: Boolean = true,
     indicators: Int,
     drawings: Int,
     onOpen: (ChartSheet) -> Unit,
     onFullscreen: () -> Unit,
     onMore: () -> Unit,
-    /**
-     * Whether anything behind «بیشتر» is off its default — a span chosen, an instrument compared,
-     * an axis adjusted.
-     *
-     * Without it the sheet would swallow every state it holds, and a reader who set the chart to a
-     * year would have nothing on screen telling them so.
-     */
+    /** Whether the hub has something non-default in it — a span, a comparison, a scale. */
     moreActive: Boolean,
     modifier: Modifier = Modifier,
-    /**
-     * The reader's own list, for the switcher at the top of the band.
-     *
-     * Empty is the ordinary case for somebody who has starred nothing, and then the tier is not
-     * drawn — see `SymbolWheelBar`, which also drops any symbol this app has no artwork for.
-     */
+    /** The wheel's ring — the watchlist, or the catalogue's most traded where the list is short. */
     symbols: List<String> = emptyList(),
-    /** The instrument on the plot above. Ignored when [onSelectSymbol] is null. */
     symbol: String = "",
-    /** How a tap on a neighbour is taken. Null leaves the tier out; see `ChartScreen.switchSymbol`. */
     onSelectSymbol: ((String) -> Unit)? = null,
-    /**
-     * The feed's own move per symbol, for the middle row of the scroll.
-     *
-     * Empty is the ordinary first frame and stays legible: the wheel draws the tickers and leaves
-     * the figure out until a quote arrives, rather than waiting for one before drawing a control.
-     */
+    /** Quotes for the wheel's rows, keyed by symbol. */
     quotes: Map<String, WatchlistQuote> = emptyMap(),
+    /** The one-step undo, or null with nothing to walk back. TradingView keeps it on the bar. */
+    onUndo: (() -> Unit)? = null,
 ) {
-    Column(modifier = modifier.fillMaxWidth().background(CoineProColors.Surface)) {
-        // The instrument and the bar length in one row, in that order — item 7.
-        //
-        // This is the arrangement in the owner's screenshot: a narrow vertical scroll of tickers at
-        // the leading edge of the tool row, then the bar length, then the tools. It replaces a
-        // full-width `SymbolWheelBar` tier, so the band does not grow a row to gain the control; it
-        // grows by the difference between a three-row wheel and a strip of length keys, which is
-        // about twenty points.
-        //
-        // Leading rather than trailing because the wheel names *what* is drawn and the keys beside
-        // it say *how*, and a Persian reader meets the leading edge first — the same order the two
-        // tiers were in when they were stacked.
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    // Unused here since the intervals moved into the date-range sheet, kept on the signature so
+    // the two-pane and fullscreen callers that still build a strip from them do not change.
+    @Suppress("UNUSED_VARIABLE") val strip = starred to onSelectInterval
+    Column(modifier = modifier.fillMaxWidth().background(CoineProColors.Stage)) {
+        // TradingView's chart toolbar closes the pane with a hairline; measured `#EBEBEB` on white.
+        HorizontalDivider(color = CoineProColors.BorderSubtle, thickness = 1.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(TOOLBAR_HEIGHT)
+                .padding(horizontal = CoineProSpacing.Half),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // The symbol, bold, on the reading edge — a drag on it turns the wheel. Then the
+            // interval beside it, which opens the date-range sheet. Both 16 sp bold, measured off
+            // the phone app's `BTCUSD 4H`.
             onSelectSymbol?.let { select ->
                 SymbolScrollWheel(
                     symbols = symbols,
                     current = symbol,
                     quotes = quotes,
                     onSelect = select,
-                    modifier = Modifier.padding(start = CoineProSpacing.One),
                 )
             }
-            IntervalRow(
-                selected = interval,
-                onSelect = onSelectInterval,
-                onMore = onMoreIntervals,
-                starred = starred,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                // Six points, not eight: each button carries two of its own inside the ripple, so
-                // this is what lines the glyph row up with the length keys in the tier above.
-                .padding(start = 6.dp, end = 6.dp, bottom = CoineProSpacing.Half),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
+            ToolbarText(text = interval.wire, onClick = onMoreIntervals)
+            Spacer(modifier = Modifier.weight(1f))
             if (showDraw) {
-                BandButton(
+                ToolbarButton(
                     icon = DesignR.drawable.tv_pencil,
                     label = stringResource(R.string.chart_band_draw),
-                    armed = armedTool,
+                    active = armedTool,
                     onClick = { onOpen(ChartSheet.TOOLS) },
-                    modifier = Modifier.weight(1f),
                 )
             }
-            BandButton(
+            ToolbarButton(
                 icon = DesignR.drawable.icon_sliders_horizontal,
                 label = stringResource(R.string.chart_band_studies),
-                count = indicators,
+                active = indicators > 0,
                 onClick = { onOpen(ChartSheet.INDICATORS) },
-                modifier = Modifier.weight(1f),
             )
-            BandButton(
-                icon = DesignR.drawable.tv_chart_candles,
-                label = stringResource(R.string.chart_band_type),
-                onClick = { onOpen(ChartSheet.TYPE) },
-                modifier = Modifier.weight(1f),
-            )
-            BandButton(
-                icon = DesignR.drawable.tv_tool_cursor,
-                label = stringResource(R.string.chart_band_objects),
-                count = drawings,
-                onClick = { onOpen(ChartSheet.DRAWINGS) },
-                modifier = Modifier.weight(1f),
-            )
-            BandButton(
-                icon = DesignR.drawable.tv_maximize2,
-                label = stringResource(R.string.chart_band_fullscreen),
-                onClick = onFullscreen,
-                modifier = Modifier.weight(1f),
-            )
-            BandButton(
+            ToolbarButton(
                 icon = DesignR.drawable.tv_more_horizontal,
                 label = stringResource(R.string.chart_band_more),
-                marked = moreActive,
+                active = moreActive || drawings > 0,
                 onClick = onMore,
-                modifier = Modifier.weight(1f),
+            )
+            VerticalDivider(
+                color = CoineProColors.BorderSubtle,
+                thickness = 1.dp,
+                modifier = Modifier.height(TOOLBAR_GLYPH).padding(horizontal = 2.dp),
+            )
+            ToolbarButton(
+                icon = DesignR.drawable.icon_arrow_counter_clockwise,
+                label = stringResource(R.string.chart_more_undo),
+                active = false,
+                onClick = onUndo,
+            )
+            ToolbarButton(
+                icon = DesignR.drawable.tv_maximize2,
+                label = stringResource(R.string.chart_band_fullscreen),
+                active = false,
+                onClick = onFullscreen,
             )
         }
     }
 }
 
 /**
- * One labelled control on the band, in one of four states a reader can tell apart without reading.
- *
- * * **Armed** ([armed]) — a tinted block with a tinted hairline. Only the drawing control takes it,
- *   because it is the only one whose state changes what the *next tap on the plot* does, and that
- *   is worth the strongest treatment on the row.
- * * **Active** — a count above zero, or [marked]. The glyph, the label and the figure all take the
- *   page's accent, so «۴ اندیکاتور روشن است» is answered from across the room.
- * * **Idle** — neutral ink on nothing.
- * * **Unavailable** — [onClick] null: disabled ink and no ripple. A control that cannot be pressed
- *   must not look like one that can, and must not merely be absent either, or the reader spends the
- *   session looking for it.
+ * One glyph on the toolbar: 22 dp of ink in a 44 dp target, the primary ink at rest and the page
+ * accent when the thing behind it is armed or carrying something. No label — TradingView's bar
+ * has none, and every glyph here is one the reader has met on its own sheet.
  */
 @Composable
-private fun BandButton(
+private fun ToolbarButton(
     @DrawableRes icon: Int,
     label: String,
+    active: Boolean,
     onClick: (() -> Unit)?,
-    modifier: Modifier = Modifier,
-    armed: Boolean = false,
-    marked: Boolean = false,
-    count: Int = 0,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val haptics = rememberCoineProHaptics()
     val enabled = onClick != null
-    val active = armed || marked || count > 0
     val ink = when {
         !enabled -> CoineProColors.TextDisabled
         active -> CoineProColors.pageAccentInk
-        else -> CoineProColors.TextSecondary
+        else -> CoineProColors.TextPrimary
     }
-    Column(
-        modifier = modifier
-            .pressScale(interaction, CoineProPress.CHIP)
+    Box(
+        modifier = Modifier
+            .size(TOOLBAR_TARGET)
+            .pressScale(interaction, CoineProPress.CONTROL)
             .clip(CoineProShapes.small)
-            .background(
-                if (armed) {
-                    CoineProTint.fill(CoineProColors.pageAccentInk, CoineProColors.Surface)
-                } else {
-                    Color.Transparent
-                },
-            )
-            .then(
-                if (armed) {
-                    Modifier.border(
-                        width = 1.dp,
-                        color = CoineProTint.edge(CoineProColors.pageAccentInk),
-                        shape = CoineProShapes.small,
-                    )
-                } else {
-                    Modifier
-                },
-            )
             .clickable(interaction, null, enabled = enabled) {
                 haptics.select()
                 onClick?.invoke()
-            }
-            .heightIn(min = BAND_BUTTON_HEIGHT)
-            .padding(vertical = CoineProSpacing.Half, horizontal = 2.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+            },
+        contentAlignment = Alignment.Center,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-        ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = null,
-                tint = ink,
-                modifier = Modifier.size(BAND_GLYPH),
-            )
-            // Zero is drawn as nothing rather than as «۰»: a nought says what an absent badge says
-            // and costs a glyph to read. A prose count, so Persian digits.
-            if (count > 0) {
-                Text(
-                    text = count.toPersianDigits(),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = ink,
-                )
-            }
-        }
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (active && enabled) ink else CoineProColors.TextMuted,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 3.dp),
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = label,
+            tint = ink,
+            modifier = Modifier.size(TOOLBAR_GLYPH),
         )
     }
 }
+
+/** The interval on the toolbar: bold, Latin, and a tap away from the date-range sheet. */
+@Composable
+private fun ToolbarText(text: String, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberCoineProHaptics()
+    LtrDirection {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = CoineProColors.TextPrimary,
+            maxLines = 1,
+            modifier = Modifier
+                .pressScale(interaction, CoineProPress.CONTROL)
+                .clip(CoineProShapes.small)
+                .clickable(interaction, null) {
+                    haptics.select()
+                    onClick()
+                }
+                .heightIn(min = TOOLBAR_TARGET)
+                .padding(horizontal = CoineProSpacing.One)
+                .wrapContentHeight(),
+        )
+    }
+}
+
 
 /**
  * The span of history, as chips that cannot be mistaken for the bar-length keys above.
@@ -678,218 +614,257 @@ private fun ReadingMeter(fraction: Float, tone: Color, modifier: Modifier = Modi
 internal fun ChartMoreSheetBody(
     range: ChartRange?,
     onSelectRange: (ChartRange) -> Unit,
-    /** The bars «رفتن به تاریخ» resolves against. Empty leaves the field out — there is nothing to find. */
     bars: List<Candle>,
     onGoToDate: (Int) -> Unit,
-    /**
-     * Take one step back through the chart's own history, and put one forward.
-     *
-     * Null when the stack is empty in that direction, which dims the row rather than removing it:
-     * a reader looking for undo has to be able to find out that it exists and that there is
-     * nothing to undo, and a control that appears only once it would work is a control nobody
-     * knows the app has.
-     *
-     * They are here rather than on the plot because the plot is the product — see the chart
-     * screen's plot fraction — and because on a keyboard they are Z and Shift+Z, which is where a
-     * reader who uses them often will actually reach.
-     */
+    /** Null with nothing to walk back, which draws the tile dimmed rather than dropping it. */
     onUndo: (() -> Unit)?,
     onRedo: (() -> Unit)?,
     comparisons: Int,
-    /** What the price axis is measuring now, so the row can say it without being opened. */
     scaleLabel: String,
-    /** Whether the axis is off its defaults at all — inverted, locked, or a pinned precision. */
     scaleAdjusted: Boolean,
     onOpen: (ChartSheet) -> Unit,
     onCreateAlert: (() -> Unit)?,
     onBacktest: (() -> Unit)?,
     onShare: () -> Unit,
     onOpenStudio: (() -> Unit)?,
-    /**
-     * The way to the axis-event switches, or null where nothing fetches events.
-     *
-     * The row is the whole reason a phone reader can reach this at all: the switches had one call
-     * site and it was inside the professional studio, so the economic calendar was unreachable from
-     * the screen it draws on.
-     */
+    /** Null where nothing fetches events; the tile is not drawn. */
     onEvents: (() -> Unit)? = null,
-    /** How many *served* kinds are on, for the row's count. Never all five. */
     eventKinds: Int = 0,
-    /**
-     * Why the axis is bare, when it is — said on the closed row rather than only behind it.
-     *
-     * The four answers are not interchangeable and only one of them is the reader's own market
-     * being quiet. A row that said «۲ نوع روشن» over an axis with nothing on it, on a platform whose
-     * backend does not publish the document at all, is the exact failure `ChartEventNotice` was
-     * written to end — and until this row existed it was what a phone reader got.
-     */
+    /** Why the event strip is empty, where it is; said on the tile rather than only behind it. */
     eventNotice: ChartEventNotice? = null,
+    /** The web terminal, where a deployment reports one. */
+    onOpenTerminal: (() -> Unit)? = null,
 ) {
+    // TradingView's «Analysis hub»: a sheet of tiles rather than a list of rows. Measured off the
+    // phone app — three bordered tiles across for the chart's own settings, then a section
+    // headed TOOLS with grey plates two across. Every row this sheet used to list is a tile now,
+    // with the same handler behind it.
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
+            .padding(horizontal = CoineProSpacing.Gutter)
             .padding(bottom = CoineProSpacing.Two),
-        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
-            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
-        ) {
-            SheetLabel(stringResource(R.string.chart_more_span))
-            Text(
-                text = stringResource(R.string.chart_more_span_note),
-                style = MaterialTheme.typography.bodySmall,
-                color = CoineProColors.TextMuted,
+        HubGrid(columns = 3, outlined = true) {
+            HubTile(
+                icon = DesignR.drawable.icon_bookmark_simple,
+                label = stringResource(R.string.chart_more_layouts),
+                onClick = { onOpen(ChartSheet.LAYOUTS) },
             )
+            HubTile(
+                icon = DesignR.drawable.tv_chart_percent,
+                label = stringResource(R.string.chart_more_scale),
+                note = scaleLabel,
+                marked = scaleAdjusted,
+                onClick = { onOpen(ChartSheet.SCALE) },
+            )
+            HubTile(
+                icon = DesignR.drawable.icon_camera,
+                label = stringResource(R.string.chart_more_share),
+                onClick = onShare,
+            )
+            HubTile(
+                icon = DesignR.drawable.icon_arrow_counter_clockwise,
+                label = stringResource(R.string.chart_more_undo),
+                onClick = onUndo,
+            )
+            HubTile(
+                icon = DesignR.drawable.icon_arrow_clockwise,
+                label = stringResource(R.string.chart_more_redo),
+                onClick = onRedo,
+            )
+            onOpenTerminal?.let {
+                HubTile(
+                    icon = DesignR.drawable.tv_maximize2,
+                    label = stringResource(R.string.chart_hub_terminal),
+                    onClick = it,
+                )
+            }
         }
-        RangeChipRow(
-            selected = range,
-            onSelect = onSelectRange,
-            contentPadding = PaddingValues(horizontal = CoineProSpacing.Gutter),
-        )
 
+        HorizontalDivider(color = CoineProColors.BorderSubtle)
+
+        Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+            SheetLabel(stringResource(R.string.chart_more_span))
+            RangeChipRow(selected = range, onSelect = onSelectRange, contentPadding = PaddingValues(0.dp))
+        }
         if (bars.isNotEmpty()) {
-            HorizontalDivider(color = CoineProColors.Border)
-            Column(
-                modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
-                verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
                 SheetLabel(stringResource(R.string.chart_more_goto))
                 GoToDateField(bars = bars, onGoTo = onGoToDate)
             }
         }
 
-        HorizontalDivider(color = CoineProColors.Border)
+        HorizontalDivider(color = CoineProColors.BorderSubtle)
 
-        MoreRow(
-            icon = DesignR.drawable.icon_arrow_counter_clockwise,
-            title = stringResource(R.string.chart_more_undo),
-            note = stringResource(R.string.chart_more_undo_note),
-            onClick = onUndo,
-        )
-        MoreRow(
-            icon = DesignR.drawable.icon_arrow_clockwise,
-            title = stringResource(R.string.chart_more_redo),
-            note = stringResource(R.string.chart_more_redo_note),
-            onClick = onRedo,
-        )
-
-        HorizontalDivider(color = CoineProColors.Border)
-
-        MoreRow(
-            icon = DesignR.drawable.tv_chart_line,
-            title = stringResource(R.string.chart_more_compare),
-            note = stringResource(R.string.chart_more_compare_note),
-            count = comparisons,
-            onClick = { onOpen(ChartSheet.COMPARE) },
-        )
-        MoreRow(
-            icon = DesignR.drawable.tv_chart_percent,
-            title = stringResource(R.string.chart_more_scale),
-            note = scaleLabel,
-            marked = scaleAdjusted,
-            onClick = { onOpen(ChartSheet.SCALE) },
-        )
-        MoreRow(
-            icon = DesignR.drawable.icon_bookmark_simple,
-            title = stringResource(R.string.chart_more_layouts),
-            note = stringResource(R.string.chart_more_layouts_note),
-            onClick = { onOpen(ChartSheet.LAYOUTS) },
-        )
-        MoreRow(
-            icon = DesignR.drawable.tv_bell,
-            title = stringResource(R.string.chart_more_alert),
-            note = stringResource(R.string.chart_more_alert_note),
-            onClick = onCreateAlert,
-        )
-        MoreRow(
-            icon = DesignR.drawable.tv_play,
-            title = stringResource(R.string.chart_more_backtest),
-            note = stringResource(R.string.chart_more_backtest_note),
-            onClick = onBacktest,
-        )
-        MoreRow(
-            icon = DesignR.drawable.icon_camera,
-            title = stringResource(R.string.chart_more_share),
-            note = stringResource(R.string.chart_more_share_note),
-            onClick = onShare,
-        )
-        MoreRow(
-            icon = DesignR.drawable.tv_calendar_days,
-            title = stringResource(R.string.chart_more_events),
-            note = eventNotice?.let { reason -> stringResource(reason.reasonRes()) }
-                ?: stringResource(R.string.chart_more_events_note),
-            count = eventKinds,
-            onClick = onEvents,
-        )
-        MoreRow(
-            icon = DesignR.drawable.tv_layout_grid,
-            title = stringResource(R.string.chart_more_studio),
-            note = stringResource(R.string.chart_more_studio_note),
-            onClick = onOpenStudio,
-        )
+        SheetLabel(stringResource(R.string.chart_hub_tools))
+        HubGrid(columns = 2, outlined = false) {
+            HubTile(
+                icon = DesignR.drawable.icon_sliders_horizontal,
+                label = stringResource(R.string.chart_band_studies),
+                onClick = { onOpen(ChartSheet.INDICATORS) },
+            )
+            HubTile(
+                icon = DesignR.drawable.tv_chart_line,
+                label = stringResource(R.string.chart_more_compare),
+                count = comparisons,
+                onClick = { onOpen(ChartSheet.COMPARE) },
+            )
+            HubTile(
+                icon = DesignR.drawable.tv_bell,
+                label = stringResource(R.string.chart_more_alert),
+                onClick = onCreateAlert,
+            )
+            HubTile(
+                icon = DesignR.drawable.tv_play,
+                label = stringResource(R.string.chart_more_backtest),
+                onClick = onBacktest,
+            )
+            HubTile(
+                icon = DesignR.drawable.tv_chart_candles,
+                label = stringResource(R.string.chart_band_type),
+                onClick = { onOpen(ChartSheet.TYPE) },
+            )
+            HubTile(
+                icon = DesignR.drawable.tv_tool_cursor,
+                label = stringResource(R.string.chart_band_objects),
+                onClick = { onOpen(ChartSheet.DRAWINGS) },
+            )
+            onEvents?.let {
+                HubTile(
+                    icon = DesignR.drawable.tv_calendar_days,
+                    label = stringResource(R.string.chart_more_events),
+                    note = eventNotice?.let { reason -> stringResource(reason.reasonRes()) },
+                    count = eventKinds,
+                    onClick = it,
+                )
+            }
+            onOpenStudio?.let {
+                HubTile(
+                    icon = DesignR.drawable.tv_layout_grid,
+                    label = stringResource(R.string.chart_more_studio),
+                    onClick = it,
+                )
+            }
+        }
     }
 }
 
-/** One row in the «بیشتر» sheet: a glyph, what it does, and whether it can be pressed at all. */
+/**
+ * The hub's grid: [columns] tiles across, laid out by hand so a trailing row of one or two tiles
+ * keeps the same tile width as a full row rather than stretching to fill it — which is what
+ * TradingView's does and what a `LazyVerticalGrid` inside a scrolling column cannot.
+ */
 @Composable
-private fun MoreRow(
+private fun HubGrid(columns: Int, outlined: Boolean, content: @Composable HubScope.() -> Unit) {
+    val scope = remember(outlined) { HubScope(outlined) }
+    // Collected on every composition rather than remembered: the tiles close over handlers that
+    // change with the chart's state, and a cached list would keep calling last frame's.
+    scope.tiles.clear()
+    scope.content()
+    val tiles = scope.tiles.toList()
+    Column(verticalArrangement = Arrangement.spacedBy(HUB_GAP)) {
+        tiles.chunked(columns).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(HUB_GAP)) {
+                row.forEach { tile -> Box(modifier = Modifier.weight(1f)) { tile() } }
+                repeat(columns - row.size) { Spacer(modifier = Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+/** Collects the tiles a [HubGrid] lays out. */
+internal class HubScope(val outlined: Boolean) {
+    val tiles = mutableListOf<@Composable () -> Unit>()
+}
+
+/**
+ * One tile: a glyph over a label, 100 dp tall — TradingView's measure. Outlined tiles carry a
+ * hairline on the sheet's own ground; plate tiles take the elevated rung with no edge. A tile
+ * with nothing behind it is drawn dimmed rather than dropped, so the sheet keeps its shape.
+ */
+@Composable
+private fun HubScope.HubTile(
     @DrawableRes icon: Int,
-    title: String,
-    note: String,
+    label: String,
     onClick: (() -> Unit)?,
+    note: String? = null,
     count: Int = 0,
     marked: Boolean = false,
 ) {
-    val enabled = onClick != null
-    val active = enabled && (marked || count > 0)
-    val ink = when {
-        !enabled -> CoineProColors.TextDisabled
-        active -> CoineProColors.pageAccentInk
-        else -> CoineProColors.TextSecondary
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = enabled) { onClick?.invoke() }
-            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.OneHalf),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
-    ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = null,
-            tint = ink,
-            modifier = Modifier.size(MORE_GLYPH),
-        )
-        Column(modifier = Modifier.weight(1f)) {
+    val outlined = this.outlined
+    tiles += {
+        val interaction = remember { MutableInteractionSource() }
+        val haptics = rememberCoineProHaptics()
+        val enabled = onClick != null
+        val active = marked || count > 0
+        val ink = when {
+            !enabled -> CoineProColors.TextDisabled
+            active -> CoineProColors.pageAccentInk
+            else -> CoineProColors.TextPrimary
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(HUB_TILE)
+                .pressScale(interaction, CoineProPress.CHIP)
+                .clip(CoineProShapes.medium)
+                .background(if (outlined) CoineProColors.Surface else CoineProColors.SurfaceElevated)
+                .then(
+                    if (outlined) {
+                        Modifier.border(1.dp, CoineProColors.BorderSubtle, CoineProShapes.medium)
+                    } else {
+                        Modifier
+                    },
+                )
+                .clickable(interaction, null, enabled = enabled) {
+                    haptics.select()
+                    onClick?.invoke()
+                }
+                .padding(horizontal = CoineProSpacing.Half),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                Icon(
+                    painter = painterResource(icon),
+                    contentDescription = null,
+                    tint = ink,
+                    modifier = Modifier.size(HUB_GLYPH),
+                )
+                if (count > 0) {
+                    Text(
+                        text = count.toPersianDigits(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = ink,
+                    )
+                }
+            }
             Text(
-                text = title,
+                text = label,
                 style = MaterialTheme.typography.labelMedium,
                 color = if (enabled) CoineProColors.TextPrimary else CoineProColors.TextDisabled,
-            )
-            Text(
-                text = note,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (enabled) CoineProColors.TextMuted else CoineProColors.TextDisabled,
-                maxLines = 2,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = CoineProSpacing.Half),
             )
-        }
-        if (count > 0) {
-            Text(
-                text = count.toPersianDigits(),
-                style = MaterialTheme.typography.labelMedium,
-                color = CoineProColors.onPageAccent,
-                modifier = Modifier
-                    .clip(CoineProPillShape)
-                    .background(CoineProColors.pageAccent)
-                    .padding(horizontal = CoineProSpacing.One, vertical = 1.dp),
-            )
+            note?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextMuted,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
+
 
 /**
  * The one way from the reading page into the working one.
@@ -964,11 +939,20 @@ private const val BIAS_FULL_SCALE = 0.005
 private const val PERCENT = 100.0
 
 /** Comfortably past the 44dp target, with room for a glyph over a label. */
-private val BAND_BUTTON_HEIGHT = 50.dp
+// TradingView's chart toolbar, measured off the phone app: a 44 pt bar, 22 pt glyphs in 44 pt targets.
+private val TOOLBAR_HEIGHT = 44.dp
+private val TOOLBAR_TARGET = 44.dp
+private val TOOLBAR_GLYPH = 22.dp
 
-private val BAND_GLYPH = 19.dp
+// The analysis hub's tiles: 100 pt tall with an 8 pt gutter, a 26 pt glyph over a one-line label.
+private val HUB_TILE = 100.dp
+private val HUB_GAP = 8.dp
+private val HUB_GLYPH = 26.dp
 
+/** The glyph on a sheet row that is still a row — the go-to-date field's calendar. */
 private val MORE_GLYPH = 20.dp
+
+
 
 /** The reading bar. Four points: read as a measure, not as a rule. */
 private val METER_HEIGHT = 4.dp

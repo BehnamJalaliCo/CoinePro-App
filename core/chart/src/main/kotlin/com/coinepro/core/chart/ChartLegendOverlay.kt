@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -48,6 +49,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.coinepro.core.designsystem.CoineProAssetLogo
 import kotlin.math.abs
 
 /**
@@ -506,6 +508,8 @@ internal fun ChartLegendOverlay(
      * A caller that knows says so; a caller that does not, says nothing. See [legendSeriesName].
      */
     marketStatus: ChartMarketStatus? = null,
+    /** The instrument whose mark goes before the title — TradingView's legend starts with the logo. */
+    logoSymbol: String? = null,
     modifier: Modifier = Modifier,
 ) {
     if (viewport.visibleCount == 0) return
@@ -524,16 +528,19 @@ internal fun ChartLegendOverlay(
     // The caller's figure is a statement about now, so it is only true of the last bar. Anywhere
     // else the crosshair has taken the legend into history and the bar answers for itself.
     val session = change?.takeIf { index == series.bars.lastIndex }
-    // **Only while the crosshair is down.**
-    //
-    // At rest this row said «Δ −27.1 −1.04%» over the candles — the same two numbers the page
-    // header prints in large type a centimetre above the plot. Two statements of one fact, and the
-    // duplicate was the one costing a row of chart. The header cannot answer for a *historical*
-    // bar, though, so the moment the reader puts the crosshair down the row is the only thing that
-    // can say what that bar did, and it comes back.
-    // Always, not only while the crosshair is down: TradingView prints the change beside the close
-    // on every frame, and a reader glancing at the chart wants the day's move without touching it.
+    // Under a crosshair the row is O H L C with the change under it; at rest it is TradingView's
+    // phone legend — the price and its change on one line, `77,414.00 −17.01 (−0.02%)` — because a
+    // reader glancing at the chart wants the day's move, not four numbers about the newest bar.
     val move = legendChangeRow(bar = bar, decimals = decimalsFor(bar.c), change = session)
+        .takeIf { tracking }
+    val restingHead = if (tracking) {
+        rows.first()
+    } else {
+        val decimals = decimalsFor(bar.c)
+        val price = groupThousands(formatPrice(bar.c, decimals))
+        val delta = legendChangeRow(bar = bar, decimals = decimals, change = session).alternatives
+        rows.first().copy(alternatives = listOf("$price  ${delta.first()}", "$price  ${delta.last()}", price))
+    }
     val movedUp = (session?.absolute ?: (bar.c - bar.o)) >= 0.0
     val rising = bar.up
     val lines = if (tracking) TRACKING_LEGEND_LINES else LEGEND_LINES
@@ -588,6 +595,7 @@ internal fun ChartLegendOverlay(
             // sliced off at the plate's edge.
             val heights = buildList {
                 add(headDp)
+                add(textDp)
                 if (move != null) add(textDp)
                 body.forEach { add(if (it.primary) rowDp else textDp) }
             }
@@ -639,13 +647,23 @@ internal fun ChartLegendOverlay(
             ) {
                 // The name carries the market's state, so a chart sitting on a Saturday price says
                 // so where the reader is already looking. See [legendSeriesName].
-                val head = rows.first().let { it.copy(label = legendSeriesName(it.label, marketStatus)) }
-                // The head row hands its alternatives over whole. `LegendRow` picks against the
-                // width it is actually given, which is the only measurement that cannot be wrong —
-                // see the note there.
+                LegendHead(
+                    title = restingHead.label,
+                    logoSymbol = logoSymbol,
+                    status = marketStatus,
+                    palette = palette,
+                    fontSize = size,
+                    dimmed = ChartLegendTarget.Series in hidden,
+                    disclosure = { expanded = !expanded },
+                    disclosed = expanded,
+                )
+                // The values line hands its alternatives over whole. `LegendRow` picks against
+                // the width it is actually given, which is the only measurement that cannot be
+                // wrong — see the note there. At rest the colour is the move's, not the bar's: a
+                // session up on the day can end on a red candle.
                 LegendRow(
-                    row = head,
-                    colour = if (rising) palette.up else palette.down,
+                    row = restingHead.copy(label = ""),
+                    colour = if (if (tracking) rising else movedUp) palette.up else palette.down,
                     palette = palette,
                     measurer = measurer,
                     fontSize = size,
@@ -656,13 +674,6 @@ internal fun ChartLegendOverlay(
                     // The price is not removable. A chart with no series on it is not a chart, and
                     // an affordance that has to refuse is worse than one that is not offered.
                     onRemove = null,
-                    // The one control that is always on the plate, and the only one when it is
-                    // closed. It goes on the head row rather than on the plate as a whole because a
-                    // tappable plate is a tappable rectangle over the top-left of the plot, and the
-                    // plot underneath it has to keep taking pans and pinches — a legend that
-                    // swallowed a drag would be a worse defect than the one being fixed.
-                    disclosure = { expanded = !expanded },
-                    disclosed = expanded,
                 )
                 if (move != null && fit > 1) {
                     LegendRow(
@@ -956,8 +967,88 @@ private fun Modifier.touchTarget(footprint: Dp, target: Dp): Modifier = layout {
  */
 private val LEGEND_BUTTON_DP = 24.dp
 
-/** The series title against the values: 16 px over 13 px on TradingView, which is this ratio. */
-private const val TITLE_SCALE = 1.25f
+/** The series title against the values: 17 pt over 14 pt on TradingView's phone. */
+private const val TITLE_SCALE = 1.21f
+
+/** The mark before the title: 17 pt on TradingView's phone, measured. */
+private val LEGEND_LOGO_DP = 17.dp
+
+/** The market-state dot: a 15 pt disc of the state colour at 15 %, with a 7 pt dot inside. */
+private val STATUS_DISC_DP = 15.dp
+private val STATUS_DOT_DP = 7.dp
+private const val STATUS_DISC_ALPHA = 0.15f
+
+/**
+ * The legend's first line, as TradingView's phone draws it: the mark, the instrument's name, and
+ * a dot that says whether the market is open. No text about the state — the dot is the text — and
+ * the disclosure for the per-series controls at the far end, which is the one control that is
+ * always on the legend. It goes here rather than on the plate as a whole because a tappable plate
+ * is a tappable rectangle over the top-left of the plot, and the plot underneath it has to keep
+ * taking pans and pinches.
+ */
+@Composable
+private fun LegendHead(
+    title: String,
+    logoSymbol: String?,
+    status: ChartMarketStatus?,
+    palette: ChartPalette,
+    fontSize: TextUnit,
+    dimmed: Boolean,
+    disclosure: () -> Unit,
+    disclosed: Boolean,
+) {
+    val ink = if (dimmed) palette.title.copy(alpha = HIDDEN_ROW_ALPHA) else palette.title
+    val lineHeightStyle = LineHeightStyle(
+        alignment = LineHeightStyle.Alignment.Center,
+        trim = LineHeightStyle.Trim.Both,
+    )
+    Row(
+        // The full plate width, so the title is measured against everything the plate has rather
+        // than against whatever the row happened to wrap to.
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(LEGEND_GAP_DP * 2),
+    ) {
+        logoSymbol?.let { CoineProAssetLogo(symbol = it, size = LEGEND_LOGO_DP) }
+        if (title.isNotBlank()) {
+            Text(
+                text = title,
+                color = ink,
+                fontSize = fontSize * TITLE_SCALE,
+                fontWeight = FontWeight.Bold,
+                lineHeight = fontSize * TITLE_SCALE * LEGEND_LINE_HEIGHT,
+                style = LocalTextStyle.current.copy(lineHeightStyle = lineHeightStyle),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+        }
+        status?.let { state ->
+            val tone = when (state) {
+                ChartMarketStatus.OPEN -> palette.up
+                ChartMarketStatus.CLOSED -> palette.down
+                ChartMarketStatus.WEEKEND -> palette.text
+            }
+            Box(
+                modifier = Modifier
+                    .size(STATUS_DISC_DP)
+                    .clip(CircleShape)
+                    .background(tone.copy(alpha = STATUS_DISC_ALPHA)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(modifier = Modifier.size(STATUS_DOT_DP).clip(CircleShape).background(tone))
+            }
+        }
+        Spacer(modifier = Modifier.width(LEGEND_ACTIONS_GAP_DP))
+        LegendButton(
+            glyph = if (disclosed) GLYPH_COLLAPSE else GLYPH_EXPAND,
+            description = if (disclosed) COLLAPSE_LABEL else EXPAND_LABEL,
+            colour = palette.text,
+            fontSize = fontSize,
+            onClick = disclosure,
+        )
+    }
+}
 
 /**
  * `O 77,004.19 H 77,182.00` with the letters in one colour and the figures in another.

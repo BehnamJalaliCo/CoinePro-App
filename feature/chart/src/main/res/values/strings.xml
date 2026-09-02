@@ -22,8 +22,8 @@
     <string name="chart_band_more">بیشتر</string>
 
     <!-- Everything a reader reaches for about once a month, behind the band's «بیشتر». -->
-    <string name="chart_more_title">بیشتر</string>
-    <string name="chart_more_subtitle">بازه، تاریخ، مقایسه، محور و چیدمان</string>
+    <string name="chart_more_title">مرکز تحلیل</string>
+    <string name="chart_more_subtitle">چیدمان، مقیاس، بازه و ابزارها</string>
     <string name="chart_more_span">بازهٔ نمایش</string>
     <string name="chart_more_span_note">چقدر تاریخچه جلوی چشم باشد. هر بازه، طول کندل مناسب خودش را هم انتخاب می‌کند.</string>
     <string name="chart_more_goto">رفتن به تاریخ</string>
@@ -152,4 +152,9 @@
     <string name="replay_report_discipline">چند معامله را حد ضرر بست و چندتا را خودتان زودتر بستید: این همان چیزی است که بک‌تست یک راهبرد نمی‌تواند بگوید، چون راهبرد دستی ندارد که بترسد.</string>
     <string name="replay_report_note">این گزارش فقط برای همین جلسهٔ بازپخش است و هیچ‌جا ذخیره نمی‌شود. کارمزد هر طرف پنج صدم درصد و سرمایهٔ اولیه همان است که بک‌تست راهبرد استفاده می‌کند تا دو گزارش کنار هم خوانده شوند. اگر یک کندل هم به حد ضرر و هم به حد سود رسیده باشد، حد ضرر حساب می‌شود؛ ترتیبشان درون کندل معلوم نیست و فرض بدبینانه تنها فرض درست است.</string>
     <string name="chart_readings_disclosure">خوانش بازار و ابزارها</string>
+    <!-- The analysis hub, as TradingView's phone app names its sheet of tiles. -->
+    <string name="chart_hub_tools">ابزارها</string>
+    <string name="chart_hub_terminal">ترمینال</string>
+    <string name="chart_quote_scale">مقیاس قیمت</string>
+    <string name="chart_interval_heading">بازهٔ کندل</string>
 </resources>

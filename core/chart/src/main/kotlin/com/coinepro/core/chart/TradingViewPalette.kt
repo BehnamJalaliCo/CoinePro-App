@@ -43,9 +43,11 @@ object TradingViewPalette {
     /** Primary text in the chrome and the legend title. */
     const val DARK_TEXT_PRIMARY = 0xFFDBDBDB
 
+    // The phone app, light, measured off the owner's own screenshots (iPhone, 3×): a solid
+    // `#D5D5D5` grid on white and near-black scale labels — darker than the web's greys.
     const val LIGHT_BACKGROUND = 0xFFFFFFFF
-    const val LIGHT_GRID = 0xFFE6E6E6
-    const val LIGHT_TEXT = 0xFF5C5C5C
+    const val LIGHT_GRID = 0xFFD5D5D5
+    const val LIGHT_TEXT = 0xFF0F0F0F
     const val LIGHT_CROSSHAIR = 0xFF8C8C8C
     const val LIGHT_SEPARATOR = 0xFFE0E0E0
     const val LIGHT_CHIP = 0xFFEFEFEF

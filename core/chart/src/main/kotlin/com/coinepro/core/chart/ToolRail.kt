@@ -454,13 +454,11 @@ private fun ToolCell(
             // beside it. Rows in a grid size to their tallest cell, and the result was a ragged
             // wall with holes in it.
             .height(CELL_HEIGHT)
-            .clip(CoineProShapes.small)
-            .background(if (selected) CoineProColors.SurfaceElevated else Color.Transparent)
-            .border(
-                width = 1.dp,
-                color = if (selected) CoineProColors.Accent else CoineProColors.Border,
-                shape = CoineProShapes.small,
-            )
+            // TradingView's tool tiles: a grey plate with no edge, and the armed one inverted —
+            // near-black with white ink — rather than outlined. Measured off the phone app's
+            // Drawings sheet: 12 pt corners, the plate one step up from the sheet.
+            .clip(CoineProShapes.medium)
+            .background(if (selected) CoineProColors.TextPrimary else CoineProColors.SurfaceElevated)
             .combinedClickable(onClick = onClick, onLongClick = onHelp)
             .padding(horizontal = CoineProSpacing.Half),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -471,19 +469,19 @@ private fun ToolCell(
             contentDescription = null,
             modifier = Modifier.size(24.dp),
             tint = when {
-                selected -> CoineProColors.Accent
+                selected -> CoineProColors.Stage
                 // A pinned tool is marked in the grid as well as listed at the top, so a reader
                 // scrolling past one can see it is already on their shortlist and does not pin it
                 // twice looking for the row to change.
                 favourite -> CoineProColors.Gold
-                else -> CoineProColors.TextSecondary
+                else -> CoineProColors.TextPrimary
             },
         )
         Spacer(Modifier.height(CoineProSpacing.Half))
         Text(
             text = tool.label,
             style = MaterialTheme.typography.labelSmall,
-            color = if (selected) CoineProColors.TextPrimary else CoineProColors.TextMuted,
+            color = if (selected) CoineProColors.Stage else CoineProColors.TextPrimary,
             textAlign = TextAlign.Center,
             maxLines = 2,
             // Two lines and then an ellipsis. "گسترش زمانی فیبوناچی" does not fit a quarter of a

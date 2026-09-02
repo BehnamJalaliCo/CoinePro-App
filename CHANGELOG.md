@@ -15,6 +15,29 @@ it is for.
 
 ---
 
+## [4.22.0] — 2026-09-02 — The chart chrome, measured against TradingView's phone app
+
+The owner sent five screenshots of TradingView's own phone app (iPhone, 3×) and the chart's chrome
+was measured against those rather than against the web page. `docs/design/TRADINGVIEW_PARITY.md`
+carries the new numbers.
+
+* **No header.** The chart starts at the top of the screen. The legend's first line is the mark,
+  the instrument's name and a market-state dot; its second is the price and the day's change in
+  one line — TradingView's phone legend. Under a crosshair the line becomes O H L C with the change
+  under it. Legend text at 14 sp, title at 17.
+* **The quote chip.** `USD ⌄` in a 26 dp hairline chip over the price scale, top-right whichever
+  way the page reads; it opens the price-scale sheet.
+* **The toolbar.** One 44 dp row under the plot with a hairline above it: the symbol wheel and the
+  interval in bold on the reading edge, then draw, indicators and the hub, a divider, undo and
+  fullscreen — 22 dp glyphs, no labels. The interval strip moved into the date-range sheet.
+* **The sheets.** Every sheet title at `headlineSmall` bold with a 40 dp round close button. «More»
+  is the **analysis hub**: three outlined tiles across for layouts, scale and share, undo and redo,
+  the terminal; then a TOOLS section of grey plates two across — indicators, compare, alerts,
+  replay, chart type, object tree, events, studio. The interval sheet opens with the date-range
+  chips and prints its lengths as 44 dp grey chips, the chosen one inverted. Drawing tools are the
+  same grey tiles, the armed one inverted.
+* **Light theme.** Grid `#D5D5D5` and near-black scale labels, as the phone app draws them.
+
 ## [4.21.0] — 2026-09-02 — The chart measured against TradingView, pixel by pixel
 
 `docs/design/TRADINGVIEW_PARITY.md` is the measurement: TradingView's chart rendered headless at a

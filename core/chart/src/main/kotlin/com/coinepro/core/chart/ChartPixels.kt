@@ -581,4 +581,5 @@ private const val TIME_AXIS_FONT_SP = 12f
 /** See [legendFontSizeSp]. */
 // Twelve, up from ten. TradingView's legend values are 13 px on a 411 px phone and its title 16;
 // at ten this app's legend was the smallest text on the screen and the one a trader reads most.
-private const val LEGEND_FONT_SP = 12f
+// Fourteen: TradingView's phone legend sets its values at 14 pt and its title at 17, measured.
+private const val LEGEND_FONT_SP = 14f

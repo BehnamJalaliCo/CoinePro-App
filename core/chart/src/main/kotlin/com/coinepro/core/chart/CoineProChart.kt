@@ -247,6 +247,8 @@ fun CoineProChart(
     zone: ZoneId = CHART_ZONE,
     /** The instrument's name for the legend's first row, or null to leave it as the four prices. */
     seriesLabel: String? = null,
+    /** The instrument whose mark opens the legend. See [ChartLegendOverlay]. */
+    legendLogo: String? = null,
     /**
      * Which legend rows are switched off, as the caller last stored them.
      *
@@ -2376,6 +2378,7 @@ fun CoineProChart(
                 rebased = rebased,
                 crosshair = { crosshairOverride ?: crosshair },
                 seriesLabel = seriesLabel,
+                logoSymbol = legendLogo,
                 palette = palette,
                 hidden = hidden,
                 measurer = measurer,
@@ -5197,7 +5200,8 @@ internal val LEGEND_GAP_DP = 2.dp
  * Wider than the axis padding: the legend's first glyph is a letter and the axis's is a digit, and
  * four pixels that read as tight beside a number read as clipped beside an «O».
  */
-internal val LEGEND_INSET_DP = 8.dp
+// Nine, measured: TradingView's phone legend starts nine points in from the pane's left edge.
+internal val LEGEND_INSET_DP = 9.dp
 
 /** The share of the plot's height the corner legend may occupy before it stops adding rows. */
 internal const val LEGEND_BUDGET = 0.25f

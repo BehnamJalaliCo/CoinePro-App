@@ -109,4 +109,5 @@
     <string name="teaching_search_lead">You find a symbol or a screen of the app by its name.</string>
     <string name="teaching_search_pitfall">Persian names work too; you do not have to know the Latin ticker.</string>
     <string name="symbol_field_no_match">No market matches that</string>
+    <string name="sheet_close">Close</string>
 </resources>

@@ -143,9 +143,9 @@ data class ChartColourTemplate(
             // TradingView's light chart: the same two candle colours on white.
             up = 0xFF089981,
             down = 0xFFF23645,
-            grid = 0xFFE6E6E6,
+            grid = 0xFFD5D5D5,
             background = 0xFFFFFFFF,
-            text = 0xFF5C5C5C,
+            text = 0xFF0F0F0F,
             crosshair = 0xFF8C8C8C,
         )
 

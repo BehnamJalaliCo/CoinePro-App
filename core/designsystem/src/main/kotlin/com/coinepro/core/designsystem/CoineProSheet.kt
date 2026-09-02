@@ -68,7 +68,7 @@ fun CoineProSheet(
         dragHandle = null,
         modifier = modifier,
     ) {
-        CoineProSheetBody(title = title, subtitle = subtitle, content = content)
+        CoineProSheetBody(title = title, subtitle = subtitle, onClose = onDismiss, content = content)
     }
 }
 
@@ -85,34 +85,69 @@ fun CoineProSheetBody(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    /**
+     * The round close button at the title's far end — TradingView's sheets all carry one, a 40 dp
+     * disc on the elevated rung with a cross in it, and a sheet that can only be dismissed by
+     * dragging is a sheet a reader has to know something about. Null draws none (an inline panel).
+     */
+    onClose: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(modifier = modifier.fillMaxWidth().background(CoineProColors.Surface)) {
         SheetHandle()
-        Column(
-            modifier = Modifier.padding(
-                start = CoineProSpacing.Gutter,
-                end = CoineProSpacing.Gutter,
-                bottom = CoineProSpacing.OneHalf,
-            ),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = CoineProSpacing.Gutter,
+                    end = CoineProSpacing.Gutter,
+                    bottom = CoineProSpacing.OneHalf,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = CoineProColors.TextPrimary,
-            )
-            if (subtitle != null) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = CoineProColors.TextMuted,
+                    // TradingView's sheet title is its largest text — 24 px bold on a phone. It
+                    // was `titleMedium` here, one step above the rows under it, and the sheet
+                    // read as a list with a caption rather than as a page with a name.
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = CoineProColors.TextPrimary,
                 )
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CoineProColors.TextMuted,
+                    )
+                }
+            }
+            onClose?.let { close ->
+                Box(
+                    modifier = Modifier
+                        .size(SHEET_CLOSE)
+                        .clip(CircleShape)
+                        .background(CoineProColors.SurfaceElevated)
+                        .clickable(onClick = close),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.icon_x),
+                        contentDescription = stringResource(R.string.sheet_close),
+                        tint = CoineProColors.TextPrimary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
         }
         content()
     }
 }
+
+/** Forty, measured off TradingView's sheets: the disc is the size of a comfortable tap. */
+private val SHEET_CLOSE = 40.dp
 
 @Composable
 private fun SheetHandle() {

@@ -52,8 +52,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
@@ -703,6 +706,19 @@ fun ChartScreen(
     // `onLoadMore` would be a bug nobody found for months.
     val canvas: @Composable (Modifier) -> Unit = { canvasModifier ->
         Box(modifier = canvasModifier) {
+            // TradingView's quote chip, top-right over the price scale: `USDT ⌄`, 26 pt tall in a
+            // hairline. There it changes the quote currency; here the quote is the market's own
+            // and the chip opens the price-scale sheet, which is the nearest thing this chart has
+            // to a choice of unit. Drawn over the gutter, and only when there is a chart under it.
+            if (!(state.loading && state.series.isEmpty) && !(state.error != null && state.series.isEmpty)) {
+                QuoteChip(
+                    quote = SymbolClassifier.classify(state.symbol).quote ?: "USD",
+                    onClick = { sheet = ChartSheet.SCALE },
+                    // Absolute: the price scale is on the right whichever way the page reads, and
+                    // the chip belongs over the scale.
+                    modifier = Modifier.align(AbsoluteAlignment.TopRight).zIndex(1f),
+                )
+            }
             when {
                 state.loading && state.series.isEmpty -> Loading()
                 state.error != null && state.series.isEmpty -> ChartFailure(state.error!!, controller::retry)
@@ -710,6 +726,10 @@ fun ChartScreen(
                     series = state.visibleSeries,
                     modifier = Modifier.fillMaxSize(),
                     type = state.chartType,
+                    // The legend's first line, as TradingView's phone sets it: the mark and the
+                    // instrument's name — «Bitcoin / TetherUS» — not the ticker.
+                    seriesLabel = SymbolClassifier.classify(state.symbol).description,
+                    legendLogo = state.symbol,
                     decoration = ChartDecoration(
                         overlays = state.overlays,
                         signal = drawnSetup,
@@ -1042,7 +1062,10 @@ fun ChartScreen(
                 onRedo = controller::redo,
             ),
     ) {
-        Header(state, onOpenTerminal)
+        // No header. TradingView's phone chart starts at the top of the screen: the instrument's
+        // name and its price are the legend's first two lines, and the symbol and interval sit on
+        // the toolbar under the plot. The header row this screen used to draw — mark, ticker,
+        // price, change — said the same things a second time a centimetre above them.
         // TradingView closes its header with a one-point rule (`#2E2E2E` on `#0F0F0F`); this
         // system's strong border is the same step above the page.
         HorizontalDivider(color = CoineProColors.BorderStrong, thickness = 1.dp)
@@ -1334,6 +1357,11 @@ fun ChartScreen(
                     controller.setInterval(it)
                     sheet = null
                 },
+                range = state.range,
+                onSelectRange = { range ->
+                    controller.setRange(range)
+                    sheet = null
+                },
                 starred = starredWires,
                 hidden = hiddenIntervals,
                 // No dismiss on star: pinning four lengths is four taps, and a sheet that closed
@@ -1481,6 +1509,12 @@ fun ChartScreen(
                 // than only behind it, so a reader on a backend that does not publish the document
                 // is told so instead of concluding nothing has happened.
                 eventNotice = eventState.notice,
+                onOpenTerminal = onOpenTerminal?.let { open ->
+                    {
+                        sheet = null
+                        open()
+                    }
+                },
             )
         }
 
@@ -2035,188 +2069,6 @@ private fun LaunchedStart(
     }
 }
 
-/**
- * What this market is, and what it is doing, in one row above the plot.
- *
- * ### Why it stopped being a hero
- *
- * The price used to be set at thirty-six points under a gold rule, on the argument that it is the
- * answer to the question every visit begins with. On a screen whose subject is a chart that
- * argument does not survive contact: the last price is already drawn twice on the plot below —
- * once on the legend plate and once on the price line — and a third copy at balance size cost a
- * hundred points of height that the plot then did not have. So it comes down to a row: the
- * instrument on the reading side, the figure on the other, and the whole heading in the space the
- * old one spent on white.
- *
- * The gold rule went with it. It was the second gold object on a screen that already had gold
- * selections, and this design system allows exactly one — which is now the drawn setup's card, the
- * only thing here that is genuinely about acting rather than reading.
- *
- * The change is measured across the loaded window rather than from a session open: neither feed
- * sends one, and naming it after the window is the honest version — it describes the picture on
- * screen.
- */
-@Composable
-private fun Header(state: ChartUiState, onOpenTerminal: (() -> Unit)?) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            // TradingView's chart header: a 38 px bar with a hairline under it. The row's own
-            // padding puts it at that height with the pill inside; the rule is drawn by the caller.
-            .padding(horizontal = CoineProSpacing.One, vertical = HEADER_PAD),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
-    ) {
-        // The symbol as TradingView sets it: a 28 dp pill on the chrome's raised grey, the mark
-        // at 18 dp inside it, the ticker, and a caret that says it opens something. Measured off
-        // its mobile chart — `#3D3D3D`, 28 px tall, 14 px text — and mapped onto this system's
-        // raised rung, which is the same step up from the page.
-        Row(
-            modifier = Modifier
-                .clip(CoineProPillShape)
-                .background(CoineProColors.SurfaceRaised)
-                .border(1.dp, CoineProColors.BorderSubtle, CoineProPillShape)
-                .heightIn(min = HEADER_PILL)
-                .padding(start = 4.dp, end = CoineProSpacing.One),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
-        ) {
-            // The other end of the market row's disc. See `CoineProSharedElement`: it arrives
-            // from wherever the reader tapped rather than fading in beside a page that replaced
-            // theirs.
-            CoineProAssetLogo(
-                symbol = state.symbol,
-                size = HEADER_MARK,
-                modifier = Modifier.sharedElement(SharedKeys.logo(state.symbol)),
-            )
-            LtrDirection {
-                Text(
-                    text = state.symbol,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = CoineProColors.TextPrimary,
-                    modifier = Modifier.sharedElement(SharedKeys.ticker(state.symbol)),
-                )
-            }
-            Icon(
-                painter = painterResource(DesignR.drawable.icon_caret_down),
-                contentDescription = null,
-                tint = CoineProColors.TextSecondary,
-                modifier = Modifier.size(14.dp),
-            )
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
-            ) {
-                chartHeaderStates(
-                    status = MarketHours.statusOf(state.symbol),
-                    replayOn = state.replay.isOn,
-                ).forEach { chip -> HeaderStateChip(chip) }
-            }
-            Text(
-                text = SymbolClassifier.classify(state.symbol).description,
-                style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextMuted,
-                fontWeight = FontWeight.Normal,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            LtrDirection {
-                Text(
-                    // Latin digits, as every market figure in this app is: a price is read against
-                    // a broker statement and a chart axis, both of which use them.
-                    text = state.lastPrice?.let { formatPrice(it, decimalsFor(it)) } ?: "—",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = CoineProColors.TextPrimary,
-                )
-            }
-            // The move, then the ratio behind it — the order the two figures answer questions in.
-            // Until now this row carried only the percentage, which is the one number on the
-            // heading a reader cannot check against anything. See [ChartHeadline].
-            //
-            // A window that has not moved keeps the line and loses the colour: «0.00 (0.00%)» in
-            // neutral ink is a reading, and painting it in the sell colour would report a fall that
-            // did not happen.
-            if (state.changeAbsolute != null || state.changePercent != null) {
-                val up = ChartHeadline.rising(state.changeAbsolute, state.changePercent)
-                LtrDirection {
-                    Text(
-                        text = ChartHeadline.move(
-                            absolute = state.changeAbsolute,
-                            percent = state.changePercent,
-                            price = state.lastPrice,
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = when (up) {
-                            true -> CoineProColors.Buy
-                            false -> CoineProColors.Sell
-                            null -> CoineProColors.TextSecondary
-                        },
-                    )
-                }
-            }
-        }
-        onOpenTerminal?.let {
-            IconButton(onClick = it, modifier = Modifier.size(30.dp)) {
-                Icon(
-                    painter = painterResource(DesignR.drawable.tv_maximize2),
-                    contentDescription = "ترمینال حرفه‌ای",
-                    tint = CoineProColors.TextMuted,
-                    modifier = Modifier.size(17.dp),
-                )
-            }
-        }
-    }
-}
-
-/**
- * One state chip beside the instrument's name.
- *
- * ### Why it is a hairline and not a filled badge
- *
- * A chip in the heading is a *caption*, not a control and not an alert. Filled, at this size, it
- * reads as a button next to a ticker somebody might tap, and there is nothing to tap. So it is an
- * outline in the state's own colour with the words in the same colour: legible, and unmistakably
- * not pressable.
- *
- * The three market states take the three colours the rest of the app already uses for the same
- * meanings — trading in the rise colour, shut in the fall colour, the weekend in neutral ink,
- * because a closed weekend is not a fault. Replay takes the page's accent, which is what this
- * screen uses everywhere else for «the reader has put the chart into a mode».
- *
- * No dot: a coloured disc beside coloured words is the same fact drawn twice, and it is the first
- * thing to become unreadable at labelSmall.
- */
-@Composable
-private fun HeaderStateChip(state: ChartHeaderState) {
-    val ink = when (state) {
-        ChartHeaderState.MARKET_OPEN -> CoineProColors.Buy
-        ChartHeaderState.MARKET_CLOSED -> CoineProColors.Sell
-        ChartHeaderState.MARKET_WEEKEND -> CoineProColors.TextMuted
-        ChartHeaderState.REPLAY -> CoineProColors.pageAccentInk
-    }
-    val label = stringResource(
-        when (state) {
-            ChartHeaderState.MARKET_OPEN -> R.string.chart_state_open
-            ChartHeaderState.MARKET_CLOSED -> R.string.chart_state_closed
-            ChartHeaderState.MARKET_WEEKEND -> R.string.chart_state_weekend
-            ChartHeaderState.REPLAY -> R.string.chart_state_replay
-        },
-    )
-    Text(
-        text = label,
-        style = MaterialTheme.typography.labelSmall,
-        color = ink,
-        fontWeight = FontWeight.Normal,
-        maxLines = 1,
-        modifier = Modifier
-            .border(width = 1.dp, color = CoineProTint.edge(ink), shape = CoineProShapes.small)
-            .padding(horizontal = CoineProSpacing.Half, vertical = 1.dp),
-    )
-}
 
 /**
  * The interval strip: filled keys, the page's accent on the one in force.
@@ -2304,6 +2156,45 @@ internal fun IntervalRow(
 }
 
 /**
+ * TradingView's quote chip: the market's quote currency in a 26 dp hairline chip, 14 sp, with a
+ * caret. Measured `74 × 26 pt` on the phone app, four points in from the top-right of the pane.
+ */
+@Composable
+private fun QuoteChip(quote: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val interaction = remember { MutableInteractionSource() }
+    Row(
+        modifier = modifier
+            .padding(QUOTE_CHIP_INSET)
+            .clip(CoineProShapes.small)
+            .background(CoineProColors.Stage)
+            .border(1.dp, CoineProColors.Border, CoineProShapes.small)
+            .clickable(interaction, null, onClick = onClick)
+            .height(QUOTE_CHIP_HEIGHT)
+            .padding(horizontal = CoineProSpacing.One),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        LtrDirection {
+            Text(
+                text = quote,
+                style = MaterialTheme.typography.bodyMedium,
+                color = CoineProColors.TextPrimary,
+                maxLines = 1,
+            )
+        }
+        Icon(
+            painter = painterResource(DesignR.drawable.icon_caret_down),
+            contentDescription = stringResource(R.string.chart_quote_scale),
+            tint = CoineProColors.TextPrimary,
+            modifier = Modifier.size(12.dp),
+        )
+    }
+}
+
+private val QUOTE_CHIP_HEIGHT = 26.dp
+private val QUOTE_CHIP_INSET = 4.dp
+
+/**
  * One bar length: a solid key, not an outline.
  *
  * A filled block on a raised neutral, with the page's accent under whichever one is in force. The
@@ -2320,11 +2211,14 @@ private fun IntervalPill(
     /** Wire spellings are market figures and stay Latin; «بیشتر» is prose and must not be. */
     latin: Boolean = true,
 ) {
+    // TradingView's interval chip, measured off the phone app's date-range sheet: a grey plate
+    // with 12 pt corners, 44 pt tall, the length in bold 16 pt; the chosen one inverted to the
+    // primary ink with the page's ground for its text.
     Box(
         modifier = Modifier
-            .clip(CoineProPillShape)
+            .clip(CoineProShapes.medium)
             .background(
-                if (active) CoineProColors.pageAccent else CoineProColors.SurfaceElevated,
+                if (active) CoineProColors.TextPrimary else CoineProColors.SurfaceElevated,
             )
             .clickable(onClick = onClick)
             .heightIn(min = INTERVAL_KEY_HEIGHT)
@@ -2332,23 +2226,22 @@ private fun IntervalPill(
             .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
         contentAlignment = Alignment.Center,
     ) {
-        val ink = if (active) CoineProColors.onPageAccent else CoineProColors.TextSecondary
-        val weight = if (active) FontWeight.Bold else FontWeight.Normal
+        val ink = if (active) CoineProColors.Stage else CoineProColors.TextPrimary
         if (latin) {
             LtrDirection {
                 Text(
                     text = text,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     color = ink,
-                    fontWeight = weight,
+                    fontWeight = FontWeight.Bold,
                 )
             }
         } else {
             Text(
                 text = text,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.titleMedium,
                 color = ink,
-                fontWeight = weight,
+                fontWeight = FontWeight.Bold,
             )
         }
     }
@@ -2371,6 +2264,9 @@ private fun IntervalPill(
 internal fun IntervalSheetBody(
     selected: ChartInterval,
     onSelect: (ChartInterval) -> Unit,
+    /** The span chips above the intervals — TradingView's «Date range», on the same sheet. */
+    range: ChartRange? = null,
+    onSelectRange: ((ChartRange) -> Unit)? = null,
     /** The lengths pinned to the strip under the chart, or null where the caller offers no starring. */
     starred: List<String>? = null,
     /** The presets the reader has struck out of this sheet. See [TimeframeFavourites.offered]. */
@@ -2388,6 +2284,16 @@ internal fun IntervalSheetBody(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
+        onSelectRange?.let { select ->
+            RangeChipRow(selected = range, onSelect = select, contentPadding = PaddingValues(0.dp))
+            HorizontalDivider(color = CoineProColors.Border)
+            Text(
+                text = stringResource(R.string.chart_interval_heading),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = CoineProColors.TextPrimary,
+            )
+        }
         if (starred != null && onStar != null) {
             StarredIntervalSection(starred = starred, hidden = hidden, onStar = onStar, onHide = onHide)
             HorizontalDivider(color = CoineProColors.Border)
@@ -3476,15 +3382,9 @@ private fun ChartFailure(error: ChartError, onRetry: () -> Unit) {
  * Forty by forty-four: past the forty-four-point target on the axis a thumb actually misses on a
  * horizontal strip, and short enough that two tiers of controls still read as one band.
  */
-/** TradingView's header: a 28 px pill in a 38 px bar, an 18 px mark inside the pill. */
-private val HEADER_PILL = 28.dp
-private val HEADER_MARK = 18.dp
-private val HEADER_PAD = 5.dp
-
-// Thirty-eight, measured: every button on TradingView's chart toolbar is 38 px tall. The keys
-// were forty and forty-four wide, which read as a keypad rather than a toolbar.
-private val INTERVAL_KEY_HEIGHT = 38.dp
-private val INTERVAL_KEY_WIDTH = 44.dp
+// Forty-four tall and fifty-six wide: TradingView's interval chips, measured off the phone app.
+private val INTERVAL_KEY_HEIGHT = 44.dp
+private val INTERVAL_KEY_WIDTH = 56.dp
 
 /**
  * How much of the phone the plot gets.
