@@ -574,7 +574,11 @@ private const val SEPARATOR_BAND = 9f
 
 /** See [axisFontSizeSp]. */
 private const val PRICE_AXIS_FONT_SP = 12f
-private const val TIME_AXIS_FONT_SP = 11f
+// Twelve on both axes, which is what TradingView sets: its time labels are the same 12 px as its
+// price labels, and a smaller row under a larger column read as an afterthought.
+private const val TIME_AXIS_FONT_SP = 12f
 
 /** See [legendFontSizeSp]. */
-private const val LEGEND_FONT_SP = 10f
+// Twelve, up from ten. TradingView's legend values are 13 px on a 411 px phone and its title 16;
+// at ten this app's legend was the smallest text on the screen and the one a trader reads most.
+private const val LEGEND_FONT_SP = 12f

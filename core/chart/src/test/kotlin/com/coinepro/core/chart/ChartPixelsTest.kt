@@ -252,9 +252,9 @@ class ChartPixelsTest {
     }
 
     @Test
-    fun `the price axis carries the larger type and the time axis the smaller`() {
+    fun `both axes carry the same twelve-point type, as TradingView sets them`() {
         assertEquals(12f, axisFontSizeSp(isPriceAxis = true), 0f)
-        assertEquals(11f, axisFontSizeSp(isPriceAxis = false), 0f)
+        assertEquals(12f, axisFontSizeSp(isPriceAxis = false), 0f)
     }
 
     // ------------------------------------------------------------------ line styles

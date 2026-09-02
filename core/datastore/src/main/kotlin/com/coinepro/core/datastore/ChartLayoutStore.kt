@@ -119,12 +119,15 @@ data class ChartColourTemplate(
         val Dark = ChartColourTemplate(
             id = BUILT_IN_DARK_ID,
             name = "dark",
-            up = 0xFF00B15C,
-            down = 0xFFF6465D,
-            grid = 0xFF1E2329,
-            background = 0xFF070A0F,
-            text = 0xFFB7BDC6,
-            crosshair = 0xFF848E9C,
+            // TradingView's own dark chart, measured on 2026-09-02 — see core/chart's
+            // TradingViewPalette and docs/design/TRADINGVIEW_PARITY.md. The pane is a plain
+            // #0F0F0F, the grid a dotted #282828, the candles #089981 and #F23645.
+            up = 0xFF089981,
+            down = 0xFFF23645,
+            grid = 0xFF282828,
+            background = 0xFF0F0F0F,
+            text = 0xFFB2B2B2,
+            crosshair = 0xFF787878,
         )
 
         /**
@@ -137,12 +140,13 @@ data class ChartColourTemplate(
         val Light = ChartColourTemplate(
             id = BUILT_IN_LIGHT_ID,
             name = "light",
-            up = 0xFF0E8A4C,
-            down = 0xFFC9203A,
-            grid = 0xFFE8EBEF,
-            background = 0xFFF7F8FA,
-            text = 0xFF4E5661,
-            crosshair = 0xFF707A88,
+            // TradingView's light chart: the same two candle colours on white.
+            up = 0xFF089981,
+            down = 0xFFF23645,
+            grid = 0xFFE6E6E6,
+            background = 0xFFFFFFFF,
+            text = 0xFF5C5C5C,
+            crosshair = 0xFF8C8C8C,
         )
 
         /** The templates that always exist. Listed before anything the reader made. */

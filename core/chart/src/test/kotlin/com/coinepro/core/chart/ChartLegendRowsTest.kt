@@ -44,18 +44,16 @@ class ChartLegendRowsTest {
         val head = rowsFor(ChartDecoration()).first()
         assertEquals(ChartLegendTarget.Series, head.target)
         assertEquals("XAUUSD", head.label)
-        // Close first in every form, including the widest. The conventional order is OHLC and this
-        // deliberately is not it: whichever form a narrow row picks, the close must survive, and at
-        // the end of the string it is the first thing an ellipsis takes.
+        // O H L C — TradingView's order, which is the order every terminal prints. The close is
+        // still in every form, and the narrowest form is the close alone.
         assertTrue(
-            "the widest form names all four prices",
-            head.alternatives.first().let { it.startsWith("C ") && it.contains("O ") && it.contains("H ") && it.contains("L ") },
+            "the widest form names all four prices in OHLC order",
+            head.alternatives.first().let { it.startsWith("O ") && it.indexOf("H ") < it.indexOf("L ") && it.indexOf("L ") < it.indexOf("C ") },
         )
-        assertTrue("every form leads with the close", head.alternatives.all { it.startsWith("C ") || it.first().isDigit() })
         assertTrue("the last resort is the close alone", head.alternatives.last().startsWith("C "))
         assertTrue(
             "and the close is in every form of it",
-            head.alternatives.all { it.contains(formatPrice(series.bars.last().c, decimalsFor(series.bars.last().c))) },
+            head.alternatives.all { it.contains(groupThousands(formatPrice(series.bars.last().c, decimalsFor(series.bars.last().c)))) },
         )
         assertNull("the price takes the direction colour the candles are using", head.colour)
     }

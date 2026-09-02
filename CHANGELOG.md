@@ -15,6 +15,28 @@ it is for.
 
 ---
 
+## [4.21.0] — 2026-09-02 — The chart measured against TradingView, pixel by pixel
+
+`docs/design/TRADINGVIEW_PARITY.md` is the measurement: TradingView's chart rendered headless at a
+411 × 914 phone viewport at 2×, dark and light, sampled with PIL, every number tabled against where
+this app implements it. What moved to match it:
+
+* **Colours.** The chart now draws in TradingView's own palette — candles `#089981` / `#F23645`,
+  pane `#0F0F0F`, a dotted `#282828` grid (one point on, three off), axis ink `#B2B2B2`, legend
+  title `#DBDBDB`, volume at half strength. The two built-in colour templates carry the same
+  values. Only the chart; the rest of the app keeps its own greens.
+* **Scales.** Both axes at 12 sp (the time axis was 11). Labels ten points in from the axis edge,
+  as TradingView's are. Thousands grouped — `2,574.9` — on the axis, the tag and the legend. Every
+  fifth rung bold, which is how a reader finds `2,550` in a column of `2,545`s.
+* **The live-price tag.** One tag, two lines: the price over the countdown in the candle's colour
+  with white text, TradingView's 30-point arrangement. The second, stage-coloured chip is gone.
+  The last-price line is dotted, as theirs is.
+* **The legend.** No plate. The instrument's name at 1.25 × the values in the primary ink; the
+  values in O H L C order with the letters muted and the figures in the bar's colour; the change
+  under it on every frame, not only under a crosshair.
+* **The header.** The symbol in a 28 dp pill with its mark and a caret, a 38 dp bar, a hairline
+  under it — TradingView's header, on this system's raised rung. Interval keys at 38 dp.
+
 ## [4.20.0] — 2026-09-02 — The community is the app's own, and the finish
 
 ### The community belongs to the app now

@@ -179,8 +179,8 @@ class ChartLayoutStoreTest {
         )
         // The project's own market palette rather than an invented pair: these are
         // CoineProDarkPalette's buy and sell.
-        assertEquals(0xFF00B15C, templates.first().up)
-        assertEquals(0xFFF6465D, templates.first().down)
+        assertEquals(0xFF089981, templates.first().up)
+        assertEquals(0xFFF23645, templates.first().down)
         assertTrue(templates.all(ChartColourTemplate::isBuiltIn))
     }
 
@@ -200,7 +200,7 @@ class ChartLayoutStoreTest {
 
         store.saveTemplate(ChartColourTemplate.Dark.copy(up = 0xFF000000))
 
-        assertEquals(0xFF00B15C, store.templates().first().first().up)
+        assertEquals(0xFF089981, store.templates().first().first().up)
         assertEquals(2, store.templates().first().size)
     }
 

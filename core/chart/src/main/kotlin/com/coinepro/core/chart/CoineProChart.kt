@@ -71,6 +71,7 @@ import com.coinepro.core.common.JalaliDate
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.LocalCoineProPalette
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -832,14 +833,29 @@ fun CoineProChart(
      * A stored template beat the theme, and a null one keeps the theme exactly — which is what every
      * chart in the app that has never heard of templates passes, so their pixels do not move.
      */
-    val themePalette = ChartPalette(
-        up = CoineProColors.Buy,
-        down = CoineProColors.Sell,
-        grid = CoineProColors.Border,
-        text = CoineProColors.TextMuted,
-        crosshair = CoineProColors.TextSecondary,
-        stage = CoineProColors.Stage,
-    )
+    // TradingView's own chart palette, measured off its chart on 2026-09-02 (see
+    // docs/design/TRADINGVIEW_PARITY.md) rather than the app's market colours. The owner's brief
+    // is that the chart be point-for-point TradingView's, and the colour of a candle is the first
+    // point anybody compares. Only the chart takes these; the rest of the app keeps its own greens.
+    val themePalette = if (LocalCoineProPalette.current.isDark) {
+        ChartPalette(
+            up = Color(TradingViewPalette.UP),
+            down = Color(TradingViewPalette.DOWN),
+            grid = Color(TradingViewPalette.DARK_GRID),
+            text = Color(TradingViewPalette.DARK_TEXT),
+            crosshair = Color(TradingViewPalette.DARK_CROSSHAIR),
+            stage = CoineProColors.Stage,
+        )
+    } else {
+        ChartPalette(
+            up = Color(TradingViewPalette.UP),
+            down = Color(TradingViewPalette.DOWN),
+            grid = Color(TradingViewPalette.LIGHT_GRID),
+            text = Color(TradingViewPalette.LIGHT_TEXT),
+            crosshair = Color(TradingViewPalette.LIGHT_CROSSHAIR),
+            stage = CoineProColors.Stage,
+        )
+    }
 
     /**
      * Whether the dates along the bottom are written in Solar Hijri. See [formatTimeTick].
@@ -2198,7 +2214,12 @@ fun CoineProChart(
                 // where it says nothing about *where* on the scale the market currently is.
                 val lastPriceY =
                     if (decoration.showLastPrice && priceShown) {
-                        lastPriceTagY(view, measurer, textCache)
+                        lastPriceTagY(
+                            view = view,
+                            measurer = measurer,
+                            cache = textCache,
+                            twoLines = countdownLive && nowSeconds > 0L,
+                        )
                     } else {
                         null
                     }
@@ -2279,10 +2300,19 @@ fun CoineProChart(
                     }
                 }
                 if (decoration.showLastPrice && priceShown) {
-                    drawLastPrice(view, plotWidth, frame, palette, measurer, decoration.showAxes)
-                }
-                if (countdownLive && decoration.showAxes && nowSeconds > 0L) {
-                    drawCountdown(view, frame, textCache, nowSeconds, palette, measurer)
+                    drawLastPrice(
+                        view = view,
+                        plotWidth = plotWidth,
+                        frame = frame,
+                        palette = palette,
+                        measurer = measurer,
+                        withAxis = decoration.showAxes,
+                        countdown = if (countdownLive && decoration.showAxes && nowSeconds > 0L) {
+                            countdownLabel(view, nowSeconds)
+                        } else {
+                            null
+                        },
+                    )
                 }
             }
         }
@@ -3379,6 +3409,10 @@ private fun DrawScope.drawGrid(
     timeTicks: List<TimeTick>,
 ) {
     val grid = palette.grid.copy(alpha = GRID_ALPHA)
+    // Dotted, the way TradingView draws its grid: one point of ink and three of air, measured off
+    // its chart at 2× — two device pixels on, six off. A solid hairline at the same colour reads
+    // as a ruled page; the dots read as a scale the candles sit in front of.
+    val dots = PathEffect.dashPathEffect(floatArrayOf(GRID_DOT_DP.toPx(), GRID_GAP_DP.toPx()), 0f)
     // One device pixel, registered. A grid is the most repeated mark on the chart and therefore the
     // one whose softness the eye reads as the whole picture's: at 0.8dp on a 3× screen the renderer
     // was asked for 2.4 pixels of ink at a fractional y, and painted three rows — one solid and two
@@ -3392,7 +3426,7 @@ private fun DrawScope.drawGrid(
         val y = view.yOf(price)
         if (y < 0f || y > view.plotHeight) continue
         val row = strokeCentre(y, hairline)
-        drawLine(grid, Offset(0f, row), Offset(plotWidth, row), hairline)
+        drawLine(grid, Offset(0f, row), Offset(plotWidth, row), hairline, pathEffect = dots)
     }
     // Verticals stand where the time labels stand, not at even fractions of the width — and now
     // that the labels stand on calendar boundaries, so do the columns. A gridline at midnight or at
@@ -3402,9 +3436,13 @@ private fun DrawScope.drawGrid(
         val x = view.xOf(tick.index)
         if (x < 0f || x > plotWidth) continue
         val column = strokeCentre(x, hairline)
-        drawLine(grid, Offset(column, 0f), Offset(column, view.plotHeight), hairline)
+        drawLine(grid, Offset(column, 0f), Offset(column, view.plotHeight), hairline, pathEffect = dots)
     }
 }
+
+/** TradingView's grid dot: one point on, three off. See [drawGrid]. */
+private val GRID_DOT_DP = 1.dp
+private val GRID_GAP_DP = 3.dp
 
 /**
  * A horizontal rule across the plot, on a device-pixel row.
@@ -3535,9 +3573,14 @@ private fun DrawScope.drawPriceAxis(
     // prices, so panning slides the same five to twenty-four strings across the gutter rather than
     // renumbering them, and every one of them was being laid out again on every frame of the drag.
     val style = axisStyle(palette.text)
+    // TradingView sets every fifth rung bold — 80,000 among 79,000 and 81,000 — so a reader finds
+    // the round levels without reading the column. The rule is the price being a whole multiple
+    // of five steps, which is what "round" means on a ladder whose step is already round.
+    val heavy = axisStyle(palette.text, bold = true)
     val labels = ticks.map { price ->
         val text = view.axisText(price, decimals)
-        cache.measure(text to style) { measurer.measure(text, style) }
+        val chosen = if (isMajorTick(price, ticks.step)) heavy else style
+        cache.measure(text to chosen) { measurer.measure(text, chosen) }
     }
     val lineHeight = labels.maxOf { it.size.height }.toFloat()
     val placed = separateLabels(
@@ -3614,6 +3657,8 @@ private fun DrawScope.lastPriceTagY(
     view: ChartViewport,
     measurer: TextMeasurer,
     cache: TextWidthCache<TextLayoutResult>,
+    /** Whether the tag carries the countdown under the price, which doubles its height. */
+    twoLines: Boolean,
 ): Float? {
     val bar = view.series.bars.getOrNull(view.lastVisible) ?: return null
     val y = view.yOf(bar.c)
@@ -3622,9 +3667,11 @@ private fun DrawScope.lastPriceTagY(
     // font. It never changes and it was measured afresh on every frame — twice on a chart with a
     // countdown. Through the cache it is measured once for the life of the screen.
     val probe = axisStyle(Color.White)
-    val height = cache.measure(TAG_HEIGHT_PROBE to probe) { measurer.measure(TAG_HEIGHT_PROBE, probe) }
-        .size.height + TAG_PADDING_DP.toPx() * 2
-    return (y - height / 2).coerceIn(0f, max(0f, view.plotHeight - height))
+    val line = cache.measure(TAG_HEIGHT_PROBE to probe) { measurer.measure(TAG_HEIGHT_PROBE, probe) }
+        .size.height
+    val height = line * (if (twoLines) 2 else 1) + TAG_PADDING_DP.toPx() * 2
+    val anchor = if (twoLines) y - line / 2 - TAG_PADDING_DP.toPx() else y - height / 2
+    return anchor.coerceIn(0f, max(0f, view.plotHeight - height))
 }
 
 /**
@@ -3654,6 +3701,8 @@ private fun DrawScope.drawLastPrice(
     palette: ChartPalette,
     measurer: TextMeasurer,
     withAxis: Boolean,
+    /** The bar's time to run, already formatted, or null where there is no countdown to show. */
+    countdown: String? = null,
 ) {
     val bar = view.series.bars.getOrNull(view.lastVisible) ?: return
     val y = view.yOf(bar.c)
@@ -3665,19 +3714,30 @@ private fun DrawScope.drawLastPrice(
         fromX = 0f,
         toX = plotWidth,
         stroke = HAIRLINE_DP.toPx(),
-        pathEffect = dashEffect(LineStyleKind.LARGE_DASHED, HAIRLINE_DP.toPx()),
+        // Dotted rather than dashed: TradingView's last-price line is a one-point dot every three.
+        pathEffect = dashEffect(LineStyleKind.SPARSE_DOTTED, HAIRLINE_DP.toPx()),
     )
     if (!withAxis || frame.tagGutterWidth <= 0f) return
+    // One tag, two lines: the price over the countdown, in the same fill — TradingView's own
+    // arrangement, measured at 30 css px tall for two 12 px lines. It used to be a coloured tag
+    // with a second, stage-coloured chip under it, which read as two labels rather than one fact.
     drawAxisTag(
         text = view.axisText(bar.c),
         y = y,
         frame = frame,
         fill = colour,
-        textColour = palette.stage,
+        textColour = TAG_INK,
         measurer = measurer,
         plotHeight = view.plotHeight,
+        secondLine = countdown,
     )
 }
+
+/**
+ * White on the fill, in both themes — what TradingView prints. The tag's fill is the candle
+ * colour, and TradingView's greens and reds are dark enough that white clears them.
+ */
+private val TAG_INK = Color.White
 
 /**
  * The close of the session before the one bar [index] belongs to, or null where there is not one.
@@ -3783,60 +3843,24 @@ private fun DrawScope.drawPreviousClose(
 }
 
 /**
- * How long the bar at the live edge has left, tagged under the live price.
+ * What the live bar's countdown reads right now, or null where there is nothing to count.
  *
- * ### Where the number comes from
- *
- * The bar interval is the gap between the last two timestamps rather than a timeframe passed in.
- * The chart already infers spacing that way for [ChartViewport.xOfTime], and taking it from the
- * data means a feed that sends four-hour bars on a screen labelled 4h and a feed that quietly
- * sends something else both count down correctly.
- *
- * The close is the newest bar's open plus one interval. A clock that has run past that means the
- * feed has not delivered the new bar yet — network lag, a socket that dropped, a server behind —
- * and the honest answer there is a dash rather than a negative number or a frozen zero.
- *
- * ### Why below the price tag and not in the legend
- *
- * It is a property of the bar the price tag names, and every terminal a reader of this app has
- * used puts it in that exact place. Moving it to the corner would be an unforced difference.
+ * Null for a series too short to have an interval, and for one whose last bar is not on screen —
+ * the countdown lives inside the live-price tag now (see [drawLastPrice]) and a tag that is not
+ * drawn has no second line to fill.
  */
-private fun DrawScope.drawCountdown(
-    view: ChartViewport,
-    frame: PlotFrame,
-    /** The measured-label cache, for the fixed height probe. See [lastPriceTagY]. */
-    cache: TextWidthCache<TextLayoutResult>,
-    nowSeconds: Long,
-    palette: ChartPalette,
-    measurer: TextMeasurer,
-) {
+private fun countdownLabel(view: ChartViewport, nowSeconds: Long): String? {
     val times = view.series.time
-    if (times.size < 2) return
+    if (times.size < 2) return null
     val interval = times[times.size - 1] - times[times.size - 2]
-    if (interval <= 0L) return
-    val bar = view.series.bars.getOrNull(view.lastVisible) ?: return
+    if (interval <= 0L) return null
+    val bar = view.series.bars.getOrNull(view.lastVisible) ?: return null
     val priceY = view.yOf(bar.c)
-    if (priceY < 0f || priceY > view.plotHeight) return
-
+    if (priceY < 0f || priceY > view.plotHeight) return null
     val remaining = times[times.size - 1] + interval - nowSeconds
-    val text = if (remaining in 0..MAX_COUNTDOWN_SECONDS) formatCountdown(remaining) else COUNTDOWN_UNKNOWN
-    val label = measurer.measure(text, axisStyle(palette.text))
-    val height = label.size.height + TAG_PADDING_DP.toPx() * 2
-    // Directly under the price tag, which is centred on the price. One hairline of air between
-    // them, so they read as one stack rather than as two unrelated labels.
-    // The same fixed probe [lastPriceTagY] takes the tag height from, through the same cache and
-    // under the same key — so the countdown clears the tag by exactly the height the tag was drawn
-    // at, and neither of them lays a glyph out per frame to find it.
-    val probe = axisStyle(Color.White)
-    val priceTagHeight = cache.measure(TAG_HEIGHT_PROBE to probe) { measurer.measure(TAG_HEIGHT_PROBE, probe) }
-        .size.height + TAG_PADDING_DP.toPx() * 2
-    val top = (priceY + priceTagHeight / 2 + COUNTDOWN_GAP_DP.toPx())
-        .coerceIn(0f, max(0f, view.plotHeight - height))
-    drawAxisChip(frame, top, height, palette.stage)
-    drawText(
-        textLayoutResult = label,
-        topLeft = Offset(frame.tagGutterX + AXIS_PADDING_DP.toPx(), top + TAG_PADDING_DP.toPx()),
-    )
+    // Null rather than a placeholder when there is nothing to count: TradingView's tag simply has
+    // one line then, and a `∅` under the price read as a reading rather than as an absence.
+    return if (remaining in 0..MAX_COUNTDOWN_SECONDS) formatCountdown(remaining) else null
 }
 
 /**
@@ -3921,16 +3945,23 @@ private fun DrawScope.drawAxisTag(
     plotHeight: Float,
     /** And its top, which is zero for the price plot and the pane's own edge inside a pane. */
     top: Float = 0f,
+    /** A second line under the first, in the same tag — the live bar's countdown. */
+    secondLine: String? = null,
 ) {
     val label = measurer.measure(text, axisStyle(textColour))
-    val height = label.size.height + TAG_PADDING_DP.toPx() * 2
+    val second = secondLine?.let { measurer.measure(it, axisStyle(textColour)) }
+    val height = label.size.height + (second?.size?.height ?: 0) + TAG_PADDING_DP.toPx() * 2
     val lowest = max(top, plotHeight - height)
-    val tagTop = (y - height / 2).coerceIn(top, lowest)
+    // Centred on the price when there is one line; with two, the *price* line stays on the price
+    // and the countdown hangs under it, which is where TradingView puts it.
+    val anchor = if (second == null) y - height / 2 else y - label.size.height / 2 - TAG_PADDING_DP.toPx()
+    val tagTop = anchor.coerceIn(top, lowest)
     drawAxisChip(frame, tagTop, height, fill)
-    drawText(
-        textLayoutResult = label,
-        topLeft = Offset(frame.tagGutterX + AXIS_PADDING_DP.toPx(), tagTop + TAG_PADDING_DP.toPx()),
-    )
+    val x = frame.tagGutterX + AXIS_PADDING_DP.toPx()
+    drawText(textLayoutResult = label, topLeft = Offset(x, tagTop + TAG_PADDING_DP.toPx()))
+    second?.let {
+        drawText(textLayoutResult = it, topLeft = Offset(x, tagTop + TAG_PADDING_DP.toPx() + label.size.height))
+    }
 }
 
 
@@ -4310,7 +4341,7 @@ private fun DrawScope.drawCrosshair(
             y = y,
             frame = frame,
             fill = palette.crosshair,
-            textColour = palette.stage,
+            textColour = TAG_INK,
             measurer = measurer,
             plotHeight = band.top + band.height,
             top = band.top,
@@ -4321,7 +4352,7 @@ private fun DrawScope.drawCrosshair(
             y = y,
             frame = frame,
             fill = palette.crosshair,
-            textColour = palette.stage,
+            textColour = TAG_INK,
             measurer = measurer,
             plotHeight = view.plotHeight,
         )
@@ -4333,7 +4364,7 @@ private fun DrawScope.drawCrosshair(
     // candle is asking which candle, and «12 Mar» does not answer that on an hourly chart.
     val stamp = measurer.measure(
         formatTime(bar.t, zone = zone),
-        axisStyle(palette.stage, axisFontSizeSp(isPriceAxis = false)),
+        axisStyle(TAG_INK, axisFontSizeSp(isPriceAxis = false)),
     )
     val width = stamp.size.width + TAG_PADDING_DP.toPx() * 4
     val left = (x - width / 2).coerceIn(0f, max(0f, plotWidth - width))
@@ -4409,8 +4440,44 @@ private fun ChartViewport.crosshairAt(position: Offset): Crosshair =
  * overrides it, because a reader who pinned five decimals for a venue's tick size means five
  * everywhere and not five where the algorithm agreed.
  */
-private fun ChartViewport.axisText(price: Double, places: Int): String =
-    formatPrice(scaleValue(price), decimals?.coerceIn(0, AXIS_MAX_DECIMALS) ?: places)
+private fun ChartViewport.axisText(price: Double, places: Int): String {
+    val text = formatPrice(scaleValue(price), decimals?.coerceIn(0, AXIS_MAX_DECIMALS) ?: places)
+    // Thousands grouped the way TradingView prints them — `77,310.00`, not `77310.00` — on a price
+    // scale only. A percentage scale has nothing to group and a comma in `+1.25%` is noise.
+    return when (scaleMode) {
+        PriceScaleMode.REGULAR, PriceScaleMode.LOGARITHMIC -> groupThousands(text)
+        PriceScaleMode.PERCENT, PriceScaleMode.INDEXED_100 -> text
+    }
+}
+
+/**
+ * `77310.00` → `77,310.00`. Latin digits and a Latin comma, because this is a market figure.
+ *
+ * The sign and the fraction are left alone; only the whole part is grouped, and only when it has
+ * more than three digits — `1000` becomes `1,000`, `999.5` stays as it is. Non-numeric text (the
+ * `—` of an empty axis) passes through untouched.
+ */
+internal fun groupThousands(text: String): String {
+    val sign = if (text.startsWith("-") || text.startsWith("−") || text.startsWith("+")) text.take(1) else ""
+    val body = text.drop(sign.length)
+    val dot = body.indexOf('.')
+    val whole = if (dot >= 0) body.substring(0, dot) else body
+    val fraction = if (dot >= 0) body.substring(dot) else ""
+    if (whole.length <= 3 || !whole.all(Char::isDigit)) return text
+    val grouped = whole.reversed().chunked(3).joinToString(",").reversed()
+    return sign + grouped + fraction
+}
+
+/** Whether [price] sits on a round rung — a whole multiple of five ticks. See [drawPriceAxis]. */
+internal fun isMajorTick(price: Double, step: Double): Boolean {
+    if (step <= 0.0 || !step.isFinite()) return false
+    val major = step * MAJOR_TICK_EVERY
+    val ratio = price / major
+    return abs(ratio - round(ratio)) < MAJOR_TICK_EPSILON
+}
+
+private const val MAJOR_TICK_EVERY = 5
+private const val MAJOR_TICK_EPSILON = 1e-6
 
 /**
  * The same, for the tags that have no tick step to take a precision from.
@@ -4970,8 +5037,6 @@ internal const val UNSET_OFFSET = Int.MIN_VALUE
  */
 private const val LOAD_MORE_MARGIN = 10
 
-/** Air between the live-price tag and the countdown under it. */
-private val COUNTDOWN_GAP_DP = 2.dp
 
 /**
  * How far left of the price axis a finger still counts as being on it.
@@ -5010,8 +5075,6 @@ private const val MAX_COUNTDOWN_SECONDS = 2L * 86_400
  */
 internal const val NO_VALUE = "∅"
 
-/** What the countdown says when the new bar is late. Never a negative number. */
-private const val COUNTDOWN_UNKNOWN = NO_VALUE
 
 /**
  * The multiples a log axis puts a line at, once per decade.
@@ -5143,7 +5206,10 @@ internal const val LEGEND_BUDGET = 0.25f
 internal val LEGEND_PLATE_PADDING_DP = 5.dp
 
 /** How much of the chart shows through the legend's plate. */
-internal const val LEGEND_PLATE_ALPHA = 0.82f
+// Nothing. TradingView draws its legend straight onto the pane with no plate behind it, and the
+// 82% stage-coloured panel this app drew over the top-left of the plot was the single most visible
+// difference between the two charts at a glance.
+internal const val LEGEND_PLATE_ALPHA = 0f
 
 /** The plate's corner. Softer than a tag's, because it is a panel rather than a marker. */
 internal val LEGEND_PLATE_RADIUS_DP = 6.dp
@@ -5243,12 +5309,17 @@ private const val TIME_LABEL_SAMPLE = "30 Sep"
  */
 internal val HAIRLINE_DP = 0.8.dp
 internal val LINE_WIDTH_DP = 1.6.dp
-internal val AXIS_PADDING_DP = 4.dp
-private const val GRID_ALPHA = 0.35f
+// Ten, measured: TradingView sets its price labels 10 css px in from the axis edge (tick 5 + inner
+// padding 5, in Lightweight Charts' own terms), and the live-price tag's text at the same x.
+internal val AXIS_PADDING_DP = 10.dp
+// Opaque: the template colour *is* the grid colour, measured as #282828 on TradingView's #0F0F0F.
+// It used to be a 12% white at 35% alpha — four percent of ink, which is a grid nobody can see.
+private const val GRID_ALPHA = 1f
 
 /** The frame around the plot: the grid's colour, firm enough to be an edge and still a neutral. */
 private const val FRAME_ALPHA = 0.9f
-private const val VOLUME_ALPHA = 0.30f
+// TradingView's volume histogram: the candle colour at half strength, measured #1A5A54 on #0F0F0F.
+private const val VOLUME_ALPHA = 0.5f
 private const val ZONE_ALPHA = 0.12f
 
 /** How opaque the plate behind an in-plot level label is. See [drawLevelLabel]. */

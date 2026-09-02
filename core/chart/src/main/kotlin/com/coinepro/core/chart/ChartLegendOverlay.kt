@@ -32,6 +32,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -167,25 +173,22 @@ internal fun legendRows(
     val bar = series.bars.getOrNull(index) ?: return emptyList()
     val decimals = decimalsFor(bar.c)
     val rows = mutableListOf<ChartLegendRow>()
+    // O H L C, in TradingView's order and with TradingView's grouping — `O 77,004.19 H 77,182.00
+    // L 76,748.01 C 77,058.57`. The close used to lead so an ellipsis would take the open first;
+    // the narrow forms below still keep the close, and the wide form now reads the way every
+    // terminal a trader has used reads.
+    val o = groupThousands(formatPrice(bar.o, decimals))
+    val h = groupThousands(formatPrice(bar.h, decimals))
+    val l = groupThousands(formatPrice(bar.l, decimals))
+    val c = groupThousands(formatPrice(bar.c, decimals))
     rows += ChartLegendRow(
         target = ChartLegendTarget.Series,
         label = seriesLabel.orEmpty(),
-        // Close first, then open, high, low.
-        //
-        // The conventional order is OHLC and this deliberately is not it. Whichever alternative
-        // gets picked, the row can still be ellipsised by a symbol whose name is long — and OHLC
-        // puts the close, the one number the reader actually came for, at the end where it is the
-        // first to be cut. Reading `O 2571.2  H 2575.7  L 2570.1  C 2…` was the exact complaint.
-        // Leading with the close means what survives a tight row is always the most useful part of
-        // it, and the labels are there so nobody has to infer the order.
         alternatives = listOf(
-            "C ${formatPrice(bar.c, decimals)}   O ${formatPrice(bar.o, decimals)}   " +
-                "H ${formatPrice(bar.h, decimals)}   L ${formatPrice(bar.l, decimals)}",
-            "C ${formatPrice(bar.c, decimals)} O ${formatPrice(bar.o, decimals)} " +
-                "H ${formatPrice(bar.h, decimals)} L ${formatPrice(bar.l, decimals)}",
-            "${formatPrice(bar.c, decimals)} ${formatPrice(bar.o, decimals)} " +
-                "${formatPrice(bar.h, decimals)} ${formatPrice(bar.l, decimals)}",
-            "C ${formatPrice(bar.c, decimals)}",
+            "O $o   H $h   L $l   C $c",
+            "O $o H $h L $l C $c",
+            "$o $h $l $c",
+            "C $c",
         ),
         colour = null,
         primary = true,
@@ -198,7 +201,7 @@ internal fun legendRows(
             label = label,
             // An overlay is a price and shares the price's precision. A pane line does not — an RSI
             // at two decimals and a MACD at two decimals are two different mistakes.
-            alternatives = listOf(reading(overlay.values[index], decimals)),
+            alternatives = listOf(groupThousands(reading(overlay.values[index], decimals))),
             colour = overlay.colour,
             primary = true,
         )
@@ -275,7 +278,7 @@ internal fun legendChangeRow(
     decimals: Int,
     change: ChartLegendChange?,
 ): ChartLegendRow {
-    val figure = signedFigure(change?.absolute ?: (bar.c - bar.o), decimals)
+    val figure = groupThousands(signedFigure(change?.absolute ?: (bar.c - bar.o), decimals))
     val share = signedPercent(change?.percent ?: percentOf(bar))
     return ChartLegendRow(
         target = ChartLegendTarget.Series,
@@ -307,6 +310,18 @@ internal fun legendChangeRow(
  * So [ChartMarketStatus.OPEN] and a caller that does not know both leave the name alone, and the
  * two ways of being shut each name themselves.
  */
+/**
+ * The legend title's ink: TradingView's primary text, `#DBDBDB` on the dark pane and near-black on
+ * the light one, told apart by the pane's own luminance rather than by the app theme, because a
+ * light colour template on a dark phone still wants a dark title.
+ */
+internal val ChartPalette.title: Color
+    get() = if (stage.luminance() < 0.5f) {
+        Color(TradingViewPalette.DARK_TEXT_PRIMARY)
+    } else {
+        Color(TradingViewPalette.LIGHT_TEXT_PRIMARY)
+    }
+
 internal fun legendSeriesName(label: String, status: ChartMarketStatus?): String {
     val note = status?.let(::statusNote) ?: return label
     return if (label.isBlank()) note else "$label · $note"
@@ -516,8 +531,9 @@ internal fun ChartLegendOverlay(
     // duplicate was the one costing a row of chart. The header cannot answer for a *historical*
     // bar, though, so the moment the reader puts the crosshair down the row is the only thing that
     // can say what that bar did, and it comes back.
+    // Always, not only while the crosshair is down: TradingView prints the change beside the close
+    // on every frame, and a reader glancing at the chart wants the day's move without touching it.
     val move = legendChangeRow(bar = bar, decimals = decimalsFor(bar.c), change = session)
-        .takeIf { tracking }
     val movedUp = (session?.absolute ?: (bar.c - bar.o)) >= 0.0
     val rising = bar.up
     val lines = if (tracking) TRACKING_LEGEND_LINES else LEGEND_LINES
@@ -766,11 +782,17 @@ private fun LegendRow(
             )
         }
         if (row.label.isNotBlank()) {
+            // The series title is TradingView's largest legend text — 16 px against 13 px values —
+            // in the primary ink, not the direction colour: the name of the instrument does not go
+            // red when a bar closes down. Every other row's label keeps its own colour.
+            val title = row.target == ChartLegendTarget.Series && row.primary
+            val titleInk = if (dimmed) palette.title.copy(alpha = HIDDEN_ROW_ALPHA) else palette.title
             Text(
                 text = row.label,
-                color = faded,
-                fontSize = fontSize,
-                lineHeight = lineHeight,
+                color = if (title) titleInk else faded,
+                fontSize = if (title) fontSize * TITLE_SCALE else fontSize,
+                fontWeight = if (title) FontWeight.Bold else null,
+                lineHeight = if (title) lineHeight * TITLE_SCALE else lineHeight,
                 style = LocalTextStyle.current.copy(lineHeightStyle = lineHeightStyle),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -798,7 +820,14 @@ private fun LegendRow(
                     } ?: row.alternatives.last()
                 }
                 Text(
-                    text = value,
+                    // The letters in the axis ink and the numbers in the direction colour, which is
+                    // how TradingView sets `O 77,004.19 H …`: the label is a caption, the figure is
+                    // the reading. One colour for both made the row a coloured sentence.
+                    text = if (row.target == ChartLegendTarget.Series) {
+                        ohlcAnnotated(value, labels = palette.text, values = faded)
+                    } else {
+                        AnnotatedString(value)
+                    },
                     color = faded,
                     fontSize = fontSize,
                     style = style,
@@ -926,6 +955,29 @@ private fun Modifier.touchTarget(footprint: Dp, target: Dp): Modifier = layout {
  * [touchTarget]. This is the room the row pays for, and the row is one of four the plate can afford.
  */
 private val LEGEND_BUTTON_DP = 24.dp
+
+/** The series title against the values: 16 px over 13 px on TradingView, which is this ratio. */
+private const val TITLE_SCALE = 1.25f
+
+/**
+ * `O 77,004.19 H 77,182.00` with the letters in one colour and the figures in another.
+ *
+ * A token is a label when it is a single letter or the change mark — `O`, `H`, `L`, `C`, `Δ` —
+ * and a figure otherwise. Whitespace is kept as it was, so the widest and the narrowest forms in
+ * [legendRows] both survive with their own spacing.
+ */
+internal fun ohlcAnnotated(text: String, labels: Color, values: Color): AnnotatedString = buildAnnotatedString {
+    var index = 0
+    while (index < text.length) {
+        val blank = text[index].isWhitespace()
+        var end = index
+        while (end < text.length && text[end].isWhitespace() == blank) end++
+        val token = text.substring(index, end)
+        val label = token.length == 1 && (token[0].isLetter() || token[0] == 'Δ')
+        withStyle(SpanStyle(color = if (label) labels else values)) { append(token) }
+        index = end
+    }
+}
 
 /**
  * What a thumb has to hit.

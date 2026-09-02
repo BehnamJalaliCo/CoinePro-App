@@ -1043,6 +1043,9 @@ fun ChartScreen(
             ),
     ) {
         Header(state, onOpenTerminal)
+        // TradingView closes its header with a one-point rule (`#2E2E2E` on `#0F0F0F`); this
+        // system's strong border is the same step above the page.
+        HorizontalDivider(color = CoineProColors.BorderStrong, thickness = 1.dp)
 
         // The plot, bled to both edges of the phone.
         //
@@ -2058,33 +2061,54 @@ private fun Header(state: ChartUiState, onOpenTerminal: (() -> Unit)?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
+            // TradingView's chart header: a 38 px bar with a hairline under it. The row's own
+            // padding puts it at that height with the pill inside; the rule is drawn by the caller.
+            .padding(horizontal = CoineProSpacing.One, vertical = HEADER_PAD),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
-        // The other end of the market row's disc. See `CoineProSharedElement`: it arrives from
-        // wherever the reader tapped rather than fading in beside a page that replaced theirs.
-        CoineProAssetLogo(
-            symbol = state.symbol,
-            size = 32.dp,
-            modifier = Modifier.sharedElement(SharedKeys.logo(state.symbol)),
-        )
+        // The symbol as TradingView sets it: a 28 dp pill on the chrome's raised grey, the mark
+        // at 18 dp inside it, the ticker, and a caret that says it opens something. Measured off
+        // its mobile chart — `#3D3D3D`, 28 px tall, 14 px text — and mapped onto this system's
+        // raised rung, which is the same step up from the page.
+        Row(
+            modifier = Modifier
+                .clip(CoineProPillShape)
+                .background(CoineProColors.SurfaceRaised)
+                .border(1.dp, CoineProColors.BorderSubtle, CoineProPillShape)
+                .heightIn(min = HEADER_PILL)
+                .padding(start = 4.dp, end = CoineProSpacing.One),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        ) {
+            // The other end of the market row's disc. See `CoineProSharedElement`: it arrives
+            // from wherever the reader tapped rather than fading in beside a page that replaced
+            // theirs.
+            CoineProAssetLogo(
+                symbol = state.symbol,
+                size = HEADER_MARK,
+                modifier = Modifier.sharedElement(SharedKeys.logo(state.symbol)),
+            )
+            LtrDirection {
+                Text(
+                    text = state.symbol,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = CoineProColors.TextPrimary,
+                    modifier = Modifier.sharedElement(SharedKeys.ticker(state.symbol)),
+                )
+            }
+            Icon(
+                painter = painterResource(DesignR.drawable.icon_caret_down),
+                contentDescription = null,
+                tint = CoineProColors.TextSecondary,
+                modifier = Modifier.size(14.dp),
+            )
+        }
         Column(modifier = Modifier.weight(1f)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
             ) {
-                LtrDirection {
-                    Text(
-                        text = state.symbol,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = CoineProColors.TextPrimary,
-                        modifier = Modifier.sharedElement(SharedKeys.ticker(state.symbol)),
-                    )
-                }
-                // What the chart's own state is, beside the name it belongs to. See
-                // [chartHeaderStates] for why this is one chip most of the time and never a row of
-                // permanently-true ones.
                 chartHeaderStates(
                     status = MarketHours.statusOf(state.symbol),
                     replayOn = state.replay.isOn,
@@ -3452,7 +3476,14 @@ private fun ChartFailure(error: ChartError, onRetry: () -> Unit) {
  * Forty by forty-four: past the forty-four-point target on the axis a thumb actually misses on a
  * horizontal strip, and short enough that two tiers of controls still read as one band.
  */
-private val INTERVAL_KEY_HEIGHT = 40.dp
+/** TradingView's header: a 28 px pill in a 38 px bar, an 18 px mark inside the pill. */
+private val HEADER_PILL = 28.dp
+private val HEADER_MARK = 18.dp
+private val HEADER_PAD = 5.dp
+
+// Thirty-eight, measured: every button on TradingView's chart toolbar is 38 px tall. The keys
+// were forty and forty-four wide, which read as a keypad rather than a toolbar.
+private val INTERVAL_KEY_HEIGHT = 38.dp
 private val INTERVAL_KEY_WIDTH = 44.dp
 
 /**
