@@ -15,6 +15,38 @@ it is for.
 
 ---
 
+## [4.23.0] — 2026-09-02 — The circled items, ten annotated screenshots
+
+The owner sent two sets of five TradingView phone-app screenshots with the parts he wanted circled
+by hand. Each circle was measured at 3× and built; the numbers are in
+`docs/design/TRADINGVIEW_PARITY.md` under «The second round of circled items».
+
+* **The live tag.** Two lines in one fill: the price, and the countdown a size down and lighter
+  under it — 12 pt at 70 % under a 14 pt price on the phone, the same ratio here.
+* **The symbol wheel, as the toolbar shows it.** The current ticker bold on the bar's centre line,
+  the next one under it in a faint ink and cut by the bar's edge, the previous one likewise above
+  — three 18 dp rows clipped to the 44 dp bar, 80 dp wide before the interval. The move beside the
+  ticker is gone; the phone app prints none.
+* **The picker over the plot.** While the wheel is dragged, a 200 dp card in the middle of the
+  chart: the current symbol at 32 sp with its logo, four neighbours each way shrinking to 26, 20,
+  15 and 11 sp and fading with the size. Inert, and gone when the finger lifts.
+* **The watermark.** The brand lockup bottom-left of the plot, 12 dp in from the pane's left and
+  12 dp above the time axis — where TradingView signs its chart.
+* **The trade ring.** A 20 dp purple ring (`#8D32A9`, measured) with a lightning bolt, hanging under
+  the newest bar 3 dp above the time axis, filled with the pane colour. Tapping it opens the trade
+  sheet on a chart with a setup and the terminal otherwise; it is not drawn where there is neither.
+* **The analysis hub.** «Trade with your broker»: a 72 dp plate across the sheet with a 1.5 dp
+  rose-to-blue rim (`Modifier.spectrumRim`, allow-listed in `CoineProSurfaces.kt`). TOOLS now
+  carries bar replay as its own tile; a MORE section holds events, the studio and the terminal;
+  «Help Center» sits at the foot and opens a new help entry, `chart`, that walks the page.
+* **The Drawings sheet.** The search field is a 40 dp grey plate with no edge, the groups are bold
+  tabs with the chosen one on a grey pill, and the modes — measure, eraser, keep drawing, hide
+  drawings, lock all, magnet, remove all — are 72 dp tiles three across at the head of the list,
+  the first row on plates and the rest outlined, the one in force inverted, a «⋮» menu on the
+  layer tile. «Remove all objects» is new and reversible from undo.
+* **Screenshot.** `103-chart-toolbar-fa` renders the page with a wheel and a terminal, so the
+  toolbar's wheel and the ring are in the checked picture.
+
 ## [4.22.0] — 2026-09-02 — The chart chrome, measured against TradingView's phone app
 
 The owner sent five screenshots of TradingView's own phone app (iPhone, 3×) and the chart's chrome

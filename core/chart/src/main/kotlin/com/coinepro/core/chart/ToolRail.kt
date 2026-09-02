@@ -11,11 +11,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -24,9 +26,12 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -36,14 +41,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.toPersianDigits
-import com.coinepro.core.designsystem.CoineProChip
-import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSheetEmpty
@@ -117,6 +122,8 @@ fun ToolRail(
     hidden: Set<DrawingLayer> = emptySet(),
     onHide: ((DrawingLayer, Boolean) -> Unit)? = null,
     onHideAll: ((Boolean) -> Unit)? = null,
+    /** Clear every drawing — TradingView's «Remove all objects». Null hides the tile. */
+    onRemoveAll: (() -> Unit)? = null,
 ) {
     var group by remember { mutableStateOf<ToolGroup?>(null) }
     var query by remember { mutableStateOf("") }
@@ -138,22 +145,32 @@ fun ToolRail(
     }
     val grouped = !searching && group == null
     val rows = remember(tools, grouped) { railRows(tools, grouped) }
-    val heading by remember(rows) {
-        derivedStateOf { rows.getOrNull(gridState.firstVisibleItemIndex)?.group }
+
+    // The modes, as TradingView's phone lays them out: a grid of tiles at the head of the
+    // «Tools» tab rather than a row of glyphs above the search. See [modeTiles].
+    val modes = modeTiles(
+        catalogue = catalogue,
+        selected = selected,
+        onSelect = onSelect,
+        magnet = magnet,
+        onCycleMagnet = onCycleMagnet,
+        keepDrawing = keepDrawing,
+        onKeepDrawing = onKeepDrawing,
+        lockedAll = lockedAll,
+        onLockAll = onLockAll,
+        hidden = hidden,
+        onHide = onHide,
+        onHideAll = onHideAll,
+        onRemoveAll = onRemoveAll,
+    )
+    // The mode tiles are the grid's first item when the list is unfiltered, so the pinned heading
+    // reads one row behind the grid's own index — and names nothing while the tiles are at the top.
+    val leading = if (grouped && modes.isNotEmpty()) 1 else 0
+    val heading by remember(rows, leading) {
+        derivedStateOf { rows.getOrNull(gridState.firstVisibleItemIndex - leading)?.group }
     }
 
     Column(modifier = modifier.fillMaxWidth().background(CoineProColors.Surface)) {
-        RailActions(
-            magnet = magnet,
-            onCycleMagnet = onCycleMagnet,
-            keepDrawing = keepDrawing,
-            onKeepDrawing = onKeepDrawing,
-            lockedAll = lockedAll,
-            onLockAll = onLockAll,
-            hidden = hidden,
-            onHide = onHide,
-            onHideAll = onHideAll,
-        )
         CoineProSheetSearch(
             value = query,
             onValueChange = { query = it },
@@ -170,17 +187,10 @@ fun ToolRail(
             )
         }
         if (!searching) {
-            CoineProChipRow(
-                options = DrawingTools.GROUPS.filter { it != ToolGroup.VOLUME || hasVolume }.map { candidate ->
-                    CoineProChip(
-                        id = candidate.name,
-                        label = candidate.label,
-                        count = DrawingTools.inGroup(candidate).size,
-                    )
-                },
-                selectedId = group?.name,
-                onSelect = { id -> group = id?.let(ToolGroup::valueOf) },
-                allLabel = "همه",
+            RailTabs(
+                groups = DrawingTools.GROUPS.filter { it != ToolGroup.VOLUME || hasVolume },
+                selected = group,
+                onSelect = { group = it },
             )
             Spacer(Modifier.height(CoineProSpacing.One))
         }
@@ -219,6 +229,13 @@ fun ToolRail(
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
             verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         ) {
+            // The mode tiles lead the unfiltered list, three across and full-span, exactly where
+            // the phone app's «Tools» tab puts Measure, Eraser and Keep drawing.
+            if (grouped && modes.isNotEmpty()) {
+                item(key = "__modes", span = { GridItemSpan(TOOLS_ACROSS) }) {
+                    ModeTileGrid(tiles = modes)
+                }
+            }
             for (row in rows) {
                 when (row) {
                     is RailRow.Heading -> item(
@@ -281,15 +298,23 @@ private fun railRows(tools: List<DrawingTool>, grouped: Boolean): List<RailRow> 
 }
 
 /**
- * The modes that sit above the tool grid rather than inside it.
+ * The modes, as tiles.
  *
- * Magnet, keep-drawing, lock-all and the four visibility switches are not tools — arming them draws
- * nothing — and putting them in the grid beside ninety things that do draw is how a reader ends
- * up with a trend line they did not ask for. They are actions, they live in an action row, and the
- * row disappears entirely when the caller offers none of them.
+ * Magnet, keep-drawing, lock-all, the eraser, the ruler, the layer switches and «remove all» are
+ * not tools — arming most of them draws nothing — and they used to sit in a row of eighteen-point
+ * glyphs above the search. The phone app's Drawings sheet puts them where the owner circled them:
+ * a grid of 72 pt tiles at the head of the «Tools» tab, three across, the first row on grey
+ * plates and the rest outlined, the one that is *on* inverted, and a «⋮» beside the tiles that
+ * carry a menu. This builds that list; [ModeTileGrid] lays it out.
+ *
+ * A tile whose caller offers no handler is left out rather than dimmed, so the grid is exactly as
+ * long as the modes this screen actually has.
  */
 @Composable
-private fun RailActions(
+private fun modeTiles(
+    catalogue: List<DrawingTool>,
+    selected: String?,
+    onSelect: (DrawingTool) -> Unit,
     magnet: MagnetMode,
     onCycleMagnet: (() -> Unit)?,
     keepDrawing: Boolean,
@@ -299,81 +324,247 @@ private fun RailActions(
     hidden: Set<DrawingLayer>,
     onHide: ((DrawingLayer, Boolean) -> Unit)?,
     onHideAll: ((Boolean) -> Unit)?,
-) {
-    if (onCycleMagnet == null && onKeepDrawing == null && onLockAll == null &&
-        onHide == null && onHideAll == null
-    ) {
-        return
+    onRemoveAll: (() -> Unit)?,
+): List<ModeTile> {
+    val tiles = ArrayList<ModeTile>(MODE_TILE_COUNT)
+    // The ruler and the eraser are tools in the catalogue and modes on the phone app's sheet;
+    // here they are both, so a reader finds them where either app would put them.
+    catalogue.firstOrNull { it.id == MEASURE_TOOL }?.let { tool ->
+        tiles += ModeTile(tool.icon, "اندازه‌گیری", on = selected == tool.id) { onSelect(tool) }
     }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = CoineProSpacing.Half),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        onCycleMagnet?.let { cycle ->
-            RailAction(
-                icon = DesignR.drawable.tv_magnet,
-                label = when (magnet) {
-                    MagnetMode.OFF -> "آهنربا خاموش"
-                    MagnetMode.WEAK -> "آهنربای ضعیف"
-                    MagnetMode.STRONG -> "آهنربای قوی"
-                },
-                tint = when (magnet) {
-                    MagnetMode.OFF -> null
-                    MagnetMode.WEAK -> CoineProColors.TextPrimary
-                    MagnetMode.STRONG -> CoineProColors.Accent
-                },
-                onClick = cycle,
-            )
-        }
-        onKeepDrawing?.let { set ->
-            RailAction(
-                icon = DesignR.drawable.tv_tool_keepdrawing,
-                label = if (keepDrawing) "ماندن روی ابزار: روشن" else "ماندن روی ابزار: خاموش",
-                tint = if (keepDrawing) CoineProColors.Accent else null,
-            ) { set(!keepDrawing) }
-        }
-        onLockAll?.let { set ->
-            RailAction(
-                icon = if (lockedAll) DesignR.drawable.tv_lock else DesignR.drawable.tv_unlock,
-                label = if (lockedAll) "باز کردن قفل همه" else "قفل کردن همه",
-                tint = if (lockedAll) CoineProColors.Gold else null,
-            ) { set(!lockedAll) }
-        }
-        Spacer(Modifier.weight(1f))
-        onHide?.let { set ->
-            LayerAction(DesignR.drawable.tv_pencil, "رسم‌ها", DrawingLayer.DRAWINGS, hidden, set)
-            LayerAction(DesignR.drawable.tv_chart_line, "اندیکاتورها", DrawingLayer.INDICATORS, hidden, set)
-            LayerAction(DesignR.drawable.tv_tool_longshort, "موقعیت‌ها", DrawingLayer.POSITIONS, hidden, set)
-        }
-        onHideAll?.let { set ->
-            val allHidden = hidden.size == DrawingLayer.entries.size
-            RailAction(
-                icon = if (allHidden) DesignR.drawable.icon_eye_slash else DesignR.drawable.icon_eye,
-                label = if (allHidden) "نمایش همه" else "پنهان کردن همه",
-                tint = if (allHidden) CoineProColors.TextDisabled else null,
-            ) { set(!allHidden) }
+    catalogue.firstOrNull { it.id == ERASER_TOOL }?.let { tool ->
+        tiles += ModeTile(tool.icon, "پاک‌کن", on = selected == tool.id) { onSelect(tool) }
+    }
+    onKeepDrawing?.let { set ->
+        tiles += ModeTile(DesignR.drawable.tv_tool_keepdrawing, "ماندن روی ابزار", on = keepDrawing) {
+            set(!keepDrawing)
         }
     }
+    onHide?.let { set ->
+        val drawingsHidden = DrawingLayer.DRAWINGS in hidden
+        tiles += ModeTile(
+            icon = if (drawingsHidden) DesignR.drawable.icon_eye_slash else DesignR.drawable.icon_eye,
+            label = if (drawingsHidden) "نمایش رسم‌ها" else "پنهان‌کردن رسم‌ها",
+            on = drawingsHidden,
+            menu = buildList {
+                add(layerEntry("اندیکاتورها", DrawingLayer.INDICATORS, hidden, set))
+                add(layerEntry("موقعیت‌ها", DrawingLayer.POSITIONS, hidden, set))
+                onHideAll?.let { all ->
+                    val allHidden = hidden.size == DrawingLayer.entries.size
+                    add(ModeMenuEntry(if (allHidden) "نمایش همه" else "پنهان‌کردن همه") { all(!allHidden) })
+                }
+            },
+        ) { set(DrawingLayer.DRAWINGS, !drawingsHidden) }
+    }
+    onLockAll?.let { set ->
+        tiles += ModeTile(
+            icon = if (lockedAll) DesignR.drawable.tv_lock else DesignR.drawable.tv_unlock,
+            label = if (lockedAll) "باز کردن قفل همه" else "قفل همهٔ رسم‌ها",
+            on = lockedAll,
+        ) { set(!lockedAll) }
+    }
+    onCycleMagnet?.let { cycle ->
+        tiles += ModeTile(
+            icon = DesignR.drawable.tv_magnet,
+            label = when (magnet) {
+                MagnetMode.OFF -> "آهنربا خاموش"
+                MagnetMode.WEAK -> "آهنربای ضعیف"
+                MagnetMode.STRONG -> "آهنربای قوی"
+            },
+            on = magnet != MagnetMode.OFF,
+            onClick = cycle,
+        )
+    }
+    onRemoveAll?.let { clear ->
+        tiles += ModeTile(DesignR.drawable.tv_trash2, "حذف همهٔ اشیا", on = false, onClick = clear)
+    }
+    return tiles
 }
 
-/** One layer's visibility switch. Dimmed when that layer is hidden, which is the whole state. */
-@Composable
-private fun LayerAction(
-    icon: Int,
+/** One layer's row in the «⋮» menu. */
+private fun layerEntry(
     name: String,
     layer: DrawingLayer,
     hidden: Set<DrawingLayer>,
     onHide: (DrawingLayer, Boolean) -> Unit,
-) {
+): ModeMenuEntry {
     val isHidden = layer in hidden
-    RailAction(
-        icon = icon,
-        label = if (isHidden) "نمایش $name" else "پنهان کردن $name",
-        tint = if (isHidden) CoineProColors.TextDisabled else null,
-    ) { onHide(layer, !isHidden) }
+    return ModeMenuEntry(if (isHidden) "نمایش $name" else "پنهان‌کردن $name") { onHide(layer, !isHidden) }
 }
+
+/** One mode tile: a glyph, a label, whether it is in force, what a tap does, and its side menu. */
+private class ModeTile(
+    val icon: Int,
+    val label: String,
+    val on: Boolean,
+    val menu: List<ModeMenuEntry> = emptyList(),
+    val onClick: () -> Unit,
+)
+
+private class ModeMenuEntry(val label: String, val act: () -> Unit)
+
+/**
+ * The mode tiles, three across with an 8 pt gutter, a trailing short row keeping the tile width.
+ * The first row sits on grey plates and the rest are outlined — the phone app's own arrangement.
+ */
+@Composable
+private fun ModeTileGrid(tiles: List<ModeTile>) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(bottom = CoineProSpacing.One),
+        verticalArrangement = Arrangement.spacedBy(MODE_TILE_GAP),
+    ) {
+        tiles.chunked(TOOLS_ACROSS - 1).forEachIndexed { rowIndex, row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(MODE_TILE_GAP)) {
+                row.forEach { tile ->
+                    Box(modifier = Modifier.weight(1f)) { ModeTileCell(tile = tile, plate = rowIndex == 0) }
+                }
+                repeat(TOOLS_ACROSS - 1 - row.size) { Spacer(modifier = Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+/**
+ * One 72 pt tile. Inverted — near-black with the stage's ink — while its mode is on, which is how
+ * the phone app shows «Keep drawing» in force; a «⋮» column behind a hairline where the tile has
+ * a menu, opening the menu in place.
+ */
+@Composable
+private fun ModeTileCell(tile: ModeTile, plate: Boolean) {
+    var menuOpen by remember { mutableStateOf(false) }
+    val ink = if (tile.on) CoineProColors.Stage else CoineProColors.TextPrimary
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(MODE_TILE_HEIGHT)
+            .clip(CoineProShapes.medium)
+            .background(
+                when {
+                    tile.on -> CoineProColors.TextPrimary
+                    plate -> CoineProColors.SurfaceElevated
+                    else -> CoineProColors.Surface
+                },
+            )
+            .then(
+                if (plate || tile.on) Modifier else Modifier.border(1.dp, CoineProColors.BorderSubtle, CoineProShapes.medium),
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .clickable(onClick = tile.onClick)
+                .padding(horizontal = CoineProSpacing.Half),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Icon(
+                painter = painterResource(tile.icon),
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = ink,
+            )
+            Spacer(Modifier.height(CoineProSpacing.Half))
+            Text(
+                text = tile.label,
+                style = MaterialTheme.typography.labelMedium,
+                color = ink,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (tile.menu.isNotEmpty()) {
+            VerticalDivider(
+                color = if (tile.on) CoineProColors.Stage.copy(alpha = 0.3f) else CoineProColors.BorderSubtle,
+                thickness = 1.dp,
+                modifier = Modifier.fillMaxHeight().padding(vertical = CoineProSpacing.One),
+            )
+            Box(
+                modifier = Modifier
+                    .width(MODE_MENU_WIDTH)
+                    .fillMaxHeight()
+                    .clickable { menuOpen = true },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(DesignR.drawable.tv_more_horizontal),
+                    contentDescription = "گزینه‌های بیشتر",
+                    modifier = Modifier.size(18.dp).rotate(MENU_GLYPH_TURN),
+                    tint = ink,
+                )
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    tile.menu.forEach { entry ->
+                        DropdownMenuItem(
+                            text = { Text(entry.label) },
+                            onClick = {
+                                menuOpen = false
+                                entry.act()
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The group tabs, as the phone app sets them: bold text, the chosen one on a grey pill and the
+ * rest in the muted ink with no edge at all. «همه» leads, for the unfiltered list.
+ */
+@Composable
+private fun RailTabs(groups: List<ToolGroup>, selected: ToolGroup?, onSelect: (ToolGroup?) -> Unit) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = CoineProSpacing.Gutter),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        item(key = "__all") {
+            RailTab(label = "همه", selected = selected == null) { onSelect(null) }
+        }
+        items(groups.size, key = { groups[it].name }) { index ->
+            val candidate = groups[index]
+            RailTab(label = candidate.label, selected = candidate == selected) { onSelect(candidate) }
+        }
+    }
+}
+
+@Composable
+private fun RailTab(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .height(TAB_HEIGHT)
+            .clip(CoineProShapes.small)
+            .background(if (selected) CoineProColors.SurfaceElevated else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = CoineProSpacing.OneHalf),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = if (selected) CoineProColors.TextPrimary else CoineProColors.TextMuted,
+            maxLines = 1,
+        )
+    }
+}
+
+/** The catalogue ids the Measure and Eraser tiles arm. */
+private const val MEASURE_TOOL = "ruler"
+private const val ERASER_TOOL = "eraser"
+
+/** Phone app, measured: 72 pt tiles, 8 pt apart, a 40 pt «⋮» column; 40 pt tabs. */
+private val MODE_TILE_HEIGHT = 72.dp
+private val MODE_TILE_GAP = 8.dp
+private val MODE_MENU_WIDTH = 40.dp
+private val TAB_HEIGHT = 40.dp
+private const val MODE_TILE_COUNT = 7
+
+/** The horizontal «…» glyph stood on end, since the icon set has no vertical one. */
+private const val MENU_GLYPH_TURN = 90f
 
 /**
  * The reader's own shortlist, above everything else.

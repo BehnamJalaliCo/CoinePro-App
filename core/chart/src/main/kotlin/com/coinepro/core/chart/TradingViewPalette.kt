@@ -43,6 +43,12 @@ object TradingViewPalette {
     /** Primary text in the chrome and the legend title. */
     const val DARK_TEXT_PRIMARY = 0xFFDBDBDB
 
+    /**
+     * The trade button's purple — the ring with the lightning bolt under the live bar. Measured
+     * `#8D32A9` off the phone app, the same in both themes.
+     */
+    const val TRADE = 0xFF8D32A9
+
     // The phone app, light, measured off the owner's own screenshots (iPhone, 3×): a solid
     // `#D5D5D5` grid on white and near-black scale labels — darker than the web's greys.
     const val LIGHT_BACKGROUND = 0xFFFFFFFF

@@ -91,6 +91,21 @@ colour (`ohlcAnnotated`), the change row under it, every figure grouped, and the
 | Interval chips | 44 pt tall, grey plate, chosen inverted | `IntervalPill` | `ChartScreen` |
 | Tool tiles | grey plate, armed inverted | `ToolCell` | `ToolRail` |
 
+## The second round of circled items (ten annotated screenshots)
+
+| Element | TradingView phone | App | Where |
+|---|---|---|---|
+| Live tag | 100 × 31 pt; price 14 pt white, countdown 12 pt white at ~70 % under it | second line 10.5 sp at 0.7 alpha (same ratio to a 12 sp axis) | `tagSecondLineStyle`, `drawAxisTag` |
+| Toolbar wheel | current ticker 16 pt bold on the bar's centre, next one 18 pt under it in a faint ink, cut by the bar's edge; 80 pt wide before the interval | 18 dp rows in a clipped 44 dp cell, 80 dp wide, bold `titleMedium`, neighbours in `TextDisabled` | `SymbolScrollWheel` |
+| Wheel picker (mid-drag) | 197 pt card, 16 pt corners, white ~92 % over the bars; rows 32 / 26 / 20 / 15 / 11 pt outward with logos of the same size, fading | `SymbolWheelOverlay`, `OVERLAY_RUNGS`, shown while `onDragging` | `SymbolWheel.kt`, `ChartScreen` |
+| Watermark | the mark 12 pt from the pane's left and 12 pt above the time axis, `#0F0F0F`; the full wordmark in two of seven shots | `ProChartLockup` at a 56 dp name, `WATERMARK_INSET = 12.dp` | `ChartWatermark` |
+| Trade ring | 20 pt ring, 1.5 pt stroke, `#8D32A9`, bolt inside, centred under the newest bar, 3 pt above the time axis | `drawTradeRing`, `TradingViewPalette.TRADE`, tap → trade sheet / terminal | `CoineProChart`, `ChartScreen.onTrade` |
+| Hub — broker card | 72 pt plate across the sheet, 12 pt corners, 1.5 pt rose→violet→blue rim | `TradeCard`, `Modifier.spectrumRim` | `ChartChrome`, `CoineProSurfaces` |
+| Hub — sections | TOOLS (7 tiles, 2 across), MORE (4 tiles), «Help Center» centred at the foot | TOOLS 7 tiles incl. bar replay; MORE events / studio / terminal; `HelpCenterRow` → help entry `chart` | `ChartMoreSheetBody` |
+| Drawings — search | 40 pt grey field, 10 pt corners, no edge, 17 pt placeholder | `CoineProSheetSearch` 40 dp, `small` shape, `bodyLarge` | `CoineProSheet.kt` |
+| Drawings — tabs | bold text, chosen one on a 40 pt grey pill, others muted with no edge | `RailTabs` | `ToolRail` |
+| Drawings — mode tiles | 72 pt tiles 3 across, first row on plates, the rest outlined, the one in force inverted, «⋮» column on tiles with a menu | `ModeTileGrid` at the head of the unfiltered grid | `ToolRail` |
+
 ## Still owed
 
 * A side-by-side render diff (app screenshot vs TradingView screenshot, same viewport) as a

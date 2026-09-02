@@ -353,37 +353,37 @@ fun CoineProSheetSearch(
     placeholder: String,
     modifier: Modifier = Modifier,
 ) {
+    // TradingView's phone sheets, measured: a 40 pt field on a grey plate with 10 pt corners and
+    // no edge — the plate is the field. The hairline it used to carry read as a second, different
+    // control beside the tiles under it.
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .height(SHEET_SEARCH_HEIGHT)
+            .clip(CoineProShapes.small)
             .background(CoineProColors.SurfaceElevated)
-            // The same hairline every other control gained. A filled field inside a sheet whose
-            // own surface is one step below it is otherwise a slightly different grey, and a
-            // reader has to guess that it is a field at all.
-            .border(1.dp, CoineProColors.BorderSubtle, RoundedCornerShape(12.dp))
-            .padding(horizontal = CoineProSpacing.OneHalf, vertical = 2.dp),
+            .padding(horizontal = CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
         Icon(
             painter = painterResource(R.drawable.tv_search),
             contentDescription = null,
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(18.dp),
             tint = CoineProColors.TextMuted,
         )
         androidx.compose.foundation.text.BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.weight(1f).padding(vertical = 12.dp),
+            modifier = Modifier.weight(1f),
             singleLine = true,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(color = CoineProColors.TextPrimary),
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = CoineProColors.TextPrimary),
             cursorBrush = androidx.compose.ui.graphics.SolidColor(CoineProColors.Gold),
             decorationBox = { inner ->
                 if (value.isEmpty()) {
                     Text(
                         text = placeholder,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyLarge,
                         color = CoineProColors.TextMuted,
                     )
                 }
@@ -410,6 +410,9 @@ fun CoineProSheetSearch(
         }
     }
 }
+
+/** The sheet search field's height: 40 pt on TradingView's phone sheets. */
+private val SHEET_SEARCH_HEIGHT = 40.dp
 
 /** Shown where a filter matched nothing, in place of a blank sheet. */
 @Composable

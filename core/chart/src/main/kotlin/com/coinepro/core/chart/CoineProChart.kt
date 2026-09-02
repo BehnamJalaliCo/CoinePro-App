@@ -312,6 +312,16 @@ fun CoineProChart(
      */
     onEventMark: ((EventMark) -> Unit)? = null,
     /**
+     * The purple ring under the live bar — TradingView's trade button.
+     *
+     * The phone app hangs a 20 pt ring with a lightning bolt at the bottom of the plot, under the
+     * newest bar, and a tap on it opens the broker's order panel. Null draws nothing, which is the
+     * honest state for a screen with nowhere to trade from. The ring follows the bar as the reader
+     * pans and disappears with it when the live edge is off screen: a trade button over history
+     * would be a button for a price that is not the market's.
+     */
+    onTradeRing: (() -> Unit)? = null,
+    /**
      * Put a particular bar on screen — what «برو به تاریخ» actually does.
      *
      * The index into the *displayed* series, counted from the oldest bar, or null to leave the view
@@ -592,6 +602,14 @@ fun CoineProChart(
     val timeAxisTop = remember { floatArrayOf(0f) }
 
     /**
+     * The trade ring's centre and radius in canvas pixels, or a zero radius while none is drawn.
+     *
+     * Written by the draw pass and read by the tap handler, for the reason [timeAxisTop] is: only
+     * the draw pass knows where the newest bar landed.
+     */
+    val tradeRing = remember { floatArrayOf(0f, 0f, 0f) }
+
+    /**
      * Each indicator pane's scale as the draw pass resolved it, for the crosshair layer to read.
      *
      * A plain array for the same reason [paneTop] is one — written by the draw pass, read by a
@@ -716,6 +734,7 @@ fun CoineProChart(
     val currentLevels = rememberUpdatedState(decoration.levels)
     val currentAlert = rememberUpdatedState(onRequestAlertAt)
     val currentAxisMenu = rememberUpdatedState(onPriceAxisMenu)
+    val currentTradeRing = rememberUpdatedState(onTradeRing)
 
     fun invalidate(level: Invalidation) {
         dirty[0] = dirty[0].merge(level)
@@ -1813,6 +1832,20 @@ fun CoineProChart(
                                             invalidate(Invalidation.CURSOR)
                                             return@detectTapGestures
                                         }
+                                        // The trade ring, before anything on the plot: it is a
+                                        // button drawn over the bars, and a tap on it must not also
+                                        // place a point or select the drawing under it.
+                                        val ring = tradeRing
+                                        val onTrade = currentTradeRing.value
+                                        if (ring[2] > 0f && onTrade != null) {
+                                            val reach = ring[2] + TRADE_RING_REACH_DP.toPx()
+                                            val dx = position.x - ring[0]
+                                            val dy = position.y - ring[1]
+                                            if (dx * dx + dy * dy <= reach * reach) {
+                                                onTrade()
+                                                return@detectTapGestures
+                                            }
+                                        }
                                         // An event glyph, and only in the strip the glyphs are
                                         // drawn in. Tested before anything else a tap can mean and
                                         // confined to those few points of height, so a tap on the
@@ -2315,6 +2348,14 @@ fun CoineProChart(
                             null
                         },
                     )
+                }
+                // The trade ring, last, so it sits over the live-price rule and the bars. The
+                // centre is published in *canvas* pixels — the tap handler reads it before any
+                // gutter arithmetic — so the plot's left offset is added back here.
+                if (priceShown && currentTradeRing.value != null) {
+                    drawTradeRing(view, plotHeight, palette, frame.left, tradeRing)
+                } else {
+                    tradeRing[2] = 0f
                 }
             }
         }
@@ -3672,7 +3713,14 @@ private fun DrawScope.lastPriceTagY(
     val probe = axisStyle(Color.White)
     val line = cache.measure(TAG_HEIGHT_PROBE to probe) { measurer.measure(TAG_HEIGHT_PROBE, probe) }
         .size.height
-    val height = line * (if (twoLines) 2 else 1) + TAG_PADDING_DP.toPx() * 2
+    val secondProbe = tagSecondLineStyle(Color.White)
+    val second = if (twoLines) {
+        cache.measure(TAG_HEIGHT_PROBE to secondProbe) { measurer.measure(TAG_HEIGHT_PROBE, secondProbe) }
+            .size.height
+    } else {
+        0
+    }
+    val height = line + second + TAG_PADDING_DP.toPx() * 2
     val anchor = if (twoLines) y - line / 2 - TAG_PADDING_DP.toPx() else y - height / 2
     return anchor.coerceIn(0f, max(0f, view.plotHeight - height))
 }
@@ -3741,6 +3789,72 @@ private fun DrawScope.drawLastPrice(
  * colour, and TradingView's greens and reds are dark enough that white clears them.
  */
 private val TAG_INK = Color.White
+
+/**
+ * TradingView's trade button: a purple ring with a lightning bolt, hanging at the bottom of the
+ * plot under the newest bar.
+ *
+ * Measured off the phone app: a 20 pt ring, 1.5 pt stroke, its bottom 3 pt above the time axis,
+ * centred on the live bar, filled with the pane colour so the grid does not run through it. It is
+ * drawn only while the newest bar is on screen and only when the ring has room — a ring clipped by
+ * the plot's edge is half a button.
+ *
+ * [out] receives the centre and radius in canvas pixels for the tap handler; a zero radius means
+ * nothing was drawn this frame.
+ */
+private fun DrawScope.drawTradeRing(
+    view: ChartViewport,
+    plotHeight: Float,
+    palette: ChartPalette,
+    plotLeft: Float,
+    out: FloatArray,
+) {
+    val last = view.series.bars.lastIndex
+    if (last < 0 || last < view.firstVisible || last > view.lastVisible) {
+        out[2] = 0f
+        return
+    }
+    val radius = TRADE_RING_DP.toPx() / 2f
+    val x = view.xOf(last)
+    val y = plotHeight - TRADE_RING_LIFT_DP.toPx() - radius
+    if (x - radius < 0f || y - radius < 0f) {
+        out[2] = 0f
+        return
+    }
+    val centre = Offset(x, y)
+    val ink = Color(TradingViewPalette.TRADE)
+    drawCircle(color = palette.stage, radius = radius, center = centre)
+    drawCircle(color = ink, radius = radius, center = centre, style = Stroke(TRADE_RING_STROKE_DP.toPx()))
+    // The bolt: a six-point polygon, drawn at 55 % of the ring's height and 60 % as wide as tall,
+    // which is the proportion of the phone app's glyph.
+    val h = radius * TRADE_BOLT_HEIGHT
+    val w = h * TRADE_BOLT_WIDTH
+    val bolt = Path().apply {
+        moveTo(x + w * 0.20f, y - h / 2f)
+        lineTo(x - w / 2f, y + h * 0.10f)
+        lineTo(x - w * 0.02f, y + h * 0.10f)
+        lineTo(x - w * 0.20f, y + h / 2f)
+        lineTo(x + w / 2f, y - h * 0.10f)
+        lineTo(x + w * 0.02f, y - h * 0.10f)
+        close()
+    }
+    drawPath(bolt, ink)
+    out[0] = x + plotLeft
+    out[1] = y
+    out[2] = radius
+}
+
+/** The ring's diameter, stroke and lift off the time axis. Phone app, measured: 20 / 1.5 / 3 pt. */
+private val TRADE_RING_DP = 20.dp
+private val TRADE_RING_STROKE_DP = 1.5.dp
+private val TRADE_RING_LIFT_DP = 3.dp
+
+/** Extra reach around the ring for a finger, on top of its own radius. */
+private val TRADE_RING_REACH_DP = 12.dp
+
+/** The bolt's height as a fraction of the ring's radius, and its width as a fraction of its height. */
+private const val TRADE_BOLT_HEIGHT = 1.1f
+private const val TRADE_BOLT_WIDTH = 0.6f
 
 /**
  * The close of the session before the one bar [index] belongs to, or null where there is not one.
@@ -3952,7 +4066,9 @@ private fun DrawScope.drawAxisTag(
     secondLine: String? = null,
 ) {
     val label = measurer.measure(text, axisStyle(textColour))
-    val second = secondLine?.let { measurer.measure(it, axisStyle(textColour)) }
+    // The countdown, a size down and a shade lighter than the price above it — the phone app's
+    // tag prints `687.46` at 14 pt in white and `00:14` at 12 pt in white at about 70 %.
+    val second = secondLine?.let { measurer.measure(it, tagSecondLineStyle(textColour)) }
     val height = label.size.height + (second?.size?.height ?: 0) + TAG_PADDING_DP.toPx() * 2
     val lowest = max(top, plotHeight - height)
     // Centred on the price when there is one line; with two, the *price* line stays on the price
@@ -5220,6 +5336,16 @@ internal val LEGEND_PLATE_RADIUS_DP = 6.dp
 
 /** Padding inside the last-price and crosshair tags. */
 private val TAG_PADDING_DP = 3.dp
+
+/**
+ * The live tag's second line — the countdown — as TradingView's phone sets it: a size down from the
+ * price and lighter. 12 pt under a 14 pt price there; the same ratio against this axis' 12 sp here.
+ */
+private fun tagSecondLineStyle(ink: Color) =
+    axisStyle(ink.copy(alpha = TAG_SECOND_LINE_ALPHA), TAG_SECOND_LINE_SP)
+
+private const val TAG_SECOND_LINE_SP = 10.5f
+private const val TAG_SECOND_LINE_ALPHA = 0.7f
 
 /** Breathing room above and below a pane's extremes, so the line never touches the lid. */
 private const val PANE_PADDING = 0.06

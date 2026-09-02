@@ -229,6 +229,9 @@ internal fun ChartToolPalette(
             hidden = state.drawing.hidden,
             onHide = controller::setLayerHidden,
             onHideAll = controller::setAllLayersHidden,
+            // «Remove all objects», as the phone app's Drawings sheet offers it. One tap and
+            // reversible from the toolbar's undo, which is what makes a confirmation unnecessary.
+            onRemoveAll = controller::clearDrawings,
         )
     }
 }

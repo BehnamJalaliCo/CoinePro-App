@@ -29,8 +29,9 @@ class HelpCatalogTest {
         // deliberately *not* overwritten during that merge — `avwap`, `table`, `magnet` and `dot`
         // already existed and meant something else or said the same thing, and one of them
         // (`table`) is the scripting primitive rather than the drawing tool, which is why the tool
-        // is keyed `tabledraw`.
-        assertEquals(177 + 9 + 55, catalog.size)
+        // is keyed `tabledraw`. Then one for the chart page itself — `chart`, behind the analysis
+        // hub's «Help Center» — which is neither a tool nor an indicator.
+        assertEquals(177 + 9 + 55 + 1, catalog.size)
     }
 
     @Test

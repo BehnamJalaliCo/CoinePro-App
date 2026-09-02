@@ -66,6 +66,7 @@ import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -95,6 +96,8 @@ import com.coinepro.core.chart.ScaleSide
 import com.coinepro.core.chart.SignalOverlay
 import com.coinepro.core.papertrade.PaperPosition
 import com.coinepro.core.chart.ToolRail
+import com.coinepro.core.chart.axisFontSizeSp
+import com.coinepro.core.chart.timeAxisHeight
 import com.coinepro.core.chart.TradeFromChart
 import com.coinepro.core.chart.TradeSide
 import com.coinepro.core.chart.ComparisonBasis
@@ -138,6 +141,7 @@ import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.CoineProWindowSize
 import com.coinepro.core.designsystem.coineProWindowClass
 import com.coinepro.core.designsystem.LtrDirection
+import com.coinepro.core.designsystem.ProChartLockup
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.onPageAccent
 import com.coinepro.core.designsystem.pageAccent
@@ -699,6 +703,20 @@ fun ChartScreen(
     // March would be two prices from a different month.
     val drawnSetup = replaySetup ?: positionSetup ?: signal
 
+    // Whether a finger is on the toolbar's symbol wheel. While it is, the big picker is drawn over
+    // the plot — see `SymbolWheelOverlay`. Held here because the wheel is in the band and the
+    // picker is over the chart, and neither is the other's parent.
+    var wheelDragging by remember { mutableStateOf(false) }
+
+    // Where a trade from this chart goes: the trade sheet when the chart carries a setup, the
+    // terminal where the deployment reports one, and nowhere on a build with neither — in which
+    // case the ring under the live bar is not drawn and the hub's card is dimmed. One handler for
+    // both, so the two can never disagree about what «trade» means on this page.
+    val onTrade: (() -> Unit)? = when {
+        state.setup != null -> ({ sheet = ChartSheet.SETUP })
+        else -> onOpenTerminal
+    }
+
     // The chart itself, written once and placed in one of two frames.
     //
     // A lambda rather than two copies of the `when`: the loading, failure and drawing branches are
@@ -718,7 +736,20 @@ fun ChartScreen(
                     // the chip belongs over the scale.
                     modifier = Modifier.align(AbsoluteAlignment.TopRight).zIndex(1f),
                 )
+                // The watermark, bottom-left of the plot, where TradingView signs its chart.
+                // Absolute for the same reason as the chip: the time axis reads left to right on
+                // every locale and the mark sits at its origin.
+                ChartWatermark(modifier = Modifier.align(AbsoluteAlignment.BottomLeft).zIndex(1f))
             }
+            // The picker over the plot while the wheel is turned. Above everything, inert, and
+            // centred on the canvas rather than on the plot — the phone app's sits a little left
+            // of the pane's middle for the same reason, since the price scale is not part of it.
+            SymbolWheelOverlay(
+                symbols = wheelSymbols,
+                current = state.symbol,
+                visible = wheelDragging,
+                modifier = Modifier.align(Alignment.Center).zIndex(2f),
+            )
             when {
                 state.loading && state.series.isEmpty -> Loading()
                 state.error != null && state.series.isEmpty -> ChartFailure(state.error!!, controller::retry)
@@ -832,6 +863,9 @@ fun ChartScreen(
                     // either way, and a glyph that answers nothing when you tap it is worse than
                     // no glyph.
                     onEventMark = events?.let { { mark -> openedMark = mark } },
+                    // The purple ring under the live bar, on the same handler as the hub's trade
+                    // card. Absent on a build with nowhere to trade from.
+                    onTradeRing = onTrade,
                     // Item 108. The window's move, and the market's state, on the legend itself —
                     // which is the only place the two-pane layout has, since it draws no header.
                     change = state.changePercent?.let { percent ->
@@ -1201,6 +1235,7 @@ fun ChartScreen(
             // The same quotes the watchlist strip below the page draws from, so the figure beside
             // the ticker in the scroll and the figure in the row it came from are one number.
             quotes = watchlistQuotes,
+            onSymbolDrag = { wheelDragging = it },
         )
 
         // Only where they have nowhere better to be. On a window wide enough for the side column
@@ -1514,6 +1549,23 @@ fun ChartScreen(
                         sheet = null
                         open()
                     }
+                },
+                onTrade = onTrade?.let { trade ->
+                    {
+                        sheet = null
+                        trade()
+                    }
+                },
+                // Offered with bars to rewind through and not already rewinding. `Replay.enter`
+                // wants thirty bars and returns null under that; the tile is dimmed on the same
+                // condition rather than opening a mode that then does nothing.
+                onReplay = {
+                    controller.enterReplay()
+                    sheet = null
+                }.takeIf { !state.replay.isOn && state.series.bars.size >= Replay.MINIMUM_BARS },
+                onHelpCenter = {
+                    sheet = null
+                    onHelp(CHART_HELP_ID)
                 },
             )
         }
@@ -2193,6 +2245,33 @@ private fun QuoteChip(quote: String, onClick: () -> Unit, modifier: Modifier = M
 
 private val QUOTE_CHIP_HEIGHT = 26.dp
 private val QUOTE_CHIP_INSET = 4.dp
+
+/**
+ * The brand, bottom-left of the plot, where TradingView signs its chart.
+ *
+ * Measured off the phone app: the mark 12 pt in from the pane's left edge and 12 pt above the time
+ * axis, drawn in the primary ink — `#0F0F0F` on white, at full strength, in every chart shot the
+ * owner sent. Ours is the lockup rather than a single-colour mark because a monochrome cut of the
+ * owner's two-colour mark would be a different logo; see `ProChartLockup`. It takes no touch, so a
+ * finger drawing across the corner keeps drawing.
+ */
+@Composable
+private fun ChartWatermark(modifier: Modifier = Modifier) {
+    val axis = with(LocalDensity.current) { timeAxisHeight(axisFontSizeSp(isPriceAxis = false)).sp.toDp() }
+    ProChartLockup(
+        modifier = modifier.padding(start = WATERMARK_INSET, bottom = WATERMARK_INSET + axis),
+        wordmarkWidth = WATERMARK_WORDMARK_WIDTH,
+    )
+}
+
+/** Twelve points from the plot's left edge and from the time axis, as the phone app sets it. */
+private val WATERMARK_INSET = 12.dp
+
+/** The name at 56 dp: a 16 dp name beside a 23 dp mark, the height of TradingView's wordmark. */
+private val WATERMARK_WORDMARK_WIDTH = 56.dp
+
+/** The help entry behind the hub's «Help Center». */
+private const val CHART_HELP_ID = "chart"
 
 /**
  * One bar length: a solid key, not an outline.

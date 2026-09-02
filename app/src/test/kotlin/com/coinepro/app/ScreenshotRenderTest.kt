@@ -2184,6 +2184,26 @@ class ScreenshotRenderTest {
         ChartScreen(controller = controller, onOpenStudio = {})
     }
 
+    /**
+     * The chart as the app actually composes it: a watchlist behind the toolbar's symbol wheel and
+     * a terminal behind the trade ring, so both the wheel at the bar's reading edge and the purple
+     * ring under the live bar are in the picture — the two things the owner circled on the
+     * phone-app screenshots that the fixture above cannot draw.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun chartToolbar() = capture("103-chart-toolbar-fa") {
+        ChartScreen(
+            controller = ScreenshotFixtures.chartController(scope),
+            // The wheel's ring alone, not `watchlist`: a watchlist opens the split pane under
+            // the chart, which is a different page from the one being measured here.
+            wheelSymbols = listOf("XAUUSD", "BTCUSDT", "ETHUSDT", "XAGUSD"),
+            onSelectSymbol = {},
+            onOpenStudio = {},
+            onOpenTerminal = {},
+        )
+    }
+
     /** The same page with a setup drawn on it, so the R:R card is in the picture. */
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")

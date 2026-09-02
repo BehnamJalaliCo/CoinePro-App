@@ -536,6 +536,23 @@ fun CoineProGoldRule(
 }
 
 /**
+ * The trade card's rim: a hairline that runs rose to violet to blue around a plate.
+ *
+ * Measured off TradingView's phone app, where it edges the one card on the analysis hub that leads
+ * to a broker — «Trade with your broker». It is the second gradient this file allows on a surface
+ * and, like [CoineProGoldRule], it is a *rule* rather than a fill: 1.5 pt of edge on a grey plate,
+ * never a wash behind text. Kept here rather than beside the card that uses it because the
+ * motion-policy gate allow-lists gradients by file, and this is the file whose job it is to say
+ * which surfaces may carry one.
+ */
+fun Modifier.spectrumRim(shape: Shape, width: Dp = SPECTRUM_RIM_WIDTH): Modifier =
+    border(width, Brush.horizontalGradient(SPECTRUM_RIM_STOPS), shape)
+
+/** Rose, violet, blue — the three colours read off the card's edge at 3×. */
+private val SPECTRUM_RIM_STOPS = listOf(Color(0xFFF23C7B), Color(0xFF7F6AFF), Color(0xFF3478FF))
+private val SPECTRUM_RIM_WIDTH = 1.5.dp
+
+/**
  * A price series as a single stroke, small enough to sit in a list row.
  *
  * No axis, no labels, no grid: at this size a scale would be unreadable and the shape is the whole

@@ -157,4 +157,8 @@
     <string name="chart_hub_terminal">ترمینال</string>
     <string name="chart_quote_scale">مقیاس قیمت</string>
     <string name="chart_interval_heading">بازهٔ کندل</string>
+    <string name="chart_hub_more">بیشتر</string>
+    <string name="chart_hub_help">مرکز راهنما</string>
+    <string name="chart_hub_trade">معامله با کارگزار</string>
+    <string name="chart_hub_replay">بازپخش نوار</string>
 </resources>

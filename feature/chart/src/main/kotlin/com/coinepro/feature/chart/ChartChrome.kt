@@ -70,6 +70,7 @@ import com.coinepro.core.designsystem.pageAccent
 import com.coinepro.core.designsystem.pageAccentInk
 import com.coinepro.core.designsystem.pressScale
 import com.coinepro.core.designsystem.rememberCoineProHaptics
+import com.coinepro.core.designsystem.spectrumRim
 import com.coinepro.core.marketdata.ChartInterval
 import kotlin.math.abs
 
@@ -161,10 +162,13 @@ internal fun ChartCommandBand(
     quotes: Map<String, WatchlistQuote> = emptyMap(),
     /** The one-step undo, or null with nothing to walk back. TradingView keeps it on the bar. */
     onUndo: (() -> Unit)? = null,
+    /** A finger landing on or leaving the symbol wheel; the page draws the big picker meanwhile. */
+    onSymbolDrag: (Boolean) -> Unit = {},
 ) {
-    // Unused here since the intervals moved into the date-range sheet, kept on the signature so
-    // the two-pane and fullscreen callers that still build a strip from them do not change.
-    @Suppress("UNUSED_VARIABLE") val strip = starred to onSelectInterval
+    // Unused here since the intervals moved into the date-range sheet and the wheel stopped
+    // printing a move beside the ticker, kept on the signature so the two-pane and fullscreen
+    // callers that still build a strip from them do not change.
+    @Suppress("UNUSED_VARIABLE") val strip = Triple(starred, onSelectInterval, quotes)
     Column(modifier = modifier.fillMaxWidth().background(CoineProColors.Stage)) {
         // TradingView's chart toolbar closes the pane with a hairline; measured `#EBEBEB` on white.
         HorizontalDivider(color = CoineProColors.BorderSubtle, thickness = 1.dp)
@@ -182,8 +186,8 @@ internal fun ChartCommandBand(
                 SymbolScrollWheel(
                     symbols = symbols,
                     current = symbol,
-                    quotes = quotes,
                     onSelect = select,
+                    onDragging = onSymbolDrag,
                 )
             }
             ToolbarText(text = interval.wire, onClick = onMoreIntervals)
@@ -634,11 +638,18 @@ internal fun ChartMoreSheetBody(
     eventNotice: ChartEventNotice? = null,
     /** The web terminal, where a deployment reports one. */
     onOpenTerminal: (() -> Unit)? = null,
+    /** The trade card and the ring under the live bar share this. Null draws the card dimmed. */
+    onTrade: (() -> Unit)? = null,
+    /** Enter bar replay. Null off a series too short to rewind, or while already replaying. */
+    onReplay: (() -> Unit)? = null,
+    /** The «Help Center» row at the foot of the sheet. */
+    onHelpCenter: (() -> Unit)? = null,
 ) {
     // TradingView's «Analysis hub»: a sheet of tiles rather than a list of rows. Measured off the
-    // phone app — three bordered tiles across for the chart's own settings, then a section
-    // headed TOOLS with grey plates two across. Every row this sheet used to list is a tile now,
-    // with the same handler behind it.
+    // phone app — three bordered tiles across for the chart's own settings, then the broker card
+    // in its spectrum rim, a section headed TOOLS with grey plates two across, a section headed
+    // MORE, and «Help Center» at the foot. Every row this sheet used to list is a tile now, with
+    // the same handler behind it.
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -686,6 +697,8 @@ internal fun ChartMoreSheetBody(
 
         HorizontalDivider(color = CoineProColors.BorderSubtle)
 
+        TradeCard(onClick = onTrade)
+
         Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
             SheetLabel(stringResource(R.string.chart_more_span))
             RangeChipRow(selected = range, onSelect = onSelectRange, contentPadding = PaddingValues(0.dp))
@@ -718,6 +731,11 @@ internal fun ChartMoreSheetBody(
                 onClick = onCreateAlert,
             )
             HubTile(
+                icon = DesignR.drawable.icon_skip_back,
+                label = stringResource(R.string.chart_hub_replay),
+                onClick = onReplay,
+            )
+            HubTile(
                 icon = DesignR.drawable.tv_play,
                 label = stringResource(R.string.chart_more_backtest),
                 onClick = onBacktest,
@@ -732,23 +750,122 @@ internal fun ChartMoreSheetBody(
                 label = stringResource(R.string.chart_band_objects),
                 onClick = { onOpen(ChartSheet.DRAWINGS) },
             )
-            onEvents?.let {
-                HubTile(
-                    icon = DesignR.drawable.tv_calendar_days,
-                    label = stringResource(R.string.chart_more_events),
-                    note = eventNotice?.let { reason -> stringResource(reason.reasonRes()) },
-                    count = eventKinds,
-                    onClick = it,
-                )
-            }
-            onOpenStudio?.let {
-                HubTile(
-                    icon = DesignR.drawable.tv_layout_grid,
-                    label = stringResource(R.string.chart_more_studio),
-                    onClick = it,
-                )
+        }
+
+        // MORE — the phone app's second section: what belongs to the page rather than to the
+        // chart. Drawn only when there is something in it; a heading over nothing is a promise.
+        if (onEvents != null || onOpenStudio != null || onOpenTerminal != null) {
+            SheetLabel(stringResource(R.string.chart_hub_more))
+            HubGrid(columns = 2, outlined = false) {
+                onEvents?.let {
+                    HubTile(
+                        icon = DesignR.drawable.tv_calendar_days,
+                        label = stringResource(R.string.chart_more_events),
+                        note = eventNotice?.let { reason -> stringResource(reason.reasonRes()) },
+                        count = eventKinds,
+                        onClick = it,
+                    )
+                }
+                onOpenStudio?.let {
+                    HubTile(
+                        icon = DesignR.drawable.tv_layout_grid,
+                        label = stringResource(R.string.chart_more_studio),
+                        onClick = it,
+                    )
+                }
+                onOpenTerminal?.let {
+                    HubTile(
+                        icon = DesignR.drawable.tv_maximize2,
+                        label = stringResource(R.string.chart_hub_terminal),
+                        onClick = it,
+                    )
+                }
             }
         }
+
+        onHelpCenter?.let { open ->
+            HorizontalDivider(color = CoineProColors.BorderSubtle)
+            HelpCenterRow(onClick = open)
+        }
+    }
+}
+
+/**
+ * «Trade with your broker»: the one card on the hub with a rim in colour.
+ *
+ * Measured off the phone app: a 72 pt plate across the sheet, 12 pt corners, a grey fill and a
+ * 1.5 pt rose-to-blue rim — see `spectrumRim` for why the rim lives in the design system. The
+ * glyph over the label is the same arrangement the tiles use. Here it leads to the trade sheet on
+ * a chart with a setup, and to the terminal otherwise; with neither it is drawn dimmed, like any
+ * tile with nothing behind it.
+ */
+@Composable
+private fun TradeCard(onClick: (() -> Unit)?) {
+    val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberCoineProHaptics()
+    val enabled = onClick != null
+    val ink = if (enabled) CoineProColors.TextPrimary else CoineProColors.TextDisabled
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(TRADE_CARD_HEIGHT)
+            .pressScale(interaction, CoineProPress.CHIP)
+            .clip(CoineProShapes.medium)
+            .background(CoineProColors.SurfaceElevated)
+            .spectrumRim(CoineProShapes.medium)
+            .clickable(interaction, null, enabled = enabled) {
+                haptics.select()
+                onClick?.invoke()
+            },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            painter = painterResource(DesignR.drawable.tv_tool_longshort),
+            contentDescription = null,
+            tint = ink,
+            modifier = Modifier.size(HUB_GLYPH),
+        )
+        Text(
+            text = stringResource(R.string.chart_hub_trade),
+            style = MaterialTheme.typography.labelMedium,
+            color = ink,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = CoineProSpacing.Half),
+        )
+    }
+}
+
+/** «Help Center», centred at the foot of the hub: a ringed question mark beside a bold label. */
+@Composable
+private fun HelpCenterRow(onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberCoineProHaptics()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(CoineProShapes.small)
+            .clickable(interaction, null) {
+                haptics.select()
+                onClick()
+            }
+            .padding(vertical = CoineProSpacing.One),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(DesignR.drawable.tv_help_circle),
+            contentDescription = null,
+            tint = CoineProColors.TextPrimary,
+            modifier = Modifier.size(HELP_GLYPH),
+        )
+        Text(
+            text = stringResource(R.string.chart_hub_help),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = CoineProColors.TextPrimary,
+        )
     }
 }
 
@@ -948,6 +1065,10 @@ private val TOOLBAR_GLYPH = 22.dp
 private val HUB_TILE = 100.dp
 private val HUB_GAP = 8.dp
 private val HUB_GLYPH = 26.dp
+
+/** The broker card, 72 pt across the sheet; and the ringed «?» before «Help Center», 24 pt. */
+private val TRADE_CARD_HEIGHT = 72.dp
+private val HELP_GLYPH = 24.dp
 
 /** The glyph on a sheet row that is still a row — the go-to-date field's calendar. */
 private val MORE_GLYPH = 20.dp

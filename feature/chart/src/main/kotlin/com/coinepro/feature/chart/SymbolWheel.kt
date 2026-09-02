@@ -1,7 +1,11 @@
 package com.coinepro.feature.chart
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -26,16 +30,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.coinepro.core.common.BidiText
-import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProColors
@@ -47,6 +56,7 @@ import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.pageAccentInk
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.symbols.SymbolArtwork
+import kotlin.math.abs
 
 /**
  * The instrument on either side of the one on screen, in the reader's own list.
@@ -368,10 +378,17 @@ private val WHEEL_CARET = 12.dp
 internal fun SymbolScrollWheel(
     symbols: List<String>,
     current: String,
-    /** The feed's own move per symbol, for the middle row. Absent is ordinary; see [WatchlistQuote]. */
-    quotes: Map<String, WatchlistQuote>,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Whether a finger is on the wheel.
+     *
+     * The chart page draws [SymbolWheelOverlay] over the plot for as long as this is true — the big
+     * picker TradingView's phone shows while the toolbar's ticker is being dragged. The wheel does
+     * not draw it itself because the overlay belongs over the *chart*, which is not this cell's
+     * parent.
+     */
+    onDragging: (Boolean) -> Unit = {},
 ) {
     val ring = remember(symbols, current) { symbolNeighbours(symbols, current) }
     if (ring.isEmpty) return
@@ -402,18 +419,29 @@ internal fun SymbolScrollWheel(
             }
         }
     }
-    Column(
+    // The toolbar's cell, as the phone app draws it: the current ticker bold on the bar's centre
+    // line, the next one under it in a faint ink and cut off by the bar's edge, the previous one
+    // above it likewise. Three rows of eighteen in a cell of forty-four, clipped — the rows that
+    // do not fit are *meant* not to fit; the cut edge is what says there is more to scroll to.
+    Box(
         modifier = modifier
             .width(WHEEL_SCROLL_WIDTH)
-            .height(WHEEL_SCROLL_ROW * 3)
-            .clip(CoineProShapes.small)
-            .draggable(state = drag, orientation = Orientation.Vertical)
+            .height(WHEEL_SCROLL_HEIGHT)
+            .clipToBounds()
+            .draggable(
+                state = drag,
+                orientation = Orientation.Vertical,
+                onDragStarted = { onDragging(true) },
+                onDragStopped = { onDragging(false) },
+            )
             .semantics { contentDescription = wheelLabel },
-        verticalArrangement = Arrangement.Center,
+        contentAlignment = Alignment.Center,
     ) {
-        WheelSide(symbol = ring.previous, onSelect = onSelect)
-        WheelCurrent(symbol = current, move = quotes[current.uppercase()]?.changePercent)
-        WheelSide(symbol = ring.next, onSelect = onSelect)
+        Column {
+            WheelSide(symbol = ring.previous, onSelect = onSelect)
+            WheelCurrent(symbol = current)
+            WheelSide(symbol = ring.next, onSelect = onSelect)
+        }
     }
 }
 
@@ -421,9 +449,9 @@ internal fun SymbolScrollWheel(
  * A neighbour, faint, above or below the middle.
  *
  * Still pressable: a reader who can see the ticker they want should not have to drag to it, and the
- * two ways of reaching it cost nothing beside each other. Muted ink rather than an alpha on the
- * primary — alpha on text is what makes a live control look disabled — and clipped to one line, so
- * a long ticker shortens rather than pushing the wheel wider than the cell it sits in.
+ * two ways of reaching it cost nothing beside each other. The same size and weight as the current
+ * one — the phone app dims its neighbours, it does not shrink them — in the disabled ink, and cut
+ * rather than ellipsised, because the cell's edge is doing the cutting anyway.
  *
  * An absent neighbour still takes its row. A wheel whose middle jumps up when the list is short is
  * a control that moves while you are reading it.
@@ -448,64 +476,153 @@ private fun WheelSide(symbol: String?, onSelect: (String) -> Unit) {
         contentAlignment = Alignment.CenterStart,
     ) {
         if (symbol == null) return@Box
-        LtrDirection {
-            Text(
-                text = BidiText.isolateLtr(symbol),
-                style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextDisabled,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        WheelTicker(symbol = symbol, colour = CoineProColors.TextDisabled)
+    }
+}
+
+/** The instrument the chart is drawing: bold, in the primary ink, on the bar's own centre line. */
+@Composable
+private fun WheelCurrent(symbol: String) {
+    Box(
+        modifier = Modifier.fillMaxWidth().height(WHEEL_SCROLL_ROW),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        WheelTicker(symbol = symbol, colour = CoineProColors.TextPrimary)
+    }
+}
+
+/** One ticker in the toolbar's wheel: 16 sp bold, Latin, one line, cut at the cell's edge. */
+@Composable
+private fun WheelTicker(symbol: String, colour: androidx.compose.ui.graphics.Color) {
+    LtrDirection {
+        Text(
+            text = BidiText.isolateLtr(symbol),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = colour,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Clip,
+        )
     }
 }
 
 /**
- * The instrument the chart is drawing, and what it has done.
+ * The picker over the plot while the toolbar's wheel is being dragged.
  *
- * The move is beside the ticker rather than under it, because the wheel is three rows and a fourth
- * would make it taller than the tool row it sits in. Latin digits and the buy/sell inks, as every
- * market figure in this app is; a feed that has not answered leaves the figure out rather than
- * printing a zero, which is a claim that the market has not moved.
+ * ### What the owner circled
+ *
+ * TradingView's phone app, mid-drag: a translucent card in the middle of the chart, the current
+ * ticker large and bold with its logo, four neighbours above and four below shrinking and fading
+ * away from it, the whole thing gone the moment the finger lifts. It is the same ring the toolbar
+ * cell draws three rows of — this is the rest of it, shown while the reader is actually choosing.
+ *
+ * Measured off the screenshot, 3×: a 197 pt card with 16 pt corners, the middle row at 32 pt with
+ * a 32 pt logo, then 26, 20, 15 and 11 pt outward, the rows' ink fading with the size. The card is
+ * white at about 92 % over the bars; no blur, which the house rules do not allow and which the
+ * eye does not miss under a card this opaque.
+ *
+ * ### Why it is not the wheel
+ *
+ * The wheel is the control — it takes the drag and steps the symbol. This is a *picture* of where
+ * the wheel is, and it is deliberately inert: it takes no touch, so a finger that wanders onto it
+ * mid-drag keeps turning the wheel underneath. It reads [current] straight from the chart, so it
+ * can never show a symbol the chart is not on.
  */
 @Composable
-private fun WheelCurrent(symbol: String, move: Double?) {
-    Row(
-        modifier = Modifier.fillMaxWidth().height(WHEEL_SCROLL_ROW),
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
-        verticalAlignment = Alignment.CenterVertically,
+internal fun SymbolWheelOverlay(
+    symbols: List<String>,
+    current: String,
+    visible: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = modifier,
     ) {
-        LtrDirection {
-            Text(
-                text = BidiText.isolateLtr(symbol),
-                style = MaterialTheme.typography.labelMedium,
-                color = CoineProColors.pageAccentInk,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        val rows = remember(symbols, current) {
+            (-OVERLAY_REACH..OVERLAY_REACH).map { step ->
+                if (step == 0) current else symbolStep(symbols, current, step)
+            }
         }
-        move?.let { percent ->
-            LtrDirection {
-                Text(
-                    text = MarketNumberFormatter.signedPercent(percent),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (percent >= 0) CoineProColors.Buy else CoineProColors.Sell,
-                    maxLines = 1,
-                )
+        LtrDirection {
+            Column(
+                modifier = Modifier
+                    .width(OVERLAY_WIDTH)
+                    .clip(CoineProShapes.large)
+                    .background(CoineProColors.Stage.copy(alpha = OVERLAY_ALPHA))
+                    .border(1.dp, CoineProColors.BorderSubtle, CoineProShapes.large)
+                    .padding(vertical = CoineProSpacing.One, horizontal = CoineProSpacing.OneHalf),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                rows.forEachIndexed { index, symbol ->
+                    OverlayRow(symbol = symbol, distance = abs(index - OVERLAY_REACH))
+                }
             }
         }
     }
 }
 
 /**
- * One row of the scroll: nineteen points.
+ * One row of the picker, sized by how far it is from the middle.
  *
- * Three of them is fifty-seven, which is what the tool row can hold beside a bar-length key without
- * the band growing a tier. It is under the forty-eight-point touch minimum on its own, and it is
- * allowed to be: the target is the whole wheel, which is dragged, and the two faint rows are a
- * shortcut on top of that rather than the only way to reach a neighbour.
+ * An absent neighbour — a ring shorter than nine — still takes its row, for the reason the toolbar
+ * cell keeps an empty row: the middle must not move.
  */
-private val WHEEL_SCROLL_ROW = 19.dp
+@Composable
+private fun OverlayRow(symbol: String?, distance: Int) {
+    val rung = OVERLAY_RUNGS[distance.coerceIn(0, OVERLAY_RUNGS.lastIndex)]
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(rung.row)
+            .alpha(rung.alpha),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (symbol == null) return@Row
+        CoineProAssetLogo(symbol = symbol, size = rung.logo)
+        Text(
+            text = BidiText.isolateLtr(symbol),
+            style = MaterialTheme.typography.titleMedium.copy(fontSize = rung.text),
+            fontWeight = if (distance == 0) FontWeight.Bold else FontWeight.SemiBold,
+            color = if (distance == 0) CoineProColors.TextPrimary else CoineProColors.TextMuted,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Clip,
+        )
+    }
+}
 
-/** Wide enough for a six-letter ticker and a signed percentage beside it, at the label sizes. */
-private val WHEEL_SCROLL_WIDTH = 104.dp
+/** One rung of the picker: the row's height, its logo, its type size and how faint it is. */
+private class OverlayRung(val row: Dp, val logo: Dp, val text: TextUnit, val alpha: Float)
+
+/** Middle outward. Measured off the phone app; see [SymbolWheelOverlay]. */
+private val OVERLAY_RUNGS = listOf(
+    OverlayRung(row = 36.dp, logo = 32.dp, text = 32.sp, alpha = 1f),
+    OverlayRung(row = 30.dp, logo = 26.dp, text = 26.sp, alpha = 0.75f),
+    OverlayRung(row = 24.dp, logo = 20.dp, text = 20.sp, alpha = 0.55f),
+    OverlayRung(row = 18.dp, logo = 14.dp, text = 15.sp, alpha = 0.4f),
+    OverlayRung(row = 14.dp, logo = 10.dp, text = 11.sp, alpha = 0.28f),
+)
+
+/** How many neighbours the picker shows on each side of the current symbol. */
+private const val OVERLAY_REACH = 4
+
+/** The card: 197 pt wide on the phone app, white at 92 % over the bars. */
+private val OVERLAY_WIDTH = 200.dp
+private const val OVERLAY_ALPHA = 0.92f
+
+/**
+ * One row of the toolbar's wheel: eighteen points, the pitch measured between the phone app's
+ * current ticker and the faint one under it. Three of them overflow the 44 pt bar on purpose.
+ */
+private val WHEEL_SCROLL_ROW = 18.dp
+
+/** The cell is the toolbar's own height; what does not fit is clipped. */
+private val WHEEL_SCROLL_HEIGHT = 44.dp
+
+/** Eighty points, which is where the phone app cuts `IMXUSDT` to `IMXUSD` before the interval. */
+private val WHEEL_SCROLL_WIDTH = 80.dp
