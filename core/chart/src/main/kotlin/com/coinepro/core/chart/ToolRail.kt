@@ -124,6 +124,11 @@ fun ToolRail(
     onHideAll: ((Boolean) -> Unit)? = null,
     /** Clear every drawing — TradingView's «Remove all objects». Null hides the tile. */
     onRemoveAll: (() -> Unit)? = null,
+    /** The magnet set outright, for the «⋮» beside its tile. Null leaves the tile cycling only. */
+    onSetMagnet: ((MagnetMode) -> Unit)? = null,
+    /** One zoom step on the chart under the sheet. Null hides the pair. */
+    onZoomIn: (() -> Unit)? = null,
+    onZoomOut: (() -> Unit)? = null,
 ) {
     var group by remember { mutableStateOf<ToolGroup?>(null) }
     var query by remember { mutableStateOf("") }
@@ -162,6 +167,9 @@ fun ToolRail(
         onHide = onHide,
         onHideAll = onHideAll,
         onRemoveAll = onRemoveAll,
+        onSetMagnet = onSetMagnet,
+        onZoomIn = onZoomIn,
+        onZoomOut = onZoomOut,
     )
     // The mode tiles are the grid's first item when the list is unfiltered, so the pinned heading
     // reads one row behind the grid's own index — and names nothing while the tiles are at the top.
@@ -325,6 +333,9 @@ private fun modeTiles(
     onHide: ((DrawingLayer, Boolean) -> Unit)?,
     onHideAll: ((Boolean) -> Unit)?,
     onRemoveAll: (() -> Unit)?,
+    onSetMagnet: ((MagnetMode) -> Unit)?,
+    onZoomIn: (() -> Unit)?,
+    onZoomOut: (() -> Unit)?,
 ): List<ModeTile> {
     val tiles = ArrayList<ModeTile>(MODE_TILE_COUNT)
     // The ruler and the eraser are tools in the catalogue and modes on the phone app's sheet;
@@ -372,11 +383,24 @@ private fun modeTiles(
                 MagnetMode.STRONG -> "آهنربای قوی"
             },
             on = magnet != MagnetMode.OFF,
+            menu = onSetMagnet?.let { set ->
+                listOf(
+                    ModeMenuEntry("خاموش") { set(MagnetMode.OFF) },
+                    ModeMenuEntry("آهنربای ضعیف") { set(MagnetMode.WEAK) },
+                    ModeMenuEntry("آهنربای قوی") { set(MagnetMode.STRONG) },
+                )
+            }.orEmpty(),
             onClick = cycle,
         )
     }
     onRemoveAll?.let { clear ->
         tiles += ModeTile(DesignR.drawable.tv_trash2, "حذف همهٔ اشیا", on = false, onClick = clear)
+    }
+    onZoomIn?.let { zoom ->
+        tiles += ModeTile(DesignR.drawable.tv_zoom_in, "بزرگ‌نمایی", on = false, onClick = zoom)
+    }
+    onZoomOut?.let { zoom ->
+        tiles += ModeTile(DesignR.drawable.tv_zoom_out, "کوچک‌نمایی", on = false, onClick = zoom)
     }
     return tiles
 }
@@ -561,7 +585,7 @@ private val MODE_TILE_HEIGHT = 72.dp
 private val MODE_TILE_GAP = 8.dp
 private val MODE_MENU_WIDTH = 40.dp
 private val TAB_HEIGHT = 40.dp
-private const val MODE_TILE_COUNT = 7
+private const val MODE_TILE_COUNT = 9
 
 /** The horizontal «…» glyph stood on end, since the icon set has no vertical one. */
 private const val MENU_GLYPH_TURN = 90f

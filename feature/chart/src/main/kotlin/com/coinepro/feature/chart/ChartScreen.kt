@@ -84,6 +84,7 @@ import com.coinepro.core.chart.ChartMarketStatus
 import com.coinepro.core.chart.ChartOrder
 import com.coinepro.core.chart.ChartReading
 import com.coinepro.core.chart.ChartTransforms
+import com.coinepro.core.chart.ChartZoomNudge
 import com.coinepro.core.chart.ChartTypePicker
 import com.coinepro.core.chart.CoineProChart
 import com.coinepro.core.chart.DrawingImages
@@ -703,6 +704,13 @@ fun ChartScreen(
     // March would be two prices from a different month.
     val drawnSetup = replaySetup ?: positionSetup ?: signal
 
+    // A zoom step asked for from the Drawings sheet. A serial rather than a boolean, so two taps
+    // are two steps — see `ChartZoomNudge`.
+    var zoomNudge by remember { mutableStateOf<ChartZoomNudge?>(null) }
+    val zoomBy: (Float) -> Unit = { factor ->
+        zoomNudge = ChartZoomNudge(serial = (zoomNudge?.serial ?: 0) + 1, factor = factor)
+    }
+
     // Whether a finger is on the toolbar's symbol wheel. While it is, the big picker is drawn over
     // the plot — see `SymbolWheelOverlay`. Held here because the wheel is in the band and the
     // picker is over the chart, and neither is the other's parent.
@@ -866,6 +874,7 @@ fun ChartScreen(
                     // The purple ring under the live bar, on the same handler as the hub's trade
                     // card. Absent on a build with nowhere to trade from.
                     onTradeRing = onTrade,
+                    zoomNudge = zoomNudge,
                     // Item 108. The window's move, and the market's state, on the legend itself —
                     // which is the only place the two-pane layout has, since it draws no header.
                     change = state.changePercent?.let { percent ->
@@ -1346,6 +1355,16 @@ fun ChartScreen(
                 // The sheet closes itself the moment a tool is armed: it is covering the chart the
                 // tool is about to be drawn on.
                 onArmed = { sheet = null },
+                // A zoom step closes the sheet too, for the same reason: the reader asked to see
+                // the chart differently, and the sheet is what is in the way of seeing it.
+                onZoomIn = {
+                    zoomBy(ChartZoomNudge.STEP)
+                    sheet = null
+                },
+                onZoomOut = {
+                    zoomBy(1f / ChartZoomNudge.STEP)
+                    sheet = null
+                },
             )
         }
 

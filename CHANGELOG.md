@@ -15,6 +15,21 @@ it is for.
 
 ---
 
+## [4.24.0] — 2026-09-02 — The rest of the list
+
+What the previous round left out, closed:
+
+* **Drawings sheet.** «Zoom in» and «Zoom out» tiles, stepping the chart a quarter each way through
+  the same arithmetic a pinch uses (`ChartZoomNudge`); a «⋮» beside the magnet tile that sets off,
+  weak or strong outright.
+* **Analysis hub.** The tiles re-measured: outlined 56 dp with 12 dp between, plates 72 dp with 8.
+* **Crosshair tags.** 24 px tall with 8 px at either side of the text, TradingView's own geometry,
+  instead of borrowing the live tag's padding.
+* **The side-by-side.** The owner's reference screenshots are checked in at 1× under
+  `docs/design/reference/tradingview-phone/`, and `scripts/design/parity-diff.py` lays each app
+  screenshot beside the one it was measured against. `TRADINGVIEW_PARITY.md` now owes nothing and
+  says which two circled things are deliberately not copied and why.
+
 ## [4.23.0] — 2026-09-02 — The circled items, ten annotated screenshots
 
 The owner sent two sets of five TradingView phone-app screenshots with the parts he wanted circled

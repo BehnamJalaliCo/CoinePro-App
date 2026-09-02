@@ -183,6 +183,9 @@ internal fun ChartToolPalette(
     onHelp: ((String) -> Unit)?,
     onArmed: () -> Unit,
     modifier: Modifier = Modifier,
+    /** One zoom step on the chart, for the sheet's «Zoom in» / «Zoom out» tiles. Null hides them. */
+    onZoomIn: (() -> Unit)? = null,
+    onZoomOut: (() -> Unit)? = null,
 ) {
     Column(modifier = modifier.background(CoineProColors.Surface)) {
         // The armed tool's saved styles, above the rail rather than on the toolbar. Choosing one
@@ -232,6 +235,9 @@ internal fun ChartToolPalette(
             // «Remove all objects», as the phone app's Drawings sheet offers it. One tap and
             // reversible from the toolbar's undo, which is what makes a confirmation unnecessary.
             onRemoveAll = controller::clearDrawings,
+            onSetMagnet = controller::setMagnet,
+            onZoomIn = onZoomIn,
+            onZoomOut = onZoomOut,
         )
     }
 }

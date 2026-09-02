@@ -61,6 +61,7 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -339,6 +340,16 @@ fun CoineProChart(
      * throwing.
      */
     focusIndex: Int? = null,
+    /**
+     * A zoom step asked for from outside the canvas — the Drawings sheet's «Zoom in» and «Zoom
+     * out», which TradingView's phone app keeps beside the drawing modes.
+     *
+     * One-shot, keyed on the request's serial like [focusIndex] is keyed on the bar: the same
+     * factor asked for twice is two steps, and a request already applied is not applied again on
+     * recomposition. It goes through [ChartViewport.zoomedBy], the same arithmetic a pinch uses,
+     * so the saved zoom and the live-edge margin behave exactly as they do after a pinch.
+     */
+    zoomNudge: ChartZoomNudge? = null,
 ) {
     val display = remember(series, type, typeConfig) { ChartTransforms.apply(series, type, typeConfig) }
     // Unkeyed, and that is the whole point. Keyed on `display`, this reset to the default 120 bars
@@ -467,6 +478,9 @@ fun CoineProChart(
     // asked for.
     LaunchedEffect(focusIndex) {
         if (focusIndex != null) viewport = viewport.atOffset(focusOffset(display.size, focusIndex))
+    }
+    LaunchedEffect(zoomNudge?.serial) {
+        if (zoomNudge != null) viewport = viewport.zoomedBy(zoomNudge.factor)
     }
 
     // Ask for history when the reader gets near the edge of it. Keyed on the first visible bar, so
@@ -4064,22 +4078,27 @@ private fun DrawScope.drawAxisTag(
     top: Float = 0f,
     /** A second line under the first, in the same tag — the live bar's countdown. */
     secondLine: String? = null,
+    /** Above and below the text. The live tag's is 3 dp; the crosshair's 4, for a 24 px tag. */
+    padding: Dp = TAG_PADDING_DP,
+    /** From the gutter's edge to the text. The axis' own 10; the crosshair's 8. */
+    inset: Dp = AXIS_PADDING_DP,
 ) {
     val label = measurer.measure(text, axisStyle(textColour))
     // The countdown, a size down and a shade lighter than the price above it — the phone app's
     // tag prints `687.46` at 14 pt in white and `00:14` at 12 pt in white at about 70 %.
     val second = secondLine?.let { measurer.measure(it, tagSecondLineStyle(textColour)) }
-    val height = label.size.height + (second?.size?.height ?: 0) + TAG_PADDING_DP.toPx() * 2
+    val pad = padding.toPx()
+    val height = label.size.height + (second?.size?.height ?: 0) + pad * 2
     val lowest = max(top, plotHeight - height)
     // Centred on the price when there is one line; with two, the *price* line stays on the price
     // and the countdown hangs under it, which is where TradingView puts it.
-    val anchor = if (second == null) y - height / 2 else y - label.size.height / 2 - TAG_PADDING_DP.toPx()
+    val anchor = if (second == null) y - height / 2 else y - label.size.height / 2 - pad
     val tagTop = anchor.coerceIn(top, lowest)
     drawAxisChip(frame, tagTop, height, fill)
-    val x = frame.tagGutterX + AXIS_PADDING_DP.toPx()
-    drawText(textLayoutResult = label, topLeft = Offset(x, tagTop + TAG_PADDING_DP.toPx()))
+    val x = frame.tagGutterX + inset.toPx()
+    drawText(textLayoutResult = label, topLeft = Offset(x, tagTop + pad))
     second?.let {
-        drawText(textLayoutResult = it, topLeft = Offset(x, tagTop + TAG_PADDING_DP.toPx() + label.size.height))
+        drawText(textLayoutResult = it, topLeft = Offset(x, tagTop + pad + label.size.height))
     }
 }
 
@@ -4464,6 +4483,8 @@ private fun DrawScope.drawCrosshair(
             measurer = measurer,
             plotHeight = band.top + band.height,
             top = band.top,
+            padding = CROSSHAIR_TAG_PADDING_DP,
+            inset = CROSSHAIR_TAG_INSET_DP,
         )
     } else {
         drawAxisTag(
@@ -4474,6 +4495,8 @@ private fun DrawScope.drawCrosshair(
             textColour = TAG_INK,
             measurer = measurer,
             plotHeight = view.plotHeight,
+            padding = CROSSHAIR_TAG_PADDING_DP,
+            inset = CROSSHAIR_TAG_INSET_DP,
         )
     }
     if (!decoration.showTimeAxis) return
@@ -4485,15 +4508,18 @@ private fun DrawScope.drawCrosshair(
         formatTime(bar.t, zone = zone),
         axisStyle(TAG_INK, axisFontSizeSp(isPriceAxis = false)),
     )
-    val width = stamp.size.width + TAG_PADDING_DP.toPx() * 4
+    // TradingView's crosshair tags: 24 px tall with 8 px at either side of the text.
+    val pad = CROSSHAIR_TAG_PADDING_DP.toPx()
+    val side = CROSSHAIR_TAG_INSET_DP.toPx()
+    val width = stamp.size.width + side * 2
     val left = (x - width / 2).coerceIn(0f, max(0f, plotWidth - width))
     drawRoundRect(
         color = palette.crosshair,
         topLeft = Offset(left, fullHeight + 1f),
-        size = Size(width, stamp.size.height + TAG_PADDING_DP.toPx() * 2),
+        size = Size(width, stamp.size.height + pad * 2),
         cornerRadius = CornerRadius(TAG_RADIUS_DP.toPx(), TAG_RADIUS_DP.toPx()),
     )
-    drawText(stamp, topLeft = Offset(left + TAG_PADDING_DP.toPx() * 2, fullHeight + 1f + TAG_PADDING_DP.toPx()))
+    drawText(stamp, topLeft = Offset(left + side, fullHeight + 1f + pad))
 }
 
 /**
@@ -5334,8 +5360,15 @@ internal const val LEGEND_PLATE_ALPHA = 0f
 /** The plate's corner. Softer than a tag's, because it is a panel rather than a marker. */
 internal val LEGEND_PLATE_RADIUS_DP = 6.dp
 
-/** Padding inside the last-price and crosshair tags. */
+/** Padding inside the last-price tag. */
 private val TAG_PADDING_DP = 3.dp
+
+/**
+ * The crosshair's tags, measured on TradingView: 24 px tall — a 16 px line of 12 px type with 4 px
+ * above and below — and 8 px from the tag's edge to the text on either side.
+ */
+private val CROSSHAIR_TAG_PADDING_DP = 4.dp
+private val CROSSHAIR_TAG_INSET_DP = 8.dp
 
 /**
  * The live tag's second line — the countdown — as TradingView's phone sets it: a size down from the
@@ -5580,4 +5613,17 @@ private class ScaleCache {
     var view: ChartViewport? = null
     var ticks: PriceTicks? = null
     var timeTicks: List<TimeTick>? = null
+}
+
+/**
+ * One zoom step asked for from outside the canvas. See `CoineProChart.zoomNudge`.
+ *
+ * [serial] is what makes two identical requests two steps: a `LaunchedEffect` keyed on the value
+ * alone would run once for «zoom in» and never again for the second tap.
+ */
+data class ChartZoomNudge(val serial: Int, val factor: Float) {
+    companion object {
+        /** One step, in or out. A quarter, which is about one notch of a pinch. */
+        const val STEP = 1.25f
+    }
 }

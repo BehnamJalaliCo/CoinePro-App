@@ -1567,6 +1567,9 @@ class ChartController(
      */
     fun cycleMagnet() = _state.update { it.copy(drawing = DrawingActions.cycleMagnet(it.drawing)) }
 
+    /** The magnet set to one mode outright, from the Drawings sheet's menu. */
+    fun setMagnet(mode: MagnetMode) = _state.update { it.copy(drawing = DrawingActions.setMagnet(it.drawing, mode)) }
+
     /** Keep the armed tool after a drawing completes, or let it fall back to the cursor. */
     fun setKeepDrawing(keep: Boolean) = _state.update {
         it.copy(drawing = DrawingActions.setKeepDrawing(it.drawing, keep))

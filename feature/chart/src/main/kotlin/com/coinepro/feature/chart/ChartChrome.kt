@@ -882,9 +882,12 @@ private fun HubGrid(columns: Int, outlined: Boolean, content: @Composable HubSco
     scope.tiles.clear()
     scope.content()
     val tiles = scope.tiles.toList()
-    Column(verticalArrangement = Arrangement.spacedBy(HUB_GAP)) {
+    // Two geometries, both measured: the outlined tiles are 56 pt with 12 pt between them, the
+    // plates 72 pt with 8 pt.
+    val gap = if (outlined) HUB_OUTLINED_GAP else HUB_GAP
+    Column(verticalArrangement = Arrangement.spacedBy(gap)) {
         tiles.chunked(columns).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(HUB_GAP)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                 row.forEach { tile -> Box(modifier = Modifier.weight(1f)) { tile() } }
                 repeat(columns - row.size) { Spacer(modifier = Modifier.weight(1f)) }
             }
@@ -925,7 +928,7 @@ private fun HubScope.HubTile(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(HUB_TILE)
+                .height(if (outlined) HUB_OUTLINED_TILE else HUB_TILE)
                 .pressScale(interaction, CoineProPress.CHIP)
                 .clip(CoineProShapes.medium)
                 .background(if (outlined) CoineProColors.Surface else CoineProColors.SurfaceElevated)
@@ -1061,9 +1064,12 @@ private val TOOLBAR_HEIGHT = 44.dp
 private val TOOLBAR_TARGET = 44.dp
 private val TOOLBAR_GLYPH = 22.dp
 
-// The analysis hub's tiles: 100 pt tall with an 8 pt gutter, a 26 pt glyph over a one-line label.
-private val HUB_TILE = 100.dp
+// The analysis hub's tiles, re-measured off the phone app at 3×: the plates 72 pt tall with an
+// 8 pt gutter, the outlined ones 56 pt with 12 pt, a 26 pt glyph over a one-line label in both.
+private val HUB_TILE = 72.dp
 private val HUB_GAP = 8.dp
+private val HUB_OUTLINED_TILE = 56.dp
+private val HUB_OUTLINED_GAP = 12.dp
 private val HUB_GLYPH = 26.dp
 
 /** The broker card, 72 pt across the sheet; and the ringed «?» before «Help Center», 24 pt. */

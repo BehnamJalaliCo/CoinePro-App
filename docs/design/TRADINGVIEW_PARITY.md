@@ -72,6 +72,13 @@ colour (`ohlcAnnotated`), the change row under it, every figure grouped, and the
   asked for a frame in the 4.19.0 round («چارت چهارچوب نداره») and it stays.
 * **The left tool rail.** TradingView's phone *web* page keeps a desktop rail on the left; its
   Android app puts the tools in a bottom sheet, which is what this app does.
+* **The «TradingView» pill at the top of the iPhone screenshots.** That is iOS's Dynamic Island
+  naming the foreground app, not a control TradingView draws; Android has no counterpart and a
+  painted imitation over the legend would collide with the legend's own title. The app's name is
+  in the watermark instead, which is where TradingView's own name is on the chart.
+* **«Manage», «New», «Save», «Open» on the hub's first row.** TradingView's are operations on
+  named layouts; this app keeps its layouts, colour templates and their save field in one sheet
+  behind the «چیدمان‌ها» tile rather than spreading one sheet over four tiles.
 
 ## The phone app (owner's screenshots, iPhone 3×, light)
 
@@ -87,7 +94,7 @@ colour (`ohlcAnnotated`), the change row under it, every figure grouped, and the
 | Live tag | 31 pt tall, two lines, white on the candle colour | `drawAxisTag(secondLine)` | `drawLastPrice` |
 | Toolbar | 44 pt, hairline above, symbol + interval bold 16 pt left, 22 pt glyphs right | `ChartCommandBand` | `ChartChrome` |
 | Sheet title | 24 pt bold + 40 pt round close | `headlineSmall` bold + `SHEET_CLOSE = 40.dp` | `CoineProSheetBody` |
-| Hub tiles | 100 pt, 12 pt corners, 3 across outlined / 2 across plates | `HUB_TILE = 100.dp`, `HubGrid` | `ChartMoreSheetBody` |
+| Hub tiles | outlined 56 pt with 12 pt between, plates 72 pt with 8 pt; 12 pt corners; 3 across outlined / 2 across plates (re-measured) | `HUB_OUTLINED_TILE`, `HUB_TILE`, `HubGrid` | `ChartMoreSheetBody` |
 | Interval chips | 44 pt tall, grey plate, chosen inverted | `IntervalPill` | `ChartScreen` |
 | Tool tiles | grey plate, armed inverted | `ToolCell` | `ToolRail` |
 
@@ -105,10 +112,17 @@ colour (`ohlcAnnotated`), the change row under it, every figure grouped, and the
 | Drawings — search | 40 pt grey field, 10 pt corners, no edge, 17 pt placeholder | `CoineProSheetSearch` 40 dp, `small` shape, `bodyLarge` | `CoineProSheet.kt` |
 | Drawings — tabs | bold text, chosen one on a 40 pt grey pill, others muted with no edge | `RailTabs` | `ToolRail` |
 | Drawings — mode tiles | 72 pt tiles 3 across, first row on plates, the rest outlined, the one in force inverted, «⋮» column on tiles with a menu | `ModeTileGrid` at the head of the unfiltered grid | `ToolRail` |
+| Drawings — magnet «⋮» | off / weak / strong set outright | `onSetMagnet` → `ChartController.setMagnet` | `ToolRail`, `ChartToolPalette` |
+| Drawings — zoom in / out | two outlined tiles at the foot of the modes | `onZoomIn` / `onZoomOut` → `ChartZoomNudge` (one step = ×1.25 through `ChartViewport.zoomedBy`) | `ToolRail`, `CoineProChart.zoomNudge` |
+| Crosshair tags | 24 px tall, 8 px at either side of the text | `CROSSHAIR_TAG_PADDING_DP = 4.dp`, `CROSSHAIR_TAG_INSET_DP = 8.dp` | `drawCrosshair`, `drawAxisTag` |
+
+## The references, checked in
+
+`docs/design/reference/tradingview-phone/` holds the owner's screenshots at 1× (440 pt wide), the
+hand-drawn circles included. `scripts/design/parity-diff.py` lays each app screenshot from
+`ScreenshotRenderTest` beside the reference it was measured against, at the same width, and writes
+the composites to `app/build/screenshots/parity/` — the side-by-side that used to be owed.
 
 ## Still owed
 
-* A side-by-side render diff (app screenshot vs TradingView screenshot, same viewport) as a
-  checked-in test artefact rather than a manual comparison.
-* Crosshair label geometry (TradingView's is 24 px tall with 8 px side padding) — the app's tag
-  uses the price tag's padding.
+Nothing from the two annotated rounds. A new circle starts a new row in the tables above.
