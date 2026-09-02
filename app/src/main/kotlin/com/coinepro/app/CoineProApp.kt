@@ -5,6 +5,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.net.Uri
 import androidx.annotation.StringRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
@@ -85,7 +86,13 @@ import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
+import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProNavigationRail
+import com.coinepro.core.designsystem.R as DesignR
+import com.coinepro.core.symbols.SymbolArtwork
+import com.coinepro.core.symbols.SymbolClassifier
+import com.coinepro.core.symbols.SymbolMeta
+import com.coinepro.core.symbols.SymbolSearch
 import com.coinepro.core.designsystem.CoineProRailHeader
 import com.coinepro.core.designsystem.ProChartWordmark
 import com.coinepro.core.designsystem.CoineProListDetail
@@ -313,6 +320,9 @@ private const val MARKETS_ROUTE = "markets"
  * no community routes at all, so the destination is not registered and the menu row is dropped.
  */
 private const val COMMUNITY_ROUTE = "community"
+
+/** How many popular markets the chart's wheel turns through when the watchlist is too short. */
+private const val WHEEL_FALLBACK_SIZE = 12
 private const val COMMUNITY_THREAD_PATTERN = "community/{pid}"
 
 private fun communityThreadRoute(postId: Long) = "community/$postId"
@@ -1617,6 +1627,21 @@ private fun MainShell(
     activePlatform: MarketPlatform,
     onSelectPlatform: (MarketPlatform) -> Unit,
 ) {
+    // The platform's live universe, classified once per feed and filtered to the symbols the app
+    // has artwork for. Three screens take it: the symbol fields on the journal and the paper
+    // ticket, and the chart's wheel when the watchlist is too short to turn through.
+    val catalogue: List<SymbolMeta> = remember(marketState.quotes.keys) {
+        SymbolClassifier.classifyAll(marketState.quotes.keys.toList()).filter(SymbolArtwork::covers)
+    }
+    // Item 2: the wheel is always there. The watchlist when the reader has starred two or more
+    // markets; the platform's popular markets in the catalogue's own browse order otherwise.
+    val wheelSymbols: List<String> = remember(watchlist, catalogue) {
+        if (watchlist.count(SymbolArtwork::covers) >= 2) {
+            watchlist
+        } else {
+            SymbolSearch.search(catalogue, "").take(WHEEL_FALLBACK_SIZE).map { it.meta.symbol }
+        }
+    }
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val sparklineScope = rememberCoroutineScope()
@@ -2129,6 +2154,7 @@ private fun MainShell(
                 onSaveLayout = onSaveLayoutAnnounced,
                 onDeleteLayout = onDeleteLayoutAnnounced,
                 watchlist = watchlist,
+                wheelSymbols = wheelSymbols,
                 onPaperTrade = { symbol, buy, entry, size, stopLoss, takeProfit ->
                     paperTradeController.place(
                         PaperOrderRequest(
@@ -2688,10 +2714,11 @@ private fun MainShell(
                     // they cross the spread the venue actually quoted.
                     quoteFor = { symbol -> marketState.quotes[symbol]?.asPaperQuote() },
                     onOpenSymbol = { navController.navigate(chartRoute(it)) },
+                    markets = catalogue,
                 )
             }
             composable(JOURNAL_ROUTE) {
-                JournalScreen(controller = journalController)
+                JournalScreen(controller = journalController, markets = catalogue)
             }
             composable(ALERTS_ROUTE) {
                 AlertCenterScreen(controller = alertsController)
@@ -3041,6 +3068,18 @@ private fun MainShell(
             }
             // Registered only where the routes exist. TradeYar has no `/academy` surface at all, so
             // on that platform this is an absence rather than a lock — see the menu's `absent` set.
+            if (communityController == null) {
+                // The tab is in the bar on both platforms — see `AppDestination.COMMUNITY` — so
+                // the destination has to exist here too. TradeYar has no board; say so.
+                composable(COMMUNITY_ROUTE) {
+                    CoineProEmptyState(
+                        icon = DesignR.drawable.icon_users,
+                        message = stringResource(R.string.community_absent_here),
+                        hint = stringResource(R.string.community_absent_here_hint),
+                        modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),
+                    )
+                }
+            }
             if (communityController != null) {
                 composable(COMMUNITY_ROUTE) {
                     CommunityScreen(

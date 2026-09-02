@@ -152,11 +152,7 @@
 
 پشتیبانی در تلگرام: <https://t.me/CoinePro_Admin>
 
-ایمیل پشتیبانی: <behnamjalali88@gmail.com>
-
 **توسعه‌دهنده و مسئول حقوقی داده‌ها:** بهنام جلالی
-
-**نشانی:** ایران، تهران، خیابان آیت‌الله کاشانی، خیابان الهی، کوچهٔ ۱۲، پلاک ۱۹، واحد ۶
 
 ---
 ---
@@ -253,8 +249,5 @@ Not intended for anyone under 18. We do not knowingly collect children's data.
 
 Support on Telegram: <https://t.me/CoinePro_Admin>
 
-Support e-mail: <behnamjalali88@gmail.com>
-
 **Developer and data controller:** Behnam Jalali
 
-**Address:** Unit 6, No. 19, 12th Alley, Elahi Street, Ayatollah Kashani Street, Tehran, Iran

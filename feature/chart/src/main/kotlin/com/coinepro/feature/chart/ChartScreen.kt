@@ -249,6 +249,17 @@ fun ChartScreen(
     /** Live prices for the watchlist strip. Empty draws tickers with no figures beside them. */
     watchlistQuotes: Map<String, WatchlistQuote> = emptyMap(),
     /**
+     * The ring the symbol wheel turns through — item 2 of the owner's list.
+     *
+     * The wheel in the command band and in the fullscreen strip drew the reader's watchlist, and
+     * a reader who had starred nothing saw no wheel at all — which was reported, fairly, as the
+     * control not existing. The shell now hands a ring here that is the watchlist when there is
+     * one worth turning through and the platform's popular markets when there is not, so the wheel
+     * is always on the glass. [watchlist] keeps driving the split pane below the page, which is
+     * the reader's own list and should stay empty until they fill it.
+     */
+    wheelSymbols: List<String> = watchlist,
+    /**
      * Where the divider between the chart and the watchlist is remembered.
      *
      * Null keeps the split at its default and forgets a drag when the screen leaves, which is what
@@ -981,7 +992,7 @@ fun ChartScreen(
             starred = starredWires,
             onOpenSheet = { sheet = it },
             onExit = { fullscreen = false },
-            symbols = watchlist,
+            symbols = wheelSymbols,
             onSelectSymbol = switchSymbol.takeIf { controllerFor != null || onSelectSymbol != null },
         )
     } else {
@@ -1158,7 +1169,7 @@ fun ChartScreen(
             // Offered only where the screen was given a way to switch at all: on a preview or a
             // fixture there is none, and a control that silently does nothing is worse than one
             // that is absent.
-            symbols = watchlist,
+            symbols = wheelSymbols,
             symbol = state.symbol,
             onSelectSymbol = switchSymbol.takeIf { controllerFor != null || onSelectSymbol != null },
             // The same quotes the watchlist strip below the page draws from, so the figure beside
@@ -3107,7 +3118,10 @@ private val ComparisonRefusal.persianMessage: String
  */
 @Composable
 private fun ChartReadingsDisclosure(hasSetup: Boolean, content: @Composable () -> Unit) {
-    var open by rememberSaveable(hasSetup) { mutableStateOf(hasSetup) }
+    // Open, always, on arrival — item 5 of the owner's list. The fold stays so a reader who wants
+    // the plot at full height can still have it, but the readings are what this page is for and a
+    // panel that has to be discovered behind a chevron was reported as a panel that was not there.
+    var open by rememberSaveable(hasSetup) { mutableStateOf(true) }
     val haptics = rememberCoineProHaptics()
     Column(modifier = Modifier.fillMaxWidth()) {
         HorizontalDivider(color = CoineProColors.Border)

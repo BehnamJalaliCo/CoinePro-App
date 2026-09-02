@@ -3,6 +3,7 @@ package com.coinepro.core.script
 import com.coinepro.core.chart.Candle
 import com.coinepro.core.chart.CandleSeries
 import com.coinepro.core.chart.Indicators
+import com.coinepro.core.chart.IndicatorsExt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -287,6 +288,96 @@ class NamaScriptTest {
 
         assertTrue(result.error?.message ?: "", result.ok)
         assertEquals("SMA", result.plots.single().title)
+    }
+
+    /* ---------------------------------------------------------------- second-wave builtins */
+
+    @Test
+    fun `the second wave of ta functions delegates to the chart's indicators too`() {
+        val series = bars()
+        val cases = mapOf(
+            "ta.williams_r(14)" to Indicators.williamsR(series.high, series.low, series.close, 14),
+            "ta.obv()" to Indicators.obv(series.close, series.volume),
+            "ta.keltner_upper(20, 2)" to Indicators.keltner(series.high, series.low, series.close, 20, 2.0).upper,
+            "ta.momentum(close, 10)" to IndicatorsExt.momentum(series.close, 10),
+            "ta.smma(close, 14)" to IndicatorsExt.smma(series.close, 14),
+            "ta.bb_percent(close, 20, 2)" to IndicatorsExt.bollingerPercent(series.close, 20, 2.0),
+            "ta.ultimate(7, 14, 28)" to IndicatorsExt.ultimateOscillator(series.high, series.low, series.close, 7, 14, 28),
+            "ta.chop(14)" to Indicators.choppiness(series.high, series.low, series.close, 14),
+        )
+        for ((source, expected) in cases) {
+            val result = NamaScript.run("plot($source)", series)
+            assertTrue("$source: ${result.error?.message}", result.ok)
+            val plot = result.plots.single()
+            for (index in 0 until series.bars.size) {
+                assertEquals("$source bar $index", expected[index], plot.values[index])
+            }
+        }
+    }
+
+    @Test
+    fun `volume builtins are empty rather than zero on a feed with no volume`() {
+        val silent = CandleSeries(bars().bars.map { it.copy(v = null) })
+        val result = NamaScript.run("plot(ta.obv())", silent)
+        assertTrue(result.error?.message ?: "", result.ok)
+        assertTrue(result.plots.single().values.toList().all { it == null })
+    }
+
+    @Test
+    fun `rising and falling read consecutive bars`() {
+        // Prices go up one a bar, so every bar from the third is rising over two and none is falling.
+        val result = run(
+            """
+            marker(ta.rising(close, 2), title = "up", style = "up")
+            marker(ta.falling(close, 2), title = "down", style = "down")
+            """.trimIndent(),
+        )
+        assertTrue(result.error?.message ?: "", result.ok)
+        val up = result.markers.single { it.title == "up" }
+        val down = result.markers.single { it.title == "down" }
+        assertEquals(58, up.bars.size)
+        assertEquals(0, down.bars.size)
+    }
+
+    @Test
+    fun `barssince counts from the last bar the condition held`() {
+        // The condition fires on bar 10 only.
+        val result = run("plot(ta.barssince(bar_index == 10))")
+        assertTrue(result.error?.message ?: "", result.ok)
+        val values = result.plots.single().values
+        assertNull(values[9])
+        assertEquals(0.0, values[10]!!, 1e-9)
+        assertEquals(5.0, values[15]!!, 1e-9)
+        assertEquals(49.0, values[59]!!, 1e-9)
+    }
+
+    @Test
+    fun `valuewhen holds the source from the bar the condition last held`() {
+        val result = run("plot(ta.valuewhen(bar_index == 10 or bar_index == 20, close, 0))")
+        assertTrue(result.error?.message ?: "", result.ok)
+        val values = result.plots.single().values
+        assertNull(values[9])
+        assertEquals(110.0, values[15]!!, 1e-9)
+        assertEquals(120.0, values[25]!!, 1e-9)
+        val previous = run("plot(ta.valuewhen(bar_index == 10 or bar_index == 20, close, 1))")
+        assertEquals(110.0, previous.plots.single().values[25]!!, 1e-9)
+    }
+
+    @Test
+    fun `cum is a running total`() {
+        val result = run("plot(ta.cum(1))")
+        assertEquals(60.0, result.plots.single().values[59]!!, 1e-9)
+    }
+
+    @Test
+    fun `a pivot is reported on the bar that confirms it and nowhere else`() {
+        // A single peak at bar 30 in an otherwise flat series.
+        val series = bars { index -> if (index == 30) 150.0 else 100.0 }
+        val result = NamaScript.run("plot(ta.pivothigh(3, 3))", series)
+        assertTrue(result.error?.message ?: "", result.ok)
+        val values = result.plots.single().values
+        assertEquals(151.0, values[33]!!, 1e-9)
+        assertEquals(1, values.toList().count { it != null })
     }
 
     private fun <T> assertNotNull(value: T?): T {

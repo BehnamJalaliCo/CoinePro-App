@@ -117,4 +117,6 @@
 
     <string name="teaching_search_lead">نماد یا صفحه‌ای از برنامه را با نامش پیدا می‌کنی.</string>
     <string name="teaching_search_pitfall">نام فارسی هم کار می‌کند؛ لازم نیست نماد لاتین را بدانی.</string>
+    <!-- CoineProSymbolField: typed text that matches no market in the catalogue. -->
+    <string name="symbol_field_no_match">بازاری با این نام پیدا نشد</string>
 </resources>

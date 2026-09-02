@@ -15,6 +15,73 @@ it is for.
 
 ---
 
+## [4.19.0] — 2026-09-02 — Ten things from one phone, with the two servers now really answering
+
+Tested on a handset in Iran against both backends after their deploys. Ten reports, numbered by the
+owner; the numbers below are theirs.
+
+### 1 · The calendar flashed and vanished, on both platforms
+
+Three causes, all fixed. A refresh that came back with an empty calendar replaced the one already
+on screen — `MarketIntelController` keeps a non-empty section when the next fetch has nothing for
+it, per platform. The forex academy calendar was never asked for by a signed-out reader, because the
+token minter threw before the *public* route was called — the header is optional now. And TradeYar's
+screen had a fourth mode, «this platform publishes no calendar», that is gone: the calendar is read
+on both platforms, from TradeYar's relay, then CoinePro-FX's public `academy/bn/calendar` (fifty-one
+events this week, measured), then the published file.
+
+### 4 · Forex news said «sign in»
+
+The members' route answers 401 to a reader with no forex session and the screen showed that
+sentence — while `academy/bn/news` was publishing twenty Persian stories a day on a public route
+this app never read. It reads it now, first, before any wire; the wires are unreachable from Iran
+anyway. Silver stories are tagged silver and gold stories gold from their own titles.
+
+### 2 · The symbol wheel was there and nobody could see it
+
+The vertical scroll of tickers beside the bar lengths — the control in the owner's screenshot — was
+already built and drew the watchlist, so a reader who had starred nothing saw nothing. It now turns
+through the platform's popular markets until the watchlist has two, on the page and in fullscreen.
+The community board is in the bottom bar on both platforms; on TradeYar, which has no board, the
+tab says so rather than vanishing.
+
+### 3 · Contact
+
+The postal address and the e-mail are gone from the terms and the privacy policy, in both languages
+and on the site. Telegram support and the developer's name remain.
+
+### 5 · The market reading is open
+
+«خوانش بازار و ابزارها» opens expanded. The fold stays for a reader who wants the plot taller.
+
+### 6 · The chart has a frame
+
+A hairline where the plot meets the price scale and one where it meets the time scale, in the
+grid's colour a step above the grid's alpha — the edge every terminal draws and this one did not.
+
+### 7 · The journal knows the catalogue
+
+The symbol field offers markets as you type — «bit» lists Bitcoin with its logo and description —
+and the search matches entries by what the word means, so «bit» finds the trades filed under
+`BTCUSDT`. `CoineProSymbolField` in the design system; the paper ticket takes the same field.
+
+### 8 · NamaScript, second wave
+
+Forty-odd new built-ins: `ta.obv`, `ta.ad`, `ta.pvt`, `ta.force`, `ta.chaikin_osc`, `ta.eom`,
+`ta.klinger`; `ta.williams_r`, `ta.ultimate`, `ta.trix`, `ta.fisher`, `ta.crsi`, `ta.smi`,
+`ta.chop`, `ta.bop`, `ta.vortex_plus/minus`, `ta.momentum`; `ta.smma`, `ta.zlema`, `ta.kama`,
+`ta.mcginley`, `ta.linreg`; `ta.tr`, `ta.hv`, `ta.chaikin_vol`, `ta.bb_percent`, `ta.bb_width`,
+`ta.keltner_*`, `ta.env_*`; and the bar logic Pine users reach for — `ta.rising`, `ta.falling`,
+`ta.barssince`, `ta.valuewhen`, `ta.cum`, `ta.pivothigh`, `ta.pivotlow`. Every one delegates to
+the chart's own indicator library and is asserted against it. The reference in the app lists them.
+
+### 9 · Paper trading finds its markets
+
+The ticket's symbol field is the catalogue field above; pick a market and the quote line fills,
+the market order fills at it. The engine was already right; it had no way to be told the symbol.
+
+---
+
 ## [4.18.1] — 2026-09-01 — Five things from one phone, and the one bug under three of them
 
 Tested on a handset on an Iranian network, with screenshots. Five reports; three of them were one

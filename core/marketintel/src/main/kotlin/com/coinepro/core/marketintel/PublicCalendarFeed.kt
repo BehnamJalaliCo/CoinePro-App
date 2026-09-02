@@ -57,7 +57,18 @@ internal object PublicCalendarFeed {
      */
     fun relayUrl(baseUrl: String): String = baseUrl.trimEnd('/') + "/" + RELAY_PATH
 
+    /**
+     * CoinePro-FX's own weekly calendar, public, on the host every reader of this app can reach.
+     *
+     * Measured 2026-09-02: `GET /api/academy/bn/calendar` → 200, fifty-one events for the week,
+     * with `actual` filled in as releases land. It is the same data as [URL] and it answers from
+     * Iran, so it is asked before the file's own host on **both** platforms — a rate decision moves
+     * every USDT pair as surely as it moves gold.
+     */
+    fun academyUrl(baseUrl: String): String = baseUrl.trimEnd('/') + "/" + ACADEMY_PATH
+
     private const val RELAY_PATH = "api/v1/public/calendar/week"
+    private const val ACADEMY_PATH = "academy/bn/calendar"
 
     /**
      * Every event in [body] that has a title and a time, newest last.

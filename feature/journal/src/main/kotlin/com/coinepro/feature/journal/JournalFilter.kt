@@ -71,6 +71,14 @@ data class JournalFilter(
     val tags: Set<String> = emptySet(),
     /** Free text over the symbol, the note, the lesson, the mood and the tags. */
     val query: String = "",
+    /**
+     * The wire symbols [query] stands for in the catalogue — «bit» is `BTCUSDT`, «طلا» is `XAUUSD`.
+     *
+     * Resolved by the screen, which has the catalogue, and matched here as whole symbols so the
+     * same subset feeds the list, the figures and the export. Empty when the word names no market,
+     * and then the search is the plain text search it always was.
+     */
+    val symbolAliases: Set<String> = emptySet(),
     val outcome: JournalOutcome = JournalOutcome.ANY,
     /** Whether the list is narrowed to the entries that do — or do not — carry a screenshot. */
     val shot: JournalShot = JournalShot.ANY,
@@ -144,6 +152,7 @@ data class JournalFilter(
 
     private fun matchesQuery(entry: JournalEntryEntity, needle: String): Boolean {
         if (needle.isEmpty()) return true
+        if (symbolAliases.any { it.equals(entry.symbol.trim(), ignoreCase = true) }) return true
         return listOf(entry.symbol, entry.note, entry.lesson, entry.emotion, entry.tags)
             .any { normalise(it).contains(needle) }
     }

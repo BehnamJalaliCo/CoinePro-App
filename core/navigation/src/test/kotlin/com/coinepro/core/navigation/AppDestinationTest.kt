@@ -38,10 +38,12 @@ class AppDestinationTest {
     }
 
     @Test
-    fun `the bar holds five destinations`() {
-        // Five is a layout constant as much as a product one: the labels are Persian words at a
-        // fixed type size, and a sixth wraps them.
-        assertEquals(5, AppDestination.entries.size)
+    fun `the bar holds six destinations`() {
+        // Six, with the community board. It was five as a layout constant — Persian labels at a
+        // fixed type size — and the board went into the menu instead, where the owner reported it
+        // as absent. The bar's label style is `labelSmall`, which fits six at the narrowest width
+        // this app supports; `screenshot` fixtures cover it.
+        assertEquals(6, AppDestination.entries.size)
     }
 
     @Test

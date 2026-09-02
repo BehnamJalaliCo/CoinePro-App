@@ -1,6 +1,8 @@
 package com.coinepro.core.script
 
+import com.coinepro.core.chart.CandleSeries
 import com.coinepro.core.chart.Indicators
+import com.coinepro.core.chart.IndicatorsExt
 import com.coinepro.core.chart.Line
 import com.coinepro.core.common.toPersianDigits
 import kotlin.math.abs
@@ -155,6 +157,124 @@ internal object Builtins {
                 })
             }
 
+            /* ---------------------------------------------------------- more averages */
+            "ta.smma" -> series(interpreter, arguments.source(0).through { IndicatorsExt.smma(it, arguments.length(1)) })
+            "ta.zlema" -> series(interpreter, arguments.source(0).through { IndicatorsExt.zlema(it, arguments.length(1)) })
+            "ta.kama" -> series(
+                interpreter,
+                arguments.source(0).through {
+                    IndicatorsExt.kama(
+                        it,
+                        arguments.length(1, default = 10),
+                        arguments.length(2, default = 2),
+                        arguments.length(3, default = 30),
+                    )
+                },
+            )
+            "ta.mcginley" -> series(interpreter, arguments.source(0).through { IndicatorsExt.mcginley(it, arguments.length(1, default = 14)) })
+            "ta.linreg" -> series(interpreter, arguments.source(0).through { IndicatorsExt.linearRegression(it, arguments.length(1)) })
+            /* ---------------------------------------------------------- more oscillators */
+            "ta.momentum" -> series(interpreter, arguments.source(0).through { IndicatorsExt.momentum(it, arguments.length(1, default = 10)) })
+            "ta.williams_r" -> series(interpreter, withHlc(interpreter) { h, l, c -> Indicators.williamsR(h, l, c, arguments.length(0, default = 14)) })
+            "ta.ultimate" -> series(
+                interpreter,
+                withHlc(interpreter) { h, l, c ->
+                    IndicatorsExt.ultimateOscillator(
+                        h, l, c,
+                        arguments.length(0, default = 7),
+                        arguments.length(1, default = 14),
+                        arguments.length(2, default = 28),
+                    )
+                },
+            )
+            "ta.trix" -> series(interpreter, arguments.source(0).through { IndicatorsExt.trix(it, arguments.length(1, default = 18), arguments.length(2, default = 9)).line })
+            "ta.trix_signal" -> series(interpreter, arguments.source(0).through { IndicatorsExt.trix(it, arguments.length(1, default = 18), arguments.length(2, default = 9)).signal })
+            "ta.fisher" -> series(interpreter, withHl(interpreter) { h, l -> IndicatorsExt.fisherTransform(h, l, arguments.length(0, default = 9)).line })
+            "ta.fisher_signal" -> series(interpreter, withHl(interpreter) { h, l -> IndicatorsExt.fisherTransform(h, l, arguments.length(0, default = 9)).signal })
+            "ta.crsi" -> series(
+                interpreter,
+                arguments.source(0).through {
+                    IndicatorsExt.connorsRsi(
+                        it,
+                        arguments.length(1, default = 3),
+                        arguments.length(2, default = 2),
+                        arguments.length(3, default = 100),
+                    )
+                },
+            )
+            "ta.smi" -> series(interpreter, arguments.source(0).through { IndicatorsExt.smiErgodic(it, arguments.length(1, default = 20), arguments.length(2, default = 5), arguments.length(3, default = 5)).line })
+            "ta.smi_signal" -> series(interpreter, arguments.source(0).through { IndicatorsExt.smiErgodic(it, arguments.length(1, default = 20), arguments.length(2, default = 5), arguments.length(3, default = 5)).signal })
+            "ta.chop" -> series(interpreter, withHlc(interpreter) { h, l, c -> Indicators.choppiness(h, l, c, arguments.length(0, default = 14)) })
+            "ta.bop" -> series(
+                interpreter,
+                IndicatorsExt.balanceOfPower(
+                    interpreter.candles.open,
+                    interpreter.candles.high,
+                    interpreter.candles.low,
+                    interpreter.candles.close,
+                    arguments.length(0, default = 1),
+                ),
+            )
+            "ta.vortex_plus" -> series(interpreter, withHlc(interpreter) { h, l, c -> Indicators.vortex(h, l, c, arguments.length(0, default = 14)).plus })
+            "ta.vortex_minus" -> series(interpreter, withHlc(interpreter) { h, l, c -> Indicators.vortex(h, l, c, arguments.length(0, default = 14)).minus })
+            /* ---------------------------------------------------------- volatility */
+            "ta.tr" -> series(interpreter, withHlc(interpreter) { h, l, c -> Line.from(Indicators.trueRange(h, l, c).map { v -> v.takeIf(Double::isFinite) }) })
+            "ta.hv" -> series(interpreter, arguments.source(0).through { IndicatorsExt.historicalVolatility(it, arguments.length(1, default = 10)) })
+            "ta.chaikin_vol" -> series(interpreter, withHl(interpreter) { h, l -> IndicatorsExt.chaikinVolatility(h, l, arguments.length(0, default = 10), arguments.length(1, default = 10)) })
+            "ta.bb_percent" -> series(interpreter, arguments.source(0).through { IndicatorsExt.bollingerPercent(it, arguments.length(1, default = 20), multiplierOf(arguments, 2)) })
+            "ta.bb_width" -> series(interpreter, arguments.source(0).through { IndicatorsExt.bollingerWidth(it, arguments.length(1, default = 20), multiplierOf(arguments, 2)) })
+            "ta.keltner_upper" -> series(interpreter, keltner(interpreter, arguments).upper)
+            "ta.keltner_lower" -> series(interpreter, keltner(interpreter, arguments).lower)
+            "ta.keltner_basis" -> series(interpreter, keltner(interpreter, arguments).basis)
+            "ta.env_upper" -> series(interpreter, envelope(arguments).upper)
+            "ta.env_lower" -> series(interpreter, envelope(arguments).lower)
+            "ta.env_basis" -> series(interpreter, envelope(arguments).basis)
+            /* ---------------------------------------------------------- more volume */
+            "ta.obv" -> series(interpreter, withVolume(interpreter) { c -> Indicators.obv(c.close, c.volume) })
+            "ta.ad" -> series(interpreter, withVolume(interpreter) { c -> IndicatorsExt.accumulationDistribution(c.high, c.low, c.close, c.volume) })
+            "ta.pvt" -> series(interpreter, withVolume(interpreter) { c -> IndicatorsExt.priceVolumeTrend(c.close, c.volume) })
+            "ta.force" -> series(interpreter, withVolume(interpreter) { c -> IndicatorsExt.forceIndex(c.close, c.volume, arguments.length(0, default = 13)) })
+            "ta.chaikin_osc" -> series(interpreter, withVolume(interpreter) { c -> IndicatorsExt.chaikinOscillator(c.high, c.low, c.close, c.volume, arguments.length(0, default = 3), arguments.length(1, default = 10)) })
+            "ta.eom" -> series(interpreter, withVolume(interpreter) { c -> IndicatorsExt.easeOfMovement(c.high, c.low, c.volume, arguments.length(0, default = 14)) })
+            "ta.klinger" -> series(interpreter, withVolume(interpreter) { c -> IndicatorsExt.klinger(c.high, c.low, c.close, c.volume, arguments.length(0, default = 34), arguments.length(1, default = 55), arguments.length(2, default = 13)).line })
+            "ta.klinger_signal" -> series(interpreter, withVolume(interpreter) { c -> IndicatorsExt.klinger(c.high, c.low, c.close, c.volume, arguments.length(0, default = 34), arguments.length(1, default = 55), arguments.length(2, default = 13)).signal })
+            /* ---------------------------------------------------------- bar logic */
+            "ta.rising" -> monotone(interpreter, arguments, rising = true)
+            "ta.falling" -> monotone(interpreter, arguments, rising = false)
+            "ta.barssince" -> {
+                val condition = interpreter.flagLine(arguments.value(0), node)
+                var since: Int? = null
+                series(interpreter, Line.of(interpreter.barCount) { index ->
+                    val fired = condition[index]?.let { it != 0.0 } ?: false
+                    since = if (fired) 0 else since?.plus(1)
+                    since?.toDouble()
+                })
+            }
+            "ta.valuewhen" -> {
+                val condition = interpreter.flagLine(arguments.value(0), node)
+                val source = arguments.source(1)
+                // Zero is the latest occurrence, so this is a count and not a period.
+                val occurrence = if (arguments.size > 2) arguments.constant(2, "شمارهٔ رخداد").toInt().coerceAtLeast(0) else 0
+                val held = ArrayDeque<Double?>()
+                series(interpreter, Line.of(interpreter.barCount) { index ->
+                    val fired = condition[index]?.let { it != 0.0 } ?: false
+                    if (fired) {
+                        held.addFirst(source[index])
+                        while (held.size > occurrence + 1) held.removeLast()
+                    }
+                    held.getOrNull(occurrence)
+                })
+            }
+            "ta.cum" -> {
+                val source = arguments.source(0)
+                var total = 0.0
+                series(interpreter, Line.of(interpreter.barCount) { index ->
+                    source[index]?.let { total += it }
+                    total
+                })
+            }
+            "ta.pivothigh" -> pivot(interpreter, arguments, high = true)
+            "ta.pivotlow" -> pivot(interpreter, arguments, high = false)
             /* ---------------------------------------------------------- crosses */
             "ta.crossover" -> cross(interpreter, node, arguments, upward = true)
             "ta.crossunder" -> cross(interpreter, node, arguments, upward = false)
@@ -285,6 +405,110 @@ internal object Builtins {
      * because `and` propagates absence and a reader sees a strategy that draws nothing rather than
      * a strategy that quietly lost a third of its evidence.
      */
+    /* ------------------------------------------------------------------ second-wave groups */
+
+    /**
+     * The chart's own high/low/close, handed to an indicator that reads them whole.
+     *
+     * The three columns are the chart's, not a script source, so there is no `Source` offset to
+     * realign: every one of these indicators is aligned to the bar it was computed on.
+     */
+    private inline fun withHlc(interpreter: Interpreter, compute: (DoubleArray, DoubleArray, DoubleArray) -> Line): Line {
+        val candles = interpreter.candles
+        return compute(candles.high, candles.low, candles.close)
+    }
+
+    private inline fun withHl(interpreter: Interpreter, compute: (DoubleArray, DoubleArray) -> Line): Line {
+        val candles = interpreter.candles
+        return compute(candles.high, candles.low)
+    }
+
+    /**
+     * A volume indicator, or an empty line on a feed with no volume.
+     *
+     * Empty rather than zero, the same rule `ta.vwap` follows: a feed that sends no volume has
+     * not said the volume was nought, and an OBV drawn flat at zero would say exactly that.
+     */
+    private inline fun withVolume(interpreter: Interpreter, compute: (CandleSeries) -> Line): Line {
+        val candles = interpreter.candles
+        if (!candles.hasVolume) return Line.empty(interpreter.barCount)
+        return compute(candles)
+    }
+
+    private fun multiplierOf(arguments: Arguments, index: Int): Double =
+        if (arguments.size > index) arguments.constant(index, "ضریب") else 2.0
+
+    private fun keltner(interpreter: Interpreter, arguments: Arguments): com.coinepro.core.chart.Band =
+        Indicators.keltner(
+            interpreter.candles.high,
+            interpreter.candles.low,
+            interpreter.candles.close,
+            arguments.length(0, default = 20),
+            multiplierOf(arguments, 1),
+        )
+
+    private fun envelope(arguments: Arguments): com.coinepro.core.chart.Band {
+        val line = arguments.source(0)
+        val period = arguments.length(1, default = 20)
+        val percent = if (arguments.size > 2) arguments.constant(2, "درصد") else 1.0
+        val source = Source.of(line)
+        if (source.values.isEmpty()) {
+            val empty = Line.empty(line.size)
+            return com.coinepro.core.chart.Band(empty, empty, empty)
+        }
+        val band = IndicatorsExt.envelopes(source.values, period, percent)
+        return com.coinepro.core.chart.Band(
+            source.realign(band.basis),
+            source.realign(band.upper),
+            source.realign(band.lower),
+        )
+    }
+
+    /** True on a bar where the source has risen (or fallen) on each of the last `length` bars. */
+    private fun monotone(interpreter: Interpreter, arguments: Arguments, rising: Boolean): Value {
+        val source = arguments.source(0)
+        val length = arguments.length(1, default = 1)
+        return Value.FlagSeries(
+            Line.of(interpreter.barCount) { index ->
+                if (index < length) return@of null
+                for (back in 0 until length) {
+                    val now = source[index - back] ?: return@of null
+                    val then = source[index - back - 1] ?: return@of null
+                    val ok = if (rising) now > then else now < then
+                    if (!ok) return@of 0.0
+                }
+                1.0
+            },
+        )
+    }
+
+    /**
+     * A pivot, reported on the bar that confirms it.
+     *
+     * `ta.pivothigh(left, right)` is the high of a bar that is higher than the `left` bars before
+     * it and the `right` bars after it; the value is placed on the bar `right` bars later, which
+     * is the first bar on which the pivot is known — and nowhere else, so nothing here repaints.
+     */
+    private fun pivot(interpreter: Interpreter, arguments: Arguments, high: Boolean): Value {
+        val left = arguments.length(0, default = 5)
+        val right = if (arguments.size > 1) arguments.length(1, default = left) else left
+        val column = if (high) interpreter.candles.high else interpreter.candles.low
+        return series(interpreter, Line.of(interpreter.barCount) { index ->
+            val centre = index - right
+            if (centre - left < 0) return@of null
+            val candidate = column[centre]
+            for (offset in 1..left) {
+                val other = column[centre - offset]
+                if (if (high) other >= candidate else other <= candidate) return@of null
+            }
+            for (offset in 1..right) {
+                val other = column[centre + offset]
+                if (if (high) other >= candidate else other <= candidate) return@of null
+            }
+            candidate
+        })
+    }
+
     private fun vwap(interpreter: Interpreter): Line {
         val candles = interpreter.candles
         if (!candles.hasVolume) return Line.empty(interpreter.barCount)

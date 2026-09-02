@@ -14,8 +14,6 @@
     <string name="calendar_impact_unknown">Impact unknown</string>
     <string name="calendar_loading">Loading economic events…</string>
     <string name="calendar_unavailable">The calendar is unavailable.</string>
-    <string name="calendar_not_on_platform">TradeYar does not publish an economic calendar.</string>
-    <string name="calendar_not_on_platform_hint">Macro releases — rate decisions, employment, inflation — belong to the forex side and have no bearing on a token listing. Switch to CoinePro-FX to read the calendar.</string>
     <string name="calendar_none_published">The server sent no events for this calendar. The economic calendar comes from the server; the app invents none of its own.</string>
     <string name="calendar_empty">No events match this filter.</string>
     <string name="calendar_retry">Retry</string>

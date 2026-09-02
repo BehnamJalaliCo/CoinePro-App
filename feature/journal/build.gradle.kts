@@ -18,6 +18,7 @@ dependencies {
     implementation(project(":core:journal"))
     implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
+    implementation(project(":core:symbols"))
     // The document picker behind the screenshot slot. Only `OpenDocument` hands back a URI whose
     // read grant can be persisted, which is what a journal entry needs — a gallery pick is
     // readable until the process dies and then silently is not.

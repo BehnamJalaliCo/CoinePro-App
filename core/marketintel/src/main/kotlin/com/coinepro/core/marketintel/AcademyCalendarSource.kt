@@ -105,7 +105,12 @@ class NetworkAcademyCalendarSource(
     private val api = retrofit.create(CalendarFallbackApi::class.java)
 
     override suspend fun events(): CalendarSourceOutcome {
-        val academy = attempt(ACADEMY_ROUTE) { api.academyCalendar("Bearer " + academyToken()) }
+        // The route is public. The token is sent when the reader has one and simply omitted when
+        // they do not: the minter needs a forex session, and a reader without one used to be
+        // stopped here — by the minter throwing — before the public route was ever asked. That is
+        // how a signed-out forex reader had no calendar on a server publishing fifty events.
+        val bearer = runCatching { "Bearer " + academyToken() }.getOrNull()
+        val academy = attempt(ACADEMY_ROUTE) { api.academyCalendar(bearer) }
         if (academy.events.isNotEmpty()) return academy
         val user = attempt(USER_ROUTE) { api.userCalendar() }
         // The academy answer is kept when the second route produced nothing either, because it is
@@ -136,7 +141,7 @@ private interface CalendarFallbackApi {
      * different credential can set its own, which this one may yet start requiring.
      */
     @GET("academy/bn/calendar")
-    suspend fun academyCalendar(@Header("Authorization") authorization: String): JsonElement
+    suspend fun academyCalendar(@Header("Authorization") authorization: String?): JsonElement
 
     /**
      * The VIP panel's own calendar — today and the next twenty-four hours, with importance.

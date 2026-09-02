@@ -52,7 +52,10 @@ import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.CoineProSymbolField
 import com.coinepro.core.designsystem.CoineProTextField
+import com.coinepro.core.symbols.SymbolMeta
+import com.coinepro.core.symbols.SymbolSearch
 import com.coinepro.core.designsystem.CoineProToggleChip
 import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.designsystem.rowMotion
@@ -84,7 +87,16 @@ import java.time.Instant
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun JournalScreen(controller: JournalController) {
+fun JournalScreen(
+    controller: JournalController,
+    /**
+     * The platform's catalogue, for the symbol field and the search — item 7 of the owner's list.
+     *
+     * With it, typing «bit» in either place means Bitcoin: the field offers `BTCUSDT` and the
+     * search matches entries filed under it. Empty leaves both as plain text.
+     */
+    markets: List<SymbolMeta> = emptyList(),
+) {
     val state by controller.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val screenshots = rememberJournalScreenshots()
@@ -106,10 +118,21 @@ fun JournalScreen(controller: JournalController) {
     var outcome by rememberSaveable { mutableStateOf(JournalOutcome.ANY.name) }
     var shot by rememberSaveable { mutableStateOf(JournalShot.ANY.name) }
 
-    val filter = remember(selectedTags, query, outcome, shot) {
+    // What the typed word means in the catalogue, so a search for «bit» or «بیت‌کوین» finds the
+    // entries filed under BTCUSDT rather than only the ones with the letters b-i-t in a note.
+    val aliases = remember(query, markets) {
+        val needle = query.trim()
+        if (needle.length < 2 || markets.isEmpty()) {
+            emptySet()
+        } else {
+            SymbolSearch.search(markets, needle).take(ALIAS_LIMIT).map { it.meta.symbol }.toSet()
+        }
+    }
+    val filter = remember(selectedTags, query, outcome, shot, aliases) {
         JournalFilter(
             tags = selectedTags.toSet(),
             query = query,
+            symbolAliases = aliases,
             outcome = JournalOutcome.valueOf(outcome),
             shot = JournalShot.valueOf(shot),
         )
@@ -163,7 +186,13 @@ fun JournalScreen(controller: JournalController) {
                         style = MaterialTheme.typography.titleMedium,
                         color = CoineProColors.TextPrimary,
                     )
-                    CoineProTextField(symbol, { symbol = it.uppercase() }, stringResource(R.string.journal_symbol), Modifier.fillMaxWidth())
+                    CoineProSymbolField(
+                        value = symbol,
+                        onValueChange = { symbol = it.uppercase() },
+                        label = stringResource(R.string.journal_symbol),
+                        markets = markets,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
                         Chip(stringResource(R.string.journal_buy), buy, CoineProColors.Buy) { buy = true }
                         Chip(stringResource(R.string.journal_sell), !buy, CoineProColors.Sell) { buy = false }
@@ -607,3 +636,6 @@ private val decimal = KeyboardOptions(keyboardType = KeyboardType.Decimal)
 
 /** Persian numerals folded first: `Char.isDigit` keeps them, so a filter alone lets them through. */
 private fun String.number(): Double? = foldDigitsToLatin().trim().toDoubleOrNull()
+
+/** Symbols a search word may stand for. Eight covers every spelling of one market and no more. */
+private const val ALIAS_LIMIT = 8

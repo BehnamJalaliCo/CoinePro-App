@@ -69,7 +69,6 @@ import com.coinepro.core.marketintel.MarketImpact
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.marketintel.MarketIntelState
 import com.coinepro.core.marketintel.MarketRelevance
-import com.coinepro.core.model.MarketPlatform
 import java.time.ZoneId
 
 
@@ -176,14 +175,6 @@ fun EconomicCalendarScreen(
                     stringResource(R.string.calendar_retry),
                     controller::refresh,
                 )
-                // No refresh button. A control whose every press repeats the same answer teaches
-                // the reader the app is broken, and this answer is not going to change: the
-                // platform has no calendar to fetch.
-                CalendarMode.NOT_ON_THIS_PLATFORM -> CoineProEmptyState(
-                    icon = CoineProIcons.Calendar,
-                    message = stringResource(R.string.calendar_not_on_platform),
-                    hint = stringResource(R.string.calendar_not_on_platform_hint),
-                )
                 CalendarMode.NOTHING_PUBLISHED -> CoineProEmptyState(
                     icon = CoineProIcons.Calendar,
                     message = stringResource(R.string.calendar_none_published),
@@ -243,14 +234,15 @@ internal enum class CalendarMode {
     ERROR,
 
     /**
-     * The backend that answered does not publish a calendar. Not an outage and not refreshable.
+     * Every source answered and none had events. Nothing here is filtered out.
      *
-     * Distinguished from [NOTHING_PUBLISHED] on the platform the snapshot itself reports, so this
-     * cannot drift out of step with which server the app is actually talking to.
+     * There used to be a fourth mode here, «this platform publishes no calendar», drawn on TradeYar
+     * with no refresh button. It was true of TradeYar's own API and is no longer true of the app:
+     * the calendar is macro data that moves every USDT pair as surely as it moves gold, and the
+     * gateway now reads it from CoinePro-FX's public route and from the published week on both
+     * platforms. A crypto reader with no events is a reader whose fetch found none, refreshable
+     * like anybody else's.
      */
-    NOT_ON_THIS_PLATFORM,
-
-    /** The server answered and its calendar was empty. Nothing here is filtered out. */
     NOTHING_PUBLISHED,
 
     /** The server sent events and the impact filter matched none of them. */
@@ -264,11 +256,6 @@ internal fun calendarMode(state: MarketIntelState, filtered: List<EconomicEvent>
     // on the text, a fetch that never answered read as a quiet day — «چیزی منتشر نشده» beside a
     // refresh button, for a calendar the app had not managed to read at all.
     state.failed && state.calendar.isEmpty() -> CalendarMode.ERROR
-    // Only once a fetch has actually answered. Before that the platform is unknown, and guessing it
-    // would put "this platform has no calendar" in front of a forex reader whose calendar is still
-    // on its way.
-    state.calendar.isEmpty() && state.platform == MarketPlatform.TRADEYAR ->
-        CalendarMode.NOT_ON_THIS_PLATFORM
     state.calendar.isEmpty() -> CalendarMode.NOTHING_PUBLISHED
     filtered.isEmpty() -> CalendarMode.FILTERED_OUT
     else -> CalendarMode.EVENTS

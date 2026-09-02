@@ -2245,6 +2245,22 @@ fun CoineProChart(
                         )
                         drawEventMarks(view, decoration.events, plotHeight + paneHeight, eventColours)
                     }
+                    // The frame — item 6 of the owner's list, «چارت چهارچوب ندارد».
+                    //
+                    // Two hairlines: one where the plot meets the price scale, one where it meets
+                    // the time scale. Every terminal draws them and this chart did not, so the
+                    // scales floated beside the bars as loose columns of figures and the plot had
+                    // no edge to be read against. Drawn in the grid's colour a step above the
+                    // grid's alpha, which is exactly the relationship the reference keeps: the
+                    // frame is the strongest neutral line on the glass and still a neutral.
+                    drawFrameRules(
+                        plotWidth = plotWidth,
+                        plotBottom = plotHeight + paneHeight,
+                        rightGutter = frame.rightGutter,
+                        leftGutter = frame.leftGutter,
+                        timeAxis = decoration.showTimeAxis,
+                        palette = palette,
+                    )
                 }
                 // The day's reference goes under the live price, so the tag that wins a collision
                 // is the one that is moving. See [previousSessionClose] for why it is intraday-only.
@@ -3404,6 +3420,30 @@ private fun DrawScope.drawGrid(
  * The width is the argument rather than a constant so a caller that has already thickened its line
  * — a selected level, a wider style — keeps its weight and only gains the registration.
  */
+private fun DrawScope.drawFrameRules(
+    plotWidth: Float,
+    plotBottom: Float,
+    rightGutter: Float,
+    leftGutter: Float,
+    timeAxis: Boolean,
+    palette: ChartPalette,
+) {
+    val colour = palette.grid.copy(alpha = FRAME_ALPHA)
+    val hairline = crispStroke(HAIRLINE_DP.toPx())
+    if (rightGutter > 0f) {
+        val column = strokeCentre(plotWidth, hairline)
+        drawLine(colour, Offset(column, 0f), Offset(column, plotBottom), hairline)
+    }
+    if (leftGutter > 0f) {
+        val column = strokeCentre(0f, hairline)
+        drawLine(colour, Offset(column, 0f), Offset(column, plotBottom), hairline)
+    }
+    if (timeAxis) {
+        val row = strokeCentre(plotBottom, hairline)
+        drawLine(colour, Offset(0f, row), Offset(plotWidth, row), hairline)
+    }
+}
+
 private fun DrawScope.drawRule(
     colour: Color,
     y: Float,
@@ -5205,6 +5245,9 @@ internal val HAIRLINE_DP = 0.8.dp
 internal val LINE_WIDTH_DP = 1.6.dp
 internal val AXIS_PADDING_DP = 4.dp
 private const val GRID_ALPHA = 0.35f
+
+/** The frame around the plot: the grid's colour, firm enough to be an edge and still a neutral. */
+private const val FRAME_ALPHA = 0.9f
 private const val VOLUME_ALPHA = 0.30f
 private const val ZONE_ALPHA = 0.12f
 

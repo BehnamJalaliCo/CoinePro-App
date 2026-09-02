@@ -38,6 +38,7 @@ import com.coinepro.core.papertrade.PaperEngine
 import com.coinepro.core.papertrade.PaperQuote
 import com.coinepro.core.papertrade.PaperTradeController
 import com.coinepro.core.papertrade.PaperTradeUiState
+import com.coinepro.core.symbols.SymbolMeta
 import java.time.ZoneId
 
 /** The five things a paper account is, in the order a session uses them. */
@@ -89,6 +90,14 @@ fun PaperTradeScreen(
     quoteFor: ((String) -> PaperQuote?)? = null,
     onOpenSymbol: ((String) -> Unit)? = null,
     zone: ZoneId = ZoneId.systemDefault(),
+    /**
+     * The platform's catalogue, for the ticket's symbol field — item 9 of the owner's list.
+     *
+     * The ticket took a symbol as free text, so a reader who typed «bit» had no quote and a
+     * market order refused for want of a price. With the catalogue the field offers `BTCUSDT`
+     * as they type, the quote line fills the moment it is picked, and the order fills at it.
+     */
+    markets: List<SymbolMeta> = emptyList(),
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(PaperTab.TICKET) }
@@ -124,6 +133,7 @@ fun PaperTradeScreen(
                 controller = controller,
                 symbol = symbol,
                 onSymbol = { symbol = it },
+                markets = markets,
                 modifier = Modifier.fillMaxSize(),
             )
             PaperTab.POSITIONS -> PaperPositions(

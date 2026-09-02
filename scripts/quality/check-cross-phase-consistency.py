@@ -115,6 +115,11 @@ def check_bottom_navigation() -> None:
         ("CHART", "chart-tab"),
         ("SIGNALS", "signals"),
         ("AI", "ai"),
+        # The board, in the bar the reference keeps it in. Six positions after all: the owner
+        # reported the community as absent when it was two taps down in the menu on one platform,
+        # and a feature nobody can find is an absent feature. Same route as the menu's surface id,
+        # so a saved back stack that holds one still resolves.
+        ("COMMUNITY", "community"),
     ]
     require(entries == expected, f"Bottom navigation contract drifted: {entries}")
 

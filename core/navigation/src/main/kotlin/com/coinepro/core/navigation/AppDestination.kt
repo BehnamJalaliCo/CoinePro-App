@@ -42,4 +42,14 @@ enum class AppDestination(
     CHART("chart-tab", R.string.nav_chart, "C"),
     SIGNALS("signals", R.string.nav_signals, "S"),
     AI("ai", R.string.nav_ai, "AI"),
+
+    /**
+     * The community board, in the bar the reference keeps it in.
+     *
+     * It was reachable from the menu on CoinePro-FX only and the owner reported it as absent. On
+     * TradeYar the platform has no board; the shell draws the tab there too, and the destination
+     * says so rather than the tab vanishing, because a bar whose tabs come and go per platform
+     * is a bar nobody can learn.
+     */
+    COMMUNITY("community", R.string.nav_community, "M"),
 }

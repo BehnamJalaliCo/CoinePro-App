@@ -124,6 +124,8 @@ private fun AppDestination.icon(selected: Boolean): Int = when (this) {
     AppDestination.EXPLORE ->
         if (selected) DesignR.drawable.icon_compass_fill else DesignR.drawable.icon_compass
     AppDestination.CHART -> if (selected) CoineProIcons.Filled.Chart else CoineProIcons.Chart
+    AppDestination.COMMUNITY ->
+        if (selected) DesignR.drawable.icon_users_fill else DesignR.drawable.icon_users
 }
 
 /**

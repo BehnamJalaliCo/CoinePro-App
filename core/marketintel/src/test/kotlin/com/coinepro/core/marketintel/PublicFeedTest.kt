@@ -387,6 +387,79 @@ class PublicFeedTest {
         )
     }
 
+    // ── CoinePro-FX's own public routes, captured 2026-09-02 ─────────────────
+
+    @Test
+    fun `the forex newsroom is read before any wire`() = runTest {
+        // Twenty Persian stories from today were on a public route this app never read, while the
+        // screen showed the members' route's 401 sentence. The wires are not asked at all when the
+        // newsroom answers — and on an Iranian handset they would not have answered anyway.
+        val asked = mutableListOf<String>()
+        val intel = PublicMarketIntel(
+            client = { url ->
+                asked += url
+                if (url.endsWith("academy/bn/news")) fixture("coineprofx-bn-news.json") else null
+            },
+            platform = MarketPlatform.COINEPRO_FX,
+            forexAcademyBaseUrl = "https://coineprofx.example/api/",
+            now = { Instant.parse("2026-09-02T12:00:00Z") },
+        )
+        val stories = intel.news()
+        assertEquals(20, stories.size)
+        assertEquals(listOf("https://coineprofx.example/api/academy/bn/news"), asked)
+        assertTrue(stories.all { it.id.startsWith("fx:") })
+        assertTrue(stories.first().title.isNotBlank())
+        // Newest first, as every other feed in this module.
+        assertTrue(stories.zipWithNext().all { (a, b) -> !a.publishedAt.isBefore(b.publishedAt) })
+    }
+
+    @Test
+    fun `a silver story is tagged silver and a gold story gold`() {
+        val now = Instant.parse("2026-09-02T12:00:00Z")
+        val stories = AcademyPublicNews.parse(fixture("coineprofx-bn-news.json"), now)
+        val silver = stories.first { it.title.contains("نقره") }
+        assertEquals(setOf(MarketRelevance.SILVER), silver.relevance)
+        val gold = stories.first { it.title.contains("طلا") && !it.title.contains("نقره") }
+        assertEquals(setOf(MarketRelevance.GOLD), gold.relevance)
+    }
+
+    @Test
+    fun `the route's Python None is no picture, not a picture called None`() {
+        val stories = AcademyPublicNews.parse(fixture("coineprofx-bn-news.json"), now)
+        assertTrue(stories.all { it.imageUrl == null || it.imageUrl!!.startsWith("https://") })
+    }
+
+    @Test
+    fun `the crypto reader gets the macro calendar from the forex host when the relay has nothing`() = runTest {
+        // The relay answers 404 until TradeYar is redeployed, and the published file's host does
+        // not answer from Iran. The forex academy route does, with the same week in it.
+        val asked = mutableListOf<String>()
+        val intel = PublicMarketIntel(
+            client = { url ->
+                asked += url
+                if (url.endsWith("academy/bn/calendar")) fixture("coineprofx-bn-calendar.json") else null
+            },
+            platform = MarketPlatform.TRADEYAR,
+            calendarRelayBaseUrl = "https://tradeyar.example",
+            forexAcademyBaseUrl = "https://coineprofx.example/api",
+            // A day into the captured week: Wednesday's releases are history, Thursday's are not.
+            now = { Instant.parse("2026-09-03T12:00:00Z") },
+        )
+        val events = intel.calendar()
+        assertEquals(51, events.size)
+        assertEquals(
+            listOf(
+                "https://tradeyar.example/api/v1/public/calendar/week",
+                "https://coineprofx.example/api/academy/bn/calendar",
+            ),
+            asked,
+        )
+        // Ascending, with the past marked stale and the rest of the week not.
+        assertTrue(events.zipWithNext().all { (a, b) -> !a.scheduledAt.isAfter(b.scheduledAt) })
+        assertTrue(events.any { it.isStale } && events.any { !it.isStale })
+        assertTrue(events.any { it.impact == MarketImpact.HIGH })
+    }
+
     @Test
     fun `the two platforms are asked different wires`() {
         val crypto = PublicNewsFeed.feeds(MarketPlatform.TRADEYAR).map { it.url }

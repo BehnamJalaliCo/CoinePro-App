@@ -82,14 +82,14 @@ class CalendarModeTest {
     }
 
     @Test
-    fun `a platform that publishes no calendar says that, and offers no refresh`() {
-        // The other half of «تقویم خالی است», reported three times. TradeYar has no calendar route
-        // in its API at all and is asked for `calendar: []` by contract, so a crypto reader was
-        // being told the server had sent nothing — beside a refresh button that could never change
-        // the answer. That is a fact about the product, not an outage.
+    fun `a crypto reader with no events is an empty publication, refreshable like anybody's`() {
+        // There used to be a fourth mode here: «TradeYar publishes no calendar», with no refresh.
+        // The calendar is macro data now read for both platforms from CoinePro-FX's public route
+        // and the published week, so an empty one on crypto is a fetch that found nothing, not a
+        // fact about the product.
         val state = MarketIntelState(platform = MarketPlatform.TRADEYAR)
 
-        assertEquals(CalendarMode.NOT_ON_THIS_PLATFORM, calendarMode(state, filtered = emptyList()))
+        assertEquals(CalendarMode.NOTHING_PUBLISHED, calendarMode(state, filtered = emptyList()))
     }
 
     @Test

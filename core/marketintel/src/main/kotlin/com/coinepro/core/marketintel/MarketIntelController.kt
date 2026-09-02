@@ -64,12 +64,24 @@ class MarketIntelController(
         scope.launch {
             runCatching { gateway.snapshot() }
                 .onSuccess { snapshot ->
+                    // Per section, and never backwards. A refresh that comes back with an empty
+                    // calendar over a calendar already on screen keeps the one on screen: the
+                    // release times have not changed, only this fetch's luck has. This is the
+                    // shape of «تقویم یک لحظه آمد و بعد رفت» — the first paint came from a source
+                    // that answered, the second from one that did not, and the screen took the
+                    // second as the truth about the week.
+                    val before = mutableState.value
+                    // Only across the same platform. A switch from forex to crypto must not carry
+                    // gold stories under a heading that says crypto.
+                    val samePlatform = before.platform == null || before.platform == snapshot.platform
+                    val keepCalendar = samePlatform && snapshot.calendar.isEmpty() && before.calendar.isNotEmpty()
+                    val keepNews = samePlatform && snapshot.news.isEmpty() && before.news.isNotEmpty()
                     mutableState.value = MarketIntelState(
-                        news = snapshot.news,
-                        calendar = snapshot.calendar,
-                        serverTime = snapshot.serverTime,
-                        calendarSource = snapshot.calendarSource,
-                        newsSource = snapshot.newsSource,
+                        news = if (keepNews) before.news else snapshot.news,
+                        calendar = if (keepCalendar) before.calendar else snapshot.calendar,
+                        serverTime = snapshot.serverTime ?: before.serverTime,
+                        calendarSource = if (keepCalendar) before.calendarSource else snapshot.calendarSource,
+                        newsSource = if (keepNews) before.newsSource else snapshot.newsSource,
                         platform = snapshot.platform,
                     )
                     onSnapshot(snapshot)

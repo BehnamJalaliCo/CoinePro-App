@@ -2116,6 +2116,8 @@ class ScreenshotRenderTest {
         AppDestination.EXPLORE ->
             if (selected) DesignR.drawable.icon_compass_fill else DesignR.drawable.icon_compass
         AppDestination.CHART -> if (selected) CoineProIcons.Filled.Chart else CoineProIcons.Chart
+        AppDestination.COMMUNITY ->
+            if (selected) DesignR.drawable.icon_users_fill else DesignR.drawable.icon_users
     }
 
     /** The wordmark at the head of the labelled rail: 240dp less the rail's own gutters. */

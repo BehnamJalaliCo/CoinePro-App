@@ -61,6 +61,14 @@ class PublicMarketIntel(
      * much, so both platforms are handed the same host here. Null asks the file's own host only.
      */
     private val calendarRelayBaseUrl: String? = null,
+    /**
+     * CoinePro-FX's host, for its public academy routes — the newsroom and the week's calendar.
+     *
+     * Given to both platforms. The forex reader gets their own platform's Persian stories from it
+     * (see [AcademyPublicNews]); the crypto reader gets the macro calendar from it, which is the
+     * same week of releases whichever chart they are looking at. Null asks neither route.
+     */
+    private val forexAcademyBaseUrl: String? = null,
     private val now: () -> Instant = Instant::now,
 ) {
 
@@ -68,19 +76,25 @@ class PublicMarketIntel(
      * Stories, best source first.
      *
      * The order is the order of authority, and it is the same argument as everywhere else in this
-     * module: **this product's own Persian beats a third party's English**, always. So TradeYar's
-     * public route is asked first and, when it answers, nothing else is. The wires exist for the
-     * platform that has no such route and for the day that one is down.
+     * module: **this product's own Persian beats a third party's English**, always. So the
+     * platform's own public route is asked first — TradeYar's news list on crypto, the academy
+     * newsroom on forex — and, when it answers, nothing else is. The wires exist for the day that
+     * route is down, and on the networks this app is used on they are usually unreachable anyway.
      */
     suspend fun news(): List<MarketNewsItem> {
         ownRoute()?.takeIf { it.isNotEmpty() }?.let { return it }
         return wires()
     }
 
-    private suspend fun ownRoute(): List<MarketNewsItem>? {
-        if (platform != MarketPlatform.TRADEYAR) return null
-        val base = platformBaseUrl?.takeIf { it.startsWith("https://") } ?: return null
-        return TradeYarPublicNews.parse(client.get(TradeYarPublicNews.url(base)), now())
+    private suspend fun ownRoute(): List<MarketNewsItem>? = when (platform) {
+        MarketPlatform.TRADEYAR -> {
+            val base = platformBaseUrl?.takeIf { it.startsWith("https://") } ?: return null
+            TradeYarPublicNews.parse(client.get(TradeYarPublicNews.url(base)), now())
+        }
+        MarketPlatform.COINEPRO_FX -> {
+            val base = forexAcademyBaseUrl?.takeIf { it.startsWith("https://") } ?: return null
+            AcademyPublicNews.parse(client.get(AcademyPublicNews.url(base)), now())
+        }
     }
 
     /**
@@ -154,14 +168,35 @@ class PublicMarketIntel(
      */
     suspend fun calendar(): List<EconomicEvent> {
         val moment = now()
-        // Our own host first. From an Iranian handset it is the only one of the two that answers,
-        // and from anywhere else it is the nearer of the two; the file's own host is the answer
-        // for the hour the relay is down or has not yet fetched.
+        // Our own hosts first, and the file's own host last. From an Iranian handset the first two
+        // are the only ones that answer at all; from anywhere else they are the nearer ones. The
+        // order between the two of ours is by freshness: the relay re-reads the file every hour,
+        // the academy route carries `actual` as releases land — so the relay is asked first and
+        // the academy fills in when it has nothing, which today is the ordinary case on a host
+        // whose relay has not been deployed yet.
         calendarRelayBaseUrl?.takeIf { it.startsWith("https://") }?.let { base ->
             PublicCalendarFeed.parse(client.get(PublicCalendarFeed.relayUrl(base)), moment)
                 .takeIf { it.isNotEmpty() }
                 ?.let { return it }
         }
+        forexAcademyBaseUrl?.takeIf { it.startsWith("https://") }?.let { base ->
+            readCalendar(
+                client.get(PublicCalendarFeed.academyUrl(base))?.let { body ->
+                    runCatching { com.google.gson.JsonParser.parseString(body) }.getOrNull()
+                },
+                PublicCalendarFeed.academyUrl(base),
+            ).events
+                // The route does not say which rows are history, so the reader would be marked
+                // stale on every row and the list would open on Monday. Two hours past its moment
+                // a release has been priced in — the same boundary the published file uses.
+                .map { event -> event.copy(isStale = event.scheduledAt.isBefore(moment.minusSeconds(STALE_AFTER_SECONDS))) }
+                .takeIf { it.isNotEmpty() }
+                ?.let { return it }
+        }
         return PublicCalendarFeed.parse(client.get(PublicCalendarFeed.URL), moment)
+    }
+
+    private companion object {
+        const val STALE_AFTER_SECONDS = 2 * 60 * 60L
     }
 }

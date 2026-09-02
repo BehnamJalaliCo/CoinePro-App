@@ -41,7 +41,9 @@ import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.CoineProSymbolField
 import com.coinepro.core.designsystem.CoineProTextField
+import com.coinepro.core.symbols.SymbolMeta
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.papertrade.PaperFills
 import com.coinepro.core.papertrade.PaperOrderRequest
@@ -68,6 +70,8 @@ fun PaperTicket(
     symbol: String,
     onSymbol: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /** The catalogue behind the symbol field. Empty leaves it a plain text field. */
+    markets: List<SymbolMeta> = emptyList(),
 ) {
     var side by rememberSaveable { mutableStateOf(PaperSide.BUY) }
     var type by rememberSaveable { mutableStateOf(PaperOrderType.MARKET) }
@@ -100,10 +104,11 @@ fun PaperTicket(
         item {
             CoineProCard(modifier = Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
-                    CoineProTextField(
+                    CoineProSymbolField(
                         value = symbol,
                         onValueChange = { onSymbol(it.uppercase()) },
                         label = stringResource(R.string.paper_symbol),
+                        markets = markets,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     // Only once there is a symbol to have a price for. With the field empty the
