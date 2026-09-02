@@ -55,9 +55,15 @@ import com.coinepro.core.model.AvatarSpec
  * ### Why the feed needs this page at all
  *
  * Because a card with a reply count and no way to read the replies is a promise the app does not
- * keep. `GET /academy/community/{pid}` is the only route that returns them — the feed's rows carry
+ * keep. `GET …/posts/{pid}` is the only route that returns them — the feed's rows carry
  * `replies_count` and nothing else — so a board without this page is a board where every
  * conversation is invisible.
+ *
+ * ### The name
+ *
+ * Reading needs none. The reply box, the like and the crown do, and a reader without one is shown
+ * the same sentence the feed shows — «ابتدا یک نام انتخاب کنید» — in place of the box, with the
+ * name card one tap away on the feed. This page does not carry a second copy of that card.
  *
  * ### Replies are a flat list, and that is a decision rather than an omission
  *
@@ -70,7 +76,7 @@ import com.coinepro.core.model.AvatarSpec
  *
  * ### The crown
  *
- * `POST /{pid}/best-reply/{rid}` is the post author's alone — anybody else gets a 403 with a
+ * `POST …/posts/{pid}/best-reply/{rid}` is the post author's alone — anybody else gets a 403 with a
  * sentence about authorship — and this app has no way to know whether the reader is that author
  * until it asks. So the control is offered on every reply and a refusal is reported rather than
  * pre-empted, which is the honest half of that trade: hiding it from everyone would take the
@@ -83,6 +89,7 @@ fun CommunityThreadScreen(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val feed by controller.state.collectAsStateWithLifecycle()
     LaunchedEffect(postId) { controller.openThread(postId) }
     // The thread is state on the controller rather than on this composable, because liking a post
     // here has to move the count on the card in the feed behind it. Closed on the way out so a
@@ -101,11 +108,13 @@ fun CommunityThreadScreen(
             subtitle = state.thread?.post?.author,
         )
 
-        state.notice?.let { notice ->
+        (state.notice ?: state.serverText?.takeIf { state.thread != null && state.error != null })?.let { line ->
+            // The server's own sentence about the last thing the reader did — «منتشر شد.», or the
+            // rule a reply broke — over the thread rather than instead of it.
             Text(
-                text = notice,
+                text = line,
                 style = MaterialTheme.typography.labelMedium,
-                color = CoineProColors.TextSecondary,
+                color = if (state.error != null) CoineProColors.Sell else CoineProColors.TextSecondary,
                 textAlign = TextAlign.Right,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -196,15 +205,25 @@ fun CommunityThreadScreen(
                 }
 
                 item("composer") {
-                    ReplyComposer(
-                        draft = draft,
-                        onDraft = { draft = it },
-                        sending = state.replying,
-                        onSend = {
-                            controller.reply(draft.trim())
-                            draft = ""
-                        },
-                    )
+                    if (feed.named) {
+                        ReplyComposer(
+                            draft = draft,
+                            onDraft = { draft = it },
+                            sending = state.replying,
+                            onSend = {
+                                controller.reply(draft.trim())
+                                if (state.error == null) draft = ""
+                            },
+                        )
+                    } else {
+                        Text(
+                            text = stringResource(R.string.community_name_needed),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = CoineProColors.TextMuted,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = CoineProSpacing.One),
+                        )
+                    }
                 }
             }
         }
@@ -339,8 +358,8 @@ private fun ReplyComposer(
             CoineProPrimaryButton(
                 text = stringResource(R.string.community_send),
                 onClick = onSend,
-                // `if len(text) < 2` in `community_reply`. A reply may be «بله», which is why the
-                // floor here is two rather than the post route's five.
+                // `MIN_REPLY = 2` on the server. A reply may be «بله», which is why the floor
+                // here is two rather than the post route's five.
                 enabled = trimmed.length >= MIN_REPLY && !sending,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -348,11 +367,11 @@ private fun ReplyComposer(
     }
 }
 
-/** `rid = 0` is the route's own way of clearing the crown. See `community_best_reply`. */
+/** `rid = 0` is the route's own way of clearing the crown. See `best_reply` on the server. */
 private const val CLEAR_BEST_REPLY = 0L
 
-/** `if len(text) < 2` in `community_reply`. */
+/** `MIN_REPLY = 2` in `app_community.py`. */
 private const val MIN_REPLY = 2
 
-/** `if len(text) > 2000`, the same ceiling as a post. */
+/** `MAX_TEXT = 2000`, the same ceiling as a post. */
 private const val MAX_REPLY = 2_000

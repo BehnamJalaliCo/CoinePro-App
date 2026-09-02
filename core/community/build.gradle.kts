@@ -15,11 +15,12 @@ android {
 dependencies {
     api(project(":core:common"))
     api(project(":core:model"))
-    // The academy-scoped token. `/academy/community` sits behind exactly the same gate as the rest
-    // of the academy, so this module borrows `AcademyTokenStore` rather than minting a second
-    // credential of its own — see NetworkCommunityGateway for why that matters.
-    implementation(project(":core:marketdata"))
     implementation(project(":core:network"))
+    // The board's own identity — a key this app mints and a name the reader chose — lives in the
+    // app's preferences. No platform token: the community belongs to neither platform, and
+    // borrowing either's credential would tie it to that platform's account. See
+    // CommunityIdentityStore.
+    api(libs.androidx.datastore.preferences)
     implementation(libs.retrofit.core)
     implementation(libs.gson)
     implementation(libs.kotlinx.coroutines.core)

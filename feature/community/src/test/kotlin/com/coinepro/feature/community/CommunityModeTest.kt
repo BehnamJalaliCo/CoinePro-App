@@ -37,8 +37,8 @@ class CommunityModeTest {
     @Test
     fun `the two refusals are two different screens`() {
         assertEquals(
-            CommunityMode.SIGNED_OUT,
-            communityMode(CommunityUiState(error = CommunityError.SIGNED_OUT)),
+            CommunityMode.UNREGISTERED,
+            communityMode(CommunityUiState(error = CommunityError.UNREGISTERED)),
         )
         assertEquals(
             CommunityMode.LOCKED,

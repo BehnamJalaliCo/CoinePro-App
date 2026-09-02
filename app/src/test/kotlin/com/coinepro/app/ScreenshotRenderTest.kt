@@ -66,9 +66,11 @@ import com.coinepro.core.community.CommunityCategory
 import com.coinepro.core.community.CommunityController
 import com.coinepro.core.community.CommunityFeedPage
 import com.coinepro.core.community.CommunityGateway
+import com.coinepro.core.community.CommunityIdentityStore
 import com.coinepro.core.community.CommunityLeaderboard
 import com.coinepro.core.community.CommunityLikeOutcome
 import com.coinepro.core.community.CommunityLockedException
+import com.coinepro.core.community.CommunityMember
 import com.coinepro.core.community.CommunityPost
 import com.coinepro.core.community.CommunityReactionOutcome
 import com.coinepro.core.community.CommunityReply
@@ -224,6 +226,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -2514,37 +2518,54 @@ class ScreenshotRenderTest {
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1400dp-xxhdpi")
     fun communityPersian() {
-        val controller = CommunityController(FakeCommunityGateway(), scope)
+        val controller = CommunityController(FakeCommunityGateway(), FakeCommunityIdentity(), scope)
         controller.start()
         capture("101-community-fa") {
             CommunityScreen(
                 controller = controller,
                 onOpenThread = {},
-                onSignIn = {},
-                onOpenMembership = {},
             )
         }
     }
 
     /**
-     * The tier refusal, which is the case worth having a picture of.
+     * The ban, which is the case worth having a picture of.
      *
-     * A `403` from `require_vip` and a `401` from `current_student` are one line apart in the
-     * server and have opposite buttons — «تهیهٔ اشتراک» and «ورود». A render of the locked state is
-     * how a change that collapsed the two into one screen would be caught.
+     * A `403` (banned) and a `401` (no name yet) have opposite controls — nothing, and a name
+     * field. A render of the locked state is how a change that collapsed the two into one screen
+     * would be caught.
      */
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
     fun communityLockedPersian() {
-        val locked = CommunityLockedException("این بخش ویژهٔ اعضای VIP است. برای دسترسی، اشتراک تهیه کنید.")
-        val controller = CommunityController(FakeCommunityGateway(failure = locked), scope)
+        val locked = CommunityLockedException("دسترسی این حساب به انجمن بسته شده است.")
+        val controller = CommunityController(FakeCommunityGateway(failure = locked), FakeCommunityIdentity(), scope)
         controller.start()
         capture("102-community-locked-fa") {
             CommunityScreen(
                 controller = controller,
                 onOpenThread = {},
-                onSignIn = {},
-                onOpenMembership = {},
+            )
+        }
+    }
+
+    /** The first write on a fresh install: the name card, which is the board's only gate. */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1400dp-xxhdpi")
+    fun communityNamePersian() {
+        val body = """{"detail":"برای نوشتن در انجمن ابتدا یک نام نمایشی انتخاب کنید."}"""
+            .toResponseBody("application/json".toMediaType())
+        val unnamed = retrofit2.HttpException(retrofit2.Response.error<Unit>(401, body))
+        val controller = CommunityController(
+            FakeCommunityGateway(failure = unnamed),
+            FakeCommunityIdentity(name = null),
+            scope,
+        )
+        controller.start()
+        capture("104-community-name-fa") {
+            CommunityScreen(
+                controller = controller,
+                onOpenThread = {},
             )
         }
     }
@@ -2553,7 +2574,7 @@ class ScreenshotRenderTest {
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1400dp-xxhdpi")
     fun communityThreadPersian() {
-        val controller = CommunityController(FakeCommunityGateway(), scope)
+        val controller = CommunityController(FakeCommunityGateway(), FakeCommunityIdentity(), scope)
         capture("103-community-thread-fa") {
             CommunityThreadScreen(controller = controller, postId = 41L, onClose = {})
         }
@@ -2872,9 +2893,26 @@ private val LEGAL_EXCERPT = """
  * page of twenty renders the same first screen as one of two. [failure] is what every call throws
  * instead, which is how the tier-locked capture is produced.
  */
+private class FakeCommunityIdentity(name: String? = "رضا محمدی") : CommunityIdentityStore {
+    private val held = kotlinx.coroutines.flow.MutableStateFlow(name)
+
+    override suspend fun key(): String = "0123456789abcdef0123456789abcdef"
+
+    override val displayName: kotlinx.coroutines.flow.Flow<String?> = held
+
+    override suspend fun setDisplayName(name: String?) {
+        held.value = name
+    }
+}
+
 private class FakeCommunityGateway(
     private val failure: Throwable? = null,
 ) : CommunityGateway {
+
+    override suspend fun me(): CommunityMember? = answer(CommunityMember(id = 1L, displayName = "رضا محمدی"))
+
+    override suspend fun register(displayName: String): CommunityMember =
+        answer(CommunityMember(id = 1L, displayName = displayName.trim()))
 
     private val posts = listOf(
         CommunityPost(

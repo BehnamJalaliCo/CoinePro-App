@@ -86,9 +86,7 @@ import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
-import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProNavigationRail
-import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.symbols.SymbolArtwork
 import com.coinepro.core.symbols.SymbolClassifier
 import com.coinepro.core.symbols.SymbolMeta
@@ -316,8 +314,8 @@ private const val MARKETS_ROUTE = "markets"
 /**
  * The board, and one thread on it.
  *
- * CoinePro-FX only — not locked there, **absent**: TradeYar has no `/academy` surface and therefore
- * no community routes at all, so the destination is not registered and the menu row is dropped.
+ * The app's own, on both platforms and for a guest — served from TradeYar's host and tied to
+ * neither platform's account. See `NetworkCommunityGateway`.
  */
 private const val COMMUNITY_ROUTE = "community"
 
@@ -684,14 +682,8 @@ fun CoineProApp(
     orderBookGateways: Map<MarketPlatform, OrderBookGateway>,
     portfolioControllers: Map<MarketPlatform, PortfolioController>,
     academyController: AcademyController,
-    /**
-     * The community, or null where this platform has none.
-     *
-     * Null on TradeYar and on the guest shell, and null means the destination is never registered
-     * — the same shape `announcementsController` uses, and the reason `community` also goes into
-     * the menu's `absent` set rather than being drawn and locked.
-     */
-    communityController: CommunityController?,
+    /** The app's own board. On both platforms and for a guest: it belongs to neither account. */
+    communityController: CommunityController,
     terminalController: TerminalController,
     accountControllers: Map<MarketPlatform, AccountController>,
     adminController: AdminController,
@@ -1122,8 +1114,7 @@ fun CoineProApp(
                 chartWorkspaceStore = chartWorkspaceStore,
                 portfolioController = portfolioControllers.getValue(activePlatform),
                 academyController = academyController,
-                communityController = communityController
-                    .takeIf { activePlatform == MarketPlatform.COINEPRO_FX },
+                communityController = communityController,
                 terminalController = terminalController,
                 hasAcademy = activePlatform == MarketPlatform.COINEPRO_FX,
                 adminController = adminController,
@@ -1318,8 +1309,8 @@ fun CoineProApp(
                         chartWorkspaceStore = chartWorkspaceStore,
                         portfolioController = portfolioControllers.getValue(activePlatform),
                         academyController = academyController,
-                        // And no community: it sits behind the same academy scope.
-                        communityController = null,
+                        // The community is the app's own and needs no account, so a guest has it.
+                        communityController = communityController,
                         terminalController = terminalController,
                         // No academy for a guest: its routes are behind the academy scope, which is
                         // minted from a mobile token nobody here holds.
@@ -1528,14 +1519,8 @@ private fun MainShell(
     chartWorkspaceStore: ChartWorkspaceStore,
     portfolioController: PortfolioController,
     academyController: AcademyController,
-    /**
-     * The community, or null where this platform has none.
-     *
-     * Null on TradeYar and on the guest shell, and null means the destination is never registered
-     * — the same shape `announcementsController` uses, and the reason `community` also goes into
-     * the menu's `absent` set rather than being drawn and locked.
-     */
-    communityController: CommunityController?,
+    /** The app's own board. On both platforms and for a guest: it belongs to neither account. */
+    communityController: CommunityController,
     terminalController: TerminalController,
     /**
      * Whether this platform has an academy at all.
@@ -3066,38 +3051,23 @@ private fun MainShell(
                     onOpenMarkets = { navController.navigate(MARKETS_ROUTE) },
                 )
             }
-            // Registered only where the routes exist. TradeYar has no `/academy` surface at all, so
-            // on that platform this is an absence rather than a lock — see the menu's `absent` set.
-            if (communityController == null) {
-                // The tab is in the bar on both platforms — see `AppDestination.COMMUNITY` — so
-                // the destination has to exist here too. TradeYar has no board; say so.
-                composable(COMMUNITY_ROUTE) {
-                    CoineProEmptyState(
-                        icon = DesignR.drawable.icon_users,
-                        message = stringResource(R.string.community_absent_here),
-                        hint = stringResource(R.string.community_absent_here_hint),
-                        modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),
-                    )
-                }
+            // The app's own board, on both platforms and for a guest. It is served from TradeYar's
+            // host but belongs to neither account — see `NetworkCommunityGateway`.
+            composable(COMMUNITY_ROUTE) {
+                CommunityScreen(
+                    controller = communityController,
+                    onOpenThread = { navController.navigate(communityThreadRoute(it)) },
+                )
             }
-            if (communityController != null) {
-                composable(COMMUNITY_ROUTE) {
-                    CommunityScreen(
-                        controller = communityController,
-                        onOpenThread = { navController.navigate(communityThreadRoute(it)) },
-                        onOpenMembership = { navController.navigate(MEMBERSHIP_ROUTE) },
-                    )
-                }
-                composable(
-                    route = COMMUNITY_THREAD_PATTERN,
-                    arguments = listOf(navArgument("pid") { type = NavType.LongType }),
-                ) { entry ->
-                    CommunityThreadScreen(
-                        controller = communityController,
-                        postId = entry.arguments?.getLong("pid") ?: 0L,
-                        onClose = { navController.popBackStack() },
-                    )
-                }
+            composable(
+                route = COMMUNITY_THREAD_PATTERN,
+                arguments = listOf(navArgument("pid") { type = NavType.LongType }),
+            ) { entry ->
+                CommunityThreadScreen(
+                    controller = communityController,
+                    postId = entry.arguments?.getLong("pid") ?: 0L,
+                    onClose = { navController.popBackStack() },
+                )
             }
             composable(CALENDAR_ROUTE) {
                 EconomicCalendarScreen(
@@ -3219,8 +3189,6 @@ private fun MainShell(
                             if (!assistantAvailable) add("ai-assistant")
                             if (!terminalController.isConfigured) add("terminal")
                             if (!hasAcademy) add("academy")
-                            // Absent rather than locked: TradeYar has no community routes at all.
-                            if (communityController == null) add("community")
                             if (!accountDeletionAvailable) add("delete")
                         },
                     ),

@@ -1,6 +1,8 @@
 package com.coinepro.core.community
 
 import java.time.Instant
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -42,6 +44,18 @@ class CommunityControllerTest {
         pending = false,
     )
 
+    private class FakeIdentity(initial: String? = "رضا") : CommunityIdentityStore {
+        val held = MutableStateFlow(initial)
+
+        override suspend fun key(): String = "0123456789abcdef0123456789abcdef"
+
+        override val displayName: Flow<String?> = held
+
+        override suspend fun setDisplayName(name: String?) {
+            held.value = name
+        }
+    }
+
     private class FakeGateway(
         var pages: Map<Int, List<CommunityPost>> = emptyMap(),
         var failure: Throwable? = null,
@@ -79,6 +93,11 @@ class CommunityControllerTest {
 
         override suspend fun bestReply(postId: Long, replyId: Long) = Unit
 
+        override suspend fun me(): CommunityMember? = CommunityMember(id = 1, displayName = "رضا")
+
+        override suspend fun register(displayName: String): CommunityMember =
+            CommunityMember(id = 1, displayName = displayName.trim())
+
         override suspend fun leaderboard(): CommunityLeaderboard =
             CommunityLeaderboard(emptyList(), null, 0)
     }
@@ -91,7 +110,7 @@ class CommunityControllerTest {
         val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
         val gateway = FakeGateway()
         gateway.pages = mapOf(1 to fullPage(from = 100))
-        val controller = CommunityController(gateway, scope)
+        val controller = CommunityController(gateway, FakeIdentity(), scope)
 
         controller.start()
         advanceUntilIdle()
@@ -116,7 +135,7 @@ class CommunityControllerTest {
         // The reader had already liked this from another device, so the set's cardinality does not
         // move. A local `+1` would print 12 against a board that says 11.
         gateway.likeAnswer = CommunityLikeOutcome(likes = 11, liked = true)
-        val controller = CommunityController(gateway, scope)
+        val controller = CommunityController(gateway, FakeIdentity(), scope)
 
         controller.start()
         advanceUntilIdle()
@@ -138,7 +157,7 @@ class CommunityControllerTest {
             override suspend fun like(postId: Long, currentLikes: Int): CommunityLikeOutcome =
                 throw HttpException(Response.error<Unit>(500, "".toResponseBody("application/json".toMediaType())))
         }
-        val controller = CommunityController(gateway, scope)
+        val controller = CommunityController(gateway, FakeIdentity(), scope)
 
         controller.start()
         advanceUntilIdle()
@@ -154,7 +173,7 @@ class CommunityControllerTest {
         val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
         val gateway = FakeGateway(pages = mapOf(1 to emptyList()))
         gateway.writeAnswer = CommunityWriteOutcome(42L, published = false, message = "برای بازبینیِ ادمین ارسال شد.")
-        val controller = CommunityController(gateway, scope)
+        val controller = CommunityController(gateway, FakeIdentity(), scope)
 
         controller.start()
         advanceUntilIdle()
@@ -171,7 +190,7 @@ class CommunityControllerTest {
     fun `a published post refreshes the board so the writer finds it`() = runTest {
         val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
         val gateway = FakeGateway(pages = mapOf(1 to emptyList()))
-        val controller = CommunityController(gateway, scope)
+        val controller = CommunityController(gateway, FakeIdentity(), scope)
 
         controller.start()
         advanceUntilIdle()
@@ -186,7 +205,7 @@ class CommunityControllerTest {
     fun `switching a category reloads from the server rather than filtering what is in hand`() = runTest {
         val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
         val gateway = FakeGateway(pages = mapOf(1 to listOf(samplePost(1), samplePost(2))))
-        val controller = CommunityController(gateway, scope)
+        val controller = CommunityController(gateway, FakeIdentity(), scope)
 
         controller.start()
         advanceUntilIdle()
@@ -200,11 +219,11 @@ class CommunityControllerTest {
     }
 
     @Test
-    fun `a tier lock is not a network failure and carries the server's sentence`() = runTest {
+    fun `a ban is not a network failure and carries the server's sentence`() = runTest {
         val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
-        val text = "این بخش ویژهٔ اعضای VIP است."
+        val text = "دسترسی این حساب به انجمن بسته شده است."
         val gateway = FakeGateway(failure = CommunityLockedException(text))
-        val controller = CommunityController(gateway, scope)
+        val controller = CommunityController(gateway, FakeIdentity(), scope)
 
         controller.start()
         advanceUntilIdle()
@@ -214,16 +233,69 @@ class CommunityControllerTest {
     }
 
     @Test
-    fun `a signed-out refusal is its own answer, because the button under it is different`() = runTest {
+    fun `a no-name refusal is its own answer, and the cached name is dropped with it`() = runTest {
         val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
-        val body = """{"detail":"ورود لازم است."}""".toResponseBody("application/json".toMediaType())
-        val gateway = FakeGateway(failure = HttpException(Response.error<Unit>(401, body)))
-        val controller = CommunityController(gateway, scope)
+        val body = """{"detail":"ابتدا یک نام نمایشی انتخاب کنید."}""".toResponseBody("application/json".toMediaType())
+        val identity = FakeIdentity(initial = "stale")
+        val gateway = object : CommunityGateway by FakeGateway() {
+            override suspend fun post(content: String, category: CommunityCategory): CommunityWriteOutcome =
+                throw HttpException(Response.error<Unit>(401, body))
+        }
+        val controller = CommunityController(gateway, identity, scope)
+
+        assertEquals("stale", controller.state.value.displayName)
+        controller.submit("سلام به همه")
+        advanceUntilIdle()
+
+        assertEquals(CommunityError.UNREGISTERED, controller.state.value.error)
+        // The server holds no name for this key; the store is corrected from the server.
+        assertNull(identity.held.value)
+        assertFalse(controller.state.value.named)
+    }
+
+    @Test
+    fun `choosing a name records the server's spelling and a taken name stays on the form`() = runTest {
+        val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
+        val identity = FakeIdentity(initial = null)
+        var answer: Result<CommunityMember> = Result.success(CommunityMember(id = 9, displayName = "علی رضا"))
+        val gateway = object : CommunityGateway by FakeGateway() {
+            override suspend fun register(displayName: String): CommunityMember = answer.getOrThrow()
+        }
+        val controller = CommunityController(gateway, identity, scope)
+
+        assertFalse(controller.state.value.named)
+        controller.register("علی   رضا")
+        advanceUntilIdle()
+        assertEquals("علی رضا", identity.held.value)
+        assertTrue(controller.state.value.named)
+
+        answer = Result.failure(CommunityNameTakenException("این نام را کس دیگری برداشته است."))
+        controller.register("sara")
+        advanceUntilIdle()
+        assertEquals("این نام را کس دیگری برداشته است.", controller.state.value.nameError)
+        // The old name is kept: a refused change is not a lost name.
+        assertEquals("علی رضا", controller.state.value.displayName)
+    }
+
+    @Test
+    fun `a refused text keeps the board and carries the rule that refused it`() = runTest {
+        val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
+        val gateway = object : CommunityGateway by FakeGateway(pages = mapOf(1 to listOf(samplePost(1)))) {
+            override suspend fun post(content: String, category: CommunityCategory): CommunityWriteOutcome =
+                throw CommunityRefusedException("لینک در متن مجاز نیست.")
+        }
+        val controller = CommunityController(gateway, FakeIdentity(), scope)
 
         controller.start()
         advanceUntilIdle()
+        controller.submit("join https://t.me/pump")
+        advanceUntilIdle()
 
-        assertEquals(CommunityError.SIGNED_OUT, controller.state.value.error)
+        assertEquals(CommunityError.REFUSED, controller.state.value.error)
+        assertEquals("لینک در متن مجاز نیست.", controller.state.value.serverText)
+        assertEquals(1, controller.state.value.posts.size)
+        controller.dismissError()
+        assertNull(controller.state.value.error)
     }
 
     @Test
@@ -235,7 +307,7 @@ class CommunityControllerTest {
                 // it. «هنوز چیزی نوشته نشده» would be a false statement about the community.
                 CommunityFeedPage(posts = emptyList(), page = 1, received = 20, sampleKeys = "pk,body")
         }
-        val controller = CommunityController(gateway, scope)
+        val controller = CommunityController(gateway, FakeIdentity(), scope)
 
         controller.start()
         advanceUntilIdle()
@@ -246,9 +318,9 @@ class CommunityControllerTest {
     }
 
     @Test
-    fun `clearing forgets the board, because the other platform has no community`() = runTest {
+    fun `clearing forgets the board but not the name, which is not a session`() = runTest {
         val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
-        val controller = CommunityController(FakeGateway(pages = mapOf(1 to listOf(samplePost(1)))), scope)
+        val controller = CommunityController(FakeGateway(pages = mapOf(1 to listOf(samplePost(1)))), FakeIdentity(), scope)
 
         controller.start()
         advanceUntilIdle()
@@ -256,5 +328,6 @@ class CommunityControllerTest {
 
         assertEquals(emptyList<CommunityPost>(), controller.state.value.posts)
         assertNull(controller.state.value.error)
+        assertEquals("رضا", controller.state.value.displayName)
     }
 }

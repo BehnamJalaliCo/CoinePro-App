@@ -241,16 +241,25 @@ fun CoineProListHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
+                // A step up from the content screens' `titleLarge`: a list's heading is the
+                // name of the whole screen, and at nineteen it was the same size as a card's own
+                // title one row below it. Twenty-two is the smallest step the scale offers that a
+                // reader can see, and it is what puts the name of the screen above the screen.
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = CoineProColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             subtitle?.let {
                 Text(
                     text = it,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.bodySmall,
                     color = CoineProColors.TextMuted,
                     fontWeight = FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 1.dp),
                 )
             }
         }

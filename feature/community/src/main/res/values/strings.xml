@@ -2,13 +2,14 @@
 <!-- Default language: Persian. -->
 <resources>
     <string name="community_title">انجمن</string>
-    <string name="community_subtitle">تحلیل و تجربهٔ معامله‌گرها</string>
+    <string name="community_subtitle">گفت‌وگوی معامله‌گرهای کوینه‌پرو</string>
     <string name="community_compose">نوشتن</string>
     <string name="community_compose_close">بستن</string>
     <string name="community_refresh">به‌روزرسانی</string>
     <string name="community_more">بیشتر</string>
     <string name="community_retry">تلاش دوباره</string>
     <string name="community_send">ارسال</string>
+    <string name="community_dismiss">باشه</string>
 
     <!-- The strip. These are the five categories the server itself stores on every post — the same
          Persian words, because the route filters on membership of its own tuple and any other
@@ -33,14 +34,22 @@
     <string name="community_empty">هنوز در این دسته چیزی نوشته نشده است.</string>
     <string name="community_empty_hint">می‌توانید اولین نفر باشید.</string>
 
-    <!-- Two refusals, two buttons. A 401 is «ورود لازم است» and a 403 is the tier gate; folding
-         them into one message sends half the readers to a control that cannot help them. -->
-    <string name="community_signed_out">برای دیدن انجمن باید وارد شوید.</string>
-    <string name="community_signed_out_hint">انجمن بخشی از آکادمی است و با همان حساب باز می‌شود.</string>
-    <string name="community_sign_in">ورود</string>
-    <string name="community_locked">انجمن ویژهٔ اعضای VIP است.</string>
-    <string name="community_locked_hint">با اشتراک فعال، نوشتن و خواندن هر دو باز می‌شود.</string>
-    <string name="community_membership">اشتراک</string>
+    <!-- The name. The board is readable by anyone; writing needs a name the reader chooses here,
+         and nothing else — no account on either platform, no phone, no email. -->
+    <string name="community_name_title">یک نام برای خودتان انتخاب کنید</string>
+    <string name="community_name_body">انجمن مستقل از حساب‌های شماست. فقط همین نام دیده می‌شود؛ نه شماره، نه ایمیل.</string>
+    <string name="community_name_label">نام نمایشی</string>
+    <string name="community_name_rule">بین %1$s تا %2$s نویسه: حرف، عدد، فاصله یا زیرخط.</string>
+    <string name="community_name_confirm">ثبت نام</string>
+    <string name="community_name_change">تغییر نام</string>
+    <string name="community_name_as">شما: %1$s</string>
+    <string name="community_name_needed">برای این کار ابتدا یک نام انتخاب کنید.</string>
+
+    <!-- Two refusals, two controls. A 401 is «name first» and a 403 is a ban; folding them into one
+         message asks a banned reader to pick a name. -->
+    <string name="community_unregistered">برای نوشتن در انجمن ابتدا یک نام انتخاب کنید.</string>
+    <string name="community_locked">دسترسی این نصب به انجمن بسته شده است.</string>
+    <string name="community_locked_hint">خواندن همچنان باز است. برای بازبینی، از پشتیبانی تلگرام کمک بگیرید.</string>
 
     <!-- HTTP 200 with rows in the body, none of them in a shape this build can read. Counted rather
          than described, because the count is the whole diagnosis. -->
@@ -50,7 +59,9 @@
     <string name="community_compose_label">چه چیزی در بازار دیدید؟</string>
     <string name="community_compose_hint">دست‌کم %1$s نویسه</string>
     <string name="community_compose_count">%1$s از %2$s نویسه</string>
-    <string name="community_post_pending">این پست برای بازبینی ارسال شده و هنوز روی تابلو نیست.</string>
+    <string name="community_compose_rules">بدون لینک، شماره و آیدی. متن بلافاصله منتشر می‌شود.</string>
+    <string name="community_refused">این متن پذیرفته نشد.</string>
+    <string name="community_post_pending">این پست روی تابلو نیست.</string>
 
     <string name="community_thread_title">گفت‌وگو</string>
     <string name="community_thread_gone">این پست دیگر در دسترس نیست.</string>

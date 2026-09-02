@@ -30,11 +30,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.addOutline
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -194,10 +199,49 @@ fun CoineProCard(
             }
             .background(fill, shape)
             .let { plain -> if (hairline) plain.border(1.dp, edge, shape) else plain }
+            // The bevel — see [cardSheen]. Dark theme only, and only on a card that carries a
+            // hairline: it is the hairline's top edge caught in light, and a card the ground
+            // already separates has no edge to catch anything.
+            .let { edged -> if (hairline && !lightTheme && accent == null) edged.cardSheen(shape) else edged }
             .padding(contentPadding),
         content = content,
     )
 }
+
+/**
+ * The one line that makes a dark card read as machined rather than printed.
+ *
+ * A near-black card on a near-black stage has a hairline around it and nothing else, and the owner's
+ * word for the result was flat. What every physical surface has that a flat one does not is a
+ * *lit* edge: the top rim, one value lighter than the face, where the light lands. This draws that
+ * rim — a single one-pixel stroke inside the top edge, white at eight percent, clipped to the
+ * card's own corners so it follows the curve rather than cutting across it.
+ *
+ * It is not a gradient and it is not a shadow: the surface discipline in `check-motion-policy.sh`
+ * bans both on a card, and this is neither. It is not drawn in the light theme, where a white card
+ * on a white page has no rim to light and the ground does the separating. And it is eight percent
+ * rather than more because the point is that nobody notices it; they notice that the card sits.
+ */
+private fun Modifier.cardSheen(shape: Shape): Modifier = drawWithContent {
+    drawContent()
+    val outline = shape.createOutline(size, layoutDirection, this)
+    val rim = Path().apply { addOutline(outline) }
+    clipPath(rim) {
+        drawLine(
+            color = SHEEN,
+            start = Offset(0f, SHEEN_INSET),
+            end = Offset(size.width, SHEEN_INSET),
+            strokeWidth = SHEEN_WIDTH,
+        )
+    }
+}
+
+/** White at eight percent: the least a panel resolves, which is the most a rim should be. */
+private val SHEEN = Color(0x14FFFFFF)
+
+/** Inside the hairline, so the two read as one lit edge rather than as a double line. */
+private const val SHEEN_INSET = 1.5f
+private const val SHEEN_WIDTH = 1f
 
 /**
  * Whether a fill is far enough from the page for the page to be what separates it.
@@ -293,7 +337,15 @@ fun CoineProPrimaryButton(
         // trying to work out why they cannot press it. A neutral fill says unavailable more
         // plainly than a faded gold does, and it keeps the sentence legible while it says it.
         color = if (enabled) CoineProColors.pageAccent else CoineProColors.SurfaceElevated,
-        border = if (enabled) null else BorderStroke(1.dp, CoineProColors.BorderSubtle),
+        // A rim one step darker than the fill, which is what a gold object has and a gold
+        // rectangle does not. `GoldDeep` is the mark's own shadow stop, and the palette names
+        // exactly this use for it: "borders on gold surfaces". On the blue and green accents the
+        // same darkening is taken from the fill itself, so every accent gets the same edge.
+        border = if (enabled) {
+            BorderStroke(1.dp, CoineProColors.pageAccent.rim())
+        } else {
+            BorderStroke(1.dp, CoineProColors.BorderSubtle)
+        },
         interactionSource = interaction,
     ) {
         ButtonContent(
@@ -379,6 +431,17 @@ private fun ButtonContent(text: String, @DrawableRes icon: Int?, ink: Color) {
         )
     }
 }
+
+/**
+ * The fill pulled a quarter of the way toward black — the edge a solid object has.
+ *
+ * A function of the fill rather than a fixed colour, so a blue analysis button and a green social
+ * button get the same edge the gold one does, and the gold one's edge resolves to the mark's own
+ * `GoldDeep` within a few values.
+ */
+private fun Color.rim(): Color = lerp(this, Color.Black, RIM_SHIFT)
+
+private const val RIM_SHIFT = 0.28f
 
 /**
  * A round token carrying an instrument's initial, in that instrument's own colour.

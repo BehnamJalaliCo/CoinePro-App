@@ -41,9 +41,9 @@ import com.coinepro.core.model.AvatarSpec
  *
  * ### Why there is no cover image and no headline
  *
- * Because there is no cover image and no headline. `AcademyPost` has a body, an author, a category
- * and two counters, and nothing else — the reference screenshot's title, thumbnail and verified
- * badge have no column behind them here. Cutting the first line off the body to use as a title
+ * Because there is no cover image and no headline. A post on this board has a body, an author, a
+ * category and two counters, and nothing else — the reference screenshot's title, thumbnail and
+ * verified badge have no column behind them here. Cutting the first line off the body to use as a title
  * would be this app writing a headline the author did not write; picking a stock chart for a cover
  * would be illustrating somebody's opinion with a picture they did not choose. Both are the same
  * fault as a lettered disc standing in for a market's logo, in prose instead of in artwork.
@@ -136,9 +136,9 @@ internal fun CommunityPostCard(
             )
 
             if (post.pending) {
-                // Only ever true for a post the reader has just written: the feed filters on
-                // `status == "published"`. Saying so is the whole point — a post that vanished with
-                // no explanation is the thing a writer reads as a lost post.
+                // Only ever true for a post that is not on the board. Saying so is the whole point
+                // — a post that vanished with no explanation is the thing a writer reads as a
+                // lost post.
                 Text(
                     text = stringResource(R.string.community_post_pending),
                     style = MaterialTheme.typography.labelSmall,
@@ -251,9 +251,9 @@ internal fun CountPill(label: String, active: Boolean, onClick: (() -> Unit)?) {
 /**
  * The five reactions the route accepts, and no others.
  *
- * Built from [CommunityReactions.ALLOWED] rather than from an emoji keyboard, because
- * `community_react` refuses anything outside that tuple with `400 {"detail":"ایموجی مجاز نیست."}`
- * — a keyboard would offer several hundred taps of which five work.
+ * Built from [CommunityReactions.ALLOWED] rather than from an emoji keyboard, because the route
+ * refuses anything outside that tuple with `400 {"detail":"ایموجی مجاز نیست."}` — a keyboard would
+ * offer several hundred taps of which five work.
  *
  * On a card with no [onReact] the row is read-only and shows only the reactions somebody has
  * actually left, which is what the feed wants: five inert emoji under every post would be five rows

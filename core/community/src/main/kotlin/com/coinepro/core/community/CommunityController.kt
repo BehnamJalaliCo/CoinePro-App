@@ -11,33 +11,40 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 
 /**
- * Why the board is not on screen.
+ * Why the board is not on screen, or why the last thing the reader did was refused.
  *
- * Four answers rather than one, because each has a different button under it and a screen that
+ * Five answers rather than one, because each has a different control under it and a screen that
  * cannot tell them apart puts the wrong one there:
  *
  * * [NETWORK] — try again.
- * * [SIGNED_OUT] — sign in. `401 {"detail":"ورود لازم است."}` from `current_student`.
- * * [LOCKED] — buy a subscription. `403` from `require_vip`, and the server's own sentence about
- *   it is carried separately in [CommunityUiState.serverText].
+ * * [UNREGISTERED] — choose a name. `401` from a write with a key the server has no name for.
+ * * [LOCKED] — nothing to press. `403`: the key is banned, and the server's own sentence about it
+ *   is carried separately in [CommunityUiState.serverText].
+ * * [REFUSED] — fix the text. `400`: a link, a phone number, too short; the sentence says which.
  * * [UNREADABLE] — nothing anybody can press. Rows arrived and none of them parsed, which is a
  *   report to send rather than a state to retry out of.
  */
 enum class CommunityError {
     NETWORK,
-    SIGNED_OUT,
+    UNREGISTERED,
     LOCKED,
+    REFUSED,
     UNREADABLE,
 }
 
 /**
  * The feed's state.
  *
+ * @param displayName the name this install writes under, or null before the reader has chosen
+ *   one. Read from [CommunityIdentityStore] and kept current from it, so the composer knows
+ *   whether to ask for a name before the first request rather than after.
+ * @param registering a name is on its way to the server.
+ * @param nameError the server's sentence about the last name that was refused — taken, too
+ *   short, a character outside the rules — or null.
  * @param serverText the backend's own words for whatever [error] names, where it gave any. Kept
  *   beside the enum rather than instead of it: the enum decides which control to draw, the sentence
- *   decides what the reader is told, and neither substitutes for the other. Their tier message
- *   changes with their pricing; ours would not.
- * @param notice the one-line answer to something the reader just did — a post held for review, a
+ *   decides what the reader is told, and neither substitutes for the other.
+ * @param notice the one-line answer to something the reader just did — a post published, a
  *   report filed. Cleared by [dismissNotice] rather than by a timer, so a reader who looked away
  *   still sees it.
  */
@@ -50,6 +57,9 @@ data class CommunityUiState(
     val loadingMore: Boolean = false,
     val endReached: Boolean = false,
     val posting: Boolean = false,
+    val displayName: String? = null,
+    val registering: Boolean = false,
+    val nameError: String? = null,
     val error: CommunityError? = null,
     val serverText: String? = null,
     val notice: String? = null,
@@ -61,6 +71,9 @@ data class CommunityUiState(
 
     /** Whether a «بیشتر» control belongs at the foot of the list. */
     val canLoadMore: Boolean get() = posts.isNotEmpty() && !endReached && !loadingMore && error == null
+
+    /** Whether this install can write. Reading never needs a name. */
+    val named: Boolean get() = !displayName.isNullOrBlank()
 }
 
 /** One thread's state, held separately because it outlives a scroll of the feed behind it. */
@@ -76,13 +89,21 @@ data class CommunityThreadUiState(
 )
 
 /**
- * The community's state, for the feed and for one thread.
+ * The community's state, for the feed, for one thread, and for who this install is.
  *
  * One controller rather than two, and for the same reason [com.coinepro.core.academy] keeps its
  * lesson and its roadmap together: the two screens share the thing that actually changes. Liking a
  * post inside a thread has to move the count on the card behind it, and replying has to move the
  * reply count — with two controllers the reader would come back to a feed still showing the numbers
  * from before they acted, which reads as an app that did not save what they did.
+ *
+ * ### The name
+ *
+ * The board is readable by anyone and writable by anyone who has chosen a name. The name comes
+ * from [CommunityIdentityStore] and is mirrored into [CommunityUiState.displayName] so a screen
+ * can ask for one *before* the first write instead of after the server refuses it; the refusal is
+ * still handled — [CommunityError.UNREGISTERED] — for the day the store and the server disagree,
+ * and on that day the store is corrected from the server rather than the other way round.
  *
  * ### Paging
  *
@@ -94,12 +115,12 @@ data class CommunityThreadUiState(
  *
  * Optimistic in the *control*, authoritative in the *number*. The pressed state flips immediately
  * so the tap has an answer, and the count is replaced by whatever the route says — never
- * incremented locally. The server holds likes in a Redis set and returns its cardinality, so a
- * local `+1` on a post the reader had already liked from another device would show a number that
- * disagrees with the board.
+ * incremented locally. The server counts rows and returns the count, so a local `+1` on a post the
+ * reader had already liked from another device would show a number that disagrees with the board.
  */
 class CommunityController(
     private val gateway: CommunityGateway,
+    private val identity: CommunityIdentityStore,
     private val scope: CoroutineScope,
 ) {
 
@@ -112,6 +133,12 @@ class CommunityController(
     private var feedJob: Job? = null
     private var threadJob: Job? = null
 
+    init {
+        scope.launch {
+            identity.displayName.collect { name -> _state.update { it.copy(displayName = name) } }
+        }
+    }
+
     /** Loads the first page once. Called when the screen appears; safe to call on every entry. */
     fun start() {
         if (_state.value.posts.isEmpty() && feedJob?.isActive != true && _state.value.error == null) {
@@ -122,6 +149,42 @@ class CommunityController(
     fun refresh() = load(page = 1, replacing = true)
 
     fun retry() = load(page = 1, replacing = true)
+
+    /**
+     * Chooses the name this install writes under.
+     *
+     * The server's answer is what the store records — its normalised spelling, not what was typed
+     * — so the name on screen is the name other readers see. A refusal leaves the store alone and
+     * puts the server's sentence in [CommunityUiState.nameError], where the form shows it under the
+     * field the reader is still standing in.
+     */
+    fun register(displayName: String) {
+        val name = displayName.trim()
+        if (_state.value.registering) return
+        if (name.length !in NetworkCommunityGateway.MIN_NAME_LENGTH..NetworkCommunityGateway.MAX_NAME_LENGTH) {
+            _state.update { it.copy(nameError = null) }
+            return
+        }
+        _state.update { it.copy(registering = true, nameError = null) }
+        scope.launch {
+            runCatching { gateway.register(name) }
+                .onSuccess { member ->
+                    identity.setDisplayName(member.displayName)
+                    _state.update { it.copy(registering = false, displayName = member.displayName, nameError = null) }
+                }
+                .onFailure { failure ->
+                    _state.update {
+                        it.copy(
+                            registering = false,
+                            nameError = failure.serverText() ?: failure.message,
+                            // A ban is a state of the board, not of the form.
+                            error = if (failure is CommunityLockedException) CommunityError.LOCKED else it.error,
+                            serverText = if (failure is CommunityLockedException) failure.serverText else it.serverText,
+                        )
+                    }
+                }
+        }
+    }
 
     /**
      * Switches the category chip.
@@ -206,10 +269,10 @@ class CommunityController(
     /**
      * Writes a post and puts it at the top of the board, where the writer expects to find it.
      *
-     * Only when the server actually published it. A post the AI moderator held goes nowhere near
-     * the list — it is not on the board for anyone else either — and the reader is told so in the
-     * server's own words instead. Showing a held post in the feed would be the app promising
-     * something the moderation queue has not agreed to.
+     * Only when the server actually published it, which on this board is every post it did not
+     * refuse at the door. A refusal — a link, a phone number — comes back as [CommunityError.REFUSED]
+     * with the server's sentence about which rule, and the text stays in the composer for the
+     * reader to fix.
      */
     fun submit(content: String, category: CommunityCategory = CommunityCategory.DEFAULT) {
         if (_state.value.posting) return
@@ -220,15 +283,7 @@ class CommunityController(
                     _state.update { it.copy(posting = false, notice = outcome.message) }
                     if (outcome.published) refresh()
                 }
-                .onFailure { failure ->
-                    _state.update {
-                        it.copy(
-                            posting = false,
-                            error = failure.toCommunityError(),
-                            serverText = failure.serverText(),
-                        )
-                    }
-                }
+                .onFailure { failure -> onWriteFailure(failure) }
         }
     }
 
@@ -253,9 +308,7 @@ class CommunityController(
                     // Put it back. A control that stays pressed after the request behind it failed
                     // is a control that lied about what the server holds.
                     applyToPost(postId) { post -> post.copy(liked = known?.liked ?: false) }
-                    _state.update { current ->
-                        current.copy(error = failure.toCommunityError(), serverText = failure.serverText())
-                    }
+                    onWriteFailure(failure)
                 }
         }
     }
@@ -266,32 +319,40 @@ class CommunityController(
         scope.launch {
             runCatching { gateway.react(postId, emoji) }
                 .onSuccess { outcome -> applyToPost(postId) { it.copy(reactions = outcome.counts) } }
-                .onFailure { failure ->
-                    _state.update { it.copy(error = failure.toCommunityError(), serverText = failure.serverText()) }
-                }
+                .onFailure { failure -> onWriteFailure(failure) }
         }
     }
 
     /**
      * Reports a post.
      *
-     * The card is **not** removed. Three reports are what pulls a post back into review, and hiding
-     * it after one would tell a reporter their single tap took it down — which is both untrue and
-     * an invitation to press it on anything disagreeable.
+     * The card is **not** removed. Three reports are what hides a post, and hiding it after one
+     * would tell a reporter their single tap took it down — which is both untrue and an invitation
+     * to press it on anything disagreeable.
      */
     fun report(postId: Long, notice: String? = null) {
         scope.launch {
             runCatching { gateway.report(postId) }
                 .onSuccess { _state.update { current -> current.copy(notice = notice) } }
-                .onFailure { failure ->
-                    _state.update { it.copy(error = failure.toCommunityError(), serverText = failure.serverText()) }
-                }
+                .onFailure { failure -> onWriteFailure(failure) }
         }
     }
 
     fun dismissNotice() {
         _state.update { it.copy(notice = null) }
         _thread.update { it.copy(notice = null) }
+    }
+
+    /** Clears the last refusal, once the reader has seen it. The board itself is untouched. */
+    fun dismissError() {
+        _state.update { current ->
+            if (current.posts.isEmpty() && current.error != CommunityError.REFUSED) {
+                current
+            } else {
+                current.copy(error = null, serverText = null)
+            }
+        }
+        _thread.update { it.copy(error = null, serverText = null) }
     }
 
     // ── one thread ───────────────────────────────────────────────────────────────────────────
@@ -316,12 +377,10 @@ class CommunityController(
         runCatching { gateway.thread(postId) }
             .onSuccess { loaded ->
                 _thread.update { it.copy(thread = loaded, loading = false, error = null, missing = false) }
-                // The thread's copy of the post is the fresher one — it was fetched just now — so
-                // the card behind it is brought up to date rather than left showing an older count.
-                // The `liked` flag is the exception and is kept from the feed: the detail route
-                // never consults Redis, so its post always arrives with `liked` false, and copying
-                // that over would un-press a like the reader can see they made.
-                applyToPost(postId) { existing -> loaded.post.copy(liked = existing.liked) }
+                // The thread's copy of the post is the fresher one — it was fetched just now, and
+                // this route resolves `liked` for the caller — so the card behind it is brought up
+                // to date rather than left showing an older count.
+                applyToPost(postId) { loaded.post }
             }
             .onFailure { failure ->
                 _thread.update {
@@ -343,15 +402,13 @@ class CommunityController(
             runCatching { gateway.reply(postId, content, parentId) }
                 .onSuccess { outcome ->
                     _thread.update { it.copy(replying = false, notice = outcome.message) }
-                    // Only a published reply changes the thread. One held for review is not under
-                    // the post yet, and refetching would show the reader an unchanged page they
-                    // would read as a lost reply — the notice is what tells them what happened.
                     if (outcome.published) {
                         fetchThread(postId)
                         applyToPost(postId) { it.copy(replyCount = it.replyCount + 1) }
                     }
                 }
                 .onFailure { failure ->
+                    forgetNameIfUnregistered(failure)
                     _thread.update {
                         it.copy(
                             replying = false,
@@ -377,12 +434,29 @@ class CommunityController(
         }
     }
 
-    /** Forgets everything, for a platform switch or a sign-out. The other backend has no community. */
+    /** Forgets the board — for a sign-out that wipes the app's state. The name is kept: it is not a session. */
     fun clear() {
         feedJob?.cancel()
         threadJob?.cancel()
-        _state.value = CommunityUiState()
+        _state.value = CommunityUiState(displayName = _state.value.displayName)
         _thread.value = CommunityThreadUiState()
+    }
+
+    /**
+     * A write was refused. The board stays; the refusal is reported beside it.
+     *
+     * A `401` here means the store and the server disagree about whether this install has a name
+     * — the server wins, and the cached name is dropped so the next write asks for one.
+     */
+    private suspend fun onWriteFailure(failure: Throwable) {
+        forgetNameIfUnregistered(failure)
+        _state.update {
+            it.copy(posting = false, error = failure.toCommunityError(), serverText = failure.serverText())
+        }
+    }
+
+    private suspend fun forgetNameIfUnregistered(failure: Throwable) {
+        if (failure.toCommunityError() == CommunityError.UNREGISTERED) identity.setDisplayName(null)
     }
 
     /** Applies [change] to one post wherever it is held — the feed list, the open thread, or both. */
@@ -398,21 +472,24 @@ class CommunityController(
 }
 
 /**
- * Which of the four answers a thrown request is.
+ * Which of the five answers a thrown request is.
  *
- * `401` is the sign-in case and nothing else: `current_student` is the only thing on these routes
- * that can produce one, and it produces it for exactly one reason. `403` has already become
- * [CommunityLockedException] at the gateway, where the two refusals could still be told apart by
- * status; by the time it reaches here it is a type rather than a number.
+ * `401` is the no-name case and nothing else: the only thing on these routes that produces one is
+ * a write from a key the server holds no name for. `403` and `400` have already become their own
+ * types at the gateway, where the refusals could still be told apart by status; by the time they
+ * reach here they are types rather than numbers.
  */
 internal fun Throwable.toCommunityError(): CommunityError = when {
     this is CommunityLockedException -> CommunityError.LOCKED
-    this is HttpException && code() == 401 -> CommunityError.SIGNED_OUT
+    this is CommunityRefusedException -> CommunityError.REFUSED
+    this is HttpException && code() == 401 -> CommunityError.UNREGISTERED
     else -> CommunityError.NETWORK
 }
 
 /** The server's own sentence, where it wrote one. See `ServerMessage` for why not `message`. */
 internal fun Throwable.serverText(): String? = when (this) {
     is CommunityLockedException -> serverText
+    is CommunityRefusedException -> serverText
+    is CommunityNameTakenException -> serverText
     else -> serverTextOrNull()
 }

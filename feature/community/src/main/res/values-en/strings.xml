@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="community_title">Community</string>
-    <string name="community_subtitle">Analysis and experience from other traders</string>
+    <string name="community_subtitle">Where CoinePro traders talk</string>
     <string name="community_compose">Write</string>
     <string name="community_compose_close">Close</string>
     <string name="community_refresh">Refresh</string>
@@ -27,12 +27,8 @@
     <string name="community_empty">Nothing has been posted in this category yet.</string>
     <string name="community_empty_hint">You could be the first.</string>
 
-    <string name="community_signed_out">Sign in to read the community.</string>
-    <string name="community_signed_out_hint">The community is part of the academy and opens with the same account.</string>
-    <string name="community_sign_in">Sign in</string>
-    <string name="community_locked">The community is for VIP members.</string>
-    <string name="community_locked_hint">An active subscription opens both reading and writing.</string>
-    <string name="community_membership">Subscription</string>
+    <string name="community_locked">This install has been locked out of the board.</string>
+    <string name="community_locked_hint">Reading still works. Ask Telegram support for a review.</string>
 
     <string name="community_unreadable">The server sent %1$s posts and none arrived in a shape this build can read.</string>
     <string name="community_unreadable_hint">This is not an outage, it is a format mismatch. Take a diagnostics export and send it.</string>
@@ -40,7 +36,7 @@
     <string name="community_compose_label">What did you see in the market?</string>
     <string name="community_compose_hint">At least %1$s characters</string>
     <string name="community_compose_count">%1$s of %2$s characters</string>
-    <string name="community_post_pending">This post has been sent for review and is not on the board yet.</string>
+    <string name="community_post_pending">This post is not on the board.</string>
 
     <string name="community_thread_title">Thread</string>
     <string name="community_thread_gone">This post is no longer available.</string>
@@ -49,4 +45,16 @@
     <string name="community_reply_to">In reply to %1$s</string>
     <string name="community_best_mark">Mark as best reply</string>
     <string name="community_best_clear">Remove the best-reply mark</string>
+    <string name="community_dismiss">OK</string>
+    <string name="community_name_title">Pick a name for yourself</string>
+    <string name="community_name_body">The board is independent of your accounts. Only this name is shown — no phone, no email.</string>
+    <string name="community_name_label">Display name</string>
+    <string name="community_name_rule">%1$s to %2$s characters: letters, digits, spaces or underscores.</string>
+    <string name="community_name_confirm">Save name</string>
+    <string name="community_name_change">Change name</string>
+    <string name="community_name_as">You: %1$s</string>
+    <string name="community_name_needed">Pick a name first to do this.</string>
+    <string name="community_unregistered">Pick a name before writing on the board.</string>
+    <string name="community_compose_rules">No links, numbers or handles. Posts go live at once.</string>
+    <string name="community_refused">This text was not accepted.</string>
 </resources>

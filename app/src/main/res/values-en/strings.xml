@@ -164,7 +164,5 @@
     <string name="notify_announcement_note">Things we announce ourselves — an outage, a release, a new market, a change to membership. Separate from news, because somebody who silences a busy news feed must not thereby stop hearing that the service is down.</string>
     <string name="nav_markets_title">Markets</string>
     <string name="screen_community">Community</string>
-    <string name="community_absent_here">There is no community board on TradeYar.</string>
-    <string name="community_absent_here_hint">Traders talk on CoinePro-FX. Switch to forex from the menu to open the board.</string>
     <string name="screen_community_thread">Thread</string>
 </resources>

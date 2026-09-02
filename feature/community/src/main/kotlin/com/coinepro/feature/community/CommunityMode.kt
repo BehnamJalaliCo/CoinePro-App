@@ -8,11 +8,10 @@ import com.coinepro.core.community.CommunityUiState
  * What the board is showing, which is six things and would be drawn as two by anybody in a hurry.
  *
  * The two that matter most are the two refusals, and they are the reason this is an enum rather
- * than a pair of booleans on the screen. [SIGNED_OUT] and [LOCKED] arrive as an HTTP 401 and an
- * HTTP 403 from the same route, one line apart in `academy.py`, and they have **opposite buttons**:
- * one is «ورود» and the other is «تهیهٔ اشتراک». A screen that folds them into "you cannot see this"
- * sends half its readers to a control that cannot help them, and the reader who was merely signed
- * out is told to buy something they already have.
+ * than a pair of booleans on the screen. [UNREGISTERED] and [LOCKED] arrive as an HTTP 401 and an
+ * HTTP 403 from the same routes and they have **opposite controls**: one is a form asking for a
+ * name and the other is nothing at all. A screen that folds them into "you cannot do this" asks a
+ * banned reader to pick a name, and tells a reader with no name that they are banned.
  *
  * [UNREADABLE] is the third one worth naming. Twenty rows on the wire and none of them parsed is an
  * HTTP 200 with an empty screen behind it — the exact failure `CommunityWire`'s KDoc is about — and
@@ -20,15 +19,16 @@ import com.coinepro.core.community.CommunityUiState
  * rather than about this build.
  *
  * An error only counts while there is nothing to show: a refresh that fails over a board already on
- * screen leaves the posts there, because yesterday's discussion is still the discussion.
+ * screen leaves the posts there, because yesterday's discussion is still the discussion. And a
+ * *write* that was refused never empties the board at all — it is reported beside it.
  */
 internal enum class CommunityMode {
     LOADING,
 
-    /** No academy token. `401 {"detail":"ورود لازم است."}` — the button is «ورود». */
-    SIGNED_OUT,
+    /** The server holds no name for this key. The control is a name field. */
+    UNREGISTERED,
 
-    /** A free or expired tier. `403` from `require_vip` — the button is «تهیهٔ اشتراک». */
+    /** The key is banned. `403`, with the server's sentence. Nothing to press. */
     LOCKED,
 
     /** Rows arrived and none could be read. Nothing to press; this is a report, not a retry. */
@@ -45,12 +45,12 @@ internal enum class CommunityMode {
 
 internal fun communityMode(state: CommunityUiState): CommunityMode = when {
     state.loading -> CommunityMode.LOADING
-    // Ordered by how specific the answer is, not by status code. A tier lock is the one refusal a
-    // reader can act on without leaving the app twice, so it is tested before the generic failure.
-    state.posts.isEmpty() && state.error == CommunityError.SIGNED_OUT -> CommunityMode.SIGNED_OUT
+    // Ordered by how specific the answer is, not by status code.
+    state.posts.isEmpty() && state.error == CommunityError.UNREGISTERED -> CommunityMode.UNREGISTERED
     state.posts.isEmpty() && state.error == CommunityError.LOCKED -> CommunityMode.LOCKED
     state.posts.isEmpty() && state.error == CommunityError.UNREADABLE -> CommunityMode.UNREADABLE
-    state.posts.isEmpty() && state.error != null -> CommunityMode.ERROR
+    // A refused *text* is not a failed *board*: the composer reports it and the list stays.
+    state.posts.isEmpty() && state.error != null && state.error != CommunityError.REFUSED -> CommunityMode.ERROR
     state.posts.isEmpty() -> CommunityMode.NOTHING_POSTED
     else -> CommunityMode.POSTS
 }
@@ -61,7 +61,7 @@ internal fun communityMode(state: CommunityUiState): CommunityMode = when {
  * Declared rather than derived, which is the opposite of what Explore's strip does, and the
  * difference is where the truth lives. Explore's categories are a property of the *catalogue* — a
  * platform quoting no forex must not be offered a forex chip — and this screen's are a property of
- * a **tuple in `academy.py`**. A chip for a category nobody has posted in yet is not a dead end: it
+ * a **tuple on the server**. A chip for a category nobody has posted in yet is not a dead end: it
  * is an empty room somebody can be the first to write in, and hiding it would make the app's list
  * of topics depend on who happened to post today.
  */

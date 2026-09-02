@@ -168,7 +168,5 @@
     <string name="nav_markets_title">بازارها</string>
     <string name="screen_community">انجمن</string>
     <!-- The community tab on TradeYar, which has no board. Not an outage; a fact about the platform. -->
-    <string name="community_absent_here">انجمن روی تریدیار نیست.</string>
-    <string name="community_absent_here_hint">گفت‌وگوی معامله‌گران روی کوینه‌پرو فارکس برقرار است. از منو به فارکس سوئیچ کنید تا انجمن باز شود.</string>
     <string name="screen_community_thread">گفت‌وگو</string>
 </resources>

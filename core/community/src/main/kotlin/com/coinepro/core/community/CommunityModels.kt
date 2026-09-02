@@ -5,15 +5,15 @@ import java.time.Instant
 /**
  * The five buckets a post can be filed under, and they are the server's own.
  *
- * `academy.py` holds them as a tuple — `_POST_CATS = ("تحلیل", "سوال", "تجربه", "اخبار", "عمومی")`
- * — and does two things with it: the feed's `category` query filters only when the value is in the
- * tuple, and a post whose category is not in it is silently rewritten to «عمومی» on the way in. So
- * the strings here are not labels, they are **wire values**, and translating them would produce a
- * chip that filters nothing and a post filed under the wrong heading.
+ * `app_community.py` holds them as a tuple — `CATEGORIES = ("تحلیل", "سوال", "تجربه", "اخبار",
+ * "عمومی")` — and does two things with it: the feed's `category` query filters only when the value
+ * is in the tuple, and a post whose category is not in it is silently rewritten to «عمومی» on the
+ * way in. So the strings here are not labels, they are **wire values**, and translating them would
+ * produce a chip that filters nothing and a post filed under the wrong heading.
  *
  * That is why [wire] carries the Persian text rather than a Latin key. It reads oddly next to every
  * other enum in this repository and it is the correct shape: the alternative is a lookup table in
- * this app that has to be edited in lockstep with a tuple on a server nobody here deploys.
+ * this app that has to be edited in lockstep with a tuple on a server.
  *
  * [DEFAULT] is «عمومی», the same default the route applies, so the composer sends what the server
  * would have picked anyway instead of relying on the rewrite.
@@ -47,9 +47,9 @@ enum class CommunityCategory(val wire: String) {
 /**
  * The five reactions the route accepts, in the order it lists them.
  *
- * `POST /academy/community/{pid}/react` refuses anything outside this set with
- * `400 {"detail":"ایموجی مجاز نیست."}`, so the picker is built from this list rather than from an
- * emoji keyboard — a keyboard would offer several hundred taps of which five work.
+ * `POST …/posts/{pid}/react` refuses anything outside this set with `400 {"detail":"ایموجی مجاز
+ * نیست."}`, so the picker is built from this list rather than from an emoji keyboard — a keyboard
+ * would offer several hundred taps of which five work.
  */
 object CommunityReactions {
     val ALLOWED: List<String> = listOf("👍", "🔥", "🤔", "❤️", "💡")
@@ -58,32 +58,39 @@ object CommunityReactions {
 }
 
 /**
+ * Who this install is on the board.
+ *
+ * A number and a name, and nothing else — no phone, no email, no session on either platform. The
+ * name is the only thing another reader ever sees, and it is the only thing the server holds
+ * beside a hash of the key. See [CommunityIdentityStore].
+ */
+data class CommunityMember(
+    val id: Long,
+    val displayName: String,
+    /** The key has been banned. Reading still works; nothing else does. */
+    val banned: Boolean = false,
+)
+
+/**
  * One post in the feed.
  *
  * ### What this deliberately does not have
  *
- * A **title**, a **cover image** and an **avatar**. The reference screenshot has all three and this
- * backend has none of them: `_post_dict` in `academy.py` returns `id`, `content`, `author`,
- * `likes`, `replies_count`, `status`, `category`, `reactions`, `best_reply_id` and `created_at`,
- * and `AcademyPost` has no column for a picture or a heading. Inventing a title by cutting the
- * first line off the body, or a cover by picking a stock chart, would be this app asserting
- * something the author did not write — which is the same fault as a lettered disc standing in for
- * a logo, in prose instead of in artwork.
+ * A **title**, a **cover image** and an **avatar**. The board stores a body, an author, a category
+ * and two counters, and nothing else. Inventing a title by cutting the first line off the body, or
+ * a cover by picking a stock chart, would be this app asserting something the author did not write
+ * — which is the same fault as a lettered disc standing in for a logo, in prose instead of in
+ * artwork. So a card is the author, the moment, the category and the text, and it is honest at any
+ * length.
  *
- * So a card is the author, the moment, the category and the text, and it is honest at any length.
- *
- * @param author the display name the route resolved — `full_name` where the student has one, the
- *   username otherwise, and `—` where the student row has gone. Already masked to `ab***` on the
- *   **search** route only; see [CommunityGateway.search].
+ * @param author the display name the author chose. Never masked, never an account name: the board
+ *   has no account names.
  * @param categoryLabel the server's own word for the category, kept even when [category] resolved,
  *   so a heading can be drawn for a bucket this build predates.
- * @param liked whether **this** reader has liked it. Only the feed route carries it — the detail
- *   route builds its post dictionary without consulting Redis — so it is false rather than unknown
- *   on a thread opened directly, and the like control there reads as "not yet liked". Toggling it
- *   still tells the truth, because the route answers with the count and the new state.
- * @param pending a post the AI moderator sent to the review queue instead of publishing. The feed
- *   never contains one — it filters on `status == "published"` — so this is only ever true for the
- *   post a reader has just written, which is the one case where saying so matters.
+ * @param liked whether **this** reader has liked it. Resolved on every route that returns a post,
+ *   for the key the request carried; false for a reader with no name, who cannot have liked it.
+ * @param pending a post that is not on the board — held or hidden. The feed never contains one, so
+ *   this is only ever true on a body from a route that answered about one post in particular.
  */
 data class CommunityPost(
     val id: Long,
@@ -112,7 +119,7 @@ data class CommunityReply(
     val createdAt: Instant?,
 )
 
-/** A post with everything published under it. `GET /academy/community/{pid}`. */
+/** A post with everything published under it. `GET …/posts/{pid}`. */
 data class CommunityThread(
     val post: CommunityPost,
     val replies: List<CommunityReply>,
@@ -144,7 +151,7 @@ data class CommunityFeedPage(
     val last: Boolean get() = received < PAGE_SIZE
 
     companion object {
-        /** `per = 20` in `community_feed`. Not configurable from the client. */
+        /** `PAGE_SIZE = 20` in `app_community.py`. Not configurable from the client. */
         const val PAGE_SIZE = 20
     }
 }
@@ -152,11 +159,10 @@ data class CommunityFeedPage(
 /**
  * What writing produced — a post or a reply.
  *
- * The route answers `{"id":…, "status":"published"|"pending", "message":…}` for a post and only
- * `{"status":…}` for a reply, so [id] is nullable and the message is the server's own sentence:
- * «منتشر شد.» or «برای بازبینیِ ادمین ارسال شد.». It is shown verbatim rather than replaced with
- * app copy, because the two outcomes are the server's decision and its wording is the one that will
- * still be right after their moderation rules change.
+ * The route answers `{"id":…, "status":"published", "message":"منتشر شد."}`. There is no review
+ * queue on this board — a post is refused at the door or it is on the board — but [published] is
+ * still read off the wire rather than assumed, so a status this build has never seen is reported
+ * as what it says rather than as a hold.
  */
 data class CommunityWriteOutcome(
     val id: Long?,
@@ -176,7 +182,7 @@ data class CommunityReactionOutcome(
     val mine: Set<String>,
 )
 
-/** One row of `GET /academy/leaderboard`. `xp` is `completed × 10 + Σ quiz_score`, server-side. */
+/** One row of `GET …/leaderboard`. `xp` is posts × 10 + replies × 3 + likes received × 2. */
 data class CommunityLeader(
     val rank: Int,
     val username: String,
@@ -188,7 +194,7 @@ data class CommunityLeader(
 /**
  * The board, and where this reader stands on it.
  *
- * [myRank] is computed against **every** student rather than against the fifty rows sent, so a
+ * [myRank] is computed against **every** member rather than against the fifty rows sent, so a
  * reader outside the top fifty still learns their position — which is the only number on this
  * screen most people are looking for.
  */
@@ -199,15 +205,21 @@ data class CommunityLeaderboard(
 )
 
 /**
- * Thrown when the community is behind the subscription rather than behind the sign-in.
+ * Thrown when the key is banned.
  *
- * `require_vip` answers `403 {"detail":"این بخش ویژهٔ اعضای VIP است. برای دسترسی، اشتراک تهیه
- * کنید."}` for a free or expired student, and `current_student` answers `401 {"detail":"ورود لازم
- * است."}` for anyone without an academy token. Those are two different sentences with two different
- * buttons under them — buy a subscription, or sign in — and a screen that cannot tell them apart
- * sends half its readers to the wrong one.
- *
- * The server's own text is carried so the screen can print it instead of app copy; their wording
- * changes with their pricing and ours would not.
+ * `403 {"detail":"دسترسی این حساب به انجمن بسته شده است."}`. Distinct from the `401` a key with no
+ * name gets, and the distinction is the whole reason this is a type: one has a form under it and
+ * the other has nothing to press. The server's own text is carried so the screen can print it
+ * instead of app copy.
  */
-class CommunityLockedException(val serverText: String?) : Exception("community_vip_locked")
+class CommunityLockedException(val serverText: String?) : Exception("community_locked")
+
+/**
+ * Thrown when the text itself was refused — a link, a phone number, too short, an emoji outside
+ * the five. `400`, with the server's own sentence about which rule. Shown verbatim: the rules are
+ * the server's and its wording is the one that will still be right after they change.
+ */
+class CommunityRefusedException(val serverText: String?) : Exception("community_refused")
+
+/** Thrown from [CommunityGateway.register] when somebody else already holds the name. `409`. */
+class CommunityNameTakenException(val serverText: String?) : Exception("community_name_taken")

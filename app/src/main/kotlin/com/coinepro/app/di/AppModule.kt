@@ -42,7 +42,9 @@ import com.coinepro.core.chartevents.ChartEventController
 import com.coinepro.core.chartevents.MarketIntelChartEventFeed
 import com.coinepro.core.community.CommunityController
 import com.coinepro.core.community.CommunityGateway
+import com.coinepro.core.community.CommunityIdentityStore
 import com.coinepro.core.community.NetworkCommunityGateway
+import com.coinepro.core.community.PreferencesCommunityIdentityStore
 import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.copytrade.CopyTradeGateway
 import com.coinepro.core.copytrade.NetworkCopyTradeGateway
@@ -1392,25 +1394,44 @@ object AppModule {
     ): AcademyGateway = NetworkAcademyGateway(retrofit, tokens)
 
     /**
-     * The community, on the one backend that has one.
+     * The community — the app's own board, belonging to neither platform.
      *
-     * `@ForexPlatform` and the academy token, both for the same reason the academy gateway takes
-     * them: `/academy/community` is behind `require_vip`, which is `current_student` plus a tier
-     * test, and that is the identity `AcademyTokenStore` already mints. Bound unconditionally
-     * because the *route* is unconditional — what makes Community absent on TradeYar is the shell
-     * not registering its destination and the menu not offering its row, not a null here.
+     * Its own client rather than either platform's: the two platform clients attach that
+     * platform's bearer token to every call, and a community request carrying a TradeYar or a
+     * forex session would tie the board to that account, which is the one thing the owner said it
+     * must not be. This client sends the install's community key and nothing else. It points at
+     * TradeYar's host because that is where the routes are served — the host is a location, not
+     * an identity, and nothing on those routes knows what a TradeYar account is.
      */
     @Provides
     @Singleton
-    fun communityGateway(
-        @ForexPlatform retrofit: Retrofit,
-        tokens: AcademyTokenStore,
-    ): CommunityGateway = NetworkCommunityGateway(retrofit, tokens)
+    fun communityIdentityStore(preferences: DataStore<Preferences>): CommunityIdentityStore =
+        PreferencesCommunityIdentityStore(preferences)
 
     @Provides
     @Singleton
-    fun communityController(gateway: CommunityGateway, scope: CoroutineScope): CommunityController =
-        CommunityController(gateway, scope)
+    fun communityGateway(
+        installIds: InstallIdStore,
+        requestLog: RequestLog,
+        appLog: AppLog,
+        identity: CommunityIdentityStore,
+    ): CommunityGateway {
+        val client = NetworkFactory.okHttpClient(
+            installId = installIds.providerFor(MarketPlatform.TRADEYAR),
+            appVersion = BuildConfig.VERSION_NAME,
+            recorder = RequestLogInterceptor(requestLog, MarketPlatform.TRADEYAR, appLog = appLog),
+            enableHttpLogging = BuildConfig.DEBUG,
+        )
+        return NetworkCommunityGateway(NetworkFactory.retrofit(BuildConfig.TRADEYAR_API_BASE_URL, client), identity)
+    }
+
+    @Provides
+    @Singleton
+    fun communityController(
+        gateway: CommunityGateway,
+        identity: CommunityIdentityStore,
+        scope: CoroutineScope,
+    ): CommunityController = CommunityController(gateway, identity, scope)
 
     /**
      * The web terminal.

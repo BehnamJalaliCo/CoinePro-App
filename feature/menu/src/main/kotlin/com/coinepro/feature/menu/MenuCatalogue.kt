@@ -296,17 +296,14 @@ object MenuCatalogue {
             platform = MarketPlatform.COINEPRO_FX,
             account = true,
         ),
-        // CoinePro-FX only, and behind the academy's own VIP gate — the screen says which of the
-        // two refusals it got. Absent on TradeYar via the shell's `absent` set, because that
-        // backend has no `/academy` surface at all: there is no room to be locked out of.
+        // The app's own board, on both platforms and for a guest: it belongs to neither account.
+        // Reading needs nothing; writing needs a display name the screen asks for itself.
         MenuEntry(
             id = "community",
             titleRes = R.string.menu_community_title,
             bodyRes = R.string.menu_community_body,
             icon = DesignR.drawable.brand_user,
             group = MenuGroup.LEARN,
-            platform = MarketPlatform.COINEPRO_FX,
-            account = true,
         ),
         MenuEntry(
             id = "safety",

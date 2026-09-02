@@ -2,7 +2,11 @@ package com.coinepro.app
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -15,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -28,11 +33,25 @@ import com.coinepro.core.navigation.AppDestination
 /**
  * The bottom navigation bar.
  *
- * Deliberately unlike the Material default in two ways, both of them the "آرام" direction speaking:
- * the bar takes the page's own background rather than a raised surface, so the screen ends at the
- * device edge instead of at a second panel; and the selected item is marked by brightness alone,
- * with the indicator pill turned off. The gold is spent on the primary action, and a gold pill down
- * here would put a second one on every screen.
+ * ### What it is made of
+ *
+ * The page's own surface, one hairline above it, and a plate under the selected item. Three
+ * decisions, each with a reason:
+ *
+ * * **The surface rather than the stage.** The bar used to take the stage colour so the screen
+ *   ended at the device edge, and the result was a row of six glyphs floating on the page with
+ *   nothing to say they were a control. A bar is an object; it needs a ground of its own. The
+ *   surface rung is one step up, which is the same step every card takes, so the bar reads as part
+ *   of the system rather than as a Material default.
+ * * **A hairline, not a shadow.** Elevation in this design system is a hairline plus at most one
+ *   very soft shadow, and a shadow under a bar that sits on a near-black stage is invisible. The
+ *   hairline is what closes the page above it.
+ * * **A plate under the selection, not a gold pill.** The gold is spent on the screen's primary
+ *   action, and a gold pill down here would put a second one on every screen. The plate is the
+ *   same one the navigation rail draws — `SurfaceElevated`, one rung up — so the two chromes
+ *   agree about what "you are here" looks like. Weight seconds it: the selected glyph is the
+ *   filled one and its label is bold, so the state survives a reader who does not distinguish two
+ *   greys and a screenshot compared at low resolution.
  */
 /**
  * How a tab tap rearranges the back stack.
@@ -69,39 +88,52 @@ fun CoineProBottomBar(
     onSelect: (AppDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    NavigationBar(
-        modifier = modifier.fillMaxWidth().background(CoineProColors.Stage),
-        containerColor = Color.Transparent,
-        tonalElevation = 0.dp,
-    ) {
-        AppDestination.entries.forEach { destination ->
-            NavigationBarItem(
-                selected = currentRoute == destination.route,
-                onClick = { onSelect(destination) },
-                icon = {
-                    val selected = currentRoute == destination.route
-                    Icon(
-                        // Weight marks the selection, not colour: the gold belongs to the screen's
-                        // primary action, and a gold tab would put a second one on every screen.
-                        painter = painterResource(destination.icon(selected)),
-                        contentDescription = null,
-                        modifier = Modifier.size(26.dp),
-                    )
-                },
-                label = {
-                    Text(
-                        text = stringResource(destination.labelRes),
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = CoineProColors.TextPrimary,
-                    selectedTextColor = CoineProColors.TextPrimary,
-                    unselectedIconColor = CoineProColors.TextMuted,
-                    unselectedTextColor = CoineProColors.TextMuted,
-                    indicatorColor = Color.Transparent,
-                ),
-            )
+    Column(modifier = modifier.fillMaxWidth()) {
+        // The edge of the page. See the header: a hairline is how this system elevates.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(CoineProColors.BorderSubtle),
+        )
+        NavigationBar(
+            modifier = Modifier.fillMaxWidth().background(CoineProColors.Surface),
+            containerColor = Color.Transparent,
+            tonalElevation = 0.dp,
+        ) {
+            AppDestination.entries.forEach { destination ->
+                val selected = currentRoute == destination.route
+                NavigationBarItem(
+                    selected = selected,
+                    onClick = { onSelect(destination) },
+                    icon = {
+                        Icon(
+                            // Weight marks the selection, not colour: the gold belongs to the
+                            // screen's primary action, and a gold tab would put a second one on
+                            // every screen.
+                            painter = painterResource(destination.icon(selected)),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = stringResource(destination.labelRes),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            maxLines = 1,
+                        )
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = CoineProColors.TextPrimary,
+                        selectedTextColor = CoineProColors.TextPrimary,
+                        unselectedIconColor = CoineProColors.TextMuted,
+                        unselectedTextColor = CoineProColors.TextMuted,
+                        // The rail's plate, one rung up from the bar — see the header.
+                        indicatorColor = CoineProColors.SurfaceElevated,
+                    ),
+                )
+            }
         }
     }
 }
@@ -129,7 +161,7 @@ private fun AppDestination.icon(selected: Boolean): Int = when (this) {
 }
 
 /**
- * The five destinations as [CoineProNavigationRail] wants them.
+ * The six destinations as [CoineProNavigationRail] wants them.
  *
  * Here rather than in `core:designsystem` for the same reason the glyph pairs are: the rail takes
  * plain items so `core:navigation` stays a module with no Compose dependency at all. One list, so

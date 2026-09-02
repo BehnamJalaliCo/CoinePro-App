@@ -9,13 +9,11 @@ import com.google.gson.JsonObject
  *
  * ### Why not Gson data classes, when the rest of `core:academy` uses them
  *
- * Because the OpenAPI does not describe these responses. Every one of the community operations
- * declares `"content": {"application/json": {"schema": {}}}` — an empty schema, which is FastAPI's
- * way of saying the handler returns a bare `dict` and nothing typed it. The shapes below were read
- * out of `academy.py`'s handlers instead, which is the best evidence there is; but "the best
- * evidence there is" is exactly the situation `MarketIntelGateway`'s KDoc was written about, and
- * the two production bugs it records both came from binding a declared field name to a body nobody
- * had held in their hand:
+ * Because the handlers return bare `dict`s and nothing types them: `app_community.py` builds each
+ * body by hand, and the shapes below were read out of those handlers. That is the best evidence
+ * there is, but "the best evidence there is" is exactly the situation `MarketIntelGateway`'s KDoc
+ * was written about, and the two production bugs it records both came from binding a declared
+ * field name to a body nobody had held in their hand:
  *
  * * a Kotlin default that Gson never runs, so one absent key nulls a non-null field and takes the
  *   whole screen down with a `NullPointerException`;
@@ -39,7 +37,25 @@ import com.google.gson.JsonObject
 internal object CommunityWire {
 
     /**
-     * `GET /academy/community` → `{"posts": [...]}`.
+     * `GET …/me` and `POST …/me` → `{"registered": bool, "id": n, "display_name": "…"}`.
+     *
+     * Null for a key the server has never seen a name for — `{"registered": false}` — and null too
+     * for a body that claims registration but carries no name, because a member with no name is
+     * not a member this app can show.
+     */
+    fun readMember(body: JsonElement?): CommunityMember? {
+        val row = body?.takeIf(JsonElement::isJsonObject)?.asJsonObject ?: return null
+        if (row.flag("registered") == false) return null
+        val name = row.text("display_name", "displayName", "name", "username") ?: return null
+        return CommunityMember(
+            id = row.number("id", "member_id", "memberId")?.toLong() ?: 0L,
+            displayName = name,
+            banned = row.flag("banned", "is_banned", "isBanned") ?: false,
+        )
+    }
+
+    /**
+     * `GET …/posts` → `{"posts": [...]}`.
      *
      * The envelope is checked for a bare array too. The handler returns the object today; the array
      * costs one branch and removes a whole class of silent empty screen if the envelope is ever
@@ -57,13 +73,11 @@ internal object CommunityWire {
     }
 
     /**
-     * `GET /academy/community/search` → `{"items": [...]}`.
+     * `GET …/posts/search` → `{"items": [...]}`.
      *
-     * A different envelope key from the feed's, and a different row shape: `community_search` builds
-     * its dictionaries by hand with a **truncated** body — `(p.content or "")[:200]` — a masked
-     * author, and no `status`, `reactions` or `best_reply_id`. Read through the same [readPost] all
-     * the same, because every field it does send is spelled the way the feed spells it and the ones
-     * it omits already have honest defaults here.
+     * A different envelope key from the feed's, and a **truncated** body — two hundred characters
+     * and an ellipsis. Read through the same [readPost] all the same, because every field it sends
+     * is spelled the way the feed spells it.
      */
     fun readSearch(body: JsonElement?): List<CommunityPost> =
         arrayUnder(body, "items", "posts", "results", "data")
@@ -72,7 +86,7 @@ internal object CommunityWire {
             .mapNotNull(::readPost)
 
     /**
-     * `GET /academy/community/{pid}` → `{"post": {...}, "replies": [...]}`.
+     * `GET …/posts/{pid}` → `{"post": {...}, "replies": [...]}`.
      *
      * Null when the post itself could not be read, which the gateway turns into the same "not
      * found" the route would have sent — a thread screen with a reply list and no post above it is
@@ -93,7 +107,7 @@ internal object CommunityWire {
         return CommunityThread(post = post, replies = replies)
     }
 
-    /** `POST /academy/community` and `.../reply`. The reply route sends only `status`. */
+    /** `POST …/posts` and `…/reply` → `{"id": n, "status": "published", "message": "…"}`. */
     fun readWriteOutcome(body: JsonElement?): CommunityWriteOutcome {
         val row = body?.takeIf(JsonElement::isJsonObject)?.asJsonObject
         val status = row?.text("status", "state").orEmpty()
@@ -109,7 +123,7 @@ internal object CommunityWire {
     }
 
     /**
-     * `POST /academy/community/{pid}/like` → `{"likes": n, "liked": bool}`.
+     * `POST …/posts/{pid}/like` → `{"likes": n, "liked": bool}`.
      *
      * [fallback] is the count the screen already had. The route's answer is authoritative and this
      * is only reached when the body arrived without a `likes` key at all — in which case keeping
@@ -124,7 +138,7 @@ internal object CommunityWire {
         )
     }
 
-    /** `POST /academy/community/{pid}/react` → `{"reactions": {emoji: n}, "mine": [emoji]}`. */
+    /** `POST …/posts/{pid}/react` → `{"reactions": {emoji: n}, "mine": [emoji]}`. */
     fun readReaction(body: JsonElement?): CommunityReactionOutcome {
         val row = body?.takeIf(JsonElement::isJsonObject)?.asJsonObject
         return CommunityReactionOutcome(
@@ -137,7 +151,7 @@ internal object CommunityWire {
         )
     }
 
-    /** `GET /academy/leaderboard` → `{"items": [...], "my_rank": n|null, "total_students": n}`. */
+    /** `GET …/leaderboard` → `{"items": [...], "my_rank": n|null, "total_students": n}`. */
     fun readLeaderboard(body: JsonElement?): CommunityLeaderboard {
         val root = body?.takeIf(JsonElement::isJsonObject)?.asJsonObject
         val rows = arrayUnder(body, "items", "leaders", "results", "data")
@@ -171,9 +185,8 @@ internal object CommunityWire {
         val status = row.text("status", "state")
         return CommunityPost(
             id = id,
-            // «—» rather than an empty string, and it is the same em dash the route itself uses for
-            // a student row that has gone. A blank line where a name belongs reads as a rendering
-            // fault; a dash reads as "nobody knows", which is what it is.
+            // «—» rather than an empty string. A blank line where a name belongs reads as a
+            // rendering fault; a dash reads as "nobody knows", which is what it is.
             author = row.text("author", "username", "full_name", "fullName", "name") ?: "—",
             content = content,
             category = CommunityCategory.of(categoryLabel),
@@ -200,9 +213,7 @@ internal object CommunityWire {
             content = content,
             parentId = row.number("parent_id", "parentId")?.toLong()?.takeIf { it > 0L },
             // The route computes this per reply and sends `is_best`; the post's own `best_reply_id`
-            // is the second opinion, and either one is enough. Two sources because the search and
-            // detail dictionaries are hand-built in different places in `academy.py` and have
-            // already disagreed about which fields they carry.
+            // is the second opinion, and either one is enough.
             best = row.flag("is_best", "isBest", "best") ?: (bestReplyId != null && bestReplyId == id),
             createdAt = parseWireInstant(row.text("created_at", "createdAt", "created", "date")),
         )

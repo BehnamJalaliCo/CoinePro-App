@@ -15,6 +15,36 @@ it is for.
 
 ---
 
+## [4.20.0] — 2026-09-02 — The community is the app's own, and the finish
+
+### The community belongs to the app now
+
+It used to be CoinePro-FX's academy board, behind a forex sign-in and a VIP tier — so the crypto
+platform said «انجمن روی تریدیار نیست», the forex platform said «ورود لازم است» to everyone without a
+subscription, and a guest saw nothing on either. The owner's instruction: the community is the
+*app's*, independent of both platforms, on one of the two existing servers.
+
+It is served from TradeYar's host at `api/v1/public/app-community` and tied to neither account.
+The app mints a random key once per install and sends it as `X-Community-Key`; the server keeps
+only its hash and the display name the reader chooses. Reading needs nothing and works for a guest.
+The first write — a post, a like, a reply — asks for a name, once, in a card that says what it is:
+the only thing anybody else ever sees. Posts publish at once; links, phone numbers and messenger
+handles are refused at the door in the server's own sentence, and the text stays in the box to be
+fixed. Three readers' reports hide a post. The tab and the menu row are on both platforms and for
+guests; the placeholder «switch to forex» screen is gone. `NetworkCommunityGateway` has its own
+HTTP client with no platform bearer, so no session ever travels with a community request.
+
+### 10 · The finish
+
+The bottom bar is an object now: the surface rung with a hairline above it, and the selected tab on
+the same raised plate the navigation rail uses — weight and a filled glyph second it, no gold. A
+dark card carries a one-pixel lit rim inside its top edge, clipped to its own corners, which is what
+separates a machined surface from a printed one; the light theme keeps its ground. The primary
+button has a rim one step darker than its fill, the mark's own `GoldDeep` on gold and the same
+darkening on the blue and green accents. List headings step up to `headlineSmall` with a `bodySmall`
+subtitle, so the name of a screen sits above the screen instead of beside its first row. The
+community's chips, composer and name card are drawn on the same tokens.
+
 ## [4.19.0] — 2026-09-02 — Ten things from one phone, with the two servers now really answering
 
 Tested on a handset in Iran against both backends after their deploys. Ten reports, numbered by the
