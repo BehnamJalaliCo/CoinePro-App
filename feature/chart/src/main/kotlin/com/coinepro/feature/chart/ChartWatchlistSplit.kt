@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.chart.decimalsFor
@@ -51,7 +52,6 @@ import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
-import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.LtrDirection
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.rememberCoineProHaptics
@@ -301,9 +301,19 @@ private fun WatchlistRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(ROW_HEIGHT)
-            .background(
-                if (selected) CoineProTint.fill(CoineProColors.Gold, CoineProColors.Stage) else Color.Transparent,
-            )
+            // **The row on screen is marked in ink, not in gold.**
+            //
+            // Gold in this app is the brand and the one commercial action on a page — a
+            // subscription, an execution. A strip of watched markets is neither, and a gold wash
+            // behind whichever row happens to be open put a second brand-coloured object on every
+            // chart, competing with the one that means something. It also read cheap in the light
+            // theme, where the tint lands on a cream that belongs to no other surface here.
+            //
+            // The raised neutral is what this app already uses for "one of these is in force" — the
+            // chart's interval keys, the Ideas switch, a selected chip — and it needs no colour to
+            // be unmistakable, because the ticker beside it goes to the primary ink and bold at the
+            // same moment.
+            .background(if (selected) CoineProColors.SurfaceElevated else Color.Transparent)
             .clickable(enabled = !selected) {
                 haptics.select()
                 onClick()
@@ -318,7 +328,8 @@ private fun WatchlistRow(
             // whatever punctuation follows it.
             text = BidiText.isolateLtr(symbol),
             style = MaterialTheme.typography.labelMedium,
-            color = if (selected) CoineProColors.Gold else CoineProColors.TextPrimary,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            color = CoineProColors.TextPrimary,
             modifier = Modifier.weight(1f),
         )
         quote?.price?.let { price ->
@@ -396,12 +407,9 @@ internal fun WatchlistTickerRow(
                 Row(
                     modifier = Modifier
                         .clip(CoineProShapes.small)
+                        // The same neutral as the list above — see the note there.
                         .background(
-                            if (selected) {
-                                CoineProTint.fill(CoineProColors.Gold, CoineProColors.Stage)
-                            } else {
-                                Color.Transparent
-                            },
+                            if (selected) CoineProColors.SurfaceElevated else Color.Transparent,
                         )
                         .clickable(enabled = !selected) {
                             haptics.select()
@@ -415,7 +423,8 @@ internal fun WatchlistTickerRow(
                     Text(
                         text = BidiText.isolateLtr(symbol),
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (selected) CoineProColors.Gold else CoineProColors.TextSecondary,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (selected) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
                     )
                     quote?.changePercent?.let { move ->
                         LtrDirection {

@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.pageAccent
+import com.coinepro.core.designsystem.pageAccentInk
 
 /**
  * A row of mutually exclusive choices.
@@ -64,10 +66,10 @@ internal fun AiChip(
         onClick = onClick,
         modifier = modifier,
         shape = MaterialTheme.shapes.small,
-        color = if (selected) CoineProColors.Gold.copy(alpha = 0.16f) else CoineProColors.Surface,
+        color = if (selected) CoineProColors.pageAccent.copy(alpha = 0.16f) else CoineProColors.Surface,
         border = BorderStroke(
             1.dp,
-            if (selected) CoineProColors.Gold.copy(alpha = 0.7f) else CoineProColors.Border,
+            if (selected) CoineProColors.pageAccent.copy(alpha = 0.7f) else CoineProColors.Border,
         ),
     ) {
         Text(
@@ -78,7 +80,7 @@ internal fun AiChip(
             // reference app puts one.
             modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
             style = MaterialTheme.typography.labelMedium,
-            color = if (selected) CoineProColors.GoldBright else CoineProColors.TextSecondary,
+            color = if (selected) CoineProColors.pageAccentInk else CoineProColors.TextSecondary,
         )
     }
 }

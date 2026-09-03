@@ -52,6 +52,7 @@ import com.coinepro.core.common.parseWireInstant
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.pageAccent
 import com.coinepro.core.designsystem.CoineProHeaderAction
 import com.coinepro.core.designsystem.CoineProListHeader
 import com.coinepro.core.designsystem.CoineProPrimaryButton
@@ -584,9 +585,9 @@ private fun HistoryFilters(
 private fun FilterPill(label: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
         modifier = Modifier.clickable(onClick = onClick),
-        color = if (selected) CoineProColors.Gold.copy(alpha = 0.18f) else CoineProColors.Surface,
+        color = if (selected) CoineProColors.pageAccent.copy(alpha = 0.18f) else CoineProColors.Surface,
         shape = RoundedCornerShape(999.dp),
-        border = BorderStroke(1.dp, if (selected) CoineProColors.Gold.copy(alpha = 0.7f) else CoineProColors.Border),
+        border = BorderStroke(1.dp, if (selected) CoineProColors.pageAccent.copy(alpha = 0.7f) else CoineProColors.Border),
     ) {
         Text(
             label,

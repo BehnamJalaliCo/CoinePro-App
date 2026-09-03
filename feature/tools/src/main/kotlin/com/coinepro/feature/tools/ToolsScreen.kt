@@ -45,6 +45,7 @@ import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.pageAccent
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProTeachingStrip
@@ -243,9 +244,9 @@ private fun MetricPill(value: String, label: String, accent: Color, modifier: Mo
 private fun QuickChip(label: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
         modifier = Modifier.clickable(onClick = onClick),
-        color = if (selected) CoineProColors.Gold.copy(alpha = 0.18f) else CoineProColors.SurfaceElevated,
+        color = if (selected) CoineProColors.pageAccent.copy(alpha = 0.18f) else CoineProColors.SurfaceElevated,
         shape = RoundedCornerShape(999.dp),
-        border = BorderStroke(1.dp, if (selected) CoineProColors.Gold.copy(alpha = 0.65f) else CoineProColors.Border),
+        border = BorderStroke(1.dp, if (selected) CoineProColors.pageAccent.copy(alpha = 0.65f) else CoineProColors.Border),
     ) {
         Text(
             label,

@@ -30,6 +30,8 @@ import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.pageAccent
+import com.coinepro.core.designsystem.pageAccentInk
 import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSheetEmpty
 import com.coinepro.core.designsystem.CoineProSheetSearch
@@ -137,7 +139,7 @@ private fun AiSymbolRow(
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .background(
-                if (selected) CoineProColors.Gold.copy(alpha = 0.10f) else CoineProColors.Surface,
+                if (selected) CoineProColors.pageAccent.copy(alpha = 0.10f) else CoineProColors.Surface,
             )
             .padding(horizontal = CoineProSpacing.One, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
@@ -148,7 +150,7 @@ private fun AiSymbolRow(
             Text(
                 text = BidiText.isolateLtr(title),
                 style = MaterialTheme.typography.titleSmall,
-                color = if (selected) CoineProColors.GoldBright else CoineProColors.TextPrimary,
+                color = if (selected) CoineProColors.pageAccentInk else CoineProColors.TextPrimary,
                 textAlign = TextAlign.Right,
                 maxLines = 1,
             )
