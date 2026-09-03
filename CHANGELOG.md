@@ -15,6 +15,52 @@ it is for.
 
 ---
 
+## [4.28.0] — 2026-09-03 — Five destinations, and the shell catches up with the chart
+
+The chart has been at a terminal's standard for several releases and the app
+around it had not: a bottom bar of six, a dashboard for a front door, and the
+reader's own watchlist two taps down behind an unlabelled glyph. That is the
+whole of «آپ شل حس Crypto/Fintech Dashboard می‌دهد», and none of it was a design
+problem — the design system, the typography and the chart were already right.
+It was an information-architecture problem.
+
+* **Five roots, chosen as jobs rather than as modules.** Watchlist, Chart,
+  Explore, Ideas, Menu. The rule is that root navigation answers what somebody
+  opens the app to do — what am I watching, show me the chart, what is
+  happening, is there an opportunity, what else is there — and not what modules
+  the repository contains.
+* **The watchlist is the front door.** Same route, same rows, same streaming
+  quotes; what it did not have was a way in. Its row menu is about the market
+  now rather than about the list: open the chart, set a price alert seeded with
+  the row's own quoted price, move the symbol to another list — above the flag
+  colours that used to be all it offered.
+* **Home kept everything except the first frame of every launch.** It is an
+  account dashboard, which is a thing a person visits; it has a menu row.
+* **The AI is contextual.** Nobody opens an app to do some AI — they ask about
+  the market in front of them. The chart's hub carries «تحلیل با هوش مصنوعی»
+  and hands the studio the symbol under the reader's thumb. The full assistant
+  is still a menu row.
+* **Signals and the community board became Ideas**, two faces of one
+  destination, both still routes of their own.
+* **The app opens where you left it.** The last root is stored as a route
+  string, not an ordinal — this bar has been five, then six, and is five again.
+  First launch opens the watchlist.
+* **A tab returns to its own root.** Opening the toolkit from the chart tab and
+  then tapping «چارت» left you on the toolkit: the pop saved the stack under
+  the tab and the restore immediately put it back. Fixed once before for the
+  start destination on a reading that was wrong; the rule is about the stack,
+  not about `popUpTo`'s target.
+* **Ideas has a glyph of its own.** It had the nav set's signal icon, which is
+  a pair of faders — at 24 dp indistinguishable from the candle pair one
+  position over. It is the four-pointed burst now, the only radial shape in the
+  bar.
+* **Screenshot parity reaches the shell**, in Persian dark, Persian light and
+  English, with every selected state in one image.
+* **`<profileable android:shell="true" />` left the release APK.** It was in
+  `src/main`, so it merged into every variant and shipped with profiling open
+  over ADB. It lives in the benchmark variant now, which is the only thing that
+  needs it.
+
 ## [4.27.0] — 2026-09-03 — Eight things, and the chart is finally live
 
 * **The chart ticks.** The only live path it had was a poll of the *candles* endpoint — a request
