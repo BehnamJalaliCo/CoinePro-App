@@ -15,6 +15,12 @@ it is for.
 
 ---
 
+## [4.25.1] — 2026-09-03 — The launch's status bar
+
+* The status bar's icons go dark while the launch sheet is up and back to the app's on the way
+  out. `enableEdgeToEdge` leaves them following the system's dark mode, which on this audience is
+  dark — a clock and a battery nobody could see for the whole 1.8 s of white.
+
 ## [4.25.0] — 2026-09-02 — The launch
 
 * **A launch sheet.** The app opens on white: the mark streams in from left to right and eases up

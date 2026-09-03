@@ -1,5 +1,6 @@
 package com.coinepro.app
 
+import android.app.Activity
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -22,11 +24,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.booleanResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import com.coinepro.core.designsystem.PRO_CHART_FA
 import com.coinepro.core.designsystem.ProChartMark
 import com.coinepro.core.designsystem.ProChartWordmark
@@ -92,6 +96,7 @@ fun LaunchSplash(
         }
         finished()
     }
+    DarkSystemBarIcons()
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val lockupOnly = booleanResource(DesignR.bool.prochart_wordmark_is_lockup)
     val t = progress.value
@@ -132,6 +137,30 @@ fun LaunchSplash(
                     .wipe(named, fromLeft = !rtl || lockupOnly),
             )
         }
+    }
+}
+
+/**
+ * Dark status-bar icons for as long as the sheet is up, and the app's own back when it goes.
+ *
+ * `enableEdgeToEdge()` leaves the bar transparent and its icons following the *system's* dark
+ * mode, which on this app's audience is dark — light icons. Over a white sheet that is a clock and
+ * a battery nobody can see for the whole launch. The controller is set here and restored on
+ * dispose, so nothing outside this file has to know the launch exists.
+ *
+ * Skipped where there is no activity window to ask — a preview, a screenshot render — rather than
+ * crashing a capture on a cast.
+ */
+@Composable
+private fun DarkSystemBarIcons() {
+    val view = LocalView.current
+    if (view.isInEditMode) return
+    val window = (view.context as? Activity)?.window ?: return
+    DisposableEffect(window) {
+        val controller = WindowCompat.getInsetsController(window, view)
+        val previous = controller.isAppearanceLightStatusBars
+        controller.isAppearanceLightStatusBars = true
+        onDispose { controller.isAppearanceLightStatusBars = previous }
     }
 }
 
