@@ -73,6 +73,9 @@
     <string name="watchlist_flag_none">بدون پرچم</string>
     <string name="watchlist_row_subtitle">پرچم این نماد در همین فهرست</string>
     <string name="watchlist_row_remove">حذف از این فهرست</string>
+    <string name="watchlist_row_open">باز کردن چارت</string>
+    <string name="watchlist_row_alert">هشدار قیمت</string>
+    <string name="watchlist_row_move">انتقال به «%1$s»</string>
     <!-- ── جست‌وجوی همه‌چیز ─────────────────────────────────────────────────────────────── -->
     <string name="search_surfaces_header">بخش‌های برنامه</string>
     <string name="search_markets_header">بازارها</string>

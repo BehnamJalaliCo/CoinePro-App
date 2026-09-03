@@ -72,6 +72,9 @@
     <string name="watchlist_flag_none">No flag</string>
     <string name="watchlist_row_subtitle">The flag on this symbol, in this list</string>
     <string name="watchlist_row_remove">Remove from this list</string>
+    <string name="watchlist_row_open">Open the chart</string>
+    <string name="watchlist_row_alert">Price alert</string>
+    <string name="watchlist_row_move">Move to “%1$s”</string>
     <!-- Universal search -->
     <string name="search_surfaces_header">In this app</string>
     <string name="search_markets_header">Markets</string>

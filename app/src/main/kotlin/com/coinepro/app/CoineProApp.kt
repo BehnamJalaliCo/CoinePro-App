@@ -3398,6 +3398,14 @@ private fun MainShell(
                     onOpenSymbol = { navController.navigate(chartRoute(it)) },
                     onOpenSearch = { navController.navigate(MARKET_SEARCH_ROUTE) },
                     watchlistSync = watchlistSyncController,
+                    // A price alert straight off a row, which is the second thing anybody wants
+                    // from a market they are watching. The last quoted price is the seed: the
+                    // composer opens on a number the reader can see on the row they long-pressed,
+                    // rather than on an empty field. Zero where the feed has not quoted it yet —
+                    // the composer treats that as "no seed" and asks.
+                    onCreateAlert = { symbol ->
+                        alertFromChart = symbol to (marketState.quotes[symbol.uppercase()]?.price ?: 0.0)
+                    },
                 )
             }
             composable(ACTIVITY_ROUTE) {

@@ -122,6 +122,8 @@ fun WatchlistPanel(
     onOpenSymbol: (String) -> Unit,
     /** Sync, where the platform serves it. Null draws nothing — see [MarketsScreen]'s own note. */
     watchlistSync: WatchlistSyncController? = null,
+    /** Starts a price alert from a row's menu. Null where this build has no alert composer. */
+    onCreateAlert: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -320,6 +322,8 @@ fun WatchlistPanel(
 
     WatchlistSheets(
         sheet = sheet,
+        onOpenSymbol = onOpenSymbol,
+        onCreateAlert = onCreateAlert,
         store = store,
         lists = lists,
         activeId = activeId,

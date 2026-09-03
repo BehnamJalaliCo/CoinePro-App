@@ -87,6 +87,13 @@ fun WatchlistScreen(
     onOpenSearch: (() -> Unit)? = null,
     /** Sync, where the platform serves it. Null draws nothing — see [WatchlistPanel]. */
     watchlistSync: WatchlistSyncController? = null,
+    /**
+     * Starts a price alert on a symbol, from its row's menu.
+     *
+     * Null drops the row action rather than disabling it, for the same reason [onOpenSearch] does:
+     * only the caller knows whether this build has an alert composer behind it.
+     */
+    onCreateAlert: ((String) -> Unit)? = null,
 ) {
     LaunchedEffect(controller) { controller.start() }
     val state by controller.state.collectAsStateWithLifecycle()
@@ -129,6 +136,7 @@ fun WatchlistScreen(
                 onRequestLine = sparklines::request,
                 onOpenSymbol = onOpenSymbol,
                 watchlistSync = watchlistSync,
+                onCreateAlert = onCreateAlert,
                 modifier = Modifier.weight(1f),
             )
         }

@@ -72,6 +72,10 @@ internal fun WatchlistSheets(
     activeId: String,
     settings: WatchlistSettings,
     onDismiss: () -> Unit,
+    /** Opens this symbol's chart from the row menu. Null on a surface that cannot navigate. */
+    onOpenSymbol: ((String) -> Unit)? = null,
+    /** Starts a price alert on this symbol. Null where this build has no alert composer. */
+    onCreateAlert: ((String) -> Unit)? = null,
 ) {
     when (sheet) {
         null -> Unit
@@ -85,10 +89,13 @@ internal fun WatchlistSheets(
         WatchlistSheet.Transfer -> TransferSheet(store = store, listId = activeId, onDismiss = onDismiss)
         is WatchlistSheet.RowMenu -> RowSheet(
             store = store,
+            lists = lists,
             listId = activeId,
             symbol = sheet.symbol,
             current = settings.flags[sheet.symbol],
             onDismiss = onDismiss,
+            onOpenSymbol = onOpenSymbol,
+            onCreateAlert = onCreateAlert,
         )
     }
 }
@@ -476,10 +483,13 @@ private fun TransferSheet(store: WatchlistStore, listId: String, onDismiss: () -
 @Composable
 private fun RowSheet(
     store: WatchlistStore,
+    lists: List<Watchlist>,
     listId: String,
     symbol: String,
     current: WatchlistFlag?,
     onDismiss: () -> Unit,
+    onOpenSymbol: ((String) -> Unit)?,
+    onCreateAlert: ((String) -> Unit)?,
 ) {
     val scope = rememberCoroutineScope()
     CoineProSheet(
@@ -493,6 +503,54 @@ private fun RowSheet(
                 .padding(bottom = CoineProSpacing.Three),
             verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
         ) {
+            // **The two things a reader wants from a row, above the colours.**
+            //
+            // The menu used to be flags and a remove, which is a menu about *the list*. A long
+            // press on a market is a question about the market: open it, or tell me when it moves.
+            // Both are drawn only where the caller has somewhere to send them — a row action that
+            // answers a press with nothing is worse than no row action.
+            onOpenSymbol?.let { open ->
+                SheetAction(
+                    label = stringResource(R.string.watchlist_row_open),
+                    enabled = true,
+                    onClick = {
+                        onDismiss()
+                        open(symbol)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            onCreateAlert?.let { alert ->
+                SheetAction(
+                    label = stringResource(R.string.watchlist_row_alert),
+                    enabled = true,
+                    onClick = {
+                        onDismiss()
+                        alert(symbol)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            // Moving one symbol to another list, which the transfer sheet does for a whole list
+            // and nothing did for a row. Drawn only where there is a second list to move it to:
+            // on a single-list install the row would be a control with one destination, itself.
+            lists.filter { it.id != listId }.forEach { target ->
+                SheetAction(
+                    label = stringResource(R.string.watchlist_row_move, target.name),
+                    enabled = true,
+                    onClick = {
+                        onDismiss()
+                        scope.launch {
+                            store.add(target.id, symbol)
+                            store.remove(listId, symbol)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            if (onOpenSymbol != null || onCreateAlert != null || lists.size > 1) {
+                Spacer(modifier = Modifier.size(CoineProSpacing.One))
+            }
             WatchlistFlag.entries.forEach { flag ->
                 FlagChoice(
                     label = flag.persianName,

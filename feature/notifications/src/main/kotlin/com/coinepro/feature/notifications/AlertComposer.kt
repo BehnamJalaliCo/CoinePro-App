@@ -70,10 +70,19 @@ fun AlertComposerBody(
 ) {
     var condition by rememberSaveable { mutableStateOf(LocalAlertCondition.ABOVE) }
     var repeat by rememberSaveable { mutableStateOf(AlertRepeat.ONCE) }
+    // **A price, or nothing — never a zero.**
+    //
+    // Callers reach this from a chart, where there is always a last price, and now also from a
+    // watchlist row, where there may not be: a market the feed has not quoted yet has no price and
+    // the caller has no way to say so except by passing what it has. Zero is not a price for any
+    // instrument this app carries, so it is read here as "not quoted" — seeding the field with
+    // «0» would put a number in front of the reader that is not the market's, and printing
+    // «قیمت فعلی: 0» under it would be worse.
+    val reference = currentPrice?.takeIf { it.isFinite() && it > 0.0 }
     var raw by rememberSaveable(symbol) {
         // Seeded with the current price, so the commonest alert — "a bit above where it is now" —
         // is an edit rather than a blank field somebody has to look the price up to fill.
-        mutableStateOf(currentPrice?.let { MarketNumberFormatter.priceAuto(it) }.orEmpty())
+        mutableStateOf(reference?.let { MarketNumberFormatter.priceAuto(it) }.orEmpty())
     }
 
     val value = raw.foldDigitsToLatin().filter { it.isDigit() || it == '.' }.toDoubleOrNull()
@@ -89,7 +98,7 @@ fun AlertComposerBody(
             style = MaterialTheme.typography.titleMedium,
             color = CoineProColors.TextPrimary,
         )
-        currentPrice?.let {
+        reference?.let {
             Text(
                 text = stringResource(R.string.alert_new_reference, MarketNumberFormatter.priceAuto(it)),
                 style = MaterialTheme.typography.bodySmall,
@@ -150,7 +159,7 @@ fun AlertComposerBody(
                             repeat = repeat,
                             // Captured now and never updated, so a percentage alert does not
                             // re-base itself every time this sheet is opened.
-                            referencePrice = currentPrice,
+                            referencePrice = reference,
                             createdAtEpochMillis = nowEpochMillis(),
                         ),
                     )
