@@ -121,7 +121,7 @@ fun AiStudioScreen(
     // a shortcut, not a preference, and a shortcut that survives the process is already more than
     // the screen had. It is seeded from the universe so the row is never empty on a first visit.
     var recents by rememberSaveable(platform) { mutableStateOf(listOf<String>()) }
-    var timeframe by rememberSaveable { mutableStateOf(AiSignalTimeframe.H1) }
+    var timeframe by rememberSaveable(platform) { mutableStateOf(AiSignalTimeframe.H1) }
     var tradeStyle by rememberSaveable { mutableStateOf<AiTradeStyle?>(null) }
     var riskAppetite by rememberSaveable { mutableStateOf<AiRiskAppetite?>(null) }
     var directionBias by rememberSaveable { mutableStateOf<AiDirectionBias?>(null) }
@@ -144,8 +144,13 @@ fun AiStudioScreen(
         }
     }
     // Likewise for the bar length, once a server has said which ones it takes.
+    //
+    // Where none has, the fallback is **this platform's** published list rather than every value
+    // the enum has. The enum runs M1…W1 and neither AI endpoint answers for either end of that:
+    // offering them put a length in the picker that comes back `422 TYR-017` after the reader has
+    // filled in the whole form, which is what the owner photographed.
     val offeredTimeframes = state.quota?.timeframes?.takeIf { it.isNotEmpty() }
-        ?: AiSignalTimeframe.entries
+        ?: AiSignalTimeframe.accepted(platform)
     LaunchedEffect(offeredTimeframes) {
         if (timeframe !in offeredTimeframes) timeframe = offeredTimeframes.first()
     }

@@ -7,6 +7,7 @@ import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.DrawingImageStore
 import com.coinepro.core.diagnostics.AppLog
 import com.coinepro.core.marketdata.CandleArchive
+import com.coinepro.core.marketdata.ChartTickSource
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.marketdata.CandleGateway
 import kotlinx.coroutines.CoroutineScope
@@ -70,6 +71,13 @@ class ChartControllers(
      * put eight quarter-million-bar budgets on one phone.
      */
     private val archive: CandleArchive,
+    /**
+     * The live price feed, so the last candle moves between one reconciliation and the next.
+     *
+     * One source for every controller in the map, because it is one socket: `chartTicks` focuses
+     * whichever symbol is asked for, and the map only ever has one chart in front of the reader.
+     */
+    private val ticks: ChartTickSource,
 ) {
     private val controllers = LinkedHashMap<String, ChartController>()
 
@@ -95,6 +103,7 @@ class ChartControllers(
             workers = Dispatchers.Default,
             // The real app has a real clock, so the live edge is polled here and nowhere else.
             live = true,
+            ticks = ticks,
         )
         controllers[key] = created
         while (controllers.size > MAX_CONTROLLERS) {
@@ -131,6 +140,7 @@ fun rememberChartControllers(
     log: AppLog,
     cache: CandleCache,
     archive: CandleArchive,
-): ChartControllers = remember(gateway, scope, drawings, images, log, cache, archive) {
-    ChartControllers(gateway, scope, drawings, images, log, cache, archive)
+    ticks: ChartTickSource,
+): ChartControllers = remember(gateway, scope, drawings, images, log, cache, archive, ticks) {
+    ChartControllers(gateway, scope, drawings, images, log, cache, archive, ticks)
 }

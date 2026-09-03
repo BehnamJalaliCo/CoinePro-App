@@ -15,6 +15,57 @@ it is for.
 
 ---
 
+## [4.27.0] — 2026-09-03 — Eight things, and the chart is finally live
+
+* **The chart ticks.** The only live path it had was a poll of the *candles* endpoint — a request
+  every few seconds returning bars a server had already folded — so between two polls the last
+  candle did not move at all. On the minute chart, where a bar is sixty seconds and the poll was
+  five, the reader watched a candle stand still eleven times out of twelve. The price socket this
+  app already runs for the watchlist is now the chart's tick feed: every trade moves the forming
+  bar's close, widens its high and low, and opens the next one when the venue does. The candles
+  poll stays on a slower clock, because a tick carries a price and a candle carries a volume, a
+  high and a low the phone may have missed while it was asleep — the socket is the smoothness and
+  the poll is the truth. The socket also carries the chart's own symbol now: a chart of a market
+  nobody had starred was getting no ticks at all, because the feed had been narrowed to what a
+  list on screen asked for.
+* **Bar lengths under a minute: 10, 15, 20, 30, 45 and 50 seconds.** Neither backend serves one
+  and a minute candle cannot be cut into six, so these are built here out of that same tick feed
+  and kept in the archive between sittings — the first ten-second chart opens empty and fills as
+  the market trades; the second opens on what the first built. They are their own section on the
+  interval sheet with a line saying so, because a reader who taps one and sees three candles has
+  not found a bug.
+* **The AI's `TYR-017`.** «ساخت ستاپ» answered `422` on every request. The two backends publish
+  different spellings of the same six bar lengths — `H1` on CoinePro-FX, `1h` on TradeYar — and
+  the app sent the first to both. Each request is now written in the dialect of the server it is
+  posted to, and the picker offers only what that server will answer for: M1 and W1 were on
+  neither list and had been in the picker all along. TradeYar's own validator now accepts both
+  spellings as well.
+* **«معامله با کارگزار» is a list of venues.** It used to jump into this app's terminal, or be
+  dimmed on a build without one. It now opens the broker and the two exchanges — OneRoyal, LBank,
+  Ourbit — each with its own mark and a way to open an account, with the in-app route at the top
+  where there is one, because somebody who already trades here tapped the card to place a trade.
+  OneRoyal's wordmark is traced from their own artwork; `svg-to-vector.py` learned to keep a
+  non-square drawing's proportions rather than squashing it into a 24 dp box.
+* **The full-screen chart has one plate, not two.** It drew a plate naming the instrument, its
+  price and its move — over a chart whose own legend was already naming the instrument, its price
+  and its move, three points away in the same corner, next to the quote chip and two floating
+  controls. The legend is the one that stays. The bottom strip is solid rather than translucent,
+  because at 82% the time axis printed straight through the range pills.
+* **The `USDT` chip is inside the frame.** It is 74 points wide and this chart's price gutter is
+  about 60, so a chip right-aligned to the canvas straddled the hairline between the plot and the
+  axis, covered the topmost price label, and ran to the very edge of the glass in full screen.
+* **The watermark unfurls instead of being swapped.** The two states were two different
+  composables, so the name did not arrive — it appeared — and the mark was rebuilt on every tap at
+  a size derived from the name's width rather than the size it had been drawn at a frame earlier.
+  That twitch is «به‌هم‌ریختگی». One mark now, drawn once, with the name growing out of it on a
+  spring and rising into place as it comes; English clips the one lockup asset from its mark out
+  to the whole thing.
+* **Community: a picture, and room to write.** A trading board without a picture is one where
+  nobody can show you the chart they are talking about. The composer takes a photograph through
+  the system picker, downscales it to 1600 px and posts it with the text; a card draws it under
+  the words and fetches it only when it scrolls into view. Posts are eight thousand characters
+  now, not two, and the box shows twelve lines rather than eight.
+
 ## [4.26.1] — 2026-09-03 — The live poll had to be told the tests are not a clock
 
 `4.26.0` never produced an APK: its CI run was cancelled after the unit-test step sat for

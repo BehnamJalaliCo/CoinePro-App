@@ -171,6 +171,10 @@ def check_learned_surfaces() -> None:
         # Added when the chart's six control bands became one: everything a reader touches monthly
         # rather than every session moved behind this one entry. See `ChartMoreSheetBody`.
         "MORE",
+        # «معامله با کارگزار». The hub's trade card used to jump straight into this app's own
+        # terminal; it now opens the list of venues a reader can actually put the trade on, with
+        # the in-app route at the top of it. See `TradePartnersSheetBody`.
+        "PARTNERS",
     ]
     require(
         entries == expected_sheets,

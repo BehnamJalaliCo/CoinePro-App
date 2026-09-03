@@ -201,6 +201,9 @@ internal object CommunityWire {
             bestReplyId = row.number("best_reply_id", "bestReplyId")?.toLong()?.takeIf { it > 0L },
             createdAt = parseWireInstant(row.text("created_at", "createdAt", "created", "date")),
             pending = status != null && !status.equals("published", ignoreCase = true),
+            // Kept as the server wrote it. See `CommunityPost.imagePath`: the path is the flag, so
+            // a build that guessed it would draw an empty frame under every post on the board.
+            imagePath = row.text("image_url", "imageUrl", "image"),
         )
     }
 

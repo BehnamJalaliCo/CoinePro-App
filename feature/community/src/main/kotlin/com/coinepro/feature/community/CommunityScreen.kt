@@ -11,6 +11,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.Image
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,12 +36,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -45,6 +53,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.community.CommunityCategory
@@ -209,9 +218,9 @@ fun CommunityScreen(
                 posting = state.posting,
                 refusal = state.serverText?.takeIf { state.error == CommunityError.REFUSED },
                 onChangeName = { naming = true },
-                onSubmit = { text, category ->
+                onSubmit = { text, category, image ->
                     controller.dismissError()
-                    controller.submit(text, category)
+                    controller.submit(text, category, image)
                 },
                 onDismissRefusal = controller::dismissError,
             )
@@ -312,6 +321,10 @@ fun CommunityScreen(
                 )
 
                 CommunityMode.POSTS -> PostList(
+                    // Handed the controller, not a picture: a card fetches its own when it scrolls
+                    // into view, because a feed that loaded twenty photographs to show three would
+                    // spend a reader's data on cards they never reach. See `rememberPostImage`.
+                    controller = controller,
                     posts = state.posts,
                     canLoadMore = state.canLoadMore,
                     loadingMore = state.loadingMore,
@@ -428,6 +441,7 @@ private fun LeaderboardBody(state: CommunityUiState) {
 
 @Composable
 private fun PostList(
+    controller: CommunityController,
     posts: List<CommunityPost>,
     canLoadMore: Boolean,
     loadingMore: Boolean,
@@ -450,6 +464,7 @@ private fun PostList(
             CommunityPostCard(
                 modifier = rowMotion(),
                 post = post,
+                image = rememberPostImage(controller, post),
                 onOpen = { onOpenThread(post.id) },
                 onLike = { onLike(post.id) },
                 onReport = { onReport(post.id) },
@@ -620,14 +635,33 @@ private fun Composer(
     posting: Boolean,
     refusal: String?,
     onChangeName: () -> Unit,
-    onSubmit: (String, CommunityCategory) -> Unit,
+    onSubmit: (String, CommunityCategory, ByteArray?) -> Unit,
     onDismissRefusal: () -> Unit,
 ) {
     var text by rememberSaveable { mutableStateOf("") }
     var category by rememberSaveable { mutableStateOf(CommunityCategory.DEFAULT) }
+    // The chosen photograph, already downscaled and JPEG-encoded — see `CommunityPhoto.encode`.
+    //
+    // Plain `remember` and not `rememberSaveable`: a few hundred kilobytes of image is far past
+    // what a saved-instance `Bundle` will carry, and a `TransactionTooLargeException` on rotation
+    // would crash the app to preserve a picture the reader can pick again in two taps.
+    var picture by remember { mutableStateOf<ByteArray?>(null) }
+    var preparing by remember { mutableStateOf(false) }
     val trimmed = text.trim()
-    val sendable = trimmed.length in MIN_POST..MAX_POST && !posting
+    val sendable = trimmed.length in MIN_POST..MAX_POST && !posting && !preparing
     val haptics = rememberCoineProHaptics()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val picker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        preparing = true
+        scope.launch {
+            picture = CommunityPhoto.encode(context, uri)
+            preparing = false
+        }
+    }
 
     CoineProCard(modifier = Modifier.fillMaxWidth().padding(horizontal = CoineProSpacing.Gutter), elevated = true) {
         Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
@@ -640,8 +674,11 @@ private fun Composer(
                 label = { Text(stringResource(R.string.community_compose_label)) },
                 // Room for a paragraph without becoming a page. A single line would make a
                 // two-thousand-character limit look like a joke.
-                minLines = 3,
-                maxLines = 8,
+                minLines = 4,
+                // Twelve, not eight. The ceiling is eight thousand characters now — «طول متنش
+                // بیشتر بشه» — and a box that shows a twelfth of what it will accept makes a long
+                // post something the reader writes through a letterbox.
+                maxLines = 12,
                 enabled = !posting,
                 isError = refusal != null,
                 supportingText = {
@@ -652,6 +689,17 @@ private fun Composer(
                 },
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth(),
+            )
+            ComposerPicture(
+                picture = picture,
+                preparing = preparing,
+                enabled = !posting,
+                onPick = {
+                    picker.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                    )
+                },
+                onClear = { picture = null },
             )
             LazyRow(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
                 items(CommunityCategory.entries.toList(), key = CommunityCategory::name) { option ->
@@ -697,9 +745,14 @@ private fun Composer(
                 CoineProPrimaryButton(
                     text = stringResource(R.string.community_send),
                     onClick = {
-                        onSubmit(trimmed, category)
-                        // Kept until the server has spoken: a refused post must still be here.
-                        if (refusal == null) text = ""
+                        onSubmit(trimmed, category, picture)
+                        // Kept until the server has spoken: a refused post must still be here, and
+                        // so must its picture — the refusal is usually about the text, and making
+                        // the reader find the photograph again to remove one link is a punishment.
+                        if (refusal == null) {
+                            text = ""
+                            picture = null
+                        }
                     },
                     enabled = sendable,
                 )
@@ -707,6 +760,66 @@ private fun Composer(
         }
     }
 }
+
+/**
+ * The composer's picture row: a button while there is none, and the picture itself once there is.
+ *
+ * ### One picture, and it is shown at the size it was chosen
+ *
+ * A reader who attached a photograph and cannot see it does not know whether the tap worked, so
+ * the preview is the picture and not a filename or a paperclip. It is capped in height rather than
+ * in width because a chart screenshot is wide and a phone photograph is tall, and a fixed square
+ * would crop the middle out of both; `ContentScale.Fit` inside a bounded height gives each its own
+ * shape.
+ *
+ * The remove control is a second button under it rather than an X on the corner of the image. An X
+ * over a picture is a target the size of a fingernail sitting on top of the thing it destroys, and
+ * on a board where the picture is often the whole point of the post that is the wrong risk to take
+ * to save a row.
+ */
+@Composable
+private fun ComposerPicture(
+    picture: ByteArray?,
+    preparing: Boolean,
+    enabled: Boolean,
+    onPick: () -> Unit,
+    onClear: () -> Unit,
+) {
+    val decoded = remember(picture) { picture?.let(CommunityPhoto::preview) }
+    Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+        decoded?.let { bitmap ->
+            Image(
+                bitmap = bitmap,
+                contentDescription = stringResource(R.string.community_photo_chosen),
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = COMPOSER_PICTURE_HEIGHT)
+                    .clip(MaterialTheme.shapes.medium),
+            )
+        }
+        // `CoineProSecondaryButton` has no disabled state, and giving it one for this would be a
+        // new visual state in the design system for one row. While the picture is being prepared,
+        // or while the post is in flight, the button is drawn and does nothing — which is a second
+        // tap that changes nothing rather than a control that looks broken.
+        val idle = enabled && !preparing
+        CoineProSecondaryButton(
+            text = when {
+                preparing -> stringResource(R.string.community_photo_preparing)
+                decoded != null -> stringResource(R.string.community_photo_remove)
+                else -> stringResource(R.string.community_photo_add)
+            },
+            onClick = {
+                if (!idle) return@CoineProSecondaryButton
+                if (decoded != null) onClear() else onPick()
+            },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/** Tall enough to read a chart screenshot in, short enough to leave the text field on screen. */
+private val COMPOSER_PICTURE_HEIGHT = 220.dp
 
 /** The server's own word about something the reader just did, until they dismiss it. */
 @Composable

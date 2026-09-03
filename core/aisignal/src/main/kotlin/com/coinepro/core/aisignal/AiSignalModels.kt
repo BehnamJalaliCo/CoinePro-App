@@ -34,7 +34,45 @@ enum class AiSignalTimeframe(val wireValue: String, val label: String) {
     W1("W1", "۱ هفته"),
     ;
 
+    /**
+     * How **this** server spells it, which is not the same question as what this enum is called.
+     *
+     * The two backends disagree, and the app was answering with one of the two everywhere:
+     *
+     *  * CoinePro-FX's `ai_signal.py` upper-cases the field and matches `M5 M15 H1 H4 D1`.
+     *  * TradeYar's `mobile/ai.py` lower-cases it and matches `5m 15m 30m 1h 4h 1d`.
+     *
+     * Sending `H1` to TradeYar is what the owner photographed: `422`, `TYR-017 Validation Field
+     * Invalid`, and the server's own sentence listing the six it does take. It is not a server
+     * fault and not a spelling either side should change — a contract each has published — so the
+     * request is written in the dialect of wherever it is being posted, at the one boundary that
+     * knows which that is. See [AiSignalRequest.toWire].
+     */
+    fun wireValueFor(platform: MarketPlatform): String = when (platform) {
+        MarketPlatform.COINEPRO_FX -> wireValue
+        MarketPlatform.TRADEYAR -> tradingViewValue.lowercase()
+    }
+
     companion object {
+        /**
+         * The lengths a platform's AI endpoint accepts, in this enum's own order.
+         *
+         * Read off the two servers rather than guessed, and narrower than [entries] on both: M1 is
+         * on neither list — a model asked to plan a trade off one-minute candles was never going to
+         * be answered — and W1 is on neither either. Offering a length that is refused on submit is
+         * the same fault as offering a symbol that is: the reader finds out after they have filled
+         * in the form.
+         *
+         * A server that states its own list still wins over this one; this is what the picker shows
+         * before one has. See [AiSignalQuota.timeframes].
+         */
+        fun accepted(platform: MarketPlatform): List<AiSignalTimeframe> = when (platform) {
+            // `_ALLOWED_TF = ["M5", "M15", "H1", "H4", "D1"]` in `src/api/routes/ai_signal.py`.
+            MarketPlatform.COINEPRO_FX -> listOf(M5, M15, H1, H4, D1)
+            // `TIMEFRAMES = ("5m", "15m", "30m", "1h", "4h", "1d")` in `app/api/mobile/ai.py`.
+            MarketPlatform.TRADEYAR -> listOf(M5, M15, M30, H1, H4, D1)
+        }
+
         /** The wire spelling, however a server chose to case or punctuate it. Null when unknown. */
         fun ofWire(raw: String?): AiSignalTimeframe? {
             val normalized = raw?.trim()?.uppercase()?.replace("-", "")?.replace("_", "")

@@ -295,4 +295,46 @@ class AiSignalWireTest {
         assertNull(AiSignalProductScope.normalizeSymbol("2500"))
         assertTrue(AiSignalProductScope.normalizeSymbol("a") == null)
     }
+
+    @Test
+    fun `the bar length is written in the dialect of the server it is posted to`() {
+        // The `TYR-017` the owner photographed, from the request side. TradeYar's
+        // `mobile/ai.py` lower-cases the field and matches `("5m","15m","30m","1h","4h","1d")`; the
+        // app sent `H1`, which lower-cases to `h1` and is on no list anywhere.
+        assertEquals(
+            "1h",
+            body(fullRequest, MarketPlatform.TRADEYAR).get("timeframe").asString,
+        )
+        assertEquals(
+            "15m",
+            body(
+                fullRequest.copy(timeframe = AiSignalTimeframe.M15),
+                MarketPlatform.TRADEYAR,
+            ).get("timeframe").asString,
+        )
+        // And CoinePro-FX's `_ALLOWED_TF` is the other spelling, upper-cased. One app, two
+        // contracts, and neither of them wrong.
+        assertEquals(
+            "H1",
+            body(fullRequest, MarketPlatform.COINEPRO_FX).get("timeframe").asString,
+        )
+    }
+
+    @Test
+    fun `the picker offers only what each server will answer for`() {
+        // Every offered length must survive its own server's validator, or the reader finds out
+        // after filling in the form. M1 and W1 are on neither list.
+        val tradeyar = AiSignalTimeframe.accepted(MarketPlatform.TRADEYAR)
+        assertEquals(
+            listOf("5m", "15m", "30m", "1h", "4h", "1d"),
+            tradeyar.map { it.wireValueFor(MarketPlatform.TRADEYAR) },
+        )
+        val fx = AiSignalTimeframe.accepted(MarketPlatform.COINEPRO_FX)
+        assertEquals(
+            listOf("M5", "M15", "H1", "H4", "D1"),
+            fx.map { it.wireValueFor(MarketPlatform.COINEPRO_FX) },
+        )
+        assertFalse(AiSignalTimeframe.M1 in tradeyar || AiSignalTimeframe.M1 in fx)
+        assertFalse(AiSignalTimeframe.W1 in tradeyar || AiSignalTimeframe.W1 in fx)
+    }
 }

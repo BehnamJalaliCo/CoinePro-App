@@ -64,11 +64,14 @@ import com.coinepro.core.marketdata.CandleArchive
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.ChartInterval
+import com.coinepro.core.marketdata.ChartTickSource
 import com.coinepro.core.marketdata.HISTORY_PAGE_BARS
 import com.coinepro.core.marketdata.HISTORY_PAGE_BUDGET
+import com.coinepro.core.marketdata.NoChartTicks
 import com.coinepro.core.marketdata.NoOpCandleArchive
 import com.coinepro.core.marketdata.NoOpCandleCache
 import com.coinepro.core.marketdata.OhlcBar
+import com.coinepro.core.marketdata.PriceTick
 import com.coinepro.core.marketdata.fillHistory
 import com.coinepro.core.marketdata.resolveCandleRequest
 import com.coinepro.core.marketdata.Timeframe
@@ -83,6 +86,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -882,6 +886,17 @@ class ChartController(
      * gateway it drives itself instead of waiting on a poll.
      */
     private val live: Boolean = false,
+    /**
+     * Where the live price comes from. [NoChartTicks] by default, which is a working answer.
+     *
+     * The app passes the socket the watchlist is already running — see `MarketDataController
+     * .chartTicks` — and that is what makes the last candle move between one poll and the next, and
+     * what a sub-minute bar is built out of. Without it the chart still reconciles its tail against
+     * the candles endpoint on a cadence, so a build with no feed is the chart as it was rather than
+     * a chart with a hole in it; but [ChartInterval.Seconds] has nothing else to draw and stays
+     * empty, which is why the seconds keys are only offered where a feed exists.
+     */
+    private val ticks: ChartTickSource = NoChartTicks,
 ) {
 
     /** The venue these bars come from, named. See [CandleGateway.sourceName]. */
@@ -2403,6 +2418,14 @@ class ChartController(
                 realignComparisons()
                 return@launch
             }
+            // A seconds chart's history is the archive and only the archive. Asking the venue for
+            // bars "before" a ten-second one gets minutes back, and prepending those would put a
+            // different series in front of this one. The archive came back empty, so there is
+            // genuinely no more.
+            if (current.interval is ChartInterval.Seconds) {
+                _state.update { it.copy(loadingMore = false, hasMore = false) }
+                return@launch
+            }
             val result = runCatching {
                 gateway.load(current.symbol, current.interval, before = oldest)
             }
@@ -2508,6 +2531,27 @@ class ChartController(
         _state.update { it.copy(loading = true, error = null) }
         loadJob = scope.launch {
             val current = _state.value
+            // **A seconds chart has no server to ask.**
+            //
+            // Neither venue serves a bar shorter than a minute, so there is no request to send and
+            // a page of minutes would be the wrong series under the right label. What it has is the
+            // archive — every seconds bar this app has built before — and the price feed, which
+            // starts adding to it on the next tick. So the load *is* the archive read, and the
+            // chart is not left saying «در حال بارگیری» over a series that will never arrive.
+            if (current.interval is ChartInterval.Seconds) {
+                paintFromArchive(current.symbol, current.interval)
+                _state.update {
+                    if (it.symbol != current.symbol || it.interval != current.interval) {
+                        it
+                    } else {
+                        it.copy(loading = false, error = null, hasMore = !it.series.isEmpty, venueExhausted = true)
+                    }
+                }
+                publishDepth(current.symbol, current.interval)
+                startLive(current.symbol, current.interval)
+                if (loadJob === coroutineContext[Job]) loadJob = null
+                return@launch
+            }
             paintFromCache(current.symbol, current.interval)
             // Wall clock rather than `AppLog.timed`, because what is being measured is not the
             // gateway call: it is the interval a reader spends looking at an empty chart, which
@@ -2616,6 +2660,9 @@ class ChartController(
      */
     private fun deepenArchive(symbol: String, interval: ChartInterval) {
         if (archive === NoOpCandleArchive) return
+        // Nothing to walk back through: no venue serves a bar this short, so the only bars this
+        // series will ever have are the ones the price feed builds. See [ChartInterval.Seconds].
+        if (interval is ChartInterval.Seconds) return
         fillJob?.cancel()
         fillJob = scope.launch {
             // **Let the reader have the chart first.**
@@ -2752,13 +2799,131 @@ class ChartController(
     private fun startLive(symbol: String, interval: ChartInterval) {
         liveJob?.cancel()
         if (!live) return
-        val period = livePollMillis(interval)
         liveJob = scope.launch {
-            while (true) {
-                delay(period)
-                if (!refreshLiveEdge(symbol, interval)) return@launch
+            // The price feed, folded bar by bar. This is the one that makes a candle *move*: it
+            // reports as often as the market trades, so between two reconciliations the forming bar
+            // grows continuously instead of standing still. It is also the whole of a seconds
+            // chart, which has no server behind it at all.
+            launch {
+                ticks.ticks(symbol)
+                    // `takeWhile` rather than a cancel from inside the collector: [foldTick]
+                    // answers false the moment this series stops being the one on screen, and that
+                    // answer ends the collection cleanly instead of by throwing.
+                    .takeWhile { tick -> foldTick(symbol, interval, tick) }
+                    .collect { }
+            }
+            // And the venue's own answer, on a slower clock, because a tick carries a price and a
+            // candle carries a volume, a high and a low the phone may have missed while it was
+            // asleep or off the feed. The socket is the smoothness; this is the truth.
+            //
+            // Skipped entirely on a seconds chart — there is no request that fetches a ten-second
+            // bar, and asking for one would come back as minutes and overwrite everything the
+            // ticks have built. See [ChartInterval.Seconds].
+            if (interval !is ChartInterval.Seconds) {
+                val period = livePollMillis(interval)
+                while (true) {
+                    delay(period)
+                    if (!refreshLiveEdge(symbol, interval)) return@launch
+                }
             }
         }
+    }
+
+    /**
+     * Put one price into the bar it belongs to. Returns false once this series has left the screen.
+     *
+     * ### Three cases, and the third is the one that is easy to get wrong
+     *
+     *  * The tick belongs to the **bar already at the live edge**: its close moves, and its high and
+     *    low widen if the price went past them. The open never moves — it is history the moment the
+     *    bar opens.
+     *  * The tick belongs to a **later bar**: the previous one is finished and a new one opens at
+     *    this price, `o = h = l = c`, with no volume, because a tick reports no size. A null volume
+     *    rather than a zero: `Candle.v` is nullable exactly so that "not reported" and "nothing
+     *    traded" are different things, and a zero here would draw an empty column in the volume pane
+     *    on every bar of a seconds chart.
+     *  * The tick belongs to an **earlier** bar — a late quote, a snapshot refresh after a
+     *    reconnect, a clock a second behind the server's — and is dropped. Writing it would rewind
+     *    the live edge, which on screen is a candle that jumps backwards.
+     *
+     * ### It writes to the archive on a new bar and not on every tick
+     *
+     * A seconds chart's history is whatever it has built, so it has to be kept or the next visit
+     * opens on nothing. But a write per tick is a disk write several times a second for a row that
+     * is about to change again. The bar is persisted when it is **finished** — which is the moment
+     * the next one opens — so each bar is written exactly once, with its final values.
+     */
+    internal suspend fun foldTick(symbol: String, interval: ChartInterval, tick: PriceTick): Boolean {
+        val base = _state.value
+        if (base.symbol != symbol || base.interval != interval) return false
+        // A rehearsal is a picture of the past; a live price merged into it is a bar from the
+        // future. A load in flight is about to replace the series wholesale.
+        if (base.replay.isOn || base.loading) return true
+        if (!tick.price.isFinite() || tick.price <= 0.0) return true
+
+        val length = interval.seconds
+        if (length <= 0L) return true
+        val held = base.series.bars
+        val last = held.lastOrNull()
+        // An empty seconds chart starts here: the first tick is the first bar. Every other kind of
+        // chart has been loaded before a tick can reach it, so this is not a general "seed from a
+        // price" path — it is the one series that legitimately begins with nothing.
+        if (last == null) {
+            if (interval !is ChartInterval.Seconds) return true
+            val first = interval.bucketStart(tick.epochSeconds)
+            return publishTail(base, held + Candle(first, tick.price, tick.price, tick.price, tick.price))
+        }
+        if (tick.epochSeconds < last.t) return true
+
+        // **The grid is the venue's, not the epoch's.**
+        //
+        // `bucketStart` lays a bar length on the epoch, which is what both servers do and what the
+        // axis is drawn from — but it is not what this arithmetic may assume. A venue that ships an
+        // hourly series opening at :10, a fold from a finer bar, a custom interval counted from the
+        // reader's midnight: any of those puts the held bars on a grid the epoch's does not line up
+        // with, and a tick bucketed on the epoch would land *before* the bar it belongs to and be
+        // dropped as stale. Every price would be, forever, silently.
+        //
+        // Counting from the last held bar cannot be wrong about that: zero steps means the tick is
+        // inside the bar that is open, and n steps means n bars have opened since. It is also one
+        // expression for both cases rather than two that have to agree.
+        val opensAt = last.t + ((tick.epochSeconds - last.t) / length) * length
+
+        if (opensAt == last.t) {
+            val moved = last.copy(
+                h = maxOf(last.h, tick.price),
+                l = minOf(last.l, tick.price),
+                c = tick.price,
+            )
+            // Nothing to publish when the price has not left the bar's body or its extremes — a
+            // market printing the same price twice must not cost a series rebuild.
+            if (moved == last) return true
+            return publishTail(base, held.dropLast(1) + moved)
+        }
+
+        // A new bar. The one it replaces is final now, so that is when it is kept.
+        runCatching { archive.write(symbol, interval, listOf(last.toBar())) }
+        return publishTail(base, held + Candle(opensAt, tick.price, tick.price, tick.price, tick.price))
+    }
+
+    /**
+     * Publish a series whose tail has moved, unless something replaced it while this was built.
+     *
+     * The build is on the worker dispatcher like every other series build in this file — six
+     * columns over every bar held — and the identity check afterwards is what makes that safe: a
+     * switch of symbol, a page-back or a reload landing during the build wins, and this join is
+     * dropped rather than written over the newer series.
+     */
+    private suspend fun publishTail(base: ChartUiState, bars: List<Candle>): Boolean {
+        val series = buildSeries { CandleSeries(bars) }
+        _state.update { old ->
+            when {
+                old.symbol != base.symbol || old.interval != base.interval -> old
+                old.series !== base.series -> old
+                else -> old.copy(series = series, loading = false)
+            }
+        }
+        return true
     }
 
     /**
@@ -2855,6 +3020,26 @@ class ChartController(
             }.getOrDefault(emptyList())
             if (stored.isEmpty()) return
             prependOlder(current, stored, hasMore = true)
+        }
+    }
+
+    /**
+     * Draw whatever the archive holds for this series, and nothing else.
+     *
+     * The seconds chart's whole load path. [paintFromCache] is the wrong shape for it twice over:
+     * it reads the screenful cache first, which for a series no gateway ever wrote is always empty,
+     * and it refuses to draw over a chart that already has bars, which is exactly the state a
+     * seconds chart is in a second after it opened. This paints unconditionally, because on this
+     * path there is no network answer coming behind it that could disagree.
+     */
+    private suspend fun paintFromArchive(symbol: String, interval: ChartInterval) {
+        val stored = runCatching {
+            archive.read(symbol, interval, RESIDENT_TARGET_BARS)
+        }.getOrDefault(emptyList())
+        if (stored.isEmpty()) return
+        val series = buildSeries { CandleSeries(stored.map(OhlcBar::toCandle)).resident() }
+        _state.update { latest ->
+            if (latest.symbol != symbol || latest.interval != interval) latest else latest.copy(series = series)
         }
     }
 
@@ -3234,6 +3419,17 @@ data class ChartDerived internal constructor(
  * the mapping without dragging the other in.
  */
 internal fun OhlcBar.toCandle(): Candle = Candle(t = t, o = o, h = h, l = l, c = c, v = v)
+
+/**
+ * A drawn bar back on the wire's shape, so a bar the phone built can be kept.
+ *
+ * The one caller is the seconds chart, whose bars exist nowhere else: nothing fetched them and
+ * nothing will, so if the archive is not told about them they are gone when the screen is. `closed`
+ * is true because this is only ever called on a bar the next one has already replaced. A volume the
+ * feed never reported stays absent rather than becoming zero — see [Candle.v].
+ */
+internal fun Candle.toBar(): OhlcBar =
+    OhlcBar(t = t, o = o, h = h, l = l, c = c, v = v ?: 0.0, closed = true)
 
 /**
  * What went wrong, from what the gateway threw.

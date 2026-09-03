@@ -294,11 +294,16 @@ class CommunityController(
      * with the server's sentence about which rule, and the text stays in the composer for the
      * reader to fix.
      */
-    fun submit(content: String, category: CommunityCategory = CommunityCategory.DEFAULT) {
+    fun submit(
+        content: String,
+        category: CommunityCategory = CommunityCategory.DEFAULT,
+        /** The encoded picture the reader attached, or null. See [CommunityGateway.post]. */
+        image: ByteArray? = null,
+    ) {
         if (_state.value.posting) return
         _state.update { it.copy(posting = true, error = null, serverText = null, notice = null) }
         scope.launch {
-            runCatching { gateway.post(content, category) }
+            runCatching { gateway.post(content, category, image) }
                 .onSuccess { outcome ->
                     _state.update { it.copy(posting = false, notice = outcome.message) }
                     if (outcome.published) refresh()
@@ -426,6 +431,15 @@ class CommunityController(
      * The clipboard is the case: the screen copies a post's text and the answer belongs in the same
      * strip every other answer on this board appears in, rather than in a second kind of message.
      */
+    /**
+     * The bytes of a post's picture, for a card that has scrolled into view.
+     *
+     * On the controller rather than in the screen because the screen has no gateway, and null
+     * rather than a throw because a picture that will not load is one empty frame in a list — see
+     * [CommunityGateway.image].
+     */
+    suspend fun imageOf(post: CommunityPost): ByteArray? = gateway.image(post)
+
     fun notice(text: String) {
         _state.update { it.copy(notice = text) }
     }

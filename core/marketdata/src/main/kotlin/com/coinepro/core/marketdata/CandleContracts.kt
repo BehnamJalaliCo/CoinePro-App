@@ -216,6 +216,56 @@ sealed interface ChartInterval {
             timeframe.bucketStart(epochSeconds, zone)
     }
 
+    /**
+     * A bar shorter than a minute, built on the phone out of the price feed.
+     *
+     * ### Why this is a third kind and not a fourteenth preset
+     *
+     * «ما تایم‌فریم ۱۰ ثانیه تا ۵۰ ثانیه هم باید داشته باشیم.» Neither backend serves one. TradeYar's
+     * candle route lists `1m 3m 5m …` and CoinePro-FX's starts at M5, so there is no request that
+     * fetches a ten-second bar and no series to fold one out of — a minute candle cannot be cut into
+     * six. [Preset] and [Custom] are both "ask the server, possibly fold"; this one has no server
+     * behind it at all, which is exactly why it is its own type rather than a [Timeframe] entry that
+     * every gateway would have to remember to refuse.
+     *
+     * What it *does* have is the price socket, which reports far more often than once a minute. So a
+     * seconds chart is drawn from ticks: each one lands in its bucket, the bucket is a bar, and the
+     * bars accumulate in the archive the same way every other series does — so the second visit to a
+     * ten-second chart opens on the history the first visit built rather than on nothing.
+     *
+     * ### The five lengths, and why the set is closed
+     *
+     * Ten to fifty seconds is what was asked for, and [SECONDS_KEYS] is that range at the steps a
+     * trader actually names. It is a fixed list rather than a free number because unlike a custom
+     * minute count there is nothing to type into: these are keys on a strip, and a bar length nobody
+     * can reach is a bar length nobody has to maintain a bucket rule for.
+     */
+    data class Seconds(val count: Int) : ChartInterval {
+
+        init {
+            require(count in SECONDS_KEYS) { "A seconds bar is one of $SECONDS_KEYS, not $count." }
+        }
+
+        /** `10S`, `30S` — TradingView's own spelling, and distinct from every [Timeframe.wire]. */
+        override val wire: String get() = "${count}S"
+
+        override val seconds: Long get() = count.toLong()
+
+        override val label: String get() = "${count.toPersianDigits()} ثانیه"
+
+        /**
+         * On the epoch, like every intraday bar in this file.
+         *
+         * The zone is ignored and that is correct rather than lazy: a sub-minute boundary is not a
+         * calendar fact in any zone this app supports, all of which are offset from UTC by a whole
+         * number of minutes — so midnight in Tehran and midnight in UTC put a ten-second bar on the
+         * same ten-second grid, and anchoring to one of them would only make the arithmetic harder
+         * to check.
+         */
+        override fun bucketStart(epochSeconds: Long, zone: ZoneId): Long =
+            Math.floorDiv(epochSeconds, count.toLong()) * count
+    }
+
     /** A minute count the reader typed, aggregated on the client from a finer bar. */
     data class Custom(val interval: CustomInterval) : ChartInterval {
         override val wire: String get() = interval.wire
@@ -238,7 +288,32 @@ sealed interface ChartInterval {
  */
 fun ChartInterval.Companion.of(wire: String?): ChartInterval? {
     Timeframe.of(wire)?.let { return ChartInterval.Preset(it) }
+    secondsOf(wire)?.let { return it }
     return customOf(wire)?.let { ChartInterval.Custom(it) }
+}
+
+/**
+ * The five sub-minute bar lengths this app builds from ticks, shortest first.
+ *
+ * Ten to fifty seconds, which is the range the owner asked for, at the steps a trader names one.
+ * Fifty is included because the range was named inclusively and not because fifty divides anything:
+ * a fifty-second bar sits on the epoch's fifty-second grid and drifts against the minute, which is
+ * true of every seconds chart that is not a divisor of sixty and is not a defect.
+ */
+val SECONDS_KEYS: List<Int> = listOf(10, 15, 20, 30, 45, 50)
+
+/**
+ * Reads `10S`, `30s` or a bare `45S` as a [ChartInterval.Seconds], or null.
+ *
+ * Tried after the preset table and before the minute count, which is the only order that works:
+ * `Timeframe.of` claims `1M`, and `customOf` would read the digits of `10S` as ten minutes if the
+ * suffix were ignored. Anything outside [SECONDS_KEYS] is null rather than clamped — a saved layout
+ * naming a length this build does not have should fall back to a default, not to a neighbour.
+ */
+fun secondsOf(wire: String?): ChartInterval.Seconds? {
+    val clean = wire?.trim()?.uppercase()?.takeIf { it.length >= 2 && it.endsWith("S") } ?: return null
+    val count = clean.dropLast(1).toIntOrNull() ?: return null
+    return if (count in SECONDS_KEYS) ChartInterval.Seconds(count) else null
 }
 
 /** The reader's calendar date at [epochSeconds], which is the only thing a day boundary can be read from. */

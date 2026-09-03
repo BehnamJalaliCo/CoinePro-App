@@ -3006,8 +3006,16 @@ private class FakeCommunityGateway(
         ),
     )
 
-    override suspend fun post(content: String, category: CommunityCategory): CommunityWriteOutcome =
+    override suspend fun post(
+        content: String,
+        category: CommunityCategory,
+        image: ByteArray?,
+    ): CommunityWriteOutcome =
         answer(CommunityWriteOutcome(id = 42L, published = true, message = "منتشر شد."))
+
+    // No picture in a render. A screenshot that fetched one would be a screenshot that depends on
+    // a network, and this fixture's whole purpose is that it does not.
+    override suspend fun image(post: CommunityPost): ByteArray? = null
 
     override suspend fun reply(postId: Long, content: String, parentId: Long?): CommunityWriteOutcome =
         answer(CommunityWriteOutcome(id = null, published = true, message = null))

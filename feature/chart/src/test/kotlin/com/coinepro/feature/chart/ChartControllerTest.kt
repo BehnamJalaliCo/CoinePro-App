@@ -5,6 +5,7 @@ import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.CandlePage
 import com.coinepro.core.marketdata.ChartInterval
+import com.coinepro.core.marketdata.PriceTick
 import com.coinepro.core.marketdata.OhlcBar
 import com.coinepro.core.marketdata.Timeframe
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -15,6 +16,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -344,6 +346,75 @@ class ChartControllerTest {
         // Joined by open time, not by position: no bar is doubled where the tail meets what is held.
         val times = series.time.toList()
         assertEquals(times.size, times.distinct().size)
+    }
+
+    @Test
+    fun `a tick moves the forming bar and opens the next one at its price`() = runTest {
+        // «قیمت تیک لحظه‌ای نداره». The candles endpoint answers bars a server has already folded;
+        // between two of those answers the last candle did not move at all. A tick has to.
+        val opening = bars(1_000, 3)
+        val gateway = FakeGateway().apply { pages.add(page(opening)) }
+        val controller = ChartController("BTCUSDT", gateway, TestScope(StandardTestDispatcher(testScheduler)))
+        controller.start()
+        advanceUntilIdle()
+        val hourly = controller.state.value.interval
+        val last = opening.last()
+
+        // Inside the bar that is open: the close moves and the high widens with it.
+        controller.foldTick("BTCUSDT", hourly, PriceTick("BTCUSDT", 137.0, last.t + 5))
+        advanceUntilIdle()
+        var series = controller.state.value.series
+        assertEquals(3, series.size)
+        assertEquals(137.0, series.close.last(), 0.0001)
+        assertEquals(137.0, series.high.last(), 0.0001)
+        // The open is history the moment the bar opens.
+        assertEquals(100.0, series.open.last(), 0.0001)
+
+        // Past it: the previous bar is finished and the next opens at this price, flat.
+        controller.foldTick("BTCUSDT", hourly, PriceTick("BTCUSDT", 141.0, last.t + 3_601))
+        advanceUntilIdle()
+        series = controller.state.value.series
+        assertEquals(4, series.size)
+        assertEquals(141.0, series.open.last(), 0.0001)
+        assertEquals(141.0, series.close.last(), 0.0001)
+        assertEquals(141.0, series.high.last(), 0.0001)
+        assertEquals(141.0, series.low.last(), 0.0001)
+        // Still one bar per open time, and still in order.
+        val times = series.time.toList()
+        assertEquals(times.size, times.distinct().size)
+        assertTrue(times.zipWithNext().all { (a, b) -> a < b })
+    }
+
+    @Test
+    fun `a tick from before the live edge is dropped rather than rewinding it`() = runTest {
+        // A late quote, or a snapshot refresh after a reconnect. Writing it would make the newest
+        // candle jump backwards, which on screen is indistinguishable from a rendering fault.
+        val opening = bars(1_000, 3)
+        val gateway = FakeGateway().apply { pages.add(page(opening)) }
+        val controller = ChartController("BTCUSDT", gateway, TestScope(StandardTestDispatcher(testScheduler)))
+        controller.start()
+        advanceUntilIdle()
+        val before = controller.state.value.series
+
+        controller.foldTick(
+            "BTCUSDT",
+            controller.state.value.interval,
+            PriceTick("BTCUSDT", 999.0, opening.first().t - 60),
+        )
+        advanceUntilIdle()
+
+        assertSame(before, controller.state.value.series)
+    }
+
+    @Test
+    fun `a tick for a series the reader has left tells its collector to stop`() = runTest {
+        val gateway = FakeGateway().apply { pages.add(page(bars(1_000, 3))) }
+        val controller = ChartController("BTCUSDT", gateway, TestScope(StandardTestDispatcher(testScheduler)))
+        controller.start()
+        advanceUntilIdle()
+
+        val stale = ChartInterval.Preset(Timeframe.M5)
+        assertFalse(controller.foldTick("BTCUSDT", stale, PriceTick("BTCUSDT", 120.0, 1_000)))
     }
 
     @Test

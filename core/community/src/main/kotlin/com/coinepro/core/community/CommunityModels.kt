@@ -76,12 +76,12 @@ data class CommunityMember(
  *
  * ### What this deliberately does not have
  *
- * A **title**, a **cover image** and an **avatar**. The board stores a body, an author, a category
- * and two counters, and nothing else. Inventing a title by cutting the first line off the body, or
- * a cover by picking a stock chart, would be this app asserting something the author did not write
- * — which is the same fault as a lettered disc standing in for a logo, in prose instead of in
- * artwork. So a card is the author, the moment, the category and the text, and it is honest at any
- * length.
+ * A **title** and an **avatar**. The board stores a body, an author, a category, two counters and
+ * — since the owner asked for it — one picture the author chose to attach. Inventing a title by
+ * cutting the first line off the body, or a cover by picking a stock chart, would be this app
+ * asserting something the author did not write: the same fault as a lettered disc standing in for a
+ * logo, in prose instead of in artwork. So a card is the author, the moment, the category, the
+ * text, and the picture *if there is one*, and it is honest at any length.
  *
  * @param author the display name the author chose. Never masked, never an account name: the board
  *   has no account names.
@@ -107,6 +107,16 @@ data class CommunityPost(
     val bestReplyId: Long?,
     val createdAt: Instant?,
     val pending: Boolean,
+    /**
+     * Where this post's picture is, relative to the board's host, or null where there is none.
+     *
+     * The route's own `image_url` — `/api/v1/public/app-community/posts/12/image` — kept as the
+     * server wrote it rather than rebuilt here from the id. That is not caution for its own sake:
+     * the field is also the *flag*. A post has a picture exactly when the server sent a path for
+     * one, so a client that built the path itself would draw an empty frame under every post on
+     * the board.
+     */
+    val imagePath: String? = null,
 )
 
 /** One reply under a post. `parentId` makes it a reply to a reply rather than to the post. */

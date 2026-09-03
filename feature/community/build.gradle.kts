@@ -23,6 +23,10 @@ dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
     implementation(libs.kotlinx.coroutines.core)
+    // The system photo picker, for the composer's «عکس». `PickVisualMedia` is the contract Android
+    // added precisely so an app can ask for one image without asking for permission to read every
+    // file on the phone — this app declares no storage permission and does not need one.
+    implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.compose.foundation)

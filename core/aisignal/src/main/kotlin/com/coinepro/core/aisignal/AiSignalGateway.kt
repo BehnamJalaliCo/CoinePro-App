@@ -441,16 +441,20 @@ class NetworkAiSignalGateway private constructor(
  * nothing. A balance is allowed to be any positive figure; the rest must be positive to mean
  * anything at all.
  *
- * [platform] appears here for one field. `lot` is CoinePro-FX's alone and TradeYar refuses it with
+ * [platform] appears here for two fields. `lot` is CoinePro-FX's alone and TradeYar refuses it with
  * `TYR-017`, so it is dropped on the way out rather than being left to the screen to remember — a
  * request built anywhere in the app is then correct for wherever it is posted.
+ *
+ * The **bar length** is the second, and it is the same `TYR-017` from the other side: the two
+ * servers publish different spellings of the same six values — `H1` on CoinePro-FX, `1h` on
+ * TradeYar — and the app sent the first to both. See [AiSignalTimeframe.wireValueFor].
  */
 internal fun AiSignalRequest.toWire(
     safeSymbol: String,
     platform: MarketPlatform,
 ): AiSignalCreateJobDto = AiSignalCreateJobDto(
     symbol = safeSymbol,
-    timeframe = timeframe.wireValue,
+    timeframe = timeframe.wireValueFor(platform),
     tradeStyle = tradeStyle?.wireValue,
     riskAppetite = riskAppetite?.wireValue,
     directionBias = directionBias?.wireValue,

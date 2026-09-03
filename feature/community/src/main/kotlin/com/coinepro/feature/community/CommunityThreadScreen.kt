@@ -171,6 +171,9 @@ fun CommunityThreadScreen(
                         onOpen = null,
                         onLike = { controller.toggleLike(thread.post.id) },
                         expanded = true,
+                        // Larger here than in the feed: the reader chose this post, and cramping
+                        // its picture is cramping the thing they opened. See `POST_IMAGE_OPEN`.
+                        image = rememberPostImage(controller, thread.post),
                         onReact = { emoji -> controller.react(thread.post.id, emoji) },
                     )
                 }

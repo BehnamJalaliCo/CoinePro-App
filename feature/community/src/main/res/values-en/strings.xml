@@ -8,6 +8,10 @@
     <string name="community_more">More</string>
     <string name="community_retry">Retry</string>
     <string name="community_send">Send</string>
+    <string name="community_photo_add">Add a picture</string>
+    <string name="community_photo_remove">Remove the picture</string>
+    <string name="community_photo_preparing">Preparing the picture…</string>
+    <string name="community_photo_chosen">The picture you chose</string>
 
     <!-- Translated for the label only. The value that goes on the wire stays the server's own
          Persian word; see CommunityCategory. -->

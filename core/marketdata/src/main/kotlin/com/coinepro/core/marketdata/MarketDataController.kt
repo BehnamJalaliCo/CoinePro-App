@@ -57,6 +57,27 @@ class MarketDataController(
      */
     private var subscribed: List<String> = symbols
 
+    /**
+     * One extra symbol the socket must carry, whatever the lists on screen are asking for.
+     *
+     * The chart is the reason. Its symbol is chosen by the reader, one at a time, and it is very
+     * often not in the twelve a watchlist has narrowed the feed to — so a chart of a market nobody
+     * has starred got no ticks at all and fell back to a poll. This is deliberately **one**
+     * symbol and not a second set: it holds what is on the chart in front of the reader, it is
+     * replaced rather than added to, and clearing it is `focus(null)`. A union that only ever grew
+     * would end a long session subscribed to every market the reader had glanced at.
+     */
+    private var focused: String? = null
+
+    /** [subscribed] plus [focused], which is what the socket is actually asked for. */
+    private val wanted: List<String>
+        get() = focused
+            ?.takeIf { it.isNotEmpty() && it !in subscribed }
+            // Appended rather than merged and re-sorted: `subscribe` compares its own sorted list
+            // against [subscribed], and that comparison must not see the chart's symbol in it.
+            ?.let { subscribed + it }
+            ?: subscribed
+
     private var socket: WebSocket? = null
     private var reconnectJob: Job? = null
     private var monitorJob: Job? = null
@@ -124,6 +145,33 @@ class MarketDataController(
         val next = symbols.map { it.trim().uppercase() }.filter { it.isNotEmpty() }.distinct().sorted()
         if (next == subscribed) return
         subscribed = next
+        resubscribe()
+    }
+
+    /**
+     * Also carry this one symbol, because it is the chart the reader is looking at.
+     *
+     * Null clears it. Idempotent, and a no-op where the symbol is already in the list a screen
+     * subscribed — so opening the chart of a starred market does not tear the socket down.
+     *
+     * The chart is the caller and the chart is one symbol at a time, which is why this replaces
+     * rather than adds: see [focused].
+     */
+    fun focus(symbol: String?) {
+        val next = symbol?.trim()?.uppercase()?.takeIf { it.isNotEmpty() }
+        if (next == focused) return
+        val before = wanted
+        focused = next
+        if (wanted != before) resubscribe()
+    }
+
+    /**
+     * Reopen the socket on the set it should now be carrying.
+     *
+     * The subscription is in the URL — the server's design — so changing it means a new connection.
+     * Guarded on [started] so a subscription set before the feed is running is simply remembered.
+     */
+    private fun resubscribe() {
         if (!started.get()) return
         reconnectAttempt = 0
         reconnectJob?.cancel()
@@ -168,7 +216,7 @@ class MarketDataController(
 
     private fun connectWebSocket() {
         if (!started.get()) return
-        val request = Request.Builder().url(webSocketUrl(baseUrl, subscribed)).build()
+        val request = Request.Builder().url(webSocketUrl(baseUrl, wanted)).build()
         val newSocket = client.newWebSocket(
             request,
             object : WebSocketListener() {

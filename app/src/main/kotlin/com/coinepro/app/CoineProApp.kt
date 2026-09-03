@@ -161,6 +161,9 @@ import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.MarketConnectionState
 import com.coinepro.core.marketdata.MarketDataCache
 import com.coinepro.core.marketdata.MarketDataController
+import com.coinepro.core.marketdata.ChartTickSource
+import com.coinepro.core.marketdata.NoChartTicks
+import com.coinepro.core.marketdata.chartTicks
 import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.marketdata.MarketDataSymbols
 import com.coinepro.core.marketdata.MarketSearchController
@@ -1167,6 +1170,10 @@ fun CoineProApp(
                 onSendFeedback = onSendFeedback,
                 onMarketRetry = marketDataController::retry,
                 onSubscribeSymbols = marketDataController::subscribe,
+                // The socket the watchlist is already running, as the chart's ticks. Keyed on the
+                // controller so switching platform hands the chart the feed for the markets it is
+                // now drawing rather than a forex socket under a crypto chart.
+                chartTicks = remember(marketDataController) { marketDataController.chartTicks() },
                 platforms = activePlatformStore.available,
                 activePlatform = activePlatform,
                 onSelectPlatform = { platform ->
@@ -1596,6 +1603,15 @@ private fun MainShell(
     onMarketRetry: () -> Unit,
     /** Narrows the live price feed to what the markets list is showing. */
     onSubscribeSymbols: (Set<String>) -> Unit = {},
+    /**
+     * The live price feed, as the chart's tick source.
+     *
+     * Passed in rather than taken from the market controller here, because this shell is given a
+     * [MarketDataState] and not the controller behind it — and the guest shell has no controller at
+     * all, which is why the default is [NoChartTicks]: a guest chart reconciles against the candles
+     * endpoint exactly as it did, and simply does not offer the seconds keys anything to build from.
+     */
+    chartTicks: ChartTickSource = NoChartTicks,
     onLogout: () -> Unit,
     /** Whether the app asks for a fingerprint when it opens, and how to change it. */
     appLockEnabled: Boolean,
@@ -1708,6 +1724,10 @@ private fun MainShell(
         log = appLog,
         cache = candleCache,
         archive = candleArchive,
+        // The price socket the watchlist is already running, as the chart's tick feed. Keyed on
+        // the controller so switching platform hands the chart the feed for the markets it is now
+        // drawing, rather than a forex socket under a crypto chart.
+        ticks = chartTicks,
     )
 
     // The prices the chart's watchlist strip and the two-pane pickers put beside their tickers,

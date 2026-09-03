@@ -4,8 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -29,6 +31,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -99,6 +103,16 @@ internal fun CommunityPostCard(
     onReport: (() -> Unit)? = null,
     /** Copy the post's text. The board has no links to share, so sharing is what a reader can do. */
     onCopy: (() -> Unit)? = null,
+    /**
+     * The post's picture, once it has been fetched, or null.
+     *
+     * Passed in rather than fetched here so the card stays a drawing of a post and nothing else —
+     * a screenshot render, a preview and a thread page all hand it whatever they have. Null covers
+     * three states that are one state on screen: no picture, not yet fetched, and would not load.
+     * The frame is drawn only when there is something to put in it, so a picture that fails is a
+     * post without one rather than a post with a hole in it.
+     */
+    image: ImageBitmap? = null,
 ) {
     CoineProCard(
         modifier = modifier.fillMaxWidth(),
@@ -160,6 +174,25 @@ internal fun CommunityPostCard(
                 textAlign = TextAlign.Right,
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            // Under the words and above the counters, which is where a picture belongs on a board:
+            // the text says what the author is claiming and the picture is the evidence for it.
+            //
+            // Capped in height rather than fixed to a shape. A chart screenshot is wide and a phone
+            // photograph is tall; a fixed aspect would crop the middle out of one of them, and on
+            // this board the middle of a chart screenshot is the whole post. The cap is looser on
+            // the thread page, where the reader has already chosen to look at this one post.
+            image?.let { bitmap ->
+                Image(
+                    bitmap = bitmap,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = if (expanded) POST_IMAGE_OPEN else POST_IMAGE_FEED)
+                        .clip(MaterialTheme.shapes.medium),
+                )
+            }
 
             if (post.pending) {
                 // Only ever true for a post that is not on the board. Saying so is the whole point
@@ -384,3 +417,14 @@ private fun ReactionRow(post: CommunityPost, onReact: ((String) -> Unit)?) {
  * whether the post is for you and short enough that six of them fit.
  */
 private const val FEED_LINES = 4
+
+/**
+ * How tall a post's picture may be in the feed, and on the thread page.
+ *
+ * Two numbers because they answer different questions. In the feed a card competes with the cards
+ * under it, and a photograph the height of the screen turns a board into a gallery of one post at
+ * a time; on the thread page the reader has already chosen this post, and cramping the picture
+ * there is cramping the thing they opened.
+ */
+private val POST_IMAGE_FEED = 240.dp
+private val POST_IMAGE_OPEN = 420.dp

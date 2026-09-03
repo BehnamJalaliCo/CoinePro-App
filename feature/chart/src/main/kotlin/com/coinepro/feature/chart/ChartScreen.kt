@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.absolutePadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
@@ -49,12 +50,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.clip
@@ -142,8 +145,7 @@ import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.CoineProWindowSize
 import com.coinepro.core.designsystem.coineProWindowClass
 import com.coinepro.core.designsystem.LtrDirection
-import com.coinepro.core.designsystem.ProChartLockup
-import com.coinepro.core.designsystem.ProChartMark
+import com.coinepro.core.designsystem.ProChartSignature
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.onPageAccent
 import com.coinepro.core.designsystem.pageAccent
@@ -153,6 +155,7 @@ import com.coinepro.core.help.CoineProHelpSheet
 import com.coinepro.core.help.HelpCatalog
 import com.coinepro.core.marketdata.CHART_TIME_ZONE
 import com.coinepro.core.marketdata.ChartInterval
+import com.coinepro.core.marketdata.SECONDS_KEYS
 import com.coinepro.core.marketdata.Timeframe
 import com.coinepro.core.marketdata.customOf
 import com.coinepro.core.symbols.MarketHours
@@ -712,6 +715,15 @@ fun ChartScreen(
         zoomNudge = ChartZoomNudge(serial = (zoomNudge?.serial ?: 0) + 1, factor = factor)
     }
 
+    // The canvas' own width and the plot's, in pixels, so that what is drawn *over* the chart can
+    // be placed against the chart's frame rather than against the box. See [gutterWidth].
+    //
+    // Plain `mutableFloatStateOf` and written from a draw-time callback: both are geometry, neither
+    // is worth saving across a process death — the next layout pass sets them again before anything
+    // is drawn — and a `rememberSaveable` here would restore a width measured on a different screen.
+    var canvasWidthPx by remember { mutableFloatStateOf(0f) }
+    var plotWidthPx by remember { mutableFloatStateOf(0f) }
+
     // Whether a finger is on the toolbar's symbol wheel. While it is, the big picker is drawn over
     // the plot — see `SymbolWheelOverlay`. Held here because the wheel is in the band and the
     // picker is over the chart, and neither is the other's parent.
@@ -732,23 +744,49 @@ fun ChartScreen(
     // the part most likely to drift, and a fullscreen chart that had quietly stopped calling
     // `onLoadMore` would be a bug nobody found for months.
     val canvas: @Composable (Modifier) -> Unit = { canvasModifier ->
-        Box(modifier = canvasModifier) {
-            // TradingView's quote chip, top-right over the price scale: `USDT ⌄`, 26 pt tall in a
-            // hairline. There it changes the quote currency; here the quote is the market's own
-            // and the chip opens the price-scale sheet, which is the nearest thing this chart has
-            // to a choice of unit. Drawn over the gutter, and only when there is a chart under it.
+        Box(
+            modifier = canvasModifier
+                // How wide the canvas actually is, which with the plot's own width is the only way
+                // anything drawn *over* the chart can know where the price gutter starts. See
+                // [gutterWidth].
+                .onSizeChanged { canvasWidthPx = it.width.toFloat() },
+        ) {
+            val gutter = with(LocalDensity.current) {
+                gutterWidth(canvasWidthPx, plotWidthPx).toDp()
+            }
+            // TradingView's quote chip, top-right of the plot: `USDT ⌄`, 26 pt tall in a hairline.
+            // There it changes the quote currency; here the quote is the market's own and the chip
+            // opens the price-scale sheet, which is the nearest thing this chart has to a choice
+            // of unit. Drawn only when there is a chart under it.
             if (!(state.loading && state.series.isEmpty) && !(state.error != null && state.series.isEmpty)) {
                 QuoteChip(
                     quote = SymbolClassifier.classify(state.symbol).quote ?: "USD",
                     onClick = { sheet = ChartSheet.SCALE },
                     // Absolute: the price scale is on the right whichever way the page reads, and
-                    // the chip belongs over the scale.
-                    modifier = Modifier.align(AbsoluteAlignment.TopRight).zIndex(1f),
+                    // the chip belongs at that end of the chart.
+                    //
+                    // **Inside the plot, not over the gutter.** «اون بالا USDT کارت مستطیلی از کادر
+                    // زده بیرون» — and it had. The chip is 74 pt wide and this chart's price gutter
+                    // is about 60, so a chip right-aligned to the canvas straddled the hairline
+                    // between the plot and the axis, covered the topmost price label, and on the
+                    // full-screen chart ran to the very edge of the glass. Pushed in by the
+                    // gutter's own width it sits in the plot's top corner, inside the frame, with
+                    // the whole axis clear beside it.
+                    modifier = Modifier
+                        .align(AbsoluteAlignment.TopRight)
+                        .windowInsetsPadding(WindowInsets.safeDrawing)
+                        .absolutePadding(right = gutter)
+                        .zIndex(1f),
                 )
                 // The watermark, bottom-left of the plot, where TradingView signs its chart.
                 // Absolute for the same reason as the chip: the time axis reads left to right on
                 // every locale and the mark sits at its origin.
-                ChartWatermark(modifier = Modifier.align(AbsoluteAlignment.BottomLeft).zIndex(1f))
+                ChartWatermark(
+                    modifier = Modifier
+                        .align(AbsoluteAlignment.BottomLeft)
+                        .windowInsetsPadding(WindowInsets.safeDrawing)
+                        .zIndex(1f),
+                )
             }
             // The picker over the plot while the wheel is turned. Above everything, inert, and
             // centred on the canvas rather than on the plot — the phone app's sits a little left
@@ -851,6 +889,10 @@ fun ChartScreen(
                     // against the whole series and never followed a pan, which is a "visible range"
                     // study that ignores the visible range.
                     onViewportChange = { view ->
+                        // The plot's width, for the overlays placed against the chart's frame.
+                        // Written here rather than measured because only the renderer knows how
+                        // wide the price labels made the gutter. See [gutterWidth].
+                        plotWidthPx = view.plotWidth
                         controller.setVisibleWindow(BarWindow.visible(view.firstVisible, view.lastVisible))
                         // The same window, to the events reader. It answers a cache hit without
                         // touching a coroutine and drops a window already in flight, so it is safe
@@ -1570,12 +1612,11 @@ fun ChartScreen(
                         open()
                     }
                 },
-                onTrade = onTrade?.let { trade ->
-                    {
-                        sheet = null
-                        trade()
-                    }
-                },
+                // «معامله با کارگزار» opens the venue list rather than jumping straight into this
+                // app's own terminal. The in-app route is still the first thing on that sheet where
+                // there is one — see `TradePartnersSheetBody` for why it is above the three cards
+                // and not below them.
+                onTrade = { sheet = ChartSheet.PARTNERS },
                 // Offered with bars to rewind through and not already rewinding. `Replay.enter`
                 // wants thirty bars and returns null under that; the tile is dimmed on the same
                 // condition rather than opening a mode that then does nothing.
@@ -1587,6 +1628,22 @@ fun ChartScreen(
                     sheet = null
                     onHelp(CHART_HELP_ID)
                 },
+            )
+        }
+
+        ChartSheet.PARTNERS -> CoineProSheet(
+            title = stringResource(R.string.chart_partners_title),
+            subtitle = stringResource(R.string.chart_partners_subtitle),
+            onDismiss = { sheet = null },
+        ) {
+            TradePartnersSheetBody(
+                onTradeHere = onTrade?.let { trade ->
+                    {
+                        sheet = null
+                        trade()
+                    }
+                },
+                tradeHereLabel = stringResource(R.string.chart_partners_here),
             )
         }
 
@@ -1937,19 +1994,20 @@ private fun FullscreenChart(
             )
         }
 
-        // What is being drawn, said in the corner the app's own header used to occupy.
+        // **There is no second identity plate, and that is the fix.**
         //
-        // The leading corner rather than the trailing one, because the trailing corner is where
-        // the two controls are and the price gutter is under them. It sits above the chart's own
-        // legend plate and repeats none of it: the legend names the *studies*, this names the
-        // *instrument* — which in this mode nothing else does.
-        FullscreenIdentity(
-            state = state,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(CoineProSpacing.One),
-        )
+        // «چارت رو کامل تمام صفحه باز می‌کنیم، کلی پراکندگی و به‌هم‌ریختگی داره.» It did. This mode
+        // drew a plate naming the instrument, its price and its move — over a chart whose own
+        // legend was already naming the instrument, its price and its move, three points away in
+        // the same corner. Two plates, the same three facts, one on top of the other, and beside
+        // them the quote chip and the two floating controls: four surfaces competing for one
+        // corner of the glass.
+        //
+        // The legend is the one that stays. It is the chart's, it follows the chart into this mode
+        // without being wired twice, it carries the studies as well as the instrument, and it is
+        // the thing a reader coming from any other terminal already looks at. The plate this
+        // replaces existed because the app's own header is covered here; the legend answers that,
+        // and answering it twice is what the owner photographed.
 
         // The timeframe strip at the bottom, where a thumb already is on a phone held in one
         // hand — and out of the top-left corner where the legend plate draws. The quick ranges go
@@ -1958,7 +2016,12 @@ private fun FullscreenChart(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(CoineProColors.Stage.copy(alpha = STRIP_ALPHA))
+                // **Solid, not translucent.** At 82% the chart's own time axis printed straight
+                // through the range pills — dates and hours crossing the words, which is the other
+                // half of «به‌هم‌ریختگی». A floating strip over a *chart* is not a floating strip
+                // over a list: what is behind it is dense, high-contrast type, and there is no
+                // alpha at which that reads as depth rather than as a rendering fault.
+                .background(CoineProColors.Stage)
                 // Past the gesture handle and the navigation bar. The window fits no decor, so
                 // without this the range pills sit under the bar a reader swipes on and the last
                 // row of the mode is the one row they cannot press.
@@ -1990,73 +2053,6 @@ private fun FullscreenChart(
             )
         }
     }
-    }
-}
-
-/**
- * The instrument, its price and its move, on a plate over the plot.
- *
- * In this mode and not on the page, where the header already says all three. It exists because
- * fullscreen is now a window of its own: the app's top bar, which carried the symbol on every other
- * chart surface, is covered, and a full-screen chart with nothing on it naming the market is a
- * picture of candles.
- *
- * A plate rather than bare text. The ink has to stay legible over whatever the candles do
- * underneath it, and a translucent ground at the stage colour is what every other floating surface
- * in this file uses — no blur, no shadow, one hairline. Latin digits for the two figures, because
- * they are market figures and are read against the axis a few points to the right of them.
- */
-@Composable
-private fun FullscreenIdentity(state: ChartUiState, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .clip(CoineProShapes.small)
-            .background(CoineProColors.Stage.copy(alpha = STRIP_ALPHA))
-            .border(HAIRLINE, CoineProColors.Border, CoineProShapes.small)
-            .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half),
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CoineProAssetLogo(symbol = state.symbol, size = 18.dp)
-        LtrDirection {
-            Text(
-                text = BidiText.isolateLtr(state.symbol),
-                style = MaterialTheme.typography.labelLarge,
-                color = CoineProColors.TextPrimary,
-                maxLines = 1,
-            )
-        }
-        state.lastPrice?.let { price ->
-            LtrDirection {
-                Text(
-                    text = formatPrice(price, decimalsFor(price)),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = CoineProColors.TextPrimary,
-                    maxLines = 1,
-                )
-            }
-        }
-        // The move keeps its colour and loses it when there is none — a flat window drawn in the
-        // sell red would report a fall that did not happen. Same rule as the page's header.
-        if (state.changeAbsolute != null || state.changePercent != null) {
-            val up = ChartHeadline.rising(state.changeAbsolute, state.changePercent)
-            LtrDirection {
-                Text(
-                    text = ChartHeadline.move(
-                        absolute = state.changeAbsolute,
-                        percent = state.changePercent,
-                        price = state.lastPrice,
-                    ),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = when (up) {
-                        true -> CoineProColors.Buy
-                        false -> CoineProColors.Sell
-                        null -> CoineProColors.TextSecondary
-                    },
-                    maxLines = 1,
-                )
-            }
-        }
     }
 }
 
@@ -2119,7 +2115,7 @@ internal fun rememberHelpCatalog(wanted: Boolean): HelpCatalog? {
  * used to own a permanent band under the plot, and it is all behind that one word now. Internal
  * rather than private because `ChartChrome.kt` names these in the callbacks it hands back.
  */
-internal enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST, LAYOUTS, INTERVAL, SCALE, COMPARE, EVENTS, MORE }
+internal enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST, LAYOUTS, INTERVAL, SCALE, COMPARE, EVENTS, MORE, PARTNERS }
 
 /**
  * Binds the stores and starts the controller, in that order and in one effect.
@@ -2228,6 +2224,23 @@ internal fun IntervalRow(
 }
 
 /**
+ * How wide the price gutter is: the canvas, less the plot the renderer measured inside it.
+ *
+ * The chart's frame is not its box. `CoineProChart` takes the whole canvas and gives the rightmost
+ * strip of it to the price axis, and how wide that strip is depends on the widest price label —
+ * which is a run-time fact about the market, not a constant anything on this screen could write
+ * down. Anything drawn *over* the chart that must respect the frame has to be told, and this is the
+ * arithmetic that turns the two numbers the screen does have into the one it needs.
+ *
+ * Zero until the first draw has reported a plot width, and zero again whenever the two numbers
+ * disagree — a stale plot width from the frame before a rotation, an axis switched off — because a
+ * negative inset would push the thing being placed off the other side of the chart. An overlay in
+ * the corner is the right answer while the gutter is unknown; one shoved off the canvas is not.
+ */
+private fun gutterWidth(canvasWidthPx: Float, plotWidthPx: Float): Float =
+    (canvasWidthPx - plotWidthPx).coerceIn(0f, canvasWidthPx.coerceAtLeast(0f))
+
+/**
  * TradingView's quote chip: the market's quote currency in a 26 dp hairline chip, 14 sp, with a
  * caret. Measured `74 × 26 pt` on the phone app, four points in from the top-right of the pane.
  */
@@ -2307,29 +2320,21 @@ private fun ChartWatermark(modifier: Modifier = Modifier) {
             },
         contentAlignment = AbsoluteAlignment.CenterLeft,
     ) {
-        if (expanded) {
-            ProChartLockup(
-                wordmarkWidth = WATERMARK_WORDMARK_WIDTH,
-                markTint = CoineProColors.TextPrimary,
-                contentDescription = stringResource(R.string.chart_watermark_collapse),
-            )
-        } else {
-            ProChartMark(
-                tint = CoineProColors.TextPrimary,
-                contentDescription = stringResource(R.string.chart_watermark_expand),
-                modifier = Modifier.size(WATERMARK_MARK),
-            )
-        }
+        ProChartSignature(
+            expanded = expanded,
+            markSize = WATERMARK_MARK,
+            tint = CoineProColors.TextPrimary,
+            contentDescription = stringResource(
+                if (expanded) R.string.chart_watermark_collapse else R.string.chart_watermark_expand,
+            ),
+        )
     }
 }
 
 /** Twelve points from the plot's left edge and from the time axis, as the phone app sets it. */
 private val WATERMARK_INSET = 12.dp
 
-/** The name at 56 dp: a 16 dp name beside a 23 dp mark, the height of TradingView's wordmark. */
-private val WATERMARK_WORDMARK_WIDTH = 56.dp
-
-/** The mark on its own, closed: the same 23 dp the open lockup draws it at. */
+/** The mark on its own, closed; the name grows out of it at the same height. */
 private val WATERMARK_MARK = 23.dp
 
 /** The help entry behind the hub's «Help Center». */
@@ -2439,6 +2444,7 @@ internal fun IntervalSheetBody(
             StarredIntervalSection(starred = starred, hidden = hidden, onStar = onStar, onHide = onHide)
             HorizontalDivider(color = CoineProColors.Border)
         }
+        SecondsIntervalSection(selected = selected, onSelect = onSelect)
         INTERVAL_GROUPS.forEach { (title, frames) ->
             Text(
                 text = title,
@@ -2983,6 +2989,51 @@ private fun SettingSwitch(
 private fun newLayout(state: ChartUiState, name: String): ChartLayout {
     val now = System.currentTimeMillis()
     return state.toLayout(id = "layout_" + now.toString(RADIX_36), name = name, createdAt = now, updatedAt = now)
+}
+
+/**
+ * The sub-minute lengths, at the head of the sheet, with a sentence about what they are.
+ *
+ * ### Why they are their own section rather than the first entries under «دقیقه»
+ *
+ * Because they are a different kind of thing and saying so is the honest design. Every other pill
+ * on this sheet asks a server for a series that already exists; these five are built on the phone
+ * out of the price feed, so a ten-second chart opened for the first time starts empty and fills as
+ * the market trades, and its history is only as deep as the sittings that built it. A reader who
+ * taps one and sees three candles has not found a bug, and the line under the row is what tells
+ * them so — before they tap, which is the only useful place for it.
+ *
+ * The order is shortest first, like every other group here.
+ */
+@Composable
+private fun SecondsIntervalSection(selected: ChartInterval, onSelect: (ChartInterval) -> Unit) {
+    Text(
+        text = stringResource(R.string.chart_interval_seconds),
+        style = MaterialTheme.typography.labelSmall,
+        color = CoineProColors.TextMuted,
+        fontWeight = FontWeight.Normal,
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        SECONDS_KEYS.forEach { count ->
+            val interval = ChartInterval.Seconds(count)
+            IntervalPill(
+                text = interval.wire,
+                active = interval == selected,
+                onClick = { onSelect(interval) },
+            )
+        }
+    }
+    Text(
+        text = stringResource(R.string.chart_interval_seconds_note),
+        style = MaterialTheme.typography.bodySmall,
+        color = CoineProColors.TextMuted,
+    )
+    HorizontalDivider(color = CoineProColors.Border)
 }
 
 /** The fifteen presets as a reader groups them, for the sheet behind «بیشتر». */

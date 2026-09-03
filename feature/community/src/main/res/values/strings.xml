@@ -9,6 +9,10 @@
     <string name="community_more">بیشتر</string>
     <string name="community_retry">تلاش دوباره</string>
     <string name="community_send">ارسال</string>
+    <string name="community_photo_add">افزودن عکس</string>
+    <string name="community_photo_remove">حذف عکس</string>
+    <string name="community_photo_preparing">در حال آماده‌سازی عکس…</string>
+    <string name="community_photo_chosen">عکس انتخاب‌شده</string>
     <string name="community_dismiss">باشه</string>
 
     <!-- The strip. These are the five categories the server itself stores on every post — the same

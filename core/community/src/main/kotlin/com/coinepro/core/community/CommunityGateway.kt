@@ -1,7 +1,9 @@
 package com.coinepro.core.community
 
+import android.util.Base64
 import com.coinepro.core.network.serverTextOrNull
 import com.google.gson.JsonElement
+import okhttp3.ResponseBody
 import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.http.Body
@@ -10,6 +12,8 @@ import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
+import retrofit2.http.Url
 
 /**
  * The community — the app's own board, on TradeYar's host, belonging to neither platform.
@@ -74,15 +78,35 @@ interface CommunityGateway {
     suspend fun thread(id: Long): CommunityThread
 
     /**
-     * Writes a post.
+     * Writes a post, with a picture where the reader attached one.
      *
-     * Five characters minimum and two thousand maximum, ten posts per rolling day, and a hard block
-     * on links, phone numbers and messenger handles — all enforced server-side, each with its own
-     * Persian sentence. The length bounds are checked here too so the composer's button can be off
-     * rather than the reader discovering the rule from a failed request; the rest is not, because
-     * a client-side copy of somebody else's moderation rules is a copy that goes stale.
+     * Five characters minimum and eight thousand maximum, ten posts per rolling day, and a hard
+     * block on links, phone numbers and messenger handles — all enforced server-side, each with its
+     * own Persian sentence. The length bounds are checked here too so the composer's button can be
+     * off rather than the reader discovering the rule from a failed request; the rest is not,
+     * because a client-side copy of somebody else's moderation rules is a copy that goes stale.
+     *
+     * [image] is the encoded file — JPEG, PNG or WebP — already at the size it should be sent at.
+     * Downscaling belongs to the caller that has an Android `Bitmap` in its hands, not here: this
+     * module has no Compose and no graphics, and a gateway that decoded a photograph would be a
+     * network layer doing image processing. The server refuses anything over its own ceiling and
+     * says so in its own sentence, which reaches the reader through `CommunityRefusedException`
+     * exactly like a text that broke a rule.
      */
-    suspend fun post(content: String, category: CommunityCategory = CommunityCategory.DEFAULT): CommunityWriteOutcome
+    suspend fun post(
+        content: String,
+        category: CommunityCategory = CommunityCategory.DEFAULT,
+        image: ByteArray? = null,
+    ): CommunityWriteOutcome
+
+    /**
+     * The bytes of a post's picture, or null where there is none or it could not be fetched.
+     *
+     * Null rather than an exception, and deliberately: a picture that will not load is a frame
+     * with nothing in it on one card of a feed, which is a small disappointment. An exception here
+     * would have to be caught by every caller and would otherwise take down the list around it.
+     */
+    suspend fun image(post: CommunityPost): ByteArray?
 
     /** Replies to a post, or to a reply under it. */
     suspend fun reply(postId: Long, content: String, parentId: Long? = null): CommunityWriteOutcome
@@ -167,6 +191,19 @@ internal interface CommunityApi {
 
     @GET("api/v1/public/app-community/leaderboard")
     suspend fun leaderboard(@Header(KEY_HEADER) key: String): JsonElement
+
+    /**
+     * The bytes of one post's picture.
+     *
+     * Its own route rather than a field on the post, which is the server's design and the right
+     * one: a page of twenty posts carrying twenty base64 photographs is tens of megabytes for a
+     * screen that shows three of them. `@Streaming` so the bytes are not buffered twice, and the
+     * path is the one the post carried — see `CommunityPost.imagePath` for why it is not built
+     * from the id here.
+     */
+    @Streaming
+    @GET
+    suspend fun image(@Header(KEY_HEADER) key: String, @Url path: String): ResponseBody
 }
 
 /** The header the server reads the install's secret from. Hyphenated: nginx drops underscores. */
@@ -174,7 +211,19 @@ internal const val KEY_HEADER = "X-Community-Key"
 
 internal data class RegisterBody(val displayName: String)
 
-internal data class PostBody(val content: String, val category: String)
+/**
+ * A post on the way out.
+ *
+ * [image] is base64, without a `data:` prefix — the route accepts either and the bare form is a
+ * third smaller. Null where there is no picture: a field carrying an empty string would be a
+ * picture of nothing, and the route reads that as no picture anyway, so sending it would only make
+ * the body longer.
+ */
+internal data class PostBody(
+    val content: String,
+    val category: String,
+    val image: String? = null,
+)
 
 /**
  * A reply body.
@@ -244,13 +293,29 @@ class NetworkCommunityGateway(
         throw failure
     }
 
-    override suspend fun post(content: String, category: CommunityCategory): CommunityWriteOutcome {
+    override suspend fun post(
+        content: String,
+        category: CommunityCategory,
+        image: ByteArray?,
+    ): CommunityWriteOutcome {
         val text = content.trim()
         require(text.length >= MIN_POST_LENGTH) { "post too short" }
         require(text.length <= MAX_POST_LENGTH) { "post too long" }
+        // `NO_WRAP` is not cosmetic: the default inserts a newline every 76 characters, which on a
+        // megabyte of photograph is thirteen thousand of them inside a JSON string.
+        val encoded = image
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { Base64.encodeToString(it, Base64.NO_WRAP) }
         return mapping {
-            CommunityWire.readWriteOutcome(api.post(key(), PostBody(text, category.wire)))
+            CommunityWire.readWriteOutcome(api.post(key(), PostBody(text, category.wire, encoded)))
         }
+    }
+
+    override suspend fun image(post: CommunityPost): ByteArray? {
+        val path = post.imagePath ?: return null
+        return runCatching {
+            api.image(key(), path).use { body -> body.bytes() }
+        }.getOrNull()
     }
 
     override suspend fun reply(postId: Long, content: String, parentId: Long?): CommunityWriteOutcome {
@@ -318,8 +383,13 @@ class NetworkCommunityGateway(
         /** `MIN_REPLY = 2`. A reply may be «بله». */
         const val MIN_REPLY_LENGTH = 2
 
-        /** `MAX_TEXT = 2000`, on both write routes. */
-        const val MAX_POST_LENGTH = 2_000
+        /**
+         * `MAX_TEXT = 8000`, on both write routes.
+         *
+         * Two thousand was a screen and a half — a comment, not the analysis the board is for.
+         * «طول متنش بیشتر بشه», and the route's ceiling moved with it.
+         */
+        const val MAX_POST_LENGTH = 8_000
 
         /** `MIN_NAME = 2` and `MAX_NAME = 24`. */
         const val MIN_NAME_LENGTH = 2

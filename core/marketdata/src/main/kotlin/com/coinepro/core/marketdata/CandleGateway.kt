@@ -551,6 +551,11 @@ fun sourceTimeframeFor(
     // The half-hour ceiling. See the KDoc on `resolveCandleRequest` for why an hourly source is
     // wrong here even when it divides the interval perfectly.
     is ChartInterval.Custom -> largestNativeDividing(interval.seconds, Timeframe.M30.seconds, natives)
+    // No venue serves one, and a minute candle cannot be cut into six. A seconds bar is built on
+    // the phone out of the price feed — `ChartTickSource` — so the honest answer to "which feed
+    // does this come from" is none, which is what `null` means here and what stops a request going
+    // out for a length no server would recognise. See [ChartInterval.Seconds].
+    is ChartInterval.Seconds -> null
 }
 
 /**

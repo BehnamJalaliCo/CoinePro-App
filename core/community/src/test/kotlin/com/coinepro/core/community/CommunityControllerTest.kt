@@ -78,8 +78,19 @@ class CommunityControllerTest {
         override suspend fun thread(id: Long): CommunityThread =
             CommunityThread(post = pages.values.flatten().first { it.id == id }, replies = emptyList())
 
-        override suspend fun post(content: String, category: CommunityCategory): CommunityWriteOutcome =
-            writeAnswer
+        /** What the last `post` carried, so a test can assert the picture went out with the text. */
+        var lastImage: ByteArray? = null
+
+        override suspend fun post(
+            content: String,
+            category: CommunityCategory,
+            image: ByteArray?,
+        ): CommunityWriteOutcome {
+            lastImage = image
+            return writeAnswer
+        }
+
+        override suspend fun image(post: CommunityPost): ByteArray? = post.imagePath?.let { ByteArray(4) }
 
         override suspend fun reply(postId: Long, content: String, parentId: Long?): CommunityWriteOutcome =
             writeAnswer
@@ -238,8 +249,11 @@ class CommunityControllerTest {
         val body = """{"detail":"ابتدا یک نام نمایشی انتخاب کنید."}""".toResponseBody("application/json".toMediaType())
         val identity = FakeIdentity(initial = "stale")
         val gateway = object : CommunityGateway by FakeGateway() {
-            override suspend fun post(content: String, category: CommunityCategory): CommunityWriteOutcome =
-                throw HttpException(Response.error<Unit>(401, body))
+            override suspend fun post(
+                content: String,
+                category: CommunityCategory,
+                image: ByteArray?,
+            ): CommunityWriteOutcome = throw HttpException(Response.error<Unit>(401, body))
         }
         val controller = CommunityController(gateway, identity, scope)
 
@@ -281,8 +295,11 @@ class CommunityControllerTest {
     fun `a refused text keeps the board and carries the rule that refused it`() = runTest {
         val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
         val gateway = object : CommunityGateway by FakeGateway(pages = mapOf(1 to listOf(samplePost(1)))) {
-            override suspend fun post(content: String, category: CommunityCategory): CommunityWriteOutcome =
-                throw CommunityRefusedException("لینک در متن مجاز نیست.")
+            override suspend fun post(
+                content: String,
+                category: CommunityCategory,
+                image: ByteArray?,
+            ): CommunityWriteOutcome = throw CommunityRefusedException("لینک در متن مجاز نیست.")
         }
         val controller = CommunityController(gateway, FakeIdentity(), scope)
 
