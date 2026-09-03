@@ -869,6 +869,19 @@ class ChartController(
      * assertion would run before the bars landed, on some machines and not others.
      */
     private val workers: CoroutineDispatcher? = null,
+    /**
+     * Whether to poll the venue for the live edge. Off by default; the app turns it on.
+     *
+     * [startLive] is an endless loop of `delay` and a fetch, which is the right shape against a
+     * real clock and the wrong one against a virtual clock: a `runTest` scope advances time until
+     * nothing is left to run, and a loop that always has another delay outstanding means that
+     * moment never comes — the test hangs rather than fails, which is the worst way for it to go.
+     *
+     * So the same idiom as [workers]: the app supplies it, the tests and the previews leave it,
+     * and a test that wants to prove the merge is right calls [mergeLive]'s effect through a
+     * gateway it drives itself instead of waiting on a poll.
+     */
+    private val live: Boolean = false,
 ) {
 
     /** The venue these bars come from, named. See [CandleGateway.sourceName]. */
@@ -2738,20 +2751,34 @@ class ChartController(
      */
     private fun startLive(symbol: String, interval: ChartInterval) {
         liveJob?.cancel()
+        if (!live) return
         val period = livePollMillis(interval)
         liveJob = scope.launch {
             while (true) {
                 delay(period)
-                val current = _state.value
-                if (current.symbol != symbol || current.interval != interval) return@launch
-                if (current.replay.isOn || current.loading || current.series.isEmpty) continue
-                val fresh = runCatching {
-                    gateway.load(symbol, interval, limit = LIVE_TAIL_BARS)
-                }.getOrNull()?.candles.orEmpty()
-                if (fresh.isEmpty()) continue
-                mergeLive(symbol, interval, fresh)
+                if (!refreshLiveEdge(symbol, interval)) return@launch
             }
         }
+    }
+
+    /**
+     * One live read, merged. Returns false when this series is no longer the one on screen.
+     *
+     * Split out of [startLive]'s loop so the behaviour is reachable without the loop: a test can
+     * ask for a single poll and assert what it did, where driving the loop itself would mean a
+     * virtual clock that never runs out of work. The loop is then only a clock, and this is the
+     * whole of what a tick means.
+     */
+    internal suspend fun refreshLiveEdge(symbol: String, interval: ChartInterval): Boolean {
+        val current = _state.value
+        if (current.symbol != symbol || current.interval != interval) return false
+        if (current.replay.isOn || current.loading || current.series.isEmpty) return true
+        val fresh = runCatching {
+            gateway.load(symbol, interval, limit = LIVE_TAIL_BARS)
+        }.getOrNull()?.candles.orEmpty()
+        if (fresh.isEmpty()) return true
+        mergeLive(symbol, interval, fresh)
+        return true
     }
 
     /**

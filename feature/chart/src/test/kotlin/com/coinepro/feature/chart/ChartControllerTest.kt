@@ -4,6 +4,7 @@ import com.coinepro.core.chart.ChartType
 import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.CandlePage
+import com.coinepro.core.marketdata.ChartInterval
 import com.coinepro.core.marketdata.OhlcBar
 import com.coinepro.core.marketdata.Timeframe
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -297,5 +298,67 @@ class ChartControllerTest {
 
         assertTrue(controller.state.value.series.isEmpty)
         assertNull(controller.state.value.error)
+    }
+
+    @Test
+    fun `a live read moves the open bar without moving the ones behind it`() = runTest {
+        // «قیمت کندل‌ها لحظه‌ای نیست» — the chart was fetched once and then sat there, so the last
+        // close was whatever the market was when the screen opened and the live tag's countdown ran
+        // out and printed nothing. A tick has to move the forming candle and nothing else.
+        val opening = bars(1_000, 5)
+        val gateway = FakeGateway().apply { pages.add(page(opening)) }
+        val controller = ChartController("BTCUSDT", gateway, TestScope(StandardTestDispatcher(testScheduler)))
+        controller.start()
+        advanceUntilIdle()
+        assertEquals(100.5, controller.state.value.series.close.last(), 0.0001)
+
+        val last = opening.last()
+        gateway.pages.add(page(listOf(last.copy(c = 142.0, h = 143.0))))
+        controller.refreshLiveEdge("BTCUSDT", controller.state.value.interval)
+        advanceUntilIdle()
+
+        val series = controller.state.value.series
+        assertEquals(5, series.size)
+        assertEquals(142.0, series.close.last(), 0.0001)
+        // The bars behind it are history and history does not move.
+        assertEquals(100.5, series.close[3], 0.0001)
+    }
+
+    @Test
+    fun `a live read appends the bar the venue has just opened`() = runTest {
+        val opening = bars(1_000, 5)
+        val gateway = FakeGateway().apply { pages.add(page(opening)) }
+        val controller = ChartController("BTCUSDT", gateway, TestScope(StandardTestDispatcher(testScheduler)))
+        controller.start()
+        advanceUntilIdle()
+
+        // The tail comes back one bar further along, which is what a venue does when a bar closes.
+        val opened = OhlcBar(t = opening.last().t + 3_600, o = 100.5, h = 104.0, l = 100.0, c = 103.0, v = 2.0)
+        gateway.pages.add(page(listOf(opening.last(), opened)))
+        controller.refreshLiveEdge("BTCUSDT", controller.state.value.interval)
+        advanceUntilIdle()
+
+        val series = controller.state.value.series
+        assertEquals(6, series.size)
+        assertEquals(103.0, series.close.last(), 0.0001)
+        // Joined by open time, not by position: no bar is doubled where the tail meets what is held.
+        val times = series.time.toList()
+        assertEquals(times.size, times.distinct().size)
+    }
+
+    @Test
+    fun `a live read for a series the reader has left is ignored`() = runTest {
+        val gateway = FakeGateway().apply { pages.add(page(bars(1_000, 5))) }
+        val controller = ChartController("BTCUSDT", gateway, TestScope(StandardTestDispatcher(testScheduler)))
+        controller.start()
+        advanceUntilIdle()
+        val callsBefore = gateway.calls.size
+
+        // A poll for the interval that was on screen when it was armed, after a switch away from
+        // it. It must not fetch, and it must tell its loop to stop rather than tick again.
+        val stale = ChartInterval.Preset(Timeframe.M5)
+        assertFalse(controller.refreshLiveEdge("BTCUSDT", stale))
+        advanceUntilIdle()
+        assertEquals(callsBefore, gateway.calls.size)
     }
 }

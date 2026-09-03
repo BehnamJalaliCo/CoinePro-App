@@ -93,6 +93,8 @@ class ChartControllers(
             // The scope above is the main dispatcher; a series is built and its columns filled on
             // a worker so the tap that asked for it does not pay for it in a frame.
             workers = Dispatchers.Default,
+            // The real app has a real clock, so the live edge is polled here and nowhere else.
+            live = true,
         )
         controllers[key] = created
         while (controllers.size > MAX_CONTROLLERS) {

@@ -68,15 +68,17 @@ class ChartArchiveTest {
         val controller = ChartController("BTCUSDT", gateway, this, cache = archiveless(), archive = archive)
         controller.start()
         advanceUntilIdle()
-        assertEquals(60, controller.state.value.series.size)
+        // The venue answered one page of sixty. The two hundred behind it came off the archive and
+        // are on the chart at open rather than after a drag — see `deepenResident`, which is what
+        // «باید ۵ الی ۵۰ هزار کندل باشه» asked for: what the device holds is what the chart holds.
+        assertEquals(260, controller.state.value.series.size)
 
-        val callsBefore = gateway.calls
         controller.loadMore()
         advanceUntilIdle()
 
-        // The bars arrived and the venue was never asked for them.
+        // Nothing more to have, and that is the proof: [OnePage] answers every page-back empty, so
+        // the two hundred older bars can only have come from the archive.
         assertEquals(260, controller.state.value.series.size)
-        assertEquals(callsBefore, gateway.calls)
         // Oldest first, and no bar doubled where the two halves meet.
         val times = controller.state.value.series.time.toList()
         assertEquals(times.size, times.distinct().size)

@@ -15,6 +15,27 @@ it is for.
 
 ---
 
+## [4.26.1] — 2026-09-03 — The live poll had to be told the tests are not a clock
+
+`4.26.0` never produced an APK: its CI run was cancelled after the unit-test step sat for
+forty-four minutes. The live-edge poll is an endless `delay`-and-fetch loop, which is the right
+shape against a real clock and the wrong one against a virtual one — a `runTest` scope advances
+time until nothing is left to run, and a loop that always has another delay outstanding means that
+moment never arrives. The test did not fail; it hung, which is the worst way for one to go.
+
+* **The poll is opt-in.** `ChartController` takes `live`, off by default and turned on where the
+  app builds the chart's controllers — the same idiom as `workers`, and for the same reason: the
+  app has a real clock and a test does not. The script studio's preview controller, which only
+  fetches bars to draw a thumbnail, keeps it off.
+* **A tick is now a function, and the loop is only a clock.** `refreshLiveEdge` is one poll and
+  its merge, so the behaviour is reachable without the loop. Three tests came with it: an open bar
+  that moves while the bars behind it do not, a bar appended when the venue opens one — joined by
+  open time rather than position, so nothing is doubled — and a poll for a series the reader has
+  left, which fetches nothing and tells its loop to stop.
+* **`ChartArchiveTest` now expects the deeper chart.** It asserted that a chart opens on the one
+  page the venue answered; with `deepenResident` it opens on that page *and* everything the archive
+  holds behind it, which is the change `4.26.0` was for.
+
 ## [4.26.0] — 2026-09-03 — Seven things the owner circled
 
 * **The chart is live again.** Nothing on the chart controller ever asked the venue a second
