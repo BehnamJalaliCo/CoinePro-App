@@ -91,7 +91,7 @@ object AppSurfaces {
             id = "academy",
             titleRes = R.string.surface_academy_title,
             bodyRes = R.string.surface_academy_body,
-            icon = CoineProIcons.Help,
+            icon = CoineProIcons.Academy,
             keywords = listOf(
                 "آکادمی", "اکادمی", "آموزش", "اموزش", "درس", "دوره", "یادگیری",
                 "academy", "learn", "lesson", "course", "education",
@@ -114,7 +114,7 @@ object AppSurfaces {
             id = "paper-trade",
             titleRes = R.string.surface_paper_title,
             bodyRes = R.string.surface_paper_body,
-            icon = DesignR.drawable.tv_tool_longshort,
+            icon = CoineProIcons.Rehearsal,
             keywords = listOf(
                 "معامله آزمایشی", "معاملهٔ آزمایشی", "آزمایشی", "دمو", "تمرین", "شبیه‌ساز",
                 "paper trading", "paper", "demo", "practice", "simulator",
@@ -124,7 +124,7 @@ object AppSurfaces {
             id = "backtest",
             titleRes = R.string.surface_backtest_title,
             bodyRes = R.string.surface_backtest_body,
-            icon = DesignR.drawable.tv_code2,
+            icon = CoineProIcons.Backtest,
             keywords = listOf(
                 "بک تست", "بک‌تست", "بکتست", "اسکریپت", "استراتژی", "کد", "آزمون استراتژی",
                 "backtest", "script", "strategy", "pine", "code",
@@ -144,7 +144,7 @@ object AppSurfaces {
             id = "heatmap",
             titleRes = R.string.surface_heatmap_title,
             bodyRes = R.string.surface_heatmap_body,
-            icon = DesignR.drawable.tv_layout_grid,
+            icon = CoineProIcons.Heatmap,
             keywords = listOf(
                 "هیت مپ", "هیت‌مپ", "هیتمپ", "نقشه حرارتی", "نقشهٔ حرارتی", "نقشه بازار",
                 "heatmap", "heat map", "market map",
@@ -218,7 +218,7 @@ object AppSurfaces {
             id = "portfolio",
             titleRes = R.string.surface_portfolio_title,
             bodyRes = R.string.surface_portfolio_body,
-            icon = CoineProIcons.Wallet,
+            icon = CoineProIcons.Portfolio,
             keywords = listOf(
                 "پرتفوی", "پورتفولیو", "سبد", "عملکرد", "سود و زیان", "شارپ", "سورتینو",
                 "افت سرمایه", "منحنی سرمایه",
@@ -274,7 +274,7 @@ object AppSurfaces {
             id = "terminal",
             titleRes = R.string.surface_terminal_title,
             bodyRes = R.string.surface_terminal_body,
-            icon = DesignR.drawable.tv_chart_candles,
+            icon = CoineProIcons.Terminal,
             keywords = listOf(
                 "ترمینال", "ترمینال وب", "نسخه وب", "پرو چارت",
                 "terminal", "web terminal", "pro chart", "desktop",
@@ -308,7 +308,7 @@ object AppSurfaces {
             id = "membership",
             titleRes = R.string.surface_membership_title,
             bodyRes = R.string.surface_membership_body,
-            icon = CoineProIcons.Balance,
+            icon = CoineProIcons.Membership,
             keywords = listOf(
                 "اشتراک", "عضویت", "پلن", "تمدید", "خرید اشتراک", "اشتراک ویژه",
                 "membership", "subscription", "plan", "upgrade", "pro",
@@ -340,7 +340,7 @@ object AppSurfaces {
             id = "profile",
             titleRes = R.string.surface_profile_title,
             bodyRes = R.string.surface_profile_body,
-            icon = DesignR.drawable.tv_settings2,
+            icon = CoineProIcons.Profile,
             keywords = listOf(
                 "پروفایل", "حساب کاربری", "تنظیمات", "پوسته", "تم", "زبان", "قفل", "امنیت",
                 "profile", "settings", "account", "theme", "language", "security",

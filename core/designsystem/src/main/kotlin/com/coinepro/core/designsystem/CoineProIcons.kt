@@ -151,6 +151,39 @@ object CoineProIcons {
     @DrawableRes val Assistant = R.drawable.icon_robot
 
     /**
+     * Names for the eight glyphs the directory was drawing wrong, so it cannot drift again.
+     *
+     * A menu of thirty rows is the densest icon surface this app has, and it is the surface where
+     * "professional" or "ordinary" is decided before a word is read. Six faults were in it, and
+     * they are worth naming because they are the six a list like this always grows:
+     *
+     *  * **A glyph that failed to convert.** The heat map's was `tv_layout_grid`, which after
+     *    tracing is a plain rounded rectangle — an empty box, on a list where every other row has
+     *    a drawing. Explore had already worked around it on its own tile and left the row.
+     *  * **A glyph that means something else.** Paper trading had the long/short *drawing tool*,
+     *    which on the chart means "measure a trade's risk on these candles" and here means
+     *    nothing. A rehearsal is a flask.
+     *  * **A glyph that means the neighbouring thing.** Portfolio had a wallet, which is money
+     *    held; that row is Sharpe, drawdown and an equity curve, which is money's *shape*.
+     *  * **Two rows with one glyph.** Copy trading and signals both had the signal burst, so the
+     *    two rows a reader is most likely to confuse were the two that looked identical.
+     *  * **Two settings gears**, on the profile row and the notifications row.
+     *  * **A borrowed language.** Explore had the sparkle, which everywhere else in this app means
+     *    the AI. Its own tab is a compass, and the row should say the same word.
+     */
+    @DrawableRes val Rehearsal = R.drawable.icon_flask
+    @DrawableRes val Portfolio = R.drawable.icon_chart_pie_slice
+    @DrawableRes val Community = R.drawable.icon_users_three
+    @DrawableRes val Profile = R.drawable.icon_user_circle
+    @DrawableRes val Academy = R.drawable.icon_graduation_cap
+    @DrawableRes val Membership = R.drawable.icon_crown_simple
+    @DrawableRes val Backtest = R.drawable.icon_clock_counter_clockwise
+    @DrawableRes val Terminal = R.drawable.icon_terminal_window
+    @DrawableRes val Explore = R.drawable.icon_compass
+    @DrawableRes val Heatmap = R.drawable.brand_grid
+    @DrawableRes val CopyTrade = R.drawable.brand_copy_trade
+
+    /**
      * Other companies' marks, kept apart from the icon set on purpose.
      *
      * An icon in [CoineProIcons] is ours: it is tinted by whatever draws it, and its colour carries

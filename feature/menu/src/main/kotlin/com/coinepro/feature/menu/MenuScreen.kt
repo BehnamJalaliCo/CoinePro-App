@@ -2,6 +2,7 @@ package com.coinepro.feature.menu
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -18,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -31,6 +33,8 @@ import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProRowDivider
+import com.coinepro.core.designsystem.CoineProShapes
+import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.model.AvatarSpec
@@ -278,16 +282,44 @@ private fun MenuRow(
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            painter = painterResource(entry.icon),
-            contentDescription = null,
-            modifier = Modifier.size(20.dp),
-            tint = when {
-                entry.destructive -> CoineProColors.Sell
-                item.locked -> CoineProColors.TextMuted
-                else -> CoineProColors.TextSecondary
-            },
-        )
+        // **The glyph sits on a plate, and that is most of what a directory looks like.**
+        //
+        // A bare 20 dp outline against a page of two-line rows is a mark floating in a column of
+        // type: it does not line the rows up, it does not survive a glance, and thirty of them
+        // read as thirty different weights because the shapes are not the same density. Every
+        // professional app of this kind — the exchanges, the terminal this one is measured
+        // against — sets the row glyph in a small filled square, and the reason is mechanical
+        // rather than decorative: a fixed 36 dp plate gives every row the same optical left edge
+        // whatever the glyph inside it is, and the fill separates "this is the row's mark" from
+        // "this is content".
+        //
+        // `SurfaceElevated` and not a tint: a coloured plate per row is a rainbow, and a rainbow
+        // is what a settings screen looks like when nobody chose. The two exceptions carry
+        // meaning — a destructive row is the app's red, and a locked one goes the whole way down
+        // to the disabled ink so the plate reads as switched off rather than merely quiet.
+        Box(
+            modifier = Modifier
+                .size(PLATE)
+                .clip(CoineProShapes.small)
+                .background(
+                    when {
+                        entry.destructive -> CoineProTint.fill(CoineProColors.Sell, CoineProColors.Surface)
+                        else -> CoineProColors.SurfaceElevated
+                    },
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(entry.icon),
+                contentDescription = null,
+                modifier = Modifier.size(PLATE_GLYPH),
+                tint = when {
+                    entry.destructive -> CoineProColors.Sell
+                    item.locked -> CoineProColors.TextDisabled
+                    else -> CoineProColors.TextSecondary
+                },
+            )
+        }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = stringResource(entry.titleRes),
@@ -337,3 +369,15 @@ private fun MenuRow(
         )
     }
 }
+
+/**
+ * The row glyph's plate, and the glyph in it.
+ *
+ * Thirty-six by thirty-six, which is the smallest square that reads as a plate rather than as a
+ * border drawn round an icon, and small enough that a two-line row keeps its 44 dp floor without
+ * growing. The glyph is eighteen — half the plate — because Phosphor's outlines are drawn on a
+ * 256 grid with a 16-unit stroke, and at anything above 20 dp inside a 36 dp box the stroke starts
+ * to read as a second border inside the first.
+ */
+private val PLATE = 36.dp
+private val PLATE_GLYPH = 18.dp
