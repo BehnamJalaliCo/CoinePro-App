@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -56,6 +59,8 @@ import com.coinepro.core.designsystem.CoineProPercentPill
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProProse
 import com.coinepro.core.designsystem.CoineProSecondaryButton
+import com.coinepro.core.designsystem.CoineProPress
+import com.coinepro.core.designsystem.pressScale
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProSparkline
@@ -344,34 +349,58 @@ private fun DoorTile(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    CoineProCard(
-        modifier = modifier,
-        contentPadding = PaddingValues(vertical = CoineProSpacing.OneHalf, horizontal = CoineProSpacing.One),
-        // The card's own click rather than a `clickable` on its modifier: it moves the fill as well
-        // as the scale, which is what a finger on a block this size actually reads as contact.
-        onClick = onClick,
+    val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberCoineProHaptics()
+    // **A door, not a card.**
+    //
+    // These three are links to three other screens, and as cards they were the heaviest objects on
+    // the page: ninety points each, a bordered plate apiece, three of them across the top before a
+    // single price. A page that answers «امروز در بازار چه خبر است؟» must not spend its first
+    // screenful on the way out of itself.
+    //
+    // The glyph keeps its plate — the same 36 pt square the menu's rows use, so a reader meets one
+    // treatment for "this mark belongs to a destination" everywhere — and the card around it goes.
+    // Hierarchy is the plate and the label; the border was only ever saying "this is tappable",
+    // which the plate says better and in a third of the height.
+    Column(
+        modifier = modifier
+            .clip(CoineProShapes.medium)
+            .pressScale(interaction, CoineProPress.CHIP)
+            .clickable(interaction, null) {
+                haptics.select()
+                onClick()
+            }
+            .padding(vertical = CoineProSpacing.One),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        Box(
+            modifier = Modifier
+                .size(DOOR_PLATE)
+                .clip(CoineProShapes.small)
+                .background(CoineProColors.SurfaceElevated),
+            contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painter = painterResource(icon),
                 contentDescription = null,
                 tint = CoineProColors.TextSecondary,
-                modifier = Modifier.size(22.dp),
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = CoineProColors.TextPrimary,
-                maxLines = 1,
-                textAlign = TextAlign.Center,
+                modifier = Modifier.size(DOOR_GLYPH),
             )
         }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = CoineProColors.TextPrimary,
+            maxLines = 1,
+            textAlign = TextAlign.Center,
+        )
     }
 }
+
+/** The door's plate and its glyph, matched to the menu's so the two read as one treatment. */
+private val DOOR_PLATE = 36.dp
+private val DOOR_GLYPH = 18.dp
 
 /**
  * The category strip.
@@ -545,11 +574,27 @@ private fun MarketCard(
  */
 @Composable
 private fun StoryRow(story: MarketNewsItem, onClick: (() -> Unit)?) {
-    CoineProCard(
+    val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberCoineProHaptics()
+    // **A row with a rule under it, not a card.**
+    //
+    // Three headlines as three bordered plates is three objects a reader has to separate before
+    // reading any of them, and the border says nothing the whitespace and the rule do not. A wire
+    // feed is a list; every place that publishes one draws it as a list.
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = CoineProSpacing.Gutter),
-        onClick = onClick,
+            .then(
+                if (onClick == null) {
+                    Modifier
+                } else {
+                    Modifier.clickable(interaction, null) {
+                        haptics.select()
+                        onClick()
+                    }
+                },
+            )
+            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.OneHalf),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
             Text(
@@ -578,6 +623,10 @@ private fun StoryRow(story: MarketNewsItem, onClick: (() -> Unit)?) {
             )
         }
     }
+    HorizontalDivider(
+        color = CoineProColors.BorderSubtle,
+        modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
+    )
 }
 
 /**

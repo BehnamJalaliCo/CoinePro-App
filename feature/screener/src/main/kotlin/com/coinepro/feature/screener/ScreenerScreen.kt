@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
@@ -48,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
+import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
@@ -339,11 +341,13 @@ private fun ColumnHeadings(
             .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.Half),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // The heading spans the logo as well as the ticker, so «نماد» sits over the whole first
+        // column rather than three points to the left of where the tickers start.
         Text(
             text = stringResource(R.string.screener_column_symbol),
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
-            modifier = Modifier.width(SYMBOL_COLUMN),
+            modifier = Modifier.width(LOGO + CoineProSpacing.One + SYMBOL_COLUMN),
         )
         Row(
             modifier = Modifier.weight(1f).horizontalScroll(scroll),
@@ -439,6 +443,15 @@ private fun ScreenerTableRow(
             .padding(horizontal = CoineProSpacing.Two, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // **The mark, which every other list in this app has and this one did not.**
+        //
+        // A screener is the surface a reader scans fastest — sixty rows, looking for one — and it
+        // was the one list where the only thing to recognise was a Latin ticker in the same weight
+        // as the fifty-nine above it. A logo is read before a word is: it is what turns "read every
+        // row" into "find the orange disc". The markets list, the watchlist and the chart's own
+        // strip all carry it; a table without it does not look denser, it looks unfinished.
+        CoineProAssetLogo(symbol = row.meta.symbol, size = LOGO)
+        Spacer(modifier = Modifier.width(CoineProSpacing.One))
         Column(modifier = Modifier.width(SYMBOL_COLUMN)) {
             Text(
                 text = row.meta.symbol,
@@ -549,6 +562,9 @@ internal fun withCategory(
 }
 
 /** The ticker column. Wide enough for a Persian name under a ticker without cutting either. */
+/** The instrument's mark, at the size every other list in this app draws it. */
+private val LOGO = 26.dp
+
 private val SYMBOL_COLUMN = 96.dp
 
 /** One figure column. Matches the markets list's price column so the two screens align. */
