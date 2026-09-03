@@ -144,24 +144,28 @@ fun CoineProBottomBar(
  */
 @DrawableRes
 private fun AppDestination.icon(selected: Boolean): Int = when (this) {
-    AppDestination.HOME -> if (selected) CoineProIcons.Filled.Home else CoineProIcons.Home
-    AppDestination.SIGNALS -> if (selected) CoineProIcons.Filled.Signals else CoineProIcons.Signals
-    AppDestination.AI -> if (selected) CoineProIcons.Filled.Ai else CoineProIcons.Ai
-    // Markets and Chart have no bespoke nav glyph: they borrow the rising line and the candle,
-    // which is where a reader has already met both shapes. They carry both weights like the rest —
-    // before, these two alone kept the same outline whether selected or not, so on two of the five
-    // tabs the selection was a shade of grey and nothing else.
+    // The watchlist's own mark, which is the shape a reader has already met on every row they
+    // starred. Borrowing it here rather than drawing a new one is the point: the tab and the
+    // action that fills it are the same idea.
+    AppDestination.WATCHLIST ->
+        if (selected) DesignR.drawable.brand_watchlist_fill else DesignR.drawable.brand_watchlist
+    AppDestination.CHART -> if (selected) CoineProIcons.Filled.Chart else CoineProIcons.Chart
     // The compass, which is the one glyph in the set that means "look around" rather than
     // "here is a list" — Explore replaced the markets tab and it is not the same promise.
     AppDestination.EXPLORE ->
         if (selected) DesignR.drawable.icon_compass_fill else DesignR.drawable.icon_compass
-    AppDestination.CHART -> if (selected) CoineProIcons.Filled.Chart else CoineProIcons.Chart
-    AppDestination.COMMUNITY ->
-        if (selected) DesignR.drawable.icon_users_fill else DesignR.drawable.icon_users
+    // The signal glyph, for a destination that is signals and the board together. Signals is the
+    // half a reader arrives for, and a lightbulb this icon set does not have would have to be
+    // drawn to say something the existing shape already says.
+    AppDestination.IDEAS -> if (selected) CoineProIcons.Filled.Signals else CoineProIcons.Signals
+    // Four bars, unweighted. The menu is a directory and the one tab whose selected state does not
+    // need to compete: nothing on it is live, and a filled variant would make the quietest
+    // destination the loudest shape in the bar.
+    AppDestination.MENU -> DesignR.drawable.icon_list_bullets
 }
 
 /**
- * The six destinations as [CoineProNavigationRail] wants them.
+ * The five destinations as [CoineProNavigationRail] wants them.
  *
  * Here rather than in `core:designsystem` for the same reason the glyph pairs are: the rail takes
  * plain items so `core:navigation` stays a module with no Compose dependency at all. One list, so

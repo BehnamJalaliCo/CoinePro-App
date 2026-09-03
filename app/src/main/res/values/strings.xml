@@ -18,7 +18,11 @@
     <string name="screen_script">نما اسکریپت</string>
     <string name="screen_paper_trade">معاملهٔ آزمایشی</string>
     <string name="screen_ai_vision">تحلیل چارت</string>
+    <string name="screen_ai">ستاپ‌ساز هوشمند</string>
     <string name="screen_ai_assistant">دستیار هوشمند</string>
+    <string name="ideas_signals">سیگنال‌ها</string>
+    <string name="ideas_community">انجمن</string>
+    <string name="screen_ideas">ایده‌ها</string>
     <string name="screen_market_search">بازارها</string>
     <string name="screen_chart">نمودار</string>
     <string name="screen_portfolio">عملکرد</string>

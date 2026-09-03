@@ -638,6 +638,16 @@ internal fun ChartMoreSheetBody(
     eventNotice: ChartEventNotice? = null,
     /** The web terminal, where a deployment reports one. */
     onOpenTerminal: (() -> Unit)? = null,
+    /**
+     * Ask the assistant about **this** chart, or null where this build has no assistant.
+     *
+     * The AI used to be a tab of its own, which is the wrong shape for it: nobody opens an app to
+     * "do some AI", they ask a question about the thing in front of them — and the thing in front
+     * of them is almost always a chart. So the entry point is here, on the hub of the screen that
+     * holds the question, and the caller is what carries the symbol and the bar length across.
+     * The full assistant is still a menu row for somebody who arrived wanting it.
+     */
+    onAskAi: (() -> Unit)? = null,
     /** The trade card and the ring under the live bar share this. Null draws the card dimmed. */
     onTrade: (() -> Unit)? = null,
     /** Enter bar replay. Null off a series too short to rewind, or while already replaying. */
@@ -754,9 +764,19 @@ internal fun ChartMoreSheetBody(
 
         // MORE — the phone app's second section: what belongs to the page rather than to the
         // chart. Drawn only when there is something in it; a heading over nothing is a promise.
-        if (onEvents != null || onOpenStudio != null || onOpenTerminal != null) {
+        if (onEvents != null || onOpenStudio != null || onOpenTerminal != null || onAskAi != null) {
             SheetLabel(stringResource(R.string.chart_hub_more))
             HubGrid(columns = 2, outlined = false) {
+                // First in the section, and first deliberately: it is the only tile here that
+                // answers a question about the chart underneath rather than opening another
+                // screen beside it.
+                onAskAi?.let {
+                    HubTile(
+                        icon = DesignR.drawable.icon_sparkle,
+                        label = stringResource(R.string.chart_more_ask_ai),
+                        onClick = it,
+                    )
+                }
                 onEvents?.let {
                     HubTile(
                         icon = DesignR.drawable.tv_calendar_days,

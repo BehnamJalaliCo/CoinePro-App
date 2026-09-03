@@ -103,23 +103,29 @@ def check_bottom_navigation() -> None:
     text = read("core/navigation/src/main/kotlin/com/coinepro/core/navigation/AppDestination.kt")
     entries = re.findall(r'^\s*([A-Z]+)\("([^"]+)",', text, flags=re.MULTILINE)
     expected = [
-        ("HOME", "home"),
-        # Explore took this position from MARKETS: it is the same catalogue with the day's move,
-        # a spark line and the news, calendar and heat-map doors on it, and the full list is one
-        # tap away from it. A sixth tab was the alternative, and the premise of this bar is that
-        # five positions are learned and do not move.
-        ("EXPLORE", "explore"),
+        # **The bar is a list of jobs, not a list of modules.** It held six — Home, Explore, Chart,
+        # Signals, AI and Community — and every one of them was a real screen, which is exactly how
+        # a bar becomes a feature catalogue. See `AppDestination` for the whole argument.
+        #
+        # The watchlist first, because it is where somebody lands when they have no other
+        # question, and because a curated list two taps down was the clearest symptom of a shell
+        # built around a dashboard. Same route it already had.
+        ("WATCHLIST", "watchlist"),
         # Not "chart": that route belongs to the chart *of a symbol* and has for every release so
         # far. The tab is a different destination that redirects into it, and giving the two the
         # same name would break every saved back stack that holds one.
         ("CHART", "chart-tab"),
-        ("SIGNALS", "signals"),
-        ("AI", "ai"),
-        # The board, in the bar the reference keeps it in. Six positions after all: the owner
-        # reported the community as absent when it was two taps down in the menu on one platform,
-        # and a feature nobody can find is an absent feature. Same route as the menu's surface id,
-        # so a saved back stack that holds one still resolves.
-        ("COMMUNITY", "community"),
+        # Explore took this position from MARKETS: it is the same catalogue with the day's move,
+        # a spark line and the news, calendar and heat-map doors on it, and the full list is one
+        # tap away from it.
+        ("EXPLORE", "explore"),
+        # Signals and the board, which are two answers to one question and had a tab each. A route
+        # of its own rather than a redirect: `signals` and `community` are still routes, and a
+        # saved back stack naming one must open that screen alone rather than a tabbed page.
+        ("IDEAS", "ideas"),
+        # The directory, and the pressure valve that stops this list from growing a sixth entry
+        # the next time a feature ships. Same route the menu already had.
+        ("MENU", "menu"),
     ]
     require(entries == expected, f"Bottom navigation contract drifted: {entries}")
 

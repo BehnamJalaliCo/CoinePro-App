@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The menu tab's glyph: four rules, evenly spaced, on a 24 unit grid.
+
+    ### Why this is drawn here rather than converted from the archive
+
+    `design/ui-icons` carries the Phosphor set and the traced TradingView set, and neither has a
+    plain list rule at the weight the bottom bar uses. This is four rounded rectangles; converting
+    somebody else's would import a licence, a provenance note and a build step for a shape that is
+    fully described by its own numbers.
+
+    ### The numbers
+
+    Four bars rather than three. Three reads as a hamburger, which on Android is a *drawer* — a
+    surface that slides in from the edge — and this tab opens a page. Four reads as a list, which
+    is what the menu is: a directory of named rows.
+
+    Four rules 2 units tall with a 1 unit radius, 18 units wide, inset 3 units from each side. The
+    pitch is 5, so their centres are at 4.5, 9.5, 14.5 and 19.5 — symmetric about the glyph's own
+    centre at 12, with the ink spanning 3.5 to 20.5. A 2-unit rule on a 5-unit pitch is 40% ink,
+    which is where the rest of this set sits: denser reads as a barcode at 24 dp, sparser does not
+    read as a list at all.
+
+    ### One weight, and that is deliberate
+
+    Every other tab in this bar has an outline and a filled variant, because every other tab shows
+    something that is happening. Nothing on the menu is live. A filled variant here would make the
+    quietest destination in the bar the loudest shape in it whenever it is selected, and the bar
+    marks its selection with type weight and a plate anyway. See `AppChrome.icon`.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M4,3.5h16a1,1 0 0 1 1,1v0a1,1 0 0 1 -1,1h-16a1,1 0 0 1 -1,-1v0a1,1 0 0 1 1,-1z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M4,8.5h16a1,1 0 0 1 1,1v0a1,1 0 0 1 -1,1h-16a1,1 0 0 1 -1,-1v0a1,1 0 0 1 1,-1z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M4,13.5h16a1,1 0 0 1 1,1v0a1,1 0 0 1 -1,1h-16a1,1 0 0 1 -1,-1v0a1,1 0 0 1 1,-1z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M4,18.5h16a1,1 0 0 1 1,1v0a1,1 0 0 1 -1,1h-16a1,1 0 0 1 -1,-1v0a1,1 0 0 1 1,-1z" />
+</vector>

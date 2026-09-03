@@ -43,6 +43,7 @@
     <string name="chart_more_share">اشتراک تصویر</string>
     <string name="chart_more_share_note">فقط خود نمودار، بدون بقیهٔ صفحه.</string>
     <string name="chart_more_studio">استودیوی چارت</string>
+    <string name="chart_more_ask_ai">تحلیل با هوش مصنوعی</string>
     <string name="chart_more_studio_note">اندیکاتور، ابزار، بازپخش و اسکریپت.</string>
 
     <!-- The three readings, and the figure each one comes from. -->

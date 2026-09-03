@@ -36,6 +36,12 @@
 
     <!-- ── معامله و سبد ────────────────────────────────────────────────────────────────── -->
     <string name="menu_portfolio_title">پرتفوی</string>
+    <string name="menu_ai_title">ستاپ‌ساز هوشمند</string>
+    <string name="menu_ai_body">یک ستاپ کامل با ورود، حد ضرر و هدف، از روی نمودار واقعی</string>
+    <string name="menu_signals_title">سیگنال‌ها</string>
+    <string name="menu_signals_body">فهرست کامل سیگنال‌ها، همان که در «ایده‌ها» می‌بینید</string>
+    <string name="menu_home_title">خانه و خلاصهٔ حساب</string>
+    <string name="menu_home_body">موجودی، اشتراک و میان‌برهایی که پیش‌تر صفحهٔ اول بودند</string>
     <string name="menu_portfolio_body">شارپ، عمیق‌ترین افت، منحنی سرمایه و گزارش کامل.</string>
     <string name="menu_paper_title">معاملهٔ آزمایشی</string>
     <string name="menu_paper_body">تمرین با قیمت واقعی و بدون پول واقعی.</string>

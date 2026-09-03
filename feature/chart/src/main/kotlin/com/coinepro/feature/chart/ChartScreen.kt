@@ -232,6 +232,14 @@ fun ChartScreen(
      * what produced a toolbar wider than the phone.
      */
     onOpenStudio: (() -> Unit)? = null,
+    /**
+     * Take this chart's symbol to the AI, or null on a build with no AI behind it.
+     *
+     * The AI is contextual now rather than a tab: a reader asks about the market they are looking
+     * at, not about "AI". The shell is what turns the symbol into a route — this screen knows the
+     * symbol and nothing about the graph.
+     */
+    onAskAi: ((String) -> Unit)? = null,
     /** The reader's watchlist, for the switcher strip. Fewer than two symbols hides it. */
     watchlist: List<String> = emptyList(),
     onSelectSymbol: ((String) -> Unit)? = null,
@@ -1587,6 +1595,12 @@ fun ChartScreen(
                     sheet = null
                     shareScope.launch {
                         ChartShare.share(context, chartLayer.toImageBitmap(), state.symbol)
+                    }
+                },
+                onAskAi = onAskAi?.let { ask ->
+                    {
+                        sheet = null
+                        ask(state.symbol)
                     }
                 },
                 onOpenStudio = onOpenStudio?.let { open ->

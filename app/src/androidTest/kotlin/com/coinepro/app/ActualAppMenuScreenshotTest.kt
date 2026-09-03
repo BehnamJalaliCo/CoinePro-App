@@ -40,7 +40,7 @@ class ActualAppMenuScreenshotTest {
                         NavigationBar {
                             AppDestination.entries.forEach { destination ->
                                 NavigationBarItem(
-                                    selected = destination == AppDestination.HOME,
+                                    selected = destination == AppDestination.entries.first(),
                                     onClick = {},
                                     icon = { Text(destination.mark) },
                                     label = { Text(stringResource(destination.labelRes)) },

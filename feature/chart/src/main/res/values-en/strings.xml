@@ -41,6 +41,7 @@
     <string name="chart_more_share">Share the picture</string>
     <string name="chart_more_share_note">The chart alone, without the rest of the page.</string>
     <string name="chart_more_studio">Chart studio</string>
+    <string name="chart_more_ask_ai">Analyse with AI</string>
     <string name="chart_more_studio_note">Studies, tools, replay and scripts.</string>
 
     <string name="chart_reading_title">What this market is doing</string>

@@ -1497,7 +1497,7 @@ class ScreenshotRenderTest {
             containerColor = com.coinepro.core.designsystem.CoineProColors.Stage,
             bottomBar = {
                 CoineProBottomBar(
-                    currentRoute = AppDestination.HOME.route,
+                    currentRoute = AppDestination.WATCHLIST.route,
                     onSelect = {},
                 )
             },
@@ -2123,14 +2123,13 @@ class ScreenshotRenderTest {
     /** The same pairs `CoineProBottomBar` uses, since a reader must meet one glyph per tab. */
     @DrawableRes
     private fun AppDestination.railIcon(selected: Boolean): Int = when (this) {
-        AppDestination.HOME -> if (selected) CoineProIcons.Filled.Home else CoineProIcons.Home
-        AppDestination.SIGNALS -> if (selected) CoineProIcons.Filled.Signals else CoineProIcons.Signals
-        AppDestination.AI -> if (selected) CoineProIcons.Filled.Ai else CoineProIcons.Ai
+        AppDestination.WATCHLIST ->
+            if (selected) DesignR.drawable.brand_watchlist_fill else DesignR.drawable.brand_watchlist
+        AppDestination.CHART -> if (selected) CoineProIcons.Filled.Chart else CoineProIcons.Chart
         AppDestination.EXPLORE ->
             if (selected) DesignR.drawable.icon_compass_fill else DesignR.drawable.icon_compass
-        AppDestination.CHART -> if (selected) CoineProIcons.Filled.Chart else CoineProIcons.Chart
-        AppDestination.COMMUNITY ->
-            if (selected) DesignR.drawable.icon_users_fill else DesignR.drawable.icon_users
+        AppDestination.IDEAS -> if (selected) CoineProIcons.Filled.Signals else CoineProIcons.Signals
+        AppDestination.MENU -> DesignR.drawable.icon_list_bullets
     }
 
     /** The wordmark at the head of the labelled rail: 240dp less the rail's own gutters. */

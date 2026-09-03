@@ -100,6 +100,7 @@ import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.network.NetworkStatus
 import com.coinepro.core.datastore.MarketColorScheme
 import com.coinepro.core.datastore.ThemeMode
+import com.coinepro.app.ideas.IdeasScreen
 import com.coinepro.core.datastore.UserPreferencesStore
 import com.coinepro.core.datastore.StoredProfile
 import com.coinepro.core.datastore.WatchlistStore
@@ -315,6 +316,42 @@ private const val CALENDAR_ROUTE = "market/calendar"
 private const val MARKETS_ROUTE = "markets"
 
 /**
+ * The three roots that left the bottom bar, and kept their routes.
+ *
+ * Removing a destination from the bar removes it from the bar and nothing else — see
+ * `AppDestination`. Each of these is still a screen in the graph, still resolves from a saved back
+ * stack written by an older build, and is still reachable: Home and the assistant from the menu,
+ * signals and the board from the Ideas tab as well as from their own rows.
+ *
+ * Constants rather than enum entries for the same reason [MARKETS_ROUTE] is one: the enum is the
+ * bar, and a route that is not in the bar has no business being in it.
+ */
+private const val HOME_ROUTE = "home"
+private const val SIGNALS_ROUTE = "signals"
+private const val AI_ROUTE = "ai"
+
+/**
+ * The AI studio, opened on one market.
+ *
+ * The query rather than a path segment, and optional: `ai` on its own is still the whole studio on
+ * its own default, which is what the menu row and every saved back stack that names it expect. A
+ * required path argument would have made those two different routes.
+ */
+private const val AI_SYMBOL_QUERY = "symbol"
+private const val AI_PATTERN = "ai?symbol={symbol}"
+
+private fun aiRouteFor(symbol: String) = "ai?symbol=" + Uri.encode(symbol)
+
+/**
+ * Signals and the board under one roof, which is what the bar's fourth position now opens.
+ *
+ * A route of its own rather than a redirect into one of the two: this destination is the frame
+ * that holds both, and a saved back stack naming `signals` must still open the signals screen by
+ * itself rather than a tabbed page scrolled to it.
+ */
+private val IDEAS_ROUTE = AppDestination.IDEAS.route
+
+/**
  * The board, and one thread on it.
  *
  * The app's own, on both platforms and for a guest — served from TradeYar's host and tied to
@@ -387,7 +424,13 @@ private const val ACTIVITY_ROUTE = "activity"
  * Not a sixth tab: the bar is five destinations a reader has learned by position, and the
  * cross-phase gate pins it.
  */
-private const val MENU_ROUTE = "menu"
+/**
+ * The directory, which is also the bar's fifth position.
+ *
+ * Read off [AppDestination] rather than spelled again: two literals for one route is two literals
+ * free to disagree, and the one that drifts is the one the bar does not use.
+ */
+private val MENU_ROUTE = AppDestination.MENU.route
 
 /**
  * The reader's own lists, as a destination.
@@ -398,7 +441,8 @@ private const val MENU_ROUTE = "menu"
  * opening the markets tab and hoping. The screen wraps the same panel that segment draws, so there
  * is one watchlist rather than two kept alike by hand.
  */
-private const val WATCHLIST_ROUTE = "watchlist"
+/** The reader's own list, which is also the bar's first position. See [MENU_ROUTE]. */
+private val WATCHLIST_ROUTE = AppDestination.WATCHLIST.route
 private const val SCRIPT_PATTERN = "script/{symbol}"
 private const val STUDIO_PATTERN = "chart/{symbol}/studio"
 
@@ -480,8 +524,8 @@ private fun surfaceRoute(id: String, platform: MarketPlatform, watchlist: List<S
         "markets" -> MARKETS_ROUTE
         "community" -> COMMUNITY_ROUTE
         "portfolio" -> PORTFOLIO_ROUTE
-        "signals" -> AppDestination.SIGNALS.route
-        "ai" -> AppDestination.AI.route
+        "signals" -> SIGNALS_ROUTE
+        "ai" -> AI_ROUTE
         "ai-vision" -> AI_VISION_ROUTE
         "ai-assistant" -> AI_ASSISTANT_ROUTE
         "terminal" -> TERMINAL_ROUTE
@@ -506,7 +550,12 @@ private fun surfaceRoute(id: String, platform: MarketPlatform, watchlist: List<S
  */
 private fun menuRoute(id: String, platform: MarketPlatform, watchlist: List<String>): String =
     when (id) {
+        // The four the menu names that the search catalogue does not. `home` is the account
+        // dashboard, which the search screen has no business offering as a "surface"; the rest are
+        // the safety page, deletion and the two legal documents — nobody hunts for any of them by
+        // typing.
         "search" -> MARKET_SEARCH_ROUTE
+        "home" -> HOME_ROUTE
         "safety" -> LAUNCH_READINESS_ROUTE
         "delete" -> DELETE_ACCOUNT_ROUTE
         "terms" -> TERMS_ROUTE
@@ -588,7 +637,10 @@ private fun accentFor(route: String?): PageAccent = when (route) {
     WATCHLIST_ROUTE,
     AppDestination.EXPLORE.route,
     AppDestination.CHART.route,
-    AppDestination.AI.route,
+    // The pattern and not the bare route: `currentRoute` is the *registered* route of the entry,
+    // and this destination is registered with its optional symbol query on it. Matching `"ai"`
+    // here has matched nothing since the chart learned to hand a market over.
+    AI_PATTERN,
     -> PageAccent.ANALYSIS
 
     // Copy trading, the venue links that feed it, and the feed itself. Community is social by the
@@ -597,6 +649,9 @@ private fun accentFor(route: String?): PageAccent = when (route) {
     COPY_TRADE_ROUTE,
     COMMUNITY_ROUTE,
     COMMUNITY_THREAD_PATTERN,
+    // Ideas is the board and the signal list together, and the board is the half whose every
+    // pixel was put there by another reader. Social is the honest reading of the pair.
+    IDEAS_ROUTE,
     -> PageAccent.SOCIAL
 
     else -> PageAccent.BRAND
@@ -1057,6 +1112,38 @@ fun CoineProApp(
     // `false` initially, which is also the stored default. Starting `true` would flash a lock
     // screen at every reader who has never turned it on.
     val appLockEnabled by userPreferencesStore.appLockEnabled.collectAsStateWithLifecycle(false)
+
+    /**
+     * Which tab the app opens on: the one the reader was last on, or the watchlist.
+     *
+     * ### Why this is read once and not collected
+     *
+     * `startDestination` is the identity of a `NavHost`'s graph. Collecting a flow into it would
+     * mean the graph is built with one route and then rebuilt with another the moment the store
+     * answers — which tears down every back stack the reader had and, on a cold start with a deep
+     * link, races the link's own navigation. One read, held for the life of the composition.
+     *
+     * Null until that read lands, and the shell is not composed until it does. A few milliseconds
+     * of DataStore, entirely underneath `LaunchSplash`, against an opening screen chosen by whoever
+     * wrote the enum first.
+     *
+     * ### Why the stored route is checked against the bar
+     *
+     * A route that is no longer a root — Home and the AI screen were both roots and are not any
+     * more — must not become a start destination that has no tab to match it, leaving the bar with
+     * nothing selected. An unrecognised value reads as "no preference", which is the honest answer
+     * and the same one a first launch gives.
+     */
+    var startRoute by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(userPreferencesStore) {
+        val stored = runCatching { userPreferencesStore.lastRootRoute.first() }.getOrNull()
+        startRoute = AppDestination.entries.firstOrNull { it.route == stored }?.route
+            ?: AppDestination.WATCHLIST.route
+    }
+    val onRootVisited: (String) -> Unit = remember(userPreferencesStore, scope) {
+        { route -> scope.launch { userPreferencesStore.setLastRootRoute(route) } }
+    }
+
     val systemDark = isSystemInDarkTheme()
     val darkTheme = when (themeMode) {
         ThemeMode.SYSTEM -> systemDark
@@ -1174,6 +1261,8 @@ fun CoineProApp(
                 // controller so switching platform hands the chart the feed for the markets it is
                 // now drawing rather than a forex socket under a crypto chart.
                 chartTicks = remember(marketDataController) { marketDataController.chartTicks() },
+                startRoute = startRoute ?: AppDestination.WATCHLIST.route,
+                onRootVisited = onRootVisited,
                 platforms = activePlatformStore.available,
                 activePlatform = activePlatform,
                 onSelectPlatform = { platform ->
@@ -1612,6 +1701,17 @@ private fun MainShell(
      * endpoint exactly as it did, and simply does not offer the seconds keys anything to build from.
      */
     chartTicks: ChartTickSource = NoChartTicks,
+    /**
+     * Which bottom-bar route the graph starts on.
+     *
+     * Resolved by the caller against [AppDestination] before this shell is composed — see the note
+     * where it is read. It is a plain value and not a flow because it is the graph's identity: a
+     * start destination that changed after composition would rebuild the graph and throw away
+     * every saved back stack in it.
+     */
+    startRoute: String = AppDestination.WATCHLIST.route,
+    /** Records the root the reader is on, so the next launch opens there. Null on a guest shell. */
+    onRootVisited: (String) -> Unit = {},
     onLogout: () -> Unit,
     /** Whether the app asks for a fingerprint when it opens, and how to change it. */
     appLockEnabled: Boolean,
@@ -1831,6 +1931,8 @@ private fun MainShell(
         STUDIO_PATTERN -> R.string.screen_chart_studio
         TOOLS_ROUTE -> R.string.screen_tools
         ACTIVITY_ROUTE -> R.string.screen_activity
+        AI_PATTERN -> R.string.screen_ai
+        IDEAS_ROUTE -> R.string.screen_ideas
         AI_VISION_ROUTE -> R.string.screen_ai_vision
         AI_ASSISTANT_ROUTE -> R.string.screen_ai_assistant
         MARKET_SEARCH_ROUTE -> R.string.screen_market_search
@@ -1853,7 +1955,7 @@ private fun MainShell(
     }
     // Home draws its own header — the greeting and the balance are the page's title — so a bar on
     // top of it would be a second one saying less.
-    val showTopBar = isSubScreen || currentRoute != AppDestination.HOME.route
+    val showTopBar = isSubScreen || currentRoute != HOME_ROUTE
 
     /**
      * Whether this destination has somewhere to go back **to**.
@@ -1861,7 +1963,7 @@ private fun MainShell(
      * The five bottom-bar roots do not: they are reached by tapping the bar, and an arrow on one of
      * them would pop to whichever root the reader happened to visit before, which is not "back" in
      * any sense they would recognise. Everything else was navigated into and needs the arrow —
-     * including the six screens that keep the bottom bar, which is where this was wrong.
+     * including the screens that keep the bottom bar, which is where this was wrong.
      */
     val canGoBack = currentRoute != null && AppDestination.entries.none { it.route == currentRoute }
 
@@ -2000,13 +2102,21 @@ private fun MainShell(
                         // their page offers an account instead of listing one.
                         // Not on the menu itself: this corner opens the menu, and a control that
                         // reopens the page it is standing on is a dead button with a face on it.
+                        // **The avatar opens the profile, not the menu.**
+                        //
+                        // It used to be the only way to the thirty screens behind the menu, which
+                        // is why it was here at all — an unlabelled face in a corner standing in
+                        // for a directory. The menu is a tab now, so this corner is free to do the
+                        // obvious thing instead: a picture of the reader opens the reader's own
+                        // page. Not drawn on the menu itself, where the same face is the first
+                        // thing on the page under it.
                         if (!isSubScreen && currentRoute != MENU_ROUTE) {
-                            IconButton(onClick = { navController.navigate(MENU_ROUTE) }) {
+                            IconButton(onClick = { navController.navigate(PROFILE_ROUTE) }) {
                                 CoineProAvatar(
                                     spec = profile.avatar,
                                     initial = (profile.displayName ?: accountName)?.take(1) ?: "",
                                     size = 30.dp,
-                                    contentDescription = stringResource(MenuR.string.menu_title),
+                                    contentDescription = stringResource(R.string.screen_profile),
                                 )
                             }
                         }
@@ -2024,6 +2134,11 @@ private fun MainShell(
                 CoineProBottomBar(
                     currentRoute = currentRoute,
                     onSelect = { destination ->
+                        // Written on the tap rather than watched off `currentRoute`: a back stack
+                        // restore, a deep link and a pop all change the current route without the
+                        // reader choosing anything, and "where I left off" means where they chose
+                        // to be. See `UserPreferencesStore.lastRootRoute`.
+                        onRootVisited(destination.route)
                         navController.navigate(destination.route) {
                             tabSwitch(navController, destination.route)
                         }
@@ -2213,6 +2328,16 @@ private fun MainShell(
                 chartEventPrefs = chartEventPrefsStore,
                 timeZones = timeZonePrefStore,
                 onOpenStudio = { navController.navigate(studioRoute(activeChartSymbol)) },
+                // The AI, asked about the chart in front of the reader rather than reached from a
+                // tab of its own. Offered only where this deployment actually has one: a tile that
+                // opens an empty studio is worse than no tile. The symbol travels with the tap —
+                // see `AI_SYMBOL_QUERY`, which is what stops the studio opening on whatever market
+                // it happened to default to.
+                onAskAi = if (aiSignalsAvailable) {
+                    { symbol -> navController.navigate(aiRouteFor(symbol)) }
+                } else {
+                    null
+                },
                 onOpenTerminal = if (terminalController.isConfigured) {
                     { navController.navigate(TERMINAL_ROUTE) }
                 } else {
@@ -2254,6 +2379,57 @@ private fun MainShell(
             )
         }
 
+        /**
+         * The signal list, as a value, because two destinations draw it.
+         *
+         * `signals` is its own route — a notification, a saved back stack or a menu row opens it
+         * alone — and it is also the first face of the Ideas tab. Hoisting it to a value rather
+         * than copying the block is what keeps those two from drifting: the guest gate, the
+         * two-pane pairing and the membership fallback are the interesting parts, and a second
+         * copy of them is a second copy free to go stale.
+         */
+        val signalsPane: @Composable () -> Unit = @Composable {
+            if (guest) {
+                GuestGateScreen(
+                    gate = GuestGate.SIGNALS,
+                    controller = guestController,
+                    onSignIn = onSignIn ?: {},
+                )
+            } else {
+                var pairedSignal by rememberSaveable { mutableStateOf<Long?>(null) }
+                CoineProListDetail(
+                    detail = pairedSignal?.let { id -> { signalPane(id) } },
+                ) { twoPane ->
+                    SignalsScreen(
+                        controller = signalController,
+                        onOpenSignal = {
+                            if (twoPane) {
+                                pairedSignal = it
+                            } else {
+                                navController.navigate(signalDetailRoute(it))
+                            }
+                        },
+                        platform = activePlatform,
+                        // The locked state is the membership journey now, not a card naming a
+                        // Telegram channel. Somebody who installed this from Google Play has never
+                        // heard of that channel; being sent to it is where they leave. Both
+                        // controllers are read only when the server refuses the list.
+                        membershipController = membershipController,
+                        guestController = guestController,
+                        onOpenTerms = { navController.navigate(TERMS_ROUTE) },
+                    )
+                }
+            }
+        }
+
+        /** The board, as a value, for the same reason as [signalsPane]. */
+        val communityPane: @Composable () -> Unit = @Composable {
+            CommunityScreen(
+                controller = communityController,
+                onOpenThread = { navController.navigate(communityThreadRoute(it)) },
+            )
+        }
+
         // Forward pushes, back pulls, tabs cross-fade, and the pop is seekable so the system's
         // predictive-back gesture has something to preview. See [appEnter] for the whole argument.
         val motion = continuousMotionAllowed()
@@ -2263,7 +2439,7 @@ private fun MainShell(
         SharedElementHost(modifier = Modifier.weight(1f)) {
         NavHost(
             navController = navController,
-            startDestination = AppDestination.HOME.route,
+            startDestination = startRoute,
             // The weight is on the layout above, which is the direct child of the column; here the
             // graph simply fills whatever that was given.
             modifier = Modifier.fillMaxSize(),
@@ -2272,7 +2448,7 @@ private fun MainShell(
             popEnterTransition = { appPopEnter(motion) },
             popExitTransition = { appPopExit(motion) },
         ) {
-            composable(AppDestination.HOME.route) {
+            composable(HOME_ROUTE) {
                 // The same tab, two homes. A guest's is the public feed's — real prices, the real
                 // track record, the real headlines — with their own avatar at the top of it, and
                 // the market rows open the same chart a member's do.
@@ -2318,7 +2494,7 @@ private fun MainShell(
                     onOpenTools = { navController.navigate(TOOLS_ROUTE) },
                     onOpenActivity = { navController.navigate(ACTIVITY_ROUTE) },
                     onOpenNews = { navController.navigate(NEWS_ROUTE) },
-                    onGenerateSignal = { navController.navigate(AppDestination.AI.route) },
+                    onGenerateSignal = { navController.navigate(AI_ROUTE) },
                     // **A pill labelled «چارت» opens the chart.**
                     //
                     // It used to open AI chart-analysis, on the reasoning that "send a chart" is
@@ -2371,34 +2547,17 @@ private fun MainShell(
                     logText = adminController::logText,
                 )
             }
-            composable(AppDestination.SIGNALS.route) {
-                if (guest) {
-                    GuestGateScreen(
-                        gate = GuestGate.SIGNALS,
-                        controller = guestController,
-                        onSignIn = onSignIn ?: {},
-                    )
-                    return@composable
-                }
-                var pairedSignal by rememberSaveable { mutableStateOf<Long?>(null) }
-                CoineProListDetail(
-                    detail = pairedSignal?.let { id -> { signalPane(id) } },
-                ) { twoPane ->
-                SignalsScreen(
-                    controller = signalController,
-                    onOpenSignal = {
-                        if (twoPane) pairedSignal = it else navController.navigate(signalDetailRoute(it))
-                    },
-                    platform = activePlatform,
-                    // The locked state is the membership journey now, not a card naming a Telegram
-                    // channel. Somebody who installed this from Google Play has never heard of that
-                    // channel; being sent to it is where they leave. Both controllers are read only
-                    // when the server refuses the list.
-                    membershipController = membershipController,
-                    guestController = guestController,
-                    onOpenTerms = { navController.navigate(TERMS_ROUTE) },
+            composable(SIGNALS_ROUTE) { signalsPane() }
+
+            // «ایده‌ها»: the two answers to "is there an opportunity here?" under one tab. The two
+            // panes are the same composables their own routes draw — see `IdeasScreen`, which is a
+            // frame and nothing else, so `signals` and `community` keep working as routes a saved
+            // back stack or a notification can name.
+            composable(IDEAS_ROUTE) {
+                IdeasScreen(
+                    signals = { signalsPane() },
+                    community = { communityPane() },
                 )
-                }
             }
             composable(
                 route = SIGNAL_DETAIL_PATTERN,
@@ -2770,7 +2929,16 @@ private fun MainShell(
             composable(COPY_TRADE_ROUTE) {
                 CopyTradeScreen(controller = copyTradeController)
             }
-            composable(AppDestination.AI.route) {
+            composable(
+                route = AI_PATTERN,
+                arguments = listOf(
+                    navArgument(AI_SYMBOL_QUERY) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                ),
+            ) { entry ->
                 if (guest) {
                     GuestGateScreen(
                         gate = GuestGate.AI,
@@ -2790,6 +2958,11 @@ private fun MainShell(
                     onOpenChartAnalysis = { navController.navigate(AI_VISION_ROUTE) },
                     onOpenAssistant = { navController.navigate(AI_ASSISTANT_ROUTE) },
                     platform = activePlatform,
+                    // Present when the chart handed one over, absent when the menu row or a saved
+                    // back stack opened the studio on its own. `tickerOrNull` because a route
+                    // argument is a string somebody could have written: the same shape check the
+                    // widget's deep link goes through, at the same boundary.
+                    initialSymbol = tickerOrNull(entry.arguments?.getString(AI_SYMBOL_QUERY)),
                 )
             }
             composable(AI_VISION_ROUTE) {
@@ -2844,7 +3017,7 @@ private fun MainShell(
                             summary = open.take(2).joinToString(" · ") { signal ->
                                 signal.symbol + " " + if (signal.direction == SignalDirection.BUY) "خرید" else "فروش"
                             },
-                            onClick = { navController.navigate(AppDestination.SIGNALS.route) },
+                            onClick = { navController.navigate(SIGNALS_ROUTE) },
                         )
                     },
                 )
@@ -3073,12 +3246,7 @@ private fun MainShell(
             }
             // The app's own board, on both platforms and for a guest. It is served from TradeYar's
             // host but belongs to neither account — see `NetworkCommunityGateway`.
-            composable(COMMUNITY_ROUTE) {
-                CommunityScreen(
-                    controller = communityController,
-                    onOpenThread = { navController.navigate(communityThreadRoute(it)) },
-                )
-            }
+            composable(COMMUNITY_ROUTE) { communityPane() }
             composable(
                 route = COMMUNITY_THREAD_PATTERN,
                 arguments = listOf(navArgument("pid") { type = NavType.LongType }),

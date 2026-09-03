@@ -74,8 +74,41 @@ class UserPreferencesStore(
         }
     }
 
+    /**
+     * The bottom-bar destination the reader was last on, or null on a first launch.
+     *
+     * ### Why the app remembers this at all
+     *
+     * Because the alternative is a fixed opening screen, and there is no fixed screen that is
+     * right for everybody. Somebody who lives in their watchlist and somebody who opens the app to
+     * read the board are both being shown the same page every morning, and one of them is always
+     * paying two taps for it. A terminal opens where you left it.
+     *
+     * ### A raw route, deliberately
+     *
+     * The value stored is the route string and not an enum ordinal. An ordinal is a position in a
+     * list that this app reorders — the bar has been five, then six, and is five again — so an
+     * upgrade would silently move a reader to a different tab. A route is identity: one that no
+     * longer exists reads back as "no preference", which is exactly the right answer.
+     *
+     * The shell is what decides whether a stored route is still a root; this store does not know
+     * what the bar holds and must not learn.
+     */
+    val lastRootRoute: Flow<String?> = dataStore.data.map { preferences ->
+        preferences[LAST_ROOT]?.takeIf { it.isNotBlank() }
+    }
+
+    suspend fun setLastRootRoute(route: String) {
+        val clean = route.trim()
+        if (clean.isEmpty()) return
+        dataStore.edit { preferences ->
+            preferences[LAST_ROOT] = clean
+        }
+    }
+
     private companion object {
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
+        val LAST_ROOT = stringPreferencesKey("last_root_route")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val MARKET_COLORS = stringPreferencesKey("market_colors")
         val APP_LOCK = booleanPreferencesKey("app_lock_enabled")

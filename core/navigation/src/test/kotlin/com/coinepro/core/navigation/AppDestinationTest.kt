@@ -38,16 +38,31 @@ class AppDestinationTest {
     }
 
     @Test
-    fun `the bar holds six destinations`() {
-        // Six, with the community board. It was five as a layout constant — Persian labels at a
-        // fixed type size — and the board went into the menu instead, where the owner reported it
-        // as absent. The bar's label style is `labelSmall`, which fits six at the narrowest width
-        // this app supports; `screenshot` fixtures cover it.
-        assertEquals(6, AppDestination.entries.size)
+    fun `the bar holds exactly five destinations`() {
+        // Five, and the number is the point rather than a layout constraint. It held six, and
+        // every one of them was a real screen — which is how a bottom bar becomes a catalogue of
+        // the modules the app contains instead of the jobs somebody opens it to do. Six fitted at
+        // `labelSmall`; that it fitted was never the argument for it.
+        assertEquals(5, AppDestination.entries.size)
     }
 
     @Test
-    fun `home is first`() {
-        assertEquals(AppDestination.HOME, AppDestination.entries.first())
+    fun `the watchlist is first`() {
+        // Where a reader lands when they have no other question, and until this release a
+        // sub-screen two taps down behind a menu glyph.
+        assertEquals(AppDestination.WATCHLIST, AppDestination.entries.first())
+    }
+
+    @Test
+    fun `the roots that left the bar did not take their routes with them`() {
+        // Removing a destination from the bar removes it from the bar and nothing else: `home`,
+        // `signals`, `ai` and `community` are still screens in the graph, still resolve from a
+        // saved back stack written by an older build, and are still reachable from the menu or
+        // the Ideas tab. This pins the *other* half of that — none of the four may quietly come
+        // back as a tab without somebody deciding to.
+        val routes = AppDestination.entries.map { it.route }
+        for (gone in listOf("home", "signals", "ai", "community")) {
+            assertTrue("$gone is a route, not a tab", gone !in routes)
+        }
     }
 }

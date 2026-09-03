@@ -277,6 +277,29 @@ object MenuCatalogue {
             group = MenuGroup.ANALYSIS,
             account = true,
         ),
+        // **The two that left the bottom bar.**
+        //
+        // The AI studio and the signal list each had a tab of their own. Neither was removed and
+        // neither should be hard to find: the studio is a screen somebody visits deliberately —
+        // which is what a menu row is for — and signals is the first face of the Ideas tab as
+        // well as a row here, because a reader who thinks of it by name should be able to look it
+        // up by name. See `AppDestination`.
+        MenuEntry(
+            id = "ai",
+            titleRes = R.string.menu_ai_title,
+            bodyRes = R.string.menu_ai_body,
+            icon = CoineProIcons.Ai,
+            group = MenuGroup.ANALYSIS,
+            account = true,
+        ),
+        MenuEntry(
+            id = "signals",
+            titleRes = R.string.menu_signals_title,
+            bodyRes = R.string.menu_signals_body,
+            icon = CoineProIcons.Signals,
+            group = MenuGroup.ANALYSIS,
+            account = true,
+        ),
         MenuEntry(
             id = "ai-assistant",
             titleRes = R.string.menu_assistant_title,
@@ -313,6 +336,20 @@ object MenuCatalogue {
             group = MenuGroup.LEARN,
         ),
         // ── حساب من ──────────────────────────────────────────────────────────────────────────
+        // **The screen that used to be the app's front door.**
+        //
+        // Its hero is a balance, its cards are a subscription and a set of shortcuts, and its
+        // primary action is "generate a signal" — which makes it an account dashboard, and an
+        // account dashboard is a thing somebody visits rather than the thing they open the app to
+        // do. It kept every one of those cards and its route; what it lost is the first frame of
+        // every launch. See `AppDestination`.
+        MenuEntry(
+            id = "home",
+            titleRes = R.string.menu_home_title,
+            bodyRes = R.string.menu_home_body,
+            icon = CoineProIcons.Home,
+            group = MenuGroup.ACCOUNT,
+        ),
         MenuEntry(
             id = "profile",
             titleRes = R.string.menu_profile_title,

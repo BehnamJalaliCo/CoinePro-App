@@ -104,6 +104,18 @@ fun AiStudioScreen(
     assistantAvailable: Boolean = true,
     aiSignalsAvailable: Boolean = true,
     platform: MarketPlatform = MarketPlatform.TRADEYAR,
+    /**
+     * The market to open on, or null for this platform's own first one.
+     *
+     * How the chart hands a chart over. The AI is contextual now rather than a tab of its own —
+     * somebody asks about the market in front of them — and a studio that opened on whatever it
+     * defaulted to would make them pick the symbol again, having just arrived from it.
+     *
+     * Honoured only where this platform actually quotes it. A symbol that arrived from a chart on
+     * the other backend, or one the server has since stopped serving, is refused the same way a
+     * stale saved choice is: the universe's own first market. See the effect below.
+     */
+    initialSymbol: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
@@ -114,8 +126,8 @@ fun AiStudioScreen(
     val universe = state.universe.takeIf { it.origin != AiSymbolOrigin.FALLBACK }
         ?: AiSymbolUniverse.fallback(platform)
 
-    var symbol by rememberSaveable(platform) {
-        mutableStateOf(universe.markets.firstOrNull()?.symbol.orEmpty())
+    var symbol by rememberSaveable(platform, initialSymbol) {
+        mutableStateOf(initialSymbol ?: universe.markets.firstOrNull()?.symbol.orEmpty())
     }
     // The last few markets asked about, newest first. In memory rather than in a datastore: this is
     // a shortcut, not a preference, and a shortcut that survives the process is already more than
