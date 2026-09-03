@@ -154,10 +154,14 @@ private fun AppDestination.icon(selected: Boolean): Int = when (this) {
     // "here is a list" — Explore replaced the markets tab and it is not the same promise.
     AppDestination.EXPLORE ->
         if (selected) DesignR.drawable.icon_compass_fill else DesignR.drawable.icon_compass
-    // The signal glyph, for a destination that is signals and the board together. Signals is the
-    // half a reader arrives for, and a lightbulb this icon set does not have would have to be
-    // drawn to say something the existing shape already says.
-    AppDestination.IDEAS -> if (selected) CoineProIcons.Filled.Signals else CoineProIcons.Signals
+    // The four-pointed burst, and **not** the nav set's signal glyph. That one is a pair of
+    // faders, which at 24 dp is two vertical bars with a knob on each — a shape a reader cannot
+    // tell apart from the candle pair one position over, which is the whole failure a five-glyph
+    // bar has to avoid. The burst is the mark this app already uses for a signal, it is the only
+    // radial shape in the bar, and it reads as "something worth looking at" rather than as a
+    // second chart.
+    AppDestination.IDEAS ->
+        if (selected) DesignR.drawable.brand_signal_fill else DesignR.drawable.brand_signal
     // Four bars, unweighted. The menu is a directory and the one tab whose selected state does not
     // need to compete: nothing on it is live, and a filled variant would make the quietest
     // destination the loudest shape in the bar.

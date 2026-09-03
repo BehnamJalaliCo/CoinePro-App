@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Profileable, in the benchmark variant and nowhere else.
+
+    ### What this tag does and why it was in the wrong place
+
+    `<profileable android:shell="true" />` lets a shell user — `adb`, Studio's profiler,
+    `simpleperf` — attach to a *non-debuggable* build and read its method traces and its heap. It
+    is what makes a macrobenchmark run against a release-shaped APK meaningful, and the
+    `:benchmark` module cannot measure startup without it.
+
+    It was declared in `src/main`, which merges into every variant, so it shipped in the release
+    APK as well: an app on a reader's phone with profiling open to anyone who can reach it over
+    ADB. That is not a remote hole — it needs a cable or an authorised debug bridge — but it is a
+    map of the running app handed to whoever has one, in a build whose whole point is that the
+    internals are stripped.
+
+    Here it merges into `benchmark` only. `initWith(release)` gives that variant R8, resource
+    shrinking and the release manifest, so what the benchmark measures is still the shipped
+    shape; this one tag is the difference, and it is the difference the tool needs.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <profileable android:shell="true" />
+    </application>
+</manifest>

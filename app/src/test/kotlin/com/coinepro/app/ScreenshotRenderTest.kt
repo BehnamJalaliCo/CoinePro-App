@@ -144,6 +144,8 @@ import com.coinepro.core.model.AvatarMark
 import com.coinepro.core.model.AvatarRing
 import com.coinepro.core.model.AvatarSpec
 import com.coinepro.core.model.MarketPlatform
+import com.coinepro.app.ideas.IdeasFace
+import com.coinepro.app.ideas.IdeasScreen
 import com.coinepro.core.navigation.AppDestination
 import com.coinepro.core.notifications.AlertRepeat
 import com.coinepro.core.notifications.LocalAlertCondition
@@ -1491,6 +1493,77 @@ class ScreenshotRenderTest {
     fun appShellPersianLight() =
         captureRaw("00-app-shell-fa-light", darkTheme = false) { ShellAroundHome() }
 
+    /**
+     * The bar itself, in each of its five selected states, stacked.
+     *
+     * ### Why one capture of five bars rather than five captures of one screen
+     *
+     * Because what has to be compared is the *bar*, and rendering a whole destination behind it
+     * five times would compare five destinations. Stacked, one image answers the questions the
+     * parity pass actually asks — is the bar the same height in every state, does every label fit
+     * on one line at this type scale, is the selected mark legible without colour, and are the
+     * five glyphs distinguishable from each other at 24 dp.
+     *
+     * Persian first because it is the default language and the longest labels; English and light
+     * are their own captures below, because a label that fits in one and wraps in the other is
+     * exactly the failure this is for.
+     */
+    @Composable
+    private fun BarInEveryState() {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            AppDestination.entries.forEach { destination ->
+                CoineProBottomBar(currentRoute = destination.route, onSelect = {})
+            }
+        }
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun shellBottomBarStatesPersian() = capture("120-shell-bar-fa") { BarInEveryState() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun shellBottomBarStatesPersianLight() =
+        capture("121-shell-bar-fa-light", darkTheme = false) { BarInEveryState() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "en-rUS-w411dp-h914dp-xxhdpi")
+    fun shellBottomBarStatesEnglish() = capture("122-shell-bar-en") { BarInEveryState() }
+
+    /**
+     * The Ideas frame, on each of its two faces.
+     *
+     * The panes are stubs on purpose: what is being looked at is the switch — that it reads as one
+     * of two rather than as two buttons, that the chosen key is unmistakable without colour, and
+     * that neither label wraps in either language.
+     */
+    @Composable
+    private fun IdeasFrame(face: IdeasFace) {
+        IdeasScreen(
+            signals = { StubPane("سیگنال‌ها") },
+            community = { StubPane("انجمن") },
+            initial = face,
+        )
+    }
+
+    @Composable
+    private fun StubPane(label: String) {
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(com.coinepro.core.designsystem.CoineProSpacing.Three),
+            contentAlignment = androidx.compose.ui.Alignment.Center,
+        ) {
+            Text(text = label, color = com.coinepro.core.designsystem.CoineProColors.TextMuted)
+        }
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun ideasOnSignals() = capture("123-ideas-signals-fa") { IdeasFrame(IdeasFace.SIGNALS) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun ideasOnCommunity() = capture("124-ideas-community-fa") { IdeasFrame(IdeasFace.COMMUNITY) }
+
     @Composable
     private fun ShellAroundHome() {
         Scaffold(
@@ -2128,7 +2201,8 @@ class ScreenshotRenderTest {
         AppDestination.CHART -> if (selected) CoineProIcons.Filled.Chart else CoineProIcons.Chart
         AppDestination.EXPLORE ->
             if (selected) DesignR.drawable.icon_compass_fill else DesignR.drawable.icon_compass
-        AppDestination.IDEAS -> if (selected) CoineProIcons.Filled.Signals else CoineProIcons.Signals
+        AppDestination.IDEAS ->
+            if (selected) DesignR.drawable.brand_signal_fill else DesignR.drawable.brand_signal
         AppDestination.MENU -> DesignR.drawable.icon_list_bullets
     }
 
