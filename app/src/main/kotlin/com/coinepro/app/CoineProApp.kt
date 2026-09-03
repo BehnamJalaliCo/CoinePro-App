@@ -366,7 +366,7 @@ private const val COMMUNITY_THREAD_PATTERN = "community/{pid}"
 private fun communityThreadRoute(postId: Long) = "community/$postId"
 private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
 private const val ADMIN_ROUTE = "diagnostics"
-private const val PROFILE_ROUTE = "profile"
+internal const val PROFILE_ROUTE = "profile"
 private const val NOTIFICATIONS_ROUTE = "notifications"
 private const val MEMBERSHIP_ROUTE = "membership"
 private const val KYC_ROUTE = "account/verify"
@@ -506,7 +506,7 @@ private fun studioRoute(symbol: String) = "chart/" + Uri.encode(symbol) + "/stud
  * Exhaustive rather than a map with a fallback: an id with no case here would quietly navigate
  * somewhere wrong, and a section added without a route should be found by whoever adds it.
  */
-private fun surfaceRoute(id: String, platform: MarketPlatform, watchlist: List<String>): String =
+internal fun surfaceRoute(id: String, platform: MarketPlatform, watchlist: List<String>): String =
     when (id) {
         "academy" -> ACADEMY_ROUTE
         "journal" -> JOURNAL_ROUTE
@@ -548,7 +548,7 @@ private fun surfaceRoute(id: String, platform: MarketPlatform, watchlist: List<S
  * search itself (a search result for "search" would be a joke), the safety page, and deletion,
  * neither of which anybody hunts for by typing.
  */
-private fun menuRoute(id: String, platform: MarketPlatform, watchlist: List<String>): String =
+internal fun menuRoute(id: String, platform: MarketPlatform, watchlist: List<String>): String =
     when (id) {
         // The four the menu names that the search catalogue does not. `home` is the account
         // dashboard, which the search screen has no business offering as a "surface"; the rest are

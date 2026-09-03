@@ -79,7 +79,24 @@ internal fun NavOptionsBuilder.tabSwitch(navController: NavHostController, route
     val start = navController.graph.findStartDestination()
     popUpTo(start.id) { saveState = true }
     launchSingleTop = true
-    restoreState = route != start.route
+    // **Restore the tab you are going to; do not restore the tab you are already in.**
+    //
+    // `popUpTo(start) { saveState = true }` files every popped entry under its own destination id,
+    // and `restoreState = true` asks for the file belonging to the destination being navigated to.
+    // Between two different tabs that is exactly right and is the whole reason a tab remembers
+    // where you were in it.
+    //
+    // Tapping the tab you are *standing in* is the case it gets wrong, because the pop and the
+    // restore are then the same file: on the chart tab with the toolkit open, tapping «چارت» pops
+    // `[chart-tab, tools]`, saves it under `chart-tab`, and immediately restores it — so the
+    // reader is returned to the screen they were trying to leave, with no error raised anywhere.
+    // It looks like a dead button rather than a bug, which is how it was reported.
+    //
+    // This was fixed once, for the start destination only, on the reading that the collision was
+    // about `popUpTo`'s own target. It is not: it is about whether the destination being asked for
+    // is already on the stack, and the start destination was simply the case that always is. Every
+    // other tab had the same fault whenever the screen above it had been opened *from* it.
+    restoreState = navController.currentBackStack.value.none { it.destination.route == route }
 }
 
 @Composable
