@@ -1753,6 +1753,15 @@ class ScreenshotRenderTest {
      * would be too — a reader looking for "کمان فیبوناچی" needs both. Whether four across is right
      * is a pixel question, which is why this is a screenshot.
      */
+    /** The launch sheet at its finished frame — what a reader with animations off sees. */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun launchSplash() = capture("00-launch-splash-fa", darkTheme = false) {
+        // The still, not the animation: under the test clock the 1.8 s clock runs to its end —
+        // and its end is the faded-out sheet — before the frame is captured.
+        LaunchSplash(onFinished = {}, moving = false)
+    }
+
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
     fun toolRail() = capture("40-tool-rail-fa") {

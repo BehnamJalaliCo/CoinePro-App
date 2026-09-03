@@ -9,11 +9,13 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
@@ -207,6 +209,10 @@ class MainActivity : FragmentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // The manifest opens the window in `Theme.CoinePro.Launch` — white, so the frame the
+        // launcher shows matches the launch sheet drawn over the app. The app's own theme takes
+        // over here, before the first frame is composed. See `LaunchSplash`.
+        setTheme(R.style.Theme_CoinePro)
         super.onCreate(savedInstanceState)
         consumeDeepLink(intent)
         updateNotificationPermissionState()
@@ -222,6 +228,11 @@ class MainActivity : FragmentActivity() {
             return
         }
         setContent {
+            // The launch sheet over the app, once per process. `rememberSaveable` so a rotation
+            // during the first two seconds does not start the launch again, and a plain Box so the
+            // app underneath composes — and loads — while the sheet is still up.
+            var launched by rememberSaveable { mutableStateOf(false) }
+            Box {
             // One collection of the dismissal set for the whole app. Around `CoineProApp` rather
             // than inside it, so no screen has to be handed a store it does not otherwise use.
             CompositionLocalProvider(
@@ -307,6 +318,8 @@ class MainActivity : FragmentActivity() {
                 onOpenNotificationSettings = ::openNotificationSettings,
                 onSendFeedback = ::sendFeedback,
             )
+            }
+            if (!launched) LaunchSplash(onFinished = { launched = true })
             }
         }
     }

@@ -15,6 +15,14 @@ it is for.
 
 ---
 
+## [4.25.0] — 2026-09-02 — The launch
+
+* **A launch sheet.** The app opens on white: the mark streams in from left to right and eases up
+  to size, the name follows from its reading edge, the sheet holds and fades — 1.8 s, black on
+  white in both themes, the way TradingView's phone app opens. With animations turned off the
+  finished lockup is shown still for under a second instead. The launcher window is white too, so
+  nothing flashes before the first frame.
+
 ## [4.24.0] — 2026-09-02 — The rest of the list
 
 What the previous round left out, closed:
