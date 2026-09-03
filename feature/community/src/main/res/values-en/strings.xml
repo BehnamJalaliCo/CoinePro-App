@@ -57,4 +57,16 @@
     <string name="community_unregistered">Pick a name before writing on the board.</string>
     <string name="community_compose_rules">No links, numbers or handles. Posts go live at once.</string>
     <string name="community_refused">This text was not accepted.</string>
+    <string name="community_post_menu">Post options</string>
+    <string name="community_report">Report</string>
+    <string name="community_copy">Copy text</string>
+    <string name="community_reported">Reported. Three reports hide a post.</string>
+    <string name="community_copied">Copied.</string>
+    <string name="community_search">Search the community</string>
+    <string name="community_search_empty">No post matched that.</string>
+    <string name="community_leaderboard">Leaderboard</string>
+    <string name="community_leaderboard_rank">Your rank: %1$s of %2$s</string>
+    <string name="community_leaderboard_empty">Nobody has scored yet.</string>
+    <string name="community_leaderboard_points">%1$s points</string>
+    <string name="community_leaderboard_posts">%1$s posts</string>
 </resources>

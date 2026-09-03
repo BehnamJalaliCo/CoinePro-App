@@ -104,6 +104,9 @@ fun EmailAuthScreen(
         ProChartLockup(
             wordmarkWidth = 168.dp,
             contentDescription = stringResource(R.string.auth_wordmark_description),
+            // One ink, the owner's call: a gold mark beside a near-black name over a form reads as
+            // two objects rather than as the product's logo. See `ProChartLockup.markTint`.
+            markTint = CoineProColors.TextPrimary,
         )
         // Four rather than three. The brand needs its own air or it reads as the card's cap rather
         // than as the product's name — the same gap TradingView leaves under a sheet's title, and

@@ -61,6 +61,8 @@ fun AuthScreen(
         ProChartLockup(
             wordmarkWidth = 190.dp,
             contentDescription = stringResource(R.string.auth_wordmark_description),
+            // Monochrome over a sign-in form, like the e-mail screen. See `ProChartLockup`.
+            markTint = CoineProColors.TextPrimary,
         )
         Spacer(Modifier.height(12.dp))
         Text(

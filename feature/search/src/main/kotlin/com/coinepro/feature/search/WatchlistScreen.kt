@@ -2,6 +2,7 @@ package com.coinepro.feature.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -17,6 +18,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +35,7 @@ import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.ProChartMarkStream
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.marketdata.MarketSearchController
@@ -87,8 +92,18 @@ fun WatchlistScreen(
     val state by controller.state.collectAsStateWithLifecycle()
     val lines by sparklines.lines.collectAsStateWithLifecycle()
 
+    // What makes the mark at the head of this page draw itself again.
+    //
+    // Bumped when the screen is arrived at and when the catalogue lands under it, which are the two
+    // moments TradingView's own mark streams in: opening the tab, and the list appearing. It is a
+    // *counter* rather than a scroll offset on purpose — see `ProChartMarkStream`: an animation
+    // restarted on every pixel of a drag is a flicker, not a signature.
+    var streamKey by rememberSaveable { mutableIntStateOf(0) }
+    val settled = !state.loading && state.results.isNotEmpty()
+    LaunchedEffect(settled) { if (settled) streamKey += 1 }
+
     Column(modifier = modifier.fillMaxSize().background(CoineProColors.Stage)) {
-        WatchlistHeader(onOpenSearch = onOpenSearch)
+        WatchlistHeader(onOpenSearch = onOpenSearch, streamKey = streamKey)
         when {
             // The panel draws every row from the catalogue, so before it arrives there is nothing
             // to draw — not even an empty list, which would say «این فهرست خالی است» about a list
@@ -121,14 +136,17 @@ fun WatchlistScreen(
 }
 
 /**
- * The heading, and the one control that belongs beside it.
+ * The heading: the title on the reading edge, the brand in the middle, the search in the corner.
  *
- * Deliberately the same shape as the markets tab's own header — a title, and the search affordance
- * in the corner — because this screen and that one are the same list seen twice, and a reader who
- * has learned where the magnifier is should find it in the same place.
+ * The magnifier is where the markets tab keeps its own, because this screen and that one are the
+ * same list seen twice and a reader who has learned where it is should find it in the same place.
+ *
+ * The mark in the middle is TradingView's arrangement and the owner's instruction — their watchlist
+ * carries the brand at the top of the page and streams it in on arrival. `ProChartMarkStream` is
+ * the motion; [streamKey] is what says when to run it.
  */
 @Composable
-private fun WatchlistHeader(onOpenSearch: (() -> Unit)?) {
+private fun WatchlistHeader(onOpenSearch: (() -> Unit)?, streamKey: Int) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -146,6 +164,8 @@ private fun WatchlistHeader(onOpenSearch: (() -> Unit)?) {
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f),
         )
+        ProChartMarkStream(replay = streamKey, contentDescription = null)
+        Spacer(Modifier.weight(1f))
         if (onOpenSearch != null) {
             Box(
                 modifier = Modifier

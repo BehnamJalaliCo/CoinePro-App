@@ -901,6 +901,9 @@ class ChartController(
     /** The background deepening of the archive. One at a time; a switch cancels the last. */
     private var fillJob: Job? = null
 
+    /** The live-edge poll. One at a time; a switch or a replay cancels the last. See [startLive]. */
+    private var liveJob: Job? = null
+
 
     /** Read once per controller. See [restoreDrawings]. */
     private var restored = false
@@ -2533,6 +2536,11 @@ class ChartController(
                     runCatching { cache.write(current.symbol, current.interval, page.candles) }
                     runCatching { archive.write(current.symbol, current.interval, page.candles) }
                     deepenArchive(current.symbol, current.interval)
+                    // The archive may already hold a season of this series from an earlier
+                    // sitting; the chart is not made to wait for a drag to show it.
+                    deepenResident(current.symbol, current.interval)
+                    // And the newest bar is kept newest. See [startLive].
+                    startLive(current.symbol, current.interval)
                     val millis = (System.nanoTime() - startedAt) / 1_000_000
                     val fields = mapOf(
                         "symbol" to current.symbol,
@@ -2662,6 +2670,8 @@ class ChartController(
                     )
                 }
             }
+            // What the fill just wrote belongs on the chart, not only on the disk.
+            deepenResident(symbol, interval)
             log?.debug(
                 LogTag.CHART,
                 "archive filled",
@@ -2690,6 +2700,137 @@ class ChartController(
      *  * **Silently on failure.** A cache that can fail a chart open turns a slow path into a
      *    broken one.
      */
+    /**
+     * Keep the newest bar the newest, and keep its close the market's — item four of the owner's
+     * list: «قیمت کندل‌ها لحظه‌ای نیست و شمارش معکوس ندارد».
+     *
+     * ### What was wrong
+     *
+     * Nothing on this controller ever asked the venue a second question. A chart was fetched once,
+     * on open or on a timeframe tap, and then sat there: the last candle's close was however the
+     * market stood when the request went out, the legend's price was that same close, and — the
+     * part that made it obvious — the live tag's countdown ran out and then printed nothing at all,
+     * because a countdown is `open + length − now` and a bar minutes old has a negative one. On the
+     * minute chart, which is where the owner noticed it, the tag lost its second line inside sixty
+     * seconds of opening the screen.
+     *
+     * ### What this does
+     *
+     * Re-reads the last few bars on a cadence and merges them over the tail: the open bar's close,
+     * high, low and volume are replaced in place, and the bar that follows it is appended when the
+     * venue opens one. Everything downstream is already derived from the series — `lastPrice`, the
+     * legend, the change, the studies, the live tag and its countdown — so a merged tail is a live
+     * chart with no second source of truth to disagree with it.
+     *
+     * ### The cadence, and why it is not one number
+     *
+     * A twelfth of the bar's own length, between three and thirty seconds: five seconds on M1,
+     * thirty on anything from H1 up. A flat five-second poll would ask the venue seven hundred
+     * times an hour for a daily candle that changes once a day; a flat minute would leave the
+     * minute chart a minute stale, which is the whole complaint.
+     *
+     * ### What it never does
+     *
+     * Run during a replay, over an empty chart, or while a full load is in flight — a rehearsal is
+     * a picture of the past and a live bar merged into it would be a bar from the future. And it
+     * never prepends: history comes from [loadMore] and the archive, and this touches the tail
+     * only, so a reader panned back keeps exactly the window they panned to.
+     */
+    private fun startLive(symbol: String, interval: ChartInterval) {
+        liveJob?.cancel()
+        val period = livePollMillis(interval)
+        liveJob = scope.launch {
+            while (true) {
+                delay(period)
+                val current = _state.value
+                if (current.symbol != symbol || current.interval != interval) return@launch
+                if (current.replay.isOn || current.loading || current.series.isEmpty) continue
+                val fresh = runCatching {
+                    gateway.load(symbol, interval, limit = LIVE_TAIL_BARS)
+                }.getOrNull()?.candles.orEmpty()
+                if (fresh.isEmpty()) continue
+                mergeLive(symbol, interval, fresh)
+            }
+        }
+    }
+
+    /**
+     * Join a freshly read tail onto the series, replacing the bars it covers.
+     *
+     * The join is by **open time**, never by position: a venue that has opened a new bar since the
+     * last poll returns a tail one bar further along, and matching on position would overwrite the
+     * wrong candle. Held bars from the tail's first open time onward are dropped and the tail put
+     * in their place, which is the same operation whether nothing changed, the open bar moved, or
+     * three bars opened while the phone was asleep.
+     *
+     * Silently does nothing when the tail is older than everything held — a stale cached response,
+     * or a venue that answered a page-back — because writing it would rewind the chart.
+     */
+    private suspend fun mergeLive(symbol: String, interval: ChartInterval, fresh: List<OhlcBar>) {
+        val base = _state.value
+        if (base.symbol != symbol || base.interval != interval || base.series.isEmpty) return
+        val from = fresh.first().t
+        val held = base.series.bars
+        val keep = held.takeWhile { it.t < from }
+        // A tail that begins before the whole held window is a page-back, not a live read.
+        if (keep.isEmpty() && held.first().t < from) return
+        val merged = keep + fresh.map(OhlcBar::toCandle)
+        // Nothing moved: the same count and the same newest bar. Compared before the build, because
+        // an unchanged poll is the common case and rebuilding five thousand bars is not free.
+        if (merged.size == held.size && merged.lastOrNull() == held.lastOrNull()) return
+        val series = buildSeries { CandleSeries(merged) }
+        _state.update { old ->
+            when {
+                old.symbol != symbol || old.interval != interval -> old
+                // The series was replaced while the join ran — a switch, a page-back, a replay.
+                old.series !== base.series -> old
+                else -> old.copy(series = series)
+            }
+        }
+        runCatching { cache.write(symbol, interval, fresh) }
+        runCatching { archive.write(symbol, interval, fresh) }
+    }
+
+    /**
+     * Put the history the device already holds **on the chart**, without waiting for a drag.
+     *
+     * ### The complaint
+     *
+     * «داخل آپ زده ۳۰۰ کندل ولی در واقع باید ۵ الی ۵۰ هزار کندل باشه». It was true, and it was not
+     * a limit: [ChartHistory.MAX_RESIDENT_BARS] has been fifty thousand and the archive holds as
+     * many, but the *resident* series was whatever one network page returned — three hundred bars —
+     * and every one of the other forty-nine thousand seven hundred waited for the reader to drag to
+     * the left edge and ask for them by hand, one page at a time.
+     *
+     * ### What this does
+     *
+     * Reads the archive backwards in [ARCHIVE_PAGE_BARS] pages until the chart holds
+     * [RESIDENT_TARGET_BARS] or the archive runs out, prepending each page through the same
+     * [prependOlder] a page-back uses. It runs after the first paint — where an earlier sitting
+     * left history — and again after each archive fill, so a symbol opened for the first time
+     * deepens as the fill lands rather than staying at one page for the session.
+     *
+     * Five thousand and not fifty: fifty thousand is the *ceiling* a reader may drag to, and making
+     * it the opening state would put every switched-on indicator over fifty thousand bars on a
+     * screen showing a hundred and twenty. Five thousand is about seven months of hourly candles —
+     * enough that «برو به تاریخ», a backtest and a season of dragging all land inside what is
+     * already loaded — and it is the bottom of the range the owner asked for.
+     */
+    private suspend fun deepenResident(symbol: String, interval: ChartInterval) {
+        if (archive === NoOpCandleArchive) return
+        repeat(RESIDENT_FILL_PAGES) {
+            val current = _state.value
+            if (current.symbol != symbol || current.interval != interval) return
+            if (current.series.isEmpty || current.series.size >= RESIDENT_TARGET_BARS) return
+            val room = (RESIDENT_TARGET_BARS - current.series.size).coerceIn(1, ARCHIVE_PAGE_BARS)
+            val stored = runCatching {
+                archive.read(symbol, interval, room, before = current.series.time.first())
+            }.getOrDefault(emptyList())
+            if (stored.isEmpty()) return
+            prependOlder(current, stored, hasMore = true)
+        }
+    }
+
     private suspend fun paintFromCache(symbol: String, interval: ChartInterval) {
         val cached = runCatching { cache.read(symbol, interval) }.getOrDefault(emptyList())
             // The archive is a superset of the cache and outlives it: the cache is trimmed to a
@@ -2763,6 +2904,29 @@ class ChartController(
          * timeframe was tapped, for history nobody back-tests on.
          */
         const val FINE_FILL_PAGES = 8
+
+        /**
+         * How many bars the chart holds without being dragged: five thousand.
+         *
+         * See [deepenResident] for why this is not `ChartHistory.MAX_RESIDENT_BARS`, which is the
+         * ceiling a reader may drag to rather than the window a chart opens in.
+         */
+        const val RESIDENT_TARGET_BARS = 5_000
+
+        /** At [ARCHIVE_PAGE_BARS] a page one is enough for the target; two is the belt to it. */
+        const val RESIDENT_FILL_PAGES = 2
+
+        /** Bars one live poll re-reads: the open one, and two behind it in case a bar closed. */
+        const val LIVE_TAIL_BARS = 3
+
+        /**
+         * How often the live edge is re-read, from the bar's own length.
+         *
+         * A twelfth of the bar, between three and thirty seconds — five on M1, thirty from H1 up.
+         * See [startLive] for why a single number is wrong in both directions.
+         */
+        fun livePollMillis(interval: ChartInterval): Long =
+            (interval.seconds * 1_000L / 12L).coerceIn(3_000L, 30_000L)
     }
 }
 

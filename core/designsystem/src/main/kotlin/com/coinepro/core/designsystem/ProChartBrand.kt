@@ -253,11 +253,25 @@ fun ProChartLockup(
     modifier: Modifier = Modifier,
     wordmarkWidth: Dp = 200.dp,
     contentDescription: String? = null,
+    /**
+     * The mark's colour.
+     *
+     * Gold by default, which is the brand. The owner asked for the lockup **monochrome** in the two
+     * places it sits on a working surface rather than on a brand one — over the chart and above the
+     * sign-in form — where a gold mark beside a near-black name reads as two objects rather than
+     * one logo. Passing [CoineProColors.TextPrimary] there makes the whole lockup one ink, black on
+     * a light theme and white on a dark one, and leaves the brand gold everywhere it is the subject.
+     */
+    markTint: Color = CoineProColors.Gold,
+    /** The name's colour. Follows [markTint] where a caller asks for a monochrome lockup. */
+    wordmarkTint: Color = CoineProColors.TextPrimary,
 ) {
     if (booleanResource(R.bool.prochart_wordmark_is_lockup)) {
         ProChartWordmark(
             modifier = modifier.width(wordmarkWidth),
             contentDescription = contentDescription,
+            // The Latin cut is the whole lockup in one colour, so the mark's ink is the asset's.
+            tint = markTint,
         )
         return
     }
@@ -287,8 +301,10 @@ fun ProChartLockup(
             ProChartMark(
                 modifier = Modifier.size(markHeight),
                 contentDescription = contentDescription,
+                tint = markTint,
             )
             ProChartWordmark(
+                tint = wordmarkTint,
                 // Twice the lift, so that centring the padded box leaves the ink one lift *below*
                 // the row's centre — which is the same as putting the mark one lift above the ink,
                 // without anything leaving the row. See the note above.

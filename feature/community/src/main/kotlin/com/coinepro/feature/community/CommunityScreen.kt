@@ -13,32 +13,37 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.toPersianDigits
@@ -58,10 +63,16 @@ import com.coinepro.core.designsystem.CoineProListHeader
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
+import com.coinepro.core.designsystem.CoineProShapes
+import com.coinepro.core.designsystem.CoineProSheet
+import com.coinepro.core.designsystem.CoineProSheetSearch
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.CoineProThinkingDots
+import com.coinepro.core.designsystem.CoineProTint
+import com.coinepro.core.designsystem.pageAccentInk
+import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.designsystem.rowMotion
 
@@ -104,6 +115,7 @@ import com.coinepro.core.designsystem.rowMotion
  * limit are not copied, because a client-side copy of somebody else's moderation rules is a copy
  * that goes stale. A refusal comes back in the server's own sentence and the text stays in the box.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommunityScreen(
     controller: CommunityController,
@@ -117,7 +129,11 @@ fun CommunityScreen(
     // action runs once the name is confirmed so a like that asked for a name is still a like.
     var naming by rememberSaveable { mutableStateOf(false) }
     var pending by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var leaderboard by rememberSaveable { mutableStateOf(false) }
     val mode = communityMode(state)
+    val clipboard = LocalClipboardManager.current
+    val reported = stringResource(R.string.community_reported)
+    val copied = stringResource(R.string.community_copied)
 
     LaunchedEffect(state.named) {
         if (state.named && naming) {
@@ -153,6 +169,14 @@ fun CommunityScreen(
                     ),
                     onClick = {
                         if (composing) composing = false else withName { composing = true }
+                    },
+                )
+                CoineProHeaderAction(
+                    icon = DesignR.drawable.icon_filled_star,
+                    label = stringResource(R.string.community_leaderboard),
+                    onClick = {
+                        controller.loadLeaderboard()
+                        leaderboard = true
                     },
                 )
                 CoineProHeaderAction(
@@ -212,7 +236,21 @@ fun CommunityScreen(
             )
         }
 
-        CategoryChips(selected = state.category, onSelect = controller::setCategory)
+        // The board's own search, above the topics: it searches every published post server-side,
+        // so it is not a filter over the twenty rows on screen and must not look like one. A blank
+        // field puts the board back — see `CommunityController.search`.
+        CoineProSheetSearch(
+            value = state.query,
+            onValueChange = controller::search,
+            placeholder = stringResource(R.string.community_search),
+            modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
+        )
+
+        // Hidden while searching: the chips filter the *board*, and a topic chip over a result list
+        // would be a control that appears to narrow a search and does nothing.
+        if (!state.isSearch) {
+            CategoryChips(selected = state.category, onSelect = controller::setCategory)
+        }
 
         AnimatedContent(
             targetState = mode,
@@ -260,7 +298,11 @@ fun CommunityScreen(
 
                 CommunityMode.NOTHING_POSTED -> CoineProEmptyState(
                     icon = CoineProIcons.Assistant,
-                    message = stringResource(R.string.community_empty),
+                    message = if (state.isSearch) {
+                        stringResource(R.string.community_search_empty)
+                    } else {
+                        stringResource(R.string.community_empty)
+                    },
                     hint = stringResource(R.string.community_empty_hint),
                     action = stringResource(R.string.community_compose),
                     onAction = { withName { composing = true } },
@@ -276,7 +318,109 @@ fun CommunityScreen(
                     onOpenThread = onOpenThread,
                     onLike = { id -> withName { controller.toggleLike(id) } },
                     onLoadMore = controller::loadMore,
+                    // A report needs a name, like every other write on this board.
+                    onReport = { id -> withName { controller.report(id, reported) } },
+                    onCopy = { post ->
+                        clipboard.setText(AnnotatedString(post.content))
+                        controller.notice(copied)
+                    },
                 )
+            }
+        }
+    }
+
+    if (leaderboard) {
+        CoineProSheet(
+            title = stringResource(R.string.community_leaderboard),
+            subtitle = state.leaderboard?.let { table ->
+                table.myRank?.let { rank ->
+                    stringResource(
+                        R.string.community_leaderboard_rank,
+                        rank.toPersianDigits(),
+                        table.totalStudents.toPersianDigits(),
+                    )
+                }
+            },
+            onDismiss = { leaderboard = false },
+        ) {
+            LeaderboardBody(state = state)
+        }
+    }
+}
+
+/**
+ * The board's scoreboard.
+ *
+ * Points, posts and a rank — the three numbers the route serves — and the reader's own row marked
+ * rather than pulled to the top: a table that moves your row to the front is not a table you can
+ * read your position off. Prose counts, so Persian digits, which is the same rule the rest of the
+ * board's counters follow.
+ */
+@Composable
+private fun LeaderboardBody(state: CommunityUiState) {
+    val table = state.leaderboard
+    when {
+        state.leaderboardLoading && table == null -> CentreState(
+            stringResource(R.string.community_loading),
+            busy = true,
+        )
+        table == null || table.leaders.isEmpty() -> CoineProEmptyState(
+            icon = CoineProIcons.Assistant,
+            message = stringResource(R.string.community_leaderboard_empty),
+            modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
+        )
+        else -> Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        ) {
+            table.leaders.forEach { leader ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(CoineProShapes.small)
+                        .background(
+                            if (leader.isMe) {
+                                CoineProTint.fill(CoineProColors.pageAccentInk)
+                            } else {
+                                CoineProColors.Surface
+                            },
+                        )
+                        .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
+                    horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = leader.rank.toPersianDigits(),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (leader.isMe) CoineProColors.pageAccentInk else CoineProColors.TextMuted,
+                    )
+                    Text(
+                        text = leader.username,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = CoineProColors.TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.community_leaderboard_posts,
+                            leader.completed.toPersianDigits(),
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CoineProColors.TextMuted,
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.community_leaderboard_points,
+                            leader.xp.toPersianDigits(),
+                        ),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = CoineProColors.TextSecondary,
+                    )
+                }
             }
         }
     }
@@ -290,6 +434,8 @@ private fun PostList(
     onOpenThread: (Long) -> Unit,
     onLike: (Long) -> Unit,
     onLoadMore: () -> Unit,
+    onReport: (Long) -> Unit,
+    onCopy: (CommunityPost) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -306,6 +452,8 @@ private fun PostList(
                 post = post,
                 onOpen = { onOpenThread(post.id) },
                 onLike = { onLike(post.id) },
+                onReport = { onReport(post.id) },
+                onCopy = { onCopy(post) },
             )
         }
         // An explicit control rather than a scroll trigger. The route pages at twenty with no total

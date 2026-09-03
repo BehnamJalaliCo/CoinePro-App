@@ -65,12 +65,28 @@ data class CommunityUiState(
     val notice: String? = null,
     /** How many rows the last page carried but this build could not read. See [CommunityFeedPage]. */
     val unreadable: Int = 0,
+    /**
+     * What the reader is searching for, or blank.
+     *
+     * Not blank means [posts] is a **result list** rather than a page of the board: the category
+     * chips do not apply to it, «بیشتر» is not offered — the route answers one page and no cursor —
+     * and the empty state says "nothing matched" rather than "nobody has posted".
+     */
+    val query: String = "",
+    val searching: Boolean = false,
+    /** The board's scoreboard, once somebody has asked for it. See [loadLeaderboard]. */
+    val leaderboard: CommunityLeaderboard? = null,
+    val leaderboardLoading: Boolean = false,
 ) {
+    /** Whether the list on screen is a search result rather than the board itself. */
+    val isSearch: Boolean get() = query.isNotBlank()
+
     /** Nothing to show and nothing loading — the case that needs an empty state rather than a spinner. */
     val empty: Boolean get() = posts.isEmpty() && !loading && error == null
 
     /** Whether a «بیشتر» control belongs at the foot of the list. */
-    val canLoadMore: Boolean get() = posts.isNotEmpty() && !endReached && !loadingMore && error == null
+    val canLoadMore: Boolean
+        get() = posts.isNotEmpty() && !endReached && !loadingMore && error == null && !isSearch
 
     /** Whether this install can write. Reading never needs a name. */
     val named: Boolean get() = !displayName.isNullOrBlank()
@@ -123,6 +139,10 @@ class CommunityController(
     private val identity: CommunityIdentityStore,
     private val scope: CoroutineScope,
 ) {
+    private companion object {
+        /** The route answers an empty list under two characters; asking for one is a wasted trip. */
+        const val MIN_QUERY = 2
+    }
 
     private val _state = MutableStateFlow(CommunityUiState())
     val state: StateFlow<CommunityUiState> = _state.asStateFlow()
@@ -336,6 +356,78 @@ class CommunityController(
                 .onSuccess { _state.update { current -> current.copy(notice = notice) } }
                 .onFailure { failure -> onWriteFailure(failure) }
         }
+    }
+
+    /**
+     * Search the board — the route's own `q`, at least two characters.
+     *
+     * A search **replaces** the list rather than filtering it in place, because the server searches
+     * every published post and the client holds one page: filtering here would search twenty rows
+     * and call it the board. Below two characters, and on a cleared field, the feed comes back —
+     * the reader is put where they were rather than looking at an empty screen with a stale query.
+     *
+     * Debounced by the caller, not here: this is what a search *is*, and a controller that waited
+     * would make the one legitimate immediate search — the submit key — wait too.
+     */
+    fun search(query: String) {
+        val trimmed = query.trim()
+        _state.update { it.copy(query = query) }
+        feedJob?.cancel()
+        if (trimmed.length < MIN_QUERY) {
+            // Back to the board, and only when there was a search to come back *from*: an empty
+            // field on first paint must not re-fetch a page the screen has just asked for.
+            if (_state.value.posts.isEmpty() || _state.value.searching) load(page = 1, replacing = true)
+            _state.update { it.copy(searching = false) }
+            return
+        }
+        _state.update { it.copy(searching = true, loading = it.posts.isEmpty(), error = null, serverText = null) }
+        feedJob = scope.launch {
+            runCatching { gateway.search(trimmed) }
+                .onSuccess { found ->
+                    _state.update {
+                        it.copy(
+                            posts = found,
+                            loading = false,
+                            refreshing = false,
+                            loadingMore = false,
+                            // A result list has no next page, and offering one would fetch the
+                            // board's second page under a search's heading.
+                            endReached = true,
+                            unreadable = 0,
+                        )
+                    }
+                }
+                .onFailure { failure -> onFailure(failure) }
+        }
+    }
+
+    /** Clears the search and puts the board back. */
+    fun clearSearch() = search("")
+
+    /**
+     * The board's scoreboard, read on demand.
+     *
+     * Not part of the feed's own load: it is a sheet somebody opens, it costs a request, and a
+     * reader who never opens it should never pay for one. Re-read on each open rather than cached,
+     * because the numbers move as the board does and a stale table is a wrong table.
+     */
+    fun loadLeaderboard() {
+        if (_state.value.leaderboardLoading) return
+        _state.update { it.copy(leaderboardLoading = true) }
+        scope.launch {
+            val table = runCatching { gateway.leaderboard() }.getOrNull()
+            _state.update { it.copy(leaderboard = table, leaderboardLoading = false) }
+        }
+    }
+
+    /**
+     * Say one line to the reader, for something this controller did not do itself.
+     *
+     * The clipboard is the case: the screen copies a post's text and the answer belongs in the same
+     * strip every other answer on this board appears in, rather than in a second kind of message.
+     */
+    fun notice(text: String) {
+        _state.update { it.copy(notice = text) }
     }
 
     fun dismissNotice() {

@@ -133,7 +133,11 @@ fun ToolsScreen(
     /** Opens the NamaScript studio. Local, and needs neither an account nor a connection. */
     onOpenScript: (() -> Unit)? = null,
 ) {
-    var expanded by remember { mutableStateOf<ToolId?>(ToolId.RISK) }
+    // Everything closed. The page opened with the risk calculator already unfolded, which put a
+    // form with three empty fields between the reader and the list of the other seven — a screen
+    // that has decided for you which tool you came for. The quick chips above are how a reader who
+    // wants that one gets to it in a tap.
+    var expanded by remember { mutableStateOf<ToolId?>(null) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),

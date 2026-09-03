@@ -15,6 +15,31 @@ it is for.
 
 ---
 
+## [4.26.0] — 2026-09-03 — Seven things the owner circled
+
+* **The chart is live again.** Nothing on the chart controller ever asked the venue a second
+  question: a chart was fetched once and sat there, so the last candle's close was however the
+  market stood when the screen opened and the live tag's countdown — `open + length − now` — went
+  negative and printed nothing at all. The controller now re-reads the newest few bars on a cadence
+  taken from the bar's own length (five seconds on M1, thirty from H1 up) and merges them by open
+  time, so the price, the legend, the change, the studies and the countdown are the market's.
+* **Five thousand candles, not three hundred.** The resident ceiling and the archive have held
+  fifty thousand bars for some time; the *chart* held whatever one network page returned, and every
+  other bar waited to be dragged in by hand. It now fills itself from the archive to five thousand
+  after the first paint and again after each background fill, and «۵٬۰۰۰ کندل» is what the reading
+  strip says.
+* **The tools page opens closed.** It came up with the risk calculator already unfolded — a form
+  with three empty fields between the reader and the other seven tools.
+* **The brand is one ink where it sits on a working surface.** Black on the sign-in screen and on
+  the chart's watermark, in both languages; gold stays where the brand is the subject.
+* **The watermark opens and closes.** The mark alone signs the chart, a tap grows the name out of
+  it and a second tap puts it back — TradingView's own behaviour, in the owner's screenshots.
+* **The watchlist has the brand at its head**, and the mark streams itself in on arrival — the
+  launch sheet's own wipe, now shared as `ProChartMarkStream`.
+* **The community got the rest of its board.** Server-side search across every published post, a
+  «⋮» on each card carrying «گزارش تخلف» and «رونوشت متن», and the leaderboard the backend has been
+  serving all along, as a sheet with the reader's own rank on it.
+
 ## [4.25.1] — 2026-09-03 — The launch's status bar
 
 * The status bar's icons go dark while the launch sheet is up and back to the app's on the way

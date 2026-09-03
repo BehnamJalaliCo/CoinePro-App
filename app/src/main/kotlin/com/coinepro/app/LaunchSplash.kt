@@ -19,9 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
@@ -32,6 +30,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import com.coinepro.core.designsystem.PRO_CHART_FA
+import com.coinepro.core.designsystem.brandWipe
 import com.coinepro.core.designsystem.ProChartMark
 import com.coinepro.core.designsystem.ProChartWordmark
 import com.coinepro.core.designsystem.R as DesignR
@@ -125,7 +124,7 @@ fun LaunchSplash(
                             scaleX = scale
                             scaleY = scale
                         }
-                        .wipe(drawn, fromLeft = true),
+                        .brandWipe(drawn, fromLeft = true),
                 )
             }
             val named = if (lockupOnly) phase(t, 0f, NAME_UNTIL) else phase(t, NAME_FROM, NAME_UNTIL)
@@ -134,7 +133,7 @@ fun LaunchSplash(
                 modifier = Modifier
                     .width(if (lockupOnly) LOCKUP_WIDTH else NAME_WIDTH)
                     // The Latin lockup reads left to right whatever the page does.
-                    .wipe(named, fromLeft = !rtl || lockupOnly),
+                    .brandWipe(named, fromLeft = !rtl || lockupOnly),
             )
         }
     }
@@ -167,21 +166,6 @@ private fun DarkSystemBarIcons() {
 /** Where [t] stands between [from] and [to], clamped to 0..1. */
 private fun phase(t: Float, from: Float, to: Float): Float =
     ((t - from) / (to - from)).coerceIn(0f, 1f)
-
-/**
- * Reveal the content from one edge to the other, by [fraction] of its width.
- *
- * A clip rather than an alpha: the ink arrives as a front moving across the shape, which is what
- * a stroke being drawn looks like, and it needs no blur to look continuous.
- */
-private fun Modifier.wipe(fraction: Float, fromLeft: Boolean): Modifier = drawWithContent {
-    val shown = size.width * fraction
-    if (fromLeft) {
-        clipRect(right = shown) { this@drawWithContent.drawContent() }
-    } else {
-        clipRect(left = size.width - shown) { this@drawWithContent.drawContent() }
-    }
-}
 
 /** The whole launch, and the still shown instead when animations are off. */
 private const val SPLASH_MS = 1800

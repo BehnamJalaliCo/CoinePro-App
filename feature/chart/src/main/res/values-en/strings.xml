@@ -139,4 +139,6 @@
     <string name="chart_hub_help">Help Center</string>
     <string name="chart_hub_trade">Trade with your broker</string>
     <string name="chart_hub_replay">Bar replay</string>
+    <string name="chart_watermark_expand">Show the app name</string>
+    <string name="chart_watermark_collapse">Hide the app name</string>
 </resources>

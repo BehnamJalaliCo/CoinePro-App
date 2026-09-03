@@ -5,17 +5,31 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -31,6 +45,7 @@ import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTint
+import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.model.AvatarBase
 import com.coinepro.core.model.AvatarRing
@@ -73,6 +88,17 @@ internal fun CommunityPostCard(
     expanded: Boolean = false,
     /** The reaction row, on the thread page only. Null keeps the card to its two counters. */
     onReact: ((String) -> Unit)? = null,
+    /**
+     * Report this post. Null drops the «⋮» rather than greying it.
+     *
+     * The menu is where every board of this kind puts the action a reader needs *about* a post
+     * rather than *on* it, and it is deliberately not a pill beside the like: a report is a rare,
+     * deliberate act and a one-tap button next to the two ordinary ones is how a board collects
+     * reports on posts nobody objected to.
+     */
+    onReport: (() -> Unit)? = null,
+    /** Copy the post's text. The board has no links to share, so sharing is what a reader can do. */
+    onCopy: (() -> Unit)? = null,
 ) {
     CoineProCard(
         modifier = modifier.fillMaxWidth(),
@@ -175,10 +201,63 @@ internal fun CommunityPostCard(
                     active = false,
                     onClick = onOpen,
                 )
+                if (onReport != null || onCopy != null) {
+                    Spacer(Modifier.weight(1f))
+                    PostMenu(onReport = onReport, onCopy = onCopy)
+                }
             }
 
             if (post.reactions.isNotEmpty() || onReact != null) {
                 ReactionRow(post = post, onReact = onReact)
+            }
+        }
+    }
+}
+
+/**
+ * The «⋮» at the end of a card's counter row.
+ *
+ * Two entries at most and each is a whole sentence rather than a verb, because both are things a
+ * reader does once and needs to be sure about: «گزارش تخلف» files a report — three from three
+ * members hide a post — and «رونوشت متن» puts the body on the clipboard, which is the only kind of
+ * sharing a board with no public links can honestly offer.
+ */
+@Composable
+private fun PostMenu(onReport: (() -> Unit)?, onCopy: (() -> Unit)?) {
+    var open by remember { mutableStateOf(false) }
+    val haptics = rememberCoineProHaptics()
+    Box {
+        Icon(
+            painter = painterResource(DesignR.drawable.tv_more_horizontal),
+            contentDescription = stringResource(R.string.community_post_menu),
+            tint = CoineProColors.TextMuted,
+            modifier = Modifier
+                .minimumInteractiveComponentSize()
+                .size(18.dp)
+                .clip(CircleShape)
+                .clickable {
+                    haptics.select()
+                    open = true
+                },
+        )
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            onCopy?.let { copy ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.community_copy)) },
+                    onClick = {
+                        open = false
+                        copy()
+                    },
+                )
+            }
+            onReport?.let { report ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.community_report)) },
+                    onClick = {
+                        open = false
+                        report()
+                    },
+                )
             }
         }
     }

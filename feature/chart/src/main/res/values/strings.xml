@@ -161,4 +161,6 @@
     <string name="chart_hub_help">مرکز راهنما</string>
     <string name="chart_hub_trade">معامله با کارگزار</string>
     <string name="chart_hub_replay">بازپخش نوار</string>
+    <string name="chart_watermark_expand">نمایش نام برنامه</string>
+    <string name="chart_watermark_collapse">بستن نام برنامه</string>
 </resources>

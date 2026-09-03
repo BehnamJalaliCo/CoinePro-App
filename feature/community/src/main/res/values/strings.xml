@@ -71,4 +71,16 @@
     <string name="community_best_badge">بهترین پاسخ</string>
     <string name="community_best_mark">انتخاب بهترین</string>
     <string name="community_best_clear">برداشتن نشان</string>
+    <string name="community_post_menu">گزینه‌های این نوشته</string>
+    <string name="community_report">گزارش تخلف</string>
+    <string name="community_copy">رونوشت متن</string>
+    <string name="community_reported">گزارش شما ثبت شد. با سه گزارش، نوشته پنهان می‌شود.</string>
+    <string name="community_copied">متن رونوشت شد.</string>
+    <string name="community_search">جست‌وجو در انجمن</string>
+    <string name="community_search_empty">نوشته‌ای با این عبارت پیدا نشد.</string>
+    <string name="community_leaderboard">جدول برترین‌ها</string>
+    <string name="community_leaderboard_rank">رتبهٔ شما: %1$s از %2$s</string>
+    <string name="community_leaderboard_empty">هنوز کسی امتیازی نگرفته است.</string>
+    <string name="community_leaderboard_points">%1$s امتیاز</string>
+    <string name="community_leaderboard_posts">%1$s نوشته</string>
 </resources>

@@ -143,6 +143,7 @@ import com.coinepro.core.designsystem.CoineProWindowSize
 import com.coinepro.core.designsystem.coineProWindowClass
 import com.coinepro.core.designsystem.LtrDirection
 import com.coinepro.core.designsystem.ProChartLockup
+import com.coinepro.core.designsystem.ProChartMark
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.onPageAccent
 import com.coinepro.core.designsystem.pageAccent
@@ -2270,17 +2271,56 @@ private val QUOTE_CHIP_INSET = 4.dp
  *
  * Measured off the phone app: the mark 12 pt in from the pane's left edge and 12 pt above the time
  * axis, drawn in the primary ink — `#0F0F0F` on white, at full strength, in every chart shot the
- * owner sent. Ours is the lockup rather than a single-colour mark because a monochrome cut of the
- * owner's two-colour mark would be a different logo; see `ProChartLockup`. It takes no touch, so a
- * finger drawing across the corner keeps drawing.
+ * owner sent.
+ *
+ * ### One ink, and it is the owner's instruction
+ *
+ * «پایین چارت لوگو پرو چارت رو مشکی بکن». The gold mark beside a near-black name read as two
+ * objects sitting on the candles rather than as one signature; [ProChartLockup.markTint] makes the
+ * whole thing the primary ink, which is black on the light chart and white on the dark one.
+ *
+ * ### It opens and closes, exactly as TradingView's does
+ *
+ * TradingView's phone chart signs itself with the mark alone and expands to the full wordmark when
+ * you tap it — tap again and it goes back. Both states are in the owner's own screenshots. So this
+ * is a control, not a decal: [expanded] is remembered per composition, the mark alone is the
+ * resting state, and the change is a size animation rather than a swap, so the name grows out of
+ * the mark instead of appearing beside it.
+ *
+ * The target stays the mark's own size, which keeps a finger drawing across the bottom-left corner
+ * of the plot from opening the signature: a watermark that eats drawing taps is worse than one that
+ * never opens.
  */
 @Composable
 private fun ChartWatermark(modifier: Modifier = Modifier) {
     val axis = with(LocalDensity.current) { timeAxisHeight(axisFontSizeSp(isPriceAxis = false)).sp.toDp() }
-    ProChartLockup(
-        modifier = modifier.padding(start = WATERMARK_INSET, bottom = WATERMARK_INSET + axis),
-        wordmarkWidth = WATERMARK_WORDMARK_WIDTH,
-    )
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberCoineProHaptics()
+    Box(
+        modifier = modifier
+            .padding(start = WATERMARK_INSET, bottom = WATERMARK_INSET + axis)
+            .clip(CoineProShapes.small)
+            .clickable(interaction, null) {
+                haptics.select()
+                expanded = !expanded
+            },
+        contentAlignment = AbsoluteAlignment.CenterLeft,
+    ) {
+        if (expanded) {
+            ProChartLockup(
+                wordmarkWidth = WATERMARK_WORDMARK_WIDTH,
+                markTint = CoineProColors.TextPrimary,
+                contentDescription = stringResource(R.string.chart_watermark_collapse),
+            )
+        } else {
+            ProChartMark(
+                tint = CoineProColors.TextPrimary,
+                contentDescription = stringResource(R.string.chart_watermark_expand),
+                modifier = Modifier.size(WATERMARK_MARK),
+            )
+        }
+    }
 }
 
 /** Twelve points from the plot's left edge and from the time axis, as the phone app sets it. */
@@ -2288,6 +2328,9 @@ private val WATERMARK_INSET = 12.dp
 
 /** The name at 56 dp: a 16 dp name beside a 23 dp mark, the height of TradingView's wordmark. */
 private val WATERMARK_WORDMARK_WIDTH = 56.dp
+
+/** The mark on its own, closed: the same 23 dp the open lockup draws it at. */
+private val WATERMARK_MARK = 23.dp
 
 /** The help entry behind the hub's «Help Center». */
 private const val CHART_HELP_ID = "chart"
