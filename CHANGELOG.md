@@ -15,6 +15,42 @@ it is for.
 
 ---
 
+## [4.29.0] — 2026-09-03 — The glyphs, and the gold
+
+«هنوز آپ به یک آپ معمولی می‌خوره تا یک آپ حرفه‌ای.» Two things were doing that,
+and neither was the design system — it was already right. It was the icons, and
+it was where the brand colour had leaked to.
+
+* **Six icon faults in the directory**, which is the densest icon surface the
+  app has and the one where professional or ordinary is decided before a word
+  is read. A glyph that failed to convert and rendered as an empty box (the
+  heat map). A glyph that means something else (paper trading carried the
+  chart's long/short *drawing tool*). A glyph that means the neighbouring
+  thing (portfolio had a wallet — that row is Sharpe and drawdown, money's
+  shape rather than its amount). Two rows sharing one glyph, twice — copy
+  trading with signals, the profile with notifications. And a borrowed
+  language: Explore had the sparkle, which everywhere else here means the AI.
+* **Every row glyph now sits on a plate.** A 36 pt filled square, for a
+  mechanical reason rather than a decorative one: it gives every row the same
+  optical left edge whatever shape is inside it, which is what turns thirty
+  outlines floating in a column of type into a directory.
+* **The screener rows have marks.** It is the surface a reader scans fastest
+  and it was the only list in the app where the one thing to recognise was a
+  Latin ticker in the same weight as the fifty-nine above it.
+* **Explore stopped spending its first screenful on the way out of itself.**
+  Its three doors were bordered cards ninety points tall, before a single
+  price; they are plated glyphs at a third of the height. Its headlines were
+  three more bordered plates and are a list with rules, which is how every
+  place that publishes a wire feed draws one.
+* **Gold marks the brand, not whatever is selected.** The palette's own rule
+  said so and six surfaces were breaking it — loudest of all the chart's
+  watchlist strip, which put a gold wash behind the open market on every chart,
+  competing with the one gold object on screen that means something. Selection
+  is the raised neutral the interval keys and the Ideas switch already use;
+  the AI's pickers, the activity filter and the tools picker take the page's
+  own accent, which is blue on an analysis screen and gold only where the app
+  really is acting on the reader's account.
+
 ## [4.28.0] — 2026-09-03 — Five destinations, and the shell catches up with the chart
 
 The chart has been at a terminal's standard for several releases and the app
