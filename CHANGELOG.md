@@ -15,6 +15,55 @@ it is for.
 
 ---
 
+## [4.31.0] — 2026-09-04 — Pixel parity: the fold, the colour language, the gate
+
+No architecture moved. The five destinations, Watchlist as root, Ideas as the
+merged board, the menu and the chart are exactly where 4.30 left them. What
+changed is everything measured in points.
+
+* **The watchlist spends 117 points above its first row, from 211.** The brand
+  left the header for the loading state — which is where it was asked for, and
+  the one moment on a watchlist when a signature costs nothing. The chip row and
+  the toolbar became one line, with the column picker, import/export and list
+  management behind an overflow. The dismissed teaching banner leaves no residue.
+  And the reorder grip is a *mode*: it was on every row by default, spending
+  thirty-four points of the narrowest screen in the app on a control used twice
+  in the life of a list.
+* **The bottom bar is 65 points, from 80.** Material's bar spends its height on a
+  64×32 pill, a tonal elevation and a ripple — the pill being the largest selected
+  state anywhere in the product. This is five equal columns, a 22 pt glyph on a
+  small plate, a 10.5 sp label, and no gold.
+* **A market that moved is not an order to buy.** `marketUp` and `marketDown` are
+  new tokens carrying the reference's own `#089981` and `#F23645`, and every list,
+  sparkline and tick reads them. `buy` and `sell` keep execution — which side a
+  control commits to — so the loudest colour on a screen of forty prices is no
+  longer the colour of the one button that spends money. The light theme keeps the
+  hue and darkens for contrast, which is the single deviation and it is written
+  down where it happens.
+* **The terminal lists lost the pill, the fade and the gold.** A tinted block on
+  every row distinguishes nothing; a table whose rows dissolve in behind a 200 ms
+  fade is decoration on data; and a filter chip is a view over a list, not the
+  page's commercial action. The price flash is 380 ms at 9%, down from 620 at 14 —
+  at 620 it was still lit when the next tick arrived, so a fast market was a
+  permanently green row.
+* **Explore opens on market content.** The subtitle went, the full-width way *out*
+  of the screen became a header action, and the cards are 128 × 91 instead of
+  148 × 105 — so a phone shows two whole cards and most of a third rather than two
+  and a sliver.
+* **Ideas has one header.** Both halves were drawing their own, so «سیگنال‌ها»
+  appeared under «سیگنال‌ها». The switch also stops inverting to near-white, which
+  made a control pressed twice a session the brightest object on the page.
+* **The menu is a directory rather than a catalogue.** Nine bordered cards and
+  thirty filled plates gone; a column of fifty-point rows, bare marks aligned by a
+  fixed glyph column, and a hairline between them.
+* **And the screenshot suite grew a gate.** A hundred and twenty renders that
+  asserted nothing are joined by fourteen whose pixels are committed and compared,
+  with a real diff on failure, at 411 and 393, in both themes, once in English,
+  and with real content under Ideas. Two budgets — the watchlist's chrome and the
+  bar's height — are asserted in points, so a regression says which number moved.
+
+---
+
 ## [4.30.2] — 2026-09-04 — The whole letter, and a suite that describes this app
 
 * **The chart's signature is the whole P again.** Closed, its box is exactly the
