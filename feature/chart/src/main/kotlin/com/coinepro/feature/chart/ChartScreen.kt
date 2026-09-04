@@ -73,6 +73,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -790,6 +791,7 @@ fun ChartScreen(
                 // Absolute for the same reason as the chip: the time axis reads left to right on
                 // every locale and the mark sits at its origin.
                 ChartWatermark(
+                    lead = watermarkLead(canvasWidthPx),
                     modifier = Modifier
                         .align(AbsoluteAlignment.BottomLeft)
                         .windowInsetsPadding(WindowInsets.safeDrawing)
@@ -2319,14 +2321,24 @@ private val QUOTE_CHIP_INSET = 4.dp
  * never opens.
  */
 @Composable
-private fun ChartWatermark(modifier: Modifier = Modifier) {
+private fun ChartWatermark(
+    /** How far in from the plot's leading edge the mark sits. See [watermarkLead]. */
+    lead: Dp,
+    modifier: Modifier = Modifier,
+) {
     val axis = with(LocalDensity.current) { timeAxisHeight(axisFontSizeSp(isPriceAxis = false)).sp.toDp() }
     var expanded by rememberSaveable { mutableStateOf(false) }
     val interaction = remember { MutableInteractionSource() }
     val haptics = rememberCoineProHaptics()
     Box(
         modifier = modifier
-            .padding(start = WATERMARK_INSET, bottom = WATERMARK_INSET + axis)
+            // **Absolute, like the alignment above it.** `padding(start = …)` is the reading edge,
+            // which on this Persian page is the *right* — so the inset was being applied to the
+            // side the mark is not on, and the signature sat flush against the left edge of the
+            // glass whatever number was written here. That is the other half of «خیلی به گوشهٔ
+            // سمت چپ چسبیده»: not only was twelve points too few, they were never spent.
+            .absolutePadding(left = lead)
+            .padding(bottom = WATERMARK_INSET + axis)
             .clip(CoineProShapes.small)
             .clickable(interaction, null) {
                 haptics.select()
@@ -2345,8 +2357,38 @@ private fun ChartWatermark(modifier: Modifier = Modifier) {
     }
 }
 
-/** Twelve points from the plot's left edge and from the time axis, as the phone app sets it. */
+/** Twelve points from the time axis, as the phone app sets it, and the floor for the lead. */
 private val WATERMARK_INSET = 12.dp
+
+/**
+ * How far in from the plot's leading edge the signature sits.
+ *
+ * ### Twelve points was a corner, not a position
+ *
+ * «لوگو روی چارت رو ۱۰ تا ۲۰ درصد به سمت راست بکشید، خیلی به گوشهٔ سمت چپ چسبیده.» A flat twelve
+ * points is about three per cent of a phone's width, which puts the mark hard into the angle where
+ * the price plot meets the time axis — two rules crossing, with a logo wedged in the corner
+ * between them. It reads as something that has slipped rather than something that has been placed.
+ *
+ * ### A share of the canvas, not a number of points
+ *
+ * Twelve per cent, which is the middle of the band the owner asked for and is a *proportion*: the
+ * mark holds the same place on a 360-point phone, on a tablet and on the full-screen chart, where
+ * a fixed inset would look tucked away on one and adrift on another. [WATERMARK_INSET] is the
+ * floor, so a very narrow pane still keeps the mark off the axis rather than on it.
+ *
+ * It stays well clear of the first candle at any zoom this chart offers, and the tap target is
+ * still the mark's own box — see [ChartWatermark].
+ */
+private const val WATERMARK_LEAD_FRACTION = 0.12f
+
+/** [WATERMARK_LEAD_FRACTION] of a canvas [canvasWidthPx] wide, never less than [WATERMARK_INSET]. */
+@Composable
+private fun watermarkLead(canvasWidthPx: Float): Dp {
+    if (canvasWidthPx <= 0f || !canvasWidthPx.isFinite()) return WATERMARK_INSET
+    val lead = with(LocalDensity.current) { (canvasWidthPx * WATERMARK_LEAD_FRACTION).toDp() }
+    return maxOf(lead, WATERMARK_INSET)
+}
 
 /** The mark on its own, closed; the name grows out of it at the same height. */
 private val WATERMARK_MARK = 23.dp
