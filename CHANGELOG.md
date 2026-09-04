@@ -15,6 +15,48 @@ it is for.
 
 ---
 
+## [4.31.1] — 2026-09-04 — Three measured faults, and a parity gate that will not guess
+
+4.31.0 asserted a set of numbers. This is what happened when they were measured
+rather than trusted — three of them were not what the code claimed — plus the
+comparison against TradingView written down properly enough that it can fail.
+
+* **Explore no longer moves under the reader when the catalogue lands.** The
+  loading placeholder was pinned at 116 points and the tile that replaces it had
+  no height at all, so the data arriving *shortened* the strip and pulled the page
+  up — and the placeholder exists precisely to stop that. Both frames a golden
+  could capture were individually correct; the fault was the difference between
+  them. One shared height contract now, and the chip row holds its own space while
+  it is empty. Measured: the first story moved 35 points, and moves none.
+* **The fold budgets are asserted twice.** A ceiling is silent about the eight
+  points between what a layout was designed to hit and what it is allowed to
+  reach. Both numbers now carry an exact target *and* the ceiling — 117 ±1 for the
+  watchlist's chrome, 65 ±0.5 for the bar — across Persian at two widths and
+  English at one, because the layout mirrors. The bar is measured as app-owned
+  chrome only, with the system's navigation inset reported beside it rather than
+  folded in.
+* **The menu's rows are fifty, rather than at least fifty.** `heightIn(min = …)`
+  is a floor, and twenty-four of the thirty-two rows carried a second line, so the
+  page had two heights interleaved in catalogue order. Every row is now measured
+  in both account states, at both widths, in both directions, on both backends.
+  The second line survives on seven rows, each with its argument written down —
+  a loanword that names nothing, a title that does not say *whose* account. The
+  other twenty-four lost theirs; the same sentences still appear in search
+  results, where somebody is reading one row rather than scanning thirty.
+* **The TradingView comparison is now a gate, and it is halted.** Zero Unexplained
+  Diff rather than a frame tolerance; two golden systems kept apart, since a
+  480 dpi Robolectric frame and a 420 dpi phone frame can never be compared;
+  no scaling, no registration, one-pixel geometry budgets, masks limited to named
+  semantic classes with a reason each. And no reference: capturing one needs a
+  device with their app on it, so the gate reports `REFERENCE_MISSING`, names the
+  eight captures it is owed, and claims nothing. **`PARITY NOT YET PROVEN`.**
+* **CI stopped killing its own runner.** The emulator job ran the instrumented
+  suite and then compiled the whole benchmark variant while still holding a
+  four-gigabyte virtual machine, and died with a shutdown signal. Two jobs now,
+  each with its own emulator, and the compiling done before either one starts.
+
+---
+
 ## [4.31.0] — 2026-09-04 — Pixel parity: the fold, the colour language, the gate
 
 No architecture moved. The five destinations, Watchlist as root, Ideas as the
