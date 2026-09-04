@@ -139,6 +139,21 @@ object AppChromeTestTags {
 
     /** The row of five tabs, plus the navigation inset it pads itself with. */
     const val BOTTOM_BAR_CONTENT = "bottom-bar-content"
+
+    /**
+     * One tab column, its selection plate, its glyph and its word.
+     *
+     * Tagged per destination rather than per index, because an index is a fact about the order the
+     * enum happens to be written in and a route is a fact about the product. A measurement that
+     * says «item 3 is two pixels out» stops meaning anything the day a destination moves.
+     */
+    fun barItem(route: String): String = "bottom-bar-item-$route"
+
+    fun barPlate(route: String): String = "bottom-bar-plate-$route"
+
+    fun barGlyph(route: String): String = "bottom-bar-glyph-$route"
+
+    fun barLabel(route: String): String = "bottom-bar-label-$route"
 }
 
 @Composable
@@ -217,6 +232,7 @@ private fun BarItem(
     Column(
         modifier = modifier
             .fillMaxHeight()
+            .testTag(AppChromeTestTags.barItem(destination.route))
             .selectable(
                 selected = selected,
                 role = Role.Tab,
@@ -233,6 +249,7 @@ private fun BarItem(
         Box(
             modifier = Modifier
                 .size(width = PLATE_WIDTH, height = PLATE_HEIGHT)
+                .testTag(AppChromeTestTags.barPlate(destination.route))
                 .clip(CoineProShapes.small)
                 .background(if (selected) CoineProColors.SurfaceElevated else Color.Transparent),
             contentAlignment = Alignment.Center,
@@ -242,7 +259,9 @@ private fun BarItem(
                 painter = painterResource(destination.icon(selected)),
                 contentDescription = null,
                 tint = ink,
-                modifier = Modifier.size(GLYPH),
+                modifier = Modifier
+                    .size(GLYPH)
+                    .testTag(AppChromeTestTags.barGlyph(destination.route)),
             )
         }
         Text(
@@ -257,7 +276,9 @@ private fun BarItem(
             // height is fixed, and a wrapped word would be clipped mid-stroke instead.
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 1.dp),
+            modifier = Modifier
+                .padding(top = 1.dp)
+                .testTag(AppChromeTestTags.barLabel(destination.route)),
         )
     }
 }

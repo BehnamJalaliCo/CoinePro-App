@@ -1,8 +1,9 @@
 {
-  "schema": 1,
+  "schema": 2,
   "screen": "menu",
   "title": "The menu",
-  "why": "A directory's whole claim is that its rows are interchangeable. That claim is either true down eight consecutive rows or it is not true at all, and it was not true here until it was measured.",
+  "locale": "en-US",
+  "why": "A directory's whole claim is that its rows are interchangeable. That claim is either true down ten consecutive rows or it is not true at all, and it was not true here until it was measured.",
   "reference": {
     "dark": "menu-dark.png",
     "light": "menu-light.png"
@@ -11,25 +12,234 @@
     "dark": "menu-dark.png",
     "light": "menu-light.png"
   },
+  "mask_budget": {
+    "development": 0.15,
+    "certification": 0.08
+  },
   "masks": [
     {
       "class": "user-name",
       "reason": "The identity block carries a name and an address that differ by account.",
-      "elements": ["menu-identity-name", "menu-identity-email"],
+      "elements": [
+        "menu-identity-name",
+        "menu-identity-email"
+      ],
       "halo_px": 2
     },
     {
       "class": "avatar",
       "reason": "It is the reader's own.",
-      "elements": ["menu-identity-avatar"],
-      "halo_px": 2
+      "elements": [
+        "menu-identity-avatar"
+      ],
+      "halo_px": 3
+    },
+    {
+      "class": "app-copy",
+      "reason": "Row words name this product's screens, not theirs. The row box, its glyph column and its rule stay measured.",
+      "elements": [
+        "menu-title-*"
+      ],
+      "halo_px": 1
     }
   ],
-  "measurements": [
+  "anchors": [
     {
-      "id": "row-heights",
-      "kind": "cadence",
-      "elements": [
+      "id": "rootTitleBaseline",
+      "actual": {
+        "tag": "menu-title",
+        "baseline": true
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their page title baseline."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "identityCardTop",
+      "actual": {
+        "tag": "menu-identity",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Top of their identity block."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "identityCardBottom",
+      "actual": {
+        "tag": "menu-identity",
+        "edge": "bottom"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Bottom of it."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "sectionTitleBaseline",
+      "actual": {
+        "tag": "menu-section-heading-0",
+        "baseline": true
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their first section heading baseline."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "rowTop",
+      "actual": {
+        "tag": "menu-row-watchlist",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "horizontal_rules",
+        "index": 0
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "rowBottom",
+      "actual": {
+        "tag": "menu-row-watchlist",
+        "edge": "bottom"
+      },
+      "reference": {
+        "strategy": "horizontal_rules",
+        "index": 1
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "rowHeight",
+      "actual": {
+        "tag": "menu-row-watchlist",
+        "edge": "height"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their directory row height."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "iconCenterX",
+      "actual": {
+        "tag": "menu-glyph-watchlist",
+        "edge": "centerX"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their glyph column centre. Thirty different outlines have to start their words at the same x; that is what the fixed column buys and the only thing worth checking about it."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "iconCenterY",
+      "actual": {
+        "tag": "menu-glyph-watchlist",
+        "edge": "centerY"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Its vertical centre in the row."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "titleBaseline",
+      "actual": {
+        "tag": "menu-title-watchlist",
+        "baseline": true
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their row title baseline."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "dividerStartX",
+      "actual": {
+        "tag": "menu-row-divider-0",
+        "edge": "left"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Where their rule starts. An inset under the glyph instead of under the words turns a column of marks into a table of cells."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "dividerY",
+      "actual": {
+        "tag": "menu-row-divider-0",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "horizontal_rules",
+        "index": 1
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "chevronCenterX",
+      "actual": {
+        "tag": "menu-chevron-watchlist",
+        "edge": "centerX"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their chevron centre."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "nextSectionY",
+      "actual": {
+        "tag": "menu-section-heading-1",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Top of their next section heading."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "bottomBarTop",
+      "actual": {
+        "tag": "bottom-bar",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "bottom_bar",
+        "part": "divider"
+      },
+      "budget_px": 1
+    }
+  ],
+  "cadence": [
+    {
+      "id": "row-cadence",
+      "tags": [
         "menu-row-watchlist",
         "menu-row-search",
         "menu-row-heatmap",
@@ -37,52 +247,47 @@
         "menu-row-explore",
         "menu-row-news",
         "menu-row-calendar",
-        "menu-row-portfolio"
+        "menu-row-portfolio",
+        "menu-row-paper-trade",
+        "menu-row-journal"
       ],
-      "locate": { "strategy": "horizontal_rules", "band": "list", "count": 8 },
+      "reference_count": 10,
       "budget_px": 1,
-      "note": "Eight consecutive rows, every gap against the first. These are the eight our own MenuRowMetricsTest measures at exactly 50.0 dp; this is the same claim in pixels, against theirs."
-    },
-    {
-      "id": "row-divider",
-      "kind": "divider",
-      "element": "menu-row-divider-0",
-      "locate": { "strategy": "horizontal_rules", "band": "list", "index": 0 },
-      "budget_px": 1,
-      "note": "Thickness, and the inset that decides whether the marks read as a column or as a table's first cell."
-    },
-    {
-      "id": "glyph-column",
-      "kind": "centre",
-      "axis": "x",
-      "elements": ["menu-glyph-watchlist", "menu-glyph-search", "menu-glyph-heatmap"],
-      "locate": { "strategy": "manual", "boxes": null },
-      "budget_px": 1,
-      "note": "Thirty different outlines have to start their words at the same x. That is what the fixed glyph column buys and it is the only thing worth checking about it."
-    },
-    {
-      "id": "section-heading-gap",
-      "kind": "gap",
-      "from": "menu-section-heading-0",
-      "to": "menu-row-watchlist",
-      "locate": { "strategy": "manual", "boxes": null },
-      "budget_px": 1
+      "note": "Ten consecutive rows, every gap against the first. These are the rows MenuRowMetricsTest measures at exactly 50.0dp; this is the same claim in pixels, against theirs."
     }
   ],
   "colour_samples": [
-    { "id": "page-stage", "locate": { "strategy": "manual", "point": null }, "exact": true },
-    { "id": "row-divider-ink", "locate": { "strategy": "horizontal_rules", "band": "list", "index": 0 }, "exact": true }
+    {
+      "id": "page-stage",
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "A flat area of their page ground."
+      }
+    },
+    {
+      "id": "row-divider-ink",
+      "reference": {
+        "strategy": "horizontal_rules",
+        "index": 1
+      }
+    }
   ],
   "known_differences": [
     {
       "label": "INTENTIONAL_BRAND_DIFFERENCE",
       "what": "The set of rows, their grouping and their order.",
-      "why": "Menu product architecture is settled and out of scope. What is compared is the rhythm: row height, divider, glyph column, heading spacing."
+      "why": "Menu catalogue architecture is frozen. What is compared is the rhythm: row height, divider, glyph column, heading spacing."
     },
     {
       "label": "INTENTIONAL_BRAND_DIFFERENCE",
-      "what": "Seven rows carry a second line where every row of theirs carries none, or every row carries one.",
-      "why": "MenuCatalogue.DESCRIPTIVE_ROWS, with the argument for each of the seven written beside it. They are 51 px taller than the rest by exactly one line and are excluded from the cadence measurement above."
+      "what": "Seven rows carry a second line.",
+      "why": "MenuCatalogue.DESCRIPTIVE_ROWS, with the argument for each written beside it. They measure 51.0dp and are excluded from the cadence above."
+    },
+    {
+      "label": "COPY_DIFFERENCE",
+      "what": "Row words name this product's screens.",
+      "why": "Masked at the glyphs; the row box stays measured."
     }
   ]
 }

@@ -81,6 +81,36 @@ jobs:
       - name: The visual-parity specs are well-formed
         run: python3 scripts/visual/compare_tradingview_reference.py --validate
 
+      # **The reference pack, when there is one.**
+      #
+      # Two outcomes and no third. With no pack the verifier exits 3 — `REFERENCE_MISSING` — and
+      # that is the documented state of this repository, so the step says so and the comparator is
+      # not run against nothing. With a pack, every checksum, dimension and metadata field is
+      # verified and then the comparison itself runs at the certification mask budget; anything
+      # other than a clean pass fails the job.
+      #
+      # What this step must never do is repair the thing it is checking. It does not record a
+      # golden, it does not overwrite a reference, and it does not accept a changed capture because
+      # the comparison failed — a gate that fixes its own inputs is not a gate.
+      - name: The TradingView reference pack verifies, and the comparison runs if it exists
+        run: |
+          set -e
+          python3 -m pip install --quiet -r scripts/visual/requirements.txt
+          set +e
+          python3 scripts/visual/verify_reference_manifest.py
+          status=$?
+          set -e
+          if [ "$status" -eq 3 ]; then
+            echo "::notice::REFERENCE_MISSING — no TradingView reference pack in the repository."
+            echo "::notice::CoinePro regression gates still apply; TradingView parity is NOT YET PROVEN."
+            exit 0
+          fi
+          if [ "$status" -ne 0 ]; then
+            echo "::error::the reference pack does not verify (exit $status)"
+            exit "$status"
+          fi
+          python3 scripts/visual/compare_tradingview_reference.py --all --level certification
+
       - name: Enforce Phase 1-17 repository consistency
         run: python3 scripts/quality/check-cross-phase-consistency.py
 
@@ -206,9 +236,10 @@ jobs:
             adb pull /sdcard/coinepro-menu-render.png app/build/screenshots/coinepro-menu-render.png
             # And the file is checked for being a PNG rather than for being non-empty, which is the
             # distinction the old check could not make.
-            head -c 8 app/build/screenshots/coinepro-menu-render.png | od -An -tx1 | tr -d ' \n' \
-              | grep -qx '89504e470d0a1a0a' \
-              || { echo "::error::the pulled capture is not a PNG"; head -c 200 app/build/screenshots/coinepro-menu-render.png; exit 1; }
+            case "$(head -c 8 app/build/screenshots/coinepro-menu-render.png | od -An -tx1 | tr -d '[:space:]')" in
+              89504e470d0a1a0a) echo "capture is a PNG" ;;
+              *) echo "::error::the pulled capture is not a PNG, it is:"; head -c 200 app/build/screenshots/coinepro-menu-render.png; exit 1 ;;
+            esac
 
       - name: Upload actual rendered app menu screenshot
         if: success()

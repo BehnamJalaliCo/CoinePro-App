@@ -9,9 +9,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.layout.LastBaseline
 import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.getAlignmentLinePosition
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.coinepro.core.designsystem.CoineProColors
@@ -101,13 +106,25 @@ class VisualParityCaptureTest {
     @Test
     fun captureBottomBar() {
         assertCanonicalDevice()
+        // Every part the bottom-bar spec anchors against: the bar, its hairline, the tab row, and
+        // for each of the five destinations its column, its selection plate, its glyph and its
+        // word. Tagged by route rather than by index — see `AppChromeTestTags`.
         val tags = buildList {
             add(AppChromeTestTags.BOTTOM_BAR)
             add(AppChromeTestTags.BOTTOM_BAR_DIVIDER)
             add(AppChromeTestTags.BOTTOM_BAR_CONTENT)
+            AppDestination.entries.forEach { destination ->
+                add(AppChromeTestTags.barItem(destination.route))
+                add(AppChromeTestTags.barPlate(destination.route))
+                add(AppChromeTestTags.barGlyph(destination.route))
+                add(AppChromeTestTags.barLabel(destination.route))
+            }
         }
+        // The label's baseline is what a typographic comparison is actually about — the box around
+        // a word is the same whatever font drew it, and the baseline is not.
+        val baselines = AppDestination.entries.map { AppChromeTestTags.barLabel(it.route) }
         AppDestination.entries.forEach { destination ->
-            capture("bottom-bar-${destination.route}-dark", tags) {
+            capture("bottom-bar-${destination.route}-dark", tags, baselines) {
                 CoineProBottomBar(
                     currentRoute = destination.route,
                     onSelect = {},
@@ -122,10 +139,10 @@ class VisualParityCaptureTest {
         assertCanonicalDevice()
         listOf(true, false).forEach { signedIn ->
             val access = MenuAccess(platform = MarketPlatform.TRADEYAR, signedIn = signedIn)
-            val tags = MenuCatalogue.sections(access)
+            val rows = MenuCatalogue.sections(access)
                 .flatMap { section -> section.items.map { MenuTestTags.row(it.entry.id) } }
             val name = if (signedIn) "menu-dark" else "menu-guest-dark"
-            capture(name, tags) {
+            capture(name, rows, emptyList()) {
                 MenuScreen(
                     access = access,
                     onOpen = {},
@@ -150,7 +167,12 @@ class VisualParityCaptureTest {
      * the system's and are masked in the specs; cropping them out here would mean the two sides
      * were cropped by different hands, which is its own way of not comparing like with like.
      */
-    private fun capture(name: String, tags: List<String>, content: @Composable () -> Unit) {
+    private fun capture(
+        name: String,
+        tags: List<String>,
+        baselineTags: List<String>,
+        content: @Composable () -> Unit,
+    ) {
         slot.value = content
         if (!started) {
             started = true
@@ -181,6 +203,18 @@ class VisualParityCaptureTest {
             if (nodes.isNotEmpty()) {
                 boxes.put(tag, JSONArray(screenBox(nodes.first())))
             }
+        }
+        // Baselines are emitted under their own key so a spec can anchor on them explicitly, and
+        // so a missing one reads as a missing anchor rather than as a box that quietly moved.
+        val window = IntArray(2)
+        composeRule.activity.window.decorView.getLocationOnScreen(window)
+        baselineTags.forEach { tag ->
+            val baseline: Dp = runCatching {
+                composeRule.onNodeWithTag(tag).getAlignmentLinePosition(LastBaseline)
+            }.getOrElse { return@forEach }
+            if (!baseline.isSpecified) return@forEach
+            val y = with(composeRule.density) { baseline.toPx() } + window[1]
+            boxes.put("$tag@baseline", y.toInt())
         }
         boxes.put("__frame__", JSONArray(listOf(0, 0, shot.width, shot.height)))
         File(output, "$name-elements.json").writeText(boxes.toString(2))

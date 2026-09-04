@@ -1,8 +1,9 @@
 {
-  "schema": 1,
+  "schema": 2,
   "screen": "watchlist",
   "title": "The watchlist",
-  "why": "It is the app's root destination and the screen a reader opens by reflex. Its fold decides how many markets they see before scrolling, and its row cadence is the thing that makes a long list readable or exhausting.",
+  "locale": "en-US",
+  "why": "It is the app's root destination and the screen a reader opens by reflex. Its fold decides how many markets they see before scrolling, and its row cadence is what makes a long list readable or exhausting.",
   "reference": {
     "dark": "watchlist-dark.png",
     "light": "watchlist-light.png"
@@ -11,85 +12,296 @@
     "dark": "watchlist-dark.png",
     "light": "watchlist-light.png"
   },
+  "mask_budget": {
+    "development": 0.15,
+    "certification": 0.05
+  },
   "masks": [
     {
       "class": "price",
-      "reason": "Content. Their BTC and ours were quoted seconds apart and neither number says anything about layout. The price cell's box stays compared; the digits inside it do not.",
-      "elements": ["watchlist-row-*-price"],
+      "reason": "Content. Their BTC and ours were quoted seconds apart and neither number says anything about layout. The price cell's box stays compared.",
+      "elements": [
+        "watchlist-row-*-price"
+      ],
       "halo_px": 2
     },
     {
       "class": "percent-change",
-      "reason": "Content, and additionally a declared colour deviation in light theme.",
-      "elements": ["watchlist-row-*-percent"],
+      "reason": "Content, and additionally a declared light-theme colour deviation.",
+      "elements": [
+        "watchlist-row-*-percent"
+      ],
       "halo_px": 2
     },
     {
       "class": "sparkline",
-      "reason": "Content: it is a drawing of the last few hours, which differ.",
-      "elements": ["watchlist-row-*-spark"],
+      "reason": "Content: a drawing of the last few hours, which differ.",
+      "elements": [
+        "watchlist-row-*-spark"
+      ],
       "halo_px": 2
     },
     {
-      "class": "avatar",
-      "reason": "Symbol artwork is licensed per-exchange and is not the same set on both sides.",
-      "elements": ["watchlist-row-*-logo"],
+      "class": "symbol-artwork",
+      "reason": "Symbol marks are licensed per exchange and are not the same set on both sides. Only the interior is covered — the logo's bounding box, its distance to the ticker and the row's padding all stay measured.",
+      "elements": [
+        "watchlist-row-*-logo"
+      ],
+      "halo_px": 3
+    },
+    {
+      "class": "brand-mark",
+      "reason": "Their wordmark and ours are the two things that are supposed to differ.",
+      "elements": [
+        "watchlist-wordmark"
+      ],
       "halo_px": 2
     }
   ],
-  "measurements": [
+  "anchors": [
     {
-      "id": "row-height",
-      "kind": "element_box",
-      "axis": "h",
-      "element": "watchlist-row-0",
-      "locate": { "strategy": "horizontal_rules", "band": "list", "index": 0 },
+      "id": "pageTop",
+      "actual": {
+        "tag": "watchlist-page",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Top of their content area."
+      },
       "budget_px": 1
     },
     {
+      "id": "headerBottom",
+      "actual": {
+        "tag": "watchlist-header",
+        "edge": "bottom"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Where their header ends."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "controlRowTop",
+      "actual": {
+        "tag": "watchlist-controls",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Top of their control row."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "controlRowBottom",
+      "actual": {
+        "tag": "watchlist-controls",
+        "edge": "bottom"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Bottom of their control row."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "headingsBaseline",
+      "actual": {
+        "tag": "watchlist-headings",
+        "baseline": true
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their column headings' baseline."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "firstRowTop",
+      "actual": {
+        "tag": "watchlist-row-0",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "horizontal_rules",
+        "index": 0
+      },
+      "budget_px": 1,
+      "note": "The fold. Ours is 117dp and asserted exactly by FoldMetricsTest; this is the same number in pixels against theirs."
+    },
+    {
+      "id": "firstRowBottom",
+      "actual": {
+        "tag": "watchlist-row-0",
+        "edge": "bottom"
+      },
+      "reference": {
+        "strategy": "horizontal_rules",
+        "index": 1
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "rowHeight",
+      "actual": {
+        "tag": "watchlist-row-0",
+        "edge": "height"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their row height."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "logoCenterX",
+      "actual": {
+        "tag": "watchlist-row-0-logo",
+        "edge": "centerX"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their logo column centre."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "tickerBaseline",
+      "actual": {
+        "tag": "watchlist-row-0-ticker",
+        "baseline": true
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their ticker baseline."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "descriptionBaseline",
+      "actual": {
+        "tag": "watchlist-row-0-description",
+        "baseline": true
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their description baseline."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "priceBaseline",
+      "actual": {
+        "tag": "watchlist-row-0-price",
+        "baseline": true
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their price baseline."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "changeBaseline",
+      "actual": {
+        "tag": "watchlist-row-0-percent",
+        "baseline": true
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their change baseline."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "dividerY",
+      "actual": {
+        "tag": "watchlist-row-divider-0",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "horizontal_rules",
+        "index": 1
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "dividerInsetX",
+      "actual": {
+        "tag": "watchlist-row-divider-0",
+        "edge": "left"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Where their rule starts."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "bottomBarTop",
+      "actual": {
+        "tag": "bottom-bar",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "bottom_bar",
+        "part": "divider"
+      },
+      "budget_px": 1
+    }
+  ],
+  "cadence": [
+    {
       "id": "row-cadence",
-      "kind": "cadence",
-      "elements": ["watchlist-row-0", "watchlist-row-1", "watchlist-row-2", "watchlist-row-3", "watchlist-row-4"],
-      "locate": { "strategy": "horizontal_rules", "band": "list", "count": 5 },
+      "tags": [
+        "watchlist-row-0",
+        "watchlist-row-1",
+        "watchlist-row-2",
+        "watchlist-row-3",
+        "watchlist-row-4"
+      ],
+      "reference_count": 5,
       "budget_px": 1,
-      "note": "Every gap is measured against the first, not against its neighbour. Neighbour-to-neighbour hides a half-pixel that accumulates: five rows down a list that is two and a half pixels, and by row forty it is a visible slope. This is the assertion that catches drift rather than averaging it away."
-    },
-    {
-      "id": "row-divider",
-      "kind": "divider",
-      "element": "watchlist-row-divider-0",
-      "locate": { "strategy": "horizontal_rules", "band": "list", "index": 0 },
-      "budget_px": 1,
-      "note": "Thickness and left inset both. An inset that starts under the glyph instead of under the words turns a column of marks into a table of cells."
-    },
-    {
-      "id": "pre-row-chrome",
-      "kind": "gap",
-      "from": "page-top",
-      "to": "watchlist-row-0",
-      "locate": { "strategy": "horizontal_rules", "band": "list", "index": 0 },
-      "budget_px": 1,
-      "note": "The fold. Ours is 117 dp and is asserted exactly in FoldMetricsTest; this is the same number measured against theirs in pixels."
-    },
-    {
-      "id": "column-edges",
-      "kind": "element_box",
-      "axis": "x",
-      "elements": ["watchlist-row-0-ticker", "watchlist-row-0-price", "watchlist-row-0-percent"],
-      "locate": { "strategy": "manual", "boxes": null },
-      "budget_px": 1,
-      "note": "The move column running off the row at 393 dp is a fault this app has actually shipped. It is measured, not eyeballed."
+      "note": "Five consecutive rows, every gap measured against the first. Neighbour-to-neighbour averages away the half-pixel that accumulates: five rows down that is two and a half pixels, and by row forty it is a slope somebody can see."
     }
   ],
   "colour_samples": [
-    { "id": "page-stage", "locate": { "strategy": "manual", "point": null }, "exact": true },
-    { "id": "row-divider-ink", "locate": { "strategy": "horizontal_rules", "band": "list", "index": 0 }, "exact": true }
+    {
+      "id": "page-stage",
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "A flat area of their page ground."
+      }
+    },
+    {
+      "id": "row-divider-ink",
+      "reference": {
+        "strategy": "horizontal_rules",
+        "index": 1
+      }
+    }
   ],
   "known_differences": [
     {
       "label": "INTENTIONAL_ACCESSIBILITY_DEVIATION",
-      "what": "Light theme marketUp #057A66 and marketDown #D01427, against their #089981 and #F23645.",
-      "why": "Theirs measure below 4.5:1 on our light surface. Ours are 4.62:1 and 5.02:1. Dark theme uses their values unchanged."
+      "what": "Light theme marketUp #057A66 and marketDown #D01427 against their #089981 and #F23645.",
+      "why": "Theirs measure below 4.5:1 on our light surface. Ours are 4.62:1 and 5.02:1. Dark theme uses their values unchanged. Accessibility is not traded for a score."
     },
     {
       "label": "INTENTIONAL_BRAND_DIFFERENCE",
@@ -99,7 +311,7 @@
     {
       "label": "DYNAMIC_CONTENT",
       "what": "Every price, percentage, sparkline and symbol mark.",
-      "why": "Masked. See the mask list."
+      "why": "Masked at the interior only."
     }
   ]
 }

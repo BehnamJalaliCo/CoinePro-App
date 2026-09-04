@@ -1,24 +1,27 @@
 #!/usr/bin/env python3
 """Prove that a TradingView reference pack is what it says it is.
 
-A pixel golden is a claim about somebody else's software on a particular device on a particular
-day. A pack without provenance cannot support that claim, and a pack whose files no longer match
-its manifest is worse than none at all — it looks authoritative and is not.
+A pixel golden is a claim about somebody else's software, on a particular device, on a particular
+day, at a particular version of their app. A pack without that provenance cannot support the
+claim; a pack whose files no longer match its manifest is worse than none at all, because it looks
+authoritative and is not.
 
 So this refuses a pack that:
 
   * has no ``reference-manifest.json``;
-  * is missing any required field of source or device metadata;
-  * lists an image that is not on disk, or has an image on disk that the manifest does not list;
-  * contains anything that is not a PNG — a JPG or a WebP is lossy and cannot carry an exact
-    colour, so it can never be a colour reference;
-  * contains a PNG whose pixel size is not the device resolution the manifest declares, which is
-    what a resized or cropped-by-a-viewer image looks like from here;
+  * is missing any required field — **including ``versionName`` and ``versionCode`` read off the
+    device**, because a reference that is not tied to a version of their app cannot ever be
+    distinguished from the next one, and ``REFERENCE_VERSION_DIFFERENCE`` becomes unarguable;
+  * lists an image that is not on disk, or leaves an image on disk that the manifest does not list;
+  * contains anything that is not a PNG — JPG and WebP are lossy, so a colour read from one is a
+    colour the encoder invented;
+  * contains a PNG whose pixel size is neither the device resolution nor the declared crop, which
+    is what a resized or viewer-cropped image looks like from here;
   * has a single checksum that does not match.
 
-Exit status is 0 for a verified pack, 1 for a pack that fails verification, and 3 when there is no
-pack at all — which is not a failure of this script, it is the documented state of this repository.
-See docs/design/TRADINGVIEW_ANDROID_REFERENCE_CAPTURE.md.
+Exit status: 0 verified, 4 ``REFERENCE_INVALID``, 3 ``REFERENCE_MISSING`` — which is not a failure
+of this script but the documented state of this repository. See
+``docs/design/TRADINGVIEW_ANDROID_REFERENCE_CAPTURE.md``.
 """
 
 from __future__ import annotations
@@ -30,33 +33,50 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-REFERENCES = REPO / "visual-parity" / "references"
+
+#: Where a pack belongs, versioned by *their* app version.
+REFERENCE_ROOT = REPO / "docs" / "design" / "reference" / "tradingview-android"
+
+#: The first home of this directory, still read so an older pack is not orphaned by a rename.
+LEGACY_ROOT = REPO / "visual-parity" / "references"
+
 MANIFEST_NAME = "reference-manifest.json"
 
-REQUIRED_SOURCE = ("app", "package", "version_name", "version_code", "captured_at", "captured_by")
-REQUIRED_DEVICE = (
-    "model",
-    "api_level",
+REQUIRED_TOP = (
+    "package",
+    "versionName",
+    "versionCode",
+    "device",
     "resolution",
-    "density_dpi",
-    "font_scale",
-    "navigation_mode",
+    "densityDpi",
+    "fontScale",
     "orientation",
+    "theme",
+    "locale",
+    "captureMethod",
+    "captureDate",
 )
-REQUIRED_IMAGE = ("file", "screen", "theme", "locale", "sha256")
 
-NO_PACK = 3
-
-
-def packs(root: Path) -> list[Path]:
-    """Every directory under ``references`` that carries a manifest, newest name last."""
-    if not root.is_dir():
-        return []
-    return sorted(p for p in root.iterdir() if p.is_dir() and (p / MANIFEST_NAME).is_file())
+REFERENCE_MISSING = 3
+REFERENCE_INVALID = 4
 
 
-def newest_pack(root: Path) -> Path | None:
-    found = packs(root)
+def packs(*roots: Path) -> list[Path]:
+    """Every directory under the given roots that carries a manifest."""
+    found: list[Path] = []
+    for root in roots:
+        if root.is_dir():
+            found += [p for p in sorted(root.iterdir()) if p.is_dir() and (p / MANIFEST_NAME).is_file()]
+    return found
+
+
+def all_packs() -> list[Path]:
+    return packs(REFERENCE_ROOT, LEGACY_ROOT)
+
+
+def newest_pack(_: Path | None = None) -> Path | None:
+    """The last pack by directory name — packs are named by version, so the last is the newest."""
+    found = all_packs()
     return found[-1] if found else None
 
 
@@ -69,16 +89,33 @@ def sha256(path: Path) -> str:
 
 
 def png_size(path: Path) -> tuple[int, int] | None:
-    """The pixel size out of the IHDR chunk, without needing an imaging library.
+    """Pixel size out of the IHDR chunk, read from the file's own header.
 
-    Read from the file's own header rather than from a decoder, so that a file which merely has a
-    ``.png`` extension is caught here rather than three steps later in the comparator.
+    From the header rather than through a decoder, so a file that merely *has* a ``.png``
+    extension is caught here rather than three steps later inside the comparator.
     """
     with path.open("rb") as handle:
         header = handle.read(24)
     if len(header) < 24 or header[:8] != b"\x89PNG\r\n\x1a\n" or header[12:16] != b"IHDR":
         return None
     return int.from_bytes(header[16:20], "big"), int.from_bytes(header[20:24], "big")
+
+
+def declared_sizes(manifest: dict) -> list[tuple[int, int]]:
+    """The sizes a capture in this pack is allowed to be: the screen, and the declared crop."""
+    sizes: list[tuple[int, int]] = []
+    resolution = manifest.get("resolution")
+    if isinstance(resolution, str) and "x" in resolution:
+        w, _, h = resolution.partition("x")
+        if w.strip().isdigit() and h.strip().isdigit():
+            sizes.append((int(w), int(h)))
+    elif isinstance(resolution, list) and len(resolution) == 2:
+        sizes.append((int(resolution[0]), int(resolution[1])))
+
+    crop = manifest.get("crop")
+    if isinstance(crop, dict) and {"left", "top", "right", "bottom"} <= crop.keys():
+        sizes.append((int(crop["right"]) - int(crop["left"]), int(crop["bottom"]) - int(crop["top"])))
+    return sizes
 
 
 def verify(pack: Path) -> list[str]:
@@ -90,80 +127,61 @@ def verify(pack: Path) -> list[str]:
     except json.JSONDecodeError as error:
         return [f"{manifest_path}: not valid JSON — {error}"]
 
-    if manifest.get("schema") != 1:
-        problems.append(f"{manifest_path}: unknown schema {manifest.get('schema')!r}, expected 1")
-
-    source = manifest.get("source") or {}
-    for field in REQUIRED_SOURCE:
-        if not source.get(field):
+    for field in REQUIRED_TOP:
+        if manifest.get(field) in (None, "", []):
             problems.append(
-                f"source.{field} is missing. A reference pack without it cannot be told apart "
-                "from the next one, and REFERENCE_VERSION_DIFFERENCE becomes unarguable."
+                f"{field} is missing. Every one of these is read off the device with adb; none is "
+                "assumed, and a pack that cannot name the version of their app it came from can "
+                "never be told apart from the next one."
             )
 
-    device = manifest.get("device") or {}
-    for field in REQUIRED_DEVICE:
-        if device.get(field) in (None, ""):
-            problems.append(
-                f"device.{field} is missing. Every one of these is read off the device with adb; "
-                "none of them is assumed."
-            )
+    sizes = declared_sizes(manifest)
+    if not sizes:
+        problems.append("resolution is missing or unreadable, so no capture size can be checked")
 
-    resolution = device.get("resolution")
-    expected_size: tuple[int, int] | None = None
-    if isinstance(resolution, list) and len(resolution) == 2:
-        expected_size = (int(resolution[0]), int(resolution[1]))
+    checksums = manifest.get("sha256")
+    if not isinstance(checksums, dict) or not checksums:
+        problems.append(
+            "sha256 is missing or empty. Without a checksum per screenshot there is no way to say "
+            "that the file measured is the file committed."
+        )
+        checksums = {}
 
-    images = manifest.get("images") or []
-    if not images:
-        problems.append("the manifest lists no images")
+    on_disk = {p.name for p in pack.iterdir() if p.is_file() and p.name != MANIFEST_NAME}
 
-    listed: set[str] = set()
-    for entry in images:
-        name = entry.get("file")
-        if not name:
-            problems.append("an image entry has no 'file'")
-            continue
-        listed.add(name)
-        for field in REQUIRED_IMAGE:
-            if entry.get(field) in (None, ""):
-                problems.append(f"{name}: {field} is missing")
-
+    for name, expected in checksums.items():
         path = pack / name
         if not path.is_file():
             problems.append(f"{name}: listed in the manifest and not on disk")
             continue
-
         if path.suffix.lower() != ".png":
             problems.append(
-                f"{name}: not a PNG. JPG and WebP are lossy, so a colour read from one is a "
-                "colour the encoder invented. See Rule Zero."
+                f"{name}: not a PNG. JPG and WebP are lossy, so a colour read from one is a colour "
+                "the encoder invented. See Rule Zero."
             )
             continue
-
         size = png_size(path)
         if size is None:
             problems.append(f"{name}: has a .png name and is not a PNG file")
             continue
-        if expected_size and size != expected_size and not entry.get("crop"):
+        if sizes and size not in sizes:
+            allowed = " or ".join(f"{w}×{h}" for w, h in sizes)
             problems.append(
-                f"{name}: is {size[0]}×{size[1]} and the device is "
-                f"{expected_size[0]}×{expected_size[1]}. An uncropped capture that is not the "
-                "device's own resolution has been resized, and a resized reference is not one."
+                f"{name}: is {size[0]}×{size[1]} and the manifest declares {allowed}. A capture "
+                "that is neither the screen nor the declared crop has been resized, and a resized "
+                "reference is not one."
             )
-
         actual = sha256(path)
-        if actual != entry.get("sha256"):
+        if actual != expected:
             problems.append(
-                f"{name}: checksum does not match — manifest says {entry.get('sha256')}, "
-                f"the file is {actual}. The file that was measured is not the file that is here."
+                f"{name}: checksum does not match — manifest says {expected}, the file is "
+                f"{actual}. The file that was measured is not the file that is here."
             )
 
-    on_disk = {p.name for p in pack.iterdir() if p.is_file() and p.name != MANIFEST_NAME}
-    for stray in sorted(on_disk - listed):
+    for stray in sorted(on_disk - set(checksums)):
         problems.append(
-            f"{stray}: on disk and not in the manifest. An unlisted image has no provenance, "
-            "which is the one thing a reference has to have."
+            f"{stray}: on disk and not in the manifest. An unlisted image has no provenance, which "
+            "is the one thing a reference has to have."
         )
 
     return problems
@@ -171,27 +189,22 @@ def verify(pack: Path) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument(
-        "--pack",
-        type=Path,
-        default=None,
-        help="a specific pack directory; the default is the newest one under visual-parity/references",
-    )
+    parser.add_argument("--pack", type=Path, default=None, help="a specific pack directory")
     parser.add_argument("--all", action="store_true", help="verify every pack, not just the newest")
     args = parser.parse_args()
 
     if args.pack:
         chosen = [args.pack]
     elif args.all:
-        chosen = packs(REFERENCES)
+        chosen = all_packs()
     else:
-        newest = newest_pack(REFERENCES)
+        newest = newest_pack()
         chosen = [newest] if newest else []
 
     if not chosen:
         print("REFERENCE_MISSING")
         print()
-        print(f"No TradingView reference pack under {REFERENCES.relative_to(REPO)}.")
+        print(f"No TradingView reference pack under {REFERENCE_ROOT.relative_to(REPO)}.")
         print()
         print("This is the documented state of this repository, not a broken script. A pixel")
         print("golden can only come from the real TradingView Android app on the same device")
@@ -201,24 +214,24 @@ def main() -> int:
         print()
         print("To produce one, work through:")
         print("  docs/design/TRADINGVIEW_ANDROID_REFERENCE_CAPTURE.md")
-        return NO_PACK
+        return REFERENCE_MISSING
 
     failed = False
     for pack in chosen:
         if not (pack / MANIFEST_NAME).is_file():
-            print(f"FAIL {pack}: no {MANIFEST_NAME}")
+            print(f"REFERENCE_INVALID {pack}: no {MANIFEST_NAME}")
             failed = True
             continue
         problems = verify(pack)
         if problems:
             failed = True
-            print(f"FAIL {pack.name}")
+            print(f"REFERENCE_INVALID {pack.name}")
             for problem in problems:
                 print(f"  - {problem}")
         else:
             print(f"OK   {pack.name}")
 
-    return 1 if failed else 0
+    return REFERENCE_INVALID if failed else 0
 
 
 if __name__ == "__main__":

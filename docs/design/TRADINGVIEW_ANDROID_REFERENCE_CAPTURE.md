@@ -91,7 +91,7 @@ Dark theme:
 
 | File | Screen | Notes |
 |---|---|---|
-| `watchlist-dark.png` | Watchlist | Scrolled to top. At least ten rows visible. |
+| `watchlist-dark.png` | Watchlist | Scrolled to top. **At least ten rows visible** — five are measured for cadence and the rest prove the cadence does not drift. Load symbols of comparable asset classes to ours: crypto, an index, an FX pair, a metal. Prices need not match; row geometry does. |
 | `chart-dark.png` | Chart | Default interval, no drawing tool selected, no crosshair. |
 | `explore-dark.png` | Explore / markets home | Scrolled to top. |
 | `ideas-dark.png` | Ideas | First face, scrolled to top. |
@@ -105,13 +105,28 @@ Light theme (`ui_night_mode 1`), re-verifying the device after the switch:
 | `explore-light.png` | Explore |
 | `menu-light.png` | Menu |
 
+**Every bottom-bar state, and one capture is not enough.** The bar is five columns and a selection
+treatment, and the selection is the only part that changes — so a single screenshot measures the
+geometry once and the *state* never. Five captures, one per destination:
+
+| File | Selected |
+|---|---|
+| `bottom-bar-watchlist-dark.png` | Watchlist |
+| `bottom-bar-chart-dark.png` | Chart |
+| `bottom-bar-explore-dark.png` | Explore |
+| `bottom-bar-ideas-dark.png` | Ideas |
+| `bottom-bar-menu-dark.png` | Menu |
+
+Each is read for icon position and size, the selected treatment's bounds, the label baseline, the
+column width, the divider and the vertical geometry — twelve named anchors, listed in
+`visual-parity/specs/bottom-bar.json`.
+
 Optional, and worth having:
 
 | File | Screen |
 |---|---|
 | `search-dark.png` | Symbol search |
 | `list-switcher-dark.png` | Watchlist switcher |
-| `bottom-bar-<tab>-dark.png` | One capture per bottom-bar tab, so the selected treatment is measured in every state |
 
 ## 5. Normalise the state, not the content
 
@@ -129,15 +144,16 @@ make them match — a masked class is honest and a doctored screenshot is not.
 ## 6. File the pack
 
 ```
-visual-parity/references/tradingview-android-<versionName>-<yyyy-mm-dd>/
+docs/design/reference/tradingview-android/<versionName>/
   reference-manifest.json
   watchlist-dark.png
   chart-dark.png
   …
 ```
 
-Versioned by their app version and the capture date, because a pack is a statement about one release
-of somebody else's software on one day.
+Versioned by **their** app version, because a pack is a statement about one release of somebody
+else's software. A new version of their app gets a new directory; the old one is never overwritten
+and never deleted — see *Reference update rule* below.
 
 ## 7. The manifest
 
@@ -146,41 +162,44 @@ required; `verify_reference_manifest.py` refuses the pack otherwise.
 
 ```json
 {
-  "schema": 1,
-  "source": {
-    "app": "TradingView",
-    "package": "com.tradingview.tradingviewapp",
-    "version_name": "<read from dumpsys>",
-    "version_code": "<read from dumpsys>",
-    "captured_at": "<ISO 8601, with offset>",
-    "captured_by": "<who>"
-  },
-  "device": {
-    "model": "<ro.product.model>",
-    "api_level": 35,
-    "resolution": [1080, 2400],
-    "density_dpi": 420,
-    "font_scale": 1.0,
-    "navigation_mode": "gestural",
-    "orientation": "portrait"
-  },
-  "images": [
-    {
-      "file": "watchlist-dark.png",
-      "screen": "watchlist",
-      "theme": "dark",
-      "locale": "en-US",
-      "tab": "watchlist",
-      "crop": null,
-      "sha256": "<sha256sum of the file>"
-    }
-  ]
+  "package": "com.tradingview.tradingviewapp",
+  "versionName": "<read from dumpsys>",
+  "versionCode": "<read from dumpsys>",
+  "firstInstallTime": "<read from dumpsys>",
+  "lastUpdateTime": "<read from dumpsys>",
+  "device": "Pixel 6",
+  "resolution": "1080x2400",
+  "densityDpi": 420,
+  "fontScale": 1.0,
+  "orientation": "portrait",
+  "theme": "dark",
+  "locale": "en-US",
+  "captureMethod": "adb",
+  "captureDate": "<ISO 8601, with offset>",
+  "capturedBy": "<who>",
+  "crop": { "left": 0, "top": 96, "right": 1080, "bottom": 2280 },
+  "sha256": {
+    "watchlist-dark.png": "<sha256sum of the file>",
+    "menu-dark.png": "<sha256sum of the file>"
+  }
 }
 ```
 
-`crop` is `null` unless a region was deliberately excluded, in which case it is
-`[x, y, width, height]` in physical pixels and the reason belongs in the screen's spec file. Cropping
-is not resizing: the pixels that remain are the pixels the device drew.
+`crop` is how the system bars are taken out of the comparison, and its four numbers are **measured
+off the device, not guessed** — the status bar's height and the navigation bar's are read with
+`adb shell dumpsys window displays` or from the captured PNG itself. Cropping is not resizing: the
+pixels that remain are exactly the pixels the device drew, and the same crop is applied to both
+sides. Omit `crop` entirely if the system bars are made deterministic in both apps instead.
+
+A capture must be either the full device resolution or exactly the declared crop. Anything else has
+been resized, and the verifier says so.
+
+### Language
+
+Capture **English, left-to-right**. Both apps then draw the same direction, text is directly
+comparable, baselines are baselines rather than mirror images, and far less has to be masked.
+CoinePro's Persian right-to-left integrity is a separate question, asked by Layer A's own goldens —
+see the policy document. Do not merge the two.
 
 ## 8. Check it in and verify it
 
@@ -191,6 +210,22 @@ python3 scripts/visual/verify_reference_manifest.py
 Every checksum is recomputed. A pack whose files do not match its manifest is rejected, which is the
 whole point of having one.
 
+## Reference update rule
+
+When TradingView ships a new version:
+
+1. capture a new pack into a **new** directory named for the new version;
+2. leave the old pack exactly where it is — it is the evidence behind every number already
+   published;
+3. run the comparison and produce a report;
+4. have a person read it, and decide which differences are `REFERENCE_VERSION_DIFFERENCE` and which
+   are ours;
+5. only then move CoinePro's parity target.
+
+CI never does any of this. It never overwrites a reference, never records a golden, and never
+accepts a changed capture because a comparison failed. A gate that repairs its own inputs is not a
+gate.
+
 ## What must never be done here
 
 * Never substitute a web screenshot, a store image, a JPG, or a resized PNG. Not once, not
@@ -199,3 +234,5 @@ whole point of having one.
 * Never edit a capture — not to remove a badge, not to change a price, not to crop out something
   awkward.
 * Never record a capture whose device settings were not read back off the device.
+* Never patch, re-theme, re-scale or otherwise modify the TradingView app. The reference has to
+  be what their official build renders, or it is a reference to something that does not exist.

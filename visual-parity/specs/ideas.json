@@ -1,8 +1,9 @@
 {
-  "schema": 1,
+  "schema": 2,
   "screen": "ideas",
   "title": "Ideas",
-  "why": "It is the one place two screens are composed inside a third, which is exactly where a duplicated heading hides — and a duplicated heading is a structural fault that a pixel diff describes badly and a semantic assertion names in one line.",
+  "locale": "en-US",
+  "why": "It is the one place two screens are composed inside a third, which is exactly where a duplicated heading hides — and a duplicated heading is structural, not pixel.",
   "reference": {
     "dark": "ideas-dark.png",
     "light": null
@@ -11,71 +12,183 @@
     "dark": "ideas-signals-dark.png",
     "light": null
   },
+  "mask_budget": {
+    "development": 0.15,
+    "certification": 0.08
+  },
   "masks": [
     {
       "class": "avatar",
       "reason": "Author marks belong to accounts.",
-      "elements": ["ideas-item-*-avatar"],
-      "halo_px": 2
+      "elements": [
+        "ideas-item-*-avatar"
+      ],
+      "halo_px": 3
     },
     {
       "class": "user-name",
       "reason": "Author names likewise.",
-      "elements": ["ideas-item-*-author"],
+      "elements": [
+        "ideas-item-*-author"
+      ],
       "halo_px": 2
     },
     {
       "class": "timestamp",
       "reason": "Post ages differ between two captures by definition.",
-      "elements": ["ideas-item-*-age"],
+      "elements": [
+        "ideas-item-*-age"
+      ],
       "halo_px": 2
     },
     {
       "class": "price",
       "reason": "Entry, stop and target figures are content.",
-      "elements": ["ideas-item-*-level"],
+      "elements": [
+        "ideas-item-*-level"
+      ],
       "halo_px": 2
     }
   ],
-  "measurements": [
+  "anchors": [
     {
-      "id": "exactly-one-root-heading",
-      "kind": "single_node",
-      "matcher": { "role": "heading", "scope": "root" },
-      "expected": 1,
-      "note": "Semantic, not pixel. A child screen drawing its own heading under the switch that already named the page is a structural duplication: the picture shows two words and says nothing about which one is wrong. This asserts the count and names the offender."
-    },
-    {
-      "id": "face-switch-box",
-      "kind": "element_box",
-      "element": "ideas-face-switch",
-      "locate": { "strategy": "manual", "boxes": null },
+      "id": "titleBaseline",
+      "actual": {
+        "tag": "ideas-title",
+        "baseline": true
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their page title baseline."
+      },
       "budget_px": 1
     },
     {
-      "id": "switch-to-first-item",
-      "kind": "gap",
-      "from": "ideas-face-switch",
-      "to": "ideas-item-0",
-      "locate": { "strategy": "manual", "boxes": null },
+      "id": "switchTop",
+      "actual": {
+        "tag": "ideas-face-switch",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Top of their face switch."
+      },
       "budget_px": 1
     },
     {
-      "id": "item-cadence",
-      "kind": "cadence",
-      "elements": ["ideas-item-0", "ideas-item-1", "ideas-item-2"],
-      "locate": { "strategy": "horizontal_rules", "band": "list", "count": 3 },
+      "id": "switchBottom",
+      "actual": {
+        "tag": "ideas-face-switch",
+        "edge": "bottom"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Bottom of it."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "switchHeight",
+      "actual": {
+        "tag": "ideas-face-switch",
+        "edge": "height"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Its height."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "selectedKeyBounds",
+      "actual": {
+        "tag": "ideas-face-key-selected",
+        "edge": "width"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their selected key's width."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "selectedLabelBaseline",
+      "actual": {
+        "tag": "ideas-face-key-selected",
+        "baseline": true
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Its label baseline."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "firstContentY",
+      "actual": {
+        "tag": "ideas-item-0",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Top of their first item."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "bottomBarTop",
+      "actual": {
+        "tag": "bottom-bar",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "bottom_bar",
+        "part": "divider"
+      },
       "budget_px": 1
     }
   ],
+  "cadence": [
+    {
+      "id": "item-cadence",
+      "tags": [
+        "ideas-item-0",
+        "ideas-item-1",
+        "ideas-item-2"
+      ],
+      "reference_count": 3,
+      "budget_px": 1
+    }
+  ],
+  "semantic_assertions": [
+    {
+      "id": "exactly-one-root-heading",
+      "expected": 1,
+      "note": "A child screen drawing its own heading under the switch that already named the page is a structural duplication: a picture shows two words and says nothing about which is wrong."
+    }
+  ],
   "colour_samples": [
-    { "id": "page-stage", "locate": { "strategy": "manual", "point": null }, "exact": true }
+    {
+      "id": "page-stage",
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "A flat area of their page ground."
+      }
+    }
   ],
   "known_differences": [
     {
       "label": "INTENTIONAL_BRAND_DIFFERENCE",
       "what": "Two faces — signals and community — behind one switch.",
-      "why": "Ideas' product architecture is settled and out of scope. Geometry is what is compared."
+      "why": "Ideas' product architecture is frozen. Geometry is what is compared."
     },
     {
       "label": "DYNAMIC_CONTENT",

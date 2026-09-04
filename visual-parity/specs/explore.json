@@ -1,8 +1,9 @@
 {
-  "schema": 1,
+  "schema": 2,
   "screen": "explore",
   "title": "Explore",
-  "why": "It is the page that answers «what happened today», and it is the one screen in this app whose fold was demonstrably moving under the reader while the data landed.",
+  "locale": "en-US",
+  "why": "It answers «what happened today», and it is the one screen in this app whose fold was demonstrably moving under the reader while the data landed.",
   "reference": {
     "dark": "explore-dark.png",
     "light": "explore-light.png"
@@ -12,96 +13,274 @@
     "light": "explore-light.png",
     "dark_loading": "explore-dark-loading.png"
   },
+  "mask_budget": {
+    "development": 0.15,
+    "certification": 0.08
+  },
   "masks": [
     {
       "class": "price",
       "reason": "Content.",
-      "elements": ["explore-card-*-price"],
+      "elements": [
+        "explore-card-*-price"
+      ],
       "halo_px": 2
     },
     {
       "class": "percent-change",
-      "reason": "Content, plus the declared light-theme colour deviation.",
-      "elements": ["explore-card-*-percent"],
+      "reason": "Content, plus the declared light-theme deviation.",
+      "elements": [
+        "explore-card-*-percent"
+      ],
       "halo_px": 2
     },
     {
       "class": "sparkline",
       "reason": "Content.",
-      "elements": ["explore-card-*-spark"],
+      "elements": [
+        "explore-card-*-spark"
+      ],
       "halo_px": 2
     },
     {
-      "class": "avatar",
-      "reason": "Symbol artwork differs by exchange licence.",
-      "elements": ["explore-card-*-logo"],
-      "halo_px": 2
+      "class": "symbol-artwork",
+      "reason": "Licensed per exchange; interior only, so the card's own geometry stays measured.",
+      "elements": [
+        "explore-card-*-logo"
+      ],
+      "halo_px": 3
     },
     {
       "class": "timestamp",
       "reason": "Story ages differ between two captures by definition.",
-      "elements": ["explore-story-*-age"],
+      "elements": [
+        "explore-story-*-age"
+      ],
       "halo_px": 2
     }
   ],
-  "measurements": [
+  "anchors": [
     {
-      "id": "strip-height",
-      "kind": "element_box",
-      "axis": "h",
-      "element": "explore-market-strip",
-      "locate": { "strategy": "manual", "boxes": null },
+      "id": "rootTitleBaseline",
+      "actual": {
+        "tag": "explore-title",
+        "baseline": true
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their page title baseline."
+      },
       "budget_px": 1
     },
     {
-      "id": "card-box",
-      "kind": "element_box",
-      "element": "explore-first-market-card",
-      "locate": { "strategy": "manual", "boxes": null },
+      "id": "searchCenterY",
+      "actual": {
+        "tag": "explore-search",
+        "edge": "centerY"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their search action centre."
+      },
       "budget_px": 1
     },
     {
-      "id": "card-gap",
-      "kind": "gap",
-      "from": "explore-market-card-0",
-      "to": "explore-market-card-1",
-      "locate": { "strategy": "manual", "boxes": null },
+      "id": "doorRowTop",
+      "actual": {
+        "tag": "explore-market-strip",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Top of their quick-door row."
+      },
       "budget_px": 1
     },
     {
-      "id": "chip-row-height",
-      "kind": "element_box",
-      "axis": "h",
-      "element": "explore-category-row",
-      "locate": { "strategy": "manual", "boxes": null },
+      "id": "doorRowBottom",
+      "actual": {
+        "tag": "explore-market-strip",
+        "edge": "bottom"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Bottom of it."
+      },
       "budget_px": 1
     },
     {
-      "id": "first-story-y",
-      "kind": "element_box",
-      "axis": "y",
-      "element": "explore-first-story",
-      "locate": { "strategy": "manual", "boxes": null },
+      "id": "categoryRowTop",
+      "actual": {
+        "tag": "explore-category-row",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Top of their category chips."
+      },
       "budget_px": 1
     },
     {
-      "id": "loading-to-loaded-stability",
-      "kind": "self_stability",
-      "compare": ["dark_loading", "dark"],
-      "elements": ["explore-first-story", "explore-category-row"],
+      "id": "categoryRowBottom",
+      "actual": {
+        "tag": "explore-category-row",
+        "edge": "bottom"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Bottom of them."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "firstCardX",
+      "actual": {
+        "tag": "explore-first-market-card",
+        "edge": "left"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Left edge of their first card."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "firstCardY",
+      "actual": {
+        "tag": "explore-first-market-card",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Top edge of it."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "cardWidth",
+      "actual": {
+        "tag": "explore-first-market-card",
+        "edge": "width"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their card width."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "cardHeight",
+      "actual": {
+        "tag": "explore-first-market-card",
+        "edge": "height"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Their card height."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "cardGap",
+      "actual": {
+        "tag": "explore-market-card-1",
+        "edge": "left"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Left edge of their second card; the gap is the difference."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "firstStoryY",
+      "actual": {
+        "tag": "explore-first-story",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "Top of their first story."
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "storyDividerY",
+      "actual": {
+        "tag": "explore-story-divider-0",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "horizontal_rules",
+        "index": 0
+      },
+      "budget_px": 1
+    },
+    {
+      "id": "bottomBarTop",
+      "actual": {
+        "tag": "bottom-bar",
+        "edge": "top"
+      },
+      "reference": {
+        "strategy": "bottom_bar",
+        "part": "divider"
+      },
+      "budget_px": 1
+    }
+  ],
+  "self_stability": [
+    {
+      "id": "loading-to-loaded",
+      "compare": [
+        "dark_loading",
+        "dark"
+      ],
+      "tags": [
+        "explore-first-story",
+        "explore-category-row",
+        "explore-first-market-card"
+      ],
+      "edge": "top",
       "budget_px": 1,
-      "note": "This one is not against the reference at all — it is ours against ours, one composition photographed either side of the catalogue landing. A steady-state golden cannot see it: both frames are individually correct and the fault is the difference between them. ExploreGeometryTest asserts the same thing in points; this asserts it in pixels on a real device."
+      "note": "Not against the reference at all — ours against ours, one composition photographed either side of the catalogue landing. A steady-state comparison against any reference, however perfect, is structurally incapable of seeing this."
     }
   ],
   "colour_samples": [
-    { "id": "page-stage", "locate": { "strategy": "manual", "point": null }, "exact": true },
-    { "id": "card-surface", "locate": { "strategy": "manual", "point": null }, "exact": true }
+    {
+      "id": "page-stage",
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "A flat area of their page ground."
+      }
+    },
+    {
+      "id": "card-surface",
+      "reference": {
+        "strategy": "manual",
+        "value": null,
+        "note": "The centre of one of their cards."
+      }
+    }
   ],
   "known_differences": [
     {
       "label": "INTENTIONAL_BRAND_DIFFERENCE",
       "what": "Section order and the set of sections.",
-      "why": "Explore's content architecture is this product's, not a copy of theirs. What is compared here is geometry: card sizes, gaps, row heights, the fold."
+      "why": "Explore's content architecture is this product's and is frozen. What is compared here is geometry: card sizes, gaps, row heights, the fold."
     },
     {
       "label": "INTENTIONAL_ACCESSIBILITY_DEVIATION",
@@ -109,7 +288,7 @@
     },
     {
       "label": "DYNAMIC_CONTENT",
-      "what": "Prices, percentages, sparklines, symbol marks, story ages."
+      "what": "Prices, percentages, sparklines, symbol marks and story ages."
     }
   ]
 }

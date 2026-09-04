@@ -92,18 +92,19 @@ they are JPGs, their provenance is a browser, and their density is not a phone's
 Not "small diff". Not "0.1 % of the frame is fine". **Zero unexplained diff**: every differing pixel
 is either fixed or is inside a named, argued exception.
 
-There are exactly four kinds of explained difference, and each has to be written into the screen's
+There are exactly five kinds of explained difference, and each has to be written into the screen's
 spec file with a reason:
 
 | Label | What it means |
 |---|---|
 | `INTENTIONAL_BRAND_DIFFERENCE` | Ours on purpose: our wordmark, our gold, our Persian type. |
 | `INTENTIONAL_ACCESSIBILITY_DEVIATION` | Ours on purpose because theirs fails a contrast floor we hold. |
+| `COPY_DIFFERENCE` | Different words for different products. The box and its baseline stay measured. |
 | `DYNAMIC_CONTENT` | A price, a timestamp, an avatar — content, not layout. Masked. |
 | `REFERENCE_VERSION_DIFFERENCE` | Their app changed; the reference pack is older than what ships now. |
 
 Anything else is a `BUG` and is fixed. A difference with no label is not a tolerance, it is an
-unfinished sentence.
+unfinished sentence — and the spec validator refuses a label that is not on this list.
 
 ### What a global tolerance would buy, and why it is not bought
 
@@ -195,9 +196,19 @@ place for a parity gate to become theatre, so:
 * **A halo is preserved.** A mask covers the glyphs, never the geometry around them: the row's
   bounds, its dividers, its column edges stay visible and stay compared. A mask that swallows the
   edge it was meant to prove is not a mask, it is a deletion.
-* **`masked_area_ratio` is reported on every run**, per screen and in total.
-* **The budget is 15 % of the frame per screen.** Past that the comparator fails with
-  `MASK_BUDGET_EXCEEDED` — because at some point a masked comparison is a comparison of the mask.
+* **`maskedAreaRatio` is reported on every run**, per screen.
+* **There are two budgets, and only one of them may be quoted.**
+
+| Level | Budget | What it is for |
+|---|---:|---|
+| `development` | 15 % | Debugging a screen while it is still being worked on. |
+| `certification` | 8 % | The number a release may quote. |
+| `certification`, watchlist and bottom bar | 5 % | The two surfaces that are almost all geometry — there is very little on them that legitimately cannot be compared. |
+
+Fifteen per cent is far too much to leave unexamined when the claim is Zero Unexplained Diff, which
+is why it is not the certification figure. Past a screen's budget the comparator exits
+`MASK_BUDGET_EXCEEDED` — at some point a masked comparison is a comparison of the mask. A screen's
+spec may *tighten* its budget; the spec validator refuses one that loosens it.
 
 ---
 
@@ -215,7 +226,9 @@ All distances are **physical pixels** on the canonical device.
 | Required registration translation | ≤ 1 px, else `FAIL` |
 | Frame size | exact, else `SIZE_MISMATCH` |
 | Colour, centre of a fill | 0 per channel |
-| Masked area, per screen | ≤ 15 % |
+| Edge shift, max and mean | ≤ 1 px |
+| Unexplained static pixels | **0** |
+| Masked area, per screen | ≤ certification budget |
 
 ### Typography is compared by role, not by raster
 
@@ -254,12 +267,74 @@ declared in the spec files, and it is the only colour deviation permitted withou
 
 ---
 
+## Anchors, and why they are not eyeballed
+
+Every screen declares its anchors explicitly — `barTop`, `dividerY`, `firstRowTop`,
+`labelBaselineY`, `iconCenterX` and the rest — and each one names **two locators**: where the
+number comes from on our side, and where it comes from on theirs.
+
+* **Ours** is a `testTag` the instrumented capture emits, plus an edge (`top`, `bottom`, `left`,
+  `right`, `centerX`, `centerY`, `width`, `height`) or a text baseline. Never a coordinate typed
+  into a file.
+* **Theirs** is either *structural* — a hairline found by its own contrast, which needs nobody's
+  help and is the same operation in either app — or `manual`, meaning a person has looked at the
+  reference and written the number down.
+
+A `manual` anchor with no number is **`ANCHOR_MISSING`** and a non-zero exit. It is not skipped and
+it does not quietly pass: a guessed anchor makes every number after it meaningless, so the
+comparator refuses to guess one.
+
+## The metrics a screen is certified on
+
+| Metric | Meaning |
+|---|---|
+| `maxAnchorDriftPx` | The worst single named anchor. |
+| `maxEdgeShiftPx` | The furthest any edge of ours sits from the nearest of theirs. |
+| `meanEdgeShiftPx` | Whether the whole frame drifted, or one element did. |
+| `maskedAreaRatio` | How much of the frame was excluded, against its budget. |
+| `unexplainedStaticPixelCount` | Pixels outside every declared mask that still differ. |
+| `unexplainedStaticPixelRatio` | The same as a share of the frame — reported, never used as a gate. |
+
+The gate on the last of these is **zero**. A ratio is reported because it is useful to a reader; it
+is not a tolerance, and no number of unexplained pixels is acceptable.
+
+## Failure has a vocabulary
+
+Each of these exits non-zero, and `REFERENCE_MISSING` is not success:
+
+| Status | Exit | Meaning |
+|---|---:|---|
+| `REFERENCE_MISSING` | 3 | No pack. Nothing was measured and nothing is claimed. |
+| `REFERENCE_INVALID` | 4 | A pack that does not verify: bad checksum, missing version, wrong size. |
+| `SIZE_MISMATCH` | 2 | The two frames are different sizes. Nothing is scaled. |
+| `ANCHOR_MISSING` | 5 | An anchor nobody recorded, or an element the capture does not carry. |
+| `MASK_BUDGET_EXCEEDED` | 6 | Too much of the frame excluded, or a mask that swallows its own geometry. |
+| `GEOMETRY_FAIL` | 1 | An anchor, a cadence, a registration or a colour outside its budget. |
+| `STATIC_DIFF_FAIL` | 1 | Unexplained pixels outside every mask. |
+
+## Which language is compared, and why it is two questions
+
+**TradingView structural parity runs in English, left-to-right.** Both apps then draw the same
+direction, the text is directly comparable, the baselines line up as baselines rather than as
+mirror images, and far less has to be masked. Comparing our Persian against their English would
+mask most of both screens and measure almost nothing.
+
+**CoinePro's own regression stays Persian, right-to-left**, because that is the product. Layer A's
+goldens are `fa-rIR-ldrtl` at both widths with one English case, and `FoldMetricsTest` and
+`MenuRowMetricsTest` assert in both directions.
+
+They are two questions and must not be merged: *is our geometry theirs* is asked in English; *is
+the app we ship still correct* is asked in Persian.
+
 ## Running it
+
+
 
 ```bash
 python3 -m pip install -r scripts/visual/requirements.txt
-python3 scripts/visual/verify_reference_manifest.py            # provenance and checksums
-python3 scripts/visual/compare_tradingview_reference.py --all   # the comparison
+python3 scripts/visual/compare_tradingview_reference.py --validate          # the specs themselves
+python3 scripts/visual/verify_reference_manifest.py                         # provenance, checksums
+python3 scripts/visual/compare_tradingview_reference.py --all --level certification
 ```
 
 Outputs, per screen, under `build/visual-parity/<screen>/`:
