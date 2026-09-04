@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "screen": "watchlist",
+  "title": "The watchlist",
+  "why": "It is the app's root destination and the screen a reader opens by reflex. Its fold decides how many markets they see before scrolling, and its row cadence is the thing that makes a long list readable or exhausting.",
+  "reference": {
+    "dark": "watchlist-dark.png",
+    "light": "watchlist-light.png"
+  },
+  "actual": {
+    "dark": "watchlist-dark.png",
+    "light": "watchlist-light.png"
+  },
+  "masks": [
+    {
+      "class": "price",
+      "reason": "Content. Their BTC and ours were quoted seconds apart and neither number says anything about layout. The price cell's box stays compared; the digits inside it do not.",
+      "elements": ["watchlist-row-*-price"],
+      "halo_px": 2
+    },
+    {
+      "class": "percent-change",
+      "reason": "Content, and additionally a declared colour deviation in light theme.",
+      "elements": ["watchlist-row-*-percent"],
+      "halo_px": 2
+    },
+    {
+      "class": "sparkline",
+      "reason": "Content: it is a drawing of the last few hours, which differ.",
+      "elements": ["watchlist-row-*-spark"],
+      "halo_px": 2
+    },
+    {
+      "class": "avatar",
+      "reason": "Symbol artwork is licensed per-exchange and is not the same set on both sides.",
+      "elements": ["watchlist-row-*-logo"],
+      "halo_px": 2
+    }
+  ],
+  "measurements": [
+    {
+      "id": "row-height",
+      "kind": "element_box",
+      "axis": "h",
+      "element": "watchlist-row-0",
+      "locate": { "strategy": "horizontal_rules", "band": "list", "index": 0 },
+      "budget_px": 1
+    },
+    {
+      "id": "row-cadence",
+      "kind": "cadence",
+      "elements": ["watchlist-row-0", "watchlist-row-1", "watchlist-row-2", "watchlist-row-3", "watchlist-row-4"],
+      "locate": { "strategy": "horizontal_rules", "band": "list", "count": 5 },
+      "budget_px": 1,
+      "note": "Every gap is measured against the first, not against its neighbour. Neighbour-to-neighbour hides a half-pixel that accumulates: five rows down a list that is two and a half pixels, and by row forty it is a visible slope. This is the assertion that catches drift rather than averaging it away."
+    },
+    {
+      "id": "row-divider",
+      "kind": "divider",
+      "element": "watchlist-row-divider-0",
+      "locate": { "strategy": "horizontal_rules", "band": "list", "index": 0 },
+      "budget_px": 1,
+      "note": "Thickness and left inset both. An inset that starts under the glyph instead of under the words turns a column of marks into a table of cells."
+    },
+    {
+      "id": "pre-row-chrome",
+      "kind": "gap",
+      "from": "page-top",
+      "to": "watchlist-row-0",
+      "locate": { "strategy": "horizontal_rules", "band": "list", "index": 0 },
+      "budget_px": 1,
+      "note": "The fold. Ours is 117 dp and is asserted exactly in FoldMetricsTest; this is the same number measured against theirs in pixels."
+    },
+    {
+      "id": "column-edges",
+      "kind": "element_box",
+      "axis": "x",
+      "elements": ["watchlist-row-0-ticker", "watchlist-row-0-price", "watchlist-row-0-percent"],
+      "locate": { "strategy": "manual", "boxes": null },
+      "budget_px": 1,
+      "note": "The move column running off the row at 393 dp is a fault this app has actually shipped. It is measured, not eyeballed."
+    }
+  ],
+  "colour_samples": [
+    { "id": "page-stage", "locate": { "strategy": "manual", "point": null }, "exact": true },
+    { "id": "row-divider-ink", "locate": { "strategy": "horizontal_rules", "band": "list", "index": 0 }, "exact": true }
+  ],
+  "known_differences": [
+    {
+      "label": "INTENTIONAL_ACCESSIBILITY_DEVIATION",
+      "what": "Light theme marketUp #057A66 and marketDown #D01427, against their #089981 and #F23645.",
+      "why": "Theirs measure below 4.5:1 on our light surface. Ours are 4.62:1 and 5.02:1. Dark theme uses their values unchanged."
+    },
+    {
+      "label": "INTENTIONAL_BRAND_DIFFERENCE",
+      "what": "The header carries our own wordmark and its stream animation.",
+      "why": "It is the one piece of this screen that is deliberately ours."
+    },
+    {
+      "label": "DYNAMIC_CONTENT",
+      "what": "Every price, percentage, sparkline and symbol mark.",
+      "why": "Masked. See the mask list."
+    }
+  ]
+}

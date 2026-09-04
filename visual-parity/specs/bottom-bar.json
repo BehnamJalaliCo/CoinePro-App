@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "screen": "bottom-bar",
+  "title": "The bottom navigation bar",
+  "why": "It is app-owned chrome on every screen in the product, so a point of it is a point taken from every page. It is also the one surface where the reference's own decision is unambiguous: a hairline, a row of tabs, no pill.",
+  "reference": {
+    "dark": "bottom-bar-watchlist-dark.png",
+    "light": null
+  },
+  "actual": {
+    "dark": "bottom-bar-dark.png",
+    "light": null
+  },
+  "masks": [
+    {
+      "class": "user-name",
+      "reason": "Tab labels are translated. The label's box is compared; the glyphs inside it are not, because our Persian is not their English and never will be.",
+      "elements": ["bottom-bar-label-*"],
+      "halo_px": 1
+    }
+  ],
+  "measurements": [
+    {
+      "id": "bar-total-height",
+      "kind": "element_box",
+      "axis": "h",
+      "element": "bottom-bar",
+      "locate": { "strategy": "bottom_bar" },
+      "budget_px": 1,
+      "note": "App-owned chrome only: the hairline plus the tab row. The system navigation inset is measured but never added in — see FoldMetricsTest for the same separation on our side."
+    },
+    {
+      "id": "bar-divider",
+      "kind": "divider",
+      "element": "bottom-bar-divider",
+      "locate": { "strategy": "bottom_bar" },
+      "budget_px": 1,
+      "note": "A hairline is one physical pixel at this density or it is not a hairline."
+    },
+    {
+      "id": "tab-centres",
+      "kind": "centre",
+      "axis": "x",
+      "elements": ["bottom-bar-tab-0", "bottom-bar-tab-1", "bottom-bar-tab-2", "bottom-bar-tab-3", "bottom-bar-tab-4"],
+      "locate": { "strategy": "manual", "boxes": null },
+      "budget_px": 1,
+      "note": "Five equal columns. Weighted-by-content columns move every time the language changes, which is why ours are weight(1f) and why this is measured rather than assumed."
+    },
+    {
+      "id": "tab-glyph-box",
+      "kind": "element_box",
+      "element": "bottom-bar-glyph-0",
+      "locate": { "strategy": "manual", "boxes": null },
+      "budget_px": 1
+    }
+  ],
+  "colour_samples": [
+    {
+      "id": "bar-surface",
+      "point": "centre-of-bar-between-tabs",
+      "locate": { "strategy": "manual", "point": null },
+      "exact": true,
+      "note": "A fill, sampled at its centre. Never on an edge."
+    },
+    {
+      "id": "divider-ink",
+      "point": "centre-of-divider",
+      "locate": { "strategy": "bottom_bar" },
+      "exact": true
+    }
+  ],
+  "known_differences": [
+    {
+      "label": "INTENTIONAL_BRAND_DIFFERENCE",
+      "what": "The selected tab sits on a raised neutral plate rather than being marked by ink weight alone.",
+      "why": "The plate is what this design system's navigation rail already uses, so the two chromes agree with each other about what «you are here» looks like."
+    },
+    {
+      "label": "INTENTIONAL_BRAND_DIFFERENCE",
+      "what": "Five destinations, with our own names and glyphs.",
+      "why": "Root navigation architecture is settled and out of scope for a parity pass."
+    }
+  ]
+}

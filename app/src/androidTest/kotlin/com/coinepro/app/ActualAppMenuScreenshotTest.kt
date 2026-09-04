@@ -1,5 +1,6 @@
 package com.coinepro.app
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,6 +24,8 @@ import com.coinepro.core.marketdata.MarketConnectionState
 import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.navigation.AppDestination
 import com.coinepro.feature.home.HomeScreen
+import java.io.File
+import org.junit.Assert.assertNotNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -85,11 +88,20 @@ class ActualAppMenuScreenshotTest {
                 .assertIsDisplayed()
         }
 
-        Thread.sleep(500)
-        InstrumentationRegistry.getInstrumentation().uiAutomation
-            .executeShellCommand("screencap -p /sdcard/coinepro-menu-render.png")
-            .close()
-        Thread.sleep(300)
+        // **Written where CI reads it, and by this test rather than by a shell.**
+        //
+        // It used to shell out to `screencap -p /sdcard/…` while the workflow collected the file
+        // with `run-as com.coinepro.app cat files/…` — two different paths, so the artifact the
+        // job uploaded was whatever happened to be there. `takeScreenshot` hands back the bitmap
+        // in-process and it is written into the app's own files directory, which is the directory
+        // `run-as` opens into, so the picture that is uploaded is the picture this test took.
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.waitForIdleSync()
+        val shot = instrumentation.uiAutomation.takeScreenshot()
+        assertNotNull("UiAutomation returned no screenshot.", shot)
+        File(instrumentation.targetContext.filesDir, "coinepro-menu-render.png")
+            .outputStream()
+            .use { stream -> shot.compress(Bitmap.CompressFormat.PNG, 100, stream) }
     }
 
     private companion object {

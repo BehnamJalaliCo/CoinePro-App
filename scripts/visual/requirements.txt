@@ -1,0 +1,5 @@
+# Pinned, because a comparator whose dependency versions float is a comparator whose results
+# cannot be reproduced — and the whole point of this pipeline is a number somebody else can get
+# again. Development only: nothing here ships in the app or is needed to build it.
+Pillow==11.0.0
+numpy==2.1.3

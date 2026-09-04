@@ -86,6 +86,47 @@ internal object GoldenScreenshot {
         get() = System.getProperty("coinepro.golden.record") == "true"
 
     /**
+     * Whether this is a machine, rather than somebody looking at the screen.
+     *
+     * Both variables, because either one on its own is a guess: `CI` is the convention every
+     * runner sets and `GITHUB_ACTIONS` is the one that is definitely true here.
+     */
+    private val inCi: Boolean
+        get() = System.getenv("CI") == "true" || System.getenv("GITHUB_ACTIONS") == "true"
+
+    /**
+     * The two things a golden gate must never do on a machine.
+     *
+     * **Re-record.** A recording run rewrites every baseline and passes. On a laptop that is the
+     * point — somebody changed a layout, looked at the new pixels, and committed them. In CI it is
+     * a gate that blesses whatever the build produced and then reports success, which is worse than
+     * having no gate at all because it reads as one.
+     *
+     * **Bless a missing baseline.** Locally, a golden that does not exist is written and the case
+     * fails once, so the next thing that happens is a person opening the PNG. On a machine there is
+     * nobody to open it and nothing to commit it, so the file would be written into a build that is
+     * thrown away and the case would fail for a reason that sounds temporary. It is not: a golden
+     * that is not in the repository is a golden that was never reviewed.
+     */
+    private fun refuseToRecordOnAMachine(name: String, golden: File) {
+        if (recording && inCi) {
+            fail(
+                "Golden record mode is on in CI. Re-recording is a decision somebody takes while " +
+                    "looking at the pixels; a machine doing it silently turns this gate into a " +
+                    "rubber stamp. Drop -Dcoinepro.golden.record from the CI invocation, " +
+                    "re-record locally, and commit the result.",
+            )
+        }
+        if (!golden.exists() && inCi) {
+            fail(
+                "No committed golden for '$name' (expected ${golden.path}). A baseline that is " +
+                    "not in the repository has never been reviewed, so there is nothing here to " +
+                    "compare against and nothing to bless. Record it locally and commit it.",
+            )
+        }
+    }
+
+    /**
      * Render [content] and hold it to [name]'s committed pixels.
      *
      * [darkTheme] is pinned rather than left to the host configuration, for the reason the render
@@ -152,6 +193,7 @@ internal object GoldenScreenshot {
     private fun compare(name: String, actual: BufferedImage) {
         GOLDEN_DIR.mkdirs()
         val golden = File(GOLDEN_DIR, "$name.png")
+        refuseToRecordOnAMachine(name, golden)
 
         if (recording || !golden.exists()) {
             ImageIO.write(actual, "png", golden)

@@ -73,6 +73,14 @@ jobs:
             exit 1
           fi
 
+      # The visual-parity specs are the argument, not the plumbing: a mask class nobody named, a
+      # measurement with a budget looser than the gate, a declared difference with no label. Each
+      # is a hole in the reasoning that would otherwise surface on the day somebody finally has a
+      # TradingView reference pack in their hands, which is the worst day to find it. Needs no
+      # reference pack, no capture and no imaging library.
+      - name: The visual-parity specs are well-formed
+        run: python3 scripts/visual/compare_tradingview_reference.py --validate
+
       - name: Enforce Phase 1-17 repository consistency
         run: python3 scripts/quality/check-cross-phase-consistency.py
 
@@ -128,10 +136,25 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  # **Two jobs, two emulators, and the build done before either one starts.**
+  #
+  # This was one job that launched an emulator, ran the instrumented suite, and then — with qemu
+  # still resident — compiled the whole benchmark variant: `lintVitalAnalyzeRelease` across every
+  # module and an R8 pass, on a runner that was already holding a four-gigabyte virtual machine.
+  # It died at `##[error]The runner has received a shutdown signal` with the emulator, netsimd and
+  # qemu all terminated as orphans, which is what a runner running out of memory looks like from
+  # the outside. It is not a flake and re-running it does not fix it.
+  #
+  # So: each suite gets its own runner and its own emulator lifecycle, and on each of them the
+  # compiling is finished *before* the emulator is launched. A failure in one no longer takes the
+  # other with it, and neither is holding a VM while R8 runs.
+  #
+  # Neither carries `continue-on-error`. A release candidate is a SHA on which every job passed,
+  # and a job that is allowed to fail is not evidence of anything.
   compose-ui-tests:
-    name: Compose UI + performance smoke
+    name: Compose UI
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -149,13 +172,18 @@ jobs:
           gradle-version: "9.4.0"
           cache-read-only: true
 
+      # Before the emulator, not during it. Compiling the app and its test APK is the expensive
+      # half of this job and there is no reason for a virtual machine to be resident while it runs.
+      - name: Assemble the app and its instrumented suite
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+
       - name: Enable KVM access
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Run UI tests, capture real rendered app menu, and benchmark wiring smoke
+      - name: Run UI tests and capture the real rendered app menu
         uses: ReactiveCircus/android-emulator-runner@v2.38.0
         with:
           api-level: 35
@@ -167,7 +195,6 @@ jobs:
             mkdir -p app/build/screenshots
             adb exec-out run-as com.coinepro.app cat files/coinepro-menu-render.png > app/build/screenshots/coinepro-menu-render.png
             test -s app/build/screenshots/coinepro-menu-render.png
-            gradle --no-daemon :benchmark:connectedBenchmarkAndroidTest -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.dryRunMode.enable=true -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=Macrobenchmark -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.suppressErrors=EMULATOR
 
       - name: Upload actual rendered app menu screenshot
         if: success()
@@ -177,3 +204,50 @@ jobs:
           path: app/build/screenshots/coinepro-menu-render.png
           if-no-files-found: error
           retention-days: 7
+
+  benchmark-smoke:
+    name: Performance smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle 9.4.0
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.4.0"
+          cache-read-only: true
+
+      # The benchmark variant is minified, so assembling it is an R8 pass over the whole app. That
+      # is precisely the work that was killing the runner when it ran with an emulator up.
+      #
+      # `lintVitalAnalyzeRelease` is excluded and only that: it is wired into every release-like
+      # variant, so it was being run a second time here across every module while a VM was
+      # resident, and the `Lint, test, build` job above already runs lint on this SHA. Nothing else
+      # is skipped.
+      - name: Assemble the benchmark variant
+        run: gradle --no-daemon :app:assembleBenchmark :benchmark:assembleBenchmark -x lintVitalAnalyzeRelease -x lintVitalReportRelease
+
+      - name: Enable KVM access
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Benchmark wiring smoke
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            gradle --no-daemon :benchmark:connectedBenchmarkAndroidTest -x lintVitalAnalyzeRelease -x lintVitalReportRelease -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.dryRunMode.enable=true -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=Macrobenchmark -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.suppressErrors=EMULATOR

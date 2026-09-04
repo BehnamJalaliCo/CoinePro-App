@@ -1,0 +1,115 @@
+{
+  "schema": 1,
+  "screen": "explore",
+  "title": "Explore",
+  "why": "It is the page that answers «what happened today», and it is the one screen in this app whose fold was demonstrably moving under the reader while the data landed.",
+  "reference": {
+    "dark": "explore-dark.png",
+    "light": "explore-light.png"
+  },
+  "actual": {
+    "dark": "explore-dark.png",
+    "light": "explore-light.png",
+    "dark_loading": "explore-dark-loading.png"
+  },
+  "masks": [
+    {
+      "class": "price",
+      "reason": "Content.",
+      "elements": ["explore-card-*-price"],
+      "halo_px": 2
+    },
+    {
+      "class": "percent-change",
+      "reason": "Content, plus the declared light-theme colour deviation.",
+      "elements": ["explore-card-*-percent"],
+      "halo_px": 2
+    },
+    {
+      "class": "sparkline",
+      "reason": "Content.",
+      "elements": ["explore-card-*-spark"],
+      "halo_px": 2
+    },
+    {
+      "class": "avatar",
+      "reason": "Symbol artwork differs by exchange licence.",
+      "elements": ["explore-card-*-logo"],
+      "halo_px": 2
+    },
+    {
+      "class": "timestamp",
+      "reason": "Story ages differ between two captures by definition.",
+      "elements": ["explore-story-*-age"],
+      "halo_px": 2
+    }
+  ],
+  "measurements": [
+    {
+      "id": "strip-height",
+      "kind": "element_box",
+      "axis": "h",
+      "element": "explore-market-strip",
+      "locate": { "strategy": "manual", "boxes": null },
+      "budget_px": 1
+    },
+    {
+      "id": "card-box",
+      "kind": "element_box",
+      "element": "explore-first-market-card",
+      "locate": { "strategy": "manual", "boxes": null },
+      "budget_px": 1
+    },
+    {
+      "id": "card-gap",
+      "kind": "gap",
+      "from": "explore-market-card-0",
+      "to": "explore-market-card-1",
+      "locate": { "strategy": "manual", "boxes": null },
+      "budget_px": 1
+    },
+    {
+      "id": "chip-row-height",
+      "kind": "element_box",
+      "axis": "h",
+      "element": "explore-category-row",
+      "locate": { "strategy": "manual", "boxes": null },
+      "budget_px": 1
+    },
+    {
+      "id": "first-story-y",
+      "kind": "element_box",
+      "axis": "y",
+      "element": "explore-first-story",
+      "locate": { "strategy": "manual", "boxes": null },
+      "budget_px": 1
+    },
+    {
+      "id": "loading-to-loaded-stability",
+      "kind": "self_stability",
+      "compare": ["dark_loading", "dark"],
+      "elements": ["explore-first-story", "explore-category-row"],
+      "budget_px": 1,
+      "note": "This one is not against the reference at all — it is ours against ours, one composition photographed either side of the catalogue landing. A steady-state golden cannot see it: both frames are individually correct and the fault is the difference between them. ExploreGeometryTest asserts the same thing in points; this asserts it in pixels on a real device."
+    }
+  ],
+  "colour_samples": [
+    { "id": "page-stage", "locate": { "strategy": "manual", "point": null }, "exact": true },
+    { "id": "card-surface", "locate": { "strategy": "manual", "point": null }, "exact": true }
+  ],
+  "known_differences": [
+    {
+      "label": "INTENTIONAL_BRAND_DIFFERENCE",
+      "what": "Section order and the set of sections.",
+      "why": "Explore's content architecture is this product's, not a copy of theirs. What is compared here is geometry: card sizes, gaps, row heights, the fold."
+    },
+    {
+      "label": "INTENTIONAL_ACCESSIBILITY_DEVIATION",
+      "what": "Light theme marketUp / marketDown, as on the watchlist."
+    },
+    {
+      "label": "DYNAMIC_CONTENT",
+      "what": "Prices, percentages, sparklines, symbol marks, story ages."
+    }
+  ]
+}

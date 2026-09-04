@@ -41,3 +41,7 @@ app/build/screenshots/
 # Local Claude Code overrides (never committed)
 .claude/settings.local.json
 __pycache__/
+
+# The visual-parity comparator's own output: diff images and reports, regenerated on every run.
+# The references and specs beside them are source; this is what the comparison produced.
+build/visual-parity/

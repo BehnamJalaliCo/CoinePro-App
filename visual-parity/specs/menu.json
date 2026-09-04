@@ -1,0 +1,88 @@
+{
+  "schema": 1,
+  "screen": "menu",
+  "title": "The menu",
+  "why": "A directory's whole claim is that its rows are interchangeable. That claim is either true down eight consecutive rows or it is not true at all, and it was not true here until it was measured.",
+  "reference": {
+    "dark": "menu-dark.png",
+    "light": "menu-light.png"
+  },
+  "actual": {
+    "dark": "menu-dark.png",
+    "light": "menu-light.png"
+  },
+  "masks": [
+    {
+      "class": "user-name",
+      "reason": "The identity block carries a name and an address that differ by account.",
+      "elements": ["menu-identity-name", "menu-identity-email"],
+      "halo_px": 2
+    },
+    {
+      "class": "avatar",
+      "reason": "It is the reader's own.",
+      "elements": ["menu-identity-avatar"],
+      "halo_px": 2
+    }
+  ],
+  "measurements": [
+    {
+      "id": "row-heights",
+      "kind": "cadence",
+      "elements": [
+        "menu-row-watchlist",
+        "menu-row-search",
+        "menu-row-heatmap",
+        "menu-row-markets",
+        "menu-row-explore",
+        "menu-row-news",
+        "menu-row-calendar",
+        "menu-row-portfolio"
+      ],
+      "locate": { "strategy": "horizontal_rules", "band": "list", "count": 8 },
+      "budget_px": 1,
+      "note": "Eight consecutive rows, every gap against the first. These are the eight our own MenuRowMetricsTest measures at exactly 50.0 dp; this is the same claim in pixels, against theirs."
+    },
+    {
+      "id": "row-divider",
+      "kind": "divider",
+      "element": "menu-row-divider-0",
+      "locate": { "strategy": "horizontal_rules", "band": "list", "index": 0 },
+      "budget_px": 1,
+      "note": "Thickness, and the inset that decides whether the marks read as a column or as a table's first cell."
+    },
+    {
+      "id": "glyph-column",
+      "kind": "centre",
+      "axis": "x",
+      "elements": ["menu-glyph-watchlist", "menu-glyph-search", "menu-glyph-heatmap"],
+      "locate": { "strategy": "manual", "boxes": null },
+      "budget_px": 1,
+      "note": "Thirty different outlines have to start their words at the same x. That is what the fixed glyph column buys and it is the only thing worth checking about it."
+    },
+    {
+      "id": "section-heading-gap",
+      "kind": "gap",
+      "from": "menu-section-heading-0",
+      "to": "menu-row-watchlist",
+      "locate": { "strategy": "manual", "boxes": null },
+      "budget_px": 1
+    }
+  ],
+  "colour_samples": [
+    { "id": "page-stage", "locate": { "strategy": "manual", "point": null }, "exact": true },
+    { "id": "row-divider-ink", "locate": { "strategy": "horizontal_rules", "band": "list", "index": 0 }, "exact": true }
+  ],
+  "known_differences": [
+    {
+      "label": "INTENTIONAL_BRAND_DIFFERENCE",
+      "what": "The set of rows, their grouping and their order.",
+      "why": "Menu product architecture is settled and out of scope. What is compared is the rhythm: row height, divider, glyph column, heading spacing."
+    },
+    {
+      "label": "INTENTIONAL_BRAND_DIFFERENCE",
+      "what": "Seven rows carry a second line where every row of theirs carries none, or every row carries one.",
+      "why": "MenuCatalogue.DESCRIPTIVE_ROWS, with the argument for each of the seven written beside it. They are 51 px taller than the rest by exactly one line and are excluded from the cadence measurement above."
+    }
+  ]
+}
