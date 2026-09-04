@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.toPersianDigits
@@ -125,12 +128,26 @@ fun MenuScreen(
                 )
             }
             item(key = "rows-" + section.group.name) {
-                CoineProCard(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = CoineProSpacing.Gutter),
-                    contentPadding = PaddingValues(0.dp),
-                ) {
+                // **A group of rows, not a card of them.**
+                //
+                // Every section was a bordered plate with its own corner radius, and with nine
+                // sections that is nine objects a reader separates before reading any of them — on
+                // a screen that is a *directory*, where the only question is which word to press.
+                // The card was saying «these belong together», which the group's own heading two
+                // lines above already says, in type, for free. What is left is a column of rows and
+                // a hairline between them, which is what a settings list is everywhere it is done
+                // well.
+                Column(modifier = Modifier.fillMaxWidth()) {
                     section.items.forEachIndexed { index, item ->
-                        if (index > 0) CoineProRowDivider()
+                        if (index > 0) {
+                            HorizontalDivider(
+                                // Inset past the glyph, so the rule starts where the words do and
+                                // the column of marks reads as a column rather than as cells.
+                                modifier = Modifier.padding(start = ROW_DIVIDER_INSET),
+                                thickness = 1.dp,
+                                color = CoineProColors.BorderSubtle,
+                            )
+                        }
                         MenuRow(
                             item = item,
                             // The reader's own list, counted. A prose count, so Persian digits —
@@ -276,43 +293,34 @@ private fun MenuRow(
                 haptics.select()
                 onClick()
             }
-            // The floor for anything a thumb has to hit.
-            .heightIn(min = 44.dp)
-            .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.OneHalf),
+            // Fifty, which is the reference's directory row and comfortably past the 44 floor for
+            // anything a thumb has to hit. It was 44 with twelve points of padding at each end, so
+            // a row with a subtitle grew to sixty-eight and the column breathed wherever one
+            // appeared; pinned, the list has one rhythm.
+            .heightIn(min = ROW_HEIGHT)
+            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // **The glyph sits on a plate, and that is most of what a directory looks like.**
+        // **The glyph, bare.**
         //
-        // A bare 20 dp outline against a page of two-line rows is a mark floating in a column of
-        // type: it does not line the rows up, it does not survive a glance, and thirty of them
-        // read as thirty different weights because the shapes are not the same density. Every
-        // professional app of this kind — the exchanges, the terminal this one is measured
-        // against — sets the row glyph in a small filled square, and the reason is mechanical
-        // rather than decorative: a fixed 36 dp plate gives every row the same optical left edge
-        // whatever the glyph inside it is, and the fill separates "this is the row's mark" from
-        // "this is content".
+        // It sat on a 36 pt filled square, and the argument for that was real: a plate gives every
+        // row the same optical left edge whatever shape is inside it. It is also thirty-six points
+        // of fill per row, nine sections deep, and what it produced is a page that reads as a
+        // catalogue of features rather than as a list of places to go — every row equally loud and
+        // the reader's eye with nowhere to land. The reference's own directory sets its marks bare.
         //
-        // `SurfaceElevated` and not a tint: a coloured plate per row is a rainbow, and a rainbow
-        // is what a settings screen looks like when nobody chose. The two exceptions carry
-        // meaning — a destructive row is the app's red, and a locked one goes the whole way down
-        // to the disabled ink so the plate reads as switched off rather than merely quiet.
+        // The alignment the plate was buying is bought instead by a fixed GLYPH_COLUMN: the mark is
+        // centred in a column of a known width, so thirty different outlines still start their
+        // words at the same x. Same guarantee, none of the fill.
         Box(
-            modifier = Modifier
-                .size(PLATE)
-                .clip(CoineProShapes.small)
-                .background(
-                    when {
-                        entry.destructive -> CoineProTint.fill(CoineProColors.Sell, CoineProColors.Surface)
-                        else -> CoineProColors.SurfaceElevated
-                    },
-                ),
+            modifier = Modifier.width(GLYPH_COLUMN),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painter = painterResource(entry.icon),
                 contentDescription = null,
-                modifier = Modifier.size(PLATE_GLYPH),
+                modifier = Modifier.size(GLYPH),
                 tint = when {
                     entry.destructive -> CoineProColors.Sell
                     item.locked -> CoineProColors.TextDisabled
@@ -326,11 +334,15 @@ private fun MenuRow(
                 style = MaterialTheme.typography.bodyMedium,
                 color = ink,
             )
-            entry.bodyRes?.let { body ->
+            // **Not on a locked row.** The badge beside it already says the useful thing, and a
+            // grey sentence under a grey badge is two quiet lines saying one fact.
+            entry.bodyRes?.takeIf { !item.locked }?.let { body ->
                 Text(
                     text = stringResource(body),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -365,19 +377,30 @@ private fun MenuRow(
             // Forward in the reading direction, which the drawable mirrors for itself in RTL.
             painter = painterResource(CoineProIcons.ChevronForward),
             contentDescription = null,
-            tint = CoineProColors.TextMuted,
+            tint = CoineProColors.TextDisabled,
+            // Fourteen, not the icon default's twenty-four. A chevron is punctuation: it says the
+            // row goes somewhere, and it should be the quietest thing on it.
+            modifier = Modifier.size(14.dp),
         )
     }
 }
 
 /**
- * The row glyph's plate, and the glyph in it.
+ * The column the row's mark is centred in, and the mark itself.
  *
- * Thirty-six by thirty-six, which is the smallest square that reads as a plate rather than as a
- * border drawn round an icon, and small enough that a two-line row keeps its 44 dp floor without
- * growing. The glyph is eighteen — half the plate — because Phosphor's outlines are drawn on a
- * 256 grid with a 16-unit stroke, and at anything above 20 dp inside a 36 dp box the stroke starts
- * to read as a second border inside the first.
+ * Twenty-four wide for a twenty-point glyph, which is what replaces the 36 pt plate: the width is
+ * what lines the words up, and it costs no fill. See the note in [MenuRow].
  */
-private val PLATE = 36.dp
-private val PLATE_GLYPH = 18.dp
+private val GLYPH_COLUMN = 24.dp
+private val GLYPH = 20.dp
+
+/** The directory row's own height. See [MenuRow]. */
+private val ROW_HEIGHT = 50.dp
+
+/**
+ * Where the rule between two rows starts.
+ *
+ * The gutter, the glyph column and the step after it — so the hairline begins under the words and
+ * the marks read as a column rather than as the first cell of a table.
+ */
+private val ROW_DIVIDER_INSET = CoineProSpacing.Gutter + GLYPH_COLUMN + CoineProSpacing.OneHalf
