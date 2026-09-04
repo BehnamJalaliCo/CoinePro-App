@@ -51,6 +51,12 @@ import org.junit.runner.RunWith
  *   what makes a measurement possible without anybody guessing a coordinate;
  * * `capture-manifest.json` — the device's own answers about itself.
  *
+ * **Collecting them is not `run-as` after the fact.** Gradle uninstalls the app when
+ * `connectedAndroidTest` finishes, and the files directory goes with it — which is exactly how the
+ * menu capture spent nine releases uploading `run-as: unknown package` as its artifact. Anything
+ * that needs these off the device pulls them inside the same session, or writes them somewhere the
+ * device owns; see the note in `ActualAppMenuScreenshotTest`.
+ *
  * ### The device is checked, not assumed
  *
  * Density, resolution and font scale are read back off the device and checked against the

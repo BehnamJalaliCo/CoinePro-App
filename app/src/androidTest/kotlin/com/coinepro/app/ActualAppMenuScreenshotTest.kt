@@ -1,6 +1,6 @@
 package com.coinepro.app
 
-import android.graphics.Bitmap
+import android.os.ParcelFileDescriptor
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,8 +24,8 @@ import com.coinepro.core.marketdata.MarketConnectionState
 import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.navigation.AppDestination
 import com.coinepro.feature.home.HomeScreen
-import java.io.File
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -88,24 +88,72 @@ class ActualAppMenuScreenshotTest {
                 .assertIsDisplayed()
         }
 
-        // **Written where CI reads it, and by this test rather than by a shell.**
+        // **Written somewhere that outlives this test, and verified before the test lets go.**
         //
-        // It used to shell out to `screencap -p /sdcard/…` while the workflow collected the file
-        // with `run-as com.coinepro.app cat files/…` — two different paths, so the artifact the
-        // job uploaded was whatever happened to be there. `takeScreenshot` hands back the bitmap
-        // in-process and it is written into the app's own files directory, which is the directory
-        // `run-as` opens into, so the picture that is uploaded is the picture this test took.
+        // ### The bug this replaces, because it is a good one
+        //
+        // The capture was written into the app's own files directory and the workflow collected it
+        // with `adb run-as com.coinepro.app cat files/…`. That is the right directory for `run-as`
+        // — and it never worked, because **Gradle uninstalls the app when
+        // `connectedDebugAndroidTest` finishes**. By the time the workflow ran `run-as`, the
+        // package was gone, so what it captured was the shell's own error text:
+        //
+        //     run-as: unknown package: com.coinepro.app
+        //
+        // Forty-two bytes. The workflow's `test -s` asks only whether the file is *non-empty*, and
+        // an error message is non-empty, so the job went green and uploaded an artifact named "the
+        // real rendered app menu" that was a sentence about failure. Nine releases of a green
+        // check that checked nothing — the same shape as a menu row documented at fifty that was a
+        // floor, and it is why this pass exists.
+        //
+        // ### So: the shell writes it, and to a path that survives the uninstall
+        //
+        // `/sdcard` belongs to the device, not to the package, so it is still there afterwards.
+        // `takeScreenshot` cannot be used for the file itself — the bitmap it returns lives in the
+        // app's process and the app's storage dies with it — but it is still taken first, because
+        // a `null` from it means the framebuffer is not readable at all and that is worth failing
+        // on separately from anything to do with files.
+        //
+        // The capture is then read back **through the shell** and its size checked here, so a test
+        // that passed is a test that left a real picture behind. The workflow checks the PNG magic
+        // bytes on top of that; `test -s` is what let a sentence through.
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         instrumentation.waitForIdleSync()
-        val shot = instrumentation.uiAutomation.takeScreenshot()
-        assertNotNull("UiAutomation returned no screenshot.", shot)
-        File(instrumentation.targetContext.filesDir, "coinepro-menu-render.png")
-            .outputStream()
-            .use { stream -> shot.compress(Bitmap.CompressFormat.PNG, 100, stream) }
+        assertNotNull(
+            "UiAutomation returned no screenshot — the framebuffer is not readable.",
+            instrumentation.uiAutomation.takeScreenshot(),
+        )
+
+        shell("screencap -p $CAPTURE_PATH")
+        val size = shell("stat -c %s $CAPTURE_PATH").trim().toLongOrNull() ?: 0L
+        assertTrue(
+            "The capture at $CAPTURE_PATH is $size bytes. A screen of this app is tens of " +
+                "kilobytes; anything this small is an error message, which is exactly what the " +
+                "old `test -s` check was waving through.",
+            size > MIN_CAPTURE_BYTES,
+        )
     }
+
+    /**
+     * Run a shell command as the shell user and hand back everything it printed.
+     *
+     * Draining the descriptor is not tidiness — it is what makes the call **synchronous**.
+     * `executeShellCommand` returns as soon as the command is spawned, so closing the pipe without
+     * reading it races the command that is still writing the file.
+     */
+    private fun shell(command: String): String =
+        ParcelFileDescriptor.AutoCloseInputStream(
+            InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command),
+        ).use { it.readBytes().toString(Charsets.UTF_8) }
 
     private companion object {
         /** What anchors the label lookups to the bar rather than to the page behind it. */
         const val BAR_TAG = "navigation-bar"
+
+        /** The device's own storage, which outlives the package. See the note above. */
+        const val CAPTURE_PATH = "/sdcard/coinepro-menu-render.png"
+
+        /** Below this it is not a screen, it is a sentence. */
+        const val MIN_CAPTURE_BYTES = 10_000L
     }
 }

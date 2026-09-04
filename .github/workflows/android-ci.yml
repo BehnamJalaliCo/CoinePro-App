@@ -193,8 +193,22 @@ jobs:
           script: |
             gradle --no-daemon :app:connectedDebugAndroidTest
             mkdir -p app/build/screenshots
-            adb exec-out run-as com.coinepro.app cat files/coinepro-menu-render.png > app/build/screenshots/coinepro-menu-render.png
-            test -s app/build/screenshots/coinepro-menu-render.png
+            # **Pulled from /sdcard, not through `run-as`.**
+            #
+            # Gradle uninstalls the app when `connectedDebugAndroidTest` finishes, so by the time
+            # this line runs `run-as com.coinepro.app` has no package to enter. It printed
+            # `run-as: unknown package: com.coinepro.app` — forty-two bytes — straight into the
+            # artifact, and `test -s` passed it because an error message is not empty. The job was
+            # green and the uploaded "real rendered app menu" was a sentence about failure.
+            #
+            # /sdcard belongs to the device rather than to the package, so the capture is still
+            # there after the uninstall. The test writes it and checks its size before it passes.
+            adb pull /sdcard/coinepro-menu-render.png app/build/screenshots/coinepro-menu-render.png
+            # And the file is checked for being a PNG rather than for being non-empty, which is the
+            # distinction the old check could not make.
+            head -c 8 app/build/screenshots/coinepro-menu-render.png | od -An -tx1 | tr -d ' \n' \
+              | grep -qx '89504e470d0a1a0a' \
+              || { echo "::error::the pulled capture is not a PNG"; head -c 200 app/build/screenshots/coinepro-menu-render.png; exit 1; }
 
       - name: Upload actual rendered app menu screenshot
         if: success()
