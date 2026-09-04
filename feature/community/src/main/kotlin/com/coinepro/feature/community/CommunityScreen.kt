@@ -130,6 +130,18 @@ fun CommunityScreen(
     controller: CommunityController,
     onOpenThread: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Whether this screen is drawn inside another that has already named the page.
+     *
+     * True under the Ideas switch, where a heading here is a second name for a page that has one —
+     * «سیگنال‌ها» under a key that already says «سیگنال‌ها», and the reader pays a headline and its
+     * padding for it on every switch. The header row stays, because the actions in it are this
+     * screen's own and belong nowhere else; only the words go.
+     *
+     * False on the route of its own, which is still registered and still reachable — a saved back
+     * stack or a deep link opens exactly this screen, and there it does need its name.
+     */
+    embedded: Boolean = false,
 ) {
     LaunchedEffect(controller) { controller.start() }
     val state by controller.state.collectAsStateWithLifecycle()
@@ -167,9 +179,13 @@ fun CommunityScreen(
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
         CoineProListHeader(
-            title = stringResource(R.string.community_title),
-            subtitle = state.displayName?.let { stringResource(R.string.community_name_as, it) }
-                ?: stringResource(R.string.community_subtitle),
+            title = if (embedded) null else stringResource(R.string.community_title),
+            subtitle = if (embedded) {
+                null
+            } else {
+                state.displayName?.let { stringResource(R.string.community_name_as, it) }
+                    ?: stringResource(R.string.community_subtitle)
+            },
             actions = {
                 CoineProHeaderAction(
                     icon = if (composing) CoineProIcons.Close else CoineProIcons.Add,

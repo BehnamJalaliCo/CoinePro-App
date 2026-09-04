@@ -112,6 +112,18 @@ fun SignalsScreen(
     guestController: GuestController? = null,
     /** Opens the terms in the app from the locked state's panel. Null falls back to the browser. */
     onOpenTerms: (() -> Unit)? = null,
+    /**
+     * Whether this screen is drawn inside another that has already named the page.
+     *
+     * True under the Ideas switch, where a heading here is a second name for a page that has one —
+     * «سیگنال‌ها» under a key that already says «سیگنال‌ها», and the reader pays a headline and its
+     * padding for it on every switch. The header row stays, because the actions in it are this
+     * screen's own and belong nowhere else; only the words go.
+     *
+     * False on the route of its own, which is still registered and still reachable — a saved back
+     * stack or a deep link opens exactly this screen, and there it does need its name.
+     */
+    embedded: Boolean = false,
 ) {
     LaunchedEffect(controller) { controller.start() }
     LaunchedEffect(controller, platform) { controller.selectMarket(platform.toFilter()) }
@@ -119,11 +131,11 @@ fun SignalsScreen(
 
     Column(modifier = Modifier.fillMaxSize().background(CoineProColors.Stage)) {
         CoineProListHeader(
-            title = stringResource(R.string.signals_title),
-            subtitle = if (state.items.isEmpty()) {
-                stringResource(R.string.signals_subtitle)
-            } else {
-                pluralCount(state.items.size)
+            title = if (embedded) null else stringResource(R.string.signals_title),
+            subtitle = when {
+                embedded -> null
+                state.items.isEmpty() -> stringResource(R.string.signals_subtitle)
+                else -> pluralCount(state.items.size)
             },
             actions = {
                 CoineProHeaderAction(
@@ -133,7 +145,10 @@ fun SignalsScreen(
                 )
             },
         )
-        CoineProTeachingStrip(TeachingSurface.SIGNALS)
+        // Embedded, the restore link is residue: the page above it is a two-key switch and a
+        // stray «این صفحه چیست؟» under an otherwise empty action row reads as a control nobody
+        // placed. On this screen's own route there is a heading for it to sit under.
+        CoineProTeachingStrip(TeachingSurface.SIGNALS, restorable = !embedded)
         CoineProSegmentTabs(
             options = SignalStatusFilter.entries.map { it to stringResource(it.labelRes()) },
             selected = state.status,

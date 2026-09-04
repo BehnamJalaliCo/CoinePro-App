@@ -2437,7 +2437,11 @@ private fun MainShell(
          * two-pane pairing and the membership fallback are the interesting parts, and a second
          * copy of them is a second copy free to go stale.
          */
-        val signalsPane: @Composable () -> Unit = @Composable {
+        // **The pane takes a flag, because it is drawn in two places that name the page
+        // differently.** On its own route it is a screen and needs its heading; under the Ideas
+        // switch the page is already named — by the key the reader just pressed — and the screen's
+        // own headline is a second name for it. See `SignalsScreen.embedded`.
+        val signalsPane: @Composable (Boolean) -> Unit = @Composable { embedded ->
             if (guest) {
                 GuestGateScreen(
                     gate = GuestGate.SIGNALS,
@@ -2466,16 +2470,18 @@ private fun MainShell(
                         membershipController = membershipController,
                         guestController = guestController,
                         onOpenTerms = { navController.navigate(TERMS_ROUTE) },
+                        embedded = embedded,
                     )
                 }
             }
         }
 
         /** The board, as a value, for the same reason as [signalsPane]. */
-        val communityPane: @Composable () -> Unit = @Composable {
+        val communityPane: @Composable (Boolean) -> Unit = @Composable { embedded ->
             CommunityScreen(
                 controller = communityController,
                 onOpenThread = { navController.navigate(communityThreadRoute(it)) },
+                embedded = embedded,
             )
         }
 
@@ -2596,7 +2602,7 @@ private fun MainShell(
                     logText = adminController::logText,
                 )
             }
-            composable(SIGNALS_ROUTE) { signalsPane() }
+            composable(SIGNALS_ROUTE) { signalsPane(false) }
 
             // «ایده‌ها»: the two answers to "is there an opportunity here?" under one tab. The two
             // panes are the same composables their own routes draw — see `IdeasScreen`, which is a
@@ -2604,8 +2610,8 @@ private fun MainShell(
             // back stack or a notification can name.
             composable(IDEAS_ROUTE) {
                 IdeasScreen(
-                    signals = { signalsPane() },
-                    community = { communityPane() },
+                    signals = { signalsPane(true) },
+                    community = { communityPane(true) },
                 )
             }
             composable(
@@ -3295,7 +3301,7 @@ private fun MainShell(
             }
             // The app's own board, on both platforms and for a guest. It is served from TradeYar's
             // host but belongs to neither account — see `NetworkCommunityGateway`.
-            composable(COMMUNITY_ROUTE) { communityPane() }
+            composable(COMMUNITY_ROUTE) { communityPane(false) }
             composable(
                 route = COMMUNITY_THREAD_PATTERN,
                 arguments = listOf(navArgument("pid") { type = NavType.LongType }),

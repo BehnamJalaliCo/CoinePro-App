@@ -226,7 +226,15 @@ data class CoineProReading(val label: String, val value: String, val tone: Color
  */
 @Composable
 fun CoineProListHeader(
-    title: String,
+    /**
+     * The screen's name, or null for a screen that has already been named.
+     *
+     * Null is the **embedded** case: a screen composed inside another one that carries the title —
+     * the two halves of Ideas under its own switch. There the child's heading is a second name for
+     * a page that already has one, and it costs the height of a headline plus its padding on every
+     * visit. What the child still owns is its *actions*, so the row stays and only the words go.
+     */
+    title: String?,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     actions: @Composable (RowScope.() -> Unit)? = null,
@@ -234,11 +242,15 @@ fun CoineProListHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.One),
+            .padding(
+                horizontal = CoineProSpacing.Two,
+                vertical = if (title == null) CoineProSpacing.Half else CoineProSpacing.One,
+            ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
         Column(modifier = Modifier.weight(1f)) {
+            if (title == null) return@Column
             Text(
                 text = title,
                 // A step up from the content screens' `titleLarge`: a list's heading is the

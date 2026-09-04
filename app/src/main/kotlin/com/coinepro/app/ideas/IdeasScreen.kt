@@ -105,8 +105,8 @@ private fun IdeasSwitch(face: IdeasFace, onSelect: (IdeasFace) -> Unit) {
             .padding(
                 start = CoineProSpacing.Gutter,
                 end = CoineProSpacing.Gutter,
-                top = CoineProSpacing.One,
-                bottom = CoineProSpacing.One,
+                top = CoineProSpacing.Half,
+                bottom = CoineProSpacing.Half,
             )
             .selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
@@ -143,7 +143,15 @@ private fun IdeasKey(
     Row(
         modifier = modifier
             .clip(CoineProShapes.small)
-            .background(if (active) CoineProColors.TextPrimary else CoineProColors.SurfaceElevated)
+            // **The raised neutral, not the primary ink.**
+            //
+            // Inverting to `TextPrimary` is the strongest mark the palette has, and it was too
+            // strong for a control pressed twice a session: on the dark theme the selected key was
+            // a near-white block — the brightest object on a page of dark rows — and on the light
+            // theme it was near-black. Either way the switch was louder than the content it
+            // switches. `SurfaceRaised` is what every other "one of these is in force" in this app
+            // uses, and the bold label on primary ink carries the rest.
+            .background(if (active) CoineProColors.SurfaceRaised else CoineProColors.Surface)
             // `selectable` rather than `clickable`: this is a choice between two, and the
             // difference is what TalkBack announces — "selected" against "double tap to activate".
             .selectable(selected = active, role = Role.Tab, onClick = onClick)
@@ -154,13 +162,19 @@ private fun IdeasKey(
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelMedium,
             fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-            color = if (active) CoineProColors.Stage else CoineProColors.TextSecondary,
+            color = if (active) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
             maxLines = 1,
         )
     }
 }
 
-/** The minimum target this design system gives a key a thumb reaches for on a scrolling page. */
-private val KEY_HEIGHT = 40.dp
+/**
+ * The key's height.
+ *
+ * Thirty-eight rather than forty: two points off a control that spans the width, and the switch and
+ * its padding now come to fifty rather than fifty-six. It is still a comfortable target — the row
+ * is full-width and half of it is one key.
+ */
+private val KEY_HEIGHT = 38.dp
