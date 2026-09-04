@@ -9,10 +9,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.coinepro.core.designsystem.CoineProTheme
@@ -37,7 +40,7 @@ class ActualAppMenuScreenshotTest {
                 Scaffold(
                     topBar = { TopAppBar(title = { Text("CoinePro") }) },
                     bottomBar = {
-                        NavigationBar {
+                        NavigationBar(modifier = Modifier.testTag(BAR_TAG)) {
                             AppDestination.entries.forEach { destination ->
                                 NavigationBarItem(
                                     selected = destination == AppDestination.entries.first(),
@@ -66,9 +69,20 @@ class ActualAppMenuScreenshotTest {
         // device, and a PNG nobody looks at proves nothing. Every destination's label is checked by
         // the string the app actually shows, so a destination added without a translation fails
         // here rather than shipping as an empty tab.
+        //
+        // **Inside the bar, and that is not tidiness.** The page underneath is a real screen with
+        // real words on it, and one of them is «Chart» — the home screen's own chart shortcut. So
+        // the unscoped lookup matched two nodes and the assertion died on the ambiguity rather than
+        // on anything being wrong, which is a test failing at its own question. Anchored to the
+        // bar, the label being looked for is the label the bar draws.
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         AppDestination.entries.forEach { destination ->
-            composeRule.onNodeWithText(context.getString(destination.labelRes)).assertIsDisplayed()
+            composeRule
+                .onNode(
+                    hasText(context.getString(destination.labelRes)) and
+                        hasAnyAncestor(hasTestTag(BAR_TAG)),
+                )
+                .assertIsDisplayed()
         }
 
         Thread.sleep(500)
@@ -76,5 +90,10 @@ class ActualAppMenuScreenshotTest {
             .executeShellCommand("screencap -p /sdcard/coinepro-menu-render.png")
             .close()
         Thread.sleep(300)
+    }
+
+    private companion object {
+        /** What anchors the label lookups to the bar rather than to the page behind it. */
+        const val BAR_TAG = "navigation-bar"
     }
 }
