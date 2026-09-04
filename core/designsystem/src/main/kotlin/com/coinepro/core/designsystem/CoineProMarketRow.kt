@@ -35,6 +35,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.MarketNumberFormatter
 
@@ -72,14 +74,26 @@ fun CoineProPercentPill(
             // Wide enough that a row of pills forms a column rather than a ragged edge — the point
             // of the shape is comparison down the list, and comparison needs alignment.
             .defaultMinSize(minWidth = 60.dp)
-            .padding(horizontal = 8.dp, vertical = 3.dp),
+            .padding(horizontal = 6.dp, vertical = 3.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = MarketNumberFormatter.signedPercent(percent),
-            style = MaterialTheme.typography.labelSmall,
+            // **Left to right, one line, and never wrapped.** «درصد تغییر نمادها در دیده‌بان زده
+            // بیرون» — and it had: `+12.35%` came out as `.35%`, with the sign and the leading
+            // digits gone. Two faults, one symptom. The figure starts with `+` or `−`, which are
+            // *neutral* characters, and the digits after them are weak — so on a Persian page the
+            // paragraph resolved right-to-left, the line was laid out from the right edge, and
+            // everything that did not fit fell off the **left**, which is the end a reader needs.
+            // And `softWrap` was on, so in a column narrower than the figure the layout was free to
+            // break it. Pinned Ltr, the overflow — if the column is ever tight again — takes the
+            // ellipsis at the tail, where it costs a decimal instead of the sign.
+            style = MaterialTheme.typography.labelSmall.copy(textDirection = TextDirection.Ltr),
             color = ink,
             fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

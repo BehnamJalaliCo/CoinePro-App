@@ -553,20 +553,21 @@ private fun ColumnHeadings(
     // it rather than over the sparkline, and only «قیمت» happened to be correct. A heading that is
     // not above its column tells the reader the list is arranged in a way it is not.
     //
-    // Every measurement here is `MarketListRow`'s: the same 16 of horizontal padding, the same 12
-    // between elements, the same 30dp logo and the same [SymbolColumn]. The star is optional in
-    // the row, so it is optional here too, and it reserves 48 because that is what
-    // `minimumInteractiveComponentSize` gives it.
+    // Every measurement here is `MarketListRow`'s: the same 16 of horizontal padding, the same
+    // [RowGap] between elements, the same [LogoSize] disc and the same [SymbolColumn]. They are
+    // read from the row rather than written again, because the two fell out of step once already —
+    // see the row's own note on the gap. The star is optional in the row, so it is optional here
+    // too, and it reserves 48 because that is what `minimumInteractiveComponentSize` gives it.
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = CoineProSpacing.Two)
             .padding(top = CoineProSpacing.OneHalf, bottom = CoineProSpacing.Half),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(RowGap),
     ) {
         val style = MaterialTheme.typography.labelSmall
         if (starRail) Spacer(modifier = Modifier.width(48.dp))
-        Spacer(modifier = Modifier.width(30.dp))
+        Spacer(modifier = Modifier.width(LogoSize))
         Text(
             text = stringResource(R.string.markets_column_symbol),
             style = style,

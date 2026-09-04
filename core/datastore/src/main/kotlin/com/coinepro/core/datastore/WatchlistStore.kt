@@ -162,8 +162,16 @@ enum class WatchlistColumn(
     val persianLabel: String,
     val unit: WatchlistColumnUnit,
 ) {
-    /** The colour bar. Not a figure, and always drawn at the row's leading edge. */
-    FLAG("flag", "پرچم", WatchlistColumnUnit.NONE),
+    /**
+     * The colour bar. Not a figure, and always drawn at the row's leading edge.
+     *
+     * Called «برچسب» and not «پرچم». The reference calls it a *flag* and the literal translation is
+     * what shipped, and it is the wrong word in Persian: «پرچم» is the thing a country has, so a
+     * reader met it above a watchlist and looked for a country. What this column actually holds is
+     * a colour the reader put on a symbol, which is a label. The stored [id] stays `flag`, because
+     * renaming a word on screen is not a reason to make every device re-derive its column set.
+     */
+    FLAG("flag", "برچسب", WatchlistColumnUnit.NONE),
 
     /** The last traded price. The one column no watchlist is useful without. */
     LAST_PRICE("last", "آخرین", WatchlistColumnUnit.PRICE),
@@ -194,14 +202,25 @@ enum class WatchlistColumn(
         /**
          * What a watchlist row shows until the reader says otherwise.
          *
-         * Three, and the number is arithmetic rather than taste. At 411dp — the reference
-         * device, and the width this whole design system is measured against — a row spends 16dp
-         * of gutter at each edge, leaving 379. Before the figures it spends 3 on the flag rail,
-         * 34 on the reorder grip, 30 on the asset logo, 96 on the ticker and its Persian name, and
-         * 12 between each of those four: 211 in all. The price column is 92 and the percentage
-         * pill 64, with 8 between them, which is 164. Two figure columns land at 375 of the 379
-         * available. A third at 78 would overflow, and the first thing to be cut would be the
-         * price, which is the one thing a market row may not truncate.
+         * Three, and the number is arithmetic rather than taste — arithmetic that was done
+         * against the wrong phone once and had to be redone.
+         *
+         * It used to be measured at 411dp, which is the design system's reference width and is
+         * **wider than the device most readers hold**. A Pixel is 393dp, and there the same set
+         * ran about fourteen points past the row's far edge; because the figure block scrolls and
+         * the page is right-to-left, what fell off was the left end of the *last* column, so the
+         * move read `.35%` with its sign and its integer gone. So the numbers below are 393dp's.
+         *
+         * A row spends 16dp of gutter at each edge, leaving 361. Before the figures it spends 3 on
+         * the flag rail, 32 on the reorder grip, 28 on the asset logo, 96 on the ticker and its
+         * Persian name, and 8 between each of those four: 191 in all. The price column is 88 and
+         * the percentage pill 64, with 8 between them, which is 160. Two figure columns land at
+         * 351 of the 361 available. A third at 78 would overflow, and the first thing to be cut
+         * would be the price, which is the one thing a market row may not truncate.
+         *
+         * A phone narrower still — 360dp — does not fit this and is not made to: the figure block
+         * scrolls sideways in step with its headings, which is the row's answer to a reader who
+         * asks for more columns than the glass has room for.
          *
          * So the default is [FLAG], [LAST_PRICE] and [CHANGE_PERCENT]: the colour the reader
          * assigned, the number they came for, and the move they scan for. Everything else is one

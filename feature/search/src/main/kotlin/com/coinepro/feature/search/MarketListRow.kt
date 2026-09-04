@@ -125,7 +125,16 @@ internal fun MarketListRow(
             )
             .padding(horizontal = 16.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        // **Eight between the parts, not twelve.**
+        //
+        // Four gaps at twelve is forty-eight points of air in front of the figures, and the row did
+        // not have them to spend: on a 393-point phone — a Pixel, which is what the owner reads
+        // this on — the default column set ran about fourteen points past the row's far edge, and
+        // because the figure block is scrolled and the page is right-to-left, what fell off was the
+        // **left** end of the last column. That is «درصد تغییر نمادها در دیده‌بان زده بیرون»: the
+        // move showing as `.35%` with its sign and its integer gone. Eight is this system's own
+        // one-step and it returns sixteen of the twenty-four points the row was over by.
+        horizontalArrangement = Arrangement.spacedBy(RowGap),
     ) {
         if (flagRail) {
             Box(
@@ -165,7 +174,7 @@ internal fun MarketListRow(
         // a render test. See `CoineProSharedElement`.
         CoineProAssetLogo(
             symbol = row.meta.symbol,
-            size = 30.dp,
+            size = LogoSize,
             modifier = Modifier.sharedElement(SharedKeys.logo(row.meta.symbol)),
         )
         // Wider than it was. Eighty-four points fitted the ticker and cut every Persian name
@@ -294,6 +303,11 @@ internal fun WatchlistFigureCell(
         // alignment would flip a column of prices to the far side of its own box.
         textAlign = TextAlign.Right,
         maxLines = 1,
+        // A figure that outgrows its column — a reader at a large system font scale, a price with
+        // more digits than the column was sized for — loses its tail to an ellipsis rather than
+        // having its head sliced off by the clip. The magnitude is the part that must survive.
+        softWrap = false,
+        overflow = TextOverflow.Ellipsis,
         modifier = modifier.width(widthOf(column)),
     )
 }
@@ -339,7 +353,10 @@ internal fun WatchlistColumnHeading(
  */
 internal fun widthOf(column: WatchlistColumn): Dp = when (column) {
     WatchlistColumn.FLAG -> 0.dp
-    WatchlistColumn.LAST_PRICE -> 92.dp
+    // Eighty-eight rather than ninety-two. Thirteen-point bold digits put `104,532.45` at about
+    // seventy-eight points, so four of the twelve that were spare buy the row back some width and
+    // the decimal point still lands where `CoineProMarketRow` puts it.
+    WatchlistColumn.LAST_PRICE -> 88.dp
     WatchlistColumn.CHANGE -> 78.dp
     WatchlistColumn.CHANGE_PERCENT -> 64.dp
     WatchlistColumn.DAY_HIGH, WatchlistColumn.DAY_LOW -> 82.dp
@@ -392,6 +409,24 @@ internal fun compactAmount(value: Double): String {
 
 /** The width of the ticker-and-name block, shared by both lists so their logos line up. */
 internal val SymbolColumn = 96.dp
+
+/**
+ * The asset disc on a dense row.
+ *
+ * Twenty-eight rather than thirty, and named rather than written into the row, because the heading
+ * strip has to spend the same number — see `headingLead`. Two points is invisible on the disc and
+ * it is two of the twenty-four the row was overflowing by.
+ */
+internal val LogoSize = 28.dp
+
+/**
+ * The step between the parts of a dense row.
+ *
+ * One number, read by the row, by the watchlist's heading strip and by the markets tab's, because
+ * a heading that is not over its column tells the reader the list is arranged in a way it is not —
+ * and three files each writing `12.dp` is how that happens.
+ */
+internal val RowGap = 8.dp
 
 /**
  * The height every row in this module settles at.

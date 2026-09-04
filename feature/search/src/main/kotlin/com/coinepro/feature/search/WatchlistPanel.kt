@@ -426,6 +426,16 @@ private fun Toolbar(
             color = CoineProColors.TextMuted,
         )
         if (onFlagSort != null) {
+            // **A key, and the word on it is «برچسب».**
+            //
+            // Two faults, one circle drawn round them. The word was «پرچم» — the literal
+            // translation of the reference's *flag*, and in Persian the thing a country has, so a
+            // reader met it beside «۳ نماد» and looked for a country. And it was bare text in a
+            // line of counts, which is why it read as a mistake rather than as a control: nothing
+            // about it said it could be pressed, so the only thing left to notice was the word.
+            //
+            // The plate is the same one the flag filter's neighbours wear, so it now reads as what
+            // it is — the sort key for the colour column, next to the colours it orders by.
             Text(
                 text = WatchlistColumn.FLAG.persianLabel + when {
                     flagSort == null -> ""
@@ -433,8 +443,13 @@ private fun Toolbar(
                     else -> " ↑"
                 },
                 style = MaterialTheme.typography.labelSmall,
-                color = if (flagSort != null) CoineProColors.TextSecondary else CoineProColors.TextDisabled,
-                modifier = Modifier.clip(CoineProShapes.small).clickable(onClick = onFlagSort),
+                color = if (flagSort != null) CoineProColors.TextSecondary else CoineProColors.TextMuted,
+                maxLines = 1,
+                modifier = Modifier
+                    .clip(CoineProShapes.small)
+                    .background(CoineProColors.SurfaceElevated)
+                    .clickable(onClick = onFlagSort)
+                    .padding(horizontal = CoineProSpacing.One, vertical = 3.dp),
             )
         }
         Spacer(modifier = Modifier.weight(1f))
@@ -503,7 +518,9 @@ private fun Headings(
             .fillMaxWidth()
             .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.Half),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+        // The last of the row's own steps — [headingLead] carries the ones before it. The two have
+        // to add up to the same number or every heading sits beside its column instead of over it.
+        horizontalArrangement = Arrangement.spacedBy(RowGap),
     ) {
         Spacer(modifier = Modifier.width(lead))
         Row(
@@ -555,8 +572,8 @@ private fun ReorderHandle(
     val rowHeightPx = with(LocalDensity.current) { MarketRowHeight.toPx() }
     Box(
         modifier = Modifier
-            // Thirty-four wide, the same as every square control in this app's chrome, and forty
-            // tall — which with the row's nine points of padding at each end is exactly
+            // Thirty-two wide — see [HandleWidth] — and forty
+            // tall, which with the row's nine points of padding at each end is exactly
             // [MarketRowHeight]. Deliberately not `minimumInteractiveComponentSize`: its
             // forty-eight points are the guidance for a *tap*, they would push the default column
             // set past the width of a 411dp phone, and — the part that would actually break — they
@@ -716,15 +733,15 @@ internal fun sortRows(
  * nearly right is worse than none, since it labels the wrong column rather than no column.
  */
 private fun headingLead(withRail: Boolean, withHandle: Boolean) =
-    (if (withRail) 3.dp + 12.dp else 0.dp) +
-        (if (withHandle) HandleWidth + 12.dp else 0.dp) +
-        30.dp + 12.dp + SymbolColumn
+    (if (withRail) 3.dp + RowGap else 0.dp) +
+        (if (withHandle) HandleWidth + RowGap else 0.dp) +
+        LogoSize + RowGap + SymbolColumn
 
 /**
  * How wide the reorder grip is.
  *
- * Thirty-four points, which is the size of every other square control in this app's chrome, and
- * the largest the row can spare: the default column set is chosen to fit a 411dp phone with this
- * in it, and see [WatchlistColumn.DEFAULT] for that arithmetic.
+ * Thirty-two points, and the two it lost are two of the twenty-four the row was overflowing a
+ * 393-point phone by — see [MarketListRow] and [WatchlistColumn.DEFAULT] for that arithmetic. It is
+ * still the largest thing the row can spare and still a comfortable target at forty points tall.
  */
-internal val HandleWidth = 34.dp
+internal val HandleWidth = 32.dp

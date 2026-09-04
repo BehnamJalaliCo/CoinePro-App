@@ -42,7 +42,7 @@
     <string name="watchlist_columns">ستون‌ها</string>
     <string name="watchlist_transfer">ورود و خروج فهرست</string>
     <string name="watchlist_empty">این فهرست خالی است.</string>
-    <string name="watchlist_empty_flag">با این پرچم نمادی در فهرست نیست.</string>
+    <string name="watchlist_empty_flag">با این برچسب نمادی در فهرست نیست.</string>
     <string name="watchlist_empty_hint">از بازارها ستاره بزنید، یا فهرست را از برنامه دیگری وارد کنید.</string>
     <string name="watchlist_lists_title">فهرست‌های دیده‌بان</string>
     <string name="watchlist_lists_subtitle">به هر تعداد که بخواهید. محدودیتی نیست.</string>
@@ -70,8 +70,8 @@
     <string name="watchlist_import_action">افزودن به فهرست</string>
     <string name="watchlist_import_added">%1$s نماد افزوده شد.</string>
     <string name="watchlist_import_rejected">%1$s خط خوانده نشد:</string>
-    <string name="watchlist_flag_none">بدون پرچم</string>
-    <string name="watchlist_row_subtitle">پرچم این نماد در همین فهرست</string>
+    <string name="watchlist_flag_none">بدون برچسب</string>
+    <string name="watchlist_row_subtitle">برچسب این نماد در همین فهرست</string>
     <string name="watchlist_row_remove">حذف از این فهرست</string>
     <string name="watchlist_row_open">باز کردن چارت</string>
     <string name="watchlist_row_alert">هشدار قیمت</string>
@@ -99,7 +99,7 @@
     <string name="surface_alerts_title">مرکز هشدار</string>
     <string name="surface_alerts_body">پنج نوع شرط، بسامد، وب‌هوک و دنبالهٔ ممیزی.</string>
     <string name="surface_watchlist_title">دیده‌بان</string>
-    <string name="surface_watchlist_body">چند فهرست، پرچم رنگی، ستون دلخواه، ورود و خروج.</string>
+    <string name="surface_watchlist_body">چند فهرست، برچسب رنگی، ستون دلخواه، ورود و خروج.</string>
     <string name="surface_news_title">اخبار بازار</string>
     <string name="surface_news_body">خبرِ ساختاریافته با زمان منبع، تأثیر و جهت.</string>
     <string name="surface_calendar_title">تقویم اقتصادی</string>
