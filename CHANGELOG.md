@@ -15,6 +15,65 @@ it is for.
 
 ---
 
+## [4.30.0] — 2026-09-04 — What a price leaves behind
+
+Six things the owner circled, and five of them turned out to be one kind of
+fault: a number measured against the wrong width.
+
+* **The move column stopped running off the row.** «درصد تغییر نمادها در دیده‌بان
+  زده بیرون» — `+0.35%` reached the reader as `.35%`, sign and integer gone. The
+  default column set had been laid out against 411dp, which is this design
+  system's reference width and is **wider than the phone most people hold**. At
+  393 it ran about fourteen points over; the figure block scrolls and the page is
+  right-to-left, so what fell off was the *left* end of the last column. The gap
+  between the parts of a row came down from twelve points to eight, the disc from
+  thirty to twenty-eight, the grip from thirty-four to thirty-two and the price
+  column from ninety-two to eighty-eight — and the arithmetic is now checked
+  against 393 rather than 411. The percentage pill is also pinned left-to-right
+  and to one line, which is the second half of the same fault: a figure starting
+  with a neutral `+` inherited the page's direction and lost its head rather than
+  its tail.
+* **The chart's live price tag stopped overflowing the axis.** The gutter is
+  measured against the widest label the axis expects to print, and it was
+  measuring `81192.5` while the axis printed `81,192.5`. One comma, a fixed
+  inset, and the tag ran off the edge of the glass. The sample now goes through
+  the same grouping the labels do, and the tag's inset gives way before its
+  digits do.
+* **The watchlist under the chart is as tall as its rows, and every row has a
+  price on it.** «وقتی دیده‌بان نماد اضافه می‌کنی چارت رو ببین چه شکلی می‌شه.»
+  Two faults. The divider sat at a constant 62%, so three starred markets took
+  the same third of the screen as twenty — three rows and then a hand's width of
+  empty stage, with the chart squeezed for room nothing was using; it now starts
+  wherever the rows actually end. And the strip's prices came from the live
+  socket, which carries **eight** markets out of a catalogue of nine hundred, so
+  anything but the majors drew a logo, a ticker and two empty columns. It now
+  reads the catalogue underneath and the socket on top, which is the rule the
+  market list itself has always used.
+* **«پرچم» became «برچسب».** The literal translation of the reference's *flag*,
+  and the wrong word in Persian — «پرچم» is the thing a country has, so a reader
+  met it above their watchlist and looked for a country. It was also bare text in
+  a line of counts with nothing to say it could be pressed, which is why it read
+  as a mistake rather than as the sort control it is; it now wears the same plate
+  as its neighbours.
+* **Explore names itself.** The brand was printed above «کاوش» because the route
+  was missing from the self-titled set and fell through to the app's name. A
+  brand name is not a screen title: it says nothing about where the reader is,
+  and it spent the bar's whole height telling somebody holding the app which app
+  they were holding.
+* **The chart's signature came out of the corner.** Twelve points is about three
+  per cent of a phone's width, which wedged the mark into the angle where the
+  plot meets the time axis. It is now twelve per cent of the canvas — a
+  proportion, so it holds the same place on a phone, on a tablet and full screen.
+* **The watchlist has a signature of its own, and it is not borrowed.** What was
+  there streamed the mark in behind a clip front, which is exactly what
+  TradingView does with theirs. This writes the brand with a **price**: a line
+  crosses the header, the mark and then each letter are uncovered by its head,
+  and the tape burns off behind it until only the brand is left. Fixed readings
+  rather than a random squiggle, gold on ink, no blur and no gradient — and with
+  animations off, the finished frame and no line at all.
+
+---
+
 ## [4.29.0] — 2026-09-03 — The glyphs, and the gold
 
 «هنوز آپ به یک آپ معمولی می‌خوره تا یک آپ حرفه‌ای.» Two things were doing that,
