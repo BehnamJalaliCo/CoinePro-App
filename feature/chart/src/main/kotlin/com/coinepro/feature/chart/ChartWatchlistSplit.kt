@@ -44,8 +44,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.coinepro.core.chart.decimalsFor
-import com.coinepro.core.chart.formatPrice
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProAssetLogo
@@ -116,7 +114,7 @@ internal fun ChartWatchlistLayout(
         return
     }
     val scope = rememberCoroutineScope()
-    var ratio by rememberSaveable { mutableFloatStateOf(ChartSplit.DEFAULT) }
+    var ratio by rememberSaveable { mutableFloatStateOf(Float.NaN) }
     // Read once. A collector would deliver this screen's own writes straight back and fight a
     // finger that is still on the handle.
     var restored by rememberSaveable { mutableStateOf(false) }
@@ -134,6 +132,10 @@ internal fun ChartWatchlistLayout(
         // phone does.
         val compact = maxHeight < ChartSplit.COMPACT_HEIGHT
         val totalPx = with(LocalDensity.current) { maxHeight.toPx() }
+        // Where the divider sits when the reader has never moved it: **wherever this many rows
+        // end**, rather than at a constant that leaves a watchlist of three floating in a third of
+        // the screen. See `ChartSplit.fitted`. A stored ratio is a decision and wins over it.
+        val split = if (ratio.isNaN()) ChartSplit.fitted(shown.size, maxHeight.value) else ratio
         Column(modifier = Modifier.fillMaxSize()) {
             if (compact) {
                 page(Modifier.fillMaxWidth().weight(1f))
@@ -144,15 +146,16 @@ internal fun ChartWatchlistLayout(
                     onSelect = onSelect,
                 )
             } else {
-                page(Modifier.fillMaxWidth().weight(ratio))
+                page(Modifier.fillMaxWidth().weight(split))
                 ChartSplitHandle(
-                    onDrag = { amount -> ratio = ChartSplit.after(ratio, amount, totalPx) },
+                    onDrag = { amount -> ratio = ChartSplit.after(split, amount, totalPx) },
                     // Written when the finger lifts, not per frame. Sixty preferences writes a
                     // second for a value nobody reads until the next launch is a lot of disk for
                     // one decision.
                     onDragEnd = {
                         workspace?.let { store ->
-                            scope.launch { runCatching { store.setSplitRatio(ratio) } }
+                            val settled = split
+                            scope.launch { runCatching { store.setSplitRatio(settled) } }
                         }
                     },
                 )
@@ -161,7 +164,7 @@ internal fun ChartWatchlistLayout(
                     current = current,
                     quotes = quotes,
                     onSelect = onSelect,
-                    modifier = Modifier.fillMaxWidth().weight(1f - ratio),
+                    modifier = Modifier.fillMaxWidth().weight(1f - split),
                 )
             }
         }
@@ -332,33 +335,54 @@ private fun WatchlistRow(
             color = CoineProColors.TextPrimary,
             modifier = Modifier.weight(1f),
         )
-        quote?.price?.let { price ->
-            LtrDirection {
-                Text(
-                    text = formatPrice(price, decimalsFor(price)),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = CoineProColors.TextSecondary,
-                    // Right, never End: this is a column of market figures and it stays aligned
-                    // the same way in a right-to-left layout as it does in the broker statement
-                    // the reader is holding it against.
-                    textAlign = TextAlign.Right,
-                    modifier = Modifier.width(PRICE_WIDTH),
-                )
-            }
+        // **Both cells are always drawn, and an unquoted one says so.**
+        //
+        // They used to be conditional, so a symbol the feed had not answered for was a logo, a
+        // ticker, and then nothing — three-quarters of an empty row, in a strip whose entire job
+        // is to be scanned. Worse, it was *ragged*: the quoted rows had their figures at one place
+        // and the unquoted ones had none, so the strip stopped reading as a column at all. A dash
+        // holds the column open and is the honest answer — this feed has not said — where an
+        // absent cell reads as a rendering fault.
+        LtrDirection {
+            Text(
+                // Grouped, like every other price in the app. The chart's own axis prints
+                // `2,574.9` and the watchlist screen prints `91,248.30`; this strip printed
+                // `91248.3`, which is the same number set as a different kind of thing.
+                text = quote?.price?.let { MarketNumberFormatter.priceAuto(it) } ?: EM_DASH,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (quote?.price != null) {
+                    CoineProColors.TextSecondary
+                } else {
+                    CoineProColors.TextDisabled
+                },
+                // Right, never End: this is a column of market figures and it stays aligned
+                // the same way in a right-to-left layout as it does in the broker statement
+                // the reader is holding it against.
+                textAlign = TextAlign.Right,
+                maxLines = 1,
+                modifier = Modifier.width(PRICE_WIDTH),
+            )
         }
-        quote?.changePercent?.let { move ->
-            LtrDirection {
-                Text(
-                    text = MarketNumberFormatter.signedPercent(move),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (move >= 0) CoineProColors.Buy else CoineProColors.Sell,
-                    textAlign = TextAlign.Right,
-                    modifier = Modifier.width(MOVE_WIDTH),
-                )
-            }
+        LtrDirection {
+            val move = quote?.changePercent
+            Text(
+                text = move?.let { MarketNumberFormatter.signedPercent(it) } ?: EM_DASH,
+                style = MaterialTheme.typography.labelSmall,
+                color = when {
+                    move == null -> CoineProColors.TextDisabled
+                    move >= 0 -> CoineProColors.Buy
+                    else -> CoineProColors.Sell
+                },
+                textAlign = TextAlign.Right,
+                maxLines = 1,
+                modifier = Modifier.width(MOVE_WIDTH),
+            )
         }
     }
 }
+
+/** What a cell with no figure says. Not a zero, which would be a claim. */
+private const val EM_DASH = "—"
 
 /**
  * The watchlist as a single scrolling row of tickers, for a screen with no room for a list.

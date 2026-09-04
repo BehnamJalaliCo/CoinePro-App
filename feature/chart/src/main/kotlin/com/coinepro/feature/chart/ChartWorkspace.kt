@@ -90,6 +90,42 @@ object ChartSplit {
      */
     fun after(current: Float, dragPx: Float, totalPx: Float): Float =
         if (totalPx <= 0f) clamp(current) else clamp(current + dragPx / totalPx)
+
+    /**
+     * Where the divider starts for a reader who has starred [rows] markets.
+     *
+     * ### The complaint
+     *
+     * «وقتی دیده‌بان نماد اضافه می‌کنی چارت رو ببین چه شکلی می‌شه.» [DEFAULT] is a constant, so a
+     * watchlist of three took the same 38 % of the screen as a watchlist of twenty: three rows of
+     * list and then a hand's width of empty stage under them, with the chart squeezed for room
+     * nothing was using. Starring a first symbol made the chart *worse*, which is the opposite of
+     * what starring is for.
+     *
+     * ### What it does instead
+     *
+     * The strip asks for exactly what its rows need — [rows] of [rowHeightDp], plus the divider
+     * above them and the list's own half-step of padding at each end — and the chart keeps the
+     * rest. So three rows is a three-row strip, and the chart is nearly whole.
+     *
+     * Clamped by [MIN] and [MAX] at both ends, which is what stops a long list from taking the
+     * screen: past about six rows this returns [MIN]'s complement and the strip scrolls, exactly
+     * as it did before. A zero or unmeasured height falls back to [DEFAULT] rather than dividing.
+     *
+     * It is the *starting* position and nothing more. The handle still moves it and the workspace
+     * still remembers where the reader put it — a stored ratio is read after this and wins.
+     */
+    fun fitted(rows: Int, totalDp: Float, rowHeightDp: Float = ROW_HEIGHT_DP): Float {
+        if (rows <= 0 || totalDp <= 0f || !totalDp.isFinite()) return DEFAULT
+        val strip = rows * rowHeightDp + STRIP_CHROME_DP
+        return clamp(1f - strip / totalDp)
+    }
+
+    /** One row of the strip under the chart, in points. Mirrors `ChartWatchlistSplit`'s own. */
+    private const val ROW_HEIGHT_DP = 44f
+
+    /** The divider over the strip and the half-step of padding above and below its rows. */
+    private const val STRIP_CHROME_DP = 9f
 }
 
 /**

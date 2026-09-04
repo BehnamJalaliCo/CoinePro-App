@@ -1830,20 +1830,60 @@ private fun MainShell(
         ticks = chartTicks,
     )
 
-    // The prices the chart's watchlist strip and the two-pane pickers put beside their tickers,
-    // taken from the feed already running for the platform on screen rather than from a second
-    // subscription. Keyed uppercase because that is how those strips look a symbol up: a reader
-    // who starred «btcusdt» from a search result must not get a blank row for it.
+    // The catalogue's own prices, which is what makes the strips below useful at all.
     //
-    // A guest's shell passes an empty [MarketDataState] — see the note at that call site — so the
-    // strips there draw tickers with no figures, which is what they are built to do.
-    val watchlistQuotes: Map<String, WatchlistQuote> = remember(marketState.quotes) {
-        marketState.quotes.entries.associate { (ticker, quote) ->
-            ticker.uppercase() to WatchlistQuote(
-                symbol = ticker.uppercase(),
-                price = quote.price,
-                changePercent = quote.changePercent,
-            )
+    // Mapped before it is collected, for the reason the price-feed bar below is: this controller's
+    // state also carries the search query and its results, and both change on every keystroke of
+    // the search screen. The catalogue's quotes change when the catalogue is *reloaded*, so an
+    // equal map never publishes and the shell does not recompose around the NavHost while somebody
+    // types. Nothing else in this scope may read the search state whole for the same reason.
+    val catalogueQuotes by remember(marketSearchController) {
+        marketSearchController.state.map { it.catalogueQuotes }
+    }.collectAsStateWithLifecycle(emptyMap())
+    // Started by the shell rather than only by the screens that draw the catalogue, because the
+    // strips that read the prices above are not those screens: a chart opened from a widget, a deep
+    // link or a saved back stack reaches the watchlist strip without the markets tab or Explore
+    // having ever been on screen. `start()` loads once and returns immediately when it already has.
+    LaunchedEffect(marketSearchController) { marketSearchController.start() }
+
+    // The prices the chart's watchlist strip and the two-pane pickers put beside their tickers.
+    // Keyed uppercase because that is how those strips look a symbol up: a reader who starred
+    // «btcusdt» from a search result must not get a blank row for it.
+    //
+    // ### The catalogue underneath, the socket on top
+    //
+    // This used to be the socket's map and nothing else, and the socket carries **eight** markets
+    // — `MarketDataSymbols.crypto` — out of a catalogue of nine hundred. So a reader who starred
+    // anything but the majors got a strip of logos and tickers with two empty columns beside them:
+    // «وقتی دیده‌بان نماد اضافه می‌کنی چارت رو ببین چه شکلی می‌شه». A guest got that for every row,
+    // their shell passing an empty [MarketDataState] by design.
+    //
+    // The rule is `MarketSearchController.quoteFor`'s, one level up: the catalogue has a price for
+    // everything and goes stale from the moment it lands, the socket has a live price for a few, so
+    // the live one wins where there is one and the catalogue answers for the rest. Which is the
+    // difference between a strip that is scanned and a strip that is decoration.
+    val watchlistQuotes: Map<String, WatchlistQuote> = remember(marketState.quotes, catalogueQuotes) {
+        buildMap {
+            catalogueQuotes.forEach { (ticker, quote) ->
+                put(
+                    ticker.uppercase(),
+                    WatchlistQuote(
+                        symbol = ticker.uppercase(),
+                        price = quote.price,
+                        changePercent = quote.changePercent,
+                    ),
+                )
+            }
+            marketState.quotes.forEach { (ticker, quote) ->
+                put(
+                    ticker.uppercase(),
+                    WatchlistQuote(
+                        symbol = ticker.uppercase(),
+                        price = quote.price,
+                        changePercent = quote.changePercent,
+                    ),
+                )
+            }
         }
     }
     val currentRoute = backStackEntry?.destination?.route

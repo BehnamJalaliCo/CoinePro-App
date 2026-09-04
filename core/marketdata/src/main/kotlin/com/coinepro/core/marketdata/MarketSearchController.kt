@@ -42,6 +42,19 @@ data class MarketSearchState(
     val error: UiMessage? = null,
     /** How many markets the catalogue holds — worth showing, since the answer used to be eight. */
     val catalogSize: Int = 0,
+    /**
+     * Every price the catalogue arrived with, keyed by ticker in upper case.
+     *
+     * Published because [results] is not a catalogue — it is whatever the current query and
+     * category leave standing — and a caller that needs "the price of this one symbol" cannot ask
+     * a filtered list for it. The chart's watchlist strip is the caller that needed it: the live
+     * socket carries eight markets and a reader can star any of nine hundred, so a strip fed from
+     * the socket alone drew a logo, a ticker and two empty columns for almost everything on it.
+     *
+     * It changes when the catalogue is reloaded and not when a key is pressed, which is what makes
+     * it safe to read from the shell.
+     */
+    val catalogueQuotes: Map<String, MarketQuote> = emptyMap(),
 ) {
     val searching: Boolean get() = query.isNotBlank()
     val empty: Boolean get() = searching && results.isEmpty() && !loading && error == null
@@ -89,7 +102,15 @@ class MarketSearchController(
                 .onSuccess { loaded ->
                     catalog = loaded.markets
                     catalogQuotes = loaded.quotes
-                    _state.update { it.copy(loading = false, error = null, catalogSize = catalog.size) }
+                    val published = loaded.quotes.mapKeys { (ticker, _) -> ticker.uppercase() }
+                    _state.update {
+                        it.copy(
+                            loading = false,
+                            error = null,
+                            catalogSize = catalog.size,
+                            catalogueQuotes = published,
+                        )
+                    }
                     recompute()
                 }
                 .onFailure { failure ->
