@@ -2339,7 +2339,19 @@ private fun ChartWatermark(
             // سمت چپ چسبیده»: not only was twelve points too few, they were never spent.
             .absolutePadding(left = lead)
             .padding(bottom = WATERMARK_INSET + axis)
-            .clip(CoineProShapes.small)
+            // **No clip.** There was a `CoineProShapes.small` here, and it was cutting the logo in
+            // half: that shape is a ten-point radius, this box closed is exactly the mark's own
+            // twenty-three points square, and a ten-point round on an eleven-and-a-half-point
+            // half-width is very nearly a circle. So the corners ate the P — its stem runs down the
+            // artwork's left edge and its foot sits in the bottom-left corner, which is precisely
+            // what a rounded rectangle removes first. What was left read as a ring with an arrow
+            // through it, and that is «لوگو پایهٔ P رو نداره». Opening the signature widened the box
+            // and gave the letter its edge back, which is why the same logo looked right expanded
+            // and wrong closed.
+            //
+            // Nothing was lost with the clip, because nothing was being clipped *to*: the
+            // `clickable` below passes a null indication, so there is no ripple for a shape to
+            // contain. It was shaping the artwork and only the artwork.
             .clickable(interaction, null) {
                 haptics.select()
                 expanded = !expanded
