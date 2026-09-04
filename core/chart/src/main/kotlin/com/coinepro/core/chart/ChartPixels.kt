@@ -304,15 +304,30 @@ fun dashIntervals(style: LineStyleKind, lineWidth: Float): FloatArray = when (st
 /**
  * How large the type on an axis is, in scalable pixels.
  *
- * **Twelve on the price axis, eleven on the time axis**, and the difference is not a rounding
- * error. The vertical axis carries the number the reader came for — the one they read off a
- * gridline and repeat out loud — and the horizontal one carries context they glance at to place a
- * candle in the week. Setting both to the same size makes the chart louder without making anything
- * more legible; setting the price axis a step larger is the cheapest way to say which of the two a
- * reader is meant to trust.
+ * **Twelve on both**, which is what this app's own measurement of a phone render read.
  *
- * Both are `sp` rather than `dp`, so both follow the system font setting. Eleven is the floor of
- * this app's own type scale, which is what stops the time axis being sized by taste.
+ * ### The open question, said here rather than left as a contradiction
+ *
+ * This comment used to claim eleven on the time axis while the constant below said twelve — the
+ * value was changed and the prose was not, so the file carried an argument for a number it did not
+ * set. Which is the exact fault this release was opened to find, in the one place nothing was
+ * checking.
+ *
+ * The argument for eleven is real and is not this app's: TradingView's own published Charting
+ * Library sets its price-scale label at 12 px and its time-scale label at **11**, one apart on
+ * purpose — the vertical axis carries the number a reader repeats out loud, the horizontal one
+ * carries context they glance at to place a candle in the week. The argument for twelve is also
+ * real: it is what was measured off a render of the phone product, and a phone client is entitled
+ * to override a library default.
+ *
+ * A published constant is stronger evidence than a colour sampled from a screenshot; it is not
+ * stronger evidence about *the Android app* than the Android app is. So neither settles it, and the
+ * number is not being changed on the strength of a document. What settles it is a capture of the
+ * real Android client on the canonical device — see
+ * `docs/design/TRADINGVIEW_VISUAL_PARITY.md`. `TradingViewSourceConstantsTest` pins what is drawn
+ * today so it cannot drift while the question is open.
+ *
+ * Both are `sp` rather than `dp`, so both follow the system font setting.
  */
 fun axisFontSizeSp(isPriceAxis: Boolean): Float =
     if (isPriceAxis) PRICE_AXIS_FONT_SP else TIME_AXIS_FONT_SP
@@ -574,8 +589,9 @@ private const val SEPARATOR_BAND = 9f
 
 /** See [axisFontSizeSp]. */
 private const val PRICE_AXIS_FONT_SP = 12f
-// Twelve on both axes, which is what TradingView sets: its time labels are the same 12 px as its
-// price labels, and a smaller row under a larger column read as an afterthought.
+
+// Twelve, measured off a render of the phone product. TradingView's published Charting Library
+// says eleven here — an open disagreement, not an oversight. See [axisFontSizeSp].
 private const val TIME_AXIS_FONT_SP = 12f
 
 /** See [legendFontSizeSp]. */

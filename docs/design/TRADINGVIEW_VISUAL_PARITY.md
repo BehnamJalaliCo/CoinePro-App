@@ -39,6 +39,45 @@ be made from a capture of the other app.
 something close, and it does not "approximate for now". A baseline invented once is a baseline that
 is trusted forever by people who were not there when it was invented.
 
+### Three classes of evidence, and what each one may decide
+
+Rule Zero governs *pixel goldens*. It is not a claim that a screenshot is the only thing that can
+ever be known about TradingView, and treating it that way throws away the strongest evidence there
+is. There are three classes, and the mistake to avoid is letting one answer a question that belongs
+to another.
+
+| Class | What it is | May decide | May **not** decide |
+|---|---|---|---|
+| **Published source constant** | A value TradingView itself publishes: the Charting Library's `ChartPropertiesOverrides` defaults, the open-source Lightweight Charts renderer's arithmetic. | Colour hexes, dash tables, renderer formulas, type sizes *of the library*. | Anything about layout on a phone. A default is not a rendered frame. |
+| **Device capture** | A PNG off the real Android app on the canonical device, filed per the capture protocol. | Position, size, gap, baseline, divider, cadence — everything that only exists once something has been drawn. | Nothing; this is the strongest class, and it is the one this repository does not have. |
+| **Qualitative reference** | A web screenshot, a store image, an article, a JPG. | Composition, navigation order, whether a thing exists at all, direction of travel. | Any pixel, any colour, any measurement. |
+
+A source constant beats a colour sampled from a lossy screenshot, because there is no encoder, no
+scale factor and no display profile between it and the truth. It does **not** beat the Android
+client on a question about the Android client — a phone app is entitled to override a library
+default, and the Charting Library is not the phone app.
+
+Class one is executable here: `core/chart/.../TradingViewSourceConstantsTest` holds this app's
+renderer against TradingView's published arithmetic — the 5/1, 9/3, 16/4 body-and-gap table, the
+28-pixel time axis at 12-point type, the price axis as fixed chrome plus label rounded to an even
+count, the five dash patterns, and the candle pair.
+
+#### Two corrections that class one produced
+
+* **The dark palette in circulation is folklore.** `#131722 / #1E222D / #2A2E39 / #D1D4DC` is
+  quoted everywhere and TradingView has published none of it. Two neighbours of it *are* confirmed
+  (`#131722` as an axis text colour, `#363A45` as a dark-theme crosshair label ground), which is a
+  hint and not a proof. This app does not use that set — it draws `#0F0F0F` / `#282828`, measured —
+  and nothing here should start quoting the folklore as a source.
+* **The light grid has two answers.** The published Charting Library default is `#e0e3e8`; this
+  app draws `#D5D5D5`, measured off the phone product. Both are honestly sourced and they are not
+  the same number. It is an open question of the same shape as the time-axis type size, and it is
+  settled the same way: by a capture of the Android client, not by preferring whichever source is
+  nearer to hand.
+
+Every such open question stays written down at the point where the number is set, so that the next
+person to read the constant meets the argument rather than the conclusion.
+
 ### The JPGs already in this repository are not goldens
 
 `docs/design/reference/tradingview-phone/*.jpg` are seven lossy web captures. They were used to read
