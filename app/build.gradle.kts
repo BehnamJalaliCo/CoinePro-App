@@ -410,6 +410,16 @@ val expectedSigners = (releaseSignerFingerprints() + extraExpectedSigners.split(
         unitTests {
             isIncludeAndroidResources = true
             isReturnDefaultValues = true
+            // Forwarded so `-Dcoinepro.golden.record=true` on the Gradle command line reaches the
+            // test JVM. Gradle does not pass its own system properties to a forked test worker, so
+            // without this the recording switch is silently ignored and every re-record is a run
+            // that writes nothing. See `GoldenScreenshot`.
+            all {
+                it.systemProperty(
+                    "coinepro.golden.record",
+                    System.getProperty("coinepro.golden.record") ?: "false",
+                )
+            }
         }
     }
 }

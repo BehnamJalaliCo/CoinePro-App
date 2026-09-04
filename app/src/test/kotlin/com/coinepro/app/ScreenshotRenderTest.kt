@@ -3009,7 +3009,7 @@ private fun AvatarGallery() {
 }
 
 /** A `DataStore` that holds its preferences in memory, for the screens that read one. */
-private class FakeScreenshotPreferences : DataStore<Preferences> {
+internal class FakeScreenshotPreferences : DataStore<Preferences> {
     override val data = MutableStateFlow<Preferences>(emptyPreferences())
 
     override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences {
@@ -3059,7 +3059,7 @@ private val LEGAL_EXCERPT = """
  * page of twenty renders the same first screen as one of two. [failure] is what every call throws
  * instead, which is how the tier-locked capture is produced.
  */
-private class FakeCommunityIdentity(name: String? = "رضا محمدی") : CommunityIdentityStore {
+internal class FakeCommunityIdentity(name: String? = "رضا محمدی") : CommunityIdentityStore {
     private val held = kotlinx.coroutines.flow.MutableStateFlow(name)
 
     override suspend fun key(): String = "0123456789abcdef0123456789abcdef"
@@ -3071,7 +3071,7 @@ private class FakeCommunityIdentity(name: String? = "رضا محمدی") : Commu
     }
 }
 
-private class FakeCommunityGateway(
+internal class FakeCommunityGateway(
     private val failure: Throwable? = null,
 ) : CommunityGateway {
 
