@@ -189,6 +189,8 @@ fun CoineProChipRow(
      * of it.
      */
     compact: Boolean = false,
+    /** Neutral selection instead of the page accent — see [CoineProToggleChip]. */
+    neutral: Boolean = false,
 ) {
     LazyRow(
         modifier = modifier.fillMaxWidth(),
@@ -206,6 +208,7 @@ fun CoineProChipRow(
                     selected = selectedId == null,
                     onClick = { onSelect(null) },
                     compact = compact,
+                    neutral = neutral,
                 )
             }
         }
@@ -216,6 +219,7 @@ fun CoineProChipRow(
                 onClick = { onSelect(option.id) },
                 count = option.count,
                 compact = compact,
+                neutral = neutral,
             )
         }
     }
@@ -262,6 +266,19 @@ fun CoineProToggleChip(
      * dark brown in the light theme; [CoineProColors.AccentFill] is its fill twin.
      */
     fill: Color? = null,
+    /**
+     * A selection marked by a raised neutral rather than by the page accent.
+     *
+     * For a **terminal filter**: which watchlist, which lens, which category. Those are views over
+     * a list, not commercial actions, and on a page whose accent is the brand they were coming out
+     * gold — so a screen of forty prices had a gold object on it that meant "this filter", and the
+     * gold that means "this is the one thing here worth pressing" had to compete with it. The
+     * raised neutral is what this app already uses for "one of these is in force" everywhere the
+     * choice is a view: the chart's interval keys, the Ideas switch, the bottom bar's own plate.
+     *
+     * The accent stays the default, because most chip rows in this app are not filters.
+     */
+    neutral: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val haptics = rememberCoineProHaptics()
@@ -271,6 +288,7 @@ fun CoineProToggleChip(
     val fill by animateColorAsState(
         targetValue = when {
             !selected -> CoineProColors.SurfaceElevated
+            neutral -> CoineProColors.SurfaceRaised
             else -> fill ?: CoineProColors.pageAccent
         },
         animationSpec = CoineProMotionSpecs.standard(),
@@ -279,6 +297,8 @@ fun CoineProToggleChip(
     val ink by animateColorAsState(
         targetValue = when {
             !selected -> CoineProColors.TextSecondary
+            // A raised neutral is a *surface*, so the label on it is the page's own primary ink.
+            neutral -> CoineProColors.TextPrimary
             // Every fill this chip accepts is a mid-tone or darker in both themes — the page
             // accents, the brand gold, buy and sell — so the label that reads on all of them is
             // the one the gold already needs. White would fail on gold in either theme.

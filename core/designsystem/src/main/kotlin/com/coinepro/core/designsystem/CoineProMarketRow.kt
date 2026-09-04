@@ -33,12 +33,50 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.MarketNumberFormatter
+
+/**
+ * The percentage move as **plain coloured text**, which is what a terminal draws.
+ *
+ * ### Why a list does not get the pill
+ *
+ * [CoineProPercentPill] is the right shape for a *card*: one market, one figure, and the fill is
+ * what makes the move findable on a surface that has no column to find it in. Forty of them down a
+ * list is the opposite — every row carries a tinted block, so the tinted block stops distinguishing
+ * anything and the column reads as a strip of buttons. The reference draws its watchlist and its
+ * market list in bare green and red, and the reason is arithmetic rather than taste: in a column,
+ * alignment and colour already carry the whole signal, and the fill is a third encoding of it.
+ *
+ * So: pills on cards, summaries, portfolios and signals; text in the two terminal lists.
+ *
+ * The colours are [CoineProColors.MarketUp] and [CoineProColors.MarketDown] — movement, not
+ * execution — and the figure is pinned left-to-right for the reason the pill's own is.
+ */
+@Composable
+fun CoineProPercentText(
+    percent: Double,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.labelMedium,
+    textAlign: TextAlign = TextAlign.Right,
+) {
+    Text(
+        text = MarketNumberFormatter.signedPercent(percent),
+        style = style.copy(textDirection = TextDirection.Ltr),
+        color = CoineProColors.marketMove(percent),
+        fontWeight = FontWeight.Medium,
+        textAlign = textAlign,
+        maxLines = 1,
+        softWrap = false,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier,
+    )
+}
 
 /**
  * The percentage move, as a filled pill.

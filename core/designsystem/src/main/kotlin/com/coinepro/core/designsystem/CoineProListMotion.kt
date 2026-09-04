@@ -36,12 +36,36 @@ import androidx.compose.ui.Modifier
  * They get the instant re-layout, which is what the app did before this existed.
  */
 @Composable
-fun LazyItemScope.rowMotion(): Modifier =
+fun LazyItemScope.rowMotion(
+    /**
+     * Whether a row that appears or leaves fades, or simply is.
+     *
+     * True on a list whose membership is *content*: a signal arriving, an order settling, a filter
+     * cutting eleven of nineteen. There the fade is what says the row is new rather than that the
+     * list is different.
+     *
+     * **False on the two terminal lists.** A watchlist and a market list are a table of live
+     * figures, and a row there appears for one reason — the feed answered — which is not an event
+     * the reader needs animated. Every row of a scrolling table dissolving in behind a two-hundred
+     * millisecond fade is decoration on data, and it is the first thing that separates a terminal
+     * from an app with a list in it. What those lists do keep is [placementSpec]: a sort or a drag
+     * genuinely moves a row, and travel is the only thing carrying its identity across the change.
+     */
+    fades: Boolean = true,
+): Modifier =
     if (continuousMotionAllowed()) {
         Modifier.animateItem(
-            fadeInSpec = tween(CoineProMotionSpecs.STANDARD_MS, easing = CoineProMotionSpecs.Enter),
+            fadeInSpec = if (fades) {
+                tween(CoineProMotionSpecs.STANDARD_MS, easing = CoineProMotionSpecs.Enter)
+            } else {
+                null
+            },
             placementSpec = tween(CoineProMotionSpecs.SLOW_MS, easing = CoineProMotionSpecs.Standard),
-            fadeOutSpec = tween(CoineProMotionSpecs.FAST_MS, easing = CoineProMotionSpecs.Exit),
+            fadeOutSpec = if (fades) {
+                tween(CoineProMotionSpecs.FAST_MS, easing = CoineProMotionSpecs.Exit)
+            } else {
+                null
+            },
         )
     } else {
         Modifier

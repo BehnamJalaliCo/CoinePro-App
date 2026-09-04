@@ -145,6 +145,19 @@ fun CoineProTeachingStrip(
     /** False where the caller's container already supplies the horizontal gutter — a `LazyColumn`
      * with `contentPadding`, or a sheet. Double gutters on a phone are visible. */
     gutter: Boolean = true,
+    /**
+     * Whether a dismissed strip leaves the «این چیست؟» link behind.
+     *
+     * True everywhere a page has room for it, which is most of the app. False on a **terminal**
+     * surface, where the strip sits above the rows the screen exists to show and the link is
+     * twenty-eight permanent points spent on a sentence the reader has already read and closed.
+     *
+     * The cost is real and is the reason this is a parameter rather than a change of behaviour: on
+     * a surface that passes false, dismissing the strip is final. That is the right trade exactly
+     * where the fold is the product — a watchlist is scanned, and every point above the first row
+     * is a row the reader cannot see.
+     */
+    restorable: Boolean = true,
 ) {
     val dismissals = LocalTeachingDismissals.current
     val showing = dismissals.ready && surface.key !in dismissals.dismissed
@@ -165,6 +178,7 @@ fun CoineProTeachingStrip(
     // Nothing at all until the disk read lands, for the reason the ordinary overload gives: a strip
     // that appeared and then changed shape a frame later is a flicker on every cold start.
     if (!dismissals.ready) return
+    if (!restorable) return
     Box(modifier = padded.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
         Text(
             text = stringResource(R.string.teaching_what_is_this),

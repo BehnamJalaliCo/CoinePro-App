@@ -370,8 +370,8 @@ private fun WatchlistRow(
                 style = MaterialTheme.typography.labelSmall,
                 color = when {
                     move == null -> CoineProColors.TextDisabled
-                    move >= 0 -> CoineProColors.Buy
-                    else -> CoineProColors.Sell
+                    move >= 0 -> CoineProColors.MarketUp
+                    else -> CoineProColors.MarketDown
                 },
                 textAlign = TextAlign.Right,
                 maxLines = 1,
@@ -455,7 +455,7 @@ internal fun WatchlistTickerRow(
                             Text(
                                 text = MarketNumberFormatter.signedPercent(move),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (move >= 0) CoineProColors.Buy else CoineProColors.Sell,
+                                color = if (move >= 0) CoineProColors.MarketUp else CoineProColors.MarketDown,
                             )
                         }
                     }

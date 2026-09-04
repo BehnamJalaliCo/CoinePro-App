@@ -50,7 +50,7 @@ import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
-import com.coinepro.core.designsystem.CoineProPercentPill
+import com.coinepro.core.designsystem.CoineProPercentText
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPullToRefresh
 import com.coinepro.core.designsystem.CoineProSegmentTabs
@@ -357,7 +357,7 @@ fun MarketsScreen(
                         // thousand markets would be a thousand requests nobody looked at.
                         LaunchedEffect(row.meta.symbol) { sparklines.request(row.meta.symbol) }
                         MarketListRow(
-                            modifier = rowMotion(),
+                            modifier = rowMotion(fades = false),
                             row = row,
                             onClick = { onOpenSymbol(row.meta.symbol) },
                             starred = onToggleWatch?.let { row.meta.symbol.uppercase() in watched },
@@ -652,11 +652,9 @@ private fun RowScope.MarketFigures(
     turnoverColumn: Boolean,
 ) {
     val change = ticker?.changePercent24h ?: row.quote?.changePercent
-    val tone = when {
-        change == null -> CoineProColors.TextMuted
-        change >= 0.0 -> CoineProColors.Buy
-        else -> CoineProColors.Sell
-    }
+    // Movement, not execution: a market that rose is not an order to buy. See
+    // `CoineProColors.MarketUp`.
+    val tone = CoineProColors.marketMove(change)
     if (turnoverColumn) {
         Text(
             // The compact form the watchlist's volume columns use — `918.44M` rather than
@@ -698,15 +696,13 @@ private fun RowScope.MarketFigures(
             textAlign = TextAlign.Right,
             maxLines = 1,
         )
-        // The shared pill, not a local one. This row had grown its own — a flat alpha over the
-        // move's colour rather than the tint formula the rest of the app computes against the
-        // surface behind it — so the same percentage was a slightly different green here than
-        // on Home, on a screen a reader reaches from Home.
+        // Plain, for the reason `CoineProPercentText` gives: a pill on every row of a list stops
+        // marking anything out. The card surfaces keep theirs.
         change?.let {
-            CoineProPercentPill(
+            CoineProPercentText(
                 percent = it,
-                modifier = Modifier.padding(top = 2.dp),
-                background = CoineProColors.Stage,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
             )
         }
     }

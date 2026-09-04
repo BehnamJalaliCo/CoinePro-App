@@ -40,7 +40,7 @@ import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.SharedKeys
 import com.coinepro.core.designsystem.sharedElement
 import com.coinepro.core.designsystem.CoineProColors
-import com.coinepro.core.designsystem.CoineProPercentPill
+import com.coinepro.core.designsystem.CoineProPercentText
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.R as DesignR
@@ -282,12 +282,17 @@ internal fun WatchlistFigureCell(
         WatchlistColumn.QUOTE_VOLUME -> figures.quoteVolume
         WatchlistColumn.FLAG -> null
     }
-    // The move gets the pill rather than plain text, because that is how it is drawn everywhere
-    // else in the app and a percentage that looks different here would read as a different number.
+    // **Plain text, not the pill.** The pill is a card's shape: one market, one figure, and a fill
+    // that makes the move findable where there is no column to find it in. Forty of them down a
+    // watchlist is a tinted block on every row, which distinguishes nothing and turns a column of
+    // figures into a strip of buttons — and it is not what the reference draws. In a table the
+    // alignment and the colour already carry the whole signal. See `CoineProPercentText`.
     if (column == WatchlistColumn.CHANGE_PERCENT && value != null) {
-        Box(modifier = modifier.width(widthOf(column)), contentAlignment = Alignment.CenterEnd) {
-            CoineProPercentPill(percent = value, background = CoineProColors.Stage)
-        }
+        CoineProPercentText(
+            percent = value,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = modifier.width(widthOf(column)),
+        )
         return
     }
     Text(
@@ -295,8 +300,9 @@ internal fun WatchlistFigureCell(
         style = MaterialTheme.typography.labelMedium.copy(textDirection = TextDirection.Ltr),
         color = when {
             value == null -> CoineProColors.TextDisabled
-            column.unit == WatchlistColumnUnit.SIGNED_PRICE && value > 0 -> CoineProColors.Buy
-            column.unit == WatchlistColumnUnit.SIGNED_PRICE && value < 0 -> CoineProColors.Sell
+            // Movement, not execution — the same distinction the percent column makes.
+            column.unit == WatchlistColumnUnit.SIGNED_PRICE && value > 0 -> CoineProColors.MarketUp
+            column.unit == WatchlistColumnUnit.SIGNED_PRICE && value < 0 -> CoineProColors.MarketDown
             else -> CoineProColors.TextPrimary
         },
         // Right, never End. The device locale is Persian and the figures are Latin; an End
