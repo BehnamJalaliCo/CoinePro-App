@@ -17,7 +17,19 @@ jobs:
   build:
     name: Lint, test, build
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    # Seventy-five, and the thirty-five it replaces was never a measurement.
+    #
+    # This job runs three lint variants, the unit tests, five assembles and then a `bundleRelease`
+    # — which is a *second* R8 pass over the whole app. It has not finished inside thirty-five
+    # minutes for a long time; it only appeared to fit because `lintDebug` was failing at about
+    # thirteen and taking the job down with it. With lint passing, the job got as far as
+    # `minifyReleaseWithR8` and was killed by the clock at exactly 35:00, which reads in the run
+    # list as «cancelled» and tells nobody anything.
+    #
+    # Raising the wall rather than cutting the work: every task in that step is checking something
+    # the release depends on, and a green build that stopped checking half of them is worse than a
+    # slow one. The other job in this workflow finishes in twenty-five and keeps its own budget.
+    timeout-minutes: 75
 
     steps:
       - name: Checkout

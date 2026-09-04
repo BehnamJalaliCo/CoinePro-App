@@ -36,6 +36,12 @@ it is for.
   scroll a lazy list needs, and the strings as `strings.xml` currently holds
   them. Verified by mirroring each class into a Robolectric run — no emulator was
   needed to prove the assertions, only to run them.
+* **The build job gets the time it actually needs.** Three lint variants, the unit
+  tests, five assembles and a `bundleRelease` do not fit in thirty-five minutes,
+  and had not for a long time — the job only appeared to fit because lint was
+  failing at about thirteen and taking it down. With lint passing it reached R8
+  and was killed by the clock, which reads as «cancelled» and says nothing.
+  Seventy-five minutes, and none of the work removed.
 
 ---
 
