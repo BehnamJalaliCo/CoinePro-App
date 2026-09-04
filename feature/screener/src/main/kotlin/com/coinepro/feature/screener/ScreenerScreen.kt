@@ -504,8 +504,9 @@ private fun ScreenerTableRow(
 private fun Figure(text: String, unit: ScreenerUnit, value: Double?) {
     val ink = when {
         unit != ScreenerUnit.PERCENT -> CoineProColors.TextPrimary
-        (value ?: 0.0) > 0.0 -> CoineProColors.Buy
-        (value ?: 0.0) < 0.0 -> CoineProColors.Sell
+        // Movement, not execution. See `CoineProColors.MarketUp`.
+        (value ?: 0.0) > 0.0 -> CoineProColors.MarketUp
+        (value ?: 0.0) < 0.0 -> CoineProColors.MarketDown
         else -> CoineProColors.TextMuted
     }
     Text(

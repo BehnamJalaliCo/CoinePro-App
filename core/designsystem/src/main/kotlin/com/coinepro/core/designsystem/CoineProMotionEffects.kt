@@ -54,7 +54,16 @@ import androidx.compose.ui.unit.dp
  */
 
 private const val SHIMMER_PERIOD_MS = 1_150
-private const val FLASH_MS = 620
+/**
+ * How long a price tint stays up.
+ *
+ * Six hundred and twenty was long enough to still be lit when the next tick arrived, so a fast
+ * market read as a row that was permanently green rather than a row that had just moved — the
+ * signal that says «this one changed» stops saying anything once it is always on. The reference
+ * holds its own for a little over a third of a second, which is long enough to be caught by
+ * peripheral vision and short enough to have cleared before the next print.
+ */
+private const val FLASH_MS = 380
 private const val REVEAL_CHARS_PER_SECOND = 45f
 
 /**
@@ -276,13 +285,21 @@ fun Modifier.coineProPriceFlash(value: Double?): Modifier {
     }
 
     val alpha by animateFloatAsState(
-        targetValue = if (direction == 0) 0f else 0.14f,
+        // Nine per cent, down from fourteen. A tint this sits *behind* a whole row of type, and at
+        // fourteen the row's own figures lost contrast against it every time the price moved — the
+        // flash was competing with the number it was drawing attention to.
+        targetValue = if (direction == 0) 0f else FLASH_ALPHA,
         animationSpec = tween(if (direction == 0) FLASH_MS else 90),
         label = "flash",
     )
-    val tint = if (direction >= 0) CoineProColors.Buy else CoineProColors.Sell
+    // Movement, not execution. A price ticking up is not a buy order — see
+    // [CoineProColors.MarketUp].
+    val tint = if (direction >= 0) CoineProColors.MarketUp else CoineProColors.MarketDown
     return this.background(tint.copy(alpha = alpha))
 }
+
+/** The tint's peak, as a fraction. Felt at the edge of vision; never read as a fill. */
+private const val FLASH_ALPHA = 0.09f
 
 /** A determinate bar for work whose progress the server actually reports. */
 @Composable

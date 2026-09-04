@@ -232,8 +232,8 @@ internal fun MarketPreviewSheet(
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     colour = when {
                         state.changePercent == null -> CoineProColors.TextMuted
-                        state.changePercent >= 0.0 -> CoineProColors.Buy
-                        else -> CoineProColors.Sell
+                        state.changePercent >= 0.0 -> CoineProColors.MarketUp
+                        else -> CoineProColors.MarketDown
                     },
                 )
             }

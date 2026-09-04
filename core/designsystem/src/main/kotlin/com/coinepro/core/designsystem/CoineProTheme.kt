@@ -83,7 +83,18 @@ fun CoineProTheme(
         }
     }
     val base = if (darkTheme) CoineProDarkPalette else CoineProLightPalette
-    val palette = if (risingIsGreen) base else base.copy(buy = base.sell, sell = base.buy)
+    // The movement pair flips with the execution pair. A reader who has asked for red-up gets it
+    // everywhere a price is drawn, not only on the two controls that commit an order.
+    val palette = if (risingIsGreen) {
+        base
+    } else {
+        base.copy(
+            buy = base.sell,
+            sell = base.buy,
+            marketUp = base.marketDown,
+            marketDown = base.marketUp,
+        )
+    }
 
     CompositionLocalProvider(
         LocalLayoutDirection provides layoutDirection,

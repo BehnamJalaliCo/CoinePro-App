@@ -109,6 +109,23 @@ data class CoineProPalette(
     val premium: Color,
     val buy: Color,
     val sell: Color,
+    /**
+     * A market that has gone up, which is **not** the same fact as an order to buy.
+     *
+     * [buy] and [sell] are execution semantics — the side of a trade, the colour of a button that
+     * commits money. This pair is market movement: a price that rose, a candle that closed higher,
+     * a percentage in a watchlist. They were one token, and reusing the execution colour for both
+     * is what makes a terminal read as an app about buttons: every list of prices was painted in
+     * the same green as the confirm action, so the loudest colour on a screen of forty rows was the
+     * one that should have belonged to the single thing a reader can press.
+     *
+     * The values are the reference's own — TradingView sets `#089981` and `#F23645` on every
+     * surface it draws a market on — and reproducing them exactly is the point of having a separate
+     * token at all. See the light palette for the one place they are not reproduced exactly and
+     * why.
+     */
+    val marketUp: Color,
+    val marketDown: Color,
     val warning: Color,
     /** How far an asset's brand colour is pulled toward black before it is used as ink. */
     val assetInkShift: Float,
@@ -154,6 +171,9 @@ val CoineProDarkPalette = CoineProPalette(
     premium = Color(0xFFD4AF37),
     buy = Color(0xFF00B15C),
     sell = Color(0xFFF6465D),
+    // The reference's own, exactly: TradingView's up and down on a dark terminal.
+    marketUp = Color(0xFF089981),
+    marketDown = Color(0xFFF23645),
     warning = Color(0xFFF0B90B),
     assetInkShift = 0f,
     isDark = true,
@@ -226,6 +246,16 @@ val CoineProLightPalette = CoineProPalette(
     // is not large text, so 4.5 is the bar and 4.12 was under it.
     buy = Color(0xFF08703C), // 5.78:1
     sell = Color(0xFFC9203A),
+    // **The one deviation from the reference's hex, and it is deliberate.**
+    //
+    // TradingView sets `#089981` on white too. Against this palette's white stage that is 3.3:1,
+    // and a percentage in a watchlist sets 13sp — not large text, so 4.5 is the bar this app has
+    // already held itself to once, when `buy` moved from 4.12 to 5.78 for exactly this reason. So
+    // the light theme keeps the reference's *hue* and takes the lightness down until the figure is
+    // readable: same green, same red, legible on white. The dark theme — which is the terminal
+    // look this parity work is measured against — carries the published values untouched.
+    marketUp = Color(0xFF057A66), // 4.62:1 on the white stage
+    marketDown = Color(0xFFD01427), // 5.02:1
     warning = Color(0xFF8A5606), // 5.74:1
     assetInkShift = 0.35f,
     isDark = false,

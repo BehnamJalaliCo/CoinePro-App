@@ -148,6 +148,32 @@ object CoineProColors {
 
     val Buy: Color @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.buy
     val Sell: Color @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.sell
+
+    /**
+     * A market that rose, and one that fell. **Not** [Buy] and [Sell].
+     *
+     * Those two are execution semantics — which side of a trade a control commits to. These are
+     * movement: a percentage in a watchlist, a sparkline, a price that ticked up. They are the
+     * reference's own values and they are the reason a list of forty markets no longer shares its
+     * loudest colour with the one button on the page that spends money. See
+     * [CoineProPalette.marketUp].
+     */
+    val MarketUp: Color
+        @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.marketUp
+    val MarketDown: Color
+        @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.marketDown
+
+    /** [MarketUp] above zero, [MarketDown] below it, and the muted ink at exactly zero. */
+    @Composable
+    @ReadOnlyComposable
+    fun marketMove(percent: Double?): Color = when {
+        percent == null -> TextMuted
+        percent > 0.0 -> MarketUp
+        percent < 0.0 -> MarketDown
+        // Zero is neither a rise nor a fall and is deliberately drawn as neither: a green 0.00%
+        // claims a direction the market did not have.
+        else -> TextMuted
+    }
     val Warning: Color @Composable @ReadOnlyComposable get() = LocalCoineProPalette.current.warning
 
     /**
