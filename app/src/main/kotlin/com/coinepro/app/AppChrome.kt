@@ -2,30 +2,44 @@ package com.coinepro.app
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptionsBuilder
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.CoineProRailItem
 import com.coinepro.core.navigation.AppDestination
@@ -121,47 +135,137 @@ fun CoineProBottomBar(
                 .height(1.dp)
                 .background(CoineProColors.BorderSubtle),
         )
-        NavigationBar(
-            modifier = Modifier.fillMaxWidth().background(CoineProColors.Surface),
-            containerColor = Color.Transparent,
-            tonalElevation = 0.dp,
+        // **This app's own row, not `NavigationBar`.**
+        //
+        // Material's bar is eighty points tall before anything is in it, and it spends them on a
+        // shape this design system does not have: a 64×32 pill that slides under the selected
+        // glyph, a tonal elevation over the container colour, and a ripple. The pill is the loudest
+        // object on every screen — larger than any chip, any key, any selected state elsewhere in
+        // the app — and eighty points is a ninth of a phone given to five words.
+        //
+        // The reference's bar is a little under seventy, has no pill at all, and marks the selected
+        // tab with a filled glyph and the primary ink. That is what this draws: a fixed [BAR_HEIGHT]
+        // row of five equal columns, 24 pt glyph over an 11 sp label, a raised neutral behind the
+        // selected column and nothing else. No shadow, no tonal elevation, no gold — the gold is the
+        // brand and the one commercial action on a page, and a gold tab would put a second one on
+        // every screen.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(CoineProColors.Surface)
+                // The gesture inset, and only the bottom one. Without it the labels sit under the
+                // home indicator on a gesture-navigation phone; with the whole `safeDrawing` set
+                // the bar would also take the status bar's inset at the *foot* of the screen.
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .height(BAR_HEIGHT)
+                .selectableGroup(),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             AppDestination.entries.forEach { destination ->
-                val selected = currentRoute == destination.route
-                NavigationBarItem(
-                    selected = selected,
-                    onClick = { onSelect(destination) },
-                    icon = {
-                        Icon(
-                            // Weight marks the selection, not colour: the gold belongs to the
-                            // screen's primary action, and a gold tab would put a second one on
-                            // every screen.
-                            painter = painterResource(destination.icon(selected)),
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                        )
-                    },
-                    label = {
-                        Text(
-                            text = stringResource(destination.labelRes),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                            maxLines = 1,
-                        )
-                    },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = CoineProColors.TextPrimary,
-                        selectedTextColor = CoineProColors.TextPrimary,
-                        unselectedIconColor = CoineProColors.TextMuted,
-                        unselectedTextColor = CoineProColors.TextMuted,
-                        // The rail's plate, one rung up from the bar — see the header.
-                        indicatorColor = CoineProColors.SurfaceElevated,
-                    ),
+                BarItem(
+                    destination = destination,
+                    selected = currentRoute == destination.route,
+                    onSelect = { onSelect(destination) },
+                    // Equal columns, so the five never redistribute themselves around the longest
+                    // Persian word. Material's own bar weights by content and the bar shifted every
+                    // time the language changed.
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
     }
 }
+
+/**
+ * One tab: the glyph over its word, on a plate when it is the one in force.
+ *
+ * The plate is [CoineProColors.SurfaceElevated] — the same raised neutral the chart's interval keys
+ * and the Ideas switch use — and it is inset rather than full-bleed so the five columns still read
+ * as five. `selectable` rather than `clickable`, because this is a choice among five and that is
+ * what TalkBack announces.
+ */
+@Composable
+private fun BarItem(
+    destination: AppDestination,
+    selected: Boolean,
+    onSelect: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val ink = if (selected) CoineProColors.TextPrimary else CoineProColors.TextMuted
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .selectable(
+                selected = selected,
+                role = Role.Tab,
+                // No indication. Material's ripple on a bar item is a 64 pt circle that outlives
+                // the tap and lands on the screen the reader has already navigated to.
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = onSelect,
+            )
+            .padding(horizontal = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = PLATE_WIDTH, height = PLATE_HEIGHT)
+                .clip(CoineProShapes.small)
+                .background(if (selected) CoineProColors.SurfaceElevated else Color.Transparent),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                // The filled cut marks the selection, not colour.
+                painter = painterResource(destination.icon(selected)),
+                contentDescription = null,
+                tint = ink,
+                modifier = Modifier.size(GLYPH),
+            )
+        }
+        Text(
+            text = stringResource(destination.labelRes),
+            style = MaterialTheme.typography.labelSmall,
+            fontSize = LABEL_SIZE,
+            lineHeight = LABEL_LINE,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            color = ink,
+            maxLines = 1,
+            // A label that does not fit takes an ellipsis rather than a second line: the bar's
+            // height is fixed, and a wrapped word would be clipped mid-stroke instead.
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 1.dp),
+        )
+    }
+}
+
+/**
+ * The bar's own height, above the gesture inset.
+ *
+ * Sixty-four: the 26 pt plate, an 11 sp label with its leading, and the air around them. Material's
+ * default is eighty and the reference's is a little under seventy, so this is inside the band the
+ * owner measured and it gives a phone back sixteen points of page. The insets are added on top,
+ * which is why this is a content height rather than a total.
+ */
+private val BAR_HEIGHT = 64.dp
+
+/** The plate behind the selected glyph. Wide enough to read as a plate, narrow enough to fit five. */
+private val PLATE_WIDTH = 48.dp
+private val PLATE_HEIGHT = 26.dp
+
+/** The glyph itself, at the size every other 24 pt icon in the app is drawn. */
+private val GLYPH = 22.dp
+
+/**
+ * Ten and a half points, and the leading that goes with it.
+ *
+ * `labelSmall` is eleven with 0.4 of tracking, which on the two longest Persian labels — «دیده‌بان»
+ * and «ایده‌ها» — is a hair over a fifth of a 393 pt phone. Half a point down and the tracking the
+ * style already carries, and all five fit at every width this app supports without ellipsis.
+ */
+private val LABEL_SIZE = 10.5.sp
+private val LABEL_LINE = 13.sp
 
 /**
  * Kept here rather than on [AppDestination] so `core:navigation` stays a plain module with no
