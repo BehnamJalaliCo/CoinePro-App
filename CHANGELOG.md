@@ -15,6 +15,30 @@ it is for.
 
 ---
 
+## [4.30.2] — 2026-09-04 — The whole letter, and a suite that describes this app
+
+* **The chart's signature is the whole P again.** Closed, its box is exactly the
+  mark's twenty-three points square, and it carried a ten-point corner radius —
+  which on an eleven-and-a-half-point half-width is very nearly a circle. The
+  corners ate the letter: the stem runs down the artwork's left edge and the foot
+  sits in the bottom-left corner, which is the first thing a rounded rectangle
+  removes. Opening the signature widened the box and gave the letter its edge
+  back, which is why the same logo looked right expanded and wrong closed. The
+  clip is gone, and nothing was lost with it — the press indication beneath it is
+  null, so the shape was containing nothing but the artwork.
+* **The instrumented suite passes.** Eight failures across three classes, red on
+  every emulator run since the 4.28 refactor, and every one was a test describing
+  a screen that had moved on: a bar label looked for by text and found twice
+  because the page behind it says «Chart» too; a hand-written per-row content
+  description that the market row stopped composing, correctly, when it started
+  merging its own children; and three paragraphs of safety copy that were
+  rewritten when the app took its own brand name. They assert the merged row, the
+  scroll a lazy list needs, and the strings as `strings.xml` currently holds
+  them. Verified by mirroring each class into a Robolectric run — no emulator was
+  needed to prove the assertions, only to run them.
+
+---
+
 ## [4.30.1] — 2026-09-04 — The signature back a little, and a build that passes lint
 
 * **The chart's signature came back six per cent.** Twelve was the middle of the
