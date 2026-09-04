@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -273,6 +275,18 @@ private fun Identity(
     }
 }
 
+/**
+ * How a measurement addresses one row.
+ *
+ * A directory whose rows are supposed to share one height is a claim that can be checked, and
+ * checking it means being able to name a row rather than hunting for its words — the words are
+ * translated, and half of them are the same noun in two languages. The id is the entry's own, which
+ * is already the stable identity the shell routes on.
+ */
+object MenuTestTags {
+    fun row(id: String): String = "menu-row-$id"
+}
+
 @Composable
 private fun MenuRow(
     item: MenuItem,
@@ -289,15 +303,28 @@ private fun MenuRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .testTag(MenuTestTags.row(entry.id))
             .clickable {
                 haptics.select()
                 onClick()
             }
-            // Fifty, which is the reference's directory row and comfortably past the 44 floor for
-            // anything a thumb has to hit. It was 44 with twelve points of padding at each end, so
-            // a row with a subtitle grew to sixty-eight and the column breathed wherever one
-            // appeared; pinned, the list has one rhythm.
-            .heightIn(min = ROW_HEIGHT)
+            // **Fifty, and for a plain row that is an actual height rather than a floor.**
+            //
+            // `heightIn(min = …)` says a row may be fifty and may be anything above it, which is
+            // not a rhythm — it is a rhythm wherever the content happens to be short and a
+            // different one wherever it is not. A row whose content is a title and a mark is
+            // therefore pinned: `height`, one number, every row the same.
+            //
+            // The exception is a row that carries a second line, and it is an exception on purpose
+            // — see [MenuCatalogue.DESCRIPTIVE_ROWS], which is a short and closed list. Those keep
+            // the floor, because pinning them would clip a sentence rather than make a rhythm.
+            .then(
+                if (entry.bodyRes != null && !item.locked) {
+                    Modifier.heightIn(min = ROW_HEIGHT)
+                } else {
+                    Modifier.height(ROW_HEIGHT)
+                },
+            )
             .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.CenterVertically,
@@ -394,8 +421,14 @@ private fun MenuRow(
 private val GLYPH_COLUMN = 24.dp
 private val GLYPH = 20.dp
 
-/** The directory row's own height. See [MenuRow]. */
-private val ROW_HEIGHT = 50.dp
+/**
+ * The directory row's own height — an actual height for a plain row, a floor for a descriptive one.
+ *
+ * Fifty, which is the reference's directory row and comfortably past the 44 floor for anything a
+ * thumb has to hit. See [MenuRow] for why the two cases are spelled differently, and
+ * [MenuCatalogue.DESCRIPTIVE_ROWS] for how short the second list is.
+ */
+internal val ROW_HEIGHT = 50.dp
 
 /**
  * Where the rule between two rows starts.

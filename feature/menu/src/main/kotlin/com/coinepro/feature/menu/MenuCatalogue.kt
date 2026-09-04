@@ -44,9 +44,13 @@ enum class MenuGroup(@get:StringRes val titleRes: Int) {
  *   knowing how the navigation graph is spelled or which market to pick. The ids are deliberately
  *   the same strings `AppSurfaces` already uses, so the shell resolves a menu tap and a search
  *   result through one function instead of two that can disagree.
- * @param bodyRes one short line under the name, and only where the name alone is not enough.
- *   «اسکرینر» needs it; «اخبار بازار» does not, and a note under every row would be a wall of grey
- *   text that stops being read by the third screenful.
+ * @param bodyRes one short line under the name, and **only** where the name alone is not enough.
+ *   The test is one question, asked of the title on its own: would a reader guess wrong about where
+ *   this row goes? «اسکرینر» is a loanword that names nothing, so it needs the line; «اخبار بازار»
+ *   says exactly what it is, so it does not. Nearly every row here once carried one, and a note
+ *   under every row is a wall of grey text that stops being read by the third screenful — and it
+ *   also breaks the one thing a directory has, which is a single row height.
+ *   See [MenuCatalogue.DESCRIPTIVE_ROWS] for the whole surviving list; it is meant to stay short.
  * @param platform the only backend that serves this, or null for both.
  * @param account whether the screen behind this needs somebody signed in. It is what makes a row
  *   *locked* rather than *absent* — see [MenuCatalogue.sections].
@@ -120,14 +124,12 @@ object MenuCatalogue {
         MenuEntry(
             id = "watchlist",
             titleRes = R.string.menu_watchlist_title,
-            bodyRes = R.string.menu_watchlist_body,
             icon = DesignR.drawable.icon_star,
             group = MenuGroup.MARKET,
         ),
         MenuEntry(
             id = "search",
             titleRes = R.string.menu_search_title,
-            bodyRes = R.string.menu_search_body,
             icon = CoineProIcons.Search,
             group = MenuGroup.MARKET,
         ),
@@ -141,7 +143,6 @@ object MenuCatalogue {
         MenuEntry(
             id = "heatmap",
             titleRes = R.string.menu_heatmap_title,
-            bodyRes = R.string.menu_heatmap_body,
             icon = CoineProIcons.Heatmap,
             group = MenuGroup.MARKET,
         ),
@@ -151,31 +152,24 @@ object MenuCatalogue {
         MenuEntry(
             id = "markets",
             titleRes = R.string.menu_markets_title,
-            bodyRes = R.string.menu_markets_body,
             icon = CoineProIcons.Markets,
             group = MenuGroup.MARKET,
         ),
         MenuEntry(
             id = "explore",
             titleRes = R.string.menu_explore_title,
-            bodyRes = R.string.menu_explore_body,
             icon = CoineProIcons.Explore,
             group = MenuGroup.MARKET,
         ),
-        // The one row in this block that carried no second line, so it sat as a bare title in a
-        // column of two-line rows and read as unfinished. It also now has something worth saying:
-        // when neither backend publishes, the app reads the wires itself.
         MenuEntry(
             id = "news",
             titleRes = R.string.menu_news_title,
-            bodyRes = R.string.menu_news_body,
             icon = CoineProIcons.News,
             group = MenuGroup.MARKET,
         ),
         MenuEntry(
             id = "calendar",
             titleRes = R.string.menu_calendar_title,
-            bodyRes = R.string.menu_calendar_body,
             icon = CoineProIcons.Calendar,
             group = MenuGroup.MARKET,
             // On both backends again, and open to a guest.
@@ -194,7 +188,6 @@ object MenuCatalogue {
         MenuEntry(
             id = "portfolio",
             titleRes = R.string.menu_portfolio_title,
-            bodyRes = R.string.menu_portfolio_body,
             icon = CoineProIcons.Portfolio,
             group = MenuGroup.TRADE,
             account = true,
@@ -202,14 +195,12 @@ object MenuCatalogue {
         MenuEntry(
             id = "paper-trade",
             titleRes = R.string.menu_paper_title,
-            bodyRes = R.string.menu_paper_body,
             icon = CoineProIcons.Rehearsal,
             group = MenuGroup.TRADE,
         ),
         MenuEntry(
             id = "journal",
             titleRes = R.string.menu_journal_title,
-            bodyRes = R.string.menu_journal_body,
             icon = DesignR.drawable.tv_tool_note,
             group = MenuGroup.TRADE,
         ),
@@ -244,35 +235,30 @@ object MenuCatalogue {
         MenuEntry(
             id = "chart-studio",
             titleRes = R.string.menu_studio_title,
-            bodyRes = R.string.menu_studio_body,
             icon = DesignR.drawable.tv_pencil,
             group = MenuGroup.ANALYSIS,
         ),
         MenuEntry(
             id = "backtest",
             titleRes = R.string.menu_backtest_title,
-            bodyRes = R.string.menu_backtest_body,
             icon = CoineProIcons.Backtest,
             group = MenuGroup.ANALYSIS,
         ),
         MenuEntry(
             id = "alerts",
             titleRes = R.string.menu_alerts_title,
-            bodyRes = R.string.menu_alerts_body,
             icon = CoineProIcons.Bell,
             group = MenuGroup.ANALYSIS,
         ),
         MenuEntry(
             id = "tools",
             titleRes = R.string.menu_tools_title,
-            bodyRes = R.string.menu_tools_body,
             icon = CoineProIcons.Tools,
             group = MenuGroup.ANALYSIS,
         ),
         MenuEntry(
             id = "ai-vision",
             titleRes = R.string.menu_vision_title,
-            bodyRes = R.string.menu_vision_body,
             icon = CoineProIcons.Camera,
             group = MenuGroup.ANALYSIS,
             account = true,
@@ -295,7 +281,6 @@ object MenuCatalogue {
         MenuEntry(
             id = "signals",
             titleRes = R.string.menu_signals_title,
-            bodyRes = R.string.menu_signals_body,
             icon = CoineProIcons.Signals,
             group = MenuGroup.ANALYSIS,
             account = true,
@@ -313,7 +298,6 @@ object MenuCatalogue {
         MenuEntry(
             id = "academy",
             titleRes = R.string.menu_academy_title,
-            bodyRes = R.string.menu_academy_body,
             icon = CoineProIcons.Academy,
             group = MenuGroup.LEARN,
             platform = MarketPlatform.COINEPRO_FX,
@@ -324,7 +308,6 @@ object MenuCatalogue {
         MenuEntry(
             id = "community",
             titleRes = R.string.menu_community_title,
-            bodyRes = R.string.menu_community_body,
             icon = CoineProIcons.Community,
             group = MenuGroup.LEARN,
         ),
@@ -346,21 +329,18 @@ object MenuCatalogue {
         MenuEntry(
             id = "home",
             titleRes = R.string.menu_home_title,
-            bodyRes = R.string.menu_home_body,
             icon = CoineProIcons.Home,
             group = MenuGroup.ACCOUNT,
         ),
         MenuEntry(
             id = "profile",
             titleRes = R.string.menu_profile_title,
-            bodyRes = R.string.menu_profile_body,
             icon = CoineProIcons.Profile,
             group = MenuGroup.ACCOUNT,
         ),
         MenuEntry(
             id = "membership",
             titleRes = R.string.menu_membership_title,
-            bodyRes = R.string.menu_membership_body,
             icon = CoineProIcons.Membership,
             group = MenuGroup.ACCOUNT,
             account = true,
@@ -368,7 +348,6 @@ object MenuCatalogue {
         MenuEntry(
             id = "verify",
             titleRes = R.string.menu_verify_title,
-            bodyRes = R.string.menu_verify_body,
             icon = CoineProIcons.IdentityCard,
             group = MenuGroup.ACCOUNT,
             account = true,
@@ -376,7 +355,6 @@ object MenuCatalogue {
         MenuEntry(
             id = "activity",
             titleRes = R.string.menu_activity_title,
-            bodyRes = R.string.menu_activity_body,
             icon = CoineProIcons.Activity,
             group = MenuGroup.ACCOUNT,
             account = true,
@@ -384,7 +362,6 @@ object MenuCatalogue {
         MenuEntry(
             id = "notifications",
             titleRes = R.string.menu_notifications_title,
-            bodyRes = R.string.menu_notifications_body,
             icon = CoineProIcons.Settings,
             group = MenuGroup.ACCOUNT,
         ),
@@ -398,6 +375,36 @@ object MenuCatalogue {
             destructive = true,
         ),
     )
+
+    /**
+     * The rows that are allowed to be two lines tall, and why each one is.
+     *
+     * ### What this list is for
+     *
+     * A directory's whole claim is that its rows are interchangeable: one height, one rhythm, the
+     * eye moving down a column of words and nothing else. Every second line spends that. Twenty-four
+     * of the thirty-two rows here carried one, which meant the page had no rhythm at all — it had
+     * whatever rhythm the translations happened to produce.
+     *
+     * So the second line is now an **exception with a written reason**, and this is the list of
+     * them. It is derived from the catalogue rather than typed beside it, because a whitelist that
+     * is maintained by hand is a whitelist that quietly stops matching what is drawn.
+     *
+     * ### The seven, and the argument for each
+     *
+     * * `screener` — «اسکرینر» is a loanword that names nothing in Persian.
+     * * `connections` — «اتصال حساب» does not say *whose* account. It is a broker's, not this app's.
+     * * `copy-trade` — «کپی‌ترید» reads as copying one trade; it mirrors verified signals onto a
+     *   MetaTrader account, which is a much larger thing to agree to.
+     * * `terminal` — «ترمینال وب» could be a console. It is the full desktop platform.
+     * * `ai` — «ستاپ‌ساز هوشمند» is a name this app coined, so it has to be explained once.
+     * * `ai-assistant` — «دستیار» alone says nothing about what it assists with.
+     * * `safety` — «ایمنی و نسخه» is two unrelated words for one page that also holds bug reports,
+     *   privacy and support.
+     *
+     * Anything added here needs the same kind of sentence. "It would be nice to explain" is not one.
+     */
+    val DESCRIPTIVE_ROWS: Set<String> = ALL.filter { it.bodyRes != null }.map { it.id }.toSet()
 
     /**
      * The menu this reader gets.

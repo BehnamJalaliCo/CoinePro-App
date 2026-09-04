@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -121,6 +122,25 @@ internal fun NavOptionsBuilder.tabSwitch(navController: NavHostController, route
     restoreState = runCatching { navController.getBackStackEntry(route) }.isFailure
 }
 
+/**
+ * The bar's parts, named so a measurement can tell them apart.
+ *
+ * The height a budget is written against is **app-owned chrome**: the hairline plus the row of
+ * tabs. What a gesture-navigation phone adds underneath is the system's, it varies by device and by
+ * navigation mode, and adding it into one number would make the budget unmeetable on one phone and
+ * trivially met on another. So the two are tagged separately and reported separately.
+ */
+object AppChromeTestTags {
+    /** The whole bar: hairline, tabs, and whatever inset the system asked for. */
+    const val BOTTOM_BAR = "bottom-bar"
+
+    /** The hairline that closes the page above the bar. One point, by design. */
+    const val BOTTOM_BAR_DIVIDER = "bottom-bar-divider"
+
+    /** The row of five tabs, plus the navigation inset it pads itself with. */
+    const val BOTTOM_BAR_CONTENT = "bottom-bar-content"
+}
+
 @Composable
 fun CoineProBottomBar(
     currentRoute: String?,
@@ -133,6 +153,7 @@ fun CoineProBottomBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(1.dp)
+                .testTag(AppChromeTestTags.BOTTOM_BAR_DIVIDER)
                 .background(CoineProColors.BorderSubtle),
         )
         // **This app's own row, not `NavigationBar`.**
@@ -158,6 +179,7 @@ fun CoineProBottomBar(
                 // the bar would also take the status bar's inset at the *foot* of the screen.
                 .windowInsetsPadding(WindowInsets.navigationBars)
                 .height(BAR_HEIGHT)
+                .testTag(AppChromeTestTags.BOTTOM_BAR_CONTENT)
                 .selectableGroup(),
             verticalAlignment = Alignment.CenterVertically,
         ) {

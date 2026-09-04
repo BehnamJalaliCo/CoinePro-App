@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -265,8 +268,22 @@ fun ExploreScreen(
                 }
             }
         }
-        if (lenses.isNotEmpty()) {
-            item("chips") {
+        // **The row is always here, even before there is anything to put in it.**
+        //
+        // It used to be conditional on the catalogue having landed, and the catalogue is also what
+        // fills the strip above — so the two arrived together and the page below them moved by the
+        // chip row's whole height. The tile and its placeholder were made the same height for
+        // exactly this reason; leaving the chips to appear out of nothing undid it thirty-five
+        // points further down, which is where the reader is actually reading.
+        item("chips") {
+            if (lenses.isEmpty()) {
+                Spacer(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(CHIP_ROW_HEIGHT)
+                        .testTag(ExploreTestTags.CATEGORY_ROW),
+                )
+            } else {
                 CategoryChips(
                     lenses = lenses,
                     selected = category,
@@ -331,8 +348,18 @@ fun ExploreScreen(
                 }
             }
         } else {
-            items(stories, key = { it.id }) { story ->
-                Column(modifier = rowMotion().fillMaxWidth()) {
+            itemsIndexed(stories, key = { _, story -> story.id }) { index, story ->
+                Column(
+                    modifier = rowMotion()
+                        .fillMaxWidth()
+                        .then(
+                            if (index == 0) {
+                                Modifier.testTag(ExploreTestTags.FIRST_STORY)
+                            } else {
+                                Modifier
+                            },
+                        ),
+                ) {
                     StoryRow(story = story, onClick = onOpenStory?.let { open -> { open(story) } })
                 }
             }
@@ -423,8 +450,10 @@ private fun CategoryChips(
 ) {
     val haptics = rememberCoineProHaptics()
     LazyRow(
+        modifier = Modifier.height(CHIP_ROW_HEIGHT).testTag(ExploreTestTags.CATEGORY_ROW),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         contentPadding = PaddingValues(horizontal = CoineProSpacing.Gutter),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         items(lenses, key = { it.category?.name ?: "all" }) { lens ->
             val active = lens.category == selected
@@ -479,14 +508,20 @@ private fun MarketStrip(
     onOpenSymbol: (String) -> Unit,
 ) {
     LazyRow(
+        modifier = Modifier.testTag(ExploreTestTags.MARKET_STRIP),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         contentPadding = PaddingValues(horizontal = CoineProSpacing.Gutter),
     ) {
-        items(cards, key = { it.symbol }) { card ->
+        itemsIndexed(cards, key = { _, card -> card.symbol }) { index, card ->
             MarketCard(
                 card = card,
                 line = lines[card.symbol.uppercase()].orEmpty(),
                 onClick = { onOpenSymbol(card.symbol) },
+                modifier = if (index == 0) {
+                    Modifier.testTag(ExploreTestTags.FIRST_MARKET_CARD)
+                } else {
+                    Modifier
+                },
             )
         }
     }
@@ -508,9 +543,13 @@ private fun MarketCard(
     card: ExploreCard,
     line: List<Double>,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     CoineProCard(
-        modifier = Modifier.width(CARD_WIDTH),
+        // **One height contract with the placeholder above it.** See [MARKET_CARD_HEIGHT]: the
+        // loading strip and the loaded tile must measure the same, or the page under them moves
+        // when the data lands.
+        modifier = modifier.width(CARD_WIDTH).height(MARKET_CARD_HEIGHT),
         // Ten, not fourteen. A card this small with a fourteen-point corner reads as a lozenge;
         // the reference's market tiles are square-ish with a small radius, and at 128 wide the
         // difference between the two is most of what makes a strip look like a terminal.
@@ -661,9 +700,14 @@ private fun LoadingStrip() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = CoineProSpacing.Gutter)
-            .height(CARD_HEIGHT)
-            .background(CoineProColors.Surface, CoineProShapes.medium)
-            .border(1.dp, CoineProColors.BorderSubtle, CoineProShapes.medium),
+            .testTag(ExploreTestTags.LOADING_STRIP)
+            // The **same** height and the **same** corner as the tiles that replace it. It was 116
+            // against a tile that measured 91, and a sixteen-point corner against a ten — so the
+            // catalogue landing moved everything below the strip up by twenty-five points and
+            // changed the shape while it did. See [MARKET_CARD_HEIGHT].
+            .height(MARKET_CARD_HEIGHT)
+            .background(CoineProColors.Surface, CoineProShapes.small)
+            .border(1.dp, CoineProColors.BorderSubtle, CoineProShapes.small),
     )
 }
 
@@ -684,8 +728,54 @@ private val CARD_PADDING = 12.dp
 /** The tile's disc. Four points off, which is four points of the card's own height. */
 private val CARD_LOGO = 22.dp
 
-/** The strip's own height, so the placeholder above does not resize the page when it fills. */
-private val CARD_HEIGHT = 116.dp
+/**
+ * The market tile's height — **one number, read by the tile and by the placeholder that stands in
+ * for it**.
+ *
+ * ### The fault it closes
+ *
+ * There were two. `LoadingStrip` was pinned at 116 and the tile itself had no height at all: it
+ * measured whatever its content came to, which after the tile was made compact was about 91. So
+ * the catalogue landing shortened the strip by twenty-five points and everything below it —
+ * the category chips' neighbours, the stories, the whole rest of the page — jumped up. The
+ * placeholder existed *precisely* to stop that, and it was the thing causing it.
+ *
+ * ### Why a fixed height rather than a matched minimum
+ *
+ * Because the tiles line up, and a strip of cards that each sized to their own content is a row
+ * whose sparklines sit at five different heights. It was already true of the width for that reason;
+ * the height was left free only because nothing had measured it.
+ *
+ * ### The number
+ *
+ * Ninety-two, which is what the tile's own content measures at `fontScale = 1.0` — the disc, the
+ * ticker, the price, the move and the line, plus the card's twelve points of padding at each end —
+ * rounded up to an even number so a half-point never lands between two device pixels. It is not
+ * chosen; it is the content's own height written down. At a larger font scale the content grows
+ * past it and the card clips, which is the trade a fixed-height tile makes and is why the strip is
+ * a *taste* of the catalogue with the full list one tap away.
+ */
+private val MARKET_CARD_HEIGHT = 92.dp
+
+/**
+ * The category strip's own height, held whether or not there is a category to show.
+ *
+ * Same contract as [MARKET_CARD_HEIGHT] and for the same reason: this row and the strip above it
+ * fill from the same request, so a row that is absent until the catalogue lands moves everything
+ * below it at the moment somebody is reading. Twenty-four is the chip's own measured height — an
+ * eleven-point label with four points of padding at each end and a hairline — rounded to an even
+ * number.
+ */
+private val CHIP_ROW_HEIGHT = 24.dp
+
+/** Identity for the measurements in `ExploreGeometryTest`, which is what pins the numbers above. */
+object ExploreTestTags {
+    const val MARKET_STRIP = "explore-market-strip"
+    const val CATEGORY_ROW = "explore-category-row"
+    const val FIRST_MARKET_CARD = "explore-first-market-card"
+    const val LOADING_STRIP = "explore-loading-strip"
+    const val FIRST_STORY = "explore-first-story"
+}
 
 /** The app's null. An em dash, never a zero — a zero is a price, and «no price» is not one. */
 private const val NO_VALUE = "—"

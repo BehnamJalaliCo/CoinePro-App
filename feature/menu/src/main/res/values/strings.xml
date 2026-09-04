@@ -23,30 +23,21 @@
 
     <!-- ── بازار و دیده‌بان ────────────────────────────────────────────────────────────── -->
     <string name="menu_watchlist_title">دیده‌بان</string>
-    <string name="menu_watchlist_body">چند فهرست، پرچم رنگی، ستون دلخواه، ورود و خروج فهرست.</string>
     <string name="menu_search_title">جست‌وجوی بازار</string>
-    <string name="menu_search_body">نماد لاتین یا نام فارسی؛ بخش‌های برنامه هم پیدا می‌شوند.</string>
     <string name="menu_screener_title">اسکرینر</string>
     <string name="menu_screener_body">فیلتر روی قیمت، حجم، نوسان و هر اندیکاتور.</string>
     <string name="menu_heatmap_title">نقشهٔ حرارتی بازار</string>
-    <string name="menu_heatmap_body">اندازهٔ هر خانه از ارزش بازار، رنگش از تغییر قیمت.</string>
     <string name="menu_news_title">اخبار بازار</string>
     <string name="menu_calendar_title">تقویم اقتصادی</string>
-    <string name="menu_calendar_body">واقعی، پیش‌بینی و قبلی — فقط وقتی منبع بدهد.</string>
 
     <!-- ── معامله و سبد ────────────────────────────────────────────────────────────────── -->
     <string name="menu_portfolio_title">پرتفوی</string>
     <string name="menu_ai_title">ستاپ‌ساز هوشمند</string>
     <string name="menu_ai_body">یک ستاپ کامل با ورود، حد ضرر و هدف، از روی نمودار واقعی</string>
     <string name="menu_signals_title">سیگنال‌ها</string>
-    <string name="menu_signals_body">فهرست کامل سیگنال‌ها، همان که در «ایده‌ها» می‌بینید</string>
     <string name="menu_home_title">خانه و خلاصهٔ حساب</string>
-    <string name="menu_home_body">موجودی، اشتراک و میان‌برهایی که پیش‌تر صفحهٔ اول بودند</string>
-    <string name="menu_portfolio_body">شارپ، عمیق‌ترین افت، منحنی سرمایه و گزارش کامل.</string>
     <string name="menu_paper_title">معاملهٔ آزمایشی</string>
-    <string name="menu_paper_body">تمرین با قیمت واقعی و بدون پول واقعی.</string>
     <string name="menu_journal_title">ژورنال معاملات</string>
-    <string name="menu_journal_body">هر معامله با دلیل ورود، خروج و نتیجه‌اش ثبت می‌شود.</string>
     <string name="menu_connections_title">اتصال حساب</string>
     <string name="menu_connections_body">کارگزار یا صرافی، فقط در مسیر اجرای سیگنال تأییدشده.</string>
     <string name="menu_copy_title">کپی‌ترید</string>
@@ -56,41 +47,26 @@
 
     <!-- ── تحلیل و ابزار ───────────────────────────────────────────────────────────────── -->
     <string name="menu_studio_title">استودیوی نمودار</string>
-    <string name="menu_studio_body">اندیکاتور، ابزار ترسیم، قالب و چیدمان چندپنلی.</string>
     <string name="menu_backtest_title">بک‌تست و اسکریپت</string>
-    <string name="menu_backtest_body">استراتژی را بنویس و روی گذشتهٔ همان نماد اجرا کن.</string>
     <string name="menu_alerts_title">مرکز هشدار</string>
-    <string name="menu_alerts_body">پنج نوع شرط، بسامد، وب‌هوک و دنبالهٔ ممیزی.</string>
     <string name="menu_tools_title">جعبه‌ابزار تریدر</string>
-    <string name="menu_tools_body">ریسک، حجم پوزیشن، پیپ و سود مرکب — محلی و قطعی.</string>
     <string name="menu_vision_title">تحلیل تصویر چارت</string>
-    <string name="menu_vision_body">عکس یک نمودار را بفرست و خوانشش را بگیر.</string>
     <string name="menu_assistant_title">دستیار</string>
     <string name="menu_assistant_body">پرسش دربارهٔ بازار، نماد و همین برنامه.</string>
 
     <!-- ── آموزش و برنامه ──────────────────────────────────────────────────────────────── -->
     <string name="menu_academy_title">آکادمی</string>
-    <string name="menu_academy_body">درس‌های تصویری و متنی، از پایه تا مدیریت ریسک.</string>
     <string name="menu_safety_title">ایمنی و نسخه</string>
     <string name="menu_safety_body">گزارش خطا، نسخهٔ برنامه، حریم خصوصی و راه تماس با پشتیبانی.</string>
 
     <!-- ── حساب من ─────────────────────────────────────────────────────────────────────── -->
     <string name="menu_profile_title">پروفایل و تنظیمات</string>
-    <string name="menu_profile_body">پوسته، زبان، رنگ بازار، قفل برنامه و خروج از حساب.</string>
     <string name="menu_membership_title">اشتراک</string>
-    <string name="menu_membership_body">وضعیت اشتراک، تمدید و آنچه هر پلن باز می‌کند.</string>
     <string name="menu_verify_title">احراز هویت</string>
-    <string name="menu_verify_body">مدارک را یک‌بار بفرست تا دسترسی‌های حساب باز شود.</string>
     <string name="menu_activity_title">فعالیت</string>
-    <string name="menu_activity_body">هشدارهای شلیک‌شده، اجراها و سیگنال‌ها، در یک خط زمانی.</string>
     <string name="menu_notifications_title">تنظیمات اعلان</string>
-    <string name="menu_notifications_body">هر دسته جدا، با ساعت سکوت و مسیر بازیابی مجوز.</string>
     <string name="menu_delete_title">حذف حساب</string>
     <string name="menu_explore_title">کاوش</string>
-    <string name="menu_explore_body">امروز در بازار چه خبر است — بازارها، اخبار و تقویم در یک صفحه.</string>
     <string name="menu_community_title">انجمن</string>
-    <string name="menu_community_body">تحلیل و تجربهٔ معامله‌گرهای دیگر.</string>
     <string name="menu_markets_title">بازارها</string>
-    <string name="menu_markets_body">فهرست کامل نمادهایی که این پلتفرم قیمت می‌دهد.</string>
-    <string name="menu_news_body">خبرهای بازار با منبع مشخص، تازه‌ترین در بالا.</string>
 </resources>
