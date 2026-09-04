@@ -15,6 +15,59 @@ it is for.
 
 ---
 
+## [4.32.0] — 2026-09-04 — The gate learns to say *which* number is wrong
+
+4.31.1 could halt honestly when there was no TradingView reference. It could not
+yet say, of a reference that existed, which part of the screen was out — it
+compared whole frames against budgets, not named parts against named parts. This
+release is the measuring half.
+
+* **Anchors, and the refusal to guess one.** Sixty-seven named anchors across five
+  screens — `barTop`, `dividerY`, `labelBaselineY`, `firstRowTop`, `iconCenterX`,
+  `dividerStartX` and the rest. Each names two locators: on our side a testTag the
+  instrumented capture emits plus an edge or a text baseline, never a coordinate
+  typed into a file; on theirs either a *structural* feature found by its own
+  contrast — a hairline is a hairline in either app — or a coordinate a person
+  recorded. An anchor nobody recorded is `ANCHOR_MISSING` and a non-zero exit. It
+  is not skipped and it does not quietly pass, because a guessed anchor makes
+  every number after it meaningless.
+* **Certification metrics instead of a frame share.** `maxAnchorDriftPx`,
+  `maxEdgeShiftPx`, `meanEdgeShiftPx`, `maskedAreaRatio`,
+  `unexplainedStaticPixelCount`. Edge shift is a distance transform from each of
+  our edges to the nearest of theirs: the max is the worst displacement, the mean
+  says whether the whole frame drifted or one element did. The gate on unexplained
+  pixels is zero.
+* **Two mask budgets, because fifteen per cent was far too much to quote.**
+  Development keeps 15 % for debugging; certification is 8 %, and 5 % for the
+  watchlist and the bottom bar, which are almost all geometry. A screen may
+  tighten its budget and the validator refuses one that loosens it. Masks cover
+  the interior only — the box around a logo, its distance to the ticker and the
+  row's padding all stay measured.
+* **Failure has a vocabulary and every word exits non-zero.**
+  `REFERENCE_MISSING` 3, `REFERENCE_INVALID` 4, `SIZE_MISMATCH` 2,
+  `ANCHOR_MISSING` 5, `MASK_BUDGET_EXCEEDED` 6, `GEOMETRY_FAIL` and
+  `STATIC_DIFF_FAIL` 1. `REFERENCE_MISSING` is not success.
+* **A reference pack is filed under *their* version**, never overwritten and never
+  deleted, with a manifest carrying package, versionName, versionCode, device,
+  resolution, density, font scale, orientation, theme, locale, capture method and
+  date, a per-file SHA-256, and an optional crop measured off the device.
+* **The instrumented capture is a picture again.** For nine releases the artifact
+  named «the real rendered app menu» was forty-two bytes reading `run-as: unknown
+  package` — Gradle uninstalls the app after `connectedAndroidTest`, so the
+  workflow had no package to enter, and its `test -s` check passed the error
+  message because an error message is not empty. It is now pulled from a path that
+  outlives the uninstall and checked for PNG magic bytes: **154,343 bytes,
+  1080 × 2400**.
+* **CI verifies the pack and runs the comparison when one exists**, and never
+  records a golden, never overwrites a reference, and never accepts a changed
+  capture because a comparison failed.
+
+TradingView parity is still `PARITY NOT YET PROVEN`, and stays that way until
+somebody captures the real Android app on the canonical device. See
+`docs/design/TRADINGVIEW_FINAL_PARITY_REPORT.md`.
+
+---
+
 ## [4.31.1] — 2026-09-04 — Three measured faults, and a parity gate that will not guess
 
 4.31.0 asserted a set of numbers. This is what happened when they were measured
