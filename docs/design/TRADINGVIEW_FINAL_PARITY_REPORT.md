@@ -28,8 +28,8 @@ appear as claims anywhere in this repository, and will not until all of
 
 | | |
 |---|---|
-| CoinePro SHA | `d51ee2616401f9dc3a845d75f6426d66fd7424cf` |
-| CoinePro version | `4.31.1+4` (versionCode `43101004`) |
+| CoinePro SHA | `a038c7bcd9572db20b741e7dbdcfaf01d4399fcf` |
+| CoinePro version | `4.32.0` (versionCode `43200000`) |
 | TradingView version | **— not captured** |
 | Android API | canonical target 35; **no reference run** |
 | Device | canonical target Pixel 6; **no reference run** |
@@ -183,20 +183,21 @@ Every job must be green on **one** SHA for a release candidate to be valid.
 
 | Workflow | Job | Result |
 |---|---|---|
-Certifying SHA: **`d51ee26`**.
+Certifying SHA: **`a038c7b`**, released as **`v4.32.0`**.
 
 | Workflow | Job | Run | Duration | Result |
 |---|---|---|---:|---|
-| Android CI | Lint, test, build | #556 | 39m | ✅ success |
-| Android CI | Compose UI | #556 | 10m | ✅ success |
-| Android CI | Performance smoke | #556 | 13m | ✅ success |
-| Security CI | — | #387 | 1m | ✅ success |
-| Build Android APK | — | #133 | 12m | ✅ success |
+| Android CI | Lint, test, build | #558 | 38m | ✅ success |
+| Android CI | Compose UI | #558 | 8m | ✅ success |
+| Android CI | Performance smoke | #558 | 12m | ✅ success |
+| Security CI | — | #389 | 1m | ✅ success |
+| Build Android APK | — | #134 | 15m | ✅ success |
 
-Released artefact: `CoinePro-4.31.1+4.apk`, 17,589,420 bytes, SHA-256
-`edb89f271a6bae8391d2311a8d9bce76782e0b08db77cea4b6865e98ba4793c6`, signing certificate SHA-1
+Released artefact: `CoinePro-4.32.0.apk`, 17,589,420 bytes, SHA-256
+`0119d97e08fb04917d3aec7114760377c66e53c4b5ca46562bbb49940e3e8738`, signing certificate SHA-1
 `5de87f4bb3e8356b4e981ed4da630ba7775f9aa8` (`CN=CoinePro, OU=Mobile, O=CoinePro, L=Tehran, C=IR`),
-`versionCode 43101004`.
+`versionCode 43200000`. Downloaded from the release and verified against the release digest, not
+against the build log.
 
 ### The instrumented capture, now that it is real
 
@@ -249,7 +250,7 @@ because a comparison failed.
 | 17 | Max critical edge shift ≤ 1px | ❌ |
 | 18 | Unexplained static pixels = 0 | ❌ |
 | 19 | All CoinePro goldens pass | ✅ |
-| 20 | All CI green on one SHA | ✅ `d51ee26` |
+| 20 | All CI green on one SHA | ✅ `a038c7b` |
 
 Eighteen of twenty are blocked on one thing.
 
