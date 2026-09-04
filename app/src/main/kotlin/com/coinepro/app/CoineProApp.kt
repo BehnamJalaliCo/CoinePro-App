@@ -619,6 +619,15 @@ private val SELF_TITLED: Set<String> = setOf(
     // The watchlist draws its own heading, in the markets tab's shape. The menu does not: it opens
     // on the identity card, and a page of rows with no word above them is a page with no name.
     WATCHLIST_ROUTE,
+    // Explore opens on «کاوش» over «امروز در بازار چه خبر است», which is a heading. It was not in
+    // this set, so `subTitleRes` fell through to its `else` and the bar printed the *brand* over
+    // it — «کلمهٔ pro chart رو از بالای کاوش حذف بکن». A brand name is not a screen title: it says
+    // nothing about where the reader is, and putting it above a page that has already named itself
+    // spends the bar's whole height saying which app this is to somebody holding it.
+    AppDestination.EXPLORE.route,
+    // The chart tab is a redirect and draws nothing at all, so the brand would flash over an empty
+    // frame for the one composition before the chart replaces it.
+    AppDestination.CHART.route,
 )
 
 private fun accentFor(route: String?): PageAccent = when (route) {
