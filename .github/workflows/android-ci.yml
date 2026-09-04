@@ -236,10 +236,10 @@ jobs:
             adb pull /sdcard/coinepro-menu-render.png app/build/screenshots/coinepro-menu-render.png
             # And the file is checked for being a PNG rather than for being non-empty, which is the
             # distinction the old check could not make.
-            case "$(head -c 8 app/build/screenshots/coinepro-menu-render.png | od -An -tx1 | tr -d '[:space:]')" in
-              89504e470d0a1a0a) echo "capture is a PNG" ;;
-              *) echo "::error::the pulled capture is not a PNG, it is:"; head -c 200 app/build/screenshots/coinepro-menu-render.png; exit 1 ;;
-            esac
+            # One line, and that is not a style choice: android-emulator-runner feeds this script
+            # to `sh -c` **a line at a time**, so a multi-line `case` arrives as `case ... in` on
+            # its own and dies with «end of file unexpected». Two pushes learned that.
+            head -c 8 app/build/screenshots/coinepro-menu-render.png | od -An -tx1 | tr -d '[:space:]' | grep -qx 89504e470d0a1a0a || { echo "::error::the pulled capture is not a PNG"; exit 1; }
 
       - name: Upload actual rendered app menu screenshot
         if: success()

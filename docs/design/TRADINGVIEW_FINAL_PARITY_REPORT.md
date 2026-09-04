@@ -28,7 +28,7 @@ appear as claims anywhere in this repository, and will not until all of
 
 | | |
 |---|---|
-| CoinePro SHA | `f6ee261` → superseded by the SHA carrying this report |
+| CoinePro SHA | `404049954d867f30a17121fb6f484ac219c95c00` |
 | CoinePro version | `4.31.1` (versionCode `43101002`) |
 | TradingView version | **— not captured** |
 | Android API | canonical target 35; **no reference run** |
@@ -188,6 +188,17 @@ Every job must be green on **one** SHA for a release candidate to be valid.
 | Android CI | Performance smoke | — filled by the certifying run |
 | Security CI | — | — filled by the certifying run |
 | Build Android APK | — | — filled by the certifying run |
+
+The last fully-green SHA was `83ea7cd` (Android CI #553, Security CI #384, Build APK #130). On
+`4040499` the Compose UI job failed and it is worth recording why, because it was not the app: all
+ten instrumented tests passed and the capture pulled 154,512 bytes of real PNG. The failure was the
+workflow's own PNG magic-byte check — `android-emulator-runner` feeds its `script:` to `sh` **a line
+at a time**, so a multi-line `case` arrives as `case … in` on its own and dies with «end of file
+unexpected». The check is now a single line and was verified by running that exact line through
+`sh -c` against a real golden and against the forty-two bytes it exists to catch.
+
+A row here is filled from a run that finished. «In flight» is not «passed», and a green row borrowed
+from a different SHA is not a row at all.
 
 The `Lint, test, build` job covers, on the same SHA: five quality gates, the release version
 contract, visual-parity spec validation, reference-pack verification, three lint variants, the unit
