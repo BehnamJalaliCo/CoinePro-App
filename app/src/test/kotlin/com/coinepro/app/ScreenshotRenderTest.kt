@@ -115,6 +115,8 @@ import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.datastore.AlertAuditStore
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.StoredProfile
+import com.coinepro.core.datastore.Watchlist
+import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProColors
@@ -175,6 +177,7 @@ import com.coinepro.feature.chart.ChartScreen
 import com.coinepro.feature.chart.ChartController
 import com.coinepro.feature.chart.ChartPanesScreen
 import com.coinepro.feature.chart.ChartWorkspaceStore
+import com.coinepro.feature.chart.WatchlistQuote
 import com.coinepro.feature.chart.ChartStudioScreen
 import com.coinepro.feature.connections.ConnectionsScreen
 import com.coinepro.feature.copytrade.CopyTradeScreen
@@ -213,6 +216,7 @@ import com.coinepro.feature.script.ScriptScreen
 import com.coinepro.feature.search.MarketsScreen
 import com.coinepro.feature.search.MarketsSignalStrip
 import com.coinepro.feature.search.SearchScreen
+import com.coinepro.feature.search.WatchlistScreen
 import com.coinepro.feature.signaldetail.SignalDetailScreen
 import com.coinepro.feature.signals.SignalsScreen
 import com.coinepro.feature.tools.ToolsScreen
@@ -2679,6 +2683,66 @@ class ScreenshotRenderTest {
         val controller = CommunityController(FakeCommunityGateway(), FakeCommunityIdentity(), scope)
         capture("103-community-thread-fa") {
             CommunityThreadScreen(controller = controller, postId = 41L, onClose = {})
+        }
+    }
+
+    /**
+     * The chart with a watchlist under it, which is what starring a market actually does.
+     *
+     * The render is the check and nothing else can be. Two faults lived here and both are about
+     * *proportion*: the strip took a constant 38 % of the screen whatever it held, so three
+     * starred markets were three rows and then a hand's width of empty stage; and every row drew a
+     * logo, a ticker and two empty columns, because the prices came from a socket carrying eight
+     * markets. Neither is visible in a unit test and both are the first thing a reader sees.
+     *
+     * It also carries the chart's signature, which is the other thing to look at: the mark sits a
+     * proportion of the canvas in from the plot's left edge rather than wedged in the corner.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w393dp-h914dp-xxhdpi")
+    fun chartWatchlistSplit() = capture("126-chart-watchlist-fa") {
+        val symbols = listOf("XAUUSD", "BTCUSDT", "ETHUSDT")
+        ChartScreen(
+            controller = ScreenshotFixtures.chartController(scope),
+            watchlist = symbols,
+            watchlistQuotes = symbols.mapIndexed { index, symbol ->
+                symbol to WatchlistQuote(
+                    symbol = symbol,
+                    price = listOf(2_574.9, 91_248.3, 3_147.62)[index],
+                    changePercent = listOf(-1.04, 1.84, -0.64)[index],
+                )
+            }.toMap(),
+            onSelectSymbol = {},
+        )
+    }
+
+    /**
+     * The watchlist as the owner sees it: the tape at the head of the page, and three rows of
+     * table under it.
+     *
+     * It captures two things that were wrong at once and are only visible in a render. The header
+     * carries the brand and the brand has to *fit* between the page's title and the search corner,
+     * which no unit test can assert. And the rows carry the move column, which on a 393-point
+     * phone — this qualifier, not the 411 the rest of the file uses — used to run off the row's
+     * far edge and print `+0.35%` as `.35%`. A width arithmetic test now guards the second; this
+     * is what shows a reader the row.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w393dp-h914dp-xxhdpi")
+    fun watchlistPersian() {
+        val store = WatchlistStore(FakeScreenshotPreferences())
+        runBlocking {
+            listOf("BTCUSDT", "ETHUSDT", "SOLUSDT").forEach { store.add(Watchlist.DEFAULT_LIST_ID, it) }
+        }
+        capture("125-watchlist-fa", darkTheme = false) {
+            WatchlistScreen(
+                controller = MarketSearchController(ScreenshotFixtures.searchCatalog(), scope)
+                    .also { it.start() },
+                store = store,
+                sparklines = ScreenshotFixtures.sparklineStore(scope),
+                onOpenSymbol = {},
+                onOpenSearch = {},
+            )
         }
     }
 

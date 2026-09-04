@@ -35,7 +35,7 @@ import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
-import com.coinepro.core.designsystem.ProChartMarkStream
+import com.coinepro.core.designsystem.ProChartTapeStream
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.marketdata.MarketSearchController
@@ -99,11 +99,11 @@ fun WatchlistScreen(
     val state by controller.state.collectAsStateWithLifecycle()
     val lines by sparklines.lines.collectAsStateWithLifecycle()
 
-    // What makes the mark at the head of this page draw itself again.
+    // What makes the brand at the head of this page write itself again.
     //
     // Bumped when the screen is arrived at and when the catalogue lands under it, which are the two
-    // moments TradingView's own mark streams in: opening the tab, and the list appearing. It is a
-    // *counter* rather than a scroll offset on purpose — see `ProChartMarkStream`: an animation
+    // moments a header signature is worth running: opening the tab, and the list appearing. It is a
+    // *counter* rather than a scroll offset on purpose — see `ProChartTapeStream`: an animation
     // restarted on every pixel of a drag is a flicker, not a signature.
     var streamKey by rememberSaveable { mutableIntStateOf(0) }
     val settled = !state.loading && state.results.isNotEmpty()
@@ -149,9 +149,10 @@ fun WatchlistScreen(
  * The magnifier is where the markets tab keeps its own, because this screen and that one are the
  * same list seen twice and a reader who has learned where it is should find it in the same place.
  *
- * The mark in the middle is TradingView's arrangement and the owner's instruction — their watchlist
- * carries the brand at the top of the page and streams it in on arrival. `ProChartMarkStream` is
- * the motion; [streamKey] is what says when to run it.
+ * The brand in the middle is the owner's instruction — this page carries the logo at the top and
+ * signs itself on arrival. `ProChartTapeStream` is the motion, and it is this product's own rather
+ * than the reference's: a price line writes the mark and the name and then burns off behind
+ * itself. [streamKey] is what says when to run it.
  */
 @Composable
 private fun WatchlistHeader(onOpenSearch: (() -> Unit)?, streamKey: Int) {
@@ -172,7 +173,7 @@ private fun WatchlistHeader(onOpenSearch: (() -> Unit)?, streamKey: Int) {
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f),
         )
-        ProChartMarkStream(replay = streamKey, contentDescription = null)
+        ProChartTapeStream(replay = streamKey, contentDescription = null)
         Spacer(Modifier.weight(1f))
         if (onOpenSearch != null) {
             Box(
