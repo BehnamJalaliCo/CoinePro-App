@@ -543,9 +543,15 @@ fun CoineProChart(
      * change between two bars of the same instrument, and re-measuring text inside a draw pass is
      * the one thing in this file that would actually cost a frame.
      */
+    // **Grouped, because the axis prints it grouped.** This used to be a bare `formatPrice`, and
+    // the labels beside it go through `axisText`, which puts the thousands separators in — so the
+    // gutter was measured against `81192.5` and then asked to hold `81,192.5`. One comma is about
+    // four pixels, the tag is drawn a fixed inset from the gutter's edge, and the result is the
+    // live price tag running off the right-hand edge of the glass: «قیمت از کادر زده بیرون». A
+    // price over a million loses two commas' worth and clips two characters.
     val sampleLabel = remember(display) {
         val price = display.bars.lastOrNull()?.c ?: 0.0
-        formatPrice(price, decimalsFor(price))
+        groupThousands(formatPrice(price, decimalsFor(price)))
     }
     val axisWidth = remember(sampleLabel, priceFontSp, density, measurer) {
         priceAxisWidth(
@@ -4095,7 +4101,17 @@ private fun DrawScope.drawAxisTag(
     val anchor = if (second == null) y - height / 2 else y - label.size.height / 2 - pad
     val tagTop = anchor.coerceIn(top, lowest)
     drawAxisChip(frame, tagTop, height, fill)
-    val x = frame.tagGutterX + inset.toPx()
+    // **The inset gives way before the digits do.**
+    //
+    // The gutter is measured against the widest label the axis expects to print, and that estimate
+    // can be beaten: a viewport with pinned decimals, a price that gained a digit since the width
+    // was cached, a system font scaled up between two frames. When it is, the tag used to keep its
+    // ten-point inset and push the number off the edge of the canvas — a price with its first
+    // characters missing, which is worse than a price set a little tighter against the axis. So
+    // the inset is what shrinks, down to a single pixel, and the figure stays whole.
+    val widest = max(label.size.width, second?.size?.width ?: 0)
+    val room = frame.tagGutterWidth - widest - 1f
+    val x = frame.tagGutterX + inset.toPx().coerceIn(1f, max(1f, room))
     drawText(textLayoutResult = label, topLeft = Offset(x, tagTop + pad))
     second?.let {
         drawText(textLayoutResult = it, topLeft = Offset(x, tagTop + pad + label.size.height))
