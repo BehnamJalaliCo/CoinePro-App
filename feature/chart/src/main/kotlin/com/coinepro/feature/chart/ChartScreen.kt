@@ -2372,15 +2372,24 @@ private val WATERMARK_INSET = 12.dp
  *
  * ### A share of the canvas, not a number of points
  *
- * Twelve per cent, which is the middle of the band the owner asked for and is a *proportion*: the
- * mark holds the same place on a 360-point phone, on a tablet and on the full-screen chart, where
- * a fixed inset would look tucked away on one and adrift on another. [WATERMARK_INSET] is the
- * floor, so a very narrow pane still keeps the mark off the axis rather than on it.
+ * A *proportion*, so the mark holds the same place on a 360-point phone, on a tablet and on the
+ * full-screen chart, where a fixed inset would look tucked away on one and adrift on another.
+ * [WATERMARK_INSET] is the floor, so a very narrow pane still keeps the mark off the axis rather
+ * than on it.
+ *
+ * ### Six, not twelve
+ *
+ * Twelve was the middle of the band the owner named and it read as too far in: «لوگو خیلی به سمت
+ * راست کشیده شده، یه ۱۰ درصد برگردون به سمت چپ.» The number is the *lead*, and the mark is drawn
+ * to the right of it — 23 points wide, another six per cent of a phone — so a twelve per cent lead
+ * puts the signature between twelve and eighteen per cent across, which is where the eye actually
+ * measures it from. At six the mark occupies six to twelve, the low end of the band as seen rather
+ * than as specified, and it is still clearly placed rather than wedged in the corner.
  *
  * It stays well clear of the first candle at any zoom this chart offers, and the tap target is
  * still the mark's own box — see [ChartWatermark].
  */
-private const val WATERMARK_LEAD_FRACTION = 0.12f
+private const val WATERMARK_LEAD_FRACTION = 0.06f
 
 /** [WATERMARK_LEAD_FRACTION] of a canvas [canvasWidthPx] wide, never less than [WATERMARK_INSET]. */
 @Composable
