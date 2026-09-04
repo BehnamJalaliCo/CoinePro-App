@@ -15,6 +15,53 @@ it is for.
 
 ---
 
+## [4.32.1] — 2026-09-04 — Five things the owner found by using the app
+
+Every one of these came from a screenshot, and every one of them is the same kind of fault: a
+mechanism that was right in the abstract and wrong on the glass.
+
+**Prices that did not move.** `MarketSearchController` read the live feed through a lambda, once per
+re-rank — and nothing re-ranks while somebody is looking at a list. So the watchlist and the markets
+list held whatever the price had been at the moment the list was built, and the socket that was
+delivering ticks the whole time was stopping here. It takes a flow now, collected for the life of
+the controller, and a tick becomes a new row the frame it lands. Only the quote is replaced: never
+the ranking, the query or the order, and a tick that says nothing new leaves the state identical
+rather than recomposing every visible row. The watchlist tab also names its own starred markets to
+the socket while it is open, which nothing but Home had ever done — the one screen built entirely
+out of the reader's own list was the one the feed was not carrying. There is no interval to tune
+and deliberately so: the feed is a push socket and the fastest this can be is whatever the server
+sends. What is left on a clock is the fallback for a socket that is *down*, and it is every five
+seconds now rather than every ten.
+
+**No way back out of sign-in.** «هیچ دکمهٔ برگشتی نذاشتی.» Signing in was not a destination on the
+navigation graph — it replaced the whole shell — so there was no back stack behind it, no top bar
+over it, and the tab the reader came from went with the shell. A reader who tapped a locked row in
+the menu had two ways out: finish the form, or kill the app. The form is a layer over the app now
+rather than a replacement for it, so «بازگشت» is a state change and it lands them on exactly the
+screen that sent them. The system's own back does the same thing.
+
+**A calendar that opened on last week.** The sources sort ascending and the screen's answer to that
+was a scroll onto the first row that was not stale — which does nothing at all on the week nobody
+has refreshed, where every row is behind. That is the week that was reported, with the eighth at the
+top on the fourteenth. It is an order now, not a position: what has not happened yet, soonest first;
+then what has, most recent first. Nothing is hidden, and `CalendarOrder` is six tests.
+
+**The watchlist cutting the chart in half.** The chart page scrolls and the plot inside it takes its
+height from the screen, so giving that page two thirds of the glass never shrank the chart — it cut
+the bottom off it, time axis and all, and put a list across the wound. Reported twice, and this time
+with the picture. The split is gone: the chart page has the whole screen back. Changing instrument
+without leaving the chart is `SymbolWheel`'s job, in the toolbar band, on the same starred markets
+with the same prices beside them and costing the plot nothing.
+
+**A switch that read backwards.** «روی سیگنال می‌زنم، انجمن باز می‌شود.» The panes were never
+swapped; the *mark* was. The chosen key was `SurfaceRaised`, which on the light theme is the page's
+own white, so it vanished — and the unchosen grey key was the only marked thing on the row. "Raised"
+is a statement about a container, so the keys sit in a tray now and the chosen one lifts out of it,
+which is the answer `CoineProSegmentedControl` had already arrived at. A light-theme golden is added
+with it, because a dark one cannot see this fault at all.
+
+---
+
 ## [4.32.0] — 2026-09-04 — The gate learns to say *which* number is wrong
 
 4.31.1 could halt honestly when there was no TradingView reference. It could not

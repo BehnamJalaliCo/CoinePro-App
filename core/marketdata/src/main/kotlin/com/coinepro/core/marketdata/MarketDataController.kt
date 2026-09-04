@@ -29,6 +29,16 @@ import kotlin.math.min
 
 private const val REALTIME_CACHE_WRITE_INTERVAL_MS = 30_000L
 
+/**
+ * How often the feed re-reads its own freshness, and re-fetches when the socket is not carrying it.
+ *
+ * Nothing on the live path waits for this: a tick is applied the moment the socket delivers it, and
+ * there is no sampling, no coalescing and no interval between the wire and the screen. This clock
+ * exists for the two things that cannot be event-driven — marking a quote stale when nothing has
+ * arrived, and the snapshot fallback for a connection that is down.
+ */
+private const val MONITOR_INTERVAL_MS = 5_000L
+
 class MarketDataController(
     retrofit: Retrofit,
     private val client: OkHttpClient,
@@ -92,17 +102,18 @@ class MarketDataController(
             refreshSnapshot()
         }
         connectWebSocket()
+        // The freshness clock, and the fallback when the socket is not carrying the feed.
+        //
+        // The fallback used to fire on every second tick — a snapshot every ten seconds for a
+        // reader whose socket is down, which on a screen of prices is a screen that is visibly
+        // wrong for most of that time. It is every tick now: while the socket is live nothing here
+        // fetches at all, and while it is not, the request is the only thing standing between the
+        // reader and a stale number.
         monitorJob = scope.launch {
-            var fallbackTick = 0
             while (started.get()) {
-                delay(5_000)
+                delay(MONITOR_INTERVAL_MS)
                 refreshFreshness()
-                if (_state.value.connection != MarketConnectionState.LIVE) {
-                    fallbackTick++
-                    if (fallbackTick % 2 == 0) refreshSnapshot()
-                } else {
-                    fallbackTick = 0
-                }
+                if (_state.value.connection != MarketConnectionState.LIVE) refreshSnapshot()
             }
         }
     }

@@ -4,8 +4,11 @@ import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
@@ -1345,7 +1348,14 @@ fun CoineProApp(
                 var signingIn by rememberSaveable { mutableStateOf(false) }
                 val showForm = signingIn || launchResetToken != null
 
-                if (!showForm) {
+                // **The shell stays composed underneath the form.**
+                //
+                // It used to be swapped out for it, and that is what left the sign-in screens with
+                // no way back: there was no shell behind them to go back *to*, and the tab the
+                // reader had been on — the menu, nearly always — went with it. Drawn as a layer
+                // over the app instead, «برگشت» is a state change rather than a navigation, so it
+                // lands the reader on exactly the screen that sent them.
+                Box(modifier = Modifier.fillMaxSize()) {
                     // Built here rather than in Hilt because they are the guest's alone and their
                     // lifetime is this branch: signing in disposes them along with the shell.
                     val guestCatalog = remember(guestGateway) { GuestMarketCatalogGateway(guestGateway) }
@@ -1484,9 +1494,27 @@ fun CoineProApp(
                         launchTimeframe = launchTimeframe,
                         onSymbolLaunchConsumed = onSymbolLaunchConsumed,
                     )
-                    return@BiometricGate
-                }
 
+                if (showForm) {
+                // The system's own back leaves the form too. A screen that can be left by a button
+                // and not by the gesture is one most readers on the device cannot leave the way
+                // they leave everything else.
+                BackHandler {
+                    signingIn = false
+                    onResetTokenConsumed()
+                }
+                // Opaque, full-bleed and clickable: a layer over a live app has to stop both the
+                // light and the touches, or the reader taps a market row through a password field.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(CoineProColors.Stage)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {},
+                        ),
+                ) {
                 EmailAuthScreen(
                     state = emailAuthState,
                     onSignIn = emailAuthController::signIn,
@@ -1527,7 +1555,17 @@ fun CoineProApp(
                         }
                     },
                     initialResetToken = launchResetToken.orEmpty(),
+                    // Back is a state change, not a navigation: the shell behind this layer never
+                    // left, so the reader returns to the tab that sent them. The recovery token
+                    // goes with it — leaving it set would reopen the form on the next frame.
+                    onBack = {
+                        signingIn = false
+                        onResetTokenConsumed()
+                    },
                 )
+                }
+                }
+                }
             }
             else -> AuthScreen(
                 state = session,
@@ -2367,7 +2405,6 @@ private fun MainShell(
                 controllerFor = chartControllers::controllerFor,
                 onSymbolChanged = { activeChartSymbol = it },
                 watchlistQuotes = watchlistQuotes,
-                workspace = chartWorkspaceStore,
                 drawingTemplates = drawingTemplateStore,
                 symbolChartStates = symbolChartStateStore,
                 chartLayoutStore = chartLayoutStore,
@@ -3446,6 +3483,14 @@ private fun MainShell(
                 )
             }
             sharedComposable(WATCHLIST_ROUTE) {
+                // **The socket carries what this tab is showing, for as long as it is showing it.**
+                //
+                // The feed streams only what it is subscribed to, and until now only Home ever said
+                // what that was. So the one screen built entirely out of the reader's own markets
+                // was fed by the catalogue — a snapshot, taken once — and its prices did not move:
+                // «قیمت‌ها باید لحظه‌ای باشند». Naming the starred symbols here puts them on the
+                // socket, and `MarketSearchController` puts every tick straight onto the row.
+                LaunchedEffect(watchlist) { onSubscribeSymbols(watchlist.toSet()) }
                 WatchlistScreen(
                     controller = marketSearchController,
                     store = watchlistStore,

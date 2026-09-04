@@ -80,6 +80,14 @@ fun EmailAuthScreen(
     /** Handed a verified Telegram payload; only ever called when the server reports that method. */
     /** Prefilled when the recovery App Link opened the app, empty when the reader will paste it. */
     initialResetToken: String = "",
+    /**
+     * The way back to whatever the reader was doing, or null where there is nothing behind this.
+     *
+     * Null on a cold start — the app opened here and there is no app to go back to. Non-null the
+     * moment a screen inside the product sent them, which is every case the fault was reported
+     * against. See [AuthBackRow].
+     */
+    onBack: (() -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -90,6 +98,10 @@ fun EmailAuthScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        onBack?.let { back ->
+            AuthBackRow(onBack = back)
+            Spacer(Modifier.height(CoineProSpacing.Two))
+        }
         // 168, down from 220, and the number changed because what it measures did.
         //
         // `wordmarkWidth` is the width of the *name*, and until `ProChartLockup` was fixed the name

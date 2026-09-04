@@ -139,6 +139,21 @@ class GoldenScreenshotTest {
         Ideas(IdeasFace.COMMUNITY)
     }
 
+    /**
+     * The light theme, because that is the theme the switch was wrong in.
+     *
+     * «روی سیگنال می‌زنم، انجمن باز می‌شود.» The panes were right and the *mark* was inverted: the
+     * chosen key was `SurfaceRaised`, which on this theme is the page's own white, so it disappeared
+     * and the unchosen grey key was the only marked thing on the row. A dark golden cannot see that
+     * — the two tokens differ there — which is exactly why this case is here.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = FA_411)
+    fun ideasSignalsLight() =
+        composeRule.assertMatchesGolden("ideas-signals-fa-411-light", darkTheme = false) {
+            Ideas(IdeasFace.SIGNALS)
+        }
+
     /* ------------------------------------------------------------------ menu */
 
     @Test

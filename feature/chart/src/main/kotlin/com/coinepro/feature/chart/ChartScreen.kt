@@ -281,13 +281,6 @@ fun ChartScreen(
      */
     wheelSymbols: List<String> = watchlist,
     /**
-     * Where the divider between the chart and the watchlist is remembered.
-     *
-     * Null keeps the split at its default and forgets a drag when the screen leaves, which is what
-     * a preview wants and would be a small daily annoyance in the app. See [ChartWorkspaceStore].
-     */
-    workspace: ChartWorkspaceStore? = null,
-    /**
      * The reader's saved drawing styles, and the per-tool defaults over them.
      *
      * Passed as the store rather than as a list and six lambdas, the way [chartLayoutStore] is:
@@ -1112,22 +1105,27 @@ fun ChartScreen(
             onSelectSymbol = switchSymbol.takeIf { controllerFor != null || onSelectSymbol != null },
         )
     } else {
-    // The page above, the reader's own watchlist below, and a handle they can reach with the thumb
-    // already holding the phone. See `ChartWatchlistLayout`: with no watchlist this is exactly the
-    // page it always was, so nothing is a mode and nothing has to be discovered.
-    ChartWatchlistLayout(
-        symbols = watchlist,
-        current = state.symbol,
-        quotes = watchlistQuotes,
-        onSelect = switchSymbol,
-        workspace = workspace,
-    ) { pageModifier ->
+    // **The chart page has the whole screen, and the watchlist is not part of it.**
+    //
+    // There used to be a split here: the page above, the starred markets as rows below, a handle
+    // between them. It was reported twice — «وقتی دیده‌بان نماد اضافه می‌کنی چارت رو ببین چه شکلی
+    // می‌شه», then «نمادها میان روی قسمت پایینی چارت … این یه باگه» — and the second report came
+    // with the picture that explains it. The page inside the split is a *scrolling* page and the
+    // plot inside it keeps a height measured against the screen, so giving the page a fraction of
+    // the screen did not shrink the chart: it cut it off. The reader was left with a chart with no
+    // time axis, sliced across the middle by a list they had not asked to be there.
+    //
+    // Switching instrument without leaving the chart is what the strip was for, and that is now
+    // where it belongs — in the toolbar band under the plot, on the same starred markets and with
+    // the same prices beside them. See `SymbolWheel`: one control, in the chrome, costing the plot
+    // nothing.
+    //
     // The columns a large window can pay for, and the page in the middle of them. On a phone this
     // is a pass-through: `ChartWorkbench` hands the page the whole modifier and composes neither
     // column, so nothing below this line behaves differently on the device the page was designed
     // for.
     ChartWorkbench(
-        modifier = pageModifier,
+        modifier = Modifier.fillMaxSize(),
         tools = { railModifier ->
             ChartToolColumn(
                 state = state,
@@ -1321,7 +1319,6 @@ fun ChartScreen(
             }
         }
         Spacer(Modifier.height(CoineProSpacing.Three))
-    }
     }
     }
     }

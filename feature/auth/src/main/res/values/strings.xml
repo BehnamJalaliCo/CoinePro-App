@@ -9,6 +9,7 @@
     <string name="auth_retry_config">تلاش دوباره برای ورود با تلگرام</string>
     <string name="auth_continue_telegram">ادامه با تلگرام</string>
     <string name="auth_cancel">انصراف</string>
+    <string name="auth_back">بازگشت</string>
     <string name="auth_retry">تلاش دوباره</string>
     <string name="auth_sign_out">خروج از حساب</string>
 

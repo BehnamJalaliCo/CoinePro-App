@@ -9,6 +9,7 @@
     <string name="auth_retry_config">Retry Telegram sign-in</string>
     <string name="auth_continue_telegram">Continue with Telegram</string>
     <string name="auth_cancel">Cancel</string>
+    <string name="auth_back">Back</string>
     <string name="auth_retry">Retry</string>
     <string name="auth_sign_out">Sign out</string>
 

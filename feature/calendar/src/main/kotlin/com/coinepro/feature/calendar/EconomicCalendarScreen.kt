@@ -69,6 +69,7 @@ import com.coinepro.core.marketintel.MarketImpact
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.marketintel.MarketIntelState
 import com.coinepro.core.marketintel.MarketRelevance
+import java.time.Instant
 import java.time.ZoneId
 
 
@@ -93,39 +94,22 @@ fun EconomicCalendarScreen(
 
     LaunchedEffect(controller) { controller.refresh() }
 
+    // Ordered before it is filtered, and ordered rather than scrolled — see [CalendarOrder]: what
+    // is coming is at the top, what has already been released is under it, most recent first.
     val filtered = remember(state.calendar, impact) {
-        state.calendar.filter { event -> impact == null || event.impact == impact }
+        CalendarOrder.arrange(
+            state.calendar.filter { event -> impact == null || event.impact == impact },
+            Instant.now(),
+        )
     }
 
-    // ── where the list opens ──────────────────────────────────────────────────────────────────
+    // The list opens at the top, and the top is the next release.
     //
-    // On the next release, not on Monday's.
-    //
-    // The calendar is a *week*: the source it comes from publishes the whole of it at once, and it
-    // is sorted ascending because a calendar is read forwards. Both of those are right and together
-    // they produced a screen that opens on events that have already happened — on a Thursday, a
-    // reader saw three days of released figures and had to scroll past them to find out what was
-    // coming. That is most of what "the economic calendar does not work" means once the feed is
-    // actually arriving: the data was there and the useful half of it was below the fold.
-    //
-    // So the list opens at the first release that has not happened yet. Not at the top, and not at
-    // "today" either — a reader at nine in the evening is asking about tomorrow morning, and the
-    // day boundary is not the thing they are standing on. The past stays *above* rather than being
-    // filtered out, because what a figure came in at is half of what the next one means, and it is
-    // one flick away.
+    // This used to be a `scrollToItem` onto the first row that was not stale, because the list was
+    // in the source's own ascending order and the useful half of it was below the fold. A scroll
+    // cannot answer that: it does nothing at all on a week where every row is behind, which is
+    // exactly the week the reader complained about. The order does — see [CalendarOrder].
     val listState = rememberLazyListState()
-    val firstUpcoming = remember(filtered) {
-        // `isStale` is the server's own judgement where it sent one, and `PublicCalendarFeed`
-        // computes it two hours past the release — which is the right boundary here too: a figure
-        // released twenty minutes ago is still the thing the market is trading.
-        filtered.indexOfFirst { !it.isStale }.takeIf { it > 0 }
-    }
-    LaunchedEffect(firstUpcoming) {
-        // The freshness strip is item zero, so the row's index in the list is one past its index in
-        // the data. Scrolled rather than animated: this is where the screen *starts*, and a screen
-        // that visibly travels on arrival reads as a screen that opened in the wrong place.
-        firstUpcoming?.let { listState.scrollToItem(it + 1) }
-    }
 
     Column(
         modifier = Modifier

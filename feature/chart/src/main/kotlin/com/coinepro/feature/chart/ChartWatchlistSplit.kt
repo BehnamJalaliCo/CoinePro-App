@@ -2,47 +2,27 @@ package com.coinepro.feature.chart
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
@@ -51,19 +31,16 @@ import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.LtrDirection
-import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.symbols.SymbolArtwork
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 
 /**
  * One row of the watchlist strip: what it costs and what it has done.
  *
  * Nullable prices throughout, because the strip has to be useful before any feed has answered. A
  * row with a symbol and no price is a row a reader can still tap to switch to; a strip that waited
- * for quotes before drawing anything would be a blank panel under the chart during exactly the
- * seconds somebody is deciding where to look next.
+ * for quotes before drawing anything would be a blank panel during exactly the seconds somebody is
+ * deciding where to look next.
  */
 data class WatchlistQuote(
     val symbol: String,
@@ -72,331 +49,24 @@ data class WatchlistQuote(
     val changePercent: Double? = null,
 )
 
-/**
- * The chart page above, the watchlist below, and a handle between them.
+/*
+ * The chart-and-watchlist split used to live in this file: `ChartWatchlistLayout`, its drag handle,
+ * the `WatchlistStrip` of rows underneath, and the divider position kept in the workspace store.
  *
- * ### The complaint, in the reader's own words
- *
- * *"in current UI, you can see either chart or watchlist, not simultaneously. huge slowdown. feels
- * completely handicapped."* It is the third-most-common structural complaint about the large mobile
- * terminal, and it is a complaint about *time*: every comparison between two instruments costs a
- * navigation out, a scroll, a tap and a wait, and somebody reading four markets pays it dozens of
- * times an hour.
- *
- * ### Why the whole page goes in the upper pane
- *
- * Not just the chart. The readings, the setup card and the studio entry belong to the chart and
- * scroll with it, so the reader keeps the page they had; what changes is that it now ends at a
- * handle instead of at the bottom of the glass. Splitting the chart out and leaving the rest below
- * the strip would have produced two scrolling regions with the reader's own content divided between
- * them by nothing they could see.
- *
- * ### No watchlist, no split
- *
- * A reader who has starred nothing gets exactly the page they had, with no divider and no empty
- * panel. This is a layout the watchlist earns by existing, not a mode with an off state.
+ * It is gone, and the argument is written where the chart page now says it — see `ChartScreen`. In
+ * short: the page inside the split scrolls, and the plot inside *that* takes its height from the
+ * screen, so giving the page two thirds of the glass never shrank the chart. It cut the bottom off
+ * it, and the reader was left with a chart with no time axis and a list across its middle. What the
+ * strip was for — changing instrument without leaving the chart — is `SymbolWheel`'s, in the toolbar
+ * band, on the same starred markets with the same prices beside them.
  */
-@Composable
-internal fun ChartWatchlistLayout(
-    symbols: List<String>,
-    current: String,
-    quotes: Map<String, WatchlistQuote>,
-    onSelect: (String) -> Unit,
-    /** Where the divider's position is remembered. Null keeps it for this visit only. */
-    workspace: ChartWorkspaceStore?,
-    modifier: Modifier = Modifier,
-    /** The chart page, given the height the split has decided it gets. */
-    page: @Composable (Modifier) -> Unit,
-) {
-    val shown = remember(symbols) { symbols.filter { SymbolArtwork.covers(it) } }
-    if (shown.isEmpty()) {
-        page(modifier.fillMaxSize())
-        return
-    }
-    val scope = rememberCoroutineScope()
-    var ratio by rememberSaveable { mutableFloatStateOf(Float.NaN) }
-    // Read once. A collector would deliver this screen's own writes straight back and fight a
-    // finger that is still on the handle.
-    var restored by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(workspace) {
-        if (restored) return@LaunchedEffect
-        restored = true
-        workspace?.let { store ->
-            runCatching { store.splitRatio.first() }.getOrNull()?.let { ratio = it }
-        }
-    }
-
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        // Measured against the room this layout actually has rather than against the window, so a
-        // chart in a multi-window split gets the compact treatment for the same reason a small
-        // phone does.
-        val compact = maxHeight < ChartSplit.COMPACT_HEIGHT
-        val totalPx = with(LocalDensity.current) { maxHeight.toPx() }
-        // Where the divider sits when the reader has never moved it: **wherever this many rows
-        // end**, rather than at a constant that leaves a watchlist of three floating in a third of
-        // the screen. See `ChartSplit.fitted`. A stored ratio is a decision and wins over it.
-        val split = if (ratio.isNaN()) ChartSplit.fitted(shown.size, maxHeight.value) else ratio
-        Column(modifier = Modifier.fillMaxSize()) {
-            if (compact) {
-                page(Modifier.fillMaxWidth().weight(1f))
-                WatchlistTickerRow(
-                    symbols = shown,
-                    current = current,
-                    quotes = quotes,
-                    onSelect = onSelect,
-                )
-            } else {
-                page(Modifier.fillMaxWidth().weight(split))
-                ChartSplitHandle(
-                    onDrag = { amount -> ratio = ChartSplit.after(split, amount, totalPx) },
-                    // Written when the finger lifts, not per frame. Sixty preferences writes a
-                    // second for a value nobody reads until the next launch is a lot of disk for
-                    // one decision.
-                    onDragEnd = {
-                        workspace?.let { store ->
-                            val settled = split
-                            scope.launch { runCatching { store.setSplitRatio(settled) } }
-                        }
-                    },
-                )
-                WatchlistStrip(
-                    symbols = shown,
-                    current = current,
-                    quotes = quotes,
-                    onSelect = onSelect,
-                    modifier = Modifier.fillMaxWidth().weight(1f - split),
-                )
-            }
-        }
-    }
-}
 
 /**
- * The handle between the chart and the watchlist.
+ * The watchlist as a single scrolling row of tickers, for a pane with no room for a list.
  *
- * ### Where it is, and why that is the whole design
- *
- * Low on the screen, which is where a thumb holding a phone already rests. The complaint this
- * feature answers is about *speed* — "huge slowdown" — so a control that has to be reached for
- * with the other hand would give back most of what the split buys. It is also why the split is not
- * a mode: there is nothing to switch on, nothing to discover, and no state in which the reader has
- * one surface and has to remember how to get the other.
- *
- * ### Why it looks like a handle
- *
- * The grip glyph and the extra height are not decoration. A one-pixel divider is draggable in the
- * sense that the code responds to it and undraggable in the sense that nobody tries. Twenty-four
- * points with a visible grip is the smallest thing a reader reaches for without being told to.
- */
-@Composable
-internal fun ChartSplitHandle(
-    onDrag: (Float) -> Unit,
-    onDragEnd: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val haptics = rememberCoineProHaptics()
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(HANDLE_HEIGHT)
-            .background(CoineProColors.Stage)
-            .pointerInput(Unit) {
-                detectVerticalDragGestures(
-                    onDragStart = { haptics.select() },
-                    onDragEnd = onDragEnd,
-                    onDragCancel = onDragEnd,
-                    onVerticalDrag = { change, amount ->
-                        change.consume()
-                        onDrag(amount)
-                    },
-                )
-            }
-            .semantics { contentDescription = "جابه‌جایی مرز نمودار و دیده‌بان" },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            painter = painterResource(DesignR.drawable.tv_more_horizontal),
-            contentDescription = null,
-            tint = CoineProColors.TextDisabled,
-            modifier = Modifier.size(width = GRIP_WIDTH, height = GRIP_HEIGHT),
-        )
-    }
-}
-
-/**
- * The watchlist under the chart, as rows.
- *
- * ### What it is for
- *
- * Switching instrument without leaving the chart, keeping the drawings, the timeframe and the
- * indicators — which the per-symbol state store already restores, so a tap here costs a fetch and
- * nothing else. The alternative, and what this app did until now, is a navigation: back, list,
- * find, open, wait, and then re-set whatever the new chart forgot.
- *
- * ### Symbols with no artwork are not listed
- *
- * `SymbolArtwork.covers` is the filter, here as everywhere else. A row with a blank square or a
- * grey disc with a letter in it is worse than a row that is absent: it reads as a broken image and
- * it is the first thing a reader notices about a list.
- */
-@Composable
-internal fun WatchlistStrip(
-    symbols: List<String>,
-    current: String,
-    quotes: Map<String, WatchlistQuote>,
-    onSelect: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val shown = remember(symbols) { symbols.filter { SymbolArtwork.covers(it) } }
-    val listState = rememberLazyListState()
-
-    // The symbol in front of the reader scrolls itself into view. Without it, opening the chart on
-    // the ninth entry of a watchlist shows a strip apparently starting somewhere else, and the
-    // reader has to find where they are before they can move.
-    LaunchedEffect(shown, current) {
-        val index = shown.indexOf(current)
-        if (index >= 0) runCatching { listState.animateScrollToItem(index) }
-    }
-
-    Column(modifier = modifier.fillMaxSize().background(CoineProColors.Stage)) {
-        HorizontalDivider(color = CoineProColors.Border)
-        if (shown.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(CoineProSpacing.Two),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "دیده‌بان خالی است. از بازارها نمادی را ستاره کنید تا همین‌جا زیر نمودار بیاید.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = CoineProColors.TextMuted,
-                    textAlign = TextAlign.Center,
-                )
-            }
-            return@Column
-        }
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(vertical = CoineProSpacing.Half),
-        ) {
-            items(shown, key = { it }) { symbol ->
-                WatchlistRow(
-                    symbol = symbol,
-                    quote = quotes[symbol.uppercase()],
-                    selected = symbol == current,
-                    onClick = { onSelect(symbol) },
-                )
-            }
-        }
-    }
-}
-
-/** One instrument: its mark, its ticker, its price and its move. */
-@Composable
-private fun WatchlistRow(
-    symbol: String,
-    quote: WatchlistQuote?,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val haptics = rememberCoineProHaptics()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(ROW_HEIGHT)
-            // **The row on screen is marked in ink, not in gold.**
-            //
-            // Gold in this app is the brand and the one commercial action on a page — a
-            // subscription, an execution. A strip of watched markets is neither, and a gold wash
-            // behind whichever row happens to be open put a second brand-coloured object on every
-            // chart, competing with the one that means something. It also read cheap in the light
-            // theme, where the tint lands on a cream that belongs to no other surface here.
-            //
-            // The raised neutral is what this app already uses for "one of these is in force" — the
-            // chart's interval keys, the Ideas switch, a selected chip — and it needs no colour to
-            // be unmistakable, because the ticker beside it goes to the primary ink and bold at the
-            // same moment.
-            .background(if (selected) CoineProColors.SurfaceElevated else Color.Transparent)
-            .clickable(enabled = !selected) {
-                haptics.select()
-                onClick()
-            }
-            .padding(horizontal = CoineProSpacing.Gutter),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
-    ) {
-        CoineProAssetLogo(symbol = symbol, size = LOGO)
-        Text(
-            // Isolated: a Latin ticker dropped bare into a right-to-left row reorders around
-            // whatever punctuation follows it.
-            text = BidiText.isolateLtr(symbol),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            color = CoineProColors.TextPrimary,
-            modifier = Modifier.weight(1f),
-        )
-        // **Both cells are always drawn, and an unquoted one says so.**
-        //
-        // They used to be conditional, so a symbol the feed had not answered for was a logo, a
-        // ticker, and then nothing — three-quarters of an empty row, in a strip whose entire job
-        // is to be scanned. Worse, it was *ragged*: the quoted rows had their figures at one place
-        // and the unquoted ones had none, so the strip stopped reading as a column at all. A dash
-        // holds the column open and is the honest answer — this feed has not said — where an
-        // absent cell reads as a rendering fault.
-        LtrDirection {
-            Text(
-                // Grouped, like every other price in the app. The chart's own axis prints
-                // `2,574.9` and the watchlist screen prints `91,248.30`; this strip printed
-                // `91248.3`, which is the same number set as a different kind of thing.
-                text = quote?.price?.let { MarketNumberFormatter.priceAuto(it) } ?: EM_DASH,
-                style = MaterialTheme.typography.labelSmall,
-                color = if (quote?.price != null) {
-                    CoineProColors.TextSecondary
-                } else {
-                    CoineProColors.TextDisabled
-                },
-                // Right, never End: this is a column of market figures and it stays aligned
-                // the same way in a right-to-left layout as it does in the broker statement
-                // the reader is holding it against.
-                textAlign = TextAlign.Right,
-                maxLines = 1,
-                modifier = Modifier.width(PRICE_WIDTH),
-            )
-        }
-        LtrDirection {
-            val move = quote?.changePercent
-            Text(
-                text = move?.let { MarketNumberFormatter.signedPercent(it) } ?: EM_DASH,
-                style = MaterialTheme.typography.labelSmall,
-                color = when {
-                    move == null -> CoineProColors.TextDisabled
-                    move >= 0 -> CoineProColors.MarketUp
-                    else -> CoineProColors.MarketDown
-                },
-                textAlign = TextAlign.Right,
-                maxLines = 1,
-                modifier = Modifier.width(MOVE_WIDTH),
-            )
-        }
-    }
-}
-
-/** What a cell with no figure says. Not a zero, which would be a claim. */
-private const val EM_DASH = "—"
-
-/**
- * The watchlist as a single scrolling row of tickers, for a screen with no room for a list.
- *
- * ### Why the layout changes rather than shrinking
- *
- * Below `ChartSplit.COMPACT_HEIGHT` a two-thirds chart is already at the floor of what a hundred
- * candles can be read in, and what is left cannot hold a row with a price on it *and* a handle
- * worth grabbing. Shrinking the same list would produce two rows and a divider — a control that is
- * present, is technically the feature, and helps nobody. A ticker row costs 44 points, keeps every
- * symbol one tap away, and does not pretend to be a table.
- *
- * The handle is absent with it, deliberately: there is nothing left to trade between the two panes,
- * and a handle that cannot move is worse than no handle at all.
+ * A ticker row costs 44 points, keeps every symbol one tap away, and does not pretend to be a table.
+ * The panes screen draws it under a dense pane and offers it in a sheet from a roomy one, so a
+ * symbol filtered out of the row for having no artwork is filtered out of both.
  */
 @Composable
 internal fun WatchlistTickerRow(
@@ -431,7 +101,11 @@ internal fun WatchlistTickerRow(
                 Row(
                     modifier = Modifier
                         .clip(CoineProShapes.small)
-                        // The same neutral as the list above — see the note there.
+                        // **The market on screen is marked in ink, not in gold.**
+                        //
+                        // Gold in this app is the brand and the one commercial action on a page. A
+                        // strip of watched markets is neither, and the raised neutral is what this
+                        // app already uses for "one of these is in force".
                         .background(
                             if (selected) CoineProColors.SurfaceElevated else Color.Transparent,
                         )
@@ -445,6 +119,8 @@ internal fun WatchlistTickerRow(
                 ) {
                     CoineProAssetLogo(symbol = symbol, size = TICKER_LOGO)
                     Text(
+                        // Isolated: a Latin ticker dropped bare into a right-to-left row reorders
+                        // around whatever punctuation follows it.
                         text = BidiText.isolateLtr(symbol),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
@@ -465,28 +141,7 @@ internal fun WatchlistTickerRow(
     }
 }
 
-/** Big enough to be reached for, small enough that it is not a row of the layout. */
-private val HANDLE_HEIGHT = 24.dp
-
-private val GRIP_WIDTH = 26.dp
-private val GRIP_HEIGHT = 14.dp
-
-/** A watchlist row: Material's minimum target with a little air, so four fit a short strip. */
-private val ROW_HEIGHT = 44.dp
-
-private val LOGO = 22.dp
-
-/**
- * Fixed widths for the two figures, so the prices line up down the strip.
- *
- * A column of right-aligned numbers that each size to their own content is not a column: the
- * decimal points wander and the strip becomes something to read row by row rather than to scan.
- */
-private val PRICE_WIDTH = 88.dp
-
-private val MOVE_WIDTH = 58.dp
-
-/** The compact row's own height, and the logo inside it. */
+/** The row's own height, and the logo inside it. */
 private val TICKER_HEIGHT = 44.dp
 
 private val TICKER_LOGO = 18.dp

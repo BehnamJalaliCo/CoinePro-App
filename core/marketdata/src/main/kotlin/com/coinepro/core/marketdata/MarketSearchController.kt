@@ -12,6 +12,7 @@ import com.coinepro.core.symbols.SymbolSearch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -74,11 +75,31 @@ data class MarketSearchState(
  *
  * **Ranking lives in `core:symbols`.** This class holds state and does no scoring of its own, so
  * the ordering can be tested without a coroutine, a gateway or a screen.
+ *
+ * **The prices on the rows are the socket's, as they arrive.** See [liveQuotes].
  */
 class MarketSearchController(
     private val gateway: MarketCatalogGateway,
     private val scope: CoroutineScope,
-    private val quotesOf: () -> Map<String, MarketQuote> = { emptyMap() },
+    /**
+     * The live feed, if this build has one.
+     *
+     * ### Why it is a flow and not a lambda
+     *
+     * It used to be `() -> Map<String, MarketQuote>`, read **once per re-rank** — on a keystroke, a
+     * category chip, a catalogue reload. Nothing re-ranks while a reader is looking at a list, so
+     * every row on the watchlist and on the markets list held whatever the price had been at the
+     * moment the list was built and did not move again: «قیمت‌ها باید لحظه‌ای باشند». The socket was
+     * delivering ticks the whole time and this class was the place they stopped.
+     *
+     * A flow is collected for the life of the controller, so a tick becomes a new row the frame it
+     * lands. There is no interval here to tune and deliberately so — the feed is a push socket, and
+     * the fastest this can be is *whatever the server sends*, with nothing in between sampling it.
+     *
+     * Null is a real answer: the guest build has no authenticated socket, and its catalogue prices
+     * simply do not tick.
+     */
+    private val liveQuotes: Flow<Map<String, MarketQuote>>? = null,
 ) {
     private val _state = MutableStateFlow(MarketSearchState())
     val state: StateFlow<MarketSearchState> = _state.asStateFlow()
@@ -87,11 +108,49 @@ class MarketSearchController(
     private var catalogQuotes: Map<String, MarketQuote> = emptyMap()
     private var loadJob: Job? = null
     private var queryJob: Job? = null
+    private var liveJob: Job? = null
 
-    /** Load the catalogue once. Called when the search surface opens. */
+    /** The last thing the socket said, for the rows a re-rank builds from scratch. */
+    private var live: Map<String, MarketQuote> = emptyMap()
+
+    /** Load the catalogue once, and start listening to the feed. Called when a surface opens. */
     fun start() {
+        listen()
         if (catalog.isNotEmpty() || loadJob?.isActive == true) return
         refresh()
+    }
+
+    /**
+     * Collect the feed, patching the price on the rows already built.
+     *
+     * Only the quote is replaced — never the ranking, the query or the order. A tick is new
+     * information about one market, not a reason to rearrange a list under a reader's thumb.
+     */
+    private fun listen() {
+        val source = liveQuotes ?: return
+        if (liveJob?.isActive == true) return
+        liveJob = scope.launch { source.collect(::applyLive) }
+    }
+
+    private fun applyLive(quotes: Map<String, MarketQuote>) {
+        live = quotes
+        if (quotes.isEmpty()) return
+        _state.update { current ->
+            var moved = false
+            val rows = current.results.map { row ->
+                val fresh = quotes[row.meta.symbol] ?: return@map row
+                if (fresh == row.quote) {
+                    row
+                } else {
+                    moved = true
+                    row.copy(quote = fresh)
+                }
+            }
+            // Identity, not a copy, when nothing changed: a `StateFlow` set to an equal value is
+            // cheap, and one set to a *new list of equal rows* is a recomposition of every visible
+            // row on the screen for no new information.
+            if (moved) current.copy(results = rows) else current
+        }
     }
 
     fun refresh() {
@@ -165,7 +224,7 @@ class MarketSearchController(
      * row a reader is watching ticks, and the rest show a real price rather than a dash.
      */
     private fun quoteFor(meta: SymbolMeta): MarketQuote? =
-        quotesOf()[meta.symbol] ?: catalogQuotes[meta.symbol]
+        live[meta.symbol] ?: catalogQuotes[meta.symbol]
 
     private companion object {
         /**

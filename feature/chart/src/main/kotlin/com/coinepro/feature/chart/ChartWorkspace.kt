@@ -4,7 +4,6 @@ import androidx.annotation.StringRes
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.compose.ui.unit.Dp
@@ -14,119 +13,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
-/**
- * Where the divider between the chart and the watchlist may sit, and what a drag does to it.
- *
- * ### Why the chart and the watchlist are on one screen at all
- *
- * It is the third-most-common structural complaint about the large mobile terminal, in its own
- * users' words: *"in current UI, you can see either chart or watchlist, not simultaneously. huge
- * slowdown. feels completely handicapped."* Somebody comparing four instruments on a phone
- * currently pays a navigation, a scroll and a wait per look, and does it dozens of times an hour.
- * A strip under the chart removes all of it.
- *
- * ### Why the ratio is a fraction and not a height
- *
- * A stored height in density-independent pixels is wrong on the next phone and wrong again after a
- * rotation: 300dp is two thirds of a small phone held upright and a fifth of a tablet held
- * sideways. A fraction of whatever room there is means the reader's choice — "about two thirds
- * chart" — survives every one of those.
- *
- * The bounds are not decoration. Below [MIN] the chart is a band too short to read structure in,
- * which is the state this whole feature exists to escape; above [MAX] the strip is thinner than one
- * row and the reader can no longer tell it is there, so the handle looks broken rather than
- * dragged. Clamping means a fling can never leave the layout somewhere it cannot be recovered from
- * by dragging the other way.
+/*
+ * `ChartSplit` used to live here — the bounds, the clamp, the drag arithmetic and the row-fitted
+ * starting position for the chart-and-watchlist divider. There is no divider now: the chart page
+ * has the whole screen and the watchlist reaches it through `SymbolWheel`. See `ChartScreen` for
+ * why the split was taken out, and `ChartWatchlistSplit` for what is left of that file.
  */
-object ChartSplit {
-
-    /** The least of the screen the chart may keep. Below this it stops being a chart. */
-    const val MIN = 0.34f
-
-    /** The most it may keep, leaving the strip at least one legible row. */
-    const val MAX = 0.86f
-
-    /**
-     * Where the divider starts: a little under two thirds.
-     *
-     * The chart gets the room because it is what the reader came for, and the remainder is three
-     * or four watchlist rows — enough that the strip is obviously a list rather than a stray row,
-     * and few enough that it never reads as the main event.
-     */
-    const val DEFAULT = 0.62f
-
-    /**
-     * Below this the strip stops being a list and becomes a single scrolling row of tickers.
-     *
-     * Measured against the space this layout actually has rather than the window, because a chart
-     * screen on a short phone in a multi-window split has the same problem as a chart screen on a
-     * small phone. At 560dp a 62% chart is about 350dp — already the floor for reading a hundred
-     * candles — and whatever is left cannot hold a row with a price on it as well as a divider. A
-     * horizontal ticker row costs 44dp, keeps every symbol one tap away, and does not pretend to
-     * be a table.
-     */
-    val COMPACT_HEIGHT: Dp = 560.dp
-
-    /**
-     * A ratio brought inside the bounds, with anything nonsensical sent back to the default.
-     *
-     * The NaN branch is not defensive noise. The ratio is arrived at by dividing a drag by a
-     * measured height, and a layout pass that reports zero height — which happens for one frame
-     * on the way in — makes that division produce a NaN that `coerceIn` propagates rather than
-     * fixes. One such frame written back to storage would leave the reader with a divider that
-     * never moves again on any device, so it is caught here, at the one place every value passes
-     * through.
-     */
-    fun clamp(ratio: Float): Float =
-        if (ratio.isNaN() || !ratio.isFinite()) DEFAULT else ratio.coerceIn(MIN, MAX)
-
-    /**
-     * Where the divider lands after a drag of [dragPx] within a pane [totalPx] tall.
-     *
-     * Positive [dragPx] is downwards, which grows the chart — the finger and the boundary move
-     * together, which is the only arrangement that does not feel inverted. A zero or negative
-     * height means the layout has not been measured yet and the drag is ignored rather than
-     * dividing by it.
-     */
-    fun after(current: Float, dragPx: Float, totalPx: Float): Float =
-        if (totalPx <= 0f) clamp(current) else clamp(current + dragPx / totalPx)
-
-    /**
-     * Where the divider starts for a reader who has starred [rows] markets.
-     *
-     * ### The complaint
-     *
-     * «وقتی دیده‌بان نماد اضافه می‌کنی چارت رو ببین چه شکلی می‌شه.» [DEFAULT] is a constant, so a
-     * watchlist of three took the same 38 % of the screen as a watchlist of twenty: three rows of
-     * list and then a hand's width of empty stage under them, with the chart squeezed for room
-     * nothing was using. Starring a first symbol made the chart *worse*, which is the opposite of
-     * what starring is for.
-     *
-     * ### What it does instead
-     *
-     * The strip asks for exactly what its rows need — [rows] of [rowHeightDp], plus the divider
-     * above them and the list's own half-step of padding at each end — and the chart keeps the
-     * rest. So three rows is a three-row strip, and the chart is nearly whole.
-     *
-     * Clamped by [MIN] and [MAX] at both ends, which is what stops a long list from taking the
-     * screen: past about six rows this returns [MIN]'s complement and the strip scrolls, exactly
-     * as it did before. A zero or unmeasured height falls back to [DEFAULT] rather than dividing.
-     *
-     * It is the *starting* position and nothing more. The handle still moves it and the workspace
-     * still remembers where the reader put it — a stored ratio is read after this and wins.
-     */
-    fun fitted(rows: Int, totalDp: Float, rowHeightDp: Float = ROW_HEIGHT_DP): Float {
-        if (rows <= 0 || totalDp <= 0f || !totalDp.isFinite()) return DEFAULT
-        val strip = rows * rowHeightDp + STRIP_CHROME_DP
-        return clamp(1f - strip / totalDp)
-    }
-
-    /** One row of the strip under the chart, in points. Mirrors `ChartWatchlistSplit`'s own. */
-    private const val ROW_HEIGHT_DP = 44f
-
-    /** The divider over the strip and the half-step of padding above and below its rows. */
-    private const val STRIP_CHROME_DP = 9f
-}
 
 /**
  * Which of the panes' properties are tied together.
@@ -254,21 +146,6 @@ enum class PaneSyncField(
  */
 class ChartWorkspaceStore(private val dataStore: DataStore<Preferences>) {
 
-    /**
-     * Where the divider sits, as the chart's share of the room.
-     *
-     * Clamped on the way out as well as on the way in, so a record written by a build with
-     * different bounds — or edited by hand — cannot produce a layout with no chart in it.
-     */
-    val splitRatio: Flow<Float> = dataStore.data
-        .map { preferences -> ChartSplit.clamp(preferences[SPLIT_RATIO] ?: ChartSplit.DEFAULT) }
-        .distinctUntilChanged()
-
-    /** Records where the reader let the divider go. */
-    suspend fun setSplitRatio(ratio: Float) {
-        dataStore.edit { it[SPLIT_RATIO] = ChartSplit.clamp(ratio) }
-    }
-
     /** What the two panes share. See [PaneSync] for why all four default to off. */
     val paneSync: Flow<PaneSync> = dataStore.data
         .map { preferences -> PaneSync.decode(preferences[PANE_SYNC].orEmpty()) }
@@ -356,7 +233,6 @@ class ChartWorkspaceStore(private val dataStore: DataStore<Preferences>) {
     }
 
     private companion object {
-        val SPLIT_RATIO = floatPreferencesKey("chart_split_ratio")
         val PANE_SYNC = stringPreferencesKey("chart_pane_sync")
         val SECOND_PANE = stringPreferencesKey("chart_second_pane_symbol")
         val PANE_SYMBOLS = stringPreferencesKey("chart_pane_symbols")

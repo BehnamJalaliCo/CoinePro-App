@@ -1,6 +1,7 @@
 package com.coinepro.app.ideas
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -83,18 +85,30 @@ fun IdeasScreen(
 enum class IdeasFace { SIGNALS, COMMUNITY }
 
 /**
- * The switch: two keys, the chosen one inverted to the primary ink.
+ * The switch: two keys in a tray, the chosen one lifted out of it.
  *
- * The same shape the chart's interval keys use — a filled block on a raised neutral — rather than a
- * Material `TabRow`. Three reasons, and the third is the one that matters. A `TabRow` draws an
- * underline that reads as a third rule under a page that already has a divider and a list header;
- * its ripple and indicator animate on every switch, which is decoration on a control pressed twice
- * a session; and it is the shape a reader of this app has already learned means "one of these is
- * in force" everywhere else.
+ * ### The fault this fixes, which was the switch reading backwards
+ *
+ * «روی سیگنال می‌زنم، انجمن باز می‌شود؛ روی انجمن می‌زنم، سیگنال.» The panes were never swapped —
+ * what was swapped was which key *looked* chosen. The keys were drawn straight onto the page:
+ * `SurfaceRaised` for the selected one and `Surface` for the other. In the dark theme that reads
+ * correctly. In the light theme `SurfaceRaised` **is** the page — both are `#FFFFFF` — so the
+ * chosen key vanished into the background and the unchosen one, a grey block, was the only marked
+ * thing on the row. Every reader of the light theme was told the opposite of the truth, and the
+ * screenshot that came with the report shows exactly that: the signals pane open, «انجمن» in a
+ * grey chip.
+ *
+ * ### Why a tray fixes it and a different colour would not
+ *
+ * "Raised" is a statement about a container, not a shade: a block can only look lifted *out of*
+ * something. `CoineProSegmentedControl` learned this already — see its own note — and the answer is
+ * the same one here. The row sits in a `Surface` tray with an edge, and the selected key is
+ * `SurfaceRaised` with its own hairline, which is lighter than its tray in the dark theme and
+ * whiter than it in the light one. The mark is then correct in both themes for the same reason
+ * rather than by two coincidences.
  *
  * No gold. Gold in this app is the brand and the one commercial action on a page, and a selected
- * tab is neither — see the palette rules. The ink inverts instead, which is the strongest possible
- * mark and costs no colour.
+ * tab is neither — see the palette rules. The ink and the lift carry it, and cost no colour.
  */
 @Composable
 private fun IdeasSwitch(face: IdeasFace, onSelect: (IdeasFace) -> Unit) {
@@ -108,8 +122,14 @@ private fun IdeasSwitch(face: IdeasFace, onSelect: (IdeasFace) -> Unit) {
                 top = CoineProSpacing.Half,
                 bottom = CoineProSpacing.Half,
             )
+            // The tray. A control has to look like a container before the key inside it can look
+            // lifted out of one — which is the whole of the fault above.
+            .clip(CoineProShapes.small)
+            .background(CoineProColors.Surface)
+            .border(1.dp, CoineProColors.BorderSubtle, CoineProShapes.small)
+            .padding(TRAY_PADDING)
             .selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        horizontalArrangement = Arrangement.spacedBy(TRAY_PADDING),
     ) {
         IdeasFace.entries.forEach { option ->
             IdeasKey(
@@ -151,7 +171,20 @@ private fun IdeasKey(
             // theme it was near-black. Either way the switch was louder than the content it
             // switches. `SurfaceRaised` is what every other "one of these is in force" in this app
             // uses, and the bold label on primary ink carries the rest.
-            .background(if (active) CoineProColors.SurfaceRaised else CoineProColors.Surface)
+            //
+            // Transparent when it is not chosen, so the tray shows through: the unchosen key is
+            // *the container*, and giving it a fill of its own is what made the light theme read
+            // the switch backwards.
+            .background(if (active) CoineProColors.SurfaceRaised else Color.Transparent)
+            .then(
+                // The edge belongs to the chosen key alone. It is what separates a white block
+                // from a white page on the light theme, where the fill on its own cannot.
+                if (active) {
+                    Modifier.border(1.dp, CoineProColors.BorderSubtle, CoineProShapes.small)
+                } else {
+                    Modifier
+                },
+            )
             // `selectable` rather than `clickable`: this is a choice between two, and the
             // difference is what TalkBack announces — "selected" against "double tap to activate".
             .selectable(selected = active, role = Role.Tab, onClick = onClick)
@@ -178,3 +211,6 @@ private fun IdeasKey(
  * is full-width and half of it is one key.
  */
 private val KEY_HEIGHT = 38.dp
+
+/** The tray's own inset, and the gap between the two keys. One number, so the tray reads even. */
+private val TRAY_PADDING = 4.dp

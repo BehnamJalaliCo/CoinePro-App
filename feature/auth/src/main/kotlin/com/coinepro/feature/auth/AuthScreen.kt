@@ -49,6 +49,8 @@ fun AuthScreen(
     onRetryLoginConfig: () -> Unit,
     onRetry: () -> Unit,
     onLogout: () -> Unit,
+    /** The way back, where there is something behind this screen. See [AuthBackRow]. */
+    onBack: (() -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -58,6 +60,10 @@ fun AuthScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        onBack?.let { back ->
+            AuthBackRow(onBack = back)
+            Spacer(Modifier.height(CoineProSpacing.Two))
+        }
         ProChartLockup(
             wordmarkWidth = 190.dp,
             contentDescription = stringResource(R.string.auth_wordmark_description),

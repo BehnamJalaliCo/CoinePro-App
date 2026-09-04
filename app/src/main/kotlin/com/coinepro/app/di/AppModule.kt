@@ -176,7 +176,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -1634,8 +1636,10 @@ object AppModule {
      *
      * The two backends quote different universes and spell their symbols differently, so one search
      * over both would offer a market the active session cannot open. The live quotes are handed in
-     * from the same platform's feed, so a row a reader is already watching keeps ticking while the
-     * rest show the catalogue's price.
+     * from the same platform's feed as a **flow** rather than as a lookup, so a row a reader is
+     * already watching ticks as the socket delivers it while the rest show the catalogue's price.
+     * See `MarketSearchController.liveQuotes`: read as a lookup, the prices moved only when
+     * something re-ranked the list, which is to say almost never.
      */
     @Provides
     @Singleton
@@ -1644,7 +1648,8 @@ object AppModule {
         @ForexPlatform gateway: MarketCatalogGateway,
         @ForexPlatform feed: MarketDataController,
         scope: CoroutineScope,
-    ): MarketSearchController = MarketSearchController(gateway, scope) { feed.state.value.quotes }
+    ): MarketSearchController =
+        MarketSearchController(gateway, scope, feed.state.map { it.quotes }.distinctUntilChanged())
 
     @Provides
     @Singleton
@@ -1653,7 +1658,8 @@ object AppModule {
         @CryptoPlatform gateway: MarketCatalogGateway,
         @CryptoPlatform feed: MarketDataController,
         scope: CoroutineScope,
-    ): MarketSearchController = MarketSearchController(gateway, scope) { feed.state.value.quotes }
+    ): MarketSearchController =
+        MarketSearchController(gateway, scope, feed.state.map { it.quotes }.distinctUntilChanged())
 
     @Provides
     @Singleton
