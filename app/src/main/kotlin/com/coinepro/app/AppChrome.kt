@@ -96,7 +96,15 @@ internal fun NavOptionsBuilder.tabSwitch(navController: NavHostController, route
     // about `popUpTo`'s own target. It is not: it is about whether the destination being asked for
     // is already on the stack, and the start destination was simply the case that always is. Every
     // other tab had the same fault whenever the screen above it had been opened *from* it.
-    restoreState = navController.currentBackStack.value.none { it.destination.route == route }
+    //
+    // **Asked by lookup rather than by reading the stack.** This used to walk
+    // `navController.currentBackStack`, which is a `@RestrictTo` property — public in Kotlin's
+    // sense and off-limits in the library's, and lint fails the build over it, correctly: it is
+    // the navigation library's own internal state and nothing outside that group is promised it
+    // will keep its shape. `getBackStackEntry` is the supported question and answers by throwing
+    // when the route is not on the stack, which is why the `runCatching` is here and is not a
+    // swallowed error — the exception *is* the answer, and there is no other public way to ask.
+    restoreState = runCatching { navController.getBackStackEntry(route) }.isFailure
 }
 
 @Composable

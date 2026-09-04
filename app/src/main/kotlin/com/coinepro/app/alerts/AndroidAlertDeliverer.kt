@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -105,6 +106,16 @@ class AndroidAlertDeliverer @Inject constructor(
             ?.let { failure -> listOfNotNull(POST_FAILED, failure.message).joinToString(": ") }
     }
 
+    /**
+     * The post itself, which is only ever reached with the permission in hand.
+     *
+     * An annotation rather than a suppression, and the difference is the whole point: a suppression
+     * says «ignore this», and this says «the caller owes me a check» — which [post] does, four
+     * lines above the call, and which any future caller now has to as well. Lint could not follow
+     * that guard across a function boundary and reported the `notify` below as an unpermitted call;
+     * the build gate treats it as an error, and the gate was right to insist on being told.
+     */
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     private fun notify(fired: FiredAlert) {
         val intent = Intent(context, MainActivity::class.java).apply {
             action = Intent.ACTION_VIEW
