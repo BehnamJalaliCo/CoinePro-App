@@ -39,6 +39,9 @@
     <string name="watchlist_manage">Manage lists</string>
     <string name="watchlist_symbol_count">%1$s symbols</string>
     <string name="watchlist_columns">Columns</string>
+    <string name="watchlist_reorder">Rearrange</string>
+    <string name="watchlist_more">More</string>
+    <string name="watchlist_more_title">Watchlist settings</string>
     <string name="watchlist_transfer">Import and export</string>
     <string name="watchlist_empty">This list is empty.</string>
     <string name="watchlist_empty_flag">Nothing in this list carries that flag.</string>

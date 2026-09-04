@@ -2,7 +2,6 @@ package com.coinepro.feature.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -11,15 +10,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,8 +30,8 @@ import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProShapes
-import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.ProChartTapeStream
+import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.marketdata.MarketSearchController
@@ -99,24 +95,20 @@ fun WatchlistScreen(
     val state by controller.state.collectAsStateWithLifecycle()
     val lines by sparklines.lines.collectAsStateWithLifecycle()
 
-    // What makes the brand at the head of this page write itself again.
-    //
-    // Bumped when the screen is arrived at and when the catalogue lands under it, which are the two
-    // moments a header signature is worth running: opening the tab, and the list appearing. It is a
-    // *counter* rather than a scroll offset on purpose — see `ProChartTapeStream`: an animation
-    // restarted on every pixel of a drag is a flicker, not a signature.
-    var streamKey by rememberSaveable { mutableIntStateOf(0) }
-    val settled = !state.loading && state.results.isNotEmpty()
-    LaunchedEffect(settled) { if (settled) streamKey += 1 }
-
     Column(modifier = modifier.fillMaxSize().background(CoineProColors.Stage)) {
-        WatchlistHeader(onOpenSearch = onOpenSearch, streamKey = streamKey)
+        WatchlistHeader(onOpenSearch = onOpenSearch)
         when {
             // The panel draws every row from the catalogue, so before it arrives there is nothing
             // to draw — not even an empty list, which would say «این فهرست خالی است» about a list
             // that may be full.
             state.loading && state.results.isEmpty() -> WatchlistStateBlock {
-                CircularProgressIndicator(color = CoineProColors.Gold, strokeWidth = 2.dp)
+                // **The loading mark, which is where the brand belongs on this page.**
+                //
+                // «لوگو پرو چارت بارگیری … باید در صفحهٔ دیده‌بان باشه» — and it is, at the one
+                // moment it costs nothing: while there is no list to be above. A spinner says work
+                // is happening and nothing else; the tape says the same thing in the product's own
+                // hand, and it is gone by the time the first row arrives. See `ProChartTapeStream`.
+                ProChartTapeStream(replay = state.loading, contentDescription = null)
             }
             // A failure is not an empty watchlist, and this is the screen where confusing the two
             // costs the most: a reader whose catalogue request failed would otherwise be told that
@@ -144,26 +136,33 @@ fun WatchlistScreen(
 }
 
 /**
- * The heading: the title on the reading edge, the brand in the middle, the search in the corner.
+ * The heading: the title on the reading edge, the search in the corner, and nothing between them.
  *
  * The magnifier is where the markets tab keeps its own, because this screen and that one are the
  * same list seen twice and a reader who has learned where it is should find it in the same place.
  *
- * The brand in the middle is the owner's instruction — this page carries the logo at the top and
- * signs itself on arrival. `ProChartTapeStream` is the motion, and it is this product's own rather
- * than the reference's: a price line writes the mark and the name and then burns off behind
- * itself. [streamKey] is what says when to run it.
+ * ### The brand is not here any more
+ *
+ * It was: a mark and the name, written in by a price line, in the middle of this row. It is a good
+ * piece of motion and it was in the wrong place. This page's fold is the product — a watchlist is
+ * scanned, and every point above the first row is a row the reader cannot see — and the brand was
+ * spending about a hundred points of width and, with the row's padding, a quarter of the chrome
+ * above the table to tell somebody holding the app which app they are holding. The reference's
+ * watchlist has a title, a control, and rows.
+ *
+ * The tape is not gone from this screen: it writes itself over the **loading** state, which is the
+ * one moment on a watchlist when a signature costs nothing — there is no list for it to be above.
  */
 @Composable
-private fun WatchlistHeader(onOpenSearch: (() -> Unit)?, streamKey: Int) {
+private fun WatchlistHeader(onOpenSearch: (() -> Unit)?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(
                 start = CoineProSpacing.Two,
                 end = CoineProSpacing.Two,
-                top = CoineProSpacing.OneHalf,
-                bottom = CoineProSpacing.One,
+                top = CoineProSpacing.One,
+                bottom = CoineProSpacing.Half,
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -173,8 +172,6 @@ private fun WatchlistHeader(onOpenSearch: (() -> Unit)?, streamKey: Int) {
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f),
         )
-        ProChartTapeStream(replay = streamKey, contentDescription = null)
-        Spacer(Modifier.weight(1f))
         if (onOpenSearch != null) {
             Box(
                 modifier = Modifier

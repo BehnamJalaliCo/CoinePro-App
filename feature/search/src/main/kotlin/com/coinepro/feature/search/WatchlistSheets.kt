@@ -76,6 +76,8 @@ internal fun WatchlistSheets(
     onOpenSymbol: ((String) -> Unit)? = null,
     /** Starts a price alert on this symbol. Null where this build has no alert composer. */
     onCreateAlert: ((String) -> Unit)? = null,
+    /** Swaps one sheet for another, which is how the overflow reaches the three behind it. */
+    onOpen: (WatchlistSheet) -> Unit = {},
 ) {
     when (sheet) {
         null -> Unit
@@ -87,6 +89,12 @@ internal fun WatchlistSheets(
             onDismiss = onDismiss,
         )
         WatchlistSheet.Transfer -> TransferSheet(store = store, listId = activeId, onDismiss = onDismiss)
+        WatchlistSheet.More -> MoreSheet(
+            onLists = { onOpen(WatchlistSheet.Lists) },
+            onColumns = { onOpen(WatchlistSheet.Columns) },
+            onTransfer = { onOpen(WatchlistSheet.Transfer) },
+            onDismiss = onDismiss,
+        )
         is WatchlistSheet.RowMenu -> RowSheet(
             store = store,
             lists = lists,
@@ -675,3 +683,79 @@ private fun SheetAction(
  * turning a sheet into a log. The count above them is the whole number either way.
  */
 private const val REJECTED_SHOWN = 5
+
+
+/**
+ * The overflow: the three controls the one-line toolbar no longer has room for.
+ *
+ * Rows rather than a grid, and a sheet rather than a dropdown — see [WatchlistSheet.More]. Each row
+ * *replaces* this sheet with the one it names rather than stacking a second over it, which is why
+ * the caller passes `onOpen` instead of a navigation callback: two sheets deep on a phone is a
+ * scrim over a scrim, and the reader's way out stops being obvious.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MoreSheet(
+    onLists: () -> Unit,
+    onColumns: () -> Unit,
+    onTransfer: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    CoineProSheet(
+        title = stringResource(R.string.watchlist_more_title),
+        onDismiss = onDismiss,
+    ) {
+        MoreRow(
+            icon = CoineProIcons.Add,
+            label = stringResource(R.string.watchlist_manage),
+            onClick = onLists,
+        )
+        MoreRow(
+            icon = DesignR.drawable.icon_sliders_horizontal,
+            label = stringResource(R.string.watchlist_columns),
+            onClick = onColumns,
+        )
+        MoreRow(
+            icon = DesignR.drawable.icon_copy,
+            label = stringResource(R.string.watchlist_transfer),
+            onClick = onTransfer,
+        )
+    }
+}
+
+/** One row of the overflow: a glyph, a word, and the way forward. */
+@Composable
+private fun MoreRow(icon: Int, label: String, onClick: () -> Unit) {
+    val haptics = rememberCoineProHaptics()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(CoineProShapes.small)
+            .clickable {
+                haptics.select()
+                onClick()
+            }
+            .padding(horizontal = CoineProSpacing.Half, vertical = CoineProSpacing.OneHalf),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = CoineProColors.TextSecondary,
+            modifier = Modifier.size(20.dp),
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = CoineProColors.TextPrimary,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            painter = painterResource(CoineProIcons.ChevronForward),
+            contentDescription = null,
+            tint = CoineProColors.TextMuted,
+            modifier = Modifier.size(16.dp),
+        )
+    }
+}

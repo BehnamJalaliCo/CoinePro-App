@@ -40,6 +40,9 @@
     <string name="watchlist_manage">مدیریت فهرست‌ها</string>
     <string name="watchlist_symbol_count">%1$s نماد</string>
     <string name="watchlist_columns">ستون‌ها</string>
+    <string name="watchlist_reorder">چیدن دستی</string>
+    <string name="watchlist_more">بیشتر</string>
+    <string name="watchlist_more_title">تنظیمات دیده‌بان</string>
     <string name="watchlist_transfer">ورود و خروج فهرست</string>
     <string name="watchlist_empty">این فهرست خالی است.</string>
     <string name="watchlist_empty_flag">با این برچسب نمادی در فهرست نیست.</string>

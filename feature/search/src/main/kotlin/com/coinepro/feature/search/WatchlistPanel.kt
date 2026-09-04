@@ -138,6 +138,17 @@ fun WatchlistPanel(
 
     var sheet by remember { mutableStateOf<WatchlistSheet?>(null) }
     var flagFilter by remember(activeId) { mutableStateOf<WatchlistFlag?>(null) }
+    // **Reordering is a mode, and it is off.**
+    //
+    // The grip used to be on every row whenever the list was in the reader's own order — which is
+    // the default — so thirty-four points of every row, on the screen with the least width to
+    // spare, were spent on a control used about twice in the life of a list. The reference does the
+    // same thing this now does: the rows are plain until you say you are rearranging them.
+    //
+    // Not saved across a visit. Edit mode is something a reader is *doing*, not something they set;
+    // coming back to a watchlist still holding grips would be the app remembering the wrong half of
+    // the interaction.
+    var editing by remember(activeId) { mutableStateOf(false) }
 
     val stored = lists.firstOrNull { it.id == activeId }?.symbols.orEmpty()
     // The optimistic order a drag is working in. See `ReorderHandle`: the store is written once,
@@ -176,13 +187,21 @@ fun WatchlistPanel(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        ListSwitcher(
+        // **One control row where there were two.**
+        //
+        // The lists lived in a chip row of their own and the count, the flag filter, the column
+        // picker and the import/export lived in a second one under it — a hundred and six points of
+        // chrome, before the column headings, on a screen whose entire job is the rows underneath.
+        // The reference gives its watchlist one line: which list, and the way to everything else.
+        //
+        // So the chips and the figures share a line, and the two controls a reader touches monthly
+        // — columns, import/export, managing the lists themselves — moved behind the overflow. What
+        // stays on the glass is what gets used on a visit: the list, how many are in it, the colour
+        // filter when there is one, and the way into reordering.
+        Controls(
             lists = lists,
             activeId = activeId,
-            onSelect = { id -> scope.launch { store.setActiveList(id) } },
-            onManage = { sheet = WatchlistSheet.Lists },
-        )
-        Toolbar(
+            onSelectList = { id -> scope.launch { store.setActiveList(id) } },
             count = order.size,
             flags = flagged,
             flagFilter = flagFilter,
@@ -192,10 +211,22 @@ fun WatchlistPanel(
             // here, beside the colours it orders by.
             flagSort = settings.sort.takeIf { it.column == WatchlistColumn.FLAG },
             onFlagSort = flagSortAction,
-            onColumns = { sheet = WatchlistSheet.Columns },
-            onTransfer = { sheet = WatchlistSheet.Transfer },
+            editing = editing,
+            // Reordering needs the reader's own order; a list under a column sort has no positions
+            // to drag between. Entering edit mode therefore drops the sort, which is what the
+            // reader means by asking to rearrange.
+            onToggleEditing = {
+                if (!editing && !settings.sort.isManual) {
+                    scope.launch { store.setSort(activeId, WatchlistSort.Manual) }
+                }
+                editing = !editing
+            },
+            onOverflow = { sheet = WatchlistSheet.More },
         )
-        CoineProTeachingStrip(TeachingSurface.WATCHLIST)
+        // **No residue once it is dismissed.** See `CoineProTeachingStrip`: on a terminal surface
+        // the «این چیست؟» link is twenty-eight points that never come back, above the rows this
+        // screen exists to show.
+        CoineProTeachingStrip(TeachingSurface.WATCHLIST, restorable = false)
         if (columns.isNotEmpty()) {
             Headings(
                 columns = columns,
@@ -204,7 +235,7 @@ fun WatchlistPanel(
                 // The grip only exists while the list is in the reader's own order, and it takes
                 // forty-six points with its spacing. A heading strip that ignored that would sit
                 // that far off its own column the moment a sort was turned on.
-                lead = headingLead(withRail = rail, withHandle = settings.sort.isManual),
+                lead = headingLead(withRail = rail, withHandle = editing && settings.sort.isManual),
                 onSort = { column ->
                     scope.launch { store.setSort(activeId, nextSort(settings.sort, column)) }
                 },
@@ -236,13 +267,13 @@ fun WatchlistPanel(
                     // has both.
                     LaunchedEffect(symbol) { onRequestLine(symbol) }
                     MarketListRow(
-                        modifier = rowMotion(),
+                        modifier = rowMotion(fades = false),
                         row = row,
                         onClick = { onOpenSymbol(row.meta.symbol) },
                         onLongClick = { sheet = WatchlistSheet.RowMenu(symbol) },
                         flag = settings.flags[symbol],
                         flagRail = rail,
-                        handle = if (settings.sort.isManual) {
+                        handle = if (editing && settings.sort.isManual) {
                             {
                                 ReorderHandle(
                                     symbol = symbol,
@@ -322,6 +353,7 @@ fun WatchlistPanel(
 
     WatchlistSheets(
         sheet = sheet,
+        onOpen = { next -> sheet = next },
         onOpenSymbol = onOpenSymbol,
         onCreateAlert = onCreateAlert,
         store = store,
@@ -349,6 +381,14 @@ internal sealed interface WatchlistSheet {
     data object Transfer : WatchlistSheet
 
     /**
+     * The three controls the toolbar no longer has room for.
+     *
+     * A sheet rather than a dropdown for the reason every other choice in this app is one: a menu
+     * anchored to a 34 pt button puts its rows under a thumb that is already covering them.
+     */
+    data object More : WatchlistSheet
+
+    /**
      * One row's own menu: its flag, and removing it.
      *
      * Named `RowMenu` rather than `Row`, because every file that handles it also lays out
@@ -359,48 +399,28 @@ internal sealed interface WatchlistSheet {
 }
 
 /**
- * The list switcher: one chip per list, and a way to manage them.
+ * The one control line: which list, how many, which colours, and the way to everything else.
  *
- * A chip row rather than a dropdown. A reader with four lists switches between them constantly and
- * a dropdown costs two taps every time; the chips cost one and keep every list's name in sight,
- * which is also how somebody discovers that more than one list is even possible here.
+ * ### What it replaced
+ *
+ * A chip row and a toolbar, stacked — a hundred and six points before the column headings on a
+ * screen whose whole content is the rows under them. Two of the four controls in the toolbar
+ * («ستون‌ها» and «ورود و خروج») are opened about as often as a settings screen, and the list
+ * manager behind the plus is opened once; all three are behind the overflow now. The count, the
+ * colour filter and the way into reordering stay, because those are touched on an ordinary visit.
+ *
+ * ### The chips are neutral, not gold
+ *
+ * A selected list is not a commercial action and not the brand. It takes the raised neutral this
+ * app uses everywhere else for "one of these is in force" — the chart's interval keys, the Ideas
+ * switch, the bottom bar's own plate — so the gold stays spent on the one thing per page that
+ * earns it. See [CoineProToggleChip]'s `neutral`.
  */
 @Composable
-private fun ListSwitcher(
+private fun Controls(
     lists: List<Watchlist>,
     activeId: String,
-    onSelect: (String) -> Unit,
-    onManage: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = CoineProSpacing.One),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CoineProChipRow(
-            options = lists.map { CoineProChip(id = it.id, label = it.name, count = it.symbols.size) },
-            selectedId = activeId,
-            onSelect = { id -> id?.let(onSelect) },
-            modifier = Modifier.weight(1f),
-            compact = true,
-        )
-        IconAction(
-            icon = CoineProIcons.Add,
-            label = stringResource(R.string.watchlist_manage),
-            onClick = onManage,
-            modifier = Modifier.padding(end = CoineProSpacing.Two),
-        )
-    }
-}
-
-/**
- * The line between the switcher and the table.
- *
- * It carries the count, the flag filter, and the two controls that change what the table shows.
- * The flag filter appears only once something is flagged: seven grey dots above an unflagged list
- * are seven controls that do nothing, and the reader has no way to know why.
- */
-@Composable
-private fun Toolbar(
+    onSelectList: (String) -> Unit,
     count: Int,
     flags: Set<WatchlistFlag>,
     flagFilter: WatchlistFlag?,
@@ -409,50 +429,39 @@ private fun Toolbar(
     flagSort: WatchlistSort?,
     /** Cycles the flag sort. Null where the reader has taken the flag column off the rows. */
     onFlagSort: (() -> Unit)?,
-    onColumns: () -> Unit,
-    onTransfer: () -> Unit,
+    editing: Boolean,
+    onToggleEditing: () -> Unit,
+    onOverflow: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.Half),
+            .padding(horizontal = CoineProSpacing.Two, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
+        CoineProChipRow(
+            options = lists.map { CoineProChip(id = it.id, label = it.name, count = it.symbols.size) },
+            selectedId = activeId,
+            onSelect = { id -> id?.let(onSelectList) },
+            modifier = Modifier.weight(1f, fill = false),
+            compact = true,
+            neutral = true,
+        )
         Text(
             // A prose count, so Persian digits — unlike every figure in the table below it.
             text = stringResource(R.string.watchlist_symbol_count, count.toPersianDigits()),
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
+            maxLines = 1,
         )
-        if (onFlagSort != null) {
-            // **A key, and the word on it is «برچسب».**
-            //
-            // Two faults, one circle drawn round them. The word was «پرچم» — the literal
-            // translation of the reference's *flag*, and in Persian the thing a country has, so a
-            // reader met it beside «۳ نماد» and looked for a country. And it was bare text in a
-            // line of counts, which is why it read as a mistake rather than as a control: nothing
-            // about it said it could be pressed, so the only thing left to notice was the word.
-            //
-            // The plate is the same one the flag filter's neighbours wear, so it now reads as what
-            // it is — the sort key for the colour column, next to the colours it orders by.
-            Text(
-                text = WatchlistColumn.FLAG.persianLabel + when {
-                    flagSort == null -> ""
-                    flagSort.descending -> " ↓"
-                    else -> " ↑"
-                },
-                style = MaterialTheme.typography.labelSmall,
-                color = if (flagSort != null) CoineProColors.TextSecondary else CoineProColors.TextMuted,
-                maxLines = 1,
-                modifier = Modifier
-                    .clip(CoineProShapes.small)
-                    .background(CoineProColors.SurfaceElevated)
-                    .clickable(onClick = onFlagSort)
-                    .padding(horizontal = CoineProSpacing.One, vertical = 3.dp),
-            )
-        }
         Spacer(modifier = Modifier.weight(1f))
+        if (onFlagSort != null && flags.isNotEmpty()) {
+            // The sort control for the colour column, drawn as the colour column is: a dot, not a
+            // word. It was «برچسب» in text and it read as a stray label rather than as a control —
+            // and beside seven coloured dots it is the one thing that does not need naming.
+            SortDot(sorted = flagSort != null, descending = flagSort?.descending == true, onClick = onFlagSort)
+        }
         if (flags.isNotEmpty()) {
             WatchlistFlag.entries.filter { it in flags }.forEach { flag ->
                 FlagDot(
@@ -462,17 +471,44 @@ private fun Toolbar(
                 )
             }
         }
+        // Reordering, as a state the reader turns on. Marked by the plate rather than by a second
+        // colour, which is the same mark the selected chip beside it carries.
         IconAction(
-            icon = DesignR.drawable.icon_sliders_horizontal,
-            label = stringResource(R.string.watchlist_columns),
-            onClick = onColumns,
+            icon = DesignR.drawable.icon_list_bullets,
+            label = stringResource(R.string.watchlist_reorder),
+            onClick = onToggleEditing,
+            active = editing,
         )
         IconAction(
-            icon = DesignR.drawable.icon_copy,
-            label = stringResource(R.string.watchlist_transfer),
-            onClick = onTransfer,
+            icon = DesignR.drawable.tv_more_horizontal,
+            label = stringResource(R.string.watchlist_more),
+            onClick = onOverflow,
         )
     }
+}
+
+/**
+ * The flag column's sort, as a dot with an arrow rather than a word.
+ *
+ * It stands in a line of coloured dots and orders by them, so a caret beside a neutral dot says
+ * what a label had to spell out. See the note in [Controls].
+ */
+@Composable
+private fun SortDot(sorted: Boolean, descending: Boolean, onClick: () -> Unit) {
+    val haptics = rememberCoineProHaptics()
+    Text(
+        text = if (!sorted) "\u25CB" else if (descending) "\u25CF \u2193" else "\u25CF \u2191",
+        style = MaterialTheme.typography.labelSmall,
+        color = if (sorted) CoineProColors.TextSecondary else CoineProColors.TextMuted,
+        maxLines = 1,
+        modifier = Modifier
+            .clip(CoineProShapes.small)
+            .clickable {
+                haptics.select()
+                onClick()
+            }
+            .padding(horizontal = CoineProSpacing.Half, vertical = 3.dp),
+    )
 }
 
 /** One colour, as a filter. Selected, it gains a ring rather than changing its own colour. */
@@ -516,7 +552,7 @@ private fun Headings(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.Half),
+            .padding(horizontal = CoineProSpacing.Two, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
         // The last of the row's own steps — [headingLead] carries the ones before it. The two have
         // to add up to the same number or every heading sits beside its column instead of over it.
@@ -649,14 +685,20 @@ internal fun IconAction(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Whether this control is currently in force — a mode that is on, not a press. */
+    active: Boolean = false,
 ) {
     val haptics = rememberCoineProHaptics()
     Box(
         modifier = modifier
             .size(34.dp)
             .clip(CoineProShapes.small)
-            .background(CoineProColors.SurfaceElevated)
-            .border(1.dp, CoineProColors.BorderSubtle, CoineProShapes.small)
+            .background(if (active) CoineProColors.SurfaceRaised else CoineProColors.SurfaceElevated)
+            .border(
+                1.dp,
+                if (active) CoineProColors.BorderStrong else CoineProColors.BorderSubtle,
+                CoineProShapes.small,
+            )
             .clickable {
                 haptics.select()
                 onClick()
@@ -666,7 +708,7 @@ internal fun IconAction(
         Icon(
             painter = painterResource(icon),
             contentDescription = label,
-            tint = CoineProColors.TextSecondary,
+            tint = if (active) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
             modifier = Modifier.size(16.dp),
         )
     }
