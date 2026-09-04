@@ -15,6 +15,25 @@ it is for.
 
 ---
 
+## [4.30.1] — 2026-09-04 — The signature back a little, and a build that passes lint
+
+* **The chart's signature came back six per cent.** Twelve was the middle of the
+  band, and the band was wrong about where the eye measures from: the number is
+  a *lead*, and the mark is drawn to the right of it, so twelve put the
+  signature between twelve and eighteen per cent across. At six it occupies six
+  to twelve — off the corner, and no longer pushed into the plot.
+* **`:app:lintDebug` passes.** It had aborted the Android CI build for eleven
+  releases, on two errors that were both real. The alert notification's
+  permission guard sits in the calling function, which lint cannot see across,
+  so the post now carries `@RequiresPermission` — an annotation that says «the
+  caller owes me a check» rather than a suppression that says «ignore this». And
+  the bottom bar asked whether a tab was already on the stack by reading
+  `NavController.currentBackStack`, which is `@RestrictTo` — the navigation
+  library saying it will not keep that shape for us. `getBackStackEntry` is the
+  supported question, and answers by throwing when the route is absent.
+
+---
+
 ## [4.30.0] — 2026-09-04 — What a price leaves behind
 
 Six things the owner circled, and five of them turned out to be one kind of
