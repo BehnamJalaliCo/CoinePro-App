@@ -28,8 +28,8 @@ appear as claims anywhere in this repository, and will not until all of
 
 | | |
 |---|---|
-| CoinePro SHA | `404049954d867f30a17121fb6f484ac219c95c00` |
-| CoinePro version | `4.31.1` (versionCode `43101002`) |
+| CoinePro SHA | `d51ee2616401f9dc3a845d75f6426d66fd7424cf` |
+| CoinePro version | `4.31.1+4` (versionCode `43101004`) |
 | TradingView version | **— not captured** |
 | Android API | canonical target 35; **no reference run** |
 | Device | canonical target Pixel 6; **no reference run** |
@@ -183,22 +183,38 @@ Every job must be green on **one** SHA for a release candidate to be valid.
 
 | Workflow | Job | Result |
 |---|---|---|
-| Android CI | Lint, test, build | — filled by the certifying run |
-| Android CI | Compose UI | — filled by the certifying run |
-| Android CI | Performance smoke | — filled by the certifying run |
-| Security CI | — | — filled by the certifying run |
-| Build Android APK | — | — filled by the certifying run |
+Certifying SHA: **`d51ee26`**.
 
-The last fully-green SHA was `83ea7cd` (Android CI #553, Security CI #384, Build APK #130). On
-`4040499` the Compose UI job failed and it is worth recording why, because it was not the app: all
-ten instrumented tests passed and the capture pulled 154,512 bytes of real PNG. The failure was the
-workflow's own PNG magic-byte check — `android-emulator-runner` feeds its `script:` to `sh` **a line
-at a time**, so a multi-line `case` arrives as `case … in` on its own and dies with «end of file
-unexpected». The check is now a single line and was verified by running that exact line through
-`sh -c` against a real golden and against the forty-two bytes it exists to catch.
+| Workflow | Job | Run | Duration | Result |
+|---|---|---|---:|---|
+| Android CI | Lint, test, build | #556 | 39m | ✅ success |
+| Android CI | Compose UI | #556 | 10m | ✅ success |
+| Android CI | Performance smoke | #556 | 13m | ✅ success |
+| Security CI | — | #387 | 1m | ✅ success |
+| Build Android APK | — | #133 | 12m | ✅ success |
 
-A row here is filled from a run that finished. «In flight» is not «passed», and a green row borrowed
-from a different SHA is not a row at all.
+Released artefact: `CoinePro-4.31.1+4.apk`, 17,589,420 bytes, SHA-256
+`edb89f271a6bae8391d2311a8d9bce76782e0b08db77cea4b6865e98ba4793c6`, signing certificate SHA-1
+`5de87f4bb3e8356b4e981ed4da630ba7775f9aa8` (`CN=CoinePro, OU=Mobile, O=CoinePro, L=Tehran, C=IR`),
+`versionCode 43101004`.
+
+### The instrumented capture, now that it is real
+
+`coinepro-actual-menu-screenshot` is **154,343 bytes, 1080 × 2400 PNG**. For nine releases it was
+forty-two bytes reading `run-as: unknown package: com.coinepro.app` — Gradle uninstalls the app
+after `connectedAndroidTest`, so the workflow's `run-as` had no package to enter, and its `test -s`
+check passed the error message because an error message is not empty. It is now pulled from
+`/sdcard`, which outlives the uninstall, and checked for the PNG magic bytes rather than for being
+non-empty.
+
+Two pushes were spent learning the same lesson twice: `android-emulator-runner` feeds its `script:`
+to `sh` **a line at a time**, so nothing in it may span lines — not a backslash continuation, not a
+`case`. Both symptoms had one cause and the second was misread as a quoting problem. The check is a
+single line, verified by extracting that exact line from the YAML and running it through `sh -c`
+against a real golden and against the forty-two bytes it exists to catch.
+
+Incidentally, that capture confirms the CI emulator is the canonical profile: **1080 × 2400**, which
+is what `VisualParityCaptureTest` requires before it will write anything.
 
 The `Lint, test, build` job covers, on the same SHA: five quality gates, the release version
 contract, visual-parity spec validation, reference-pack verification, three lint variants, the unit
@@ -233,7 +249,7 @@ because a comparison failed.
 | 17 | Max critical edge shift ≤ 1px | ❌ |
 | 18 | Unexplained static pixels = 0 | ❌ |
 | 19 | All CoinePro goldens pass | ✅ |
-| 20 | All CI green on one SHA | ✅ |
+| 20 | All CI green on one SHA | ✅ `d51ee26` |
 
 Eighteen of twenty are blocked on one thing.
 
