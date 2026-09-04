@@ -2,7 +2,6 @@
 <!-- Default language: Persian. -->
 <resources>
     <string name="explore_title">کاوش</string>
-    <string name="explore_subtitle">امروز در بازار چه خبر است</string>
     <string name="explore_search">جست‌وجو</string>
 
     <!-- The three doors. One word each: a tile a reader has to read is a tile that stopped a scan. -->

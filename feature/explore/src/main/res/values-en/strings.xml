@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="explore_title">Explore</string>
-    <string name="explore_subtitle">What the market is doing today</string>
     <string name="explore_search">Search</string>
 
     <string name="explore_door_news">News</string>

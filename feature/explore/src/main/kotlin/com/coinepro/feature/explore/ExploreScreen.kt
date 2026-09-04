@@ -199,11 +199,28 @@ fun ExploreScreen(
         contentPadding = PaddingValues(bottom = CoineProSpacing.Three),
     ) {
         item("header") {
+            // **Title and controls, no subtitle.**
+            //
+            // «امروز در بازار چه خبر است» is a good sentence and it was in the wrong place: it
+            // restates the word above it, it is read once, and it costs a line at the very top of
+            // the one screen whose job is to put market content in the first viewport. The page
+            // answers the question by being the page.
+            //
+            // The way to the full market list moved up here too. It was a full-width button in the
+            // fold — the loudest object above the prices, and an object whose whole content is the
+            // way out of this screen. As a header action it is where every other "go to the list"
+            // in this app is, and the fold it frees is about sixty points.
             CoineProListHeader(
                 title = stringResource(R.string.explore_title),
-                subtitle = stringResource(R.string.explore_subtitle),
-                actions = onOpenSearch?.let { open ->
-                    {
+                actions = {
+                    onOpenMarkets?.let { open ->
+                        CoineProHeaderAction(
+                            icon = CoineProIcons.Markets,
+                            label = stringResource(R.string.explore_all_markets),
+                            onClick = open,
+                        )
+                    }
+                    onOpenSearch?.let { open ->
                         CoineProHeaderAction(
                             icon = CoineProIcons.Search,
                             label = stringResource(R.string.explore_search),
@@ -248,18 +265,6 @@ fun ExploreScreen(
                 }
             }
         }
-        onOpenMarkets?.let { open ->
-            item("all-markets") {
-                CoineProSecondaryButton(
-                    text = stringResource(R.string.explore_all_markets),
-                    onClick = open,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = CoineProSpacing.Gutter),
-                )
-            }
-        }
-
         if (lenses.isNotEmpty()) {
             item("chips") {
                 CategoryChips(
@@ -426,7 +431,12 @@ private fun CategoryChips(
             Text(
                 text = stringResource(lens.labelRes()),
                 style = MaterialTheme.typography.labelSmall,
-                color = if (active) CoineProColors.OnAccent else CoineProColors.TextSecondary,
+                // **Neutral, not gold.** A category is a view over one row of cards, not the
+                // page's commercial action — and this chip was filling with `Accent`, the *ink*
+                // gold, which in the light theme is a dark brown behind near-black type. Twice
+                // wrong: the wrong role and, on one theme, unreadable. The raised neutral is what
+                // this app uses everywhere a choice is a view.
+                color = if (active) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
                 maxLines = 1,
                 modifier = Modifier
                     .clickable {
@@ -436,10 +446,14 @@ private fun CategoryChips(
                         onSelect(lens.category)
                     }
                     .background(
-                        color = if (active) CoineProColors.Accent else Color.Transparent,
+                        color = if (active) CoineProColors.SurfaceRaised else Color.Transparent,
                         shape = CoineProPillShape,
                     )
-                    .border(1.dp, CoineProColors.Border, CoineProPillShape)
+                    .border(
+                        1.dp,
+                        if (active) CoineProColors.BorderStrong else CoineProColors.Border,
+                        CoineProPillShape,
+                    )
                     .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.Half),
             )
         }
@@ -497,11 +511,14 @@ private fun MarketCard(
 ) {
     CoineProCard(
         modifier = Modifier.width(CARD_WIDTH),
-        shape = CoineProShapes.medium,
-        contentPadding = PaddingValues(CoineProSpacing.OneHalf),
+        // Ten, not fourteen. A card this small with a fourteen-point corner reads as a lozenge;
+        // the reference's market tiles are square-ish with a small radius, and at 128 wide the
+        // difference between the two is most of what makes a strip look like a terminal.
+        shape = CoineProShapes.small,
+        contentPadding = PaddingValues(CARD_PADDING),
         onClick = onClick,
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
@@ -513,14 +530,14 @@ private fun MarketCard(
                 // `CoineProSharedElement`.
                 CoineProAssetLogo(
                     symbol = card.symbol,
-                    size = 26.dp,
+                    size = CARD_LOGO,
                     modifier = Modifier.sharedElement(SharedKeys.logo(card.symbol)),
                 )
                 Text(
                     // The ticker is Latin inside a right-to-left row, so it is isolated. Without
                     // this `BTC/USDT` renders with its legs swapped next to a Persian label.
                     text = BidiText.isolateLtr(card.meta.short),
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Medium,
                     color = CoineProColors.TextPrimary,
                     maxLines = 1,
@@ -532,15 +549,18 @@ private fun MarketCard(
                 // `'—'` where the feed carried no price at all, which this card should not be
                 // showing — `ExploreBoard.cards` drops those — and says so honestly if it ever does.
                 text = card.price?.let(MarketNumberFormatter::priceAuto) ?: NO_VALUE,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                // A step down from `titleMedium`. Seventeen points inside a card ninety tall was
+                // the largest type on the screen and it belonged to a figure in a strip, not to
+                // the page.
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
                 color = CoineProColors.TextPrimary,
                 maxLines = 1,
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
             ) {
                 card.changePercent?.let { percent ->
                     CoineProPercentPill(percent = percent, background = CoineProColors.Surface)
@@ -551,14 +571,10 @@ private fun MarketCard(
                 )
                 CoineProSparkline(
                     values = line,
-                    modifier = Modifier.weight(1f).height(22.dp),
+                    modifier = Modifier.weight(1f).height(20.dp),
                     // The line takes the move's own colour so the two read as one object rather
                     // than as a figure with a decoration beside it.
-                    colour = when {
-                        (card.changePercent ?: 0.0) > 0 -> CoineProColors.Buy
-                        (card.changePercent ?: 0.0) < 0 -> CoineProColors.Sell
-                        else -> CoineProColors.TextMuted
-                    },
+                    colour = CoineProColors.marketMove(card.changePercent),
                 )
             }
         }
@@ -594,9 +610,9 @@ private fun StoryRow(story: MarketNewsItem, onClick: (() -> Unit)?) {
                     }
                 },
             )
-            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.OneHalf),
+            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 // The publisher and the moment, in that order, joined by the app's own separator.
                 // The source is a Latin wire-service name inside a Persian line, so it is isolated.
@@ -613,7 +629,10 @@ private fun StoryRow(story: MarketNewsItem, onClick: (() -> Unit)?) {
                 // at the start of the line. The news list answers this the same way; the rule is
                 // shared so the two screens cannot drift apart on the same story.
                 text = CoineProProse.paragraph(story.title),
-                style = MaterialTheme.typography.bodyLarge,
+                // Fifteen, not sixteen, and a tighter leading with it — see `CoineProTextStyles`'s
+                // note about a headline in a *list* against a headline in an article. A wire feed
+                // is scanned; three of these at `bodyLarge` filled the screen under the cards.
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Medium,
                 color = CoineProColors.TextPrimary,
                 maxLines = 3,
@@ -649,7 +668,21 @@ private fun LoadingStrip() {
 }
 
 /** Wide enough for `64,182.40` at the title size, narrow enough that two and a half cards show. */
-private val CARD_WIDTH = 148.dp
+/**
+ * The market tile's width, and the padding inside it.
+ *
+ * A hundred and twenty-eight, down from a hundred and forty-eight. The number is arithmetic: at
+ * 411 points a strip inset by the 16-point gutter has 379 to spend, and at 148 plus an 8-point gap
+ * that is two cards and a sliver — so the row *reads* as two, and a reader has no way to know the
+ * strip continues. At 128 it is two whole cards and most of a third, which is what tells the eye
+ * to push it sideways. On a 393-point phone the same arithmetic gives 2.7 rather than 2.4.
+ */
+private val CARD_WIDTH = 128.dp
+
+private val CARD_PADDING = 12.dp
+
+/** The tile's disc. Four points off, which is four points of the card's own height. */
+private val CARD_LOGO = 22.dp
 
 /** The strip's own height, so the placeholder above does not resize the page when it fills. */
 private val CARD_HEIGHT = 116.dp
