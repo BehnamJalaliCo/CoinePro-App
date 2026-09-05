@@ -4,7 +4,7 @@
     <string name="auth_wordmark_description">پرو چارت</string>
 
     <string name="auth_flow">سیگنال ← تحلیل ← ورود / حد ضرر / اهداف ← تأیید صریح اجرا ← پایش ← نتیجه</string>
-    <string name="auth_risk">معامله ریسکِ زیان دارد. سیگنال و تحلیل هوش مصنوعی تضمینِ نتیجه نیستند، و آپ هرگز موفقیت اجرا را از خودش نمی‌سازد.</string>
+    <string name="auth_risk">معامله ریسکِ زیان دارد. سیگنال و تحلیل هوش مصنوعی تضمینِ نتیجه نیستند، و اپ هرگز موفقیت اجرا را از خودش نمی‌سازد.</string>
     <string name="auth_loading_config">در حال دریافت تنظیمات ورود…</string>
     <string name="auth_retry_config">تلاش دوباره برای ورود با تلگرام</string>
     <string name="auth_continue_telegram">ادامه با تلگرام</string>
@@ -40,7 +40,7 @@
     <string name="auth_verify_body">کدی به %1$s فرستاده شد. همان را اینجا بنویسید.</string>
     <string name="auth_verify_submit">تأیید و ادامه</string>
     <string name="auth_start_over">کد نرسید؟ از ابتدا شروع کنید</string>
-    <string name="auth_start_over_in">اگر کد نرسید، تا %1$d ثانیهٔ دیگر می‌توانید از ابتدا شروع کنید</string>
+    <string name="auth_start_over_in">اگر کد نرسید، تا %1$d ثانیه‌ی دیگر می‌توانید از ابتدا شروع کنید</string>
 
     <string name="auth_password_hint">دست‌کم ۱۰ نویسه. عبارتی که به یاد بسپارید بهتر از رمزی است که مجبور شوید جایی بنویسید.</string>
 
@@ -52,10 +52,10 @@
     <string name="auth_error_invalid">اطلاعات واردشده پذیرفته نشد.</string>
     <string name="auth_error_rate_limited">تلاش‌های زیادی انجام شد.</string>
     <string name="auth_error_unreachable">پاسخی از سرور نرسید. این یعنی درخواست بررسی نشد، نه اینکه رد شد.</string>
-    <string name="auth_retry_in">تلاش دوباره تا %1$d ثانیهٔ دیگر</string>
+    <string name="auth_retry_in">تلاش دوباره تا %1$d ثانیه‌ی دیگر</string>
 
     <string name="auth_methods_unknown">هنوز معلوم نیست این سرور کدام روش‌های ورود را می‌پذیرد.</string>
     <string name="auth_methods_retry">تلاش دوباره</string>
     <string name="auth_methods_none">این سرور در حال حاضر هیچ روش ورودی را فعال نکرده است.</string>
-    <string name="auth_telegram_unavailable">ورود با تلگرام فعلاً فقط در نسخهٔ وب کار می‌کند. اینجا با ایمیل وارد شوید.</string>
+    <string name="auth_telegram_unavailable">ورود با تلگرام فعلاً فقط در نسخه‌ی وب کار می‌کند. اینجا با ایمیل وارد شوید.</string>
 </resources>

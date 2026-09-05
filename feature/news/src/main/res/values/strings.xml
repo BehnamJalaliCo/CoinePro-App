@@ -18,7 +18,7 @@
          a shape this build can read. Counted rather than described, because the count is the whole
          diagnosis — see NewsFeedOutcome. Prose counts, so Persian digits. -->
     <string name="news_none_readable">سرور %1$s خبر فرستاد و هیچ‌کدام به شکلی نبود که این نسخه بتواند بخواند.</string>
-    <string name="news_none_readable_hint">این قطعی نیست، اختلافِ قالب است. از صفحهٔ تشخیص خروجی بگیرید و بفرستید؛ نام فیلدهای سرور و قالبِ تاریخش در آن ثبت شده است.</string>
+    <string name="news_none_readable_hint">این قطعی نیست، اختلافِ قالب است. از صفحه‌ی تشخیص خروجی بگیرید و بفرستید؛ نام فیلدهای سرور و قالبِ تاریخش در آن ثبت شده است.</string>
     <string name="news_partly_readable">%1$s خبر از %2$s خبری که سرور فرستاد خوانده شد.</string>
     <string name="news_timestamp_note">زمان انتشار از تایم‌استمپ ISO سرور نرمال‌سازی شده است.</string>
     <string name="news_stale">قدیمی</string>
@@ -33,7 +33,7 @@
     <string name="news_sentiment_bearish">نزولی</string>
     <string name="news_sentiment_neutral">خنثی</string>
     <string name="news_sentiment_unknown">جهت نامشخص</string>
-    <string name="news_open_chart">نمایش روی نمودار</string>
+    <string name="news_open_chart">نمایش روی چارت</string>
 
     <!-- The reading page. -->
     <string name="news_back">برگشت</string>
@@ -46,7 +46,7 @@
     <string name="news_no_summary">سرور برای این خبر خلاصه‌ای نفرستاده است.</string>
     <string name="news_summary_is_all">همین اندازه‌ای که خواندید، تمام متنی است که منبع منتشر کرده.</string>
     <string name="news_published_by">منتشرشده در %1$s</string>
-    <string name="news_open_source">صفحهٔ منبع</string>
+    <string name="news_open_source">صفحه‌ی منبع</string>
     <string name="news_open_failed">مرورگری برای باز کردن این نشانی پیدا نشد.</string>
     <string name="news_context_eyebrow">این خبر به چه مربوط است</string>
     <string name="news_context_markets">این خبر روی %1$s اثر دارد.</string>
@@ -61,7 +61,7 @@
     <string name="news_saved_title">ذخیره‌شده‌ها</string>
     <string name="news_saved_count">%1$s خبر که نگه داشته‌اید</string>
     <string name="news_saved_empty">هنوز خبری ذخیره نکرده‌اید.</string>
-    <string name="news_saved_empty_hint">هر خبری را که باز کنید، با دکمهٔ نشان‌گذاری بالای صفحه اینجا می‌ماند — حتی بعد از اینکه از فهرست بیفتد.</string>
+    <string name="news_saved_empty_hint">هر خبری را که باز کنید، با دکمه‌ی نشان‌گذاری بالای صفحه اینجا می‌ماند — حتی بعد از اینکه از فهرست بیفتد.</string>
     <string name="news_saved_back">بازگشت به اخبار</string>
 
     <!-- The announcements channel. TradeYar only; the entry is absent elsewhere. -->
@@ -72,7 +72,7 @@
     <string name="announcements_count">%1$s اطلاعیه</string>
     <string name="announcements_loading">در حال خواندن اطلاعیه‌ها…</string>
     <string name="announcements_empty">تا امروز اطلاعیه‌ای منتشر نشده.</string>
-    <string name="announcements_empty_hint">این فهرست خبر نیست و خودش پر نمی‌شود؛ وقتی پر می‌شود که ما چیزی برای گفتن داشته باشیم — قطعیِ سرویس، نسخهٔ تازه، بازارِ تازه، تغییر در قواعد اشتراک. هرچه اینجا نوشته شود می‌ماند، حتی اگر اعلانش را از دست بدهید. خالی بودنش یعنی چیزی گفته نشده، نه اینکه چیزی خراب است.</string>
+    <string name="announcements_empty_hint">این فهرست خبر نیست و خودش پر نمی‌شود؛ وقتی پر می‌شود که ما چیزی برای گفتن داشته باشیم — قطعیِ سرویس، نسخه‌ی تازه، بازارِ تازه، تغییر در قواعد اشتراک. هرچه اینجا نوشته شود می‌ماند، حتی اگر اعلانش را از دست بدهید. خالی بودنش یعنی چیزی گفته نشده، نه اینکه چیزی خراب است.</string>
     <string name="announcements_offline">اطلاعیه‌ها خوانده نشد؛ دستگاه به سرور نرسید.</string>
     <string name="announcements_unavailable">سرویس اطلاعیه پاسخ نداد.</string>
     <string name="announcements_retry">تلاش دوباره</string>

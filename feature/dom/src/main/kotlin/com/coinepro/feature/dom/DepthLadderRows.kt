@@ -2,11 +2,11 @@ package com.coinepro.feature.dom
 
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
+import com.coinepro.core.common.NumberStyle
 import com.coinepro.core.orderbook.BookSide
 import com.coinepro.core.orderbook.OrderBook
 import com.coinepro.core.orderbook.OrderBookGateway
 import com.coinepro.core.orderbook.aggregationDecimals
-import java.util.Locale
 
 /**
  * Which figure the size columns print, and which length their bars carry.
@@ -385,8 +385,8 @@ fun ladderFigureDecimals(ladder: DepthLadder, mode: LadderFigure): Int = when (m
  *
  * Through `MarketNumberFormatter` rather than `String.format`, which is what isolates it: the chips
  * sit in a right-to-left row, and a bare `0.1` there is at the mercy of the paragraph around it.
- * The formatter also fixes [Locale.US], without which the device's Persian locale would render this
- * market figure in Persian digits — the one number convention this app does not use.
+ * The formatter also goes through [NumberStyle], without which the device's Persian locale would
+ * render this market figure in Persian digits — the one number convention this app does not use.
  */
 fun stepLabel(step: Double): String =
     MarketNumberFormatter.price(step, aggregationDecimals(step))
@@ -394,17 +394,17 @@ fun stepLabel(step: Double): String =
 /**
  * A share of `0.0..1.0` as a whole-number percentage — `62%`.
  *
- * [Locale.US] explicitly, because the device locale is Persian and `String.format` would otherwise
+ * Through [NumberStyle], because the device locale is Persian and `String.format` would otherwise
  * emit `۶۲٪` silently: a market figure in Persian digits, which is the one number convention this
  * app does not use. The sign is inside the isolate so a right-to-left line cannot move it.
  */
 fun percentLabel(share: Double): String =
-    BidiText.isolateLtr(String.format(Locale.US, "%.0f%%", share * 100))
+    BidiText.isolateLtr(NumberStyle.percent(share * 100, 0))
 
 /**
  * A resting-order count for the ladder — `12`.
  *
- * Latin digits, and [Locale.US] is the reason: the device locale is Persian, and `%d` through the
+ * Latin digits, and [NumberStyle] is the reason: the device locale is Persian, and `%d` through the
  * default locale emits `۱۲` silently. A count of orders at a price is a market figure and takes the
  * app's market-figure convention, not the Persian digits prose counts use. Isolated so it cannot be
  * reordered against the size beside it when the row is laid out.
@@ -414,7 +414,7 @@ fun percentLabel(share: Double): String =
  * a figure because the sighted layout got quieter.
  */
 fun ordersLabel(orders: Int): String =
-    BidiText.isolateLtr(String.format(Locale.US, "%d", orders))
+    BidiText.isolateLtr(NumberStyle.integer(orders.toLong()))
 
 /**
  * A cache bound in milliseconds as a figure in seconds — `0.5`.
@@ -426,10 +426,10 @@ fun ordersLabel(orders: Int): String =
  * bound into a measurement.
  *
  * One decimal, because the bound in production is 500 ms and `0` would read as "no age at all".
- * [Locale.US] for the same reason as everywhere else in this file.
+ * Through [NumberStyle] for the same reason as everywhere else in this file.
  */
 fun maxAgeSecondsLabel(maxAgeMillis: Long): String =
-    BidiText.isolateLtr(String.format(Locale.US, "%.1f", maxAgeMillis / 1_000.0))
+    BidiText.isolateLtr(NumberStyle.fixed(maxAgeMillis / 1_000.0, 1))
 
 /**
  * A share of [largest], clamped, with a zero denominator answering zero rather than infinity.

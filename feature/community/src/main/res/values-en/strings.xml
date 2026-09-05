@@ -34,7 +34,7 @@
     <string name="community_locked">This install has been locked out of the board.</string>
     <string name="community_locked_hint">Reading still works. Ask Telegram support for a review.</string>
 
-    <string name="community_unreadable">The server sent %1$s posts and none arrived in a shape this build can read.</string>
+    <string name="community_unreadable">The server sent %1$s posts and none arrived in a shape this version can read.</string>
     <string name="community_unreadable_hint">This is not an outage, it is a format mismatch. Take a diagnostics export and send it.</string>
 
     <string name="community_compose_label">What did you see in the market?</string>

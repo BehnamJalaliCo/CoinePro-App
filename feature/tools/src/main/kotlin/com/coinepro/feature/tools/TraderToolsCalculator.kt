@@ -3,6 +3,7 @@ package com.coinepro.feature.tools
 import androidx.annotation.StringRes
 
 import com.coinepro.core.common.BidiText
+import com.coinepro.core.common.NumberStyle
 import kotlin.math.abs
 import kotlin.math.pow
 
@@ -183,7 +184,7 @@ object TraderToolsCalculator {
 
 object TraderToolsFormat {
     fun ltr(value: String): String = BidiText.isolateLtr(value)
-    fun decimal(value: Double, decimals: Int): String = ltr("%.${decimals}f".format(java.util.Locale.US, value))
-    fun percent(value: Double, decimals: Int = 2): String = ltr("%.${decimals}f%%".format(java.util.Locale.US, value))
-    fun money(value: Double, symbol: String = "$", decimals: Int = 2): String = ltr("$symbol%.${decimals}f".format(java.util.Locale.US, value))
+    fun decimal(value: Double, decimals: Int): String = ltr(NumberStyle.fixed(value, decimals))
+    fun percent(value: Double, decimals: Int = 2): String = ltr(NumberStyle.percent(value, decimals))
+    fun money(value: Double, symbol: String = "$", decimals: Int = 2): String = ltr(symbol + NumberStyle.fixed(value, decimals))
 }

@@ -17,12 +17,12 @@
     <string name="calendar_unavailable">تقویم در دسترس نیست.</string>
     <!-- TradeYar has no calendar route at all and asks the app for `calendar: []` by contract.
          Not an outage, and not refreshable: see CalendarMode.NOT_ON_THIS_PLATFORM. -->
-    <string name="calendar_none_published">سرور برای این تقویم رویدادی نفرستاد. تقویم اقتصادی از سمت سرور می‌آید و آپ رویدادی از خودش نمی‌سازد.</string>
+    <string name="calendar_none_published">سرور برای این تقویم رویدادی نفرستاد. تقویم اقتصادی از سرور می‌آید و اپ رویدادی از خودش نمی‌سازد.</string>
     <string name="calendar_empty">رویدادی با این فیلتر پیدا نشد.</string>
     <string name="calendar_retry">تلاش دوباره</string>
     <string name="calendar_refresh">به‌روزرسانی</string>
     <string name="calendar_refreshing">در حال به‌روزرسانی زمان رویدادها…</string>
-    <string name="calendar_timezone_note">زمان‌ها بر اساس منطقهٔ زمانی دستگاه، از لحظه‌های نرمال‌شدهٔ سرور.</string>
+    <string name="calendar_timezone_note">زمان‌ها بر اساس منطقه‌ی زمانی دستگاه، از لحظه‌های نرمال‌شده‌ی سرور.</string>
     <string name="calendar_stale">قدیمی</string>
     <string name="calendar_global">جهانی</string>
     <string name="calendar_actual">واقعی</string>
@@ -30,9 +30,9 @@
     <string name="calendar_previous">قبلی</string>
     <string name="calendar_value_missing">—</string>
     <string name="calendar_no_relevance">ارتباط با بازار مشخص نشده است</string>
-    <string name="calendar_impact_unknown_note">منبع ساختاریافته تأثیر را اعلام نکرده و آپ آن را حدس نمی‌زند.</string>
+    <string name="calendar_impact_unknown_note">منبع ساختاریافته تأثیر را اعلام نکرده و اپ آن را حدس نمی‌زند.</string>
     <string name="calendar_relevance_gold">طلا</string>
     <string name="calendar_relevance_silver">نقره</string>
     <string name="calendar_relevance_crypto">کریپتو</string>
-    <string name="calendar_open_chart">نمایش روی نمودار</string>
+    <string name="calendar_open_chart">نمایش روی چارت</string>
 </resources>

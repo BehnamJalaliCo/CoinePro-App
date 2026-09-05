@@ -69,6 +69,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.unit.sp
 import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.common.JalaliDate
+import com.coinepro.core.common.NumberStyle
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProColors
@@ -4965,13 +4966,12 @@ fun decimalsFor(price: Double): Int {
 /**
  * Latin digits, always.
  *
- * `Locale.US` is not decoration. Without it `String.format` follows the device locale, and on a
- * Persian phone — which is this app's default — a price comes out as «۲٬۵۹۲٫۶»: Persian digits and
- * a Persian decimal separator, on the axis of a chart. Market figures stay Latin and comparable
- * down a column; only prose counts are written in Persian digits.
+ * Through [NumberStyle], the one place the digit policy lives. Without it `String.format` follows
+ * the device locale, and on a Persian phone — which is this app's default — a price comes out as
+ * «۲٬۵۹۲٫۶»: Persian digits and a Persian decimal separator, on the axis of a chart. Market figures
+ * stay Latin and comparable down a column; only prose counts are written in Persian digits.
  */
-fun formatPrice(value: Double, decimals: Int): String =
-    String.format(Locale.US, "%.${decimals}f", value)
+fun formatPrice(value: Double, decimals: Int): String = NumberStyle.fixed(value, decimals)
 
 /**
  * When a bar opened, in the reader's own zone, at the precision the axis can use.

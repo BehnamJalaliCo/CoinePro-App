@@ -128,6 +128,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 scripts/quality/check-cross-phase-consistency.py
+          python3 tools/i18n/lint_strings.py
           bash scripts/quality/check-motion-policy.sh
           bash scripts/quality/check-kotlin-style.sh
           bash scripts/security/scan-secrets.sh

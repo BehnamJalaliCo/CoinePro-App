@@ -24,7 +24,7 @@
     <string name="alerts_resumed_done">هشدار دوباره فعال شد</string>
     <string name="alerts_duplicated_done">رونوشت ساخته شد</string>
     <string name="alerts_delete_title">این هشدار برداشته شود؟</string>
-    <string name="alerts_delete_body">هشدار و هر چه دربارهٔ آن ثبت شده برداشته می‌شود. این یکی برگشت ندارد.</string>
+    <string name="alerts_delete_body">هشدار و هر چه درباره‌ی آن ثبت شده برداشته می‌شود. این یکی برگشت ندارد.</string>
     <string name="alerts_delete_confirm">حذف</string>
     <string name="alerts_delete_cancel">ماندن</string>
 
@@ -57,16 +57,16 @@
     <string name="alerts_message">متن دلخواه</string>
     <string name="alerts_message_hint">همین متن در اعلان نوشته می‌شود. برای گذاشتن مقدارها روی برچسب‌ها بزنید.</string>
     <string name="alerts_message_too_long">متن از چیزی که اعلان نشان می‌دهد بلندتر است</string>
-    <string name="alerts_save">ذخیرهٔ هشدار</string>
+    <string name="alerts_save">ذخیره‌ی هشدار</string>
 
-    <string name="alerts_audit_title">کارنامهٔ هشدار</string>
-    <string name="alerts_audit_lead">این سیاههٔ کاری است که این هشدار واقعاً انجام داده. اگر حرکتی را از دست داده‌اید، اینجا معلوم می‌شود اعلان رسیده یا نرسیده.</string>
+    <string name="alerts_audit_title">کارنامه‌ی هشدار</string>
+    <string name="alerts_audit_lead">این سیاهه‌ی کاری است که این هشدار واقعاً انجام داده. اگر حرکتی را از دست داده‌اید، اینجا معلوم می‌شود اعلان رسیده یا نرسیده.</string>
     <string name="alerts_audit_empty">هنوز چیزی ثبت نشده</string>
     <string name="alerts_audit_empty_hint">از لحظه‌ای که هشدار ساخته شود، هر رویدادش اینجا نوشته می‌شود.</string>
     <string name="alerts_audit_price">قیمت</string>
     <string name="alerts_kind_drawing">ترسیم</string>
-    <string name="alerts_drawing_none">روی نمودار این نماد ترسیمی نیست. اول روی نمودار خطی بکشید، بعد اینجا انتخابش کنید.</string>
-    <string name="alerts_drawing_note">عدد هر ردیف، قیمت ترسیم در آخرین نقطهٔ آن است؛ برای شناختن ترسیم‌ها از هم. هشدار روی خود خط بررسی می‌شود و سطح آن با گذشت زمان جابه‌جا می‌شود.</string>
+    <string name="alerts_drawing_none">روی چارت این نماد ترسیمی نیست. اول روی چارت خطی بکشید، بعد اینجا انتخابش کنید.</string>
+    <string name="alerts_drawing_note">عدد هر ردیف، قیمت ترسیم در آخرین نقطه‌ی آن است؛ برای شناختن ترسیم‌ها از هم. هشدار روی خود خط بررسی می‌شود و سطح آن با گذشت زمان جابه‌جا می‌شود.</string>
     <string name="alerts_scope">دامنه</string>
     <string name="alerts_scope_symbol">همین نماد</string>
     <string name="alerts_scope_list">%1$s — %2$s نماد</string>
@@ -75,13 +75,13 @@
     <string name="alerts_sound_quiet">آرام</string>
     <string name="alerts_sound_normal">معمولی</string>
     <string name="alerts_sound_loud">بلند</string>
-    <string name="alerts_sound_normal_note">مثل بقیهٔ اعلان‌های برنامه پخش می‌شود.</string>
+    <string name="alerts_sound_normal_note">مثل بقیه‌ی اعلان‌های برنامه پخش می‌شود.</string>
     <string name="alerts_sound_loud_note">روی خروجی زنگ هشدار پخش می‌شود، با صدای زنگ هشدار گوشی؛ بلندتر از اعلان‌های دیگر.</string>
     <string name="alerts_venue">جای بررسی</string>
     <string name="alerts_venue_device">روی دستگاه</string>
     <string name="alerts_venue_server">روی سرور</string>
     <string name="alerts_venue_device_note">روی همین گوشی بررسی می‌شود. به حساب کاربری نیاز ندارد، اما برنامه باید نصب باشد و گوشی روشن.</string>
-    <string name="alerts_venue_server_note">سرور بررسی می‌کند و با بستهٔ برنامه هم ادامه می‌دهد. به حساب کاربری نیاز دارد.</string>
+    <string name="alerts_venue_server_note">سرور بررسی می‌کند و با بسته‌ی برنامه هم ادامه می‌دهد. به حساب کاربری نیاز دارد.</string>
     <string name="alerts_venue_server_unavailable">سرور فقط قیمت یک نماد را در برابر یک سطح می‌بیند؛ این شرط را باید روی دستگاه بررسی کرد.</string>
     <string name="alerts_server_refused">سرور این هشدار را نپذیرفت. برای هشدار سروری باید وارد حساب شده باشید. همین هشدار را می‌توانید روی دستگاه بسازید.</string>
     <string name="alerts_venue_badge">سرور</string>
@@ -93,11 +93,11 @@
     <string name="webhooks_empty">هنوز وب‌هوکی نساخته‌اید</string>
     <string name="webhooks_new">وب‌هوک تازه</string>
     <string name="webhooks_name">نام</string>
-    <string name="webhooks_name_hint">نامی که در سیاههٔ ارسال‌ها می‌بینید؛ مثلاً ربات تلگرام.</string>
+    <string name="webhooks_name_hint">نامی که در سیاهه‌ی ارسال‌ها می‌بینید؛ مثلاً ربات تلگرام.</string>
     <string name="webhooks_url">نشانی</string>
     <string name="webhooks_url_hint">فقط https، روی نام دامنه، با پورت ۸۰ یا ۴۴۳.</string>
     <string name="webhooks_secret">کلید امضا</string>
-    <string name="webhooks_secret_hint">اختیاری. با آن، بدنهٔ درخواست امضا می‌شود تا گیرنده مطمئن شود از این برنامه آمده است.</string>
+    <string name="webhooks_secret_hint">اختیاری. با آن، بدنه‌ی درخواست امضا می‌شود تا گیرنده مطمئن شود از این برنامه آمده است.</string>
     <string name="webhooks_secret_keep">اگر خالی بماند، کلید قبلی دست‌نخورده می‌ماند. کلید ذخیره‌شده هیچ‌جا نشان داده نمی‌شود.</string>
     <string name="webhooks_enabled">فعال</string>
     <string name="webhooks_on">روشن</string>
@@ -105,7 +105,7 @@
     <string name="webhooks_test">آزمایش</string>
     <string name="webhooks_delete">حذف</string>
     <string name="webhooks_back">بازگشت</string>
-    <string name="webhooks_save">ذخیرهٔ وب‌هوک</string>
+    <string name="webhooks_save">ذخیره‌ی وب‌هوک</string>
     <string name="webhooks_rules">نشانی همین حالا بررسی می‌شود، نه هنگام اجرای هشدار؛ تا اگر ایراد دارد الان بدانید.</string>
     <string name="alerts_audit_webhooks">ارسال به وب‌هوک‌ها (%1$s مورد)</string>
 </resources>

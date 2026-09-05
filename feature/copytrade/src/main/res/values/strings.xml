@@ -19,20 +19,20 @@
     <string name="copy_risk_mode_risk_percent">درصد ریسک</string>
     <string name="copy_risk_value">مقدار ریسک</string>
     <string name="copy_max_lot">بیشترین حجم</string>
-    <string name="copy_max_open">بیشترین معاملهٔ هم‌زمان</string>
+    <string name="copy_max_open">بیشترین معامله‌ی هم‌زمان</string>
     <string name="copy_daily_loss">سقف زیان روزانه</string>
     <string name="copy_stop_targets">حد ضرر و اهداف</string>
     <string name="copy_stop_targets_on">از سیگنال گرفته می‌شود</string>
     <string name="copy_stop_targets_off">گرفته نمی‌شود</string>
     <string name="copy_symbols">نمادها</string>
-    <string name="copy_symbols_all">همهٔ نمادهای پشتیبانی‌شده</string>
+    <string name="copy_symbols_all">همه‌ی نمادهای پشتیبانی‌شده</string>
 
     <string name="copy_account_title">حساب متصل</string>
     <string name="copy_account_none_title">هنوز حسابی وصل نشده</string>
     <string name="copy_account_none_body">مشخصات حساب متاتریدر ۵ خود را وارد کنید. همان اطلاعاتی که با آن وارد ترمینال می‌شوید.</string>
     <string name="copy_broker">بروکر</string>
     <string name="copy_server">سرور</string>
-    <string name="copy_login">شمارهٔ حساب</string>
+    <string name="copy_login">شماره‌ی حساب</string>
     <string name="copy_password">رمز حساب</string>
     <string name="copy_password_warning">این رمز به سرور فرستاده می‌شود تا ترمینال بتواند به حساب شما وارد شود. رمز «سرمایه‌گذار» (Investor) برای این کار کافی نیست و باید رمز اصلی حساب معاملاتی را وارد کنید — پس با همان دقتی که با یک رمز واقعی رفتار می‌کنید وارد کنید.</string>
     <string name="copy_link">وصل کردن حساب</string>
@@ -43,7 +43,7 @@
     <string name="copy_equity">ارزش خالص</string>
     <string name="copy_margin_level">سطح مارجین</string>
     <string name="copy_floating">سود/زیان باز</string>
-    <string name="copy_open_count">معاملهٔ باز</string>
+    <string name="copy_open_count">معامله‌ی باز</string>
     <string name="copy_last_seen">آخرین گزارش ترمینال</string>
     <string name="copy_terminal_quiet">ترمینال شما مدتی است گزارشی نفرستاده. تا وقتی گزارش نرسد، ارقام بالا مربوط به آخرین باری است که فرستاده.</string>
     <string name="copy_terminal_never">هنوز هیچ گزارشی از ترمینال شما نرسیده است.</string>

@@ -16,6 +16,6 @@
          fall back to the Persian original can say so. -->
     <string name="legal_untranslated"></string>
 
-    <string name="legal_unavailable">This document is not available in this build.</string>
+    <string name="legal_unavailable">This document is not available in this version.</string>
 
 </resources>

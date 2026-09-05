@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="profile_guest_name">مهمان</string>
-    <string name="profile_guest_tagline">بدون حساب، همه‌ی بازارها و نمودارها در دسترس شماست.</string>
+    <string name="profile_guest_tagline">بدون حساب، همه‌ی بازارها و چارت‌ها در دسترس شماست.</string>
     <string name="profile_member_tagline">عضو پرو چارت</string>
     <string name="profile_avatar_description">تصویر نیمرخ شما</string>
     <string name="profile_edit_avatar">تغییر تصویر</string>
@@ -9,7 +9,7 @@
     <string name="profile_local_note">نام، تصویر و توضیح شما فقط روی همین گوشی ذخیره می‌شود و به هیچ سروری فرستاده نمی‌شود. با حذف یا نصب دوباره‌ی برنامه از بین می‌رود.</string>
 
     <string name="profile_signin_title">حساب بسازید، اگر خواستید</string>
-    <string name="profile_signin_body">بازارها، نمودار حرفه‌ای، جست‌وجو، دفترچه‌ی معاملات، معامله‌ی آزمایشی و نما‌اسکریپت بدون حساب کار می‌کنند. حساب فقط سیگنال‌ها، هوش مصنوعی، کیف پول و کپی‌تریدینگ را اضافه می‌کند.</string>
+    <string name="profile_signin_body">بازارها، چارت حرفه‌ای، جست‌وجو، ژورنال معاملات، معامله‌ی آزمایشی و نمااسکریپت بدون حساب کار می‌کنند. حساب فقط سیگنال‌ها، هوش مصنوعی، کیف پول و کپی‌ترید را اضافه می‌کند.</string>
     <string name="profile_signin_action">ورود یا ثبت نام</string>
     <string name="profile_signin_note">به زور کسی را ثبت نام نمی‌کنیم. هر وقت خواستید، همین‌جاست.</string>
 
@@ -61,7 +61,7 @@
     <!-- The four blocks a comprehensive profile divides into: who they are, what they have done,
          what they own, and how the app behaves for them. -->
     <string name="profile_standing_section">جایگاه شما</string>
-    <string name="profile_record_section">کارنامهٔ شما</string>
+    <string name="profile_record_section">کارنامه‌ی شما</string>
     <string name="profile_library_section">کارهای شما در برنامه</string>
     <string name="profile_app_section">برنامه</string>
     <string name="profile_session_section">خروج و حذف</string>
@@ -80,7 +80,7 @@
     <string name="profile_standing_email">ایمیل</string>
 
     <!-- The membership words are the ones feature:membership prints. They must not drift. -->
-    <string name="profile_membership_awaiting_uid">در انتظار شناسهٔ کاربری</string>
+    <string name="profile_membership_awaiting_uid">در انتظار شناسه‌ی کاربری</string>
     <string name="profile_membership_verifying">در حال بررسی</string>
     <string name="profile_membership_approved">تأیید شده</string>
     <string name="profile_membership_pending_deposit">در انتظار واریز</string>
@@ -93,15 +93,15 @@
     <string name="profile_verify_approved">تأیید شد</string>
     <string name="profile_verify_rejected">رد شد</string>
 
-    <string name="profile_record_journal">دفترچهٔ معاملات</string>
-    <string name="profile_record_paper">معاملهٔ آزمایشی</string>
+    <string name="profile_record_journal">دفترچه‌ی معاملات</string>
+    <string name="profile_record_paper">معامله‌ی آزمایشی</string>
     <string name="profile_record_closed">معامله‌های بسته‌شده</string>
     <string name="profile_record_academy">آکادمی</string>
     <string name="profile_record_win_rate">نرخ برد %1$s</string>
     <string name="profile_record_academy_detail">%1$s روز پیاپی مطالعه</string>
 
     <string name="profile_library_watchlists">فهرست‌های دیده‌بانی</string>
-    <string name="profile_library_layouts">چیدمان‌های نمودار</string>
+    <string name="profile_library_layouts">چیدمان‌های چارت</string>
     <string name="profile_library_indicators">قالب‌های اندیکاتور</string>
     <string name="profile_library_drawings">قالب‌های ابزار ترسیم</string>
     <string name="profile_library_intervals">تایم‌فریم‌های ستاره‌دار</string>

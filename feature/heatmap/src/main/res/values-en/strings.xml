@@ -13,7 +13,7 @@
     <string name="heatmap_size_volume">Volume</string>
     <string name="heatmap_size_turnover">Turnover</string>
     <string name="heatmap_size_mono">Equal</string>
-    <string name="heatmap_size_note">Sized by the app\'s own liquidity ranking: neither backend sends a market capitalisation.</string>
+    <string name="heatmap_size_note">Sized by the app\'s own liquidity ranking: neither server sends a market capitalisation.</string>
     <string name="heatmap_size_volume_note">This feed reports no volume, so tiles fall back to the liquidity ranking.</string>
 
     <string name="heatmap_colour">Colour by</string>

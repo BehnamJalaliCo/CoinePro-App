@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="ai_eyebrow">هوش مصنوعی</string>
-    <string name="ai_headline">ستاپ معاملاتی بساز</string>
+    <string name="ai_headline">ساخت ستاپ معاملاتی</string>
     <string name="ai_quota">%1$s از %2$s درخواست امروز باقی مانده</string>
-    <string name="ai_quota_unknown">سهمیهٔ امروز در دسترس نیست</string>
+    <string name="ai_quota_unknown">سهمیه‌ی امروز در دسترس نیست</string>
     <string name="ai_quota_reset">سهمیه %1$s تازه می‌شود</string>
-    <string name="ai_quota_empty">سهمیهٔ امروز تمام شده است</string>
+    <string name="ai_quota_empty">سهمیه‌ی امروز تمام شده است</string>
 
     <string name="ai_group_what">چه چیزی پرسیده می‌شود</string>
     <string name="ai_group_how">ستاپ چطور شکل بگیرد</string>
-    <string name="ai_group_size">اندازهٔ پوزیشن</string>
+    <string name="ai_group_size">اندازه‌ی پوزیشن</string>
     <string name="ai_group_how_hint">هر گزینه‌ای که انتخاب نکنید، تصمیمش با مدل است. برای برداشتن انتخاب، دوباره روی همان بزنید.</string>
     <string name="ai_group_size_hint">این سه اختیاری‌اند. اگر موجودی و درصد ریسک بدهید، سرور حجم پیشنهادی را حساب می‌کند؛ اگر ندهید، حجمی پیشنهاد نمی‌شود.</string>
-    <string name="ai_group_size_hint_no_lot">این دو اختیاری‌اند. اگر موجودی و درصد ریسک بدهید، سرور اندازهٔ پیشنهادی را حساب می‌کند؛ اگر ندهید، اندازه‌ای پیشنهاد نمی‌شود. لات مالِ متاتریدر است و این پلتفرم آن را نمی‌پذیرد.</string>
+    <string name="ai_group_size_hint_no_lot">این دو اختیاری‌اند. اگر موجودی و درصد ریسک بدهید، سرور اندازه‌ی پیشنهادی را حساب می‌کند؛ اگر ندهید، اندازه‌ای پیشنهاد نمی‌شود. لات مالِ متاتریدر است و این پلتفرم آن را نمی‌پذیرد.</string>
 
     <string name="ai_symbol">نماد</string>
     <string name="ai_symbol_change">تغییر نماد</string>
@@ -21,7 +21,7 @@
     <string name="ai_symbol_none">نمادی با این جست‌وجو پیدا نشد</string>
     <string name="ai_symbol_category">دسته</string>
     <string name="ai_symbol_source_server">%1$s نماد — فهرستی که سرور پذیرفته است</string>
-    <string name="ai_symbol_source_catalogue">%1$s نماد — همهٔ بازارهایی که این پلتفرم می‌دهد</string>
+    <string name="ai_symbol_source_catalogue">%1$s نماد — همه‌ی بازارهایی که این پلتفرم می‌دهد</string>
     <string name="ai_symbol_source_fallback">%1$s نماد — فهرست بازارها هنوز نیامده؛ فعلاً همین‌ها در دسترس است</string>
     <string name="ai_symbol_loading">در حال گرفتن فهرست بازارها…</string>
 
@@ -35,12 +35,12 @@
     <string name="ai_timeframe">تایم‌فریم</string>
     <string name="ai_timeframe_server_note">این بازه‌ها همان‌هایی‌اند که سرور اعلام کرده می‌پذیرد.</string>
     <string name="ai_timeframe_scope_note">چارت بازه‌های بیشتری دارد، چون خودش آن‌ها را از کندل ریزتر می‌سازد. این درخواست را سرور اجرا می‌کند و فقط همین بازه‌ها را می‌شناسد.</string>
-    <string name="ai_timeframe_unknown">سرور بازهٔ %1$s را هم اعلام کرده که این نسخهٔ برنامه آن را نمی‌شناسد.</string>
+    <string name="ai_timeframe_unknown">سرور تایم‌فریم %1$s را هم اعلام کرده که این نسخه‌ی اپ آن را نمی‌شناسد.</string>
 
     <string name="ai_trade_style">سبک معامله</string>
     <string name="ai_risk_appetite">اشتهای ریسک</string>
     <string name="ai_direction_bias">جهت‌گیری</string>
-    <string name="ai_min_rr">کمینهٔ نسبت سود به زیان</string>
+    <string name="ai_min_rr">کمینه‌ی نسبت سود به زیان</string>
 
     <string name="ai_lot">حجم (لات)</string>
     <string name="ai_risk_percent">درصد ریسک</string>
@@ -64,7 +64,7 @@
     <string name="ai_unavailable">ساخت ستاپ روی این حساب فعال نیست.</string>
 
     <string name="ai_entry">ورود</string>
-    <string name="ai_entry_zone">محدودهٔ ورود</string>
+    <string name="ai_entry_zone">محدوده‌ی ورود</string>
     <string name="ai_stop">حد ضرر</string>
     <string name="ai_suggested_lot">حجم پیشنهادی</string>
     <string name="ai_risk_reward">نسبت سود به زیان تا هدف اول</string>
@@ -75,14 +75,14 @@
     <string name="ai_buy">خرید</string>
     <string name="ai_sell">فروش</string>
     <string name="ai_neutral">خنثی</string>
-    <string name="ai_retry">دوباره بفرست</string>
+    <string name="ai_retry">ارسال دوباره</string>
     <string name="ai_dismiss">بستن نتیجه</string>
 
     <string name="ai_evidence_title">شواهد تکنیکال</string>
-    <string name="ai_evidence_price">قیمت لحظهٔ تحلیل</string>
+    <string name="ai_evidence_price">قیمت لحظه‌ی تحلیل</string>
     <string name="ai_evidence_trend">میانگین‌های متحرک</string>
     <string name="ai_evidence_momentum">مومنتوم و نوسان</string>
-    <string name="ai_evidence_range">محدودهٔ بیست کندل</string>
+    <string name="ai_evidence_range">محدوده‌ی بیست کندل</string>
     <string name="ai_evidence_bb_upper">باند بالای بولینگر</string>
     <string name="ai_evidence_bb_lower">باند پایین بولینگر</string>
     <string name="ai_evidence_swing_high">سقف بیست کندل</string>
@@ -95,13 +95,13 @@
     <string name="ai_error_rejected">سرور این درخواست را نپذیرفت. یکی از پارامترها را عوض کنید و دوباره بفرستید.</string>
     <string name="ai_error_rejected_field">سرور این درخواست را نپذیرفت و «%1$s» را ایراد گرفت.</string>
     <string name="ai_error_entitlement">این بخش به اشتراک فعال نیاز دارد.</string>
-    <string name="ai_error_quota">سهمیهٔ امروز تمام شده است.</string>
-    <string name="ai_error_quota_reset">سهمیهٔ امروز تمام شده است. %1$s تازه می‌شود.</string>
+    <string name="ai_error_quota">سهمیه‌ی امروز تمام شده است.</string>
+    <string name="ai_error_quota_reset">سهمیه‌ی امروز تمام شده است. %1$s تازه می‌شود.</string>
     <string name="ai_error_expired">این درخواست روی سرور منقضی شد. دوباره بفرستید.</string>
     <string name="ai_error_failed">مدل نتوانست ستاپی بسازد. دوباره بفرستید یا پارامترها را عوض کنید.</string>
     <string name="ai_error_unusable">سرور نتیجه‌ای برگرداند که سطوح لازم را ندارد و قابل خواندن نیست.</string>
     <string name="ai_error_symbol">این نماد معتبر نیست. یک نماد از فهرست انتخاب کنید.</string>
-    <string name="ai_error_quota_unknown">سهمیهٔ امروز خوانده نشد. اتصال را بررسی کنید و دوباره تلاش کنید.</string>
+    <string name="ai_error_quota_unknown">سهمیه‌ی امروز خوانده نشد. اتصال را بررسی کنید و دوباره تلاش کنید.</string>
     <string name="ai_error_network">پاسخی از سرور نرسید. اتصال را بررسی کنید و دوباره تلاش کنید.</string>
     <string name="ai_error_code">کد خطا: %1$s</string>
 
@@ -110,6 +110,6 @@
     <string name="ai_chart_analysis_open">فرستادن تصویر چارت</string>
 
     <string name="ai_assistant_title">دستیار هوشمند</string>
-    <string name="ai_assistant_body">دربارهٔ سیگنال‌های فعال، شرایط بازار، اخبار و ریسک بپرس — با تازگیِ منبع در معرض دید.</string>
+    <string name="ai_assistant_body">درباره‌ی سیگنال‌های فعال، شرایط بازار، اخبار و ریسک بپرسید — با تازگیِ منبع در معرض دید.</string>
     <string name="ai_assistant_open">گفت‌وگو با دستیار</string>
 </resources>

@@ -2,9 +2,9 @@
 <!-- Default language: Persian. English lives in values-en. -->
 <resources>
     <string name="message_signals_unavailable">سیگنال‌ها در دسترس نیستند.</string>
-    <string name="message_signal_history_unavailable">تاریخچهٔ سیگنال‌ها در دسترس نیست.</string>
+    <string name="message_signal_history_unavailable">تاریخچه‌ی سیگنال‌ها در دسترس نیست.</string>
     <string name="message_signal_details_unavailable">جزئیات سیگنال در دسترس نیست.</string>
-    <string name="message_cached_history_shown">تاریخچهٔ ذخیره‌شده نمایش داده می‌شود.</string>
+    <string name="message_cached_history_shown">تاریخچه‌ی ذخیره‌شده نمایش داده می‌شود.</string>
     <string name="message_notification_center_unavailable">اعلان‌ها در دسترس نیستند.</string>
     <string name="message_notification_preferences_not_saved">تنظیمات اعلان ذخیره نشد؛ همان حالت قبلی برقرار است.</string>
     <string name="message_alert_symbol_unsupported">این نماد در بازار فعلی هشدار نمی‌پذیرد.</string>
@@ -31,7 +31,7 @@
     <string name="field_clear">پاک کردن</string>
     <string name="message_session_not_revalidated">نشست ذخیره‌شده هست ولی سرور تأییدش نکرد. تا وقتی سرور در دسترس نباشد، بخش‌های نیازمند حساب قفل می‌مانند.</string>
     <string name="message_telegram_sign_in_not_configured">ورود با تلگرام روی این سرور تنظیم نشده است.</string>
-    <string name="message_telegram_sign_in_config_unavailable">تنظیمات ورود با تلگرام خوانده نشد. اتصال را بررسی کن و دوباره بگیر.</string>
+    <string name="message_telegram_sign_in_config_unavailable">تنظیمات ورود با تلگرام خوانده نشد. اتصال را بررسی کنید و دوباره امتحان کنید.</string>
     <!-- The rail replaces the bottom bar on a tablet; a screen reader needs to be told that the
          column of five glyphs down the edge of the screen is the app's navigation and not content. -->
     <string name="a11y_navigation_rail">ناوبری اصلی</string>
@@ -39,7 +39,7 @@
     <string name="pane_detail_empty">یک مورد را از فهرست انتخاب کنید تا اینجا باز شود.</string>
     <!-- The venue's live price relay, not the phone's network. See CoineProPriceFeedBar. -->
     <string name="price_feed_partial">بخشی از قیمت‌های زنده قطع است؛ آمار ۲۴ ساعته درست است</string>
-    <string name="price_feed_full">قیمت زندهٔ صرافی قطع است و کندتر به‌روز می‌شود</string>
+    <string name="price_feed_full">قیمت زنده‌ی صرافی قطع است و کندتر به‌روز می‌شود</string>
     <string name="price_feed_unknown">وضعیت فید قیمت نامعلوم است</string>
 
     <!-- ── teaching banners ──────────────────────────────────────────────────────────
@@ -49,55 +49,55 @@
     <string name="teaching_dismiss">بستن این توضیح</string>
     <string name="teaching_what_is_this">این صفحه چیست؟</string>
 
-    <string name="teaching_home_lead">خلاصهٔ حساب و بازار در یک صفحه: موجودی، چند نماد و سیگنال‌های باز.</string>
-    <string name="teaching_home_pitfall">هرچه اینجاست خلاصه است؛ رقم کامل هر بخش داخل صفحهٔ خودش است.</string>
+    <string name="teaching_home_lead">خلاصه‌ی حساب و بازار در یک صفحه: موجودی، چند نماد و سیگنال‌های باز.</string>
+    <string name="teaching_home_pitfall">هرچه اینجاست خلاصه است؛ رقم کامل هر بخش داخل صفحه‌ی خودش است.</string>
 
-    <string name="teaching_markets_lead">قیمت لحظه‌ای و تغییر ۲۴ ساعتهٔ همهٔ نمادها، در یک فهرست.</string>
+    <string name="teaching_markets_lead">قیمت لحظه‌ای و تغییر ۲۴ ساعته‌ی همه‌ی نمادها، در یک فهرست.</string>
     <string name="teaching_markets_pitfall">درصد هر ردیف تغییر ۲۴ ساعت گذشته است، نه تغییر از اول امروز.</string>
 
     <string name="teaching_chart_lead">قیمت یک نماد در طول زمان، با تایم‌فریم، اندیکاتور و ابزار ترسیم.</string>
     <string name="teaching_chart_pitfall">آخرین کندل هنوز بسته نشده و تا پایان تایم‌فریم عوض می‌شود.</string>
 
-    <string name="teaching_signals_lead">سیگنال‌های منتشرشده، با نقطهٔ ورود، حد ضرر و هدف هرکدام.</string>
-    <string name="teaching_signals_pitfall">سیگنال یک گزارش است، نه توصیه؛ حجم و تصمیم با خودت است.</string>
+    <string name="teaching_signals_lead">سیگنال‌های منتشرشده، با نقطه‌ی ورود، حد ضرر و هدف هرکدام.</string>
+    <string name="teaching_signals_pitfall">سیگنال یک گزارش است، نه توصیه؛ حجم و تصمیم با خودتان است.</string>
 
     <string name="teaching_ai_lead">از مدل می‌خواهی یک نماد را تحلیل کند و نتیجه را همین‌جا می‌خوانی.</string>
-    <string name="teaching_ai_pitfall">مدل روی دادهٔ گذشته حرف می‌زند؛ خروجی‌اش تحلیل است، نه پیش‌بینی.</string>
+    <string name="teaching_ai_pitfall">مدل روی داده‌ی گذشته حرف می‌زند؛ خروجی‌اش تحلیل است، نه پیش‌بینی.</string>
 
     <string name="teaching_tools_lead">ماشین‌حساب‌های معامله: حجم، ریسک، حد ضرر و سود و زیان.</string>
     <string name="teaching_tools_pitfall">این‌ها فقط حساب می‌کنند؛ هیچ سفارشی از اینجا به صرافی نمی‌رود.</string>
 
     <string name="teaching_news_lead">خبرهای بازار با منبع مشخص، تازه‌ترین در بالا.</string>
-    <string name="teaching_news_pitfall">ترتیب خبرها زمانی است، نه بر پایهٔ اهمیت یا اثرشان بر قیمت.</string>
+    <string name="teaching_news_pitfall">ترتیب خبرها زمانی است، نه بر پایه‌ی اهمیت یا اثرشان بر قیمت.</string>
 
-    <string name="teaching_calendar_lead">زمان انتشار دادهٔ اقتصادی و عددی که بازار انتظارش را دارد.</string>
-    <string name="teaching_calendar_pitfall">تا لحظهٔ انتشار، عددی که می‌بینی پیش‌بینی است، نه رقم واقعی.</string>
+    <string name="teaching_calendar_lead">زمان انتشار داده‌ی اقتصادی و عددی که بازار انتظارش را دارد.</string>
+    <string name="teaching_calendar_pitfall">تا لحظه‌ی انتشار، عددی که می‌بینی پیش‌بینی است، نه رقم واقعی.</string>
 
     <string name="teaching_screener_lead">شرط می‌گذاری و نمادهایی که با آن شرط می‌خوانند فهرست می‌شوند.</string>
     <string name="teaching_screener_pitfall">این فهرست عکس همین لحظه است؛ با هر به‌روزرسانی نمادها کم و زیاد می‌شوند.</string>
 
     <string name="teaching_heatmap_lead">کل بازار در یک تصویر: رنگ هر خانه تغییر قیمت است و اندازه‌اش وزن آن نماد.</string>
-    <string name="teaching_heatmap_pitfall">اندازهٔ خانه ارزش بازار نیست؛ نقدشوندگی یا حجمی است که در تنظیمات انتخاب کرده‌ای.</string>
+    <string name="teaching_heatmap_pitfall">اندازه‌ی خانه ارزش بازار نیست؛ نقدشوندگی یا حجمی است که در تنظیمات انتخاب کرده‌ای.</string>
 
-    <string name="teaching_watchlist_lead">نمادهایی که خودت ستاره زده‌ای، جدا از فهرست کامل بازار.</string>
+    <string name="teaching_watchlist_lead">نمادهایی که خودتان ستاره زده‌اید، جدا از فهرست کامل بازار.</string>
     <string name="teaching_watchlist_pitfall">دیده‌بان فهرست تماشای توست، نه سبد دارایی؛ ستاره زدن چیزی نمی‌خرد.</string>
 
     <string name="teaching_alerts_lead">شرط قیمتی می‌گذاری و وقتی برقرار شد اعلان می‌گیری.</string>
     <string name="teaching_alerts_pitfall">هشدار فقط خبر می‌دهد؛ هیچ معامله‌ای را باز یا بسته نمی‌کند.</string>
 
     <string name="teaching_journal_lead">هر معامله را با دلیل ورود و خروجش ثبت می‌کنی تا بعد الگوی خطاها را ببینی.</string>
-    <string name="teaching_journal_pitfall">ژورنال دستی است و از حساب متصل چیزی نمی‌خواند؛ هرچه اینجاست را خودت نوشته‌ای.</string>
+    <string name="teaching_journal_pitfall">ژورنال دستی است و از حساب متصل چیزی نمی‌خواند؛ هرچه اینجاست را خودتان نوشته‌اید.</string>
 
     <string name="teaching_paper_trade_lead">تمرین معامله روی همان بازار واقعی، با پول فرضی.</string>
     <string name="teaching_paper_trade_pitfall">قیمت‌ها واقعی است و پول فرضی؛ سود و زیان اینجا به حساب واقعی نمی‌رود.</string>
 
-    <string name="teaching_backtest_lead">یک قانون معاملاتی را روی دادهٔ گذشته اجرا می‌کنی تا ببینی چه نتیجه‌ای می‌داد.</string>
-    <string name="teaching_backtest_pitfall">نتیجه فقط دربارهٔ همان بازهٔ گذشته است؛ بازهٔ دیگر جواب دیگری می‌دهد.</string>
+    <string name="teaching_backtest_lead">یک قانون معاملاتی را روی داده‌ی گذشته اجرا می‌کنی تا ببینی چه نتیجه‌ای می‌داد.</string>
+    <string name="teaching_backtest_pitfall">نتیجه فقط درباره‌ی همان بازه‌ی گذشته است؛ بازه‌ی دیگر جواب دیگری می‌دهد.</string>
 
-    <string name="teaching_script_lead">اندیکاتور و استراتژی نمااسکریپت را اینجا می‌نویسی و روی نمودار اجرا می‌کنی.</string>
-    <string name="teaching_script_pitfall">اسکریپت فقط روی نمودار محاسبه می‌کند؛ خودش سفارشی ثبت نمی‌کند.</string>
+    <string name="teaching_script_lead">اندیکاتور و استراتژی نمااسکریپت را اینجا می‌نویسید و روی چارت اجرا می‌کنید.</string>
+    <string name="teaching_script_pitfall">اسکریپت فقط روی چارت محاسبه می‌کند؛ خودش سفارشی ثبت نمی‌کند.</string>
 
-    <string name="teaching_portfolio_lead">کارنامهٔ معامله‌های بسته‌شدهٔ حساب متصل: سود خالص، نرخ برد و بیشترین افت.</string>
+    <string name="teaching_portfolio_lead">کارنامه‌ی معامله‌های بسته‌شده‌ی حساب متصل: سود خالص، نرخ برد و بیشترین افت.</string>
     <string name="teaching_portfolio_pitfall">فقط معامله‌های بسته‌شده در این عددها هستند؛ سود شناور پوزیشن باز شمرده نمی‌شود.</string>
 
     <string name="teaching_connections_lead">حساب صرافی را با کلید API وصل می‌کنی تا سفارش از داخل برنامه ثبت شود.</string>
@@ -106,10 +106,10 @@
     <string name="teaching_membership_lead">وضعیت اشتراکت و اینکه هر پلن کدام بخش‌ها را باز می‌کند.</string>
     <string name="teaching_membership_pitfall">اشتراک دسترسی به بخش‌های برنامه را باز می‌کند، نه سود یا سیگنال تضمینی.</string>
 
-    <string name="teaching_activity_lead">کارنامهٔ سیگنال‌های بسته و اجراهایی که سرور ثبت کرده است.</string>
+    <string name="teaching_activity_lead">کارنامه‌ی سیگنال‌های بسته و اجراهایی که سرور ثبت کرده است.</string>
     <string name="teaching_activity_pitfall">هر عددی اینجا از سرور می‌آید؛ چیزی روی گوشی تخمین زده نمی‌شود.</string>
 
-    <string name="teaching_academy_lead">درس‌های کوتاه دربارهٔ بازار و کار با همین برنامه.</string>
+    <string name="teaching_academy_lead">درس‌های کوتاه درباره‌ی بازار و کار با همین برنامه.</string>
     <string name="teaching_academy_pitfall">درس‌ها آموزش‌اند؛ هیچ‌کدام نمادی را برای خرید معرفی نمی‌کند.</string>
 
     <string name="teaching_dom_lead">سفارش‌های خرید و فروشی که همین حالا در دفتر صرافی منتظرند.</string>
@@ -120,4 +120,35 @@
     <!-- CoineProSymbolField: typed text that matches no market in the catalogue. -->
     <string name="symbol_field_no_match">بازاری با این نام پیدا نشد</string>
     <string name="sheet_close">بستن</string>
+
+    <!-- One description per feature, shown under its row in the menu, the toolkit and search.
+         Forty Persian characters or six English words: the row shows one line and no more. -->
+    <string name="feature_screener_body">فیلتر قیمت، حجم، نوسان و اندیکاتور</string>
+    <string name="feature_connections_body">کارگزار یا صرافی، فقط برای اجرای سیگنال</string>
+    <string name="feature_copy_body">سیگنال تأییدشده روی حساب شما اجرا می‌شود</string>
+    <string name="feature_terminal_body">نسخه‌ی کامل دسکتاپ، داخل همین اپ</string>
+    <string name="feature_setup_body">ورود، حد ضرر و هدف از روی چارت واقعی</string>
+    <string name="feature_assistant_body">پرسش درباره‌ی بازار، نماد و همین اپ</string>
+    <string name="feature_safety_body">گزارش خطا، نسخه، حریم خصوصی و پشتیبانی</string>
+    <string name="feature_academy_body">درس‌های تصویری و متنی، از پایه تا ریسک</string>
+    <string name="feature_journal_body">هر معامله با دلیل ورود، خروج و نتیجه</string>
+    <string name="feature_paper_body">تمرین با قیمت واقعی، بدون پول واقعی</string>
+    <string name="feature_backtest_body">استراتژی را روی گذشته‌ی نماد اجرا کنید</string>
+    <string name="feature_toolkit_body">ریسک، حجم پوزیشن، پیپ، سود مرکب</string>
+    <string name="feature_studio_body">اندیکاتور، ابزار رسم، قالب و چندپنلی</string>
+    <string name="feature_alerts_body">پنج نوع شرط، بسامد، وب‌هوک و سابقه</string>
+    <string name="feature_watchlist_body">چند فهرست، برچسب رنگی، ستون دلخواه</string>
+    <string name="feature_news_body">خبر با زمان منبع، تأثیر و جهت</string>
+    <string name="feature_calendar_body">واقعی، پیش‌بینی و قبلی، وقتی منبع بدهد</string>
+    <string name="feature_heatmap_body">اندازه از ارزش بازار، رنگ از تغییر قیمت</string>
+    <string name="feature_portfolio_body">شارپ، سورتینو، افت سرمایه و گزارش</string>
+    <string name="feature_signals_body">ورود، حد ضرر و اهداف، با کارنامه</string>
+    <string name="feature_ai_body">سیگنال، تحلیل تصویر چارت و دستیار</string>
+    <string name="feature_vision_body">عکس چارت را بفرستید، خوانشش را بگیرید</string>
+    <string name="feature_activity_body">هشدار، اجرا و سیگنال در یک خط زمانی</string>
+    <string name="feature_membership_body">وضعیت اشتراک، تمدید و امکانات هر پلن</string>
+    <string name="feature_verify_body">مدارک را یک‌بار بفرستید تا حساب باز شود</string>
+    <string name="feature_notifications_body">هر دسته جدا، با ساعت سکوت</string>
+    <string name="feature_profile_body">پوسته، زبان، رنگ بازار، قفل اپ و حساب</string>
+    <string name="feature_script_body">اندیکاتور خودتان را بنویسید و ببینید</string>
 </resources>

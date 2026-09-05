@@ -31,12 +31,12 @@
     <string name="screen_launch_readiness">Launch &amp; safety</string>
 
     <string name="safety_title">Safety and launch</string>
-    <string name="safety_subtitle">Before using anything with consequences, see how Pro Chart handles signals, permissions, external providers and support.</string>
+    <string name="safety_subtitle">Before using anything with consequences, see how Pro Chart handles signals, permissions, outside brokers and exchanges, and support.</string>
     <string name="safety_how_title">How Pro Chart works</string>
     <string name="safety_how_body">Signal → analysis → entry / stop / targets → execute → monitor → close or target hit → result. Execution always requires an explicit confirmation path, and the app never invents a broker or exchange outcome.</string>
     <string name="safety_permissions_title">Permissions</string>
     <string name="safety_camera_body">Camera access is requested only when you choose Camera in chart analysis. Gallery selection stays available without it.</string>
-    <string name="safety_push_not_configured">Push is not configured for this build, so the app will not request notification permission.</string>
+    <string name="safety_push_not_configured">Notifications are not set up in this version, so the app will not ask for permission.</string>
     <string name="safety_push_not_required">This Android version does not require the runtime notification permission.</string>
     <string name="safety_push_available">Notifications can alert you to the signal and activity updates the server sends. Permission is optional and is requested only after you tap the button below.</string>
     <string name="safety_push_denied">Notification permission was denied. Pro Chart still works without it, and you can change this in Android settings at any time.</string>
@@ -44,7 +44,7 @@
     <string name="safety_enable_notifications">Enable notifications</string>
     <string name="safety_open_settings">Open notification settings</string>
     <string name="safety_risk_title">Trading and AI risk</string>
-    <string name="safety_risk_body">Trading and investment carry the risk of loss. Signals, analysis and AI output are not guaranteed outcomes. Execution depends on the external provider, account permissions, market conditions and server confirmation. Past or displayed results do not guarantee future performance. Review every order before confirming it.</string>
+    <string name="safety_risk_body">Trading and investment carry the risk of loss. Signals, analysis and AI output are not guaranteed outcomes. Execution depends on the broker or exchange, account permissions, market conditions and server confirmation. Past or displayed results do not guarantee future performance. Review every order before confirming it.</string>
     <string name="safety_provider_title">Broker &amp; exchange status</string>
     <string name="safety_provider_body">A connection saved on this phone is not the same as a live, verified one. Pro Chart enables actions that depend on a broker or exchange only once the server has confirmed the connection; a missing, stale or failed connection always stays visible.</string>
     <string name="safety_privacy_title">Privacy</string>
@@ -52,7 +52,7 @@
     <string name="safety_support_title">Support and feedback</string>
     <string name="safety_support_body">Send feedback through the Android share sheet using an app of your choice. The prepared message carries only app version and environment, and never a session token, broker credentials, a chart image or execution secrets.</string>
     <string name="safety_send_feedback">Send feedback</string>
-    <string name="safety_footer">Production connectivity, provider whitelisting and live execution readiness are separate operational gates and are not implied by this screen.</string>
+    <string name="safety_footer">Live connectivity, trusted brokers and exchanges, and readiness for real execution are checked separately; this screen does not promise them.</string>
     <string name="hub_feed_live">Live</string>
     <string name="hub_feed_connecting">Connecting</string>
     <string name="hub_feed_degraded">HTTP snapshot</string>
@@ -75,7 +75,7 @@
     <string name="profile_action_safety">Safety and version</string>
     <string name="profile_action_safety_note">Notifications, the crash report and the version</string>
     <string name="profile_action_delete">Delete account</string>
-    <string name="auth_google_not_registered">Google sign-in did not complete. Either this build\'s signing certificate is not registered in the Google console, or there is no Google account on this phone. Sign in with e-mail instead.</string>
+    <string name="auth_google_not_registered">Google sign-in did not complete. Either this version\'s signing certificate is not registered with Google, or there is no Google account on this phone. Sign in with e-mail instead.</string>
     <string name="tampered_title">This is not the real Pro Chart</string>
     <string name="tampered_body">This file has been modified and re-signed with a different key. We did not build it and we do not know what was changed inside it. Please delete it now and install Pro Chart only from its official channel.</string>
     <string name="tampered_fingerprint">This file\'s signing fingerprint</string>

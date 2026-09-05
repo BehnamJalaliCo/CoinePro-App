@@ -3,15 +3,15 @@
 <resources>
     <string name="tool_risk_title">ماشین‌حساب ریسک</string>
     <string name="tool_risk_eyebrow">کنترل ریسک</string>
-    <string name="tool_risk_body">درصد ریسک حساب را به بودجهٔ ریسکِ پولی ثابت تبدیل می‌کند.</string>
+    <string name="tool_risk_body">درصد ریسک حساب را به بودجه‌ی ریسکِ پولی ثابت تبدیل می‌کند.</string>
     <string name="tool_risk_formula">مقدار ریسک = سرمایه × درصد ریسک</string>
     <string name="tool_position_title">حجم پوزیشن / لات</string>
     <string name="tool_position_eyebrow">حجم‌دهی</string>
-    <string name="tool_position_body">حجم را از ریسک پولی، فاصلهٔ حد ضرر و ارزش پیپ هر لات استاندارد حساب می‌کند.</string>
+    <string name="tool_position_body">حجم را از ریسک پولی، فاصله‌ی حد ضرر و ارزش پیپ هر لات استاندارد حساب می‌کند.</string>
     <string name="tool_position_formula">لات = مقدار ریسک ÷ (پیپ حد ضرر × ارزش پیپ در لات)</string>
     <string name="tool_rr_title">ریسک به ریوارد</string>
-    <string name="tool_rr_eyebrow">هندسهٔ معامله</string>
-    <string name="tool_rr_body">هندسهٔ ورود، حد ضرر و هدف را پیش از مقایسهٔ پاداش با ریسک اعتبارسنجی می‌کند.</string>
+    <string name="tool_rr_eyebrow">چیدمان معامله</string>
+    <string name="tool_rr_body">پیش از مقایسه‌ی ریسک به ریوارد، ترتیب ورود، حد ضرر و هدف را بررسی می‌کند.</string>
     <string name="tool_rr_formula">نسبت = |هدف − ورود| ÷ |ورود − حد ضرر|</string>
     <string name="tool_drawdown_title">شبیه‌ساز افت سرمایه</string>
     <string name="tool_drawdown_eyebrow">تاب‌آوری سرمایه</string>
@@ -19,19 +19,19 @@
     <string name="tool_drawdown_formula">موجودی پایانی = شروع × (۱ − درصد زیان) ^ تعداد زیان</string>
     <string name="tool_profit_title">ماشین‌حساب سود</string>
     <string name="tool_profit_eyebrow">فارکس و فلزات</string>
-    <string name="tool_profit_body">سود و زیان جهت‌دار را از حرکت قیمت، لات و اندازهٔ قرارداد تخمین می‌زند.</string>
-    <string name="tool_profit_formula">سود و زیان = حرکت علامت‌دار قیمت × لات × اندازهٔ قرارداد</string>
+    <string name="tool_profit_body">سود و زیان جهت‌دار را از حرکت قیمت، لات و اندازه‌ی قرارداد تخمین می‌زند.</string>
+    <string name="tool_profit_formula">سود و زیان = حرکت علامت‌دار قیمت × لات × اندازه‌ی قرارداد</string>
     <string name="tool_pip_title">ماشین‌حساب پیپ</string>
-    <string name="tool_pip_eyebrow">فاصلهٔ قیمتی</string>
+    <string name="tool_pip_eyebrow">فاصله‌ی قیمتی</string>
     <string name="tool_pip_body">حرکت قیمت را با فرض‌های صریح پیپ به پیپ علامت‌دار و سود و زیان تبدیل می‌کند.</string>
-    <string name="tool_pip_formula">پیپ = حرکت علامت‌دار قیمت ÷ اندازهٔ پیپ</string>
+    <string name="tool_pip_formula">پیپ = حرکت علامت‌دار قیمت ÷ اندازه‌ی پیپ</string>
     <string name="tool_crypto_title">سود و زیان کریپتو</string>
     <string name="tool_crypto_eyebrow">جفت‌های USDT</string>
     <string name="tool_crypto_body">سود و زیان جهت‌دارِ اسپات را بعد از کارمزد ورود و خروج تخمین می‌زند.</string>
     <string name="tool_crypto_formula">خالص = ناخالص − کارمزد ورود − کارمزد خروج</string>
     <string name="tool_compound_title">ماشین‌حساب مرکب</string>
     <string name="tool_compound_eyebrow">رشد</string>
-    <string name="tool_compound_body">رشد مرکبِ دوره‌به‌دوره را مدل می‌کند، بدون پیش‌بینی بازده آیندهٔ بازار.</string>
+    <string name="tool_compound_body">رشد مرکبِ دوره‌به‌دوره را مدل می‌کند، بدون پیش‌بینی بازده آینده‌ی بازار.</string>
     <string name="tool_compound_formula">پایانی = اصل × (۱ + درصد بازده) ^ تعداد دوره</string>
     <string name="tools_risk_group">ریسک و حجم</string>
     <string name="tools_risk_group_body">کنترل مواجهه، پیش از هر مسیر اجرا.</string>
@@ -39,37 +39,32 @@
     <string name="tools_pnl_group_body">ریاضیِ قطعیِ محلی با فرض‌های صریح.</string>
     <string name="tools_eyebrow">جعبه‌ابزار تریدر</string>
     <string name="tools_headline">حساب‌وکتاب قبل از معامله.</string>
-    <string name="tools_note">ماشین‌حساب‌های محلی با فرمول قطعی. بدون ارسال سفارش، بدون وضعیت کارگزار و بدون دادهٔ بازارِ ساختگی.</string>
+    <string name="tools_note">ماشین‌حساب‌های محلی با فرمول قطعی. بدون ارسال سفارش، بدون وضعیت کارگزار و بدون داده‌ی بازارِ ساختگی.</string>
     <string name="tools_local">محلی</string>
     <string name="tools_quick_open">دسترسی سریع</string>
     <string name="tools_close">بستن</string>
     <string name="tools_open">باز کردن</string>
     <string name="tools_formula">فرمول</string>
-    <string name="tools_result">نتیجهٔ محاسبه</string>
+    <string name="tools_result">نتیجه‌ی محاسبه</string>
     <string name="tools_assumption">فرض · %1$s</string>
     <string name="tools_reset">پاک‌کردن ورودی‌ها</string>
-    <string name="tools_enter_all">همهٔ ورودی‌ها را وارد کن. نتیجه به‌صورت محلی و همزمان با تغییر مقادیر به‌روز می‌شود.</string>
+    <string name="tools_enter_all">همه‌ی ورودی‌ها را وارد کنید. نتیجه به‌صورت محلی و همزمان با تغییر مقادیر به‌روز می‌شود.</string>
     <string name="tools_connected">ابزارهای آنلاین</string>
-    <string name="tools_connected_body">این ابزارها با دادهٔ زندهٔ سرور کار می‌کنند؛ ماشین‌حساب‌ها روی خودِ گوشی.</string>
+    <string name="tools_connected_body">این ابزارها با داده‌ی زنده‌ی سرور کار می‌کنند؛ ماشین‌حساب‌ها روی خودِ گوشی.</string>
     <string name="tools_news_title">اخبار بازار</string>
-    <string name="tools_news_body">خبرِ ساختاریافته با زمان منبع، تأثیر و جهت.</string>
     <string name="tools_news_open">باز کردن اخبار</string>
     <string name="tools_calendar_title">تقویم اقتصادی</string>
-    <string name="tools_calendar_body">واقعی، پیش‌بینی و قبلی — فقط وقتی منبع بدهد.</string>
     <string name="tools_calendar_open">باز کردن تقویم</string>
     <string name="tools_heatmap_title">هیت‌مپ بازار</string>
-    <string name="tools_heatmap_body">اندازهٔ هر خانه از ارزش بازار، رنگش از تغییر قیمت.</string>
     <string name="tools_heatmap_open">باز کردن نقشه</string>
     <string name="tools_screener_title">اسکرینر</string>
-    <string name="tools_screener_body">فیلتر روی قیمت، حجم، نوسان و هر اندیکاتور.</string>
     <string name="tools_screener_open">باز کردن اسکرینر</string>
     <string name="tools_connections_title">اتصال‌ها</string>
-    <string name="tools_connections_body">اتصال حساب فقط در مسیر اجرای سیگنالِ تأییدشده استفاده می‌شود.</string>
     <string name="tools_direction">جهت</string>
     <string name="tools_long">خرید</string>
     <string name="tools_short">فروش</string>
     <string name="tools_input">ورودی</string>
-    <string name="tools_invalid">مقدارهای عددی معتبر وارد کن.</string>
+    <string name="tools_invalid">مقدارهای عددی معتبر وارد کنید.</string>
 
     <string name="tools_field_capital">سرمایه</string>
     <string name="tools_field_risk_percent">درصد ریسک</string>
@@ -80,8 +75,8 @@
     <string name="tools_field_stop">حد ضرر</string>
     <string name="tools_field_target">حد سود</string>
     <string name="tools_field_lots">لات</string>
-    <string name="tools_field_contract">اندازهٔ قرارداد</string>
-    <string name="tools_field_pip_size">اندازهٔ پیپ</string>
+    <string name="tools_field_contract">اندازه‌ی قرارداد</string>
+    <string name="tools_field_pip_size">اندازه‌ی پیپ</string>
     <string name="tools_field_quantity">مقدار</string>
     <string name="tools_field_fee">درصد کارمزد هر طرف</string>
     <string name="tools_field_principal">اصل سرمایه</string>
@@ -100,24 +95,22 @@
     <string name="tools_rule_max_hundred">%1$s نمی‌تواند از ۱۰۰٪ بیشتر باشد.</string>
     <string name="tools_rule_under_hundred">%1$s باید کمتر از ۱۰۰٪ باشد.</string>
     <string name="tools_rule_rate">%1$s باید متناهی و بزرگ‌تر از ۱۰۰٪- باشد.</string>
-    <string name="tools_rule_out_of_range">ورودی‌ها نتیجه‌ای بیرون از بازهٔ عددی پشتیبانی‌شده می‌دهند.</string>
+    <string name="tools_rule_out_of_range">ورودی‌ها نتیجه‌ای بیرون از بازه‌ی عددی پشتیبانی‌شده می‌دهند.</string>
     <string name="tools_rule_geometry_long">برای خرید، حد ضرر باید زیر ورود و حد سود بالای آن باشد.</string>
     <string name="tools_rule_geometry_short">برای فروش، حد ضرر باید بالای ورود و حد سود زیر آن باشد.</string>
     <string name="tools_portfolio_title">عملکرد حساب</string>
-    <string name="tools_portfolio_body">سود خالص، نرخ برد، بیشترین افت و هر معاملهٔ بسته‌شده — از دفترِ خودِ بروکر یا صرافی، نه از محاسبهٔ ما.</string>
     <string name="tools_portfolio_open">دیدن تاریخچه</string>
     <string name="tools_academy_title">آکادمی</string>
-    <string name="tools_academy_body">مسیر درس‌به‌درس از مقدماتی تا حرفه‌ای، با آزمون و نشان و روزشمار.</string>
     <string name="tools_academy_open">شروع یادگیری</string>
 
     <!-- Calculator field labels, units and results. These were hard-coded English
          literals in ToolsScreen.kt: every one of them, on the screen a Persian trader uses to
          size a position. -->
-    <string name="tools_f_account_capital">سرمایهٔ حساب</string>
+    <string name="tools_f_account_capital">سرمایه‌ی حساب</string>
     <string name="tools_f_account_currency">واحد پول حساب</string>
     <string name="tools_f_capital_after_full_risk">سرمایه پس از ریسک کامل</string>
     <string name="tools_f_consecutive_losses">زیان‌های پیاپی</string>
-    <string name="tools_f_contract_size">اندازهٔ قرارداد</string>
+    <string name="tools_f_contract_size">اندازه‌ی قرارداد</string>
     <string name="tools_f_crypto_pnl">سود و زیان رمزارز</string>
     <string name="tools_f_drawdown">افت سرمایه</string>
     <string name="tools_f_ending_balance">موجودی پایانی</string>
@@ -132,28 +125,28 @@
     <string name="tools_f_net_pnl">سود و زیان خالص</string>
     <string name="tools_f_net_change">تغییر خالص</string>
     <string name="tools_f_periods">تعداد دوره</string>
-    <string name="tools_f_pip_size">اندازهٔ پیپ</string>
+    <string name="tools_f_pip_size">اندازه‌ی پیپ</string>
     <string name="tools_f_pip_value_per_lot">ارزش پیپ در هر لات</string>
     <string name="tools_f_pip_value_per_standard_lot">ارزش پیپ در هر لات استاندارد</string>
     <string name="tools_f_position_size">حجم پوزیشن</string>
     <string name="tools_f_position">پوزیشن</string>
-    <string name="tools_f_principal">سرمایهٔ اولیه</string>
+    <string name="tools_f_principal">سرمایه‌ی اولیه</string>
     <string name="tools_f_quantity">مقدار</string>
     <string name="tools_f_r_r">ریسک به ریوارد</string>
     <string name="tools_f_recovery_required">جبران لازم</string>
     <string name="tools_f_return_per_period">بازده هر دوره</string>
     <string name="tools_f_return">بازده</string>
     <string name="tools_f_reward_risk">ریوارد به ریسک</string>
-    <string name="tools_f_reward_distance">فاصلهٔ ریوارد</string>
+    <string name="tools_f_reward_distance">فاصله‌ی ریوارد</string>
     <string name="tools_f_risk_amount">مقدار ریسک</string>
-    <string name="tools_f_risk_budget">بودجهٔ ریسک</string>
-    <string name="tools_f_risk_distance">فاصلهٔ ریسک</string>
+    <string name="tools_f_risk_budget">بودجه‌ی ریسک</string>
+    <string name="tools_f_risk_distance">فاصله‌ی ریسک</string>
     <string name="tools_f_risk">ریسک</string>
     <string name="tools_f_signed_pips">پیپ با علامت</string>
     <string name="tools_f_signed_price_move">تغییر قیمت با علامت</string>
     <string name="tools_f_starting_balance">موجودی آغازین</string>
     <string name="tools_f_stop_loss">حد ضرر</string>
-    <string name="tools_f_stop_loss_distance">فاصلهٔ حد ضرر</string>
+    <string name="tools_f_stop_loss_distance">فاصله‌ی حد ضرر</string>
     <string name="tools_f_take_profit">حد سود</string>
     <string name="tools_f_base_asset">دارایی پایه</string>
     <string name="tools_f_calculation">محاسبه</string>
@@ -170,19 +163,16 @@
     <string name="tools_f_units_lot">واحد / لات</string>
     <string name="tools_a_risk">واحد پول حساب فقط نمایشی است. این ماشین‌حساب نه موجودی کارگزار را می‌خواند و نه سفارشی می‌فرستد.</string>
     <string name="tools_a_position">ارزش پیپ باید با همان نماد، همان واحد پول حساب و یک لات استاندارد بخواند. اپ هیچ مقداری را برای نماد حدس نمی‌زند.</string>
-    <string name="tools_a_rr">هندسهٔ جهت بررسی می‌شود: خرید یعنی حد ضرر &lt; ورود &lt; حد سود، و فروش یعنی حد سود &lt; ورود &lt; حد ضرر.</string>
+    <string name="tools_a_rr">جهت بررسی می‌شود: خرید یعنی حد ضرر &lt; ورود &lt; حد سود، و فروش یعنی حد سود &lt; ورود &lt; حد ضرر.</string>
     <string name="tools_a_drawdown">هر زیان روی موجودی باقی‌مانده اعمال می‌شود. درصد جبران، سودی است که برای بازگشت به موجودی آغازین لازم است.</string>
-    <string name="tools_a_metal">اندازهٔ قرارداد را خودتان وارد می‌کنید، چون مشخصات XAUUSD و XAGUSD بین کارگزارها فرق دارد. کارمزد، اسپرد و سواپ حدس زده نمی‌شوند.</string>
+    <string name="tools_a_metal">اندازه‌ی قرارداد را خودتان وارد می‌کنید، چون مشخصات XAUUSD و XAGUSD بین کارگزارها فرق دارد. کارمزد، اسپرد و سواپ حدس زده نمی‌شوند.</string>
     <string name="tools_a_pip">اندازه و ارزش پیپ را خودتان می‌دهید. اپ مشخصات قرارداد هیچ کارگزاری را استنباط نمی‌کند.</string>
     <string name="tools_a_crypto">برای جفت‌های تتری. کارمزد روی ارزش اسمی ورود و خروج هر دو اعمال می‌شود. فاندینگ، لغزش و لیکوئید شدن اهرم مدل نشده‌اند.</string>
     <string name="tools_a_compound">این فقط مرکب‌سازی حسابی است. بازدهی که وارد می‌کنید یک فرض است، نه پیش‌بینی هوش مصنوعی و نه بازده مورد انتظار بازار.</string>
     <string name="tools_journal_title">ژورنال معاملاتی</string>
-    <string name="tools_journal_body">چه دیدی، چه حسی داشتی، دفعهٔ بعد چه می‌کنی. روی همین گوشی می‌ماند و جایی فرستاده نمی‌شود.</string>
     <string name="tools_journal_open">باز کردن ژورنال</string>
     <string name="tools_script_title">نمااسکریپت</string>
-    <string name="tools_script_body">اندیکاتور خودتان را بنویسید، ذخیره کنید و روی نمودار ببینید. ده اسکریپت آماده و یک دورهٔ کوتاه هم همراهش هست.</string>
     <string name="tools_script_open">نوشتن</string>
-    <string name="tools_paper_title">معاملهٔ آزمایشی</string>
-    <string name="tools_paper_body">با قیمت زنده، بدون پول. برای روزهایی که هنوز حسابی شارژ نکرده‌اید.</string>
+    <string name="tools_paper_title">معامله‌ی آزمایشی</string>
     <string name="tools_paper_open">شروع</string>
 </resources>

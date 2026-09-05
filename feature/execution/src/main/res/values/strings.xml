@@ -14,8 +14,8 @@
     <string name="execution_venue">محل اجرا: %1$s</string>
     <string name="execution_venue_label">محل اجرا</string>
     <string name="execution_no_connection">هیچ اتصالی تنظیم نشده است.</string>
-    <string name="execution_connection_confirmed">اتصال از سمت سرور تأیید شد.</string>
-    <string name="execution_lbank_pending">کلیدهای الْبانک ذخیره شده‌اند ولی تأیید صرافی نیامده است. درخواست می‌تواند در صف برود، اما تا تأیید صرافی معاملهٔ باز نیست.</string>
+    <string name="execution_connection_confirmed">اتصال را سرور تأیید کرد.</string>
+    <string name="execution_lbank_pending">کلیدهای الْبانک ذخیره شده‌اند ولی تأیید صرافی نیامده است. درخواست می‌تواند در صف برود، اما تا تأیید صرافی معامله‌ی باز نیست.</string>
     <string name="execution_connection_status">وضعیت اتصال: %1$s</string>
     <string name="execution_connection_pending">وضعیت اتصال هنوز مشخص نیست.</string>
     <string name="execution_open_connections">رفتن به اتصال‌ها</string>
@@ -26,7 +26,7 @@
     <string name="execution_confirm">تأیید و ارسال</string>
     <string name="execution_status_title">وضعیت اجرا</string>
     <string name="execution_product">محصول</string>
-    <string name="execution_provider_order">شمارهٔ سفارش</string>
+    <string name="execution_provider_order">شماره‌ی سفارش</string>
     <string name="execution_cancel_queued">لغو درخواستِ در صف</string>
     <string name="execution_request_close">درخواست بستن</string>
     <string name="execution_state_queued">در صف</string>
@@ -37,14 +37,14 @@
     <string name="execution_state_failed">ناموفق</string>
     <string name="execution_state_cancelled">لغو شد</string>
     <string name="execution_state_unknown">نامشخص</string>
-    <string name="execution_explain_queued">فقط در صف است. کارگزار یا صرافی هنوز معاملهٔ بازی را تأیید نکرده.</string>
+    <string name="execution_explain_queued">فقط در صف است. کارگزار یا صرافی هنوز معامله‌ی بازی را تأیید نکرده.</string>
     <string name="execution_explain_submitted">به ارائه‌دهنده ارسال شد؛ باز بودنش هنوز تأیید نشده است.</string>
     <string name="execution_explain_open">ارائه‌دهنده این اجرا را باز تأیید کرده است.</string>
     <string name="execution_explain_close_requested">درخواست بستن ثبت شد؛ منتظر تأیید ارائه‌دهنده.</string>
     <string name="execution_explain_closed">ارائه‌دهنده بسته‌شدن این اجرا را تأیید کرده است.</string>
     <string name="execution_explain_failed">ارائه‌دهنده اجرا را ناموفق گزارش کرد.</string>
     <string name="execution_explain_cancelled">درخواستِ در صف پیش از تأیید ارائه‌دهنده لغو شد.</string>
-    <string name="execution_explain_unknown">وضعیت ارائه‌دهنده نامشخص است؛ آپ باز یا بسته بودن را حدس نمی‌زند.</string>
+    <string name="execution_explain_unknown">وضعیت کارگزار نامشخص است؛ اپ باز یا بسته بودن را حدس نمی‌زند.</string>
     <string name="execution_rate_limited">سرور این درخواست را به‌دلیل سرعت زیاد نپذیرفت. هیچ سفارشی ارسال نشد و اپ خودش دوباره تلاش نمی‌کند. چند لحظه صبر کنید و دوباره بزنید.</string>
     <string name="execution_unsupported">این پلتفرم سفارش را از داخل اپ ثبت نمی‌کند.</string>
 </resources>

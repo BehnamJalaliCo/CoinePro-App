@@ -136,7 +136,7 @@ object MenuCatalogue {
         MenuEntry(
             id = "screener",
             titleRes = R.string.menu_screener_title,
-            bodyRes = R.string.menu_screener_body,
+            bodyRes = DesignR.string.feature_screener_body,
             icon = CoineProIcons.Filter,
             group = MenuGroup.MARKET,
         ),
@@ -207,7 +207,7 @@ object MenuCatalogue {
         MenuEntry(
             id = "connections",
             titleRes = R.string.menu_connections_title,
-            bodyRes = R.string.menu_connections_body,
+            bodyRes = DesignR.string.feature_connections_body,
             icon = CoineProIcons.Link,
             group = MenuGroup.TRADE,
             account = true,
@@ -217,7 +217,7 @@ object MenuCatalogue {
         MenuEntry(
             id = "copy-trade",
             titleRes = R.string.menu_copy_title,
-            bodyRes = R.string.menu_copy_body,
+            bodyRes = DesignR.string.feature_copy_body,
             icon = CoineProIcons.CopyTrade,
             group = MenuGroup.TRADE,
             platform = MarketPlatform.COINEPRO_FX,
@@ -226,7 +226,7 @@ object MenuCatalogue {
         MenuEntry(
             id = "terminal",
             titleRes = R.string.menu_terminal_title,
-            bodyRes = R.string.menu_terminal_body,
+            bodyRes = DesignR.string.feature_terminal_body,
             icon = CoineProIcons.Terminal,
             group = MenuGroup.TRADE,
             account = true,
@@ -273,7 +273,7 @@ object MenuCatalogue {
         MenuEntry(
             id = "ai",
             titleRes = R.string.menu_ai_title,
-            bodyRes = R.string.menu_ai_body,
+            bodyRes = DesignR.string.feature_setup_body,
             icon = CoineProIcons.Ai,
             group = MenuGroup.ANALYSIS,
             account = true,
@@ -288,7 +288,7 @@ object MenuCatalogue {
         MenuEntry(
             id = "ai-assistant",
             titleRes = R.string.menu_assistant_title,
-            bodyRes = R.string.menu_assistant_body,
+            bodyRes = DesignR.string.feature_assistant_body,
             icon = CoineProIcons.Assistant,
             group = MenuGroup.ANALYSIS,
             account = true,
@@ -314,7 +314,7 @@ object MenuCatalogue {
         MenuEntry(
             id = "safety",
             titleRes = R.string.menu_safety_title,
-            bodyRes = R.string.menu_safety_body,
+            bodyRes = DesignR.string.feature_safety_body,
             icon = CoineProIcons.Secure,
             group = MenuGroup.LEARN,
         ),

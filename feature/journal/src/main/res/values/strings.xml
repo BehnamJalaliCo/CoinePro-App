@@ -10,7 +10,7 @@
     <string name="journal_emotion">حال‌وهوا</string>
     <string name="journal_tags">برچسب</string>
     <string name="journal_note">چه دیدی؟</string>
-    <string name="journal_lesson">دفعهٔ بعد چه می‌کنی؟</string>
+    <string name="journal_lesson">دفعه‌ی بعد چه می‌کنی؟</string>
     <string name="journal_save">ثبت</string>
     <string name="journal_delete">حذف</string>
     <string name="journal_export">خروجی CSV از همین فهرست</string>
@@ -37,7 +37,7 @@
     <string name="journal_clear_filter">برداشتن فیلتر</string>
 
     <string name="journal_empty">هنوز چیزی ثبت نکرده‌اید.</string>
-    <string name="journal_empty_hint">نماد را بنویسید و یک جمله دربارهٔ آنچه دیدید؛ بقیه اختیاری است.</string>
+    <string name="journal_empty_hint">نماد را بنویسید و یک جمله درباره‌ی آنچه دیدید؛ بقیه اختیاری است.</string>
     <string name="journal_no_match">هیچ ثبتی با این فیلتر نیست.</string>
     <string name="journal_no_match_hint">برچسب یا حالت دیگری بزنید، یا فیلتر را بردارید.</string>
 

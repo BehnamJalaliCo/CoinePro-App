@@ -11,11 +11,11 @@
     <string name="detail_direction_neutral">خنثی</string>
     <string name="detail_current_price">قیمت لحظه‌ای</string>
     <string name="detail_last_price">آخرین قیمت شناخته‌شده</string>
-    <string name="detail_stale_note">قیمت لحظه‌ای کهنه است؛ هیچ ادعایی دربارهٔ زنده بودنش نمی‌شود.</string>
+    <string name="detail_stale_note">قیمت لحظه‌ای قدیمی است؛ هیچ ادعایی درباره‌ی زنده بودنش نمی‌شود.</string>
     <string name="detail_setup">ستاپ معامله</string>
     <string name="detail_entry">ورود</string>
-    <string name="detail_zone_low">کف محدودهٔ ورود</string>
-    <string name="detail_zone_high">سقف محدودهٔ ورود</string>
+    <string name="detail_zone_low">کف محدوده‌ی ورود</string>
+    <string name="detail_zone_high">سقف محدوده‌ی ورود</string>
     <string name="detail_stop">حد ضرر</string>
     <string name="detail_target">هدف %1$d</string>
     <string name="detail_hit">خورد</string>
@@ -29,10 +29,10 @@
     <string name="detail_pnl">سود و زیان</string>
     <string name="detail_source">منبع: %1$s</string>
     <string name="detail_execute">اجرای این سیگنال</string>
-    <string name="detail_execute_note">اجرا دقیقاً از همین سیگنالِ سرور استفاده می‌کند؛ فرم معاملهٔ دستی وجود ندارد.</string>
+    <string name="detail_execute_note">اجرا دقیقاً از همین سیگنالِ سرور استفاده می‌کند؛ فرم معامله‌ی دستی وجود ندارد.</string>
     <string name="detail_copy_note">این سیگنال از راه کپی‌ترید روی حساب متاتریدر شما باز می‌شود، نه از این صفحه.</string>
     <string name="detail_open_copy">رفتن به کپی‌ترید</string>
-    <string name="detail_high_impact_title">بازهٔ خبر پرتأثیر</string>
+    <string name="detail_high_impact_title">بازه‌ی خبر پرتأثیر</string>
     <string name="detail_high_impact_body">رویدادهای تقویم اقتصادی نزدیک این سیگنال فعال. این هشدار ریسک است، نه پیش‌بینی.</string>
     <string name="detail_eyebrow">سیگنال</string>
     <string name="detail_reading_direction">جهت</string>

@@ -7,7 +7,7 @@
     <!-- The three doors. One word each: a tile a reader has to read is a tile that stopped a scan. -->
     <string name="explore_door_news">اخبار</string>
     <string name="explore_door_calendar">تقویم</string>
-    <string name="explore_door_heatmap">نقشهٔ بازار</string>
+    <string name="explore_door_heatmap">نقشه‌ی بازار</string>
 
     <!-- The category strip. Only the chips with markets behind them are drawn, so several of these
          never appear on a given platform — «فارکس» is not shown to a کریپتو reader. -->
@@ -24,7 +24,7 @@
     <string name="explore_retry">تلاش دوباره</string>
 
     <string name="explore_stories">سرخط خبرها</string>
-    <string name="explore_stories_all">همهٔ اخبار</string>
+    <string name="explore_stories_all">همه‌ی اخبار</string>
     <string name="explore_stories_empty">هنوز خبری منتشر نشده است.</string>
-    <string name="explore_all_markets">همهٔ بازارها</string>
+    <string name="explore_all_markets">همه‌ی بازارها</string>
 </resources>

@@ -44,6 +44,7 @@ import androidx.annotation.StringRes
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProCard
+import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.pageAccent
 import com.coinepro.core.designsystem.CoineProPrimaryButton
@@ -674,7 +675,7 @@ private fun OperationalTools(
         onOpenPaperTrade?.let {
             OperationalCard(
                 title = stringResource(R.string.tools_paper_title),
-                description = stringResource(R.string.tools_paper_body),
+                description = stringResource(DesignR.string.feature_paper_body),
                 button = stringResource(R.string.tools_paper_open),
                 onClick = it,
             )
@@ -682,7 +683,7 @@ private fun OperationalTools(
         onOpenScript?.let {
             OperationalCard(
                 title = stringResource(R.string.tools_script_title),
-                description = stringResource(R.string.tools_script_body),
+                description = stringResource(DesignR.string.feature_script_body),
                 button = stringResource(R.string.tools_script_open),
                 onClick = it,
             )
@@ -690,25 +691,25 @@ private fun OperationalTools(
         onOpenJournal?.let {
             OperationalCard(
                 title = stringResource(R.string.tools_journal_title),
-                description = stringResource(R.string.tools_journal_body),
+                description = stringResource(DesignR.string.feature_journal_body),
                 button = stringResource(R.string.tools_journal_open),
                 onClick = it,
             )
         }
         onOpenNews?.let {
-            OperationalCard(stringResource(R.string.tools_news_title), stringResource(R.string.tools_news_body), stringResource(R.string.tools_news_open), it)
+            OperationalCard(stringResource(R.string.tools_news_title), stringResource(DesignR.string.feature_news_body), stringResource(R.string.tools_news_open), it)
         }
         onOpenScreener?.let {
-            OperationalCard(stringResource(R.string.tools_screener_title), stringResource(R.string.tools_screener_body), stringResource(R.string.tools_screener_open), it)
+            OperationalCard(stringResource(R.string.tools_screener_title), stringResource(DesignR.string.feature_screener_body), stringResource(R.string.tools_screener_open), it)
         }
         onOpenHeatmap?.let {
-            OperationalCard(stringResource(R.string.tools_heatmap_title), stringResource(R.string.tools_heatmap_body), stringResource(R.string.tools_heatmap_open), it)
+            OperationalCard(stringResource(R.string.tools_heatmap_title), stringResource(DesignR.string.feature_heatmap_body), stringResource(R.string.tools_heatmap_open), it)
         }
         onOpenCalendar?.let {
-            OperationalCard(stringResource(R.string.tools_calendar_title), stringResource(R.string.tools_calendar_body), stringResource(R.string.tools_calendar_open), it)
+            OperationalCard(stringResource(R.string.tools_calendar_title), stringResource(DesignR.string.feature_calendar_body), stringResource(R.string.tools_calendar_open), it)
         }
         onOpenConnections?.let {
-            OperationalCard(stringResource(R.string.tools_connections_title), stringResource(R.string.tools_connections_body), "MT5 & LBank", it)
+            OperationalCard(stringResource(R.string.tools_connections_title), stringResource(DesignR.string.feature_connections_body), "MT5 & LBank", it)
         }
         // Last, because it is the only one of the four that needs an account already linked. A
         // card offering a history above the card that connects the account it comes from reads as
@@ -716,7 +717,7 @@ private fun OperationalTools(
         onOpenPortfolio?.let {
             OperationalCard(
                 title = stringResource(R.string.tools_portfolio_title),
-                description = stringResource(R.string.tools_portfolio_body),
+                description = stringResource(DesignR.string.feature_portfolio_body),
                 button = stringResource(R.string.tools_portfolio_open),
                 onClick = it,
             )
@@ -724,7 +725,7 @@ private fun OperationalTools(
         onOpenAcademy?.let {
             OperationalCard(
                 title = stringResource(R.string.tools_academy_title),
-                description = stringResource(R.string.tools_academy_body),
+                description = stringResource(DesignR.string.feature_academy_body),
                 button = stringResource(R.string.tools_academy_open),
                 onClick = it,
             )

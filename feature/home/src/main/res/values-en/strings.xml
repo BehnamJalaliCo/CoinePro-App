@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_agent_name">Rasad</string>
+    <string name="home_agent_subtitle">your market briefing</string>
     <string name="home_agent_working">Working…</string>
     <string name="home_agent_working_body">Reading the market and your holdings. A briefing follows shortly.</string>
     <string name="home_agent_resting_body">No briefing for this window yet. Generate a signal, or send a chart screenshot for analysis.</string>
@@ -45,7 +46,7 @@
     <string name="home_cache_stored">Stored %1$s · values are not live</string>
     <string name="home_cache_unknown">Stored market snapshot · age unknown</string>
 
-    <string name="home_note_refresh_failed">Network refresh failed. The stored snapshot stays visible and remains marked stale.</string>
+    <string name="home_note_refresh_failed">Network refresh failed. The last saved data stays visible and is marked stale.</string>
     <string name="home_note_stream_recovering">Realtime stream is recovering. The latest network snapshot remains visible.</string>
 
     <string name="home_menu_account">Account</string>

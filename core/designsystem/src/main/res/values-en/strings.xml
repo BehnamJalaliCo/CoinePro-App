@@ -111,4 +111,35 @@
     <string name="symbol_field_no_match">No market matches that</string>
     <string name="sheet_close">Close</string>
     <string name="field_clear">Clear</string>
+
+    <!-- One description per feature, shown under its row in the menu, the toolkit and search.
+         Forty Persian characters or six English words: the row shows one line and no more. -->
+    <string name="feature_screener_body">Filter by price, volume, volatility, indicators</string>
+    <string name="feature_connections_body">Broker or exchange, for approved signals</string>
+    <string name="feature_copy_body">Approved signals run on your account</string>
+    <string name="feature_terminal_body">The full desktop version, in-app</string>
+    <string name="feature_setup_body">Entry, stop, target from the chart</string>
+    <string name="feature_assistant_body">Ask about markets, symbols, this app</string>
+    <string name="feature_safety_body">Crash report, version, privacy, support</string>
+    <string name="feature_academy_body">Lessons from the basics to risk</string>
+    <string name="feature_journal_body">Every trade, its reason and result</string>
+    <string name="feature_paper_body">Real prices, no real money</string>
+    <string name="feature_backtest_body">Run a strategy over the history</string>
+    <string name="feature_toolkit_body">Risk, position size, pips, compounding</string>
+    <string name="feature_studio_body">Indicators, drawing tools, templates, layouts</string>
+    <string name="feature_alerts_body">Five conditions, frequency, webhooks, history</string>
+    <string name="feature_watchlist_body">Several lists, colour flags, columns</string>
+    <string name="feature_news_body">Stories with time, impact and direction</string>
+    <string name="feature_calendar_body">Actual, forecast and previous</string>
+    <string name="feature_heatmap_body">Size from cap, colour from move</string>
+    <string name="feature_portfolio_body">Sharpe, Sortino, drawdown and report</string>
+    <string name="feature_signals_body">Entry, stop, targets, with track record</string>
+    <string name="feature_ai_body">Signals, chart image analysis, assistant</string>
+    <string name="feature_vision_body">Chart image in, reading out</string>
+    <string name="feature_activity_body">Alerts, executions and signals, one timeline</string>
+    <string name="feature_membership_body">Your plan, renewal, what each opens</string>
+    <string name="feature_verify_body">Send documents once, unlock the account</string>
+    <string name="feature_notifications_body">Per category, with quiet hours</string>
+    <string name="feature_profile_body">Theme, language, colours, app lock, account</string>
+    <string name="feature_script_body">Write an indicator, see it charted</string>
 </resources>

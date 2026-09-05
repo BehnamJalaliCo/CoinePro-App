@@ -23,7 +23,7 @@
     <string name="activity_filtered_empty_body">Clear or change the filters. Existing performance totals are not reused for an empty filtered view.</string>
     <string name="activity_clear_filters">Clear filters</string>
     <string name="activity_history_title">Signal history</string>
-    <string name="activity_history_subtitle">Closed signals with explicit result evidence. Tap a record to inspect the persisted signal.</string>
+    <string name="activity_history_subtitle">Closed signals with a clear result. Tap a record to see the saved signal.</string>
     <string name="activity_ledger_title">Execution ledger</string>
     <string name="activity_ledger_subtitle">The execution lifecycle as the server reports it. No P&amp;L or broker state is inferred.</string>
     <string name="activity_executions_loading">Loading executed signals…</string>

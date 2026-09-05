@@ -58,7 +58,7 @@
     <!-- HTTP 200 with rows in the body, none of them in a shape this build can read. Counted rather
          than described, because the count is the whole diagnosis. -->
     <string name="community_unreadable">سرور %1$s پست فرستاد و هیچ‌کدام به شکلی نبود که این نسخه بتواند بخواند.</string>
-    <string name="community_unreadable_hint">این قطعی نیست، اختلافِ قالب است. از صفحهٔ تشخیص خروجی بگیرید و بفرستید.</string>
+    <string name="community_unreadable_hint">این قطعی نیست، اختلافِ قالب است. از صفحه‌ی تشخیص خروجی بگیرید و بفرستید.</string>
 
     <string name="community_compose_label">چه چیزی در بازار دیدید؟</string>
     <string name="community_compose_hint">دست‌کم %1$s نویسه</string>
@@ -83,7 +83,7 @@
     <string name="community_search">جست‌وجو در انجمن</string>
     <string name="community_search_empty">نوشته‌ای با این عبارت پیدا نشد.</string>
     <string name="community_leaderboard">جدول برترین‌ها</string>
-    <string name="community_leaderboard_rank">رتبهٔ شما: %1$s از %2$s</string>
+    <string name="community_leaderboard_rank">رتبه‌ی شما: %1$s از %2$s</string>
     <string name="community_leaderboard_empty">هنوز کسی امتیازی نگرفته است.</string>
     <string name="community_leaderboard_points">%1$s امتیاز</string>
     <string name="community_leaderboard_posts">%1$s نوشته</string>

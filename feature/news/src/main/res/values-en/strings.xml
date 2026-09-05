@@ -13,7 +13,7 @@
     <string name="news_refreshing">Refreshing source timestamps…</string>
     <string name="news_newest">Newest story in this list: %1$s</string>
     <string name="news_refresh_failed">Last refresh failed — newest story in this list: %1$s</string>
-    <string name="news_none_readable">The server sent %1$s stories and none arrived in a shape this build can read.</string>
+    <string name="news_none_readable">The server sent %1$s stories and none arrived in a shape this version can read.</string>
     <string name="news_none_readable_hint">This is not an outage, it is a format mismatch. Take a diagnostics export and send it: the server\'s own field names and date format are recorded in it.</string>
     <string name="news_partly_readable">%1$s of the %2$s stories the server sent could be read.</string>
     <string name="news_timestamp_note">Publication times are normalised from the server ISO timestamps.</string>

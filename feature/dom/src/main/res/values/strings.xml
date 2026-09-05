@@ -17,16 +17,16 @@
     <string name="dom_updated">زمان دفتر %1$s</string>
     <!-- An upper bound, not a measurement: this venue publishes no time, so the only honest figure
          is the age the relay's cache can guarantee the book is under. -->
-    <string name="dom_max_age">این دفتر حداکثر %1$s ثانیه کهنه است، به‌اضافهٔ زمان رفت‌وبرگشت شبکه.</string>
+    <string name="dom_max_age">این دفتر حداکثر %1$s ثانیه قدیمی است، به‌اضافه‌ی زمان رفت‌وبرگشت شبکه.</string>
     <string name="dom_loading">در حال دریافت دفتر سفارش…</string>
 
     <!-- The honest answers. None of them is a spinner, and none of the five below has a retry. -->
     <string name="dom_unavailable_feed">این فید عمق بازار منتشر نمی‌کند.</string>
     <string name="dom_unavailable_feed_hint">کارگزارِ متاتریدر ۵ سطح دوم را منتشر نکرده است. تا وقتی منتشر نشود، دفتر سفارشی برای این بازار وجود ندارد.</string>
-    <string name="dom_unavailable_endpoint">دفتر سفارش این بازار هنوز سرو نمی‌شود.</string>
+    <string name="dom_unavailable_endpoint">دفتر سفارش این بازار هنوز در دسترس نیست.</string>
     <string name="dom_unavailable_endpoint_hint">سرور هنوز دفتر سفارش را ارائه نمی‌کند. با به‌روزرسانی سرور، این صفحه بدون تغییر در اپ کار می‌کند.</string>
-    <string name="dom_unavailable_symbol">این بازار روی این پلتفرم سرو نمی‌شود.</string>
-    <string name="dom_unavailable_symbol_hint">نمادی که خواسته شد بیرون از فهرست بازارهای این پلتفرم است. تلاش دوباره جواب نمی‌دهد؛ از فهرست بازارها یک نماد دیگر باز کن.</string>
+    <string name="dom_unavailable_symbol">این بازار روی این پلتفرم دفتر سفارش ندارد.</string>
+    <string name="dom_unavailable_symbol_hint">نمادی که خواسته شد بیرون از فهرست بازارهای این پلتفرم است. تلاش دوباره جواب نمی‌دهد؛ از فهرست بازارها نماد دیگری باز کنید.</string>
     <string name="dom_unavailable_delisted">این بازار از صرافی حذف شده است.</string>
     <string name="dom_unavailable_delisted_hint">صرافی این قرارداد را دلیست کرده، پس دیگر دفتر سفارشی برایش وجود ندارد.</string>
     <!-- Not a connection problem, which is what this screen used to say about it. The depth route
@@ -38,11 +38,11 @@
 
     <!-- Real failures. Each keeps its retry, and each says whose problem it is. -->
     <string name="dom_failed">دفتر سفارش در دسترس نیست.</string>
-    <string name="dom_failed_hint">اتصال را بررسی کن و دوباره بگیر.</string>
+    <string name="dom_failed_hint">اتصال را بررسی کنید و دوباره بگیرید.</string>
     <string name="dom_outage_exchange">صرافی در این لحظه پاسخ نمی‌دهد.</string>
-    <string name="dom_outage_exchange_hint">اتصال تو و سرور هر دو سالم‌اند؛ صرافی است که در دسترس نیست. کمی بعد دوباره بگیر.</string>
-    <string name="dom_outage_relay">سرور هنوز برای بازپخش دفتر آماده نیست.</string>
-    <string name="dom_outage_relay_hint">مشکل از سمت سرور است و کاری از دست شما برنمی‌آید. کمی بعد دوباره امتحان کنید.</string>
+    <string name="dom_outage_exchange_hint">اتصال شما و سرور هر دو سالم‌اند؛ صرافی است که در دسترس نیست. کمی بعد دوباره امتحان کنید.</string>
+    <string name="dom_outage_relay">سرور هنوز برای ارسال دفتر آماده نیست.</string>
+    <string name="dom_outage_relay_hint">مشکل از سرور است و کاری از دست شما برنمی‌آید. کمی بعد دوباره امتحان کنید.</string>
     <string name="dom_retry">تلاش دوباره</string>
 
     <!-- A successful call whose answer is an empty queue. Not a failure and not a closed market. -->
@@ -69,7 +69,7 @@
     <!-- The depth curve under the ladder: the same running totals, drawn over the whole loaded book
          instead of over the eight rows on screen. -->
     <string name="dom_curve_title">منحنی عمق</string>
-    <string name="dom_curve_description">منحنی عمق بازار. بیشترین حجم تجمعی %1$s است، در بازهٔ قیمتی %2$s تا %3$s.</string>
+    <string name="dom_curve_description">منحنی عمق بازار. بیشترین حجم تجمعی %1$s است، در بازه‌ی قیمتی %2$s تا %3$s.</string>
 
     <string name="dom_pick_price">ساختن هشدار روی قیمت %1$s</string>
     <string name="dom_pick_price_orders">ساختن هشدار روی قیمت %1$s، %2$s سفارش در این سطح</string>

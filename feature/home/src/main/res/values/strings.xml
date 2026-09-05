@@ -2,8 +2,9 @@
 <!-- Default language: Persian. Numbers stay Latin so prices match broker and exchange terminals. -->
 <resources>
     <string name="home_agent_name">رَصد</string>
+    <string name="home_agent_subtitle">گزارش بازار تو</string>
     <string name="home_agent_working">در حال بررسی…</string>
-    <string name="home_agent_working_body">دارم بازار و دارایی‌هایت را می‌خوانم. تا چند لحظهٔ دیگر گزارش می‌دهم.</string>
+    <string name="home_agent_working_body">دارم بازار و دارایی‌هایت را می‌خوانم. تا چند لحظه‌ی دیگر گزارش می‌دهم.</string>
     <string name="home_agent_resting_body">هنوز گزارشی برای این بازه ندارم. یک سیگنال بساز یا تصویر چارتت را بفرست تا تحلیل کنم.</string>
     <string name="home_agent_unavailable">گزارش لحظه‌ای در دسترس نیست.</string>
     <string name="home_greeting">سلام %1$s 👋</string>
@@ -12,7 +13,7 @@
     <string name="home_action_chart">چارت</string>
     <string name="home_action_market">بازار</string>
 
-    <string name="home_holdings_title">دارایی‌های تو</string>
+    <string name="home_holdings_title">دارایی‌های شما</string>
 
     <string name="home_portfolio_total">دارایی کل</string>
     <!-- Both values arrive already isolated as left-to-right runs. -->
@@ -40,13 +41,13 @@
     <string name="home_status_idle">جریان بازار بی‌کار</string>
     <string name="home_status_degraded">اتصال لحظه‌ای در حال بازیابی · قیمت‌ها هر چند ثانیه تازه می‌شوند</string>
     <string name="home_status_offline">داده‌های بازار آفلاین است</string>
-    <string name="home_status_cached">آخرین دادهٔ ذخیره‌شده · آفلاین</string>
-    <string name="home_status_cached_refreshing">آخرین دادهٔ ذخیره‌شده · در حال به‌روزرسانی</string>
+    <string name="home_status_cached">آخرین داده‌ی ذخیره‌شده · آفلاین</string>
+    <string name="home_status_cached_refreshing">آخرین داده‌ی ذخیره‌شده · در حال به‌روزرسانی</string>
 
     <string name="home_cache_stored">ذخیره‌شده در %1$s · مقادیر لحظه‌ای نیستند</string>
-    <string name="home_cache_unknown">تصویر ذخیره‌شدهٔ بازار · زمان نامشخص</string>
+    <string name="home_cache_unknown">تصویر ذخیره‌شده‌ی بازار · زمان نامشخص</string>
 
-    <string name="home_note_refresh_failed">به‌روزرسانی شبکه ناموفق بود. تصویر ذخیره‌شده باقی می‌ماند و کهنه علامت خورده است.</string>
+    <string name="home_note_refresh_failed">به‌روزرسانی شبکه ناموفق بود. آخرین داده‌ی ذخیره‌شده می‌ماند و «قدیمی» علامت خورده است.</string>
     <string name="home_note_stream_recovering">جریان لحظه‌ای در حال بازیابی است. آخرین تصویر شبکه باقی می‌ماند.</string>
 
     <string name="home_menu_account">حساب کاربری</string>

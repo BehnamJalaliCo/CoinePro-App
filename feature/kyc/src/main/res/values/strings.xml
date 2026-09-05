@@ -22,7 +22,7 @@
     <string name="kyc_licence_number">شماره‌ی گواهی‌نامه</string>
     <string name="kyc_id_number">شماره‌ی مدرک</string>
     <string name="kyc_birth_date">تاریخ تولد</string>
-    <string name="kyc_phone">شمارهٔ موبایل</string>
+    <string name="kyc_phone">شماره‌ی موبایل</string>
 
     <string name="kyc_submit">ارسال برای بررسی</string>
     <string name="kyc_sending">در حال ارسال…</string>

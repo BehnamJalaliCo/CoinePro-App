@@ -1,6 +1,6 @@
 package com.coinepro.core.chart
 
-import java.util.Locale
+import com.coinepro.core.common.NumberStyle
 import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.max
@@ -481,14 +481,13 @@ data class ChartViewport(
     /**
      * A market figure as a string, at the axis' precision.
      *
-     * `Locale.US` is not decoration and this is the second time it has had to be written down. The
-     * app's default locale is Persian, `String.format` follows the default, and a price rendered
-     * through it comes out in Persian digits — which is correct for a count in prose and wrong on
-     * an axis, where the reader is comparing it against an order book and a wallet balance that are
-     * both in Latin digits.
+     * Through [NumberStyle], which is what keeps the digits Latin: the app's default locale is
+     * Persian, and a price rendered through the default locale comes out in Persian digits — right
+     * for a count in prose and wrong on an axis, where the reader is comparing it against an order
+     * book and a wallet balance that are both in Latin digits.
      */
     fun formatPrice(value: Double): String =
-        String.format(Locale.US, "%.${effectiveDecimals}f", value)
+        NumberStyle.fixed(value, effectiveDecimals)
 
     // ---------------------------------------------------------------- chart space to screen
 

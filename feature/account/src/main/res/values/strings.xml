@@ -6,9 +6,9 @@
     <string name="delete_account_removed_title">چه چیزی حذف می‌شود</string>
     <string name="delete_account_removed_identity">حساب، ایمیل، نام و اطلاعات احراز هویتی که خودتان وارد کرده‌اید</string>
     <string name="delete_account_removed_academy">حساب آکادمی و پیشرفت درس‌ها، اگر با همین ایمیل ساخته شده باشد</string>
-    <string name="delete_account_removed_exchange">شناسهٔ کاربری صرافی (UID) و کلیدهای API صرافی</string>
+    <string name="delete_account_removed_exchange">شناسه‌ی کاربری صرافی (UID) و کلیدهای API صرافی</string>
     <string name="delete_account_removed_notifications">تنظیمات و توکن اعلان</string>
-    <string name="delete_account_removed_history">تاریخچهٔ سیگنال‌های ذخیره‌شده و هشدارهای قیمت</string>
+    <string name="delete_account_removed_history">تاریخچه‌ی سیگنال‌های ذخیره‌شده و هشدارهای قیمت</string>
 
     <string name="delete_account_kept_title">چه چیزی نگه داشته می‌شود</string>
     <string name="delete_account_kept_trades">سوابق معاملاتی، تا جایی که قانون یا قرارداد صرافی الزام می‌کند</string>
@@ -19,14 +19,14 @@
     <string name="delete_account_not_removed_exchange">حساب شما نزد صرافی. آن حساب مال خودتان است؛ پرو چارت نه آن را ساخته و نه می‌تواند ببندد.</string>
 
     <string name="delete_account_confirm_word">حذف</string>
-    <string name="delete_account_type_to_confirm">برای تأیید، واژهٔ «%1$s» را تایپ کنید.</string>
+    <string name="delete_account_type_to_confirm">برای تأیید، واژه‌ی «%1$s» را تایپ کنید.</string>
     <string name="delete_account_action">حذف حساب کاربری</string>
     <string name="delete_account_refused">حساب حذف نشد. دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.</string>
     <string name="delete_account_unsupported">این سرویس هنوز حذف حساب از داخل اپ را ارائه نمی‌دهد. راه زیر همین امروز کار می‌کند.</string>
 
     <string name="delete_account_web_title">حذف از بیرون اپ</string>
-    <string name="delete_account_web_body">صفحهٔ حذف حساب، مراحل و مهلت‌ها را می‌گوید و برای استفاده از آن لازم نیست وارد حساب شوید.</string>
-    <string name="delete_account_web_action">باز کردن صفحهٔ حذف حساب</string>
+    <string name="delete_account_web_body">صفحه‌ی حذف حساب، مراحل و مهلت‌ها را می‌گوید و برای استفاده از آن لازم نیست وارد حساب شوید.</string>
+    <string name="delete_account_web_action">باز کردن صفحه‌ی حذف حساب</string>
     <string name="delete_account_web_copy">کپی نشانی صفحه</string>
     <string name="delete_account_web_copied">نشانی صفحه کپی شد. می‌توانی آن را در مرورگر رایانه یا هر دستگاه دیگری باز کنی.</string>
 
@@ -35,8 +35,8 @@
 
     <!-- What a server-side deletion cannot reach, because it was never on a server. -->
     <string name="delete_account_local_title">چه چیزی روی این گوشی می‌ماند</string>
-    <string name="delete_account_local_journal">دفترچهٔ معاملات و معامله‌های آزمایشی شما</string>
-    <string name="delete_account_local_workspace">فهرست‌های دیده‌بانی، چیدمان‌های نمودار، قالب‌ها و ترسیم‌های روی چارت</string>
+    <string name="delete_account_local_journal">دفترچه‌ی معاملات و معامله‌های آزمایشی شما</string>
+    <string name="delete_account_local_workspace">فهرست‌های دیده‌بان، چیدمان‌های چارت، قالب‌ها و ترسیم‌های روی چارت</string>
     <string name="delete_account_local_alerts">هشدارهای قیمتی که روی خودِ همین گوشی اجرا می‌شوند</string>
-    <string name="delete_account_local_note">این‌ها هیچ‌وقت روی سرور نبوده‌اند، پس حذف حساب آن‌ها را برنمی‌دارد. نام، تصویر و توضیح شما با خروجی که بلافاصله بعد از حذف انجام می‌شود پاک می‌شود. برای پاک‌کردن بقیه، برنامه را حذف کنید یا از تنظیمات اندروید دادهٔ برنامه را پاک کنید.</string>
+    <string name="delete_account_local_note">این‌ها هیچ‌وقت روی سرور نبوده‌اند، پس حذف حساب آن‌ها را برنمی‌دارد. نام، تصویر و توضیح شما با خروجی که بلافاصله بعد از حذف انجام می‌شود پاک می‌شود. برای پاک‌کردن بقیه، برنامه را حذف کنید یا از تنظیمات اندروید داده‌ی برنامه را پاک کنید.</string>
 </resources>

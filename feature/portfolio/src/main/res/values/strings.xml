@@ -24,7 +24,7 @@
     <string name="portfolio_recent">معاملات بسته‌شده</string>
     <string name="portfolio_load_more">قدیمی‌تر</string>
 
-    <string name="portfolio_empty">هنوز معاملهٔ بسته‌شده‌ای ندارید.</string>
+    <string name="portfolio_empty">هنوز معامله‌ی بسته‌شده‌ای ندارید.</string>
     <string name="portfolio_error_network">تاریخچه خوانده نشد.</string>
     <string name="portfolio_error_not_connected">برای دیدن تاریخچه، حساب صرافی یا بروکرتان را وصل کنید.</string>
     <string name="portfolio_retry">دوباره</string>
@@ -45,25 +45,25 @@
     <string name="portfolio_report_title">گزارش کامل</string>
     <string name="portfolio_report_subtitle">سنجه‌های پیشرفته و خروجی فایل، بدون اشتراک.</string>
     <string name="portfolio_report_empty">هنوز معامله‌ای بسته نشده تا گزارشی از آن ساخته شود.</string>
-    <string name="portfolio_report_empty_hint">وقتی اولین معامله‌تان بسته شد، منحنی سرمایه و همهٔ سنجه‌ها همین‌جا می‌آیند.</string>
+    <string name="portfolio_report_empty_hint">وقتی اولین معامله‌تان بسته شد، منحنی سرمایه و همه‌ی سنجه‌ها همین‌جا می‌آیند.</string>
     <string name="portfolio_report_metrics">سنجه‌ها</string>
     <string name="portfolio_report_attribution">سهم هر نماد</string>
     <string name="portfolio_report_year_total">کل سال</string>
-    <string name="portfolio_report_peak_note">خط چین، سقف تا آن لحظه است؛ ناحیهٔ رنگی، فاصلهٔ سرمایه تا آن سقف.</string>
+    <string name="portfolio_report_peak_note">خط چین، سقف تا آن لحظه است؛ ناحیه‌ی رنگی، فاصله‌ی سرمایه تا آن سقف.</string>
     <string name="portfolio_report_drawdown_span">بیشترین افت</string>
     <!-- %1$s تاریخ سقف و %2$s تاریخ کف است -->
     <string name="portfolio_report_drawdown_between">از %1$s تا %2$s</string>
     <string name="portfolio_report_runup_span">بیشترین رشد پیوسته</string>
-    <string name="portfolio_report_runup_note">از کف تا سقف منحنی سرمایه؛ بالاترین جایی که حساب رسید، نه جایی که ماند. فاصلهٔ آن تا امروز همان چیزی است که پس داده شده.</string>
+    <string name="portfolio_report_runup_note">از کف تا سقف منحنی سرمایه؛ بالاترین جایی که حساب رسید، نه جایی که ماند. فاصله‌ی آن تا امروز همان چیزی است که پس داده شده.</string>
     <string name="portfolio_trade_in_runup">در بیشترین رشد</string>
     <string name="portfolio_trade_in_drawdown">در بیشترین افت</string>
-    <string name="portfolio_report_drawdown_note">این عدد از سقف تا کف منحنی سرمایه است، نه بزرگ‌ترین معاملهٔ زیان‌ده؛ چند زیان پشت‌سرهم افتی بزرگ‌تر از هر کدامشان می‌سازد.</string>
+    <string name="portfolio_report_drawdown_note">این عدد از سقف تا کف منحنی سرمایه است، نه بزرگ‌ترین معامله‌ی زیان‌ده؛ چند زیان پشت‌سرهم افتی بزرگ‌تر از هر کدامشان می‌سازد.</string>
     <!-- %1$s تعداد معاملات آن دوره است -->
     <string name="portfolio_report_drawdown_recovered">%1$s معامله طول کشید تا سقف قبلی دوباره زده شود.</string>
     <string name="portfolio_report_drawdown_open">%1$s معامله است که هنوز زیر سقف قبلی هستید.</string>
-    <string name="portfolio_report_ratio_note">شارپ و سورتینو هر دو به ازای هر معامله محاسبه شده‌اند، نه سالانه؛ با عدد سالانهٔ یک صندوق قابل مقایسه نیستند.</string>
+    <string name="portfolio_report_ratio_note">شارپ و سورتینو هر دو به ازای هر معامله محاسبه شده‌اند، نه سالانه؛ با عدد سالانه‌ی یک صندوق قابل مقایسه نیستند.</string>
     <!-- %1$s تعداد معامله‌های دارای زمان باز شدن، %2$s کل معامله‌ها -->
-    <string name="portfolio_report_holding_sample">میانگین بر پایهٔ %1$s معامله از %2$s معامله است؛ بقیه زمان باز شدن ندارند.</string>
+    <string name="portfolio_report_holding_sample">میانگین بر پایه‌ی %1$s معامله از %2$s معامله است؛ بقیه زمان باز شدن ندارند.</string>
     <string name="portfolio_report_export">خروجی گرفتن</string>
     <string name="portfolio_report_export_csv">CSV</string>
     <string name="portfolio_report_export_xlsx">Excel</string>
@@ -75,7 +75,7 @@
     <string name="portfolio_metric_win_loss">نسبت برد به باخت</string>
     <string name="portfolio_metric_largest_win">بزرگ‌ترین برد</string>
     <string name="portfolio_metric_largest_loss">بزرگ‌ترین باخت</string>
-    <string name="portfolio_metric_longest_drawdown">طولانی‌ترین دورهٔ افت</string>
+    <string name="portfolio_metric_longest_drawdown">طولانی‌ترین دوره‌ی افت</string>
     <string name="portfolio_metric_sharpe">شارپ</string>
     <string name="portfolio_metric_sortino">سورتینو</string>
     <string name="portfolio_metric_holding">میانگین مدت نگهداری</string>

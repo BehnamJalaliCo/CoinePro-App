@@ -2,10 +2,10 @@
 <!-- Default language: Persian. -->
 <resources>
     <string name="chart_events_sheet_title">رویداد روی این کندل</string>
-    <string name="chart_events_sheet_one">یک رویداد در بازهٔ این کندل</string>
-    <string name="chart_events_sheet_many">%1$s رویداد در بازهٔ این کندل، به ترتیب وقوع</string>
-    <string name="chart_events_settings_title">رویدادها روی نمودار</string>
-    <string name="chart_events_settings_note">نشانه فقط روی کندلی کشیده می‌شود که رویداد در بازهٔ آن افتاده باشد. رویدادِ بیرون از محدودهٔ دید کشیده نمی‌شود.</string>
+    <string name="chart_events_sheet_one">یک رویداد در بازه‌ی این کندل</string>
+    <string name="chart_events_sheet_many">%1$s رویداد در بازه‌ی این کندل، به ترتیب وقوع</string>
+    <string name="chart_events_settings_title">رویدادها روی چارت</string>
+    <string name="chart_events_settings_note">نشانه فقط روی کندلی کشیده می‌شود که رویداد در بازه‌ی آن افتاده باشد. رویدادِ بیرون از محدوده‌ی دید کشیده نمی‌شود.</string>
     <string name="chart_events_note_news">تیتر خبرهای مرتبط با همین نماد و خبرهای بازار عمومی.</string>
     <string name="chart_events_note_economic">انتشارهای اقتصادی که هر دو بازار را تکان می‌دهند.</string>
     <string name="chart_events_note_unserved">فید فعلی این نوع را نمی‌فرستد.</string>
@@ -13,5 +13,5 @@
     <string name="chart_events_state_offline">دستگاه به شبکه‌ای وصل نیست، پس رویدادی خوانده نشد.</string>
     <string name="chart_events_state_unserved">رویدادهای این بازار هنوز از سرور نمی‌آیند؛ تا آن زمان نشانه‌ای روی چارت کشیده نمی‌شود.</string>
     <string name="chart_events_state_failed">خواندن رویدادها ناموفق بود.</string>
-    <string name="chart_events_state_nothing">در بازهٔ روی صفحه رویدادی ثبت نشده است.</string>
+    <string name="chart_events_state_nothing">در بازه‌ی روی صفحه رویدادی ثبت نشده است.</string>
 </resources>

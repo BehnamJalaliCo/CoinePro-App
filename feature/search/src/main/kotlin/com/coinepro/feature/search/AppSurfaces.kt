@@ -90,7 +90,7 @@ object AppSurfaces {
         AppSurface(
             id = "academy",
             titleRes = R.string.surface_academy_title,
-            bodyRes = R.string.surface_academy_body,
+            bodyRes = DesignR.string.feature_academy_body,
             icon = CoineProIcons.Academy,
             keywords = listOf(
                 "آکادمی", "اکادمی", "آموزش", "اموزش", "درس", "دوره", "یادگیری",
@@ -103,7 +103,7 @@ object AppSurfaces {
         AppSurface(
             id = "journal",
             titleRes = R.string.surface_journal_title,
-            bodyRes = R.string.surface_journal_body,
+            bodyRes = DesignR.string.feature_journal_body,
             icon = DesignR.drawable.tv_tool_note,
             keywords = listOf(
                 "ژورنال", "دفترچه", "دفتر معاملات", "یادداشت معامله", "ثبت معامله",
@@ -113,7 +113,7 @@ object AppSurfaces {
         AppSurface(
             id = "paper-trade",
             titleRes = R.string.surface_paper_title,
-            bodyRes = R.string.surface_paper_body,
+            bodyRes = DesignR.string.feature_paper_body,
             icon = CoineProIcons.Rehearsal,
             keywords = listOf(
                 "معامله آزمایشی", "معاملهٔ آزمایشی", "آزمایشی", "دمو", "تمرین", "شبیه‌ساز",
@@ -123,7 +123,7 @@ object AppSurfaces {
         AppSurface(
             id = "backtest",
             titleRes = R.string.surface_backtest_title,
-            bodyRes = R.string.surface_backtest_body,
+            bodyRes = DesignR.string.feature_backtest_body,
             icon = CoineProIcons.Backtest,
             keywords = listOf(
                 "بک تست", "بک‌تست", "بکتست", "اسکریپت", "استراتژی", "کد", "آزمون استراتژی",
@@ -133,7 +133,7 @@ object AppSurfaces {
         AppSurface(
             id = "screener",
             titleRes = R.string.surface_screener_title,
-            bodyRes = R.string.surface_screener_body,
+            bodyRes = DesignR.string.feature_screener_body,
             icon = CoineProIcons.Filter,
             keywords = listOf(
                 "اسکرینر", "غربال", "پویش بازار", "فیلتر بازار", "جست‌وجوی شرطی",
@@ -143,7 +143,7 @@ object AppSurfaces {
         AppSurface(
             id = "heatmap",
             titleRes = R.string.surface_heatmap_title,
-            bodyRes = R.string.surface_heatmap_body,
+            bodyRes = DesignR.string.feature_heatmap_body,
             icon = CoineProIcons.Heatmap,
             keywords = listOf(
                 "هیت مپ", "هیت‌مپ", "هیتمپ", "نقشه حرارتی", "نقشهٔ حرارتی", "نقشه بازار",
@@ -153,7 +153,7 @@ object AppSurfaces {
         AppSurface(
             id = "tools",
             titleRes = R.string.surface_tools_title,
-            bodyRes = R.string.surface_tools_body,
+            bodyRes = DesignR.string.feature_toolkit_body,
             icon = CoineProIcons.Tools,
             keywords = listOf(
                 "ابزار", "ابزارها", "جعبه ابزار", "ماشین حساب", "ماشین‌حساب", "ریسک",
@@ -164,7 +164,7 @@ object AppSurfaces {
         AppSurface(
             id = "chart-studio",
             titleRes = R.string.surface_studio_title,
-            bodyRes = R.string.surface_studio_body,
+            bodyRes = DesignR.string.feature_studio_body,
             icon = DesignR.drawable.tv_pencil,
             keywords = listOf(
                 "استودیو", "استودیوی نمودار", "اندیکاتور", "ترسیم", "ابزار ترسیم", "فیبوناچی",
@@ -174,7 +174,7 @@ object AppSurfaces {
         AppSurface(
             id = "alerts",
             titleRes = R.string.surface_alerts_title,
-            bodyRes = R.string.surface_alerts_body,
+            bodyRes = DesignR.string.feature_alerts_body,
             icon = CoineProIcons.Bell,
             keywords = listOf(
                 "هشدار", "هشدارها", "آلارم", "الارم", "زنگ", "اعلان قیمت", "وب‌هوک",
@@ -184,7 +184,7 @@ object AppSurfaces {
         AppSurface(
             id = "watchlist",
             titleRes = R.string.surface_watchlist_title,
-            bodyRes = R.string.surface_watchlist_body,
+            bodyRes = DesignR.string.feature_watchlist_body,
             icon = DesignR.drawable.icon_star,
             keywords = listOf(
                 "دیده‌بان", "دیده بان", "دیدهبان", "واچ لیست", "لیست دلخواه", "ستاره", "علاقه‌مندی",
@@ -194,7 +194,7 @@ object AppSurfaces {
         AppSurface(
             id = "news",
             titleRes = R.string.surface_news_title,
-            bodyRes = R.string.surface_news_body,
+            bodyRes = DesignR.string.feature_news_body,
             icon = CoineProIcons.News,
             keywords = listOf(
                 "اخبار", "خبر", "تیتر", "خبرها", "news", "headlines", "feed",
@@ -203,7 +203,7 @@ object AppSurfaces {
         AppSurface(
             id = "calendar",
             titleRes = R.string.surface_calendar_title,
-            bodyRes = R.string.surface_calendar_body,
+            bodyRes = DesignR.string.feature_calendar_body,
             icon = CoineProIcons.Calendar,
             keywords = listOf(
                 "تقویم", "تقویم اقتصادی", "رویداد", "داده اقتصادی", "نرخ بهره", "اشتغال",
@@ -217,7 +217,7 @@ object AppSurfaces {
         AppSurface(
             id = "portfolio",
             titleRes = R.string.surface_portfolio_title,
-            bodyRes = R.string.surface_portfolio_body,
+            bodyRes = DesignR.string.feature_portfolio_body,
             icon = CoineProIcons.Portfolio,
             keywords = listOf(
                 "پرتفوی", "پورتفولیو", "سبد", "عملکرد", "سود و زیان", "شارپ", "سورتینو",
@@ -229,7 +229,7 @@ object AppSurfaces {
         AppSurface(
             id = "signals",
             titleRes = R.string.surface_signals_title,
-            bodyRes = R.string.surface_signals_body,
+            bodyRes = DesignR.string.feature_signals_body,
             icon = CoineProIcons.Signals,
             keywords = listOf(
                 "سیگنال", "سیگنال‌ها", "سیگنالها", "ورود و خروج", "حد ضرر",
@@ -240,7 +240,7 @@ object AppSurfaces {
         AppSurface(
             id = "ai",
             titleRes = R.string.surface_ai_title,
-            bodyRes = R.string.surface_ai_body,
+            bodyRes = DesignR.string.feature_ai_body,
             icon = CoineProIcons.Ai,
             keywords = listOf(
                 "هوش مصنوعی", "ای آی", "تحلیل خودکار", "تولید سیگنال",
@@ -251,7 +251,7 @@ object AppSurfaces {
         AppSurface(
             id = "ai-vision",
             titleRes = R.string.surface_vision_title,
-            bodyRes = R.string.surface_vision_body,
+            bodyRes = DesignR.string.feature_vision_body,
             icon = CoineProIcons.Camera,
             keywords = listOf(
                 "تحلیل تصویر", "عکس چارت", "اسکرین شات", "اسکرین‌شات", "تصویر نمودار",
@@ -262,7 +262,7 @@ object AppSurfaces {
         AppSurface(
             id = "ai-assistant",
             titleRes = R.string.surface_assistant_title,
-            bodyRes = R.string.surface_assistant_body,
+            bodyRes = DesignR.string.feature_assistant_body,
             icon = CoineProIcons.Assistant,
             keywords = listOf(
                 "دستیار", "چت", "پرسش", "سوال", "گفت‌وگو",
@@ -273,7 +273,7 @@ object AppSurfaces {
         AppSurface(
             id = "terminal",
             titleRes = R.string.surface_terminal_title,
-            bodyRes = R.string.surface_terminal_body,
+            bodyRes = DesignR.string.feature_terminal_body,
             icon = CoineProIcons.Terminal,
             keywords = listOf(
                 "ترمینال", "ترمینال وب", "نسخه وب", "پرو چارت",
@@ -284,7 +284,7 @@ object AppSurfaces {
         AppSurface(
             id = "connections",
             titleRes = R.string.surface_connections_title,
-            bodyRes = R.string.surface_connections_body,
+            bodyRes = DesignR.string.feature_connections_body,
             icon = CoineProIcons.Link,
             keywords = listOf(
                 "اتصال", "اتصال‌ها", "اتصالها", "کارگزار", "بروکر", "صرافی", "کلید api",
@@ -296,7 +296,7 @@ object AppSurfaces {
         AppSurface(
             id = "activity",
             titleRes = R.string.surface_activity_title,
-            bodyRes = R.string.surface_activity_body,
+            bodyRes = DesignR.string.feature_activity_body,
             icon = CoineProIcons.Activity,
             keywords = listOf(
                 "فعالیت", "تاریخچه", "رویدادها", "گزارش فعالیت",
@@ -307,7 +307,7 @@ object AppSurfaces {
         AppSurface(
             id = "membership",
             titleRes = R.string.surface_membership_title,
-            bodyRes = R.string.surface_membership_body,
+            bodyRes = DesignR.string.feature_membership_body,
             icon = CoineProIcons.Membership,
             keywords = listOf(
                 "اشتراک", "عضویت", "پلن", "تمدید", "خرید اشتراک", "اشتراک ویژه",
@@ -318,7 +318,7 @@ object AppSurfaces {
         AppSurface(
             id = "verify",
             titleRes = R.string.surface_verify_title,
-            bodyRes = R.string.surface_verify_body,
+            bodyRes = DesignR.string.feature_verify_body,
             icon = CoineProIcons.IdentityCard,
             keywords = listOf(
                 "احراز هویت", "کی وای سی", "مدارک", "تایید هویت",
@@ -329,7 +329,7 @@ object AppSurfaces {
         AppSurface(
             id = "notifications",
             titleRes = R.string.surface_notifications_title,
-            bodyRes = R.string.surface_notifications_body,
+            bodyRes = DesignR.string.feature_notifications_body,
             icon = CoineProIcons.Settings,
             keywords = listOf(
                 "اعلان", "اعلان‌ها", "نوتیفیکیشن", "پوش", "تنظیمات اعلان", "سکوت شبانه",
@@ -339,7 +339,7 @@ object AppSurfaces {
         AppSurface(
             id = "profile",
             titleRes = R.string.surface_profile_title,
-            bodyRes = R.string.surface_profile_body,
+            bodyRes = DesignR.string.feature_profile_body,
             icon = CoineProIcons.Profile,
             keywords = listOf(
                 "پروفایل", "حساب کاربری", "تنظیمات", "پوسته", "تم", "زبان", "قفل", "امنیت",

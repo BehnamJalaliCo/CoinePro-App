@@ -17,7 +17,7 @@
     <string name="admin_lock_password">گذرواژه</string>
     <string name="admin_lock_enter">ورود</string>
     <string name="admin_lock_refused">نام کاربری یا گذرواژه درست نیست.</string>
-    <string name="admin_lock_locked">بعد از پنج تلاش ناموفق بسته شد. %1$s دقیقهٔ دیگر دوباره امتحان کنید.</string>
+    <string name="admin_lock_locked">بعد از پنج تلاش ناموفق بسته شد. %1$s دقیقه‌ی دیگر دوباره امتحان کنید.</string>
     <string name="admin_lock_unprovisioned">این بیلد هیچ کلیدی برای این در ندارد. تا وقتی اعتبارنامه در بیلد گذاشته نشود، پنل باز نمی‌شود — و این درست‌ترین رفتار برای یک در است.</string>
     <string name="admin_lock_now">قفل کردن پنل</string>
 
@@ -48,9 +48,9 @@
 
     <!-- the export -->
     <string name="admin_export_title">خروجی گرفتن</string>
-    <string name="admin_export_body">یک فایل متنی با نسخهٔ بیلد، مشخصات گوشی، وضعیت لحظهٔ خروجی، درخواست‌های ناموفق، آخرین کرش و همین گزارشی که الان فیلتر کرده‌اید. همان چیزی که یک برنامه‌نویس برای رفع اشکال لازم دارد.</string>
+    <string name="admin_export_body">یک فایل متنی با نسخه‌ی بیلد، مشخصات گوشی، وضعیت لحظه‌ی خروجی، درخواست‌های ناموفق، آخرین کرش و همین گزارشی که الان فیلتر کرده‌اید. همان چیزی که یک برنامه‌نویس برای رفع اشکال لازم دارد.</string>
     <string name="admin_export_share">اشتراک‌گذاری فایل</string>
-    <string name="admin_export_save">ذخیرهٔ فایل</string>
+    <string name="admin_export_save">ذخیره‌ی فایل</string>
     <string name="admin_export_copy">کپی گزارش</string>
     <string name="admin_export_done_share">فایل به اپ انتخابی داده شد.</string>
     <string name="admin_export_done_save">ذخیره شد.</string>
@@ -62,8 +62,8 @@
     <string name="admin_log_title">گزارش سامانه</string>
     <string name="admin_log_count">%1$s خط از %2$s</string>
     <string name="admin_log_search">جستجو در متن، برچسب و فیلدها</string>
-    <string name="admin_log_level">کمینهٔ سطح</string>
-    <string name="admin_log_window">بازهٔ زمانی</string>
+    <string name="admin_log_level">کمینه‌ی سطح</string>
+    <string name="admin_log_window">بازه‌ی زمانی</string>
     <string name="admin_log_tags">برچسب‌ها</string>
     <string name="admin_window_5m">۵ دقیقه</string>
     <string name="admin_window_1h">۱ ساعت</string>
@@ -76,7 +76,7 @@
     <string name="admin_log_copy_entry">کپی این خط</string>
     <string name="admin_log_wipe">پاک کردن کامل گزارش</string>
     <string name="admin_log_verbosity">حجم ثبت</string>
-    <string name="admin_log_verbosity_note">برای بازسازی یک اشکال روی TRACE بگذارید و بعد برگردانید. TRACE هر تیک و هر فریم را می‌نویسد و حافظهٔ گزارش را در چند ثانیه پر می‌کند.</string>
+    <string name="admin_log_verbosity_note">برای بازسازی یک اشکال روی TRACE بگذارید و بعد برگردانید. TRACE هر تیک و هر فریم را می‌نویسد و حافظه‌ی گزارش را در چند ثانیه پر می‌کند.</string>
     <string name="admin_log_persisted">گزارش روی حافظه</string>
     <string name="admin_log_persisted_note">گزارش روی دیسک هم نوشته می‌شود، وگرنه هر کرشی که پروسه را می‌کشد گزارشش را هم با خود می‌برد. «پاک کردن کامل» هم حافظه و هم فایل را خالی می‌کند.</string>
     <string name="admin_log_thread">رشته</string>
@@ -100,7 +100,7 @@
     <string name="admin_build_title">مشخصات بیلد</string>
     <string name="admin_version">نسخه</string>
     <string name="admin_environment">محیط</string>
-    <string name="admin_application_id">شناسهٔ اپ</string>
+    <string name="admin_application_id">شناسه‌ی اپ</string>
     <string name="admin_debuggable">قابل دیباگ</string>
     <string name="admin_firebase">فایربیس</string>
 
@@ -110,7 +110,7 @@
     <string name="admin_device_abi">معماری</string>
     <string name="admin_device_locale">زبان سامانه</string>
     <string name="admin_device_direction">جهت چیدمان</string>
-    <string name="admin_device_heap">حافظهٔ اپ</string>
+    <string name="admin_device_heap">حافظه‌ی اپ</string>
     <string name="admin_device_storage">فضای آزاد</string>
     <string name="admin_device_note">هیچ‌کدام از این‌ها کسی را نمی‌شناساند. مدل و نسخه و زبان، توصیف یک دسته دستگاه است نه توصیف صاحبش.</string>
 
@@ -119,7 +119,7 @@
     <string name="admin_platform_crypto">کریپتو</string>
     <string name="admin_base_url">آدرس پایه</string>
     <string name="admin_platform_configured">پیکربندی</string>
-    <string name="admin_install_id">شناسهٔ نصب</string>
+    <string name="admin_install_id">شناسه‌ی نصب</string>
     <string name="admin_masking_note">آدرس‌ها و شناسه‌ها ماسک شده‌اند. از این صفحه اسکرین‌شات گرفته می‌شود.</string>
 
     <string name="admin_probe_title">تطبیق مسیرها با سرور</string>
@@ -137,7 +137,7 @@
     <string name="admin_outcome_unreachable">در دسترس نبود</string>
     <string name="admin_outcome_skipped">اجرا نشد</string>
 
-    <string name="admin_requests_title">همهٔ درخواست‌ها</string>
+    <string name="admin_requests_title">همه‌ی درخواست‌ها</string>
     <string name="admin_requests_count">%1$s درخواست در حافظه</string>
     <string name="admin_requests_failures">فقط خطاها</string>
     <string name="admin_requests_all">همه</string>
@@ -182,12 +182,12 @@
     <string name="admin_push_token">توکن دستگاه</string>
     <string name="admin_push_request">درخواست مجوز</string>
     <string name="admin_push_settings">باز کردن تنظیمات اندروید</string>
-    <string name="admin_push_reregister">ثبت دوبارهٔ توکن</string>
+    <string name="admin_push_reregister">ثبت دوباره‌ی توکن</string>
     <string name="admin_push_new_signals">سیگنال تازه</string>
     <string name="admin_push_signal_updates">به‌روزرسانی سیگنال</string>
     <string name="admin_push_price_alerts">هشدار قیمت</string>
     <string name="admin_push_not_configured">در این بیلد تنظیم نشده</string>
-    <string name="admin_push_not_required">در این نسخهٔ اندروید لازم نیست</string>
+    <string name="admin_push_not_required">در این نسخه‌ی اندروید لازم نیست</string>
     <string name="admin_push_available">هنوز خواسته نشده</string>
     <string name="admin_push_denied">رد شده</string>
     <string name="admin_push_granted">داده شده</string>
@@ -207,7 +207,7 @@
     <string name="admin_capability_symbols">تعداد نمادها</string>
     <string name="admin_capabilities_refresh">خواندن دوباره از سرور</string>
     <string name="admin_capabilities_note">این‌ها را خود سرور اعلام می‌کند. اپ فقط چیزی را می‌کشد که سرور گفته روشن است.</string>
-    <string name="admin_relay_title">رلهٔ قیمت صرافی</string>
+    <string name="admin_relay_title">رله‌ی قیمت صرافی</string>
     <string name="admin_relay_tier">لایه</string>
     <string name="admin_relay_sockets">سوکت‌های زنده</string>
     <string name="admin_relay_tick_age">سن آخرین تیک</string>

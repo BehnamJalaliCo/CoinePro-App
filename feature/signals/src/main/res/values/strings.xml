@@ -2,7 +2,7 @@
 <!-- Default language: Persian. Numbers stay Latin so prices match broker and exchange terminals. -->
 <resources>
     <string name="signals_title">سیگنال‌ها</string>
-    <string name="signals_subtitle">موقعیت‌های قابل اجرا با ورود، حد ضرر و اهداف، بر پایهٔ داده‌های سرور.</string>
+    <string name="signals_subtitle">موقعیت‌های قابل اجرا با ورود، حد ضرر و اهداف، بر پایه‌ی داده‌های سرور.</string>
 
     <string name="signals_market_forex">فارکس</string>
     <string name="signals_market_crypto">کریپتو</string>
@@ -15,7 +15,7 @@
 
     <string name="signals_membership_title">سیگنال‌های ویژه</string>
     <string name="signals_membership_body">سطوح معاملاتی فعال با اشتراک فعال در دسترس هستند.</string>
-    <string name="signals_membership_action">بررسی دوبارهٔ دسترسی</string>
+    <string name="signals_membership_action">بررسی دوباره‌ی دسترسی</string>
     <string name="signals_locked_title">دسترسی به سیگنال‌ها</string>
 
     <string name="signals_direction_buy">خرید</string>

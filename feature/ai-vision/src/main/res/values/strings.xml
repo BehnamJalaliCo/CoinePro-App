@@ -2,7 +2,7 @@
 <!-- Default language: Persian. -->
 <resources>
     <string name="vision_title">تحلیل چارت</string>
-    <string name="vision_subtitle">اسکرین‌شات چارت را بگیر یا انتخاب کن. تصویر پیش از ارسال دوباره کدگذاری می‌شود تا اطلاعات EXIF حذف شود. پیشرفت و نتیجه فقط از وضعیت کارِ سرور می‌آید.</string>
+    <string name="vision_subtitle">اسکرین‌شات چارت را بگیرید یا انتخاب کنید. تصویر پیش از ارسال دوباره کدگذاری می‌شود تا اطلاعات EXIF حذف شود. پیشرفت و نتیجه فقط از وضعیت کارِ سرور می‌آید.</string>
     <string name="vision_source_title">تصویر چارت</string>
     <string name="vision_permission_note">دسترسی دوربین فقط وقتی خواسته می‌شود که «دوربین» را بزنی. انتخاب از گالری به دسترسی دوربین نیاز ندارد، پس رد کردن آن جلوی تحلیل را نمی‌گیرد.</string>
     <string name="vision_camera">دوربین</string>
@@ -17,10 +17,10 @@
     <string name="vision_analysis_title">تحلیل تصویر</string>
     <string name="vision_state_queued">در صف</string>
     <string name="vision_state_running">در حال تحلیل</string>
-    <string name="vision_waiting_note">منتظر سرور. هیچ درصد ساختگی یا حالتِ «تمام‌شده»‌ای که آپ از خودش درآورده باشد نشان داده نمی‌شود.</string>
-    <string name="vision_refresh">بررسی دوبارهٔ وضعیت</string>
-    <string name="vision_no_result">نتیجهٔ ساختاریافتهٔ معتبری برنگشت.</string>
-    <string name="vision_another">تصویر دیگری تحلیل کن</string>
+    <string name="vision_waiting_note">منتظر سرور. هیچ درصد ساختگی یا حالتِ «تمام‌شده»‌ای که اپ از خودش درآورده باشد نشان داده نمی‌شود.</string>
+    <string name="vision_refresh">بررسی دوباره‌ی وضعیت</string>
+    <string name="vision_no_result">نتیجه‌ی ساختاریافته‌ی معتبری برنگشت.</string>
+    <string name="vision_another">تحلیل تصویر دیگر</string>
     <string name="vision_try_again">تلاش دوباره</string>
     <string name="vision_expired">این تحلیل منقضی شد.</string>
     <string name="vision_failed">تحلیل تصویر ناموفق بود.</string>

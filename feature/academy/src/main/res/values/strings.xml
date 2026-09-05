@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="academy_title">آکادمی</string>
-    <string name="academy_continue">ادامه بده</string>
+    <string name="academy_continue">ادامه</string>
     <string name="academy_xp">امتیاز</string>
     <string name="academy_streak">روز پیاپی</string>
     <string name="academy_streak_today">امروز انجام شد</string>
@@ -10,9 +10,9 @@
     <string name="academy_badges">%1$s نشان</string>
 
     <string name="academy_locked_tier">نیازمند اشتراک</string>
-    <string name="academy_locked_phone">شمارهٔ موبایل لازم است</string>
-    <string name="academy_add_phone">ثبت شمارهٔ موبایل</string>
-    <string name="academy_locked_phone_body">سطح‌های حرفه‌ای وقتی باز می‌شوند که شمارهٔ موبایلت در پروفایل ثبت شده باشد.</string>
+    <string name="academy_locked_phone">شماره‌ی موبایل لازم است</string>
+    <string name="academy_add_phone">ثبت شماره‌ی موبایل</string>
+    <string name="academy_locked_phone_body">سطح‌های حرفه‌ای وقتی باز می‌شوند که شماره‌ی موبایلت در پروفایل ثبت شده باشد.</string>
     <string name="academy_locked_tier_body">این درس بخشی از اشتراک است.</string>
 
     <string name="academy_error_network">آکادمی خوانده نشد.</string>
@@ -21,24 +21,24 @@
 
     <string name="academy_reading_time">%1$s دقیقه خواندن</string>
     <string name="academy_has_video">ویدیو دارد</string>
-    <string name="academy_video_note">ویدیوی این درس در نسخهٔ وب پخش می‌شود.</string>
+    <string name="academy_video_note">ویدیوی این درس در نسخه‌ی وب پخش می‌شود.</string>
     <string name="academy_mark_read">خواندم</string>
     <string name="academy_done">انجام شد</string>
 
     <string name="academy_quiz">آزمون</string>
-    <string name="academy_quiz_submit">تصحیح کن</string>
+    <string name="academy_quiz_submit">تصحیح</string>
     <string name="academy_quiz_score">نمره: %1$s از ۱۰۰</string>
     <string name="academy_quiz_passed">قبول شدی</string>
-    <string name="academy_quiz_failed">هنوز نه — دوباره بخوان و امتحان کن.</string>
-    <string name="academy_quiz_last_score">بهترین نمرهٔ قبلی: %1$s</string>
+    <string name="academy_quiz_failed">هنوز نه — دوباره بخوانید و امتحان کنید.</string>
+    <string name="academy_quiz_last_score">بهترین نمره‌ی قبلی: %1$s</string>
     <string name="academy_quiz_correct">پاسخ درست</string>
-    <string name="academy_quiz_your_answer">پاسخ تو</string>
+    <string name="academy_quiz_your_answer">پاسخ شما</string>
 
     <string name="academy_close">بستن</string>
     <string name="academy_achievements">نشان‌ها</string>
     <string name="academy_achievements_count">%1$s از %2$s</string>
     <string name="academy_leaderboard">جدول امتیازات</string>
-    <string name="academy_leaderboard_rank">رتبهٔ تو: %1$s از %2$s</string>
+    <string name="academy_leaderboard_rank">رتبه‌ی شما: %1$s از %2$s</string>
     <string name="academy_leaderboard_unranked">هنوز درسی کامل نکرده‌ای، پس رتبه‌ای نداری.</string>
     <string name="academy_glossary">واژه‌نامه</string>
     <string name="academy_glossary_search">جست‌وجوی واژه</string>

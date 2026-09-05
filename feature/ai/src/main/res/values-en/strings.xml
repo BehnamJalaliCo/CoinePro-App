@@ -35,7 +35,7 @@
     <string name="ai_timeframe">Timeframe</string>
     <string name="ai_timeframe_server_note">These are the bar lengths the server said it accepts.</string>
     <string name="ai_timeframe_scope_note">The chart offers more, because it folds them from a finer bar itself. This request is run by the server, which knows only these.</string>
-    <string name="ai_timeframe_unknown">The server also offers %1$s, which this build does not recognise.</string>
+    <string name="ai_timeframe_unknown">The server also offers %1$s, which this version does not recognise.</string>
 
     <string name="ai_trade_style">Trade style</string>
     <string name="ai_risk_appetite">Risk appetite</string>

@@ -737,12 +737,19 @@ private fun AssistantCard(briefing: HomeBriefing) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             CoineProAgentOrb(size = 22.dp)
-            Text(
-                text = stringResource(R.string.home_agent_name),
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.titleSmall,
-                color = CoineProColors.TextPrimary,
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.home_agent_name),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = CoineProColors.TextPrimary,
+                )
+                Text(
+                    text = stringResource(R.string.home_agent_subtitle),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextMuted,
+                    fontWeight = FontWeight.Normal,
+                )
+            }
             val stamp = when (briefing) {
                 is HomeBriefing.Ready -> briefing.ageLabel
                 HomeBriefing.Working -> stringResource(R.string.home_agent_working)

@@ -8,6 +8,8 @@ missing external legal/provider/production evidence into a pass.
 from __future__ import annotations
 
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -496,11 +498,24 @@ def check_tabular_digits() -> None:
         )
 
 
+def check_string_lint() -> None:
+    """Delegates to tools/i18n/lint_strings.py: parity, glossary, register and orthography of every
+    strings.xml. It lives in tools/ because it is also the reviewer's tool; this gate is what makes
+    it mandatory."""
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "tools" / "i18n" / "lint_strings.py"), "--root", str(ROOT)],
+        capture_output=True,
+        text=True,
+    )
+    require(result.returncode == 0, "string lint failed:\n" + result.stdout + result.stderr)
+
+
 def main() -> None:
     check_module_map()
     check_brand_spelling()
     check_ui_vocabulary()
     check_english_locale_is_english()
+    check_string_lint()
     check_no_secret_logging()
     check_assets_clean()
     check_tabular_digits()

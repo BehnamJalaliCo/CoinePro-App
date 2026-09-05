@@ -9,8 +9,8 @@
     <string name="tool_position_body">Size a position from monetary risk, stop distance and pip value per standard lot.</string>
     <string name="tool_position_formula">Lots = risk amount ÷ (stop pips × pip value per lot)</string>
     <string name="tool_rr_title">Risk to reward</string>
-    <string name="tool_rr_eyebrow">Trade geometry</string>
-    <string name="tool_rr_body">Validate entry, stop and target geometry before comparing reward with risk.</string>
+    <string name="tool_rr_eyebrow">Trade layout</string>
+    <string name="tool_rr_body">Checks that entry, stop and target sit in the right order before comparing reward with risk.</string>
     <string name="tool_rr_formula">Ratio = |target − entry| ÷ |entry − stop|</string>
     <string name="tool_drawdown_title">Drawdown simulator</string>
     <string name="tool_drawdown_eyebrow">Capital resilience</string>
@@ -35,10 +35,10 @@
     <string name="tools_risk_group">Risk and sizing</string>
     <string name="tools_risk_group_body">Control exposure before any execution flow.</string>
     <string name="tools_pnl_group">P&amp;L and growth</string>
-    <string name="tools_pnl_group_body">Deterministic local maths with explicit assumptions.</string>
+    <string name="tools_pnl_group_body">Exact local maths with explicit assumptions.</string>
     <string name="tools_eyebrow">Trader toolkit</string>
     <string name="tools_headline">Do the math before you trade.</string>
-    <string name="tools_note">Local calculators with deterministic formulas. No order routing, no broker state and no invented market data.</string>
+    <string name="tools_note">Local calculators with exact formulas. No order routing, no broker state and no invented market data.</string>
     <string name="tools_local">Local</string>
     <string name="tools_quick_open">Quick open</string>
     <string name="tools_close">Close</string>
@@ -51,19 +51,14 @@
     <string name="tools_connected">Online tools</string>
     <string name="tools_connected_body">These run on live data from the server; the calculators run on the phone.</string>
     <string name="tools_news_title">Market news</string>
-    <string name="tools_news_body">Structured news with source time, impact and sentiment.</string>
     <string name="tools_news_open">Open news</string>
     <string name="tools_calendar_title">Economic calendar</string>
-    <string name="tools_calendar_body">Actual, forecast and previous only when the provider supplies them.</string>
     <string name="tools_calendar_open">Open calendar</string>
     <string name="tools_heatmap_title">Market heatmap</string>
-    <string name="tools_heatmap_body">Tile size is market value, tile colour is the move.</string>
     <string name="tools_heatmap_open">Open heatmap</string>
     <string name="tools_screener_title">Screener</string>
-    <string name="tools_screener_body">Filter on price, volume, volatility and any indicator.</string>
     <string name="tools_screener_open">Open screener</string>
     <string name="tools_connections_title">Connections</string>
-    <string name="tools_connections_body">Account connections are used only by validated signal execution flows.</string>
     <string name="tools_direction">Direction</string>
     <string name="tools_long">Long</string>
     <string name="tools_short">Short</string>
@@ -103,10 +98,8 @@
     <string name="tools_rule_geometry_long">For a long, the stop must sit below entry and the target above it.</string>
     <string name="tools_rule_geometry_short">For a short, the stop must sit above entry and the target below it.</string>
     <string name="tools_portfolio_title">Account performance</string>
-    <string name="tools_portfolio_body">Net profit, win rate, max drawdown and every closed trade — from the broker or exchange ledger, not from our arithmetic.</string>
     <string name="tools_portfolio_open">View history</string>
     <string name="tools_academy_title">Academy</string>
-    <string name="tools_academy_body">A lesson-by-lesson path from beginner to professional, with quizzes, badges and a streak.</string>
     <string name="tools_academy_open">Start learning</string>
 
     <!-- Calculator field labels, units and results. These were hard-coded English
@@ -168,20 +161,17 @@
     <string name="tools_f_units_lot">units / lot</string>
     <string name="tools_a_risk">Account currency is display-only. This calculator does not read broker equity or place an order.</string>
     <string name="tools_a_position">Pip value must match the instrument, account currency and one standard lot. No symbol-specific value is guessed.</string>
-    <string name="tools_a_rr">Direction geometry is validated. Long requires SL &lt; Entry &lt; TP; short requires TP &lt; Entry &lt; SL.</string>
+    <string name="tools_a_rr">The direction is checked. Long needs SL &lt; Entry &lt; TP; short needs TP &lt; Entry &lt; SL.</string>
     <string name="tools_a_drawdown">Each loss is applied to the remaining balance. Recovery % is the gain required to return to the starting balance.</string>
     <string name="tools_a_metal">Contract size is explicit because XAUUSD/XAGUSD broker specifications can differ. Fees, spread and swap are not guessed.</string>
     <string name="tools_a_pip">Pip size and pip value are supplied by the user. The app does not infer broker-specific contract specifications.</string>
     <string name="tools_a_crypto">Designed for USDT-quoted pairs. Fees apply to both entry and exit notional. Funding, slippage and leverage liquidation are not modeled.</string>
     <string name="tools_a_compound">This is arithmetic compounding only. The entered return is an assumption, not an AI forecast or expected market return.</string>
     <string name="tools_journal_title">Trading journal</string>
-    <string name="tools_journal_body">What you saw, how it felt, what you will do next time. It stays on this device and is sent nowhere.</string>
     <string name="tools_journal_open">Open the journal</string>
     <string name="tools_script_title">NamaScript</string>
-    <string name="tools_script_body">Write your own indicator, save it, and see it on the chart. Ten ready-made scripts and a short course come with it.</string>
     <string name="tools_script_open">Write</string>
     <string name="tools_paper_title">Paper trading</string>
-    <string name="tools_paper_body">Live prices, no money. For the days before an account is funded.</string>
     <string name="tools_paper_open">Start</string>
     <string name="tools_f_orders_none">None</string>
 </resources>

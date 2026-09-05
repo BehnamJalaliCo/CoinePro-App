@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="paper_title">معاملهٔ آزمایشی</string>
+    <string name="paper_title">معامله‌ی آزمایشی</string>
     <string name="paper_eyebrow">شبیه‌ساز</string>
     <string name="paper_banner">این حساب آزمایشی است. هیچ سفارشی به صرافی یا بروکر نمی‌رود و هیچ پولی جابه‌جا نمی‌شود.</string>
     <string name="paper_badge">آزمایشی</string>
@@ -12,9 +12,9 @@
     <string name="paper_free_margin">مارجین آزاد</string>
     <string name="paper_margin_level">سطح مارجین</string>
     <string name="paper_realised">سود محقق‌شده</string>
-    <string name="paper_generation">دورهٔ %1$s این حساب</string>
+    <string name="paper_generation">دوره‌ی %1$s این حساب</string>
     <string name="paper_marks_missing">برای یکی از موقعیت‌های باز قیمتی نداریم؛ ارزش حساب ناقص است.</string>
-    <string name="paper_stale">قیمت‌ها کهنه‌اند. تا تازه شدنشان هیچ سفارشی پر نمی‌شود.</string>
+    <string name="paper_stale">قیمت‌ها قدیمی‌اند. تا تازه شدنشان هیچ سفارشی پر نمی‌شود.</string>
 
     <string name="paper_tab_ticket">معامله</string>
     <string name="paper_tab_positions">موقعیت‌ها</string>
@@ -41,11 +41,11 @@
     <string name="paper_preview_title">برآورد پر شدن</string>
     <string name="paper_preview_fill">قیمت پر شدن</string>
     <string name="paper_preview_fee">کارمزد</string>
-    <string name="paper_preview_spread">هزینهٔ اسپرد</string>
+    <string name="paper_preview_spread">هزینه‌ی اسپرد</string>
     <string name="paper_preview_slippage">لغزش</string>
     <string name="paper_preview_margin">مارجین لازم</string>
     <string name="paper_preview_resting">این سفارش منتظر می‌ماند و در قیمت خودش پر می‌شود، با کارمزد میکر.</string>
-    <string name="paper_open">باز کردن معاملهٔ آزمایشی</string>
+    <string name="paper_open">باز کردن معامله‌ی آزمایشی</string>
     <string name="paper_place">ثبت سفارش آزمایشی</string>
     <string name="paper_share_of_margin">%1$s</string>
 
@@ -58,7 +58,7 @@
     <string name="paper_protect">حد ضرر و سود</string>
     <string name="paper_protect_title">حد ضرر و حد سود</string>
     <string name="paper_save">ذخیره</string>
-    <string name="paper_close_all">بستن همهٔ موقعیت‌ها</string>
+    <string name="paper_close_all">بستن همه‌ی موقعیت‌ها</string>
 
     <string name="paper_orders_empty">سفارش بازی ندارید.</string>
     <string name="paper_orders_working">در انتظار</string>
@@ -76,7 +76,7 @@
     <string name="paper_distance">%1$s تا فعال شدن</string>
     <string name="paper_triggered">فعال شد؛ منتظر قیمت حد</string>
 
-    <string name="paper_history_empty">هنوز معاملهٔ بسته‌شده‌ای ندارید.</string>
+    <string name="paper_history_empty">هنوز معامله‌ی بسته‌شده‌ای ندارید.</string>
     <string name="paper_closed_title">معامله‌های بسته‌شده</string>
     <string name="paper_fills_title">گزارش پر شدن‌ها</string>
     <string name="paper_fill_reference">قیمت آخر در آن لحظه %1$s</string>
@@ -91,7 +91,7 @@
     <string name="paper_reason_rev">برعکس شد</string>
 
     <string name="paper_record_empty">تا معامله‌ای بسته نشود کارنامه‌ای نیست. سود موقعیت باز آماری نمی‌سازد.</string>
-    <string name="paper_record_closed">%1$s معاملهٔ بسته‌شده</string>
+    <string name="paper_record_closed">%1$s معامله‌ی بسته‌شده</string>
     <string name="paper_stat_net">سود خالص</string>
     <string name="paper_stat_winrate">نرخ برد</string>
     <string name="paper_stat_trades">معامله‌ها</string>
@@ -116,7 +116,7 @@
     <string name="paper_rule_resting">سفارش منتظر در قیمت خودش پر می‌شود و کارمزد میکر می‌دهد؛ سفارشی که از بازار می‌گیرد کارمزد تیکر.</string>
     <string name="paper_rule_stop">استاپ یک ماشه است، نه یک قیمت. وقتی فعال شود در قیمت بازار پر می‌شود، نه در عددی که نوشته‌اید — و همین است که بیشترین هزینه را به تازه‌کارها می‌زند.</string>
     <string name="paper_rule_unwatched">وقتی برنامه بسته بوده، هیچ‌کس گذر قیمت را ندیده. آن‌وقت بدترین قیمت ممکن حساب می‌شود: سفارش حد در قیمت خودش و استاپ در قیمت بازار. روی آن پر شدن هم نوشته می‌شود که دیده نشده.</string>
-    <string name="paper_rule_stale">با قیمتی که فید خودش کهنه می‌داند هیچ سفارشی پر نمی‌شود.</string>
+    <string name="paper_rule_stale">با قیمتی که فید خودش قدیمی می‌داند هیچ سفارشی پر نمی‌شود.</string>
     <string name="paper_rule_touch">اینجا سفارش منتظر با یک بار لمس قیمت پر می‌شود. در بازار واقعی صف دارد و ممکن است قیمت بیاید و برود بی‌آنکه شما پر شوید. این خوش‌بینانه است.</string>
     <string name="paper_rule_gap">برنامه قیمت آخر را می‌بیند، نه کندل را. استاپی که فقط با یک سایه لمس می‌شد، بین دو قیمت دیده‌شده نمی‌خورد.</string>
     <string name="paper_rule_execution">سفارش یک‌لمسی خودِ این برنامه فقط سفارش بازار می‌فرستد. حد و استاپ را همان صرافی یا متاتریدر می‌گیرد، پس اینجا تمرینشان کنید و آنجا ثبتشان.</string>
@@ -133,10 +133,10 @@
     <string name="paper_setting_stopout">سطح کال مارجین (٪)</string>
     <string name="paper_reset">شروع دوباره</string>
     <string name="paper_reset_title">شروع دوباره؟</string>
-    <string name="paper_reset_message">موجودی به عدد شروع برمی‌گردد. موقعیت‌های باز و سفارش‌های در انتظار حذف می‌شوند — بسته نمی‌شوند. تاریخچهٔ معامله‌ها سر جایش می‌ماند.</string>
+    <string name="paper_reset_message">موجودی به عدد شروع برمی‌گردد. موقعیت‌های باز و سفارش‌های در انتظار حذف می‌شوند — بسته نمی‌شوند. تاریخچه‌ی معامله‌ها سر جایش می‌ماند.</string>
     <string name="paper_wipe">پاک کردن همه‌چیز</string>
     <string name="paper_wipe_title">حساب و تاریخچه پاک شود؟</string>
-    <string name="paper_wipe_message">هم حساب و هم تاریخچهٔ معامله‌ها پاک می‌شود. برگشتی ندارد.</string>
+    <string name="paper_wipe_message">هم حساب و هم تاریخچه‌ی معامله‌ها پاک می‌شود. برگشتی ندارد.</string>
     <string name="paper_confirm">بله</string>
     <string name="paper_dismiss">انصراف</string>
     <string name="paper_disclaimer">پول واقعی جابه‌جا نمی‌شود، ولی کارمزد و اسپرد و لغزش حساب می‌شوند — چون شبیه‌سازی‌ای که رایگان معامله کند عادتی یاد می‌دهد که در بازار واقعی پول می‌برد.</string>

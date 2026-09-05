@@ -7,14 +7,14 @@
     <string name="heatmap_refresh">به‌روزرسانی</string>
     <string name="heatmap_empty">بازاری برای نمایش روی نقشه نیست.</string>
     <string name="heatmap_empty_hint">پس از دریافت قیمت‌ها، هر بازار یک خانه می‌گیرد.</string>
-    <string name="heatmap_canvas">نقشه بازارها. روی هر خانه بزنید تا نمودارش باز شود؛ نگه دارید تا جزئیاتش را ببینید.</string>
+    <string name="heatmap_canvas">نقشه‌ی بازارها. روی هر خانه بزنید تا چارتش باز شود؛ نگه دارید تا جزئیاتش را ببینید.</string>
 
     <string name="heatmap_size">اندازه خانه‌ها</string>
     <string name="heatmap_size_liquidity">نقدشوندگی</string>
     <string name="heatmap_size_volume">حجم</string>
     <string name="heatmap_size_turnover">گردش</string>
     <string name="heatmap_size_mono">یکسان</string>
-    <string name="heatmap_size_note">اندازه بر پایه رتبه‌بندی نقدشوندگی خودِ برنامه است؛ هیچ‌کدام از دو سرور ارزش بازار نمی‌فرستند.</string>
+    <string name="heatmap_size_note">اندازه بر پایه‌ی رتبه‌بندی نقدشوندگی خودِ اپ است؛ هیچ‌کدام از دو سرور ارزش بازار نمی‌فرستند.</string>
     <string name="heatmap_size_volume_note">این فید حجمی نمی‌فرستد، پس اندازه‌ها به رتبه‌بندی نقدشوندگی برمی‌گردند.</string>
 
     <string name="heatmap_colour">رنگ بر پایه</string>
@@ -58,7 +58,7 @@
 
     <string name="heatmap_focus_clear">بازگشت به کل نقشه</string>
 
-    <string name="heatmap_detail_open_chart">نمایش نمودار</string>
+    <string name="heatmap_detail_open_chart">نمایش چارت</string>
     <string name="heatmap_detail_unresolved">کندل روزانه این بازار هنوز خوانده نشده است.</string>
     <string name="heatmap_detail_price">قیمت</string>
     <string name="heatmap_detail_change">تغییر روز</string>
