@@ -46,6 +46,7 @@ import com.coinepro.core.datastore.DrawingImageStore
 import com.coinepro.core.datastore.DrawingSyncStore
 import com.coinepro.core.datastore.ChartEventPrefsStore
 import com.coinepro.core.datastore.TimeZonePrefStore
+import com.coinepro.core.datastore.IndicatorFavouritesStore
 import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.TeachingStore
 import com.coinepro.core.designsystem.LocalTeachingDismissals
@@ -140,6 +141,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var timeZonePrefStore: TimeZonePrefStore
     @Inject lateinit var chartEventPrefsStore: ChartEventPrefsStore
     @Inject lateinit var intervalFavouritesStore: IntervalFavouritesStore
+    @Inject lateinit var indicatorFavouritesStore: IndicatorFavouritesStore
     @Inject lateinit var teachingStore: TeachingStore
     @Inject lateinit var chartWorkspaceStore: ChartWorkspaceStore
     @Inject lateinit var journalController: JournalController
@@ -270,6 +272,7 @@ class MainActivity : FragmentActivity() {
                 timeZonePrefStore = timeZonePrefStore,
                 chartEventPrefsStore = chartEventPrefsStore,
                 intervalFavouritesStore = intervalFavouritesStore,
+                indicatorFavouritesStore = indicatorFavouritesStore,
                 chartWorkspaceStore = chartWorkspaceStore,
                 journalController = journalController,
                 paperTradeController = paperTradeController,

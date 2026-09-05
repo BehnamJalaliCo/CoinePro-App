@@ -77,6 +77,24 @@ object ChartDesignPreviews {
         )
     }
 
+    /** An EMA's settings sheet, opened on its Style tab so the swatches are in the picture. */
+    @Composable
+    fun IndicatorSettings() {
+        IndicatorSettingsBody(
+            option = com.coinepro.core.chart.ChartCatalog.INDICATORS.first { it.id == "ema" },
+            period = 50,
+            colour = null,
+            widthDp = null,
+            hidden = false,
+            onSetPeriod = {},
+            onSetColour = {},
+            onSetWidth = {},
+            onToggleHidden = {},
+            onRemove = {},
+            initialTab = IndicatorSettingsTab.STYLE,
+        )
+    }
+
     /** The analysis hub — the «•••» sheet of tiles. */
     @Composable
     fun AnalysisHub(controller: ChartController) {

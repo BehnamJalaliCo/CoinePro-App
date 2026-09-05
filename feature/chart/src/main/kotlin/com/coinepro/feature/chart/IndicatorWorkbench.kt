@@ -189,7 +189,7 @@ internal fun CandlePatternSection(chosen: Set<String>, onToggle: (String) -> Uni
     ) {
         Text(
             text = "الگو یک نشانه است، نه سیگنال. روی نمودار پنج‌دقیقه‌ای چند بار در ساعت «چکش» پیدا می‌شود و " +
-                "بیشترشان ادامهٔ همان روند است. دو یا سه الگو را روشن کنید، نه همه را.",
+                "بیشترشان ادامه‌ی همان روند است. دو یا سه الگو را روشن کنید، نه همه را.",
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
         )
@@ -269,7 +269,7 @@ internal fun IndicatorTemplateSection(
     ) {
         Text(
             text = "قالب اندیکاتور فقط خود اندیکاتورها، دوره‌ها و منبعشان را نگه می‌دارد. " +
-                "بازهٔ زمانی، نوع چارت، مقیاس و رنگ‌ها دست‌نخورده می‌مانند — آن‌ها کار «چیدمان» است.",
+                "بازه‌ی زمانی، نوع چارت، مقیاس و رنگ‌ها دست‌نخورده می‌مانند — آن‌ها کار «چیدمان» است.",
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
         )
@@ -329,7 +329,7 @@ internal fun IndicatorTemplateSection(
             modifier = Modifier.fillMaxWidth(),
         )
         CoineProPrimaryButton(
-            text = "ذخیرهٔ " + activeCount.toPersianDigits() + " اندیکاتور روشن",
+            text = "ذخیره‌ی " + activeCount.toPersianDigits() + " اندیکاتور روشن",
             onClick = {
                 onSave(name)
                 name = ""

@@ -344,7 +344,7 @@ object IndicatorChain {
                 return refused(
                     ChainRefusal.DUPLICATE_NODE,
                     listOf(node.nodeId),
-                    "شناسهٔ «${node.nodeId}» دو بار در زنجیره آمده است.",
+                    "شناسه‌ی «${node.nodeId}» دو بار در زنجیره آمده است.",
                 )
             }
         }

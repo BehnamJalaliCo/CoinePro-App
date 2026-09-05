@@ -277,6 +277,21 @@ class Lint:
 
     # -- driver -------------------------------------------------------------------------------
 
+    def check_kotlin_literals(self) -> None:
+        """The one orthography rule that reaches into Kotlin: a string literal in source is copy too,
+        and the hamza-on-heh ezafe slipped into three hundred of them while the XML stayed clean."""
+        for path in self.root.rglob("*.kt"):
+            posix = path.as_posix()
+            if "/build/" in posix:
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            for number, line in enumerate(text.splitlines(), start=1):
+                if HAMZA_ON_HEH.search(line):
+                    self.fail(path, f"line {number}", "hamza-on-heh ezafe in a Kotlin literal — write «ه‌ی»")
+
     def run(self) -> int:
         fa_files = sorted(
             list(self.root.glob("*/src/main/res/values/strings.xml"))
@@ -304,6 +319,7 @@ class Lint:
                 self.check_vocabulary(en_path, en, "en")
                 self.check_english_tone(en_path, en)
                 self.check_feature_bodies(en_path, en, "en")
+        self.check_kotlin_literals()
         for failure in self.failures:
             print(failure)
         if self.failures:

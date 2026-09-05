@@ -198,7 +198,7 @@ class AndroidAlertDeliverer @Inject constructor(
 
         const val NO_CHANNELS = "هیچ روشی برای این هشدار روشن نیست"
         const val APP_NOT_OPEN = "برنامه باز نبود"
-        const val NO_PERMISSION = "اجازهٔ اعلان داده نشده است"
+        const val NO_PERMISSION = "اجازه‌ی اعلان داده نشده است"
         const val SUPPRESSED = "اعلان‌ها خاموش یا در ساعات سکوت بود"
         const val SOUND_WITHOUT_PUSH = "صدا و لرزش بدون اعلان اثری ندارد"
         const val POST_FAILED = "سیستم اعلان را نپذیرفت"

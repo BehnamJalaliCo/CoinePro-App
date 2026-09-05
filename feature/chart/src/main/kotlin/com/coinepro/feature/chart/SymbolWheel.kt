@@ -681,28 +681,34 @@ private fun OverlayRow(symbol: String?, distance: Int) {
 /** One rung of the picker: the row's height, its logo, its type size and how faint it is. */
 private class OverlayRung(val row: Dp, val logo: Dp, val text: TextUnit, val alpha: Float)
 
-/** Middle outward. Measured off the phone app; see [SymbolWheelOverlay]. */
+/**
+ * Middle outward: the current row bold at 32 with its logo, the neighbours at sixty per cent —
+ * the design brief's picker, five rows visible. The two rungs past those exist only for the
+ * slide (see [OVERLAY_DRAWN]) and are drawn at the outer size, faint.
+ */
 private val OVERLAY_RUNGS = listOf(
     OverlayRung(row = 36.dp, logo = 32.dp, text = 32.sp, alpha = 1f),
-    OverlayRung(row = 30.dp, logo = 26.dp, text = 26.sp, alpha = 0.75f),
-    OverlayRung(row = 24.dp, logo = 20.dp, text = 20.sp, alpha = 0.55f),
-    OverlayRung(row = 18.dp, logo = 14.dp, text = 15.sp, alpha = 0.4f),
-    OverlayRung(row = 14.dp, logo = 10.dp, text = 11.sp, alpha = 0.28f),
+    OverlayRung(row = 30.dp, logo = 26.dp, text = 26.sp, alpha = NEIGHBOUR_ALPHA),
+    OverlayRung(row = 24.dp, logo = 20.dp, text = 20.sp, alpha = NEIGHBOUR_ALPHA),
+    OverlayRung(row = 18.dp, logo = 14.dp, text = 15.sp, alpha = 0.25f),
 )
 
-/** How many neighbours the picker shows on each side of the current symbol. */
-private const val OVERLAY_REACH = 4
+/** The neighbours' ink, as the design brief measures the reference: sixty per cent. */
+private const val NEIGHBOUR_ALPHA = 0.6f
+
+/** How many neighbours the picker shows on each side of the current symbol: five rows in all. */
+private const val OVERLAY_REACH = 2
 
 /** How many it *draws*: two more, waiting outside the card's edges for the slide to reveal. */
 private const val OVERLAY_DRAWN = OVERLAY_REACH + 1
 
 /**
- * The card's height: the nine rows it shows, plus its own padding.
+ * The card's height: the five rows it shows (36 + 2 × 30 + 2 × 24) plus its own padding.
  *
  * Fixed rather than wrapped, because the column inside it is two rows taller than that and slides.
  * A card that sized itself to what it contains would grow by the rows that are meant to be hidden.
  */
-private val OVERLAY_HEIGHT = 224.dp
+private val OVERLAY_HEIGHT = 160.dp
 
 /**
  * The floor under the card's width.

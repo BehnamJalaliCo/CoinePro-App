@@ -43,7 +43,7 @@ interface CandleGateway {
      * This used to be one list for both backends, on the stated grounds that the two agreed on
      * eight timeframes. They do not. Measured live against each venue's own route, on five symbols
      * each: TradeYar answers `200` on all eight, and CoinePro-FX answers
-     * `404 {"detail":"دادهٔ این نماد نیست."}` on `M1`, `M30` and `W1` for every symbol it carries —
+     * `404 {"detail":"داده‌ی این نماد نیست."}` on `M1`, `M30` and `W1` for every symbol it carries —
      * it is fed by an EA that writes five bar lengths and no others.
      *
      * Because the resolver picked a source from that one shared list, the damage was wider than
@@ -401,7 +401,7 @@ val SERVER_NATIVE_TIMEFRAMES: List<Timeframe> = listOf(
  * The five **CoinePro-FX** serves, coarsest first.
  *
  * Not a subset chosen for caution: it is what the route answers. `M1`, `M30` and `W1` return
- * `404 {"detail":"دادهٔ این نماد نیست."}` on every symbol on that platform, because the candles
+ * `404 {"detail":"داده‌ی این نماد نیست."}` on every symbol on that platform, because the candles
  * there are written by the broker's EA and it writes these five. A weekly bar is still offered to
  * the reader — it is folded out of `D1`, seven bars to one, which is what a terminal does anyway —
  * and so is a half-hour bar, folded out of `M15`. What cannot be offered is anything finer than

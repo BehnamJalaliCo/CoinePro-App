@@ -147,7 +147,7 @@ object MenuCatalogue {
             group = MenuGroup.MARKET,
         ),
         // The full list, which stopped being a tab when Explore took that position. Explore's own
-        // «همهٔ بازارها» is the primary door; this is the second one, because a reader looking for a
+        // «همه‌ی بازارها» is the primary door; this is the second one, because a reader looking for a
         // screen they used yesterday looks in the menu.
         MenuEntry(
             id = "markets",

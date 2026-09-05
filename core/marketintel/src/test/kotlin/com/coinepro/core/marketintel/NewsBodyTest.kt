@@ -58,8 +58,8 @@ class NewsBodyTest {
         // The likeliest first version of any such route: an adapter mapping the summary into both
         // fields is one line and looks right from the server side. Taken at face value it prints
         // the same paragraph twice on one page, the second time under a heading claiming it is more.
-        assertNull(articleBody("خلاصهٔ خبر", summary = "خلاصهٔ خبر"))
-        assertNull(articleBody("  خلاصهٔ خبر  ", summary = "خلاصهٔ خبر"))
+        assertNull(articleBody("خلاصه‌ی خبر", summary = "خلاصه‌ی خبر"))
+        assertNull(articleBody("  خلاصه‌ی خبر  ", summary = "خلاصه‌ی خبر"))
     }
 
     @Test

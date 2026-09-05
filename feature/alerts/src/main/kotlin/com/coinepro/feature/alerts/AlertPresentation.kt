@@ -57,10 +57,10 @@ object AlertVocabulary {
 
     /** What a price does with respect to a band. */
     fun channelOp(op: ChannelOp): String = when (op) {
-        ChannelOp.ENTERING -> "ورود به محدودهٔ"
-        ChannelOp.EXITING -> "خروج از محدودهٔ"
-        ChannelOp.INSIDE -> "داخل محدودهٔ"
-        ChannelOp.OUTSIDE -> "بیرون از محدودهٔ"
+        ChannelOp.ENTERING -> "ورود به محدوده‌ی"
+        ChannelOp.EXITING -> "خروج از محدوده‌ی"
+        ChannelOp.INSIDE -> "داخل محدوده‌ی"
+        ChannelOp.OUTSIDE -> "بیرون از محدوده‌ی"
     }
 
     /** The chip form of [channelOp], without the noun the sentence supplies. */
@@ -73,8 +73,8 @@ object AlertVocabulary {
 
     /** The direction and unit of a move. */
     fun moveOp(op: MoveOp): String = when (op) {
-        MoveOp.UP -> "رشد به اندازهٔ"
-        MoveOp.DOWN -> "افت به اندازهٔ"
+        MoveOp.UP -> "رشد به اندازه‌ی"
+        MoveOp.DOWN -> "افت به اندازه‌ی"
         MoveOp.UP_PERCENT -> "رشد"
         MoveOp.DOWN_PERCENT -> "افت"
     }
@@ -236,7 +236,7 @@ object AlertIndicators {
         AlertIndicator("williams", "%R", "ویلیامز", 14),
         AlertIndicator("mom", "Mom", "مومنتوم", 10),
         AlertIndicator("roc", "ROC", "نرخ تغییر", 9),
-        AlertIndicator("atr", "ATR", "میانگین دامنهٔ واقعی", 14),
+        AlertIndicator("atr", "ATR", "میانگین دامنه‌ی واقعی", 14),
         AlertIndicator("adx", "ADX", "شاخص میانگین جهت‌دار", 14),
         AlertIndicator("ema", "EMA", "میانگین متحرک نمایی", 20),
         AlertIndicator("sma", "SMA", "میانگین متحرک ساده", 20),

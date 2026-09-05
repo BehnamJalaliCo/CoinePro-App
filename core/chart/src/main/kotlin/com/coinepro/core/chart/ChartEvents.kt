@@ -15,7 +15,7 @@ enum class EventKind(val label: String) {
     ECONOMIC("اقتصادی"),
     EARNINGS("گزارش درآمد"),
     DIVIDEND("سود نقدی"),
-    SPLIT("تجزیهٔ سهم"),
+    SPLIT("تجزیه‌ی سهم"),
 }
 
 /**

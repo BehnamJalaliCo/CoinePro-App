@@ -50,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSheetEmpty
 import com.coinepro.core.designsystem.CoineProSheetSearch
@@ -370,7 +371,7 @@ private fun modeTiles(
     onLockAll?.let { set ->
         tiles += ModeTile(
             icon = if (lockedAll) DesignR.drawable.tv_lock else DesignR.drawable.tv_unlock,
-            label = if (lockedAll) "باز کردن قفل همه" else "قفل همهٔ رسم‌ها",
+            label = if (lockedAll) "باز کردن قفل همه" else "قفل همه‌ی رسم‌ها",
             on = lockedAll,
         ) { set(!lockedAll) }
     }
@@ -394,7 +395,7 @@ private fun modeTiles(
         )
     }
     onRemoveAll?.let { clear ->
-        tiles += ModeTile(DesignR.drawable.tv_trash2, "حذف همهٔ اشیا", on = false, onClick = clear)
+        tiles += ModeTile(DesignR.drawable.tv_trash2, "حذف همه‌ی اشیا", on = false, onClick = clear)
     }
     onZoomIn?.let { zoom ->
         tiles += ModeTile(DesignR.drawable.tv_zoom_in, "بزرگ‌نمایی", on = false, onClick = zoom)
@@ -437,12 +438,12 @@ private fun ModeTileGrid(tiles: List<ModeTile>) {
         modifier = Modifier.fillMaxWidth().padding(bottom = CoineProSpacing.One),
         verticalArrangement = Arrangement.spacedBy(MODE_TILE_GAP),
     ) {
-        tiles.chunked(TOOLS_ACROSS - 1).forEachIndexed { rowIndex, row ->
+        tiles.chunked(TOOLS_ACROSS).forEachIndexed { rowIndex, row ->
             Row(horizontalArrangement = Arrangement.spacedBy(MODE_TILE_GAP)) {
                 row.forEach { tile ->
                     Box(modifier = Modifier.weight(1f)) { ModeTileCell(tile = tile, plate = rowIndex == 0) }
                 }
-                repeat(TOOLS_ACROSS - 1 - row.size) { Spacer(modifier = Modifier.weight(1f)) }
+                repeat(TOOLS_ACROSS - row.size) { Spacer(modifier = Modifier.weight(1f)) }
             }
         }
     }
@@ -461,7 +462,7 @@ private fun ModeTileCell(tile: ModeTile, plate: Boolean) {
         modifier = Modifier
             .fillMaxWidth()
             .height(MODE_TILE_HEIGHT)
-            .clip(CoineProShapes.medium)
+            .clip(CoineProShapes.large)
             .background(
                 when {
                     tile.on -> CoineProColors.TextPrimary
@@ -470,7 +471,7 @@ private fun ModeTileCell(tile: ModeTile, plate: Boolean) {
                 },
             )
             .then(
-                if (plate || tile.on) Modifier else Modifier.border(1.dp, CoineProColors.BorderSubtle, CoineProShapes.medium),
+                if (plate || tile.on) Modifier else Modifier.border(1.dp, CoineProColors.BorderSubtle, CoineProShapes.large),
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -560,7 +561,8 @@ private fun RailTab(label: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .height(TAB_HEIGHT)
-            .clip(CoineProShapes.small)
+            // The chosen tab is a pill on the raised rung — the reference's — not a rounded square.
+            .clip(CoineProPillShape)
             .background(if (selected) CoineProColors.SurfaceElevated else Color.Transparent)
             .clickable(onClick = onClick)
             .padding(horizontal = CoineProSpacing.OneHalf),
@@ -580,8 +582,8 @@ private fun RailTab(label: String, selected: Boolean, onClick: () -> Unit) {
 private const val MEASURE_TOOL = "ruler"
 private const val ERASER_TOOL = "eraser"
 
-/** Phone app, measured: 72 pt tiles, 8 pt apart, a 40 pt «⋮» column; 40 pt tabs. */
-private val MODE_TILE_HEIGHT = 72.dp
+/** The mode tiles share the tool tiles' 88 with 8 between, a 40 pt «⋮» column; 40 pt tabs. */
+private val MODE_TILE_HEIGHT = 88.dp
 private val MODE_TILE_GAP = 8.dp
 private val MODE_MENU_WIDTH = 40.dp
 private val TAB_HEIGHT = 40.dp
@@ -671,8 +673,8 @@ private fun ToolCell(
             .height(CELL_HEIGHT)
             // TradingView's tool tiles: a grey plate with no edge, and the armed one inverted —
             // near-black with white ink — rather than outlined. Measured off the phone app's
-            // Drawings sheet: 12 pt corners, the plate one step up from the sheet.
-            .clip(CoineProShapes.medium)
+            // Drawings sheet: 16 dp corners, the plate one step up from the sheet.
+            .clip(CoineProShapes.large)
             .background(if (selected) CoineProColors.TextPrimary else CoineProColors.SurfaceElevated)
             .combinedClickable(onClick = onClick, onLongClick = onHelp)
             .padding(horizontal = CoineProSpacing.Half),
@@ -747,7 +749,7 @@ fun ActiveToolBar(
             if (tool.points > 0) {
                 Text(
                     // A prose count, so Persian digits — unlike a price, which stays Latin.
-                    text = "نقطهٔ ${(placed + 1).toPersianDigits()} از ${(tool.points).toPersianDigits()}",
+                    text = "نقطه‌ی ${(placed + 1).toPersianDigits()} از ${(tool.points).toPersianDigits()}",
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,
                 )
@@ -936,15 +938,14 @@ fun DrawingList(
 }
 
 /**
- * Four across.
- *
- * Three wastes a phone's width; five puts the labels below a size anyone reads. At four, a 411dp
- * screen gives each cell about 92dp, which fits a 24dp glyph and two lines of Persian under it.
+ * Three across — the reference's Drawings sheet, and the design brief's «3-column grid of 96 × 88
+ * tiles». Four was this app's own answer and it was a reasonable one; three gives every Persian
+ * label its whole width, which is what the two-line ellipsis was there to apologise for.
  */
-private const val TOOLS_ACROSS = 4
+private const val TOOLS_ACROSS = 3
 
-/** Tall enough for a 24dp glyph and two lines of Persian, and the same for every cell. */
-private val CELL_HEIGHT = 84.dp
+/** Eighty-eight, the reference's tile: a 24 dp glyph over a 12 sp label, and 16 dp corners. */
+private val CELL_HEIGHT = 88.dp
 
 /** A sheet's list is capped, so the sheet does not quietly become the whole screen. */
 private val LIST_MAX_HEIGHT = 320.dp

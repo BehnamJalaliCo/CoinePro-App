@@ -71,7 +71,7 @@ enum class AppDestination(
      * day's move and a spark line on each card, plus the doors to news, the calendar and the heat
      * map that a reader previously had to go looking for.
      *
-     * The full list did not go anywhere — Explore's own «همهٔ بازارها» opens it, and the menu keeps
+     * The full list did not go anywhere — Explore's own «همه‌ی بازارها» opens it, and the menu keeps
      * its row. A strip of cards is a taste of a catalogue and not the catalogue, and a reader who
      * came for all of them must not have to discover that the screen they used yesterday still
      * exists.

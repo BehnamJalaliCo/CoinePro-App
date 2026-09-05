@@ -185,7 +185,7 @@ internal fun BacktestSheetBody(
 
         if (allowShorts) {
             Text(
-                text = "فروش استقراضی تقریبی است: کارمزد دو طرف حساب می‌شود ولی بهرهٔ قرض و نرخ فاندینگ در سری کندل وجود ندارد.",
+                text = "فروش استقراضی تقریبی است: کارمزد دو طرف حساب می‌شود ولی بهره‌ی قرض و نرخ فاندینگ در سری کندل وجود ندارد.",
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.Warning,
                 fontWeight = FontWeight.Normal,
@@ -226,7 +226,7 @@ internal fun BacktestSheetBody(
         ExportCard(report, symbol)
 
         Text(
-            text = "ورود در باز شدنِ کندلِ بعد از سیگنال حساب می‌شود، نه در بستهٔ همان کندل. موقعیتِ باز در آخرین کندل بسته می‌شود تا منحنی سرمایه روی عددی تمام شود که واقعاً قابل برداشت بود. نتیجهٔ گذشته تضمین آینده نیست.",
+            text = "ورود در باز شدنِ کندلِ بعد از سیگنال حساب می‌شود، نه در بسته‌ی همان کندل. موقعیتِ باز در آخرین کندل بسته می‌شود تا منحنی سرمایه روی عددی تمام شود که واقعاً قابل برداشت بود. نتیجه‌ی گذشته تضمین آینده نیست.",
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
         )
@@ -400,7 +400,7 @@ private fun ReplaySessionCard(report: ReplayReport) {
             )
             MetricRow("کندل‌های این جلسه", BacktestFormat.count(report.window.bars))
             if (range.isNotEmpty()) {
-                MetricRow("بازهٔ زمانی", range)
+                MetricRow("بازه‌ی زمانی", range)
             }
         }
     }
@@ -429,7 +429,7 @@ private fun WindowCard(
                 BacktestFormat.dateRange(it.window.firstTime, it.window.lastTime, CHART_TIME_ZONE)
             }
             if (!range.isNullOrEmpty()) {
-                MetricRow("بازهٔ زمانی", range)
+                MetricRow("بازه‌ی زمانی", range)
             }
             if (hasMoreHistory) {
                 Text(
@@ -440,14 +440,14 @@ private fun WindowCard(
                 )
                 if (onLoadMoreHistory != null) {
                     CoineProSecondaryButton(
-                        text = if (loadingHistory) "در حال بارگذاری تاریخچه" else "بارگذاری تاریخچهٔ بیشتر",
+                        text = if (loadingHistory) "در حال بارگذاری تاریخچه" else "بارگذاری تاریخچه‌ی بیشتر",
                         onClick = { if (!loadingHistory) onLoadMoreHistory() },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
             } else if (report != null) {
                 Text(
-                    text = "کل تاریخچهٔ بارگذاری‌شدهٔ این نماد در این اجرا هست.",
+                    text = "کل تاریخچه‌ی بارگذاری‌شده‌ی این نماد در این اجرا هست.",
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,
                     fontWeight = FontWeight.Normal,
@@ -613,7 +613,7 @@ private fun TradesTab(report: TradeReport, guardSample: Boolean = false) {
                     CoineProColors.Buy,
                 )
                 MutedNote(
-                    "سود میان‌راه یعنی معامله تا کجا به نفع شما رفت پیش از آنکه بسته شود. اگر بازنده‌ها سود میان‌راه بزرگی داشته‌اند، ایراد از قاعدهٔ ورود نیست، از حد ضرر یا حد سود است.",
+                    "سود میان‌راه یعنی معامله تا کجا به نفع شما رفت پیش از آنکه بسته شود. اگر بازنده‌ها سود میان‌راه بزرگی داشته‌اند، ایراد از قاعده‌ی ورود نیست، از حد ضرر یا حد سود است.",
                 )
             }
         }
@@ -653,12 +653,12 @@ private fun RiskTab(report: TradeReport, guardSample: Boolean = false) {
                     BacktestFormat.percent(metrics.maxEquityDrawdownPercent, 1),
                     CoineProColors.Sell,
                 )
-                MetricRow("طولانی‌ترین دورهٔ افت", "${BacktestFormat.count(metrics.longestDrawdownBars)} کندل")
+                MetricRow("طولانی‌ترین دوره‌ی افت", "${BacktestFormat.count(metrics.longestDrawdownBars)} کندل")
                 MetricRow("کندل در سال", BacktestFormat.count(metrics.periodsPerYear.toInt()))
             }
         }
         MutedNote(
-            "شارپ نوسان مثبت را هم مثل نوسان منفی جریمه می‌کند، پس قاعده‌ای که چند برد بزرگ دارد بدتر از یک قاعدهٔ کم‌جان امتیاز می‌گیرد. سورتینو فقط سمت زیان را می‌سنجد و وقتی کندل‌های زیان‌ده کم باشند بزرگ و بی‌معنا می‌شود — دقیقاً همان‌جا که بیشتر نقل می‌شود.",
+            "شارپ نوسان مثبت را هم مثل نوسان منفی جریمه می‌کند، پس قاعده‌ای که چند برد بزرگ دارد بدتر از یک قاعده‌ی کم‌جان امتیاز می‌گیرد. سورتینو فقط سمت زیان را می‌سنجد و وقتی کندل‌های زیان‌ده کم باشند بزرگ و بی‌معنا می‌شود — دقیقاً همان‌جا که بیشتر نقل می‌شود.",
         )
         SampleWarning(metrics.totalTrades, guardSample)
     }
@@ -708,7 +708,7 @@ private fun TradeListTab(report: TradeReport) {
         }
         if (listed.size > shown.size) {
             Text(
-                text = "${shown.size.toPersianDigits()} معاملهٔ آخر از ${listed.size.toPersianDigits()} معامله. برای همه، خروجی CSV بگیرید.",
+                text = "${shown.size.toPersianDigits()} معامله‌ی آخر از ${listed.size.toPersianDigits()} معامله. برای همه، خروجی CSV بگیرید.",
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextMuted,
                 fontWeight = FontWeight.Normal,
@@ -938,7 +938,7 @@ private fun ExportCard(report: BacktestReport, symbol: String) {
                 )
             }
             MutedNote(
-                "همهٔ معاملات، همهٔ سنجه‌ها و بازهٔ اجرا در یک فایل. رایگان — تریدینگ‌ویو برای همین خروجی اشتراک می‌گیرد.",
+                "همه‌ی معاملات، همه‌ی سنجه‌ها و بازه‌ی اجرا در یک فایل. رایگان — تریدینگ‌ویو برای همین خروجی اشتراک می‌گیرد.",
             )
             outcome?.let {
                 Text(
@@ -967,7 +967,7 @@ private suspend fun write(context: Context, uri: Uri, bytes: ByteArray): String 
                 ?: error("no stream")
         }.fold(
             onSuccess = { "فایل ذخیره شد." },
-            onFailure = { "ذخیرهٔ فایل انجام نشد. جای دیگری را انتخاب کنید." },
+            onFailure = { "ذخیره‌ی فایل انجام نشد. جای دیگری را انتخاب کنید." },
         )
     }
 

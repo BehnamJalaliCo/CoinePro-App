@@ -135,14 +135,14 @@ class AccountDeletionTest {
     @Test
     fun `a refusal carries the server's own wording`() = runTest {
         val gateway = FakeAccountGateway(
-            deletion = AppResult.Failure(ErrorKind.VALIDATION, message = "یک معاملهٔ باز دارید"),
+            deletion = AppResult.Failure(ErrorKind.VALIDATION, message = "یک معامله‌ی باز دارید"),
         )
         val controller = AccountController(gateway, this)
 
         controller.deleteAccount()
         runCurrent()
 
-        assertEquals(AccountDeletion.Refused("یک معاملهٔ باز دارید"), controller.deletion.value)
+        assertEquals(AccountDeletion.Refused("یک معامله‌ی باز دارید"), controller.deletion.value)
     }
 }
 

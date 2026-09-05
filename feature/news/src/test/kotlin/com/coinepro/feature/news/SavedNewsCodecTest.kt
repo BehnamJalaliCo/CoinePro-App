@@ -26,8 +26,8 @@ class SavedNewsCodecTest {
 
     private fun article(
         id: String,
-        title: String = "تصمیم نرخ بهرهٔ فدرال رزرو",
-        summary: String? = "کمیتهٔ بازار باز نرخ را بدون تغییر نگه داشت.",
+        title: String = "تصمیم نرخ بهره‌ی فدرال رزرو",
+        summary: String? = "کمیته‌ی بازار باز نرخ را بدون تغییر نگه داشت.",
         source: String? = "ForexLive",
         url: String? = "https://example.com/a",
         imageUrl: String? = null,
@@ -106,7 +106,7 @@ class SavedNewsCodecTest {
         // cannot be undone.
         val stored = listOf(
             "fx-old",
-            "تصمیم نرخ بهرهٔ فدرال رزرو",
+            "تصمیم نرخ بهره‌ی فدرال رزرو",
             "ForexLive",
             "https://example.com/a",
             "",

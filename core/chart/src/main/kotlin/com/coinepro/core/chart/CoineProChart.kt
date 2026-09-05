@@ -297,6 +297,13 @@ fun CoineProChart(
      */
     onSnap: (() -> Unit)? = null,
     /**
+     * A point of a drawing was placed by a tap — every point, snapped or not.
+     *
+     * The caller's soft haptic goes here; the chart draws its own 120 ms pulse at the point. See
+     * `placePulse` below.
+     */
+    onPlace: (() -> Unit)? = null,
+    /**
      * A crosshair placed by something other than this chart's own finger.
      *
      * Drawn instead of the local one when it is non-null, and it does not disturb the local one —
@@ -684,6 +691,22 @@ fun CoineProChart(
      */
     var grabbedHandle by remember { mutableIntStateOf(-1) }
     var paintedHandle by remember { mutableIntStateOf(-1) }
+
+    /**
+     * The last point a tap placed, and the ring that swells out of it for 120 ms.
+     *
+     * A sequence number rather than the point alone, so placing the same point twice — a tap that
+     * the magnet pulled onto the same close — pulses twice. Read inside the draw, like the grab.
+     */
+    var placedPoint by remember { mutableStateOf<ChartPoint?>(null) }
+    var placedSeq by remember { mutableIntStateOf(0) }
+    val placePulse = remember { Animatable(1f) }
+    LaunchedEffect(placedSeq) {
+        if (placedSeq > 0) {
+            placePulse.snapTo(0f)
+            placePulse.animateTo(1f, tween(PLACE_PULSE_MS))
+        }
+    }
     val grabGrow = remember { Animatable(0f) }
     LaunchedEffect(grabbedHandle) {
         if (grabbedHandle >= 0) {
@@ -1982,6 +2005,16 @@ fun CoineProChart(
                                             hit,
                                             snapped.channel,
                                         )
+                                        // A point went down — onto the pending shape or, on the
+                                        // last tap, into a finished drawing. Either way the reader
+                                        // gets the tick and the ring.
+                                        if (placed.pending.size > state.pending.size ||
+                                            placed.drawings.size > state.drawings.size
+                                        ) {
+                                            onPlace?.invoke()
+                                            placedPoint = snapped.point
+                                            placedSeq += 1
+                                        }
                                         // Held for one point, exactly as the magnet is: a latch
                                         // nothing drops is a latch the reader turned on by accident
                                         // and cannot find the switch for. `commit` releases the
@@ -2261,6 +2294,19 @@ fun CoineProChart(
                                 // canvas without recomposing a composable with nine gesture
                                 // handlers hanging off it.
                                 grabProgress = grabGrow.value,
+                            )
+                        }
+                        // The placement pulse: a ring that grows from the handle's size to three
+                        // times it and fades as it goes, over the 120 ms after a tap.
+                        val pulse = placePulse.value
+                        val pulsedAt = placedPoint
+                        if (pulsedAt != null && pulse < 1f) {
+                            val centre = Offset(view.xOfTime(pulsedAt.time), view.yOf(pulsedAt.price))
+                            drawCircle(
+                                color = palette.text.copy(alpha = (1f - pulse) * PLACE_PULSE_ALPHA),
+                                radius = PLACE_PULSE_RADIUS.toPx() * (1f + pulse * (PLACE_PULSE_SCALE - 1f)),
+                                center = centre,
+                                style = Stroke(PLACE_PULSE_STROKE.toPx()),
                             )
                         }
                     }
@@ -5554,6 +5600,13 @@ private val PINCH_AXIS_FLOOR_DP = 12.dp
 
 /** How long the handle takes to grow under a finger, and to come back down after it lifts. */
 private const val HANDLE_GRAB_MS = 200
+
+/** The placement pulse: 120 ms, from an 8 dp ring to three times that, fading out. */
+private const val PLACE_PULSE_MS = 120
+private val PLACE_PULSE_RADIUS = 4.dp
+private const val PLACE_PULSE_SCALE = 3f
+private const val PLACE_PULSE_ALPHA = 0.8f
+private val PLACE_PULSE_STROKE = 2.dp
 
 /**
  * The mean distance of the pressed pointers from their centroid along one axis.

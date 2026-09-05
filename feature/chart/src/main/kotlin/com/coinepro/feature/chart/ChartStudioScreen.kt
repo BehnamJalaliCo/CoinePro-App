@@ -579,7 +579,7 @@ fun ChartStudioScreen(
                 item {
                     ActionRow(
                         title = "نما اسکریپت",
-                        body = "اندیکاتور خودتان را بنویسید و همین‌جا روی این نماد ببینید. ده اسکریپت آماده و یک دورهٔ کوتاه همراهش است.",
+                        body = "اندیکاتور خودتان را بنویسید و همین‌جا روی این نماد ببینید. ده اسکریپت آماده و یک دوره‌ی کوتاه همراهش است.",
                         action = "نوشتن",
                         icon = DesignR.drawable.tv_code2,
                         onClick = open,
@@ -653,13 +653,19 @@ fun ChartStudioScreen(
                     controller.deleteDrawing(drawing.id)
                     styling = null
                 },
+                onSetTextColour = { colour -> controller.setDrawingTextColour(drawing.id, colour) },
+                onSetFillColour = { colour -> controller.setDrawingFillColour(drawing.id, colour) },
+                onSetLineStyle = { style -> controller.setDrawingLineStyle(drawing.id, style) },
+                onMovePoint = { index, to -> controller.moveDrawingPoint(drawing.id, index, to) },
+                onSetLocked = { locked -> controller.setDrawingLocked(drawing.id, locked) },
+                onSaveAsDefault = { controller.setDrawingStyle(drawing.colour, drawing.widthDp) },
             )
         }
     }
 
     if (confirmClear) {
         CoineProConfirmDialog(
-            title = "پاک کردن همهٔ ترسیم‌ها",
+            title = "پاک کردن همه‌ی ترسیم‌ها",
             message = "هر " + state.drawing.drawings.size.toPersianDigits() +
                 " ترسیم این نماد برداشته می‌شود و برنمی‌گردد. اندیکاتورها و تنظیمات نمودار دست‌نخورده می‌مانند.",
             confirmLabel = "پاک کن",
@@ -813,7 +819,7 @@ private const val TEMPLATE_ID_RADIX = 36
  * ### Why three and not a switch
  *
  * A boolean collapses the two useful answers into each other. «همین چیدمان» is about one reading
- * session — keep my panes in step — and «همهٔ چیدمان‌ها» is about a body of work: a level on gold is
+ * session — keep my panes in step — and «همه‌ی چیدمان‌ها» is about a body of work: a level on gold is
  * a fact about gold, not about the apparatus somebody happened to be looking through when they drew
  * it. The third, «موقت», is the scratch setting: visible where it was drawn, and left behind when
  * the layout is filed.
@@ -855,13 +861,13 @@ private val DrawingSyncMode.persianLabel: String
     get() = when (this) {
         DrawingSyncMode.NONE -> "موقت"
         DrawingSyncMode.LAYOUT -> "همین چیدمان"
-        DrawingSyncMode.GLOBAL -> "همهٔ چیدمان‌ها"
+        DrawingSyncMode.GLOBAL -> "همه‌ی چیدمان‌ها"
     }
 
 /** One sentence on what each reach does, because three names do not say it on their own. */
 private val DrawingSyncMode.persianNote: String
     get() = when (this) {
-        DrawingSyncMode.NONE -> "روی همین نمودار می‌ماند و با ذخیرهٔ چیدمان همراهش نمی‌رود."
+        DrawingSyncMode.NONE -> "روی همین نمودار می‌ماند و با ذخیره‌ی چیدمان همراهش نمی‌رود."
         DrawingSyncMode.LAYOUT -> "متعلق به همین چیدمان است و با آن ذخیره می‌شود."
         DrawingSyncMode.GLOBAL -> "روی هر چیدمانی از این نماد دیده می‌شود، حتی چیدمان‌هایی که بعداً ساخته شوند."
     }

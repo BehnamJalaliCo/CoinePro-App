@@ -19,10 +19,10 @@ class ApiErrorsTest {
 
     @Test
     fun `reads the bare-string envelope the panel routes still return`() {
-        val error = ApiErrors.parse("""{"detail":"پنلِ کاربری ویژهٔ اعضای VIP است."}""")
+        val error = ApiErrors.parse("""{"detail":"پنلِ کاربری ویژه‌ی اعضای VIP است."}""")
 
         assertNull("A bare string carries no machine-readable code", error.code)
-        assertEquals("پنلِ کاربری ویژهٔ اعضای VIP است.", error.message)
+        assertEquals("پنلِ کاربری ویژه‌ی اعضای VIP است.", error.message)
     }
 
     @Test

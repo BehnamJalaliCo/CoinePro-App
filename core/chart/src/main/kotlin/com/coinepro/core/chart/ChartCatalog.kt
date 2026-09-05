@@ -89,6 +89,22 @@ data class IndicatorOption(
  */
 data class IndicatorPeriod(val default: Int, val min: Int = 2, val max: Int = 400)
 
+/**
+ * The reference's indicator families, as the chips on the indicator sheet name them.
+ *
+ * Trend, momentum, volatility, volume and Bill Williams are TradingView's own five; «structure»
+ * is this app's sixth, for the studies that mark levels and swings rather than draw a line —
+ * the reference files those under its scripts, which this catalogue has no equivalent of.
+ */
+enum class IndicatorCategory(val label: String) {
+    TREND("روند"),
+    MOMENTUM("مومنتوم"),
+    VOLATILITY("نوسان"),
+    VOLUME("حجم"),
+    BILL_WILLIAMS("بیل ویلیامز"),
+    STRUCTURE("ساختار بازار"),
+}
+
 enum class IndicatorPane {
     /** Drawn over the candles, on the price axis. */
     PRICE,
@@ -206,7 +222,7 @@ object ChartCatalog {
         // so `ChartTransforms.footprint` returns an empty list there rather than a wall of zeros.
         // The picker hides them on that feed; see `ChartTypePicker`.
         ChartTypeOption(ChartType.BASELINE, "خط پایه", "baseline", DesignR.drawable.tv_chart_baseline),
-        ChartTypeOption(ChartType.HLC_AREA, "ناحیهٔ HLC", "hlcarea", DesignR.drawable.tv_chart_hlcarea),
+        ChartTypeOption(ChartType.HLC_AREA, "ناحیه‌ی HLC", "hlcarea", DesignR.drawable.tv_chart_hlcarea),
         ChartTypeOption(ChartType.STEP_LINE, "پلکانی", "step", DesignR.drawable.tv_chart_step),
         ChartTypeOption(ChartType.LINE_MARKERS, "خطی با نشانگر", "lwm", DesignR.drawable.tv_chart_lwm),
         ChartTypeOption(ChartType.VOLUME_CANDLES, "کندل حجمی", "volcandles", DesignR.drawable.tv_chart_volcandles),
@@ -228,6 +244,49 @@ object ChartCatalog {
 
     /** How many indicators [indicatorsFor] would offer. */
     fun indicatorCount(hasVolume: Boolean): Int = indicatorsFor(hasVolume).size
+
+    /**
+     * Which of the reference's families an indicator belongs to — the chips on its sheet.
+     *
+     * A lookup rather than a field on every one of the eighty-four constructors, because the
+     * family is the sheet's way of filtering and nothing the engine reads. Every id is named in
+     * exactly one set; `ChartCatalogTest` holds that, so an indicator added without a family
+     * fails the build rather than falling into «other».
+     */
+    fun categoryOf(id: String): IndicatorCategory = CATEGORIES[id] ?: IndicatorCategory.TREND
+
+    private val CATEGORIES: Map<String, IndicatorCategory> = buildMap {
+        fun put(category: IndicatorCategory, vararg ids: String) = ids.forEach { put(it, category) }
+        put(
+            IndicatorCategory.TREND,
+            "sma", "ema", "wma", "hma", "ichimoku", "supertrend", "smma", "zlema", "kama", "t3",
+            "mcginley", "linreg", "lsma", "envelopes", "sar", "vwma", "tema", "dema", "chandekroll",
+            "volstop", "adx", "dmi", "aroon", "vortex", "kst", "coppock", "dpo", "trix", "massindex",
+        )
+        put(
+            IndicatorCategory.MOMENTUM,
+            "rsi", "macd", "stochastic", "cci", "williams", "mom", "roc", "uo", "fisher", "crsi",
+            "smiErgodic", "smi", "bop", "stochrsi", "tsi", "ppo", "cmo", "rvi", "woodiescci",
+            "correlation", "choppiness",
+        )
+        put(
+            IndicatorCategory.VOLATILITY,
+            "bollinger", "keltner", "donchian", "atr", "stddev", "hv", "chaikinVol", "bbpercent", "bbw",
+        )
+        put(
+            IndicatorCategory.VOLUME,
+            "vwap", "obv", "adline", "chaikinOsc", "eom", "forceIndex", "klinger", "pvt",
+            "volumeprofile_ind", "mfi", "cmf", "pvo", "netvolume",
+        )
+        put(IndicatorCategory.BILL_WILLIAMS, "alligator", "ao", "ac", "fractals")
+        put(
+            IndicatorCategory.STRUCTURE,
+            "pivots", "swings", "zigzag", "autofib", "sr", "supplydemand", "chopzone",
+        )
+    }
+
+    /** Every id [categoryOf] knows, for the test that holds the catalogue and the map together. */
+    val CATEGORISED_IDS: Set<String> get() = CATEGORIES.keys
 
     /**
      * The indicators that are arithmetic on a volume column and nothing else.
@@ -271,7 +330,7 @@ object ChartCatalog {
         IndicatorOption("stochastic", "استوکاستیک", "stoch", IndicatorPane.SEPARATE, 0xFF4FB3A5, DesignR.drawable.tv_tool_sine),
         IndicatorOption("cci", "شاخص کانال کالا", "cci", IndicatorPane.SEPARATE, 0xFF9B7BE0, DesignR.drawable.tv_tool_sine),
         IndicatorOption("williams", "ویلیامز R%", "willr", IndicatorPane.SEPARATE, 0xFFC77F9B, DesignR.drawable.tv_tool_sine),
-        IndicatorOption("atr", "میانگین دامنهٔ واقعی", "atr", IndicatorPane.SEPARATE, 0xFF8E9BAE, DesignR.drawable.tv_ruler),
+        IndicatorOption("atr", "میانگین دامنه‌ی واقعی", "atr", IndicatorPane.SEPARATE, 0xFF8E9BAE, DesignR.drawable.tv_ruler),
         IndicatorOption("adx", "شاخص میانگین جهت‌دار", "adx", IndicatorPane.SEPARATE, 0xFFE0A85C, DesignR.drawable.tv_tool_arrowdir),
         IndicatorOption("choppiness", "شاخص چاپینس", "choppiness", IndicatorPane.SEPARATE, 0xFF7FA3C7, DesignR.drawable.tv_ruler),
         IndicatorOption("vortex", "ورتکس", "vortex", IndicatorPane.SEPARATE, 0xFFB08BC7, DesignR.drawable.tv_tool_arrowdir),
@@ -364,7 +423,7 @@ object ChartCatalog {
         // Structure rather than a pane of its own, because it is not a level and not a value: it
         // is a regime reading, one verdict per bar, and the thing it belongs beside is the candle
         // it describes. See [CHOP_ZONE_COLOURS].
-        IndicatorOption("chopzone", "ناحیهٔ چاپ (Chop Zone)", "chopzone", IndicatorPane.STRUCTURE, 0xFF7FA3C7, DesignR.drawable.tv_layout_grid),
+        IndicatorOption("chopzone", "ناحیه‌ی چاپ (Chop Zone)", "chopzone", IndicatorPane.STRUCTURE, 0xFF7FA3C7, DesignR.drawable.tv_layout_grid),
     )
 
     /**
@@ -1229,7 +1288,7 @@ object ChartCatalog {
                     // and a reader looking at one flat line has no other way to tell which they
                     // have. Left as a bare "POC" for the whole series, which is what the study was
                     // before it learned about the viewport.
-                    val label = if (window == BarWindow.WHOLE_SERIES) "POC" else "POC · محدودهٔ دید"
+                    val label = if (window == BarWindow.WHOLE_SERIES) "POC" else "POC · محدوده‌ی دید"
                     listOf(
                         ChartLine(
                             flat(series.size, control),

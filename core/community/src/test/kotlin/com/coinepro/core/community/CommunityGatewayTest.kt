@@ -195,7 +195,7 @@ class CommunityGatewayTest {
     fun `crowning a reply does not map its 403 to a ban`() = runTest {
         // `best_reply` answers 403 to anyone who is not the post's author. That is a sentence
         // about authorship, and telling the reader they are banned for it would be nonsense.
-        val gateway = gateway("""{"detail":"فقط نویسندهٔ پست می‌تواند پاسخ برگزیده را تعیین کند."}""", code = 403)
+        val gateway = gateway("""{"detail":"فقط نویسنده‌ی پست می‌تواند پاسخ برگزیده را تعیین کند."}""", code = 403)
 
         val thrown = runCatching { gateway.bestReply(41, 88) }.exceptionOrNull()
         assertTrue(thrown is HttpException)

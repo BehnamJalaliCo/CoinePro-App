@@ -29,7 +29,7 @@ import com.coinepro.core.designsystem.CoineProSpacing
  * ### The report
  *
  * «روی هر کدوم از قسمت‌هایی که ورود با حساب می‌زنم وارد قسمت ثبت‌نام یا ورود با گوگل می‌شه ولی هیچ
- * دکمهٔ برگشتی نذاشتی.» And it was exact: signing in is not a destination on the navigation graph —
+ * دکمه‌ی برگشتی نذاشتی.» And it was exact: signing in is not a destination on the navigation graph —
  * it *replaces* the shell — so there was no back stack behind it, no top bar over it and no arrow in
  * the corner. A reader who tapped a locked row in the menu to see what was behind it was left on a
  * form with two ways out: complete it, or kill the app.

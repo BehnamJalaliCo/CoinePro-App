@@ -142,7 +142,7 @@ class AcademyGatewayTest {
     @Test
     fun `a lesson reads, video path and watermark included`() = runTest {
         val body = """
-            {"slug":"lots","level":"beginner","title":"لات","summary":"اندازهٔ معامله",
+            {"slug":"lots","level":"beginner","title":"لات","summary":"اندازه‌ی معامله",
              "content":"<p>یک لات استاندارد ۱۰۰٬۰۰۰ واحد است.</p>","diagram_image":null,
              "tier":"free","video_url":"/api/academy/video/9?t=abc","video_duration":420,
              "reading_time_min":3,"watermark":"reza"}
@@ -157,7 +157,7 @@ class AcademyGatewayTest {
 
     @Test
     fun `a locked lesson raises the right lock, told apart by what the message is about`() = runTest {
-        val phone = """{"detail":"برای بازکردنِ سطح‌های حرفه‌ای، شمارهٔ موبایلت را در پروفایل وارد کن."}"""
+        val phone = """{"detail":"برای بازکردنِ سطح‌های حرفه‌ای، شماره‌ی موبایلت را در پروفایل وارد کن."}"""
         val tier = """{"detail":"این درس نیازمندِ اشتراکِ بالاتر است."}"""
 
         val phoneFailure = runCatching { gateway(phone, code = 403).lesson("x") }.exceptionOrNull()
@@ -238,7 +238,7 @@ class AcademyGatewayTest {
             {"items":[
               {"badge":"first_lesson","title":"اولین قدم","desc":"اولین درست را کامل کردی.",
                "icon":"🎯","earned":true,"earned_at":"2026-08-01T09:00:00+00:00"},
-              {"badge":"streak_7","title":"هفتهٔ آتشین","desc":"۷ روزِ پیاپی فعال بودی.",
+              {"badge":"streak_7","title":"هفته‌ی آتشین","desc":"۷ روزِ پیاپی فعال بودی.",
                "icon":"🔥","earned":false,"earned_at":null}],
              "earned_count":1,"total":11}
         """.trimIndent()

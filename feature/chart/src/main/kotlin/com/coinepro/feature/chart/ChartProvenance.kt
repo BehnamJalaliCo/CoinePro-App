@@ -44,7 +44,7 @@ fun chartExclusions(state: ChartUiState): List<String> {
             " ساخته می‌شوند و از نیمه‌شب تهران شمرده می‌شوند."
     }
     if (state.historyTruncated) {
-        out += "به همین دلیل هر بار کندل کمتری می‌آید. برای دیدن گذشتهٔ بیشتر، نمودار را به عقب بکشید."
+        out += "به همین دلیل هر بار کندل کمتری می‌آید. برای دیدن گذشته‌ی بیشتر، نمودار را به عقب بکشید."
     }
     // The volume line is the one the TradingView complaint was actually about. It is said whenever
     // the feed carries no volume column, including on a chart with no volume study switched on —
@@ -53,7 +53,7 @@ fun chartExclusions(state: ChartUiState): List<String> {
         out += "این فید حجم نمی‌فرستد. اندیکاتورها و ابزارهای حجمی روی این نماد نمایش داده نمی‌شوند."
     }
     if (state.replay.isOn) {
-        out += "بازپخش روشن است. کندل‌های بعد از نقطهٔ بازپخش عمداً نشان داده نمی‌شوند."
+        out += "بازپخش روشن است. کندل‌های بعد از نقطه‌ی بازپخش عمداً نشان داده نمی‌شوند."
     }
     val repainting = RepaintClaims.repaintingAmong(state.activeIndicators)
     if (repainting.isNotEmpty()) {

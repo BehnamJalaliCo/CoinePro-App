@@ -1,6 +1,7 @@
 package com.coinepro.feature.chart
 
 import com.coinepro.core.chart.Drawing
+import com.coinepro.core.chart.LineStyleKind
 import com.coinepro.core.datastore.DrawingTemplate
 
 /**
@@ -164,3 +165,19 @@ fun templateOf(
 
 /** Base thirty-six, so a millisecond clock becomes a short id rather than thirteen digits. */
 private const val TEMPLATE_ID_RADIX = 36
+
+/**
+ * The five dashes, named for what a reader sees rather than for the enum.
+ *
+ * «پیش‌فرض» and not «ممتد» for [LineStyleKind.SOLID], because it does not force a solid line: it
+ * restores the tool's own drawing, and the tools that are dashed by construction stay dashed at
+ * this setting. Calling it "solid" would be a label that lies on a Fibonacci fan. Shared by the
+ * floating toolbar and the settings sheet, so the two never name a dash differently.
+ */
+internal val LINE_STYLES: List<Pair<String, LineStyleKind>> = listOf(
+    "پیش‌فرض" to LineStyleKind.SOLID,
+    "نقطه‌چین" to LineStyleKind.DOTTED,
+    "خط‌چین" to LineStyleKind.DASHED,
+    "خط‌چین درشت" to LineStyleKind.LARGE_DASHED,
+    "نقطه‌چین تنک" to LineStyleKind.SPARSE_DOTTED,
+)

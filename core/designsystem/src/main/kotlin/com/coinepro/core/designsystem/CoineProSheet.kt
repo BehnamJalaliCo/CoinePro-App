@@ -28,6 +28,9 @@ import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -59,6 +62,12 @@ fun CoineProSheet(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    /**
+     * How dark the page behind the sheet goes. Forty per cent by default; a sheet whose controls
+     * change the picture behind it live — a drawing's style, an indicator's inputs — asks for
+     * [SHEET_PREVIEW_SCRIM_ALPHA] so the reader can see what they are changing.
+     */
+    scrimAlpha: Float = SHEET_SCRIM_ALPHA,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     ModalBottomSheet(
@@ -67,7 +76,7 @@ fun CoineProSheet(
         containerColor = CoineProColors.Surface,
         // Forty per cent, not Material's thirty-two: the chart stays legible behind a sheet, and
         // the reference app's sheets are measured at this depth.
-        scrimColor = Color.Black.copy(alpha = SHEET_SCRIM_ALPHA),
+        scrimColor = Color.Black.copy(alpha = scrimAlpha),
         dragHandle = null,
         modifier = modifier,
     ) {
@@ -89,7 +98,7 @@ fun CoineProSheetBody(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     /**
-     * The round close button at the title's far end — TradingView's sheets all carry one, a 40 dp
+     * The round close button at the title's far end — TradingView's sheets all carry one, a 32 dp
      * disc on the elevated rung with a cross in it, and a sheet that can only be dismissed by
      * dragging is a sheet a reader has to know something about. Null draws none (an inline panel).
      */
@@ -130,6 +139,7 @@ fun CoineProSheetBody(
             onClose?.let { close ->
                 Box(
                     modifier = Modifier
+                        .minimumInteractiveComponentSize()
                         .size(SHEET_CLOSE)
                         .clip(CircleShape)
                         .background(CoineProColors.SurfaceElevated)
@@ -140,7 +150,7 @@ fun CoineProSheetBody(
                         painter = painterResource(R.drawable.icon_x),
                         contentDescription = stringResource(R.string.sheet_close),
                         tint = CoineProColors.TextPrimary,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(16.dp),
                     )
                 }
             }
@@ -149,8 +159,8 @@ fun CoineProSheetBody(
     }
 }
 
-/** Forty, measured off TradingView's sheets: the disc is the size of a comfortable tap. */
-private val SHEET_CLOSE = 40.dp
+/** Thirty-two, the design brief's measure of the reference's disc; the tap target stays 48. */
+private val SHEET_CLOSE = 32.dp
 
 @Composable
 private fun SheetHandle() {
@@ -375,7 +385,17 @@ fun CoineProSheetSearch(
     onValueChange: (String) -> Unit,
     placeholder: String,
     modifier: Modifier = Modifier,
+    /**
+     * Whether the keyboard comes up with the sheet. The reference's indicator sheet does this —
+     * eighty rows is a list nobody scrolls — and the tool sheet does not, because a reader
+     * opening it is about to tap a tile. Off by default.
+     */
+    autoFocus: Boolean = false,
 ) {
+    val focus = remember { FocusRequester() }
+    if (autoFocus) {
+        LaunchedEffect(Unit) { focus.requestFocus() }
+    }
     // TradingView's phone sheets, measured: a 40 pt field on a grey plate with 10 pt corners and
     // no edge — the plate is the field. The hairline it used to carry read as a second, different
     // control beside the tiles under it.
@@ -383,7 +403,7 @@ fun CoineProSheetSearch(
         modifier = modifier
             .fillMaxWidth()
             .height(SHEET_SEARCH_HEIGHT)
-            .clip(CoineProShapes.small)
+            .clip(CoineProShapes.medium)
             .background(CoineProColors.SurfaceElevated)
             .padding(horizontal = CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.CenterVertically,
@@ -398,7 +418,7 @@ fun CoineProSheetSearch(
         androidx.compose.foundation.text.BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).focusRequester(focus),
             singleLine = true,
             textStyle = MaterialTheme.typography.bodyLarge.copy(color = CoineProColors.TextPrimary),
             cursorBrush = androidx.compose.ui.graphics.SolidColor(CoineProColors.Gold),
@@ -434,8 +454,8 @@ fun CoineProSheetSearch(
     }
 }
 
-/** The sheet search field's height: 40 pt on TradingView's phone sheets. */
-private val SHEET_SEARCH_HEIGHT = 40.dp
+/** The sheet search field's height: 44, the design brief's measure; 12 dp corners below. */
+private val SHEET_SEARCH_HEIGHT = 44.dp
 
 /** Shown where a filter matched nothing, in place of a blank sheet. */
 @Composable
@@ -457,3 +477,6 @@ internal val UnselectedChip: Color = Color.Transparent
 
 /** How much of the chart a sheet hides. See `CoineProSheet`. */
 internal const val SHEET_SCRIM_ALPHA = 0.4f
+
+/** The scrim behind a sheet that previews its changes on the chart: twenty per cent. */
+const val SHEET_PREVIEW_SCRIM_ALPHA = 0.2f

@@ -106,8 +106,8 @@ internal fun SetupSheetBody(
 
         CoineProCard(modifier = Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
-                Line("فاصلهٔ ریسک", price(riskDistance))
-                Line("فاصلهٔ ریوارد", price(rewardDistance))
+                Line("فاصله‌ی ریسک", price(riskDistance))
+                Line("فاصله‌ی ریوارد", price(rewardDistance))
                 Line(
                     "پیپ تا حد ضرر",
                     BidiText.isolateLtr(MarketNumberFormatter.price(TradeFromChart.stopPips(order, symbol), 1)),
@@ -138,7 +138,7 @@ internal fun SetupSheetBody(
                 }
             }
             Text(
-                text = "لات استاندارد بر پایهٔ قرارداد ۱۰۰٬۰۰۰ واحدی حساب می‌شود. اگر کارگزار شما اندازهٔ دیگری دارد، از ماشین‌حساب حجم در «ابزارها» استفاده کنید.",
+                text = "لات استاندارد بر پایه‌ی قرارداد ۱۰۰٬۰۰۰ واحدی حساب می‌شود. اگر کارگزار شما اندازه‌ی دیگری دارد، از ماشین‌حساب حجم در «ابزارها» استفاده کنید.",
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextMuted,
             )
@@ -172,7 +172,7 @@ internal fun SetupSheetBody(
         livePrice?.let { price ->
             val open = TradeFromChart.unrealised(order, price, symbol)
             Line(
-                "فاصلهٔ قیمت فعلی تا ورود",
+                "فاصله‌ی قیمت فعلی تا ورود",
                 BidiText.isolateLtr(MarketNumberFormatter.price(open.pips, 1) + " پیپ"),
             )
         }

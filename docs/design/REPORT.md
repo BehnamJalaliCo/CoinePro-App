@@ -130,9 +130,100 @@ logos as fallback only (2). Two design-metric targets moved with the grid: the w
 pre-row chrome from 117 to 125 dp (the owner's ceiling, now met exactly) and the descriptive menu
 row's ceiling from 52 to 60 dp (the prompt's 56–60 band); both are commented in the tests.
 
+## Sprint B — tools parity (B1–B11)
+
+Pictures for the six surfaces this sprint touched, dark + Persian, are paired in
+`docs/design/sprint-b/before/` and `docs/design/sprint-b/after/` (the full forty-four-picture set
+in `after/` was recaptured too, and now carries an eleventh screen, the indicator settings sheet).
+
+**What changed.**
+
+- **B1 toolbar.** 48 dp bar, 22 dp glyphs on a 46 dp pitch (24 between glyphs), a hairline after
+  the interval and one before undo, a caret on the interval, and a count badge on Indicators and on
+  the analysis «•••» for the objects drawn. `[symbol] [interval ▾] │ [draw] [indicators] [•••] │
+  [undo] [fullscreen]`, as the brief lays it out.
+- **B2 timeframe sheet.** Sheet close disc 32 dp (the target stays 48); date-range chips 48 tall
+  with 12 dp corners; group names at 12 sp; «+ Add interval» full-width at 56. The handle was
+  already 36 × 4, the title already 20 sp bold, the scrim already 40 %.
+- **B3 drawings sheet.** Search 44 dp with 12 dp corners; three tiles across at 88 dp with 16 dp
+  corners (four across at 84 before); the mode tiles — Measure, Eraser, Keep drawing, Hide, Lock
+  all, Magnet, Remove all, Zoom in, Zoom out — share the same grid; the active tab is a pill.
+  The favourites strip and the star on each tile existed; the floating strip over the chart is an
+  open decision (5).
+- **B4 placing and editing.** A soft haptic on every placed point (the magnet's own tick stays)
+  and a 120 ms ring that swells from the point; handles at 8 dp with a 2 dp ring; a readout plate
+  beside the held handle with the anchor's price, the bar's O H L C and its time — the brief's
+  magnifier without a lens over the wick being aimed at. The floating mini-toolbar (colour · width
+  · style · lock · duplicate · settings · delete) existed.
+- **B5 drawing settings.** Style · Coordinates · Visibility tabs. Style: twelve swatches and a hex
+  field, the four widths drawn with their real stroke, five dashes, a fill-opacity slider with the
+  chart under a 20 % scrim, text colour, «Save as default», templates. Coordinates: every anchor's
+  price in a field, its moment beside it. Visibility: the lock, the drawing's own timeframe, order,
+  delete.
+- **B6 indicator sheet.** 92 % height, the search takes the keyboard, chips Favourites · Recent ·
+  Trend · Momentum · Volatility · Volume · Bill Williams · Structure with counts; a star on every
+  row; long-press opens the help entry. Favourites and the eight most recent persist
+  (`IndicatorFavouritesStore`); every one of the 84 indicators is filed in exactly one family
+  (`ChartCatalogTest`).
+- **B7 pane legend.** Eye, gear and × were on every primary row behind the disclosure. The gear
+  now opens the study's own sheet (B8) instead of the catalogue, and the eye and the sheet share
+  one hidden set. Drag to reorder and move / merge panes are open decision 6.
+- **B8 indicator settings.** Inputs · Style · Visibility: the lookback stepper; a colour and a
+  stroke per indicator, persisted per symbol alongside the period; show / hide and remove. The
+  sheet scrims the chart at 20 % so the average moves as the stepper does.
+- **B9 analysis hub.** Tiles at 88 dp; TOOLS two across (Indicators, Compare, Alert, Replay) then
+  three across (Backtest, Chart type, Objects); the broker card's 1.5 dp spectrum rim, the span
+  chips, go-to-date, MORE and Help Center were there. The top row stays three across — open
+  decision 7.
+- **B10 symbol wheel.** Five rows, the middle bold with its logo at 32, the neighbours at 60 %;
+  the chart dissolves in over 250 ms on the switch. No blur, by the house rule; the card is 92 %
+  stage.
+- **B11 fullscreen.** The toolbar slides down and out over 200 ms before the window opens and
+  back in when it closes; the fullscreen button's glyph flips to its inward pair. Viewport,
+  indicators and drawings survive rotation already: zoom, offset and price zoom are
+  `rememberSaveable` in `CoineProChart`, the studies and the drawings live in the per-symbol
+  controller the app retains.
+- **Orthography.** The glossary forbids the hamza-on-heh ezafe; 321 of them were in Kotlin
+  literals across 63 files (the XML was already clean). All replaced with «ه‌ی», and the string
+  lint now reads Kotlin literals too.
+
+**Numbers.**
+
+| Measure | Before | After |
+| --- | --- | --- |
+| Toolbar height / glyph pitch | 44 / 44 | 48 / 46 |
+| Tool tiles across / height / radius | 4 / 84 / 12 | 3 / 88 / 16 |
+| Drawing swatches / width control | 8 / named pills | 12 + hex / real strokes |
+| Drawing settings tabs | 1 page | 3 tabs |
+| Indicator chips | 3 (by pane) | 8 (favourites, recent, 6 families) |
+| Per-indicator settings sheet | none | Inputs · Style · Visibility |
+| Symbol picker rows visible | 9 | 5 |
+| U+0654 in Kotlin literals | 321 | 0 (gated) |
+
+**Self-score after Sprint B (dark, fa), out of 100:**
+
+| Screen | A | B | What moved, what did not |
+| --- | --- | --- | --- |
+| Symbol + chart | 74 | 80 | Toolbar on the reference's geometry with badges and dividers; symbol fade; placement pulse. Header line and axis weights are Sprint C. |
+| Drawings sheet | 47 | 78 | Three-across 88 dp tiles, 44 dp search, pill tabs. Tab names are this app's twelve groups, not the reference's eight; no floating favourites strip over the chart. |
+| Indicators sheet | 57 | 80 | Favourites / Recent / families, stars, auto-focused search, full height. No one-line descriptions (open decision 8). |
+| Drawing settings | 52 | 82 | Three tabs, twelve swatches, real-stroke widths, fill slider, coordinates. Time is not typeable. |
+| Timeframe sheet | 68 | 76 | 48-tall range chips, 56 button, 32 close disc. Range labels are Persian prose, not `1D 5D 1M`; the intervals are keys not pills — the app's own decision from an earlier wave, kept. |
+| Analysis hub | 76 | 82 | 88 dp plates, 2-then-3 TOOLS. Top row three across, not six. |
+| Indicator settings | — | 78 | New. Inputs is one stepper; a study with two parameters (MACD) exposes one. |
+
+**Acceptance note.** The brief's acceptance for this sprint is a side-by-side screen recording
+against TradingView. There is no device and no TradingView install in this environment; the
+recording is the owner's to make on a phone, and the pictures above are what can be produced here.
+
 ## Open decisions
 
 1. **IRANYekanX Medium / SemiBold.** The shipped files are static Regular and Bold; a variable file or the two extra weights are the owner's licence to obtain. Until then Persian headings stay Bold and Latin/numerals get Inter's Medium and SemiBold (Sprint A2).
 2. **Symbol logos from the network (A4).** The app vendors vector artwork and refuses to list a symbol without it (owner's rule). Sprint A4 keeps that as the first source and adds Coil for avatars and as a *fallback* provider for symbols outside the vendored set; it does not replace drawn logos with downloads.
 3. **Locale inversion (E1)** conflicts with the owner's Phase 0 decision that Persian stays the default. Sprint E will not flip `values/` without the owner saying so again; the build check for "no Arabic script in `values/`" is meaningless under the current layout and is replaced by the existing "English locale is English" gate.
 4. **Product flavours (E7)** were replaced in Phase 2 by a `BuildConfig` gate plus an APK-reading check; the store build already carries no admin tooling.
+5. **Floating favourites strip over the chart (B3).** The star on every tool tile and the favourites row at the top of the sheet exist; a strip floating at the chart's bottom edge would sit over the time axis on a phone, where the fullscreen mode already floats its interval strip. Not built until the owner says where it goes.
+6. **Legend drag-to-reorder and move / merge panes (B7).** Studies stack in catalogue order and each has a fixed pane in the catalogue. A reorderable, re-paneable model is a change to `ChartDerived` and the symbol store; deferred with the owner's say-so.
+7. **Analysis hub top row (B9).** The reference's six tiles across would give each 55 dp on a 411 dp phone, which cuts every Persian label; three across kept behind one constant.
+8. **Indicator descriptions (B6).** The reference's rows carry a one-line description. That is 84 new strings in two locales; not written in a sprint whose rule is no copy.
+9. **Indicator inputs beyond the lookback (B8).** The catalogue exposes one period per study; MACD's three, Bollinger's deviation and Ichimoku's spans are literals in the engine. Exposing them is an engine change.

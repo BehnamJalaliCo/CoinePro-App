@@ -87,6 +87,7 @@ import com.coinepro.core.datastore.DrawingImageStore
 import com.coinepro.core.datastore.DrawingSyncStore
 import com.coinepro.core.datastore.ChartEventPrefsStore
 import com.coinepro.core.datastore.TimeZonePrefStore
+import com.coinepro.core.datastore.IndicatorFavouritesStore
 import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
@@ -627,7 +628,7 @@ private val SELF_TITLED: Set<String> = setOf(
     WATCHLIST_ROUTE,
     // Explore opens on «کاوش» over «امروز در بازار چه خبر است», which is a heading. It was not in
     // this set, so `subTitleRes` fell through to its `else` and the bar printed the *brand* over
-    // it — «کلمهٔ pro chart رو از بالای کاوش حذف بکن». A brand name is not a screen title: it says
+    // it — «کلمه‌ی pro chart رو از بالای کاوش حذف بکن». A brand name is not a screen title: it says
     // nothing about where the reader is, and putting it above a page that has already named itself
     // spends the bar's whole height saying which app this is to somebody holding it.
     AppDestination.EXPLORE.route,
@@ -721,6 +722,7 @@ fun CoineProApp(
      */
     chartEventPrefsStore: ChartEventPrefsStore,
     intervalFavouritesStore: IntervalFavouritesStore,
+    indicatorFavouritesStore: IndicatorFavouritesStore,
     /**
      * How the chart screen itself is arranged: the split with the watchlist, and what the two
      * panes tie together. Without it a drag on the divider is forgotten the moment the chart is
@@ -1216,6 +1218,7 @@ fun CoineProApp(
                 timeZonePrefStore = timeZonePrefStore,
                 chartEventPrefsStore = chartEventPrefsStore,
                 intervalFavouritesStore = intervalFavouritesStore,
+                indicatorFavouritesStore = indicatorFavouritesStore,
                 chartWorkspaceStore = chartWorkspaceStore,
                 portfolioController = portfolioControllers.getValue(activePlatform),
                 academyController = academyController,
@@ -1437,6 +1440,7 @@ fun CoineProApp(
                         timeZonePrefStore = timeZonePrefStore,
                         chartEventPrefsStore = chartEventPrefsStore,
                         intervalFavouritesStore = intervalFavouritesStore,
+                indicatorFavouritesStore = indicatorFavouritesStore,
                         chartWorkspaceStore = chartWorkspaceStore,
                         portfolioController = portfolioControllers.getValue(activePlatform),
                         academyController = academyController,
@@ -1672,6 +1676,7 @@ private fun MainShell(
      */
     chartEventPrefsStore: ChartEventPrefsStore,
     intervalFavouritesStore: IntervalFavouritesStore,
+    indicatorFavouritesStore: IndicatorFavouritesStore,
     /**
      * How the chart screen itself is arranged: the split with the watchlist, and what the two
      * panes tie together. Without it a drag on the divider is forgotten the moment the chart is
@@ -2427,6 +2432,7 @@ private fun MainShell(
                 symbolChartStates = symbolChartStateStore,
                 chartLayoutStore = chartLayoutStore,
                 intervalFavourites = intervalFavouritesStore,
+                indicatorFavourites = indicatorFavouritesStore,
                 drawingSync = drawingSyncStore,
                 events = chartEventController,
                 chartEventPrefs = chartEventPrefsStore,

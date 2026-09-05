@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The inward pair of tv_maximize2: four corner brackets pointing at the centre. Drawn by hand
+     on the same 28-unit grid, so the two glyphs flip in place on the fullscreen button. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="28"
+    android:viewportHeight="28"
+    >
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M 11 6h 1v 6H 6v -1h 5zM 16 6h 1v 5h 5v 1h -6zM 6 16h 6v 6h -1v -5H 6zM 16 16h 6v 1h -5v 5h -1z" />
+</vector>

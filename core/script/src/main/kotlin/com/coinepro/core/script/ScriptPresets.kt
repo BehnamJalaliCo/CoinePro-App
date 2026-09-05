@@ -41,9 +41,9 @@ object ScriptPresets {
             summary = "دو میانگین نمایی و نشانه روی هر تقاطع.",
             teaches = "متغیر، ta.ema، ta.crossover و marker",
             source = """
-                // دو میانگین نمایی؛ تقاطع رو به بالا نشانهٔ سبز و رو به پایین نشانهٔ قرمز می‌گیرد.
-                fastLength = input(9, title = "دورهٔ تند", min = 2, max = 200)
-                slowLength = input(21, title = "دورهٔ کند", min = 3, max = 400)
+                // دو میانگین نمایی؛ تقاطع رو به بالا نشانه‌ی سبز و رو به پایین نشانه‌ی قرمز می‌گیرد.
+                fastLength = input(9, title = "دوره‌ی تند", min = 2, max = 200)
+                slowLength = input(21, title = "دوره‌ی کند", min = 3, max = 400)
 
                 fast = ta.ema(close, fastLength)
                 slow = ta.ema(close, slowLength)
@@ -63,7 +63,7 @@ object ScriptPresets {
             source = """
                 // RSI در پنل خودش می‌نشیند: مقیاسش صفر تا صد است و روی قیمت، محور قیمت را
                 // به یک خط صاف تبدیل می‌کند.
-                length = input(14, title = "دورهٔ RSI", min = 2, max = 100)
+                length = input(14, title = "دوره‌ی RSI", min = 2, max = 100)
                 rsi = ta.rsi(close, length)
 
                 plot(rsi, title = "RSI", color = color.gold)
@@ -79,20 +79,20 @@ object ScriptPresets {
             id = "bollinger-squeeze",
             title = "فشردگی باند بولینگر",
             summary = "باند بولینگر، و نشانه روی کندل‌هایی که باند در تنگ‌ترین حالت خودش است.",
-            teaches = "باندها، ta.lowest و مقایسهٔ یک سری با گذشتهٔ خودش",
+            teaches = "باندها، ta.lowest و مقایسه‌ی یک سری با گذشته‌ی خودش",
             source = """
                 // پهنای باند نسبت به میانه؛ وقتی به کمترین مقدار صد کندل اخیر می‌رسد، بازار
-                // جمع شده است. این نشانهٔ جهت نیست — نشانهٔ آماده شدن است.
-                length = input(20, title = "دورهٔ باند", min = 5, max = 200)
-                lookback = input(100, title = "پنجرهٔ مقایسه", min = 20, max = 500)
+                // جمع شده است. این نشانه‌ی جهت نیست — نشانه‌ی آماده شدن است.
+                length = input(20, title = "دوره‌ی باند", min = 5, max = 200)
+                lookback = input(100, title = "پنجره‌ی مقایسه", min = 20, max = 500)
 
                 upper = ta.bb_upper(close, length, 2)
                 lower = ta.bb_lower(close, length, 2)
                 basis = ta.bb_basis(close, length, 2)
 
-                plot(upper, title = "لبهٔ بالا", color = color.grey)
+                plot(upper, title = "لبه‌ی بالا", color = color.grey)
                 plot(basis, title = "میانه", color = color.gold, dashed = true)
-                plot(lower, title = "لبهٔ پایین", color = color.grey)
+                plot(lower, title = "لبه‌ی پایین", color = color.grey)
 
                 width = (upper - lower) / basis * 100
                 tightest = ta.lowest(width, lookback)
@@ -101,8 +101,8 @@ object ScriptPresets {
         ),
         ScriptPreset(
             id = "atr-stop",
-            title = "حد ضرر بر پایهٔ ATR",
-            summary = "فاصلهٔ حد ضرر را از نوسان واقعی بازار می‌گیرد، نه از یک درصد ثابت.",
+            title = "حد ضرر بر پایه‌ی ATR",
+            summary = "فاصله‌ی حد ضرر را از نوسان واقعی بازار می‌گیرد، نه از یک درصد ثابت.",
             teaches = "ta.atr و اینکه چرا یک درصد ثابت روی طلا و روی بیت‌کوین یک چیز نیست",
             source = """
                 // یک درصد ثابت روی هر نمادی معنای دیگری دارد. ATR فاصله را از نوسان خودِ همان
@@ -125,7 +125,7 @@ object ScriptPresets {
             source = """
                 // ستاپ کامل. signal آخرین کندلی را می‌گیرد که شرط در آن برقرار شده — نه اولی —
                 // چون چیزی که ممکن است حالا به آن عمل کنید، تازه‌ترین آن است.
-                length = input(20, title = "پنجرهٔ سقف و کف", min = 5, max = 200)
+                length = input(20, title = "پنجره‌ی سقف و کف", min = 5, max = 200)
 
                 roof = ta.highest(high, length)
                 floor = ta.lowest(low, length)
@@ -171,7 +171,7 @@ object ScriptPresets {
             source = """
                 // یک تقاطع در خلاف جهت روند بزرگ‌تر، همان تقاطع نیست. and دو شرط را روی هر
                 // کندل با هم می‌سنجد.
-                trendLength = input(200, title = "دورهٔ روند", min = 20, max = 500)
+                trendLength = input(200, title = "دوره‌ی روند", min = 20, max = 500)
                 fastLength = input(10, title = "تند", min = 2, max = 100)
                 slowLength = input(30, title = "کند", min = 3, max = 200)
 
@@ -196,7 +196,7 @@ object ScriptPresets {
             source = """
                 // حجم را با میانگین خودش می‌سنجیم، نه با یک عدد ثابت: «حجم بالا» روی هر نماد
                 // عدد دیگری است.
-                length = input(20, title = "دورهٔ میانگین حجم", min = 5, max = 200)
+                length = input(20, title = "دوره‌ی میانگین حجم", min = 5, max = 200)
                 threshold = input(2.5, title = "چند برابر میانگین", min = 1.2, max = 10)
 
                 average = ta.sma(volume, length)
@@ -224,7 +224,7 @@ object ScriptPresets {
         ),
         ScriptPreset(
             id = "session-range",
-            title = "دامنهٔ روز",
+            title = "دامنه‌ی روز",
             summary = "سقف و کف بیست‌وچهار ساعت گذشته، به‌صورت دو خط.",
             teaches = "ta.highest و ta.lowest برای ساختن یک ناحیه",
             source = """
@@ -240,7 +240,7 @@ object ScriptPresets {
                 plot(middle, title = "میانه", color = color.grey, dashed = true)
                 plot(floor, title = "کف دوره", color = color.buy)
 
-                log("دامنهٔ فعلی رسم شد")
+                log("دامنه‌ی فعلی رسم شد")
             """.trimIndent(),
         ),
     )

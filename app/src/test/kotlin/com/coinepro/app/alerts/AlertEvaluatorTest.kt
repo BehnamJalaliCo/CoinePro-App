@@ -94,7 +94,7 @@ class AlertEvaluatorTest {
     fun `a firing that could not be delivered says so, with the reason`() = runTest {
         val world = World(listOf(alert(trigger = AlertTrigger.Price(PriceOp.GREATER_THAN, 100.0))))
         world.samples = mapOf("BTCUSDT" to sample(price = 105.0))
-        world.deliverer.outcome = { AlertDeliveryOutcome.Failed("اجازهٔ اعلان داده نشده است") }
+        world.deliverer.outcome = { AlertDeliveryOutcome.Failed("اجازه‌ی اعلان داده نشده است") }
 
         world.evaluator.evaluate(1_000L)
 
@@ -102,7 +102,7 @@ class AlertEvaluatorTest {
             listOf(AuditEvent.FIRED, AuditEvent.DELIVERY_FAILED),
             world.audit.entries.map(AlertAuditEntry::event),
         )
-        assertEquals("اجازهٔ اعلان داده نشده است", world.audit.entries.last().note)
+        assertEquals("اجازه‌ی اعلان داده نشده است", world.audit.entries.last().note)
     }
 
     @Test

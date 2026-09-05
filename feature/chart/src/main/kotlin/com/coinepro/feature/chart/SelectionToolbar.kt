@@ -187,7 +187,7 @@ internal fun DrawingSelectionToolbar(
                 enabled = !locked,
                 onClick = onDelete,
             )
-            SelectionAction(icon = DesignR.drawable.tv_settings2, label = "همهٔ تنظیمات") {
+            SelectionAction(icon = DesignR.drawable.tv_settings2, label = "همه‌ی تنظیمات") {
                 onOpenSettings(primary.id)
             }
             SelectionAction(icon = DesignR.drawable.icon_x, label = "بستن", onClick = onDismiss)
@@ -471,21 +471,6 @@ private fun StyleChip(label: String, active: Boolean, onClick: () -> Unit) {
         )
     }
 }
-
-/**
- * The five dashes, named for what a reader sees rather than for the enum.
- *
- * «پیش‌فرض» and not «ممتد» for [LineStyleKind.SOLID], because it does not force a solid line: it
- * restores the tool's own drawing, and the tools that are dashed by construction stay dashed at
- * this setting. Calling it "solid" would be a label that lies on a Fibonacci fan.
- */
-private val LINE_STYLES: List<Pair<String, LineStyleKind>> = listOf(
-    "پیش‌فرض" to LineStyleKind.SOLID,
-    "نقطه‌چین" to LineStyleKind.DOTTED,
-    "خط‌چین" to LineStyleKind.DASHED,
-    "خط‌چین درشت" to LineStyleKind.LARGE_DASHED,
-    "نقطه‌چین تنک" to LineStyleKind.SPARSE_DOTTED,
-)
 
 /**
  * The saved styles for this tool, one tap each.

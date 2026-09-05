@@ -39,7 +39,7 @@ class BidiNumericRunTest {
     @Test
     fun `a time and a range survive too`() {
         assertTrue(lri + "09:14" + pdi in BidiText.isolateNumericRuns("ساعت 09:14 منتشر شد"))
-        assertTrue(lri + "۲۰۲۴-۲۰۲۵" + pdi in BidiText.isolateNumericRuns("دورهٔ ۲۰۲۴-۲۰۲۵"))
+        assertTrue(lri + "۲۰۲۴-۲۰۲۵" + pdi in BidiText.isolateNumericRuns("دوره‌ی ۲۰۲۴-۲۰۲۵"))
     }
 
     @Test

@@ -149,7 +149,7 @@ object ExploreBoard {
     /**
      * How many stories sit under the cards.
      *
-     * Five: enough that the section reads as a feed rather than as a teaser, few enough that «همهٔ
+     * Five: enough that the section reads as a feed rather than as a teaser, few enough that «همه‌ی
      * اخبار» is still the obvious next tap. The news screen holds the rest.
      */
     const val STORY_LIMIT = 5

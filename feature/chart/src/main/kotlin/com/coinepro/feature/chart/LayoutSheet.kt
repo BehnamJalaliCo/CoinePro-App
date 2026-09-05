@@ -111,13 +111,13 @@ internal fun LayoutSheetBody(
             modifier = Modifier.fillMaxWidth(),
         )
         CoineProPrimaryButton(
-            text = "ذخیرهٔ چیدمان فعلی",
+            text = "ذخیره‌ی چیدمان فعلی",
             onClick = { onSave(name); name = "" },
             modifier = Modifier.fillMaxWidth(),
             enabled = name.isNotBlank(),
         )
         Text(
-            text = "چیدمان، نوع چارت و بازهٔ زمانی و اندیکاتورهای روشن و دوره‌هایشان و مقیاس محور قیمت را نگه می‌دارد. ترسیم‌ها را نه — یک خط روند به قیمت‌های همان نماد چسبیده و روی نماد دیگر معنایی ندارد.",
+            text = "چیدمان، نوع چارت و بازه‌ی زمانی و اندیکاتورهای روشن و دوره‌هایشان و مقیاس محور قیمت را نگه می‌دارد. ترسیم‌ها را نه — یک خط روند به قیمت‌های همان نماد چسبیده و روی نماد دیگر معنایی ندارد.",
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
             modifier = Modifier.background(CoineProColors.Stage),

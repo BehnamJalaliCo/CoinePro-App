@@ -5,6 +5,13 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -18,6 +25,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -128,6 +136,7 @@ import com.coinepro.core.datastore.DrawingImageStore
 import com.coinepro.core.datastore.DrawingSyncStore
 import com.coinepro.core.datastore.TimeZonePrefStore
 import com.coinepro.core.datastore.DrawingTemplateStore
+import com.coinepro.core.datastore.IndicatorFavouritesStore
 import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.designsystem.CoineProAssetLogo
@@ -348,6 +357,8 @@ fun ChartScreen(
      * annoyance in the app, which is why the app passes one.
      */
     intervalFavourites: IntervalFavouritesStore? = null,
+    /** The starred and recent indicators. Null — a preview — hides the star and the two chips. */
+    indicatorFavourites: IndicatorFavouritesStore? = null,
     /**
      * How far a newly placed drawing travels between layouts — items 51 and 188.
      *
@@ -456,6 +467,8 @@ fun ChartScreen(
     var sheet by remember { mutableStateOf<ChartSheet?>(null) }
     /** Which drawing's own settings are open, or null. Opened from the object tree's row. */
     var styling by remember { mutableStateOf<Long?>(null) }
+    /** Which indicator's settings sheet is open, by id, or null. Opened from the legend's gear. */
+    var indicatorSettings by remember { mutableStateOf<String?>(null) }
     /**
      * The annotation whose text the reader is typing, or null.
      *
@@ -548,6 +561,36 @@ fun ChartScreen(
      * it — rather than snapping back to the card the moment the phone turns.
      */
     var fullscreen by rememberSaveable { mutableStateOf(false) }
+
+    /**
+     * The step before [fullscreen]: the toolbar slides out of the page for [FULLSCREEN_SLIDE_MS],
+     * and only then does the window open over it. Without the beat the slide happens under a
+     * window that has already covered it, which is the same as no slide at all.
+     */
+    var fullscreenRequested by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(fullscreenRequested) {
+        if (fullscreenRequested && !fullscreen) {
+            delay(FULLSCREEN_SLIDE_MS.toLong())
+            fullscreen = true
+        }
+    }
+
+    /**
+     * The chart's ink on a symbol switch: zero the frame the instrument changes, one 250 ms later.
+     *
+     * The design brief's cross-fade on the wheel's release. A true cross-fade would hold the old
+     * series on a second canvas for a quarter second; this is the same picture — the new chart
+     * dissolving in over the stage — at the cost of one layer rather than two.
+     */
+    val symbolFade = remember { Animatable(1f) }
+    var fadedSymbol by remember { mutableStateOf(state.symbol) }
+    LaunchedEffect(state.symbol) {
+        if (state.symbol != fadedSymbol) {
+            fadedSymbol = state.symbol
+            symbolFade.snapTo(0f)
+            symbolFade.animateTo(1f, tween(SYMBOL_CROSSFADE_MS))
+        }
+    }
 
     /**
      * The starred bar lengths, when there is no store to keep them.
@@ -824,7 +867,8 @@ fun ChartScreen(
                     SecondsWarmingUp(state.interval)
                 else -> CoineProChart(
                     series = state.visibleSeries,
-                    modifier = Modifier.fillMaxSize(),
+                    // Read in the layer, so the fade repaints without recomposing the chart.
+                    modifier = Modifier.fillMaxSize().graphicsLayer { alpha = symbolFade.value },
                     type = state.chartType,
                     // The legend's first line, as TradingView's phone sets it: the mark and the
                     // instrument's name — «Bitcoin / TetherUS» — not the ticker.
@@ -910,6 +954,9 @@ fun ChartScreen(
                     // level — a stop, a target, an indicator line. The reader feels the line under
                     // the finger without looking away from the price they are dragging towards.
                     onSnap = { haptics.select() },
+                    // And a tick on every placed point, snapped or not — the reference's soft
+                    // haptic under the finger as a shape is tapped out.
+                    onPlace = { haptics.select() },
                     onCrosshairMove = { crosshair ->
                         val price = crosshair?.price
                         val previous = lastCrosshairPrice
@@ -974,11 +1021,20 @@ fun ChartScreen(
                     // `indicatorFor` is what turns a legend row's index back into one — see its
                     // note on why an index is not simply a position in `activeIndicators`.
                     onSeriesSettings = { target ->
-                        sheet = if (target is ChartLegendTarget.Comparison) {
-                            ChartSheet.COMPARE
-                        } else {
-                            ChartSheet.INDICATORS
+                        val id = state.indicatorFor(target)
+                        when {
+                            target is ChartLegendTarget.Comparison -> sheet = ChartSheet.COMPARE
+                            // The study's own sheet — inputs, style, visibility — rather than
+                            // the whole catalogue with the study somewhere in it.
+                            id != null -> indicatorSettings = id
+                            else -> sheet = ChartSheet.INDICATORS
                         }
+                    },
+                    // One hidden set for the legend's eye and the settings sheet's switch: the
+                    // chart reports the row, the controller keeps the id.
+                    hiddenSeries = state.hiddenTargets,
+                    onToggleSeriesVisibility = { target ->
+                        state.indicatorFor(target)?.let(controller::toggleIndicatorHidden)
                     },
                     onRemoveSeries = { target ->
                         when (target) {
@@ -1005,7 +1061,7 @@ fun ChartScreen(
             //
             // Inside the canvas box, so it follows the chart into fullscreen without being wired
             // twice, and at the top, where it is over the price the reader is about to draw on
-            // rather than over the axis they need to read. It carries the point count — «نقطهٔ ۱
+            // rather than over the axis they need to read. It carries the point count — «نقطه‌ی ۱
             // از ۲» — which is also the instruction: tap the chart.
             ActiveToolBar(
                 tool = state.drawing.tool,
@@ -1133,7 +1189,10 @@ fun ChartScreen(
             canvas = canvas,
             starred = starredWires,
             onOpenSheet = { sheet = it },
-            onExit = { fullscreen = false },
+            onExit = {
+                fullscreen = false
+                fullscreenRequested = false
+            },
             symbols = wheelSymbols,
             onSelectSymbol = switchSymbol.takeIf { controllerFor != null || onSelectSymbol != null },
         )
@@ -1291,6 +1350,14 @@ fun ChartScreen(
         // The position is unchanged and was already right: below the chart, where a hand holding a
         // phone already is. The complaint about top-placed chart controls is explicit and repeated
         // in reviews of every app in this category — "our thumbs is not that long".
+        // The band slides down and out for the 200 ms before the fullscreen window opens, and
+        // back in when it closes — the reference's, and the one thing that makes the mode read as
+        // the page growing rather than a second page appearing.
+        AnimatedVisibility(
+            visible = !fullscreenRequested,
+            enter = slideInVertically(tween(FULLSCREEN_SLIDE_MS)) { it } + fadeIn(tween(FULLSCREEN_SLIDE_MS)),
+            exit = slideOutVertically(tween(FULLSCREEN_SLIDE_MS)) { it } + fadeOut(tween(FULLSCREEN_SLIDE_MS)),
+        ) {
         ChartCommandBand(
             interval = state.interval,
             starred = starredWires,
@@ -1307,7 +1374,7 @@ fun ChartScreen(
             indicators = state.activeIndicators.size,
             drawings = state.drawing.drawings.size,
             onOpen = { sheet = it },
-            onFullscreen = { fullscreen = true },
+            onFullscreen = { fullscreenRequested = true },
             onMore = { sheet = ChartSheet.MORE },
             // What the sheet would otherwise swallow. A reader who has set the chart to a year, or
             // put a second instrument on it, or inverted the axis, can see from the closed band
@@ -1331,6 +1398,7 @@ fun ChartScreen(
             onSymbolDrag = { wheelDragging = it },
             onSymbolTravel = { wheelTravel.floatValue = it },
         )
+        }
 
         // Only where they have nowhere better to be. On a window wide enough for the side column
         // these three are already drawn there, permanently, instead of below a plot the reader has
@@ -1408,13 +1476,32 @@ fun ChartScreen(
         ) {
             // No dismiss on select: switching four indicators on is four taps, and a sheet that
             // closes after each one turns that into twelve.
+            val starred by remember(indicatorFavourites) {
+                indicatorFavourites?.favourites() ?: flowOf(emptyList<String>())
+            }.collectAsStateWithLifecycle(emptyList())
+            val recent by remember(indicatorFavourites) {
+                indicatorFavourites?.recent() ?: flowOf(emptyList<String>())
+            }.collectAsStateWithLifecycle(emptyList())
             IndicatorPicker(
                 active = state.activeIndicators,
-                onToggle = { controller.toggleIndicator(it.id) },
+                onToggle = { option ->
+                    val turningOn = option.id !in state.activeIndicators
+                    controller.toggleIndicator(option.id)
+                    if (turningOn) {
+                        indicatorFavourites?.let { store -> favouriteScope.launch { store.recordRecent(option.id) } }
+                    }
+                },
                 onHelp = onHelp,
                 hasVolume = state.series.hasVolume,
                 periods = state.indicatorPeriods,
                 onSetPeriod = controller::setIndicatorPeriod,
+                favourites = starred,
+                onToggleFavourite = indicatorFavourites?.let { store ->
+                    { id -> favouriteScope.launch { store.toggleFavourite(id) } }
+                },
+                recent = recent,
+                autoFocusSearch = true,
+                modifier = Modifier.fillMaxHeight(INDICATOR_SHEET_HEIGHT),
             )
         }
 
@@ -1485,8 +1572,8 @@ fun ChartScreen(
         }
 
         ChartSheet.INTERVAL -> CoineProSheet(
-            title = "بازهٔ زمانی",
-            subtitle = "${Timeframe.entries.size.toPersianDigits()} بازهٔ آماده",
+            title = "بازه‌ی زمانی",
+            subtitle = "${Timeframe.entries.size.toPersianDigits()} بازه‌ی آماده",
             onDismiss = { sheet = null },
         ) {
             IntervalSheetBody(
@@ -1558,7 +1645,7 @@ fun ChartScreen(
 
         ChartSheet.SETUP -> state.setup?.let { order ->
             CoineProSheet(
-                title = "معاملهٔ روی نمودار",
+                title = "معامله‌ی روی نمودار",
                 subtitle = state.symbol,
                 onDismiss = { sheet = null },
             ) {
@@ -1804,6 +1891,36 @@ fun ChartScreen(
                     controller.deleteDrawing(drawing.id)
                     styling = null
                 },
+                onSetTextColour = { colour -> controller.setDrawingTextColour(drawing.id, colour) },
+                onSetFillColour = { colour -> controller.setDrawingFillColour(drawing.id, colour) },
+                onSetLineStyle = { style -> controller.setDrawingLineStyle(drawing.id, style) },
+                onMovePoint = { index, to -> controller.moveDrawingPoint(drawing.id, index, to) },
+                onSetLocked = { locked -> controller.setDrawingLocked(drawing.id, locked) },
+                onSaveAsDefault = { controller.setDrawingStyle(drawing.colour, drawing.widthDp) },
+            )
+        }
+    }
+
+    indicatorSettings?.let { id ->
+        val option = ChartCatalog.INDICATORS.firstOrNull { it.id == id }
+        if (option == null || id !in state.activeIndicators) {
+            indicatorSettings = null
+        } else {
+            IndicatorSettingsSheet(
+                option = option,
+                period = state.indicatorPeriods[id],
+                colour = state.indicatorColours[id],
+                widthDp = state.indicatorWidths[id],
+                hidden = id in state.hiddenIndicators,
+                onDismiss = { indicatorSettings = null },
+                onSetPeriod = { period -> controller.setIndicatorPeriod(id, period) },
+                onSetColour = { colour -> controller.setIndicatorColour(id, colour) },
+                onSetWidth = { width -> controller.setIndicatorWidth(id, width) },
+                onToggleHidden = { controller.toggleIndicatorHidden(id) },
+                onRemove = {
+                    controller.toggleIndicator(id)
+                    indicatorSettings = null
+                },
             )
         }
     }
@@ -1834,7 +1951,7 @@ fun ChartScreen(
 
     if (confirmClear) {
         CoineProConfirmDialog(
-            title = "پاک کردن همهٔ ترسیم‌ها",
+            title = "پاک کردن همه‌ی ترسیم‌ها",
             message = "هر ${state.drawing.drawings.size.toPersianDigits()} ترسیم این نماد برداشته می‌شود و برنمی‌گردد. اندیکاتورها و تنظیمات نمودار دست‌نخورده می‌مانند.",
             confirmLabel = "پاک کن",
             dismissLabel = "بماند",
@@ -1935,7 +2052,7 @@ private fun DrawingTextSheet(
  * `fillMaxSize()` here filled *the slot the page had*, and «تمام‌صفحه» was a chart with the page's
  * own furniture taken off and the **app's** furniture still standing above it.
  *
- * That is the whole of «می‌ره تو صفحهٔ خانه». The system Back was being intercepted correctly — the
+ * That is the whole of «می‌ره تو صفحه‌ی خانه». The system Back was being intercepted correctly — the
  * [BackHandler] below has been here all along — but the reader was not pressing the system Back.
  * They were pressing the arrow they could *see*, in the top bar that fullscreen never covered, and
  * that arrow is the shell's own `popBackStack()`. The chart route is entered with the chart tab
@@ -2034,8 +2151,10 @@ private fun FullscreenChart(
                 label = stringResource(R.string.chart_fullscreen_tools),
                 onClick = { onOpenSheet(ChartSheet.TOOLS) },
             )
+            // The same glyph as the toolbar's, flipped inward: the button that opened the mode
+            // is the button that closes it.
             FloatingChartButton(
-                icon = CoineProIcons.Close,
+                icon = DesignR.drawable.tv_minimize2,
                 label = stringResource(R.string.chart_fullscreen_exit),
                 onClick = onExit,
             )
@@ -2366,7 +2485,7 @@ private fun ChartWatermark(
             // **Absolute, like the alignment above it.** `padding(start = …)` is the reading edge,
             // which on this Persian page is the *right* — so the inset was being applied to the
             // side the mark is not on, and the signature sat flush against the left edge of the
-            // glass whatever number was written here. That is the other half of «خیلی به گوشهٔ
+            // glass whatever number was written here. That is the other half of «خیلی به گوشه‌ی
             // سمت چپ چسبیده»: not only was twelve points too few, they were never spent.
             .absolutePadding(left = lead)
             .padding(bottom = WATERMARK_INSET + axis)
@@ -2376,7 +2495,7 @@ private fun ChartWatermark(
             // half-width is very nearly a circle. So the corners ate the P — its stem runs down the
             // artwork's left edge and its foot sits in the bottom-left corner, which is precisely
             // what a rounded rectangle removes first. What was left read as a ring with an arrow
-            // through it, and that is «لوگو پایهٔ P رو نداره». Opening the signature widened the box
+            // through it, and that is «لوگو پایه‌ی P رو نداره». Opening the signature widened the box
             // and gave the letter its edge back, which is why the same logo looked right expanded
             // and wrong closed.
             //
@@ -2408,7 +2527,7 @@ private val WATERMARK_INSET = 12.dp
  *
  * ### Twelve points was a corner, not a position
  *
- * «لوگو روی چارت رو ۱۰ تا ۲۰ درصد به سمت راست بکشید، خیلی به گوشهٔ سمت چپ چسبیده.» A flat twelve
+ * «لوگو روی چارت رو ۱۰ تا ۲۰ درصد به سمت راست بکشید، خیلی به گوشه‌ی سمت چپ چسبیده.» A flat twelve
  * points is about three per cent of a phone's width, which puts the mark hard into the angle where
  * the price plot meets the time axis — two rules crossing, with a logo wedged in the corner
  * between them. It reads as something that has slipped rather than something that has been placed.
@@ -2554,9 +2673,11 @@ internal fun IntervalSheetBody(
         }
         SecondsIntervalSection(selected = selected, onSelect = onSelect)
         INTERVAL_GROUPS.forEach { (title, frames) ->
+            // The reference sets its group names — TICKS, SECONDS, MINUTES — in 12 sp capitals.
+            // Persian has no capitals; the size and the weight are what carry over.
             Text(
                 text = title,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
                 color = CoineProColors.TextMuted,
                 fontWeight = FontWeight.Normal,
             )
@@ -2585,7 +2706,7 @@ internal fun IntervalSheetBody(
         HorizontalDivider(color = CoineProColors.Border)
 
         Text(
-            text = "بازهٔ دلخواه",
+            text = "بازه‌ی دلخواه",
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
             fontWeight = FontWeight.Normal,
@@ -2598,7 +2719,7 @@ internal fun IntervalSheetBody(
             modifier = Modifier.fillMaxWidth(),
         )
         CoineProPrimaryButton(
-            text = custom?.let { "نمایش ${it.label}" } ?: "نمایش بازهٔ دلخواه",
+            text = custom?.let { "نمایش ${it.label}" } ?: "نمایش بازه‌ی دلخواه",
             onClick = {
                 custom?.let {
                     onSelect(ChartInterval.Custom(it))
@@ -2606,10 +2727,11 @@ internal fun IntervalSheetBody(
                 }
             },
             enabled = custom != null,
-            modifier = Modifier.fillMaxWidth(),
+            // Full width and 56 tall: the reference's «+ Add interval».
+            modifier = Modifier.fillMaxWidth().height(ADD_INTERVAL_HEIGHT),
         )
         Text(
-            text = "کندل بازهٔ دلخواه روی همین دستگاه از کندل‌های کوتاه‌تر ساخته می‌شود و از نیمه‌شب تهران شمرده می‌شود.",
+            text = "کندل بازه‌ی دلخواه روی همین دستگاه از کندل‌های کوتاه‌تر ساخته می‌شود و از نیمه‌شب تهران شمرده می‌شود.",
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
         )
@@ -2808,7 +2930,7 @@ private fun PriceScaleSheetBody(
 
         HorizontalDivider(color = CoineProColors.Border)
 
-        // «منطقهٔ زمانی» — item 107. A short list and not `ZoneId.getAvailableZoneIds()`: six
+        // «منطقه‌ی زمانی» — item 107. A short list and not `ZoneId.getAvailableZoneIds()`: six
         // hundred rows in a bottom sheet is a search problem, and the four that matter to somebody
         // reading these two markets are the local one, the two sessions that move them, and UTC —
         // which is what every exchange timestamp is quoted in and the only one that never shifts.
@@ -2816,7 +2938,7 @@ private fun PriceScaleSheetBody(
         // The label carries the current offset because a zone name alone does not answer the
         // question anybody is asking, which is «this candle closed at what o'clock for me».
         if (zoneId != null) {
-            SheetLabel("منطقهٔ زمانی نمودار")
+            SheetLabel("منطقه‌ی زمانی نمودار")
             CoineProChipRow(
                 options = CHART_ZONES.map { (id, label) -> CoineProChip(id = id, label = label) },
                 selectedId = zoneId,
@@ -3263,7 +3385,7 @@ private val PriceScaleMode.persianNote: String
     get() = when (this) {
         PriceScaleMode.REGULAR -> "فاصله‌های برابر روی محور، مقدارهای برابر پول."
         PriceScaleMode.LOGARITHMIC -> "فاصله‌های برابر، درصدهای برابر. برای بازه‌های بلند که قیمت چند برابر شده."
-        PriceScaleMode.PERCENT -> "صفر روی اولین کندل دیدهٔ شما، و بقیه درصد نسبت به آن."
+        PriceScaleMode.PERCENT -> "صفر روی اولین کندل دیده‌ی شما، و بقیه درصد نسبت به آن."
         PriceScaleMode.INDEXED_100 -> "همان درصد، با مبدأ ۱۰۰ — آن‌طور که شاخص‌ها خوانده می‌شوند."
     }
 
@@ -3689,7 +3811,7 @@ private fun ChartFailure(error: ChartError, onRetry: () -> Unit) {
                 // is deliberate: this venue has no feed fine enough to build this bar length, so
                 // a «تلاش دوباره» would be a button that cannot ever succeed.
                 ChartError.INTERVAL_UNAVAILABLE ->
-                    "این پلتفرم کندل این بازه را ندارد. بازهٔ بلندتری انتخاب کنید."
+                    "این پلتفرم کندل این بازه را ندارد. بازه‌ی بلندتری انتخاب کنید."
             },
             style = MaterialTheme.typography.bodyMedium,
             color = CoineProColors.TextSecondary,
@@ -3715,8 +3837,18 @@ private fun ChartFailure(error: ChartError, onRetry: () -> Unit) {
  * horizontal strip, and short enough that two tiers of controls still read as one band.
  */
 // Forty-four tall and fifty-six wide: TradingView's interval chips, measured off the phone app.
+/** The indicator sheet is full-height, the reference's: a list of eighty is a page, not a drawer. */
+private const val INDICATOR_SHEET_HEIGHT = 0.92f
+
+/** The toolbar's slide out before the fullscreen window, and the chart's fade on a symbol switch. */
+private const val FULLSCREEN_SLIDE_MS = 200
+private const val SYMBOL_CROSSFADE_MS = 250
+
 private val INTERVAL_KEY_HEIGHT = 44.dp
 private val INTERVAL_KEY_WIDTH = 56.dp
+
+/** The «+ Add interval» button at the foot of the timeframe sheet, as the reference sizes it. */
+private val ADD_INTERVAL_HEIGHT = 56.dp
 
 /**
  * How much of the phone the plot gets.

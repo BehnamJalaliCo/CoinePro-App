@@ -135,6 +135,13 @@ data class SymbolChartState(
      * opens on its default, which is exactly what should happen to somebody who downgraded.
      */
     val domFigure: String? = null,
+    /**
+     * The line colour the reader gave an indicator, by id, as packed ARGB. Sparse: an indicator
+     * absent here draws in the catalogue's colour. From the indicator settings sheet's Style tab.
+     */
+    val indicatorColours: Map<String, Long> = emptyMap(),
+    /** The stroke width the reader gave an indicator, by id, in dp. Sparse, like the colours. */
+    val indicatorWidths: Map<String, Float> = emptyMap(),
 )
 
 /**
@@ -281,6 +288,15 @@ class SymbolChartStateStore(private val dataStore: DataStore<Preferences>) {
                 sources.joinToString(UNIT),
                 blankIfSeparated(state.domStep.orEmpty()),
                 blankIfSeparated(state.domFigure.orEmpty()),
+                // Fifteen and sixteen: alternating id and value, the periods' shape again.
+                state.indicatorColours
+                    .filterKeys { !hasSeparator(it) }
+                    .flatMap { (id, colour) -> listOf(id, colour.toString()) }
+                    .joinToString(UNIT),
+                state.indicatorWidths
+                    .filterKeys { !hasSeparator(it) }
+                    .flatMap { (id, width) -> listOf(id, width.toString()) }
+                    .joinToString(UNIT),
             ).joinToString(RECORD)
         }
 
@@ -331,8 +347,22 @@ class SymbolChartStateStore(private val dataStore: DataStore<Preferences>) {
                 // migration story.
                 domStep = parts.getOrNull(13)?.takeIf(String::isNotBlank),
                 domFigure = parts.getOrNull(14)?.takeIf(String::isNotBlank),
+                indicatorColours = pairs(parts.getOrNull(15)) { it.toLongOrNull() },
+                indicatorWidths = pairs(parts.getOrNull(16)) { it.toFloatOrNull()?.takeIf { w -> w > 0f } },
             )
         }
+
+        /** An alternating id / value field to a map, dropping a pair whose value does not read. */
+        private fun <T : Any> pairs(field: String?, value: (String) -> T?): Map<String, T> = field
+            .orEmpty()
+            .split(UNIT)
+            .filter(String::isNotBlank)
+            .chunked(2)
+            .mapNotNull { pair ->
+                if (pair.size != 2) return@mapNotNull null
+                value(pair[1])?.let { pair[0] to it }
+            }
+            .toMap()
 
         private fun hasSeparator(value: String) =
             value.contains(GROUP) || value.contains(RECORD) || value.contains(UNIT)

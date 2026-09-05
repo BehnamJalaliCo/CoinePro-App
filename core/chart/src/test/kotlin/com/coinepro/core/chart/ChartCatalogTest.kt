@@ -561,4 +561,12 @@ class ChartCatalogTest {
             assertTrue("bar $index was dropped for no reason", line.isPresent(index))
         }
     }
+
+    @Test
+    fun `every indicator belongs to exactly one family`() {
+        val missing = ChartCatalog.INDICATORS.map { it.id }.filterNot { it in ChartCatalog.CATEGORISED_IDS }
+        assertEquals("indicators without a family: $missing", emptyList<String>(), missing)
+        val stray = ChartCatalog.CATEGORISED_IDS.filterNot { id -> ChartCatalog.INDICATORS.any { it.id == id } }
+        assertEquals("families naming an indicator the catalogue lacks: $stray", emptyList<String>(), stray)
+    }
 }

@@ -177,7 +177,7 @@ private fun ColourTemplateEditor(
             modifier = Modifier.fillMaxWidth(),
         )
         CoineProPrimaryButton(
-            text = "ذخیرهٔ قالب رنگ",
+            text = "ذخیره‌ی قالب رنگ",
             onClick = {
                 onSave(
                     newColourTemplate(

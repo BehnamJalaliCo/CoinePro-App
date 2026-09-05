@@ -4,6 +4,7 @@ import android.graphics.BitmapFactory
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -669,9 +670,60 @@ fun DrawScope.drawDrawing(
             }
             drawCircle(Color.White, radius, point)
             drawCircle(colour, radius, point, style = Stroke(HANDLE_RING.toPx()))
+            // The readout: what the finger is over, said beside the ring rather than under the
+            // finger. The bar's open, high, low and close and its moment, so a handle being
+            // dragged onto a wick can be put exactly on it — the same figures a magnifier would
+            // show, without the magnifier's lens over the very bars being aimed at.
+            if (held && grow >= 1f) {
+                handleReadout(measurer, view, chart[index], point, colour, plate)
+            }
         }
     }
     return handled
+}
+
+/**
+ * The plate beside a held handle: the anchor's price, the bar's OHLC under it and the bar's time.
+ *
+ * Placed above and to the reading side of the ring so the fingertip covers none of it, and
+ * flipped to the other side at the plot's edge. The plate is the stage colour at the tag's
+ * opacity, so the candles behind it are dimmed rather than hidden.
+ */
+private fun DrawScope.handleReadout(
+    measurer: TextMeasurer,
+    view: ChartViewport,
+    anchor: ChartPoint,
+    at: Offset,
+    colour: Color,
+    plate: Color,
+) {
+    val series = view.series
+    if (series.isEmpty) return
+    val bar = view.indexAt(at.x).coerceIn(0, series.size - 1)
+    val lines = listOf(
+        view.formatPrice(anchor.price),
+        "O " + view.formatPrice(series.open[bar]) + "  H " + view.formatPrice(series.high[bar]),
+        "L " + view.formatPrice(series.low[bar]) + "  C " + view.formatPrice(series.close[bar]),
+        formatTime(series.time[bar], spanSeconds = 0L, zone = CHART_ZONE),
+    )
+    val measured = lines.map { measurer.measure(it, boxStyle(Color.White)) }
+    val pad = TAG_PADDING.toPx()
+    val width = measured.maxOf { it.size.width } + pad * 2
+    val height = measured.sumOf { it.size.height } + pad * 2
+    val lift = READOUT_LIFT.toPx()
+    var left = at.x + lift
+    if (left + width > size.width) left = at.x - lift - width
+    var top = at.y - lift - height
+    if (top < 0f) top = at.y + lift
+    val origin = Offset(left, top)
+    val ground = if (plate.isSpecified) plate.copy(alpha = READOUT_PLATE_ALPHA) else BOX_BACKGROUND
+    drawRoundRect(ground, origin, Size(width, height), cornerRadius = CornerRadius(READOUT_RADIUS.toPx()))
+    drawRoundRect(colour, origin, Size(width, height), cornerRadius = CornerRadius(READOUT_RADIUS.toPx()), style = Stroke(1f))
+    var y = origin.y + pad
+    measured.forEachIndexed { line, text ->
+        drawText(text, color = if (line == 0) colour else Color.White, topLeft = Offset(origin.x + pad, y))
+        y += text.size.height
+    }
 }
 
 /** Which way a standalone arrow marker points. */
@@ -949,7 +1001,11 @@ private class DrawingPaint(
     fun wash(tint: Color): Color {
         val over = fillOverride ?: return tint
         if (!isOwn(tint)) return tint
-        return over.copy(alpha = over.alpha * tint.alpha)
+        // A fill colour stored at full alpha means «the hue is mine, the opacity is the tool's».
+        // Below full it is the reader's own opacity, set on the fill slider, and it replaces the
+        // tool's rather than multiplying it — the slider says what the wash *is*, not a fraction
+        // of a number the reader never saw.
+        return if (over.alpha >= 1f) over.copy(alpha = tint.alpha) else over.copy(alpha = over.alpha)
     }
 
     /**
@@ -1457,7 +1513,8 @@ private const val TAG_ALPHA = 0.7f
 
 private val VERTEX_RADIUS = 8.dp
 
-private val HANDLE_RADIUS = 5.dp
+/** Four: an eight-point handle, the design brief's, with a two-point ring. */
+private val HANDLE_RADIUS = 4.dp
 
 /**
  * How much larger the handle under a finger gets.
@@ -1471,6 +1528,11 @@ private const val HANDLE_GRAB_SCALE = 2.2f
 private const val HANDLE_HALO_SCALE = 1.9f
 private const val HANDLE_HALO_ALPHA = 0.18f
 private val HANDLE_RING = 2.dp
+
+/** The readout plate's distance from the held ring, its corner, and how much stage it keeps. */
+private val READOUT_LIFT = 14.dp
+private val READOUT_RADIUS = 4.dp
+private const val READOUT_PLATE_ALPHA = 0.92f
 
 private val HIGHLIGHT_WIDTH = 12.dp
 private const val HIGHLIGHT_ALPHA = 0.3f

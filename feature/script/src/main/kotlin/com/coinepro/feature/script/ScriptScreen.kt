@@ -286,7 +286,7 @@ private fun EditorTab(
         if (state.dirty && state.result != null) {
             item {
                 Text(
-                    "نمودار هنوز نتیجهٔ اجرای قبلی را نشان می‌دهد",
+                    "نمودار هنوز نتیجه‌ی اجرای قبلی را نشان می‌دهد",
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,
                 )

@@ -32,7 +32,7 @@ import retrofit2.http.Header
  * ### The route that is actually alive
  *
  * `GET user/economic-calendar` is in the same OpenAPI, summarised «رویدادهای اقتصادیِ امروز (و تا
- * ۲۴ ساعتِ آینده) با درجهٔ اهمیت», and answers `401` while signed out rather than an empty array —
+ * ۲۴ ساعتِ آینده) با درجه‌ی اهمیت», and answers `401` while signed out rather than an empty array —
  * which is what a route with a real handler behind it does. It takes the ordinary user token, so
  * `NetworkFactory`'s auth interceptor fills it in and nothing here has to hold a credential.
  *

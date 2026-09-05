@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.dp
  *
  * ### What it is for
  *
- * «لوگو پرو چارت … باید در صفحهٔ دیده‌بان باشه و با یه انیمیشن و استریم خاص و اختراعی باشه که مخصوص
+ * «لوگو پرو چارت … باید در صفحه‌ی دیده‌بان باشه و با یه انیمیشن و استریم خاص و اختراعی باشه که مخصوص
  * آپ من باشه، نه اینکه یه چیز الکی.» What stood at the head of the watchlist was
  * `ProChartMarkStream` — a clip front crossing the mark in half a second. It was honest and it was
  * *the reference's*: TradingView streams its mark in exactly that way, and a wipe is what every
@@ -267,7 +267,7 @@ private val TAPE_MARK = 24.dp
  *
  * ### What was wrong with the swap it replaces
  *
- * «نحوهٔ استریم نوشتهٔ پروچارت خیلی بده و لوگو پروچارت هم دارای بهم‌ریختگی هست موقع بسته بودن.» Both
+ * «نحوه‌ی استریم نوشته‌ی پروچارت خیلی بده و لوگو پروچارت هم دارای بهم‌ریختگی هست موقع بسته بودن.» Both
  * halves of that were one fault. The two states were **two different composables** — a bare
  * [ProChartMark] closed, a whole [ProChartLockup] open — and Compose swapped one subtree for the
  * other in a single frame. So the name did not arrive, it appeared; and the mark was re-created on

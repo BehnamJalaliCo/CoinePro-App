@@ -153,4 +153,26 @@
     <string name="chart_hub_replay">Bar replay</string>
     <string name="chart_watermark_expand">Show the app name</string>
     <string name="chart_watermark_collapse">Hide the app name</string>
+    <!-- The drawing settings sheet's three tabs and its coordinates / visibility controls. -->
+    <string name="drawing_settings_style">Style</string>
+    <string name="drawing_settings_coordinates">Coordinates</string>
+    <string name="drawing_settings_visibility">Visibility</string>
+    <string name="drawing_settings_custom_colour">Custom colour, e.g. 1E88E5</string>
+    <string name="drawing_settings_save_default">Save as default for this tool</string>
+    <string name="drawing_settings_point">Point %1$s</string>
+    <string name="drawing_settings_price">Price</string>
+    <string name="drawing_settings_lock">Lock</string>
+    <string name="drawing_settings_lock_note">A locked drawing cannot be moved or deleted by a drag or a tap.</string>
+    <string name="drawing_settings_timeframe">Drawn on</string>
+    <string name="drawing_settings_timeframe_note">This drawing shows on every timeframe and keeps the tag of the one it was drawn on.</string>
+    <!-- The indicator settings sheet: opened from a legend row's gear. -->
+    <string name="indicator_settings_inputs">Inputs</string>
+    <string name="indicator_settings_length">Length</string>
+    <string name="indicator_settings_length_note">How many bars this indicator is computed over. The chart updates as you change it.</string>
+    <string name="indicator_settings_no_inputs">This indicator has no adjustable inputs.</string>
+    <string name="indicator_settings_colour">Line colour</string>
+    <string name="indicator_settings_width">Line width</string>
+    <string name="indicator_settings_show">Show on chart</string>
+    <string name="indicator_settings_show_note">Turning this off hides the indicator and keeps its settings.</string>
+    <string name="indicator_settings_remove">Remove from chart</string>
 </resources>

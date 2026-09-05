@@ -65,6 +65,7 @@ import com.coinepro.core.datastore.DrawingSyncStore
 import com.coinepro.core.datastore.DrawingTemplateStore
 import com.coinepro.core.datastore.IndicatorTemplateStore
 import com.coinepro.core.datastore.InstallIdStore
+import com.coinepro.core.datastore.IndicatorFavouritesStore
 import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.TeachingStore
 import com.coinepro.core.datastore.LocalAlertStore
@@ -627,6 +628,12 @@ object AppModule {
     @Singleton
     fun intervalFavouritesStore(dataStore: DataStore<Preferences>): IntervalFavouritesStore =
         IntervalFavouritesStore(dataStore)
+
+    /** The starred and the recently used indicators — the first two chips on the indicator sheet. */
+    @Provides
+    @Singleton
+    fun indicatorFavouritesStore(dataStore: DataStore<Preferences>): IndicatorFavouritesStore =
+        IndicatorFavouritesStore(dataStore)
 
     /**
      * Which teaching banners the reader has already read and put away.

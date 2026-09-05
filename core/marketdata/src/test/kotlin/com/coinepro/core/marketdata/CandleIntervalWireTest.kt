@@ -13,7 +13,7 @@ import org.junit.Test
  * The chart drew on one hour and failed on the others, and the cause was a single list: the
  * resolver picked a source feed from `SERVER_NATIVE_TIMEFRAMES` whatever venue it was talking to,
  * and called it "the eight both backends serve". Measured live against each route on five symbols,
- * CoinePro-FX answers `404 {"detail":"دادهٔ این نماد نیست."}` on `M1`, `M30` and `W1` for every one
+ * CoinePro-FX answers `404 {"detail":"داده‌ی این نماد نیست."}` on `M1`, `M30` and `W1` for every one
  * of them. Because `M2` and `M3` resolve to `M1` and every custom multiple of thirty minutes
  * resolved to `M30`, the damage reached well past those three keys — and it arrived as a network
  * error over a retry that could not work.

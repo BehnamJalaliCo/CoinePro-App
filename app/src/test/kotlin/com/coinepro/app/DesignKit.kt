@@ -50,7 +50,7 @@ internal fun DesignKit() {
             .padding(CoineProSpacing.Gutter),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
     ) {
-        Section("لهجهٔ هر دامنه")
+        Section("لهجه‌ی هر دامنه")
         AccentRow(PageAccent.ANALYSIS, "تحلیل — بازار، چارت، هوش مصنوعی")
         AccentRow(PageAccent.BRAND, "اجرا — معامله، سفارش، حساب")
         AccentRow(PageAccent.SOCIAL, "اجتماعی — کپی‌تریدینگ")
@@ -61,7 +61,7 @@ internal fun DesignKit() {
         CoineProCard(modifier = Modifier.fillMaxWidth(), accent = CoineProColors.Premium) {
             Text("اشتراک", style = MaterialTheme.typography.titleSmall, color = CoineProColors.Premium)
             Text(
-                "طلای اشتراک لهجهٔ جدا نیست — در این برند همان طلای اصلی است.",
+                "طلای اشتراک لهجه‌ی جدا نیست — در این برند همان طلای اصلی است.",
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextSecondary,
             )
@@ -78,7 +78,7 @@ internal fun DesignKit() {
                 // BidiText.percent. Written «۸٪» this line drew «٪۸»: a neutral sign after a
                 // numeral, claimed by the Persian paragraph, on the page that documents the system.
                 BidiText.percent("8") + " پس‌زمینه به سمت رنگ، حاشیه " + BidiText.percent("34") +
-                    " — نه آلفا روی زمینهٔ ناشناخته.",
+                    " — نه آلفا روی زمینه‌ی ناشناخته.",
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextSecondary,
             )

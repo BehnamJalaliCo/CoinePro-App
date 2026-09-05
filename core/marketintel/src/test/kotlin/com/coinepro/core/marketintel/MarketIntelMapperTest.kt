@@ -61,7 +61,7 @@ class MarketIntelMapperTest {
         // The likeliest first version of the route: an adapter mapping `summary_fa` into both
         // fields. Taken at face value the reading page would print the same paragraph twice, the
         // second time under a heading claiming it was more.
-        val summary = "کمیتهٔ بازار باز رأی به توقف داد."
+        val summary = "کمیته‌ی بازار باز رأی به توقف داد."
         assertNull(readNews(newsRow(summary = summary, body = summary))?.body)
         assertNull(readNews(newsRow(summary = summary, body = "  $summary  "))?.body)
     }

@@ -43,7 +43,7 @@ import kotlinx.coroutines.delay
  * ### What the owner asked for
  *
  * TradingView's phone app opens on a white screen, its mark draws itself in, its name follows, and
- * a second or two later the chart is there. «در حد ۱ تا ۲ ثانیه … پس‌زمینهٔ سفید و لوگو و نوشته
+ * a second or two later the chart is there. «در حد ۱ تا ۲ ثانیه … پس‌زمینه‌ی سفید و لوگو و نوشته
  * کاملاً مشکی». This is that, with the owner's own mark and name.
  *
  * ### How it moves

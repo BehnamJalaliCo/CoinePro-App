@@ -175,4 +175,26 @@
     <string name="chart_hub_replay">ریپلی</string>
     <string name="chart_watermark_expand">نمایش نام برنامه</string>
     <string name="chart_watermark_collapse">بستن نام برنامه</string>
+    <!-- The drawing settings sheet's three tabs and its coordinates / visibility controls. -->
+    <string name="drawing_settings_style">ظاهر</string>
+    <string name="drawing_settings_coordinates">مختصات</string>
+    <string name="drawing_settings_visibility">نمایش</string>
+    <string name="drawing_settings_custom_colour">رنگ دلخواه، مثل 1E88E5</string>
+    <string name="drawing_settings_save_default">ذخیره به‌عنوان پیش‌فرض این ابزار</string>
+    <string name="drawing_settings_point">نقطه‌ی %1$s</string>
+    <string name="drawing_settings_price">قیمت</string>
+    <string name="drawing_settings_lock">قفل</string>
+    <string name="drawing_settings_lock_note">ترسیم قفل‌شده با کشیدن یا لمس جابه‌جا و حذف نمی‌شود.</string>
+    <string name="drawing_settings_timeframe">تایم‌فریم ترسیم</string>
+    <string name="drawing_settings_timeframe_note">این ترسیم روی همه‌ی تایم‌فریم‌ها نشان داده می‌شود و برچسب تایم‌فریمی که روی آن کشیده شده کنارش می‌ماند.</string>
+    <!-- The indicator settings sheet: opened from a legend row's gear. -->
+    <string name="indicator_settings_inputs">ورودی‌ها</string>
+    <string name="indicator_settings_length">دوره</string>
+    <string name="indicator_settings_length_note">تعداد کندل‌هایی که این اندیکاتور روی آن‌ها حساب می‌شود. تغییر همان لحظه روی چارت دیده می‌شود.</string>
+    <string name="indicator_settings_no_inputs">این اندیکاتور ورودی قابل تغییر ندارد.</string>
+    <string name="indicator_settings_colour">رنگ خط</string>
+    <string name="indicator_settings_width">ضخامت خط</string>
+    <string name="indicator_settings_show">نمایش روی چارت</string>
+    <string name="indicator_settings_show_note">خاموش کردن، اندیکاتور را پنهان می‌کند و تنظیماتش را نگه می‌دارد.</string>
+    <string name="indicator_settings_remove">برداشتن از چارت</string>
 </resources>

@@ -163,6 +163,19 @@ data class ChartUiState(
      * changed is not a moving average a trader can use — the length *is* the tool.
      */
     val indicatorPeriods: Map<String, Int> = emptyMap(),
+    /**
+     * The colour and the stroke the reader gave an indicator, by id — the settings sheet's Style
+     * tab. Sparse, like the periods: absent means the catalogue's own. Applied where the lines are
+     * read, so a study's every line that was drawn in the catalogue colour takes the new one and
+     * its secondary shades — a signal line, a band's fill — keep their relation to it.
+     */
+    val indicatorColours: Map<String, Long> = emptyMap(),
+    val indicatorWidths: Map<String, Float> = emptyMap(),
+    /**
+     * The indicators switched on but not drawn — the legend's eye, and the settings sheet's
+     * Visibility tab. Hidden, not off: the period and the style are kept for the way back.
+     */
+    val hiddenIndicators: Set<String> = emptySet(),
     val drawing: DrawingState = DrawingState(),
     /**
      * The drawings the reader has switched off in the object tree.
@@ -408,7 +421,7 @@ data class ChartUiState(
 
     /** Why chart vision cannot read this chart, in a sentence, or null when it can. */
     val aiVisionRefusal: String?
-        get() = if (aiVisionWire != null) null else "تحلیل تصویری روی این بازهٔ زمانی کار نمی‌کند. یکی از بازه‌های ۱ دقیقه، ۵ دقیقه، ۱۵ دقیقه، ۱ ساعت، ۴ ساعت یا ۱ روز را انتخاب کنید."
+        get() = if (aiVisionWire != null) null else "تحلیل تصویری روی این بازه‌ی زمانی کار نمی‌کند. یکی از بازه‌های ۱ دقیقه، ۵ دقیقه، ۱۵ دقیقه، ۱ ساعت، ۴ ساعت یا ۱ روز را انتخاب کنید."
 
     /**
      * Everything the indicators produce, computed once.
@@ -546,7 +559,64 @@ data class ChartUiState(
         // memoisation test caught by identity. Chained indicators are the rare case; an ordinary
         // chart reads this on every frame of a drag.
         get() = if (indicatorsHidden) emptyList()
-        else chainPlot.priceLines.ifEmpty { return derived.overlays }.let { derived.overlays + it }
+        else chainPlot.priceLines.ifEmpty { return styledOverlays }.let { styledOverlays + it }
+
+    /** [ChartDerived.overlays] with the reader's colours and widths on them; the list itself when there are none. */
+    private val styledOverlays: List<ChartLine>
+        get() {
+            if (indicatorColours.isEmpty() && indicatorWidths.isEmpty()) return derived.overlays
+            return derived.overlays.mapIndexed { index, line ->
+                restyled(line, derived.overlayOwners.getOrNull(index))
+            }
+        }
+
+    private val styledPanes: List<ChartPane>
+        get() {
+            if (indicatorColours.isEmpty() && indicatorWidths.isEmpty()) return derived.panes
+            return derived.panes.mapIndexed { index, pane ->
+                val owner = derived.paneOwners.getOrNull(index)
+                if (owner == null || (owner !in indicatorColours && owner !in indicatorWidths)) {
+                    pane
+                } else {
+                    pane.copy(
+                        lines = pane.lines.map { restyled(it, owner) },
+                        histogram = pane.histogram?.let { restyled(it, owner) },
+                    )
+                }
+            }
+        }
+
+    private fun restyled(line: ChartLine, owner: String?): ChartLine {
+        if (owner == null) return line
+        val colour = indicatorColours[owner]
+        val width = indicatorWidths[owner]
+        if (colour == null && width == null) return line
+        val own = ChartCatalog.INDICATORS.firstOrNull { it.id == owner }?.colour
+        return line.copy(
+            // Only the lines in the catalogue's own colour take the new one; a signal line in a
+            // second shade stays distinguishable from the line it signals.
+            colour = if (colour != null && line.colour == own) colour else line.colour,
+            widthDp = width ?: line.widthDp,
+        )
+    }
+
+    /**
+     * The hidden indicators as the legend addresses them: by their position in the overlay and
+     * pane lists. The chart's legend takes this and gives back a target; [indicatorFor] turns it
+     * into an id again, which is what keeps one hidden set for the eye and the sheet.
+     */
+    val hiddenTargets: Set<ChartLegendTarget>
+        get() {
+            if (hiddenIndicators.isEmpty()) return emptySet()
+            val targets = LinkedHashSet<ChartLegendTarget>()
+            derived.overlayOwners.forEachIndexed { index, owner ->
+                if (owner in hiddenIndicators) targets += ChartLegendTarget.Overlay(index)
+            }
+            derived.paneOwners.forEachIndexed { index, owner ->
+                if (owner in hiddenIndicators) targets += ChartLegendTarget.Pane(index)
+            }
+            return targets
+        }
 
     val levels: List<PriceLevel> get() = if (indicatorsHidden) emptyList() else derived.levels
 
@@ -603,7 +673,7 @@ data class ChartUiState(
     val panes: List<ChartPane>
         /** The same identity-preserving empty case as [overlays], for the same reason. */
         get() = if (indicatorsHidden) emptyList()
-        else chainPlot.panes.ifEmpty { return derived.panes }.let { derived.panes + it }
+        else chainPlot.panes.ifEmpty { return styledPanes }.let { styledPanes + it }
 
     /**
      * What the chart may draw.
@@ -1167,6 +1237,8 @@ class ChartController(
                     .filter { id -> ChartCatalog.INDICATORS.any { it.id == id } }
                     .toSet(),
                 indicatorPeriods = saved.indicatorPeriods.filterKeys { ChartCatalog.periodOf(it) != null },
+                indicatorColours = saved.indicatorColours.filterKeys { id -> ChartCatalog.INDICATORS.any { it.id == id } },
+                indicatorWidths = saved.indicatorWidths.filterKeys { id -> ChartCatalog.INDICATORS.any { it.id == id } },
                 scaleMode = mode ?: current.scaleMode,
                 // Sparse on the way out and sparse on the way back: an indicator whose source no
                 // longer decodes reads the candles, which is what every indicator does until
@@ -1235,6 +1307,8 @@ class ChartController(
             chartType = current.chartType.name,
             indicators = current.activeIndicators.toList(),
             indicatorPeriods = current.indicatorPeriods,
+            indicatorColours = current.indicatorColours,
+            indicatorWidths = current.indicatorWidths,
             scaleMode = current.scaleMode.name,
             logScale = current.logScale,
             updatedAt = System.currentTimeMillis(),
@@ -1350,6 +1424,35 @@ class ChartController(
      * chart of nulls. Clearing removes the key rather than writing the default in: the default is
      * allowed to change, and a stored copy of it would pin the old one forever.
      */
+    /** One indicator's line colour, or null for the catalogue's. The settings sheet's Style tab. */
+    fun setIndicatorColour(id: String, colour: Long?) {
+        record()
+        _state.update { old ->
+            old.copy(indicatorColours = if (colour == null) old.indicatorColours - id else old.indicatorColours + (id to colour))
+        }
+        persistSymbolState()
+    }
+
+    /** One indicator's stroke, in dp, or null for the catalogue's. */
+    fun setIndicatorWidth(id: String, widthDp: Float?) {
+        record()
+        _state.update { old ->
+            old.copy(
+                indicatorWidths = if (widthDp == null || widthDp <= 0f) {
+                    old.indicatorWidths - id
+                } else {
+                    old.indicatorWidths + (id to widthDp)
+                },
+            )
+        }
+        persistSymbolState()
+    }
+
+    /** Draw or stop drawing one switched-on indicator. The legend's eye and the Visibility tab. */
+    fun toggleIndicatorHidden(id: String) = _state.update { old ->
+        old.copy(hiddenIndicators = if (id in old.hiddenIndicators) old.hiddenIndicators - id else old.hiddenIndicators + id)
+    }
+
     fun setIndicatorPeriod(id: String, period: Int?) {
         record()
         _state.update { old ->
@@ -1521,6 +1624,26 @@ class ChartController(
 
     fun setSelectionLineStyle(style: LineStyleKind) = restyleEachSelected { state, id ->
         DrawingActions.setLineStyle(state, id, style)
+    }
+
+    /**
+     * The same three, on one named drawing — what its settings sheet calls, where the subject is
+     * the drawing the sheet was opened from rather than whatever is selected.
+     */
+    fun setDrawingTextColour(id: Long, colour: Long?) = restyleOne { DrawingActions.setTextColour(it, id, colour) }
+
+    fun setDrawingFillColour(id: Long, colour: Long?) = restyleOne { DrawingActions.setFillColour(it, id, colour) }
+
+    fun setDrawingLineStyle(id: Long, style: LineStyleKind) = restyleOne { DrawingActions.setLineStyle(it, id, style) }
+
+    /** One anchor of a drawing put at a typed price or moment — the settings sheet's coordinates tab. */
+    fun moveDrawingPoint(id: Long, index: Int, to: ChartPoint) = onDrawing(
+        DrawingActions.movePoint(_state.value.drawing, id, index, to),
+    )
+
+    private fun restyleOne(transform: (DrawingState) -> DrawingState) {
+        _state.update { current -> current.copy(drawing = transform(current.drawing)) }
+        persistDrawings()
     }
 
     private fun restyleEachSelected(transform: (DrawingState, Long) -> DrawingState) {

@@ -260,12 +260,12 @@ class ScriptStrategiesTest {
             if (states.toSet().size > 1) withdrawn++
             for (progress in listOf(0.0, 0.35, 0.7, 1.0)) {
                 assertFalse(
-                    "نسخهٔ محافظت‌شده نباید روی کندلِ در حال شکل‌گیری نشانه بگذارد",
+                    "نسخه‌ی محافظت‌شده نباید روی کندلِ در حال شکل‌گیری نشانه بگذارد",
                     count - 1 in NamaScript.run(guarded, forming(full, count, progress)).markers.single().bars,
                 )
             }
         }
-        assertTrue("آزمون بی‌اثر است: نسخهٔ بی‌محافظ هیچ نشانه‌ای را پس نگرفت", withdrawn > 0)
+        assertTrue("آزمون بی‌اثر است: نسخه‌ی بی‌محافظ هیچ نشانه‌ای را پس نگرفت", withdrawn > 0)
     }
 
     /* ------------------------------------------------------------------ warm-up */
@@ -390,7 +390,7 @@ class ScriptStrategiesTest {
             crossed,
         )
         assertTrue(
-            "اشکالِ نسخهٔ قدیمی باید هنوز قابل نمایش باشد: کندل‌هایی که امتیاز در آن‌ها به ۳ رسید، فلش نمی‌گرفتند",
+            "اشکالِ نسخه‌ی قدیمی باید هنوز قابل نمایش باشد: کندل‌هایی که امتیاز در آن‌ها به ۳ رسید، فلش نمی‌گرفتند",
             (reached - crossed.toSet()).isNotEmpty(),
         )
     }

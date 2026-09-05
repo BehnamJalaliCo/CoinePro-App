@@ -28,7 +28,7 @@ class NewsStoryTest {
     ) = MarketNewsItem(
         id = "fx-1",
         title = "فدرال رزرو نرخ بهره را بدون تغییر نگه داشت",
-        summary = "کمیتهٔ بازار باز رأی به توقف داد.",
+        summary = "کمیته‌ی بازار باز رأی به توقف داد.",
         source = "ForexLive",
         url = "https://example.com/a",
         publishedAt = Instant.ofEpochSecond(1_756_000_000),
@@ -130,8 +130,8 @@ class NewsStoryTest {
     @Test
     fun `a saved story keeps its lede so reopening it is not an empty page`() {
         val saved = item().asStory().asSavedArticle(Instant.ofEpochSecond(1_756_000_500))
-        assertEquals("کمیتهٔ بازار باز رأی به توقف داد.", saved?.summary)
-        assertEquals("کمیتهٔ بازار باز رأی به توقف داد.", saved?.asStory()?.summary)
+        assertEquals("کمیته‌ی بازار باز رأی به توقف داد.", saved?.summary)
+        assertEquals("کمیته‌ی بازار باز رأی به توقف داد.", saved?.asStory()?.summary)
     }
 
     @Test

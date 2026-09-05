@@ -9,7 +9,7 @@ class SignalStrategyPersianTest {
     @Test
     fun `the names a reader actually meets are Persian`() {
         assertEquals("واکنش به سقف/کف رِنج", SignalStrategyPersian.of("Range rejection"))
-        assertEquals("ادامهٔ روند", SignalStrategyPersian.of("Trend continuation"))
+        assertEquals("ادامه‌ی روند", SignalStrategyPersian.of("Trend continuation"))
         assertEquals("شکست و پولبک", SignalStrategyPersian.of("Breakout retest"))
     }
 

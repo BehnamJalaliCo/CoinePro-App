@@ -116,7 +116,7 @@ object AppSurfaces {
             bodyRes = DesignR.string.feature_paper_body,
             icon = CoineProIcons.Rehearsal,
             keywords = listOf(
-                "معامله آزمایشی", "معاملهٔ آزمایشی", "آزمایشی", "دمو", "تمرین", "شبیه‌ساز",
+                "معامله آزمایشی", "معامله‌ی آزمایشی", "آزمایشی", "دمو", "تمرین", "شبیه‌ساز",
                 "paper trading", "paper", "demo", "practice", "simulator",
             ),
         ),
@@ -146,7 +146,7 @@ object AppSurfaces {
             bodyRes = DesignR.string.feature_heatmap_body,
             icon = CoineProIcons.Heatmap,
             keywords = listOf(
-                "هیت مپ", "هیت‌مپ", "هیتمپ", "نقشه حرارتی", "نقشهٔ حرارتی", "نقشه بازار",
+                "هیت مپ", "هیت‌مپ", "هیتمپ", "نقشه حرارتی", "نقشه‌ی حرارتی", "نقشه بازار",
                 "heatmap", "heat map", "market map",
             ),
         ),

@@ -44,7 +44,7 @@ internal object CalendarPersian {
         // The long forms too. A server that sends `United States` rather than `USD` is naming the
         // same country in the same language, and the reader is owed the same Persian for it.
         "UNITED STATES", "US", "USA" -> "آمریکا"
-        "EURO AREA", "EUROZONE", "EUROPEAN UNION", "EU" -> "منطقهٔ یورو"
+        "EURO AREA", "EUROZONE", "EUROPEAN UNION", "EU" -> "منطقه‌ی یورو"
         "UNITED KINGDOM", "UK", "GREAT BRITAIN" -> "بریتانیا"
         "JAPAN" -> "ژاپن"
         "SWITZERLAND" -> "سوئیس"
@@ -57,7 +57,7 @@ internal object CalendarPersian {
         "ITALY" -> "ایتالیا"
         "SPAIN" -> "اسپانیا"
         "USD" -> "آمریکا"
-        "EUR" -> "منطقهٔ یورو"
+        "EUR" -> "منطقه‌ی یورو"
         "GBP" -> "بریتانیا"
         "JPY" -> "ژاپن"
         "CHF" -> "سوئیس"
@@ -142,8 +142,8 @@ internal object CalendarPersian {
 
     /** Leading qualifiers. Longest first, so «German Final» does not stop at a shorter match. */
     private val PREFIXES: List<Pair<String, String>> = listOf(
-        "Core CPI Flash Estimate" to "برآورد اولیهٔ هستهٔ",
-        "CPI Flash Estimate" to "برآورد اولیهٔ",
+        "Core CPI Flash Estimate" to "برآورد اولیه‌ی هسته‌ی",
+        "CPI Flash Estimate" to "برآورد اولیه‌ی",
         "German Buba President" to "رئیس بوندس‌بانک آلمان",
         "French" to "فرانسه",
         "German" to "آلمان",
@@ -172,8 +172,8 @@ internal object CalendarPersian {
         "cpi" to "شاخص قیمت مصرف‌کننده",
         "core cpi" to "شاخص قیمت مصرف‌کننده هسته",
         "ppi" to "شاخص قیمت تولیدکننده",
-        "cpi flash estimate" to "برآورد اولیهٔ شاخص قیمت مصرف‌کننده",
-        "mi inflation gauge" to "سنجهٔ تورم مؤسسهٔ ملبورن",
+        "cpi flash estimate" to "برآورد اولیه‌ی شاخص قیمت مصرف‌کننده",
+        "mi inflation gauge" to "سنجه‌ی تورم مؤسسه‌ی ملبورن",
         "brc shop price index" to "شاخص قیمت خرده‌فروشی بریتانیا",
         "nationwide hpi" to "شاخص قیمت مسکن نیشن‌واید",
         "gdt price index" to "شاخص قیمت لبنیات جهانی",
@@ -188,14 +188,14 @@ internal object CalendarPersian {
         "employment change" to "تغییر اشتغال",
         "unemployment rate" to "نرخ بیکاری",
         "monthly unemployment rate" to "نرخ بیکاری ماهانه",
-        "unemployment claims" to "درخواست‌های بیمهٔ بیکاری",
+        "unemployment claims" to "درخواست‌های بیمه‌ی بیکاری",
         "unemployment change" to "تغییر بیکاری",
         "jolts job openings" to "فرصت‌های شغلی — جولتس",
         "challenger job cuts" to "تعدیل نیرو — چلنجر",
         "average hourly earnings" to "میانگین دستمزد ساعتی",
         "labor productivity" to "بهره‌وری نیروی کار",
         "nonfarm productivity" to "بهره‌وری غیرکشاورزی",
-        "unit labor costs" to "هزینهٔ واحد نیروی کار",
+        "unit labor costs" to "هزینه‌ی واحد نیروی کار",
 
         // Activity
         "gdp" to "تولید ناخالص داخلی",
@@ -214,32 +214,32 @@ internal object CalendarPersian {
         "building approvals" to "مجوزهای ساخت",
         "building consents" to "پروانه‌های ساخت",
         "housing starts" to "شروع ساخت مسکن",
-        "construction spending" to "هزینهٔ ساخت‌وساز",
+        "construction spending" to "هزینه‌ی ساخت‌وساز",
         "company operating profits" to "سود عملیاتی شرکت‌ها",
         "capital spending" to "مخارج سرمایه‌ای",
         "household spending" to "مخارج خانوار",
         "omdia total vehicle sales" to "فروش خودرو — امدیا",
 
         // Money and rates
-        "official cash rate" to "نرخ بهرهٔ رسمی",
-        "overnight rate" to "نرخ بهرهٔ شبانه",
+        "official cash rate" to "نرخ بهره‌ی رسمی",
+        "overnight rate" to "نرخ بهره‌ی شبانه",
         "m4 money supply" to "حجم پول ام‌۴",
-        "monetary base" to "پایهٔ پولی",
+        "monetary base" to "پایه‌ی پولی",
         "private sector credit" to "اعتبار بخش خصوصی",
         "net lending to individuals" to "وام‌دهی خالص به اشخاص",
         "mortgage approvals" to "تأییدیه‌های وام مسکن",
         "beige book" to "کتاب بژ فدرال‌رزرو",
-        "boc rate statement" to "بیانیهٔ نرخ بهرهٔ بانک مرکزی کانادا",
+        "boc rate statement" to "بیانیه‌ی نرخ بهره‌ی بانک مرکزی کانادا",
         "boc press conference" to "نشست خبری بانک مرکزی کانادا",
-        "rbnz rate statement" to "بیانیهٔ نرخ بهرهٔ بانک مرکزی نیوزیلند",
-        "rbnz monetary policy statement" to "بیانیهٔ سیاست پولی بانک مرکزی نیوزیلند",
+        "rbnz rate statement" to "بیانیه‌ی نرخ بهره‌ی بانک مرکزی نیوزیلند",
+        "rbnz monetary policy statement" to "بیانیه‌ی سیاست پولی بانک مرکزی نیوزیلند",
         "rbnz press conference" to "نشست خبری بانک مرکزی نیوزیلند",
 
         // Trade and external
         "trade balance" to "تراز تجاری",
         "goods trade balance" to "تراز تجاری کالا",
         "current account" to "حساب جاری",
-        "gov budget balance" to "تراز بودجهٔ دولت",
+        "gov budget balance" to "تراز بودجه‌ی دولت",
 
         // Sentiment
         "consumer confidence" to "اعتماد مصرف‌کننده",
@@ -249,7 +249,7 @@ internal object CalendarPersian {
         // Energy
         "crude oil inventories" to "ذخایر نفت خام",
         "natural gas storage" to "ذخایر گاز طبیعی",
-        "api weekly statistical bulletin" to "گزارش هفتگی مؤسسهٔ نفت آمریکا",
+        "api weekly statistical bulletin" to "گزارش هفتگی مؤسسه‌ی نفت آمریکا",
 
         // Auctions and diary
         "10-y bond auction" to "حراج اوراق ۱۰ ساله",
@@ -257,17 +257,17 @@ internal object CalendarPersian {
         "bank holiday" to "تعطیلی بانکی",
         "g20 meetings" to "نشست گروه بیست",
         "fomc member speech" to "سخنرانی عضو فدرال‌رزرو",
-        "fomc statement" to "بیانیهٔ فدرال‌رزرو",
+        "fomc statement" to "بیانیه‌ی فدرال‌رزرو",
         "fomc press conference" to "نشست خبری فدرال‌رزرو",
-        "fomc meeting minutes" to "صورت‌جلسهٔ فدرال‌رزرو",
-        "federal funds rate" to "نرخ بهرهٔ فدرال‌رزرو",
-        "initial jobless claims" to "درخواست‌های اولیهٔ بیمهٔ بیکاری",
-        "continuing jobless claims" to "درخواست‌های مستمر بیمهٔ بیکاری",
-        "us core cpi" to "شاخص قیمت مصرف‌کننده هستهٔ آمریکا",
+        "fomc meeting minutes" to "صورت‌جلسه‌ی فدرال‌رزرو",
+        "federal funds rate" to "نرخ بهره‌ی فدرال‌رزرو",
+        "initial jobless claims" to "درخواست‌های اولیه‌ی بیمه‌ی بیکاری",
+        "continuing jobless claims" to "درخواست‌های مستمر بیمه‌ی بیکاری",
+        "us core cpi" to "شاخص قیمت مصرف‌کننده هسته‌ی آمریکا",
         "nonfarm payrolls" to "اشتغال غیرکشاورزی",
         "ecb press conference" to "نشست خبری بانک مرکزی اروپا",
-        "ecb rate statement" to "بیانیهٔ نرخ بهرهٔ بانک مرکزی اروپا",
-        "boe rate statement" to "بیانیهٔ نرخ بهرهٔ بانک مرکزی انگلستان",
+        "ecb rate statement" to "بیانیه‌ی نرخ بهره‌ی بانک مرکزی اروپا",
+        "boe rate statement" to "بیانیه‌ی نرخ بهره‌ی بانک مرکزی انگلستان",
         "boj policy rate" to "نرخ سیاستی بانک مرکزی ژاپن",
     )
 }

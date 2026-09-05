@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -48,6 +49,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.coinepro.core.chart.Candle
 import com.coinepro.core.chart.ChartReading
 import com.coinepro.core.chartevents.ChartEventNotice
@@ -65,6 +67,7 @@ import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.continuousMotionAllowed
+import com.coinepro.core.designsystem.numeric
 import com.coinepro.core.designsystem.onPageAccent
 import com.coinepro.core.designsystem.pageAccent
 import com.coinepro.core.designsystem.pageAccentInk
@@ -194,6 +197,9 @@ internal fun ChartCommandBand(
                 )
             }
             ToolbarText(text = interval.wire, onClick = onMoreIntervals)
+            // TradingView's bar reads `[symbol] [interval ▾] │ [draw] [indicators] [•••] │ [undo]
+            // [fullscreen]`: two hairlines, one after the "what" and one before the "undo".
+            ToolbarDivider()
             Spacer(modifier = Modifier.weight(1f))
             if (showDraw) {
                 ToolbarButton(
@@ -207,19 +213,17 @@ internal fun ChartCommandBand(
                 icon = DesignR.drawable.icon_sliders_horizontal,
                 label = stringResource(R.string.chart_band_studies),
                 active = indicators > 0,
+                count = indicators,
                 onClick = { onOpen(ChartSheet.INDICATORS) },
             )
             ToolbarButton(
                 icon = DesignR.drawable.tv_more_horizontal,
                 label = stringResource(R.string.chart_band_more),
                 active = moreActive || drawings > 0,
+                count = drawings,
                 onClick = onMore,
             )
-            VerticalDivider(
-                color = CoineProColors.BorderSubtle,
-                thickness = 1.dp,
-                modifier = Modifier.height(TOOLBAR_GLYPH).padding(horizontal = 4.dp),
-            )
+            ToolbarDivider()
             ToolbarButton(
                 icon = DesignR.drawable.icon_arrow_counter_clockwise,
                 label = stringResource(R.string.chart_more_undo),
@@ -237,9 +241,11 @@ internal fun ChartCommandBand(
 }
 
 /**
- * One glyph on the toolbar: 22 dp of ink in a 44 dp target, the primary ink at rest and the page
- * accent when the thing behind it is armed or carrying something. No label — TradingView's bar
- * has none, and every glyph here is one the reader has met on its own sheet.
+ * One glyph on the toolbar: 22 dp of ink in a 46 dp target — 24 between neighbouring glyphs, the
+ * reference's pitch — the primary ink at rest and the page accent when the thing behind it is
+ * armed or carrying something. No label — TradingView's bar has none, and every glyph here is one
+ * the reader has met on its own sheet. A [count] above zero draws the reference's badge: how many
+ * indicators are on, how many objects are drawn, in a small disc at the glyph's shoulder.
  */
 @Composable
 private fun ToolbarButton(
@@ -247,6 +253,7 @@ private fun ToolbarButton(
     label: String,
     active: Boolean,
     onClick: (() -> Unit)?,
+    count: Int = 0,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val haptics = rememberCoineProHaptics()
@@ -273,7 +280,37 @@ private fun ToolbarButton(
             tint = ink,
             modifier = Modifier.size(TOOLBAR_GLYPH),
         )
+        if (count > 0) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = CoineProSpacing.Half, end = CoineProSpacing.Half)
+                    .sizeIn(minWidth = TOOLBAR_BADGE, minHeight = TOOLBAR_BADGE)
+                    .clip(CoineProPillShape)
+                    .background(CoineProColors.pageAccentInk)
+                    .padding(horizontal = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    // A count of things, so Persian digits — see `NumberStyle`.
+                    text = count.coerceAtMost(TOOLBAR_BADGE_MAX).toPersianDigits(),
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = TOOLBAR_BADGE_TEXT),
+                    color = CoineProColors.onPageAccent,
+                    maxLines = 1,
+                )
+            }
+        }
     }
+}
+
+/** The 1 px hairline between the toolbar's groups, the glyph's height. */
+@Composable
+private fun ToolbarDivider() {
+    VerticalDivider(
+        color = CoineProColors.BorderSubtle,
+        thickness = 1.dp,
+        modifier = Modifier.height(TOOLBAR_GLYPH).padding(horizontal = 4.dp),
+    )
 }
 
 /** The interval on the toolbar: bold, Latin, and a tap away from the date-range sheet. */
@@ -282,12 +319,7 @@ private fun ToolbarText(text: String, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     val haptics = rememberCoineProHaptics()
     LtrDirection {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = CoineProColors.TextPrimary,
-            maxLines = 1,
+        Row(
             modifier = Modifier
                 .pressScale(interaction, CoineProPress.CONTROL)
                 .clip(CoineProShapes.small)
@@ -296,9 +328,25 @@ private fun ToolbarText(text: String, onClick: () -> Unit) {
                     onClick()
                 }
                 .heightIn(min = TOOLBAR_TARGET)
-                .padding(horizontal = CoineProSpacing.One)
-                .wrapContentHeight(),
-        )
+                .padding(horizontal = CoineProSpacing.One),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.titleMedium.numeric(),
+                fontWeight = FontWeight.Bold,
+                color = CoineProColors.TextPrimary,
+                maxLines = 1,
+            )
+            // The caret that says this is a menu, not a label. The reference draws one.
+            Icon(
+                painter = painterResource(DesignR.drawable.icon_caret_down),
+                contentDescription = null,
+                tint = CoineProColors.TextMuted,
+                modifier = Modifier.size(TOOLBAR_CARET),
+            )
+        }
     }
 }
 
@@ -337,7 +385,7 @@ internal fun RangeChipRow(
             val ink = if (active) CoineProColors.pageAccentInk else CoineProColors.TextMuted
             Box(
                 modifier = Modifier
-                    .clip(CoineProShapes.extraSmall)
+                    .clip(CoineProShapes.medium)
                     .background(
                         if (active) {
                             CoineProTint.fill(CoineProColors.pageAccentInk, CoineProColors.Surface)
@@ -352,7 +400,7 @@ internal fun RangeChipRow(
                         } else {
                             CoineProColors.Border
                         },
-                        shape = CoineProShapes.extraSmall,
+                        shape = CoineProShapes.medium,
                     )
                     .clickable { onSelect(range) }
                     .heightIn(min = RANGE_CHIP_HEIGHT)
@@ -528,8 +576,8 @@ private fun ReadingColumn(
         )
         // Two lines, not one.
         //
-        // «+0.09% فاصلهٔ میانگین‌ها» does not fit a third of a phone at any font this panel would
-        // use, so at one line it rendered as «+0.09% فاصلهٔ میانگ…» — the number survived and the
+        // «+0.09% فاصله‌ی میانگین‌ها» does not fit a third of a phone at any font this panel would
+        // use, so at one line it rendered as «+0.09% فاصله‌ی میانگ…» — the number survived and the
         // thing it measures was cut off, which is the half that makes it mean anything. Two lines
         // fit all three readings' reasons at every width, and the panel grows by one line of
         // eleven-point text.
@@ -726,7 +774,9 @@ internal fun ChartMoreSheetBody(
         HorizontalDivider(color = CoineProColors.BorderSubtle)
 
         SheetLabel(stringResource(R.string.chart_hub_tools))
-        HubGrid(columns = 2, outlined = false) {
+        // The reference's TOOLS: the four a session reaches for, two across at 88; then the
+        // three about the chart's own apparatus, three across. Same tiles, same handlers.
+        HubGrid(columns = HUB_TOOLS_COLUMNS, outlined = false) {
             HubTile(
                 icon = DesignR.drawable.icon_sliders_horizontal,
                 label = stringResource(R.string.chart_band_studies),
@@ -748,6 +798,8 @@ internal fun ChartMoreSheetBody(
                 label = stringResource(R.string.chart_hub_replay),
                 onClick = onReplay,
             )
+        }
+        HubGrid(columns = HUB_APPARATUS_COLUMNS, outlined = false) {
             HubTile(
                 icon = DesignR.drawable.tv_play,
                 label = stringResource(R.string.chart_more_backtest),
@@ -1081,15 +1133,25 @@ private const val BIAS_FULL_SCALE = 0.005
 
 private const val PERCENT = 100.0
 
-/** Comfortably past the 44dp target, with room for a glyph over a label. */
-// TradingView's chart toolbar, measured off the phone app: a 44 pt bar, 22 pt glyphs in 44 pt targets.
-private val TOOLBAR_HEIGHT = 44.dp
-private val TOOLBAR_TARGET = 44.dp
+// TradingView's chart toolbar, as the design brief measures it: a 48 dp bar, 22 dp glyphs 24 dp
+// apart (a 46 dp pitch), 1 px hairlines between the groups, and a badge on the sheets that hold
+// something. The 44 the first measurement gave is the phone app at an older build.
+private val TOOLBAR_HEIGHT = 48.dp
+private val TOOLBAR_TARGET = 46.dp
 private val TOOLBAR_GLYPH = 22.dp
+private val TOOLBAR_CARET = 12.dp
+private val TOOLBAR_BADGE = 16.dp
+private val TOOLBAR_BADGE_TEXT = 10.sp
+private const val TOOLBAR_BADGE_MAX = 99
 
-// The analysis hub's tiles, re-measured off the phone app at 3×: the plates 72 pt tall with an
-// 8 pt gutter, the outlined ones 56 pt with 12 pt, a 26 pt glyph over a one-line label in both.
-private val HUB_TILE = 72.dp
+// The analysis hub's tiles: the plates 88 dp tall with an 8 dp gutter (the design brief's
+// measure; the phone app at 3× gave 72), the outlined ones 56 with 12, a 26 pt glyph over a
+// one-line label in both. TOOLS is two across for the four a session uses and three across for
+// the apparatus under them. The top row stays three across rather than the reference's six:
+// six columns on a 411 dp phone are 55 dp each, and no Persian label here survives that.
+private val HUB_TILE = 88.dp
+private const val HUB_TOOLS_COLUMNS = 2
+private const val HUB_APPARATUS_COLUMNS = 3
 private val HUB_GAP = 8.dp
 private val HUB_OUTLINED_TILE = 56.dp
 private val HUB_OUTLINED_GAP = 12.dp
@@ -1107,6 +1169,6 @@ private val MORE_GLYPH = 20.dp
 /** The reading bar. Four points: read as a measure, not as a rule. */
 private val METER_HEIGHT = 4.dp
 
-/** A range chip, sized for a thumb rather than for its two Persian words. */
-private val RANGE_CHIP_HEIGHT = 36.dp
+/** A date-range chip: 48 tall with 12 dp corners, the reference's — sized for a thumb. */
+private val RANGE_CHIP_HEIGHT = 48.dp
 private val RANGE_CHIP_WIDTH = 56.dp

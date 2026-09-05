@@ -104,7 +104,7 @@ fun WatchlistScreen(
             state.loading && state.results.isEmpty() -> WatchlistStateBlock {
                 // **The loading mark, which is where the brand belongs on this page.**
                 //
-                // «لوگو پرو چارت بارگیری … باید در صفحهٔ دیده‌بان باشه» — and it is, at the one
+                // «لوگو پرو چارت بارگیری … باید در صفحه‌ی دیده‌بان باشه» — and it is, at the one
                 // moment it costs nothing: while there is no list to be above. A spinner says work
                 // is happening and nothing else; the tape says the same thing in the product's own
                 // hand, and it is gone by the time the first row arrives. See `ProChartTapeStream`.

@@ -248,7 +248,7 @@ internal fun calendarMode(state: MarketIntelState, filtered: List<EconomicEvent>
 /**
  * The strip above the first row: a notice while something is happening, a line the rest of the time.
  *
- * «زمان‌ها بر اساس منطقهٔ زمانی دستگاه» is a footnote, not an event. It was being given a full card
+ * «زمان‌ها بر اساس منطقه‌ی زمانی دستگاه» is a footnote, not an event. It was being given a full card
  * with its own border and a «به‌روزرسانی» button, above the first release, on a screen that already
  * pulls to refresh — the fourth block of furniture on a screen whose content starts a third of the
  * way down. A refresh actually in flight is a different matter: that is something the reader started

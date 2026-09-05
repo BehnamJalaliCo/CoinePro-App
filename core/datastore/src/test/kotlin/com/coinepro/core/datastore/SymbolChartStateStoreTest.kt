@@ -224,6 +224,18 @@ class SymbolChartStateStoreTest {
 
         assertEquals(mapOf("rsi" to "ema"), store.state("XAUUSD").first()?.chainSources)
     }
+
+    @Test
+    fun `an indicator's own colour and width come back on its symbol`() = runTest {
+        val store = SymbolChartStateStore(FakeStatePreferences())
+        val styled = gold().copy(
+            indicatorColours = mapOf("ema" to 0xFF4C9AFFL),
+            indicatorWidths = mapOf("ema" to 2f, "rsi" to 1.5f),
+        )
+        store.put(styled)
+
+        assertEquals(styled, store.state("XAUUSD").first())
+    }
 }
 
 private class FakeStatePreferences(initial: Preferences = emptyPreferences()) : DataStore<Preferences> {
@@ -234,4 +246,5 @@ private class FakeStatePreferences(initial: Preferences = emptyPreferences()) : 
         state.value = next
         return next
     }
+
 }

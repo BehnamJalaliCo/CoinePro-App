@@ -90,15 +90,15 @@ object ScriptStrategies {
         warmUpBars = 26,
         source = """
             // دو میانگین هال؛ تقاطعشان را نشانه می‌گذارد.
-            fastLength = input(9, title = "دورهٔ تند", min = 4, max = 120)
-            slowLength = input(21, title = "دورهٔ کند", min = 6, max = 300)
+            fastLength = input(9, title = "دوره‌ی تند", min = 4, max = 120)
+            slowLength = input(21, title = "دوره‌ی کند", min = 6, max = 300)
 
             fast = ta.hma(close, fastLength)
             slow = ta.hma(close, slowLength)
 
-            // میانگین هال از یک میانگین وزنیِ تفاضل ساخته می‌شود و آن تفاضل، خودش دورهٔ گرم شدن
+            // میانگین هال از یک میانگین وزنیِ تفاضل ساخته می‌شود و آن تفاضل، خودش دوره‌ی گرم شدن
             // دارد. کتابخانه آن دوره را با صفر پر می‌کند و بعد ماسک می‌زند؛ ماسک سرِ ناتعریف را
-            // پنهان می‌کند اما ریشهٔ دوره کندل بعد از آن هنوز به سمت صفر خم شده‌اند. نسخهٔ قدیمی
+            // پنهان می‌کند اما ریشه‌ی دوره کندل بعد از آن هنوز به سمت صفر خم شده‌اند. نسخه‌ی قدیمی
             // همان‌جا سیگنال می‌داد.
             ready = bar_index >= slowLength + math.ceil(math.sqrt(slowLength))
 
@@ -138,8 +138,8 @@ object ScriptStrategies {
         id = "supertrend-flip",
         warmUpBars = 30,
         source = """
-            // سوپرترند: باندی به اندازهٔ ATR دور میانهٔ کندل، که سمتش را با قیمت عوض می‌کند.
-            atrLength = input(10, title = "دورهٔ ATR", min = 3, max = 100)
+            // سوپرترند: باندی به اندازه‌ی ATR دور میانه‌ی کندل، که سمتش را با قیمت عوض می‌کند.
+            atrLength = input(10, title = "دوره‌ی ATR", min = 3, max = 100)
             multiplier = input(3, title = "ضریب باند", min = 0.5, max = 8)
 
             band = ta.supertrend(atrLength, multiplier)
@@ -150,7 +150,7 @@ object ScriptStrategies {
             // یک روند نزولی شروع شده باشد، همان کندل جهت را برمی‌گرداند و آن برگشت، معنایی ندارد.
             ready = bar_index >= atrLength * 3
 
-            // تغییر سمت، نه تقاطع قیمت با خط: خط در لحظهٔ تغییر از یک طرف قیمت به طرف دیگر می‌پرد.
+            // تغییر سمت، نه تقاطع قیمت با خط: خط در لحظه‌ی تغییر از یک طرف قیمت به طرف دیگر می‌پرد.
             flipUp = direction > 0 and direction[1] < 0 and ready and confirmed
             flipDown = direction < 0 and direction[1] > 0 and ready and confirmed
 
@@ -191,12 +191,12 @@ object ScriptStrategies {
         warmUpBars = 70,
         source = """
             // شکست کانال بیست کندلی، هم‌جهت با میانگین بلندمدت.
-            length = input(20, title = "پنجرهٔ کانال", min = 5, max = 300)
-            trendLength = input(50, title = "دورهٔ روند", min = 10, max = 400)
+            length = input(20, title = "پنجره‌ی کانال", min = 5, max = 300)
+            trendLength = input(50, title = "دوره‌ی روند", min = 10, max = 400)
 
             // کانالی که کندلِ شکننده در آن نباشد. اگر پنجره تا همین کندل بیاید، بیشینه‌اش دست‌کم
-            // به اندازهٔ سقفِ همین کندل است و قیمت بسته‌شدن هیچ‌وقت از سقف کندل خودش بالاتر نیست:
-            // شرط روی هر نموداری همیشه نادرست می‌ماند. نسخهٔ قدیمی دقیقاً همین را داشت.
+            // به اندازه‌ی سقفِ همین کندل است و قیمت بسته‌شدن هیچ‌وقت از سقف کندل خودش بالاتر نیست:
+            // شرط روی هر نموداری همیشه نادرست می‌ماند. نسخه‌ی قدیمی دقیقاً همین را داشت.
             roof = ta.donchian_upper(length)[1]
             floorLine = ta.donchian_lower(length)[1]
 
@@ -243,24 +243,24 @@ object ScriptStrategies {
         id = "band-reversion",
         warmUpBars = 40,
         source = """
-            // برگشت از لبهٔ باند، با تأیید RSI.
-            length = input(20, title = "دورهٔ باند", min = 5, max = 200)
+            // برگشت از لبه‌ی باند، با تأیید RSI.
+            length = input(20, title = "دوره‌ی باند", min = 5, max = 200)
             width = input(2, title = "ضریب انحراف", min = 0.5, max = 5)
-            rsiLength = input(14, title = "دورهٔ RSI", min = 2, max = 100)
-            oversold = input(35, title = "آستانهٔ اشباع فروش", min = 5, max = 50)
-            overbought = input(65, title = "آستانهٔ اشباع خرید", min = 50, max = 95)
-            minWidth = input(0.6, title = "کمینهٔ پهنای باند (درصد)", min = 0.05, max = 10)
+            rsiLength = input(14, title = "دوره‌ی RSI", min = 2, max = 100)
+            oversold = input(35, title = "آستانه‌ی اشباع فروش", min = 5, max = 50)
+            overbought = input(65, title = "آستانه‌ی اشباع خرید", min = 50, max = 95)
+            minWidth = input(0.6, title = "کمینه‌ی پهنای باند (درصد)", min = 0.05, max = 10)
 
             upper = ta.bb_upper(close, length, width)
             lower = ta.bb_lower(close, length, width)
             basis = ta.bb_basis(close, length, width)
             rsi = ta.rsi(close, rsiLength)
 
-            plot(upper, title = "لبهٔ بالا", color = color.grey)
+            plot(upper, title = "لبه‌ی بالا", color = color.grey)
             plot(basis, title = "میانه", color = color.gold, dashed = true)
-            plot(lower, title = "لبهٔ پایین", color = color.grey)
+            plot(lower, title = "لبه‌ی پایین", color = color.grey)
 
-            // روی یک بازهٔ صاف یا قفل‌شده، انحراف معیار صفر می‌شود و هر دو لبه روی میانه می‌نشینند.
+            // روی یک بازه‌ی صاف یا قفل‌شده، انحراف معیار صفر می‌شود و هر دو لبه روی میانه می‌نشینند.
             // آن‌وقت هر تکان کوچکی «برگشت از باند» خوانده می‌شود. این کف پهنا، آن حالت را حذف
             // می‌کند — و چون نسبت به میانه است، روی هر قیمتی یک معنا دارد.
             wideEnough = (upper - lower) / basis * 100 > minWidth
@@ -298,11 +298,11 @@ object ScriptStrategies {
         warmUpBars = 217,
         source = """
             // در جهت روند بلندمدت، ورود روی پولبک.
-            trendLength = input(200, title = "دورهٔ روند", min = 20, max = 500)
-            stochLength = input(14, title = "دورهٔ استوکاستیک", min = 3, max = 100)
+            trendLength = input(200, title = "دوره‌ی روند", min = 20, max = 500)
+            stochLength = input(14, title = "دوره‌ی استوکاستیک", min = 3, max = 100)
             smoothing = input(3, title = "هموارسازی", min = 1, max = 20)
-            lowZone = input(30, title = "ناحیهٔ پایین", min = 5, max = 45)
-            highZone = input(70, title = "ناحیهٔ بالا", min = 55, max = 95)
+            lowZone = input(30, title = "ناحیه‌ی پایین", min = 5, max = 45)
+            highZone = input(70, title = "ناحیه‌ی بالا", min = 55, max = 95)
 
             trend = ta.ema(close, trendLength)
             k = ta.stoch_k(stochLength, smoothing)
@@ -312,8 +312,8 @@ object ScriptStrategies {
             plot(trend, title = "روند", color = color.gold, width = 2)
             plot(k, title = "‎%K", color = color.blue, pane = "separate")
             plot(d, title = "‎%D", color = color.orange, pane = "separate")
-            hline(highZone, title = "ناحیهٔ بالا", color = color.grey, pane = "separate")
-            hline(lowZone, title = "ناحیهٔ پایین", color = color.grey, pane = "separate")
+            hline(highZone, title = "ناحیه‌ی بالا", color = color.grey, pane = "separate")
+            hline(lowZone, title = "ناحیه‌ی پایین", color = color.grey, pane = "separate")
 
             // ‎%D میانگینِ یک ‎%K است که سرِ گرم‌شدنش با صفر پر شده، پس اولین مقادیرش به سمت صفر
             // کشیده شده‌اند و تقاطع‌های آنجا ساختگی‌اند.
@@ -362,9 +362,9 @@ object ScriptStrategies {
             // سه تأیید که باید روی یک کندلِ بسته با هم موافق باشند.
             fastLength = input(21, title = "میانگین تند", min = 3, max = 200)
             slowLength = input(55, title = "میانگین کند", min = 5, max = 400)
-            rsiLength = input(14, title = "دورهٔ RSI", min = 2, max = 100)
+            rsiLength = input(14, title = "دوره‌ی RSI", min = 2, max = 100)
             midline = input(50, title = "خط میانی RSI", min = 30, max = 70)
-            volLength = input(50, title = "دورهٔ میانگین نوسان", min = 5, max = 200)
+            volLength = input(50, title = "دوره‌ی میانگین نوسان", min = 5, max = 200)
 
             fast = ta.ema(close, fastLength)
             slow = ta.ema(close, slowLength)
@@ -379,8 +379,8 @@ object ScriptStrategies {
             lively = range > ta.sma(range, volLength)
             ready = bar_index >= slowLength + volLength
 
-            // کندلی که هر سه تأیید برای اولین بار با هم موافق شدند — نه کندلی که همهٔ آن‌ها در
-            // آن اتفاق بیفتند. نسخهٔ قدیمی می‌خواست تقاطع RSI دقیقاً روی همان کندلی بیفتد که دو
+            // کندلی که هر سه تأیید برای اولین بار با هم موافق شدند — نه کندلی که همه‌ی آن‌ها در
+            // آن اتفاق بیفتند. نسخه‌ی قدیمی می‌خواست تقاطع RSI دقیقاً روی همان کندلی بیفتد که دو
             // شرط دیگر هم برقرارند؛ آن هم‌زمانی روی داده‌های واقعی تقریباً هرگز رخ نمی‌دهد و آن
             // ستاپ عملاً ساکت بود.
             longState = fast > slow and rsi > midline and lively
@@ -423,7 +423,7 @@ object ScriptStrategies {
             // چهار خواندنِ بله/خیر که جمع می‌شوند. امتیاز صفر تا چهار.
             fastLength = input(20, title = "میانگین تند", min = 3, max = 200)
             slowLength = input(50, title = "میانگین کند", min = 5, max = 400)
-            threshold = input(3, title = "آستانهٔ امتیاز", min = 1, max = 4)
+            threshold = input(3, title = "آستانه‌ی امتیاز", min = 1, max = 4)
 
             trendUp = ta.ema(close, fastLength) > ta.ema(close, slowLength)
             momentumUp = ta.rsi(close, 14) > 50
@@ -437,7 +437,7 @@ object ScriptStrategies {
             hline(threshold, title = "آستانه", color = color.buy, pane = "separate")
 
             // «رسیدن به آستانه»، نه «تقاطع با آستانه». تقاطع می‌خواهد سری اکیداً از خط بالاتر برود
-            // و امتیازی که از ۲ به ۳ می‌رود از ۳ بالاتر نیست — نسخهٔ قدیمی به همین دلیل فقط روی ۴
+            // و امتیازی که از ۲ به ۳ می‌رود از ۳ بالاتر نیست — نسخه‌ی قدیمی به همین دلیل فقط روی ۴
             // فلش می‌گذاشت، در حالی که خط راهنما و متنش هر دو ۳ می‌گفتند.
             strong = score >= threshold
             reached = strong and not strong[1]
@@ -472,11 +472,11 @@ object ScriptStrategies {
         warmUpBars = 80,
         source = """
             // روند، سوپرترند و مومنتوم — و کندلی که هر سه با هم موافق شدند.
-            trendLength = input(50, title = "دورهٔ روند", min = 10, max = 400)
-            atrLength = input(10, title = "دورهٔ سوپرترند", min = 3, max = 100)
+            trendLength = input(50, title = "دوره‌ی روند", min = 10, max = 400)
+            atrLength = input(10, title = "دوره‌ی سوپرترند", min = 3, max = 100)
             multiplier = input(3, title = "ضریب سوپرترند", min = 0.5, max = 8)
-            buyLevel = input(52, title = "آستانهٔ RSI خرید", min = 50, max = 80)
-            sellLevel = input(48, title = "آستانهٔ RSI فروش", min = 20, max = 50)
+            buyLevel = input(52, title = "آستانه‌ی RSI خرید", min = 50, max = 80)
+            sellLevel = input(48, title = "آستانه‌ی RSI فروش", min = 20, max = 50)
             stopMultiple = input(1.5, title = "ضریب حد ضرر (ATR)", min = 0.3, max = 6)
             rewardMultiple = input(2, title = "هدف، چند برابر ریسک", min = 1, max = 6)
 
@@ -490,7 +490,7 @@ object ScriptStrategies {
 
             ready = bar_index >= trendLength + atrLength * 3
 
-            // شرط‌ها یک «حالت»‌اند و تا وقتی روند ادامه دارد درست می‌مانند. نسخهٔ قدیمی روی هر
+            // شرط‌ها یک «حالت»‌اند و تا وقتی روند ادامه دارد درست می‌مانند. نسخه‌ی قدیمی روی هر
             // کندلِ آن حالت فلش می‌گذاشت. ستاپ یک رویداد است، نه یک حالت: کندلی که حالت در آن
             // روشن شد.
             longState = close > trend and direction > 0 and rsi > buyLevel
@@ -501,7 +501,7 @@ object ScriptStrategies {
             marker(buy, title = "خرید", style = "up")
             marker(sell, title = "فروش", style = "down")
 
-            // ستاپ به کندلِ سیگنال گره می‌خورد، نه به قیمت زندهٔ لحظه. جعبهٔ نسخهٔ قدیمی روی هر
+            // ستاپ به کندلِ سیگنال گره می‌خورد، نه به قیمت زنده‌ی لحظه. جعبه‌ی نسخه‌ی قدیمی روی هر
             // کندل از close همان کندل ساخته می‌شد و با هر تیک جابه‌جا می‌شد.
             risk = range * stopMultiple
             signal(buy and range > 0, close, close - risk, target = close + risk * rewardMultiple, buy = true)
@@ -531,14 +531,14 @@ object ScriptStrategies {
         warmUpBars = 50,
         source = """
             // شکست کانال، با تأیید CCI و شتاب قیمت.
-            length = input(20, title = "پنجرهٔ کانال", min = 5, max = 300)
-            cciLength = input(20, title = "دورهٔ CCI", min = 3, max = 200)
-            cciLevel = input(100, title = "آستانهٔ CCI", min = 20, max = 300)
-            momentumLength = input(10, title = "پنجرهٔ شتاب", min = 2, max = 100)
+            length = input(20, title = "پنجره‌ی کانال", min = 5, max = 300)
+            cciLength = input(20, title = "دوره‌ی CCI", min = 3, max = 200)
+            cciLevel = input(100, title = "آستانه‌ی CCI", min = 20, max = 300)
+            momentumLength = input(10, title = "پنجره‌ی شتاب", min = 2, max = 100)
             stopMultiple = input(2, title = "ضریب حد ضرر (ATR)", min = 0.3, max = 6)
 
             // پنجره یک کندل عقب کشیده شده. با پنجره‌ای که کندلِ شکننده را در خود دارد، شرط هرگز
-            // برقرار نمی‌شود — همان اشکالی که نسخهٔ قدیمی داشت.
+            // برقرار نمی‌شود — همان اشکالی که نسخه‌ی قدیمی داشت.
             roof = ta.donchian_upper(length)[1]
             floorLine = ta.donchian_lower(length)[1]
 
@@ -593,7 +593,7 @@ object ScriptStrategies {
             conversion = ta.ichimoku_conversion(conversionLength, baseLength)
             base = ta.ichimoku_base(conversionLength, baseLength)
 
-            // ابری که نمودار روی این کندل نشان می‌دهد، «کیجون» کندل قبل‌تر محاسبه شده است. نسخهٔ
+            // ابری که نمودار روی این کندل نشان می‌دهد، «کیجون» کندل قبل‌تر محاسبه شده است. نسخه‌ی
             // قدیمی اسپن جابه‌جانشده را با قیمتِ امروز مقایسه می‌کرد؛ آن دیگر ابر نبود.
             spanA = ta.ichimoku_span_a(conversionLength, baseLength)[baseLength]
             spanB = ta.ichimoku_span_b(conversionLength, baseLength, spanLength)[baseLength]
@@ -636,8 +636,8 @@ object ScriptStrategies {
         warmUpBars = 56,
         source = """
             // جهت و قدرت روند: تقاطع ‎+DI و ‎−DI، فقط وقتی ADX می‌گوید روندی هست.
-            length = input(14, title = "دورهٔ DMI", min = 3, max = 100)
-            trendLevel = input(25, title = "آستانهٔ ADX", min = 10, max = 60)
+            length = input(14, title = "دوره‌ی DMI", min = 3, max = 100)
+            trendLevel = input(25, title = "آستانه‌ی ADX", min = 10, max = 60)
 
             adx = ta.adx(length)
             plus = ta.di_plus(length)
@@ -646,10 +646,10 @@ object ScriptStrategies {
             plot(adx, title = "ADX", color = color.purple, width = 2, pane = "separate")
             plot(plus, title = "‎+DI", color = color.buy, pane = "separate")
             plot(minus, title = "‎−DI", color = color.sell, pane = "separate")
-            hline(trendLevel, title = "آستانهٔ روند", color = color.grey, pane = "separate")
+            hline(trendLevel, title = "آستانه‌ی روند", color = color.grey, pane = "separate")
 
             // ADX هموارسازیِ یک هموارسازی است: از حرکت جهت‌دار، بعد از شاخص جهت‌دار، و بعد یک بار
-            // دیگر. سه دورهٔ گرم شدن پشت سر هم دارد.
+            // دیگر. سه دوره‌ی گرم شدن پشت سر هم دارد.
             ready = bar_index >= length * 4
             trending = adx > trendLevel
 

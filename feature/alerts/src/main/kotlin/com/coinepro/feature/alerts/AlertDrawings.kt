@@ -93,7 +93,7 @@ object AlertDrawings {
         "regression" to "کانال رگرسیون",
         "rect" to "مستطیل",
         "fib" to "بازگشت فیبوناچی",
-        "pricerange" to "دامنهٔ قیمت",
+        "pricerange" to "دامنه‌ی قیمت",
         "longshort" to "موقعیت خرید/فروش",
     )
 

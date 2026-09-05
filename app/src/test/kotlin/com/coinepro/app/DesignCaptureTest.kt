@@ -158,6 +158,22 @@ class DesignCaptureTest {
 
     @Test
     @Config(sdk = [34], qualifiers = FA)
+    fun indicatorSettingsFaDark() = capture("indicator-settings-fa-dark", darkTheme = true) { IndicatorSettings() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA)
+    fun indicatorSettingsFaLight() = capture("indicator-settings-fa-light", darkTheme = false) { IndicatorSettings() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN)
+    fun indicatorSettingsEnDark() = capture("indicator-settings-en-dark", darkTheme = true) { IndicatorSettings() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN)
+    fun indicatorSettingsEnLight() = capture("indicator-settings-en-light", darkTheme = false) { IndicatorSettings() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA)
     fun drawingSettingsFaDark() = capture("drawing-settings-fa-dark", darkTheme = true) { DrawingSettings() }
 
     @Test
@@ -306,6 +322,13 @@ class DesignCaptureTest {
                 onHelp = {},
                 modifier = Modifier.fillMaxSize(),
             )
+        }
+    }
+
+    @Composable
+    private fun IndicatorSettings() {
+        CoineProSheetBody(title = "میانگین متحرک نمایی", subtitle = "روند") {
+            ChartDesignPreviews.IndicatorSettings()
         }
     }
 

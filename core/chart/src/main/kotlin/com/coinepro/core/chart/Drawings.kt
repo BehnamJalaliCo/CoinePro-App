@@ -297,16 +297,16 @@ object DrawingTools {
         tool("fibext", "گسترش فیبوناچی", 2, ToolGroup.FIBONACCI, DesignR.drawable.tv_tool_fibext),
         tool("fib3", "فیبوناچی سه‌نقطه‌ای", 3, ToolGroup.FIBONACCI, DesignR.drawable.tv_tool_fib3),
         tool("fibfan", "بادبزن فیبوناچی", 2, ToolGroup.FIBONACCI, DesignR.drawable.tv_tool_fibfan),
-        tool("fibtime", "منطقهٔ زمانی فیبوناچی", 2, ToolGroup.FIBONACCI, DesignR.drawable.tv_tool_fibtime),
+        tool("fibtime", "منطقه‌ی زمانی فیبوناچی", 2, ToolGroup.FIBONACCI, DesignR.drawable.tv_tool_fibtime),
         tool("fibtimeext", "گسترش زمانی فیبوناچی", 3, ToolGroup.FIBONACCI, DesignR.drawable.tv_tool_fibtimeext),
         tool("fibchannel", "کانال فیبوناچی", 3, ToolGroup.FIBONACCI, DesignR.drawable.tv_tool_fibchannel),
-        tool("fibcircles", "دایرهٔ فیبوناچی", 2, ToolGroup.FIBONACCI, DesignR.drawable.tv_tool_fibcircles),
+        tool("fibcircles", "دایره‌ی فیبوناچی", 2, ToolGroup.FIBONACCI, DesignR.drawable.tv_tool_fibcircles),
         tool("fibarcs", "کمان فیبوناچی", 2, ToolGroup.FIBONACCI, DesignR.drawable.tv_tool_fibarcs),
         tool("fibspiral", "مارپیچ فیبوناچی", 2, ToolGroup.FIBONACCI, DesignR.drawable.tv_tool_fibspiral),
         tool("fibwedge", "گوه فیبوناچی", 3, ToolGroup.FIBONACCI, DesignR.drawable.tv_tool_fibwedge),
 
         // ── Gann ────────────────────────────────────────────────────────────────────
-        tool("gannbox", "جعبهٔ گن", 2, ToolGroup.GANN, DesignR.drawable.tv_tool_gannbox),
+        tool("gannbox", "جعبه‌ی گن", 2, ToolGroup.GANN, DesignR.drawable.tv_tool_gannbox),
         tool("gannfan", "بادبزن گن", 2, ToolGroup.GANN, DesignR.drawable.tv_tool_gannfan),
         tool("gannsquare", "مربع گن", 2, ToolGroup.GANN, DesignR.drawable.tv_tool_gannsquare),
         tool("gannsquarefixed", "مربع گن ثابت", 1, ToolGroup.GANN, DesignR.drawable.tv_tool_gannfixed),
@@ -346,9 +346,9 @@ object DrawingTools {
         tool("longshort", "موقعیت خرید/فروش", 2, ToolGroup.POSITION, DesignR.drawable.tv_tool_longshort),
 
         // ── Measure ─────────────────────────────────────────────────────────────────
-        tool("pricerange", "دامنهٔ قیمت", 2, ToolGroup.MEASURE, DesignR.drawable.tv_tool_pricerange),
-        tool("daterange", "دامنهٔ زمان", 2, ToolGroup.MEASURE, DesignR.drawable.tv_tool_daterange),
-        tool("dprange", "دامنهٔ قیمت و زمان", 2, ToolGroup.MEASURE, DesignR.drawable.tv_tool_dprange),
+        tool("pricerange", "دامنه‌ی قیمت", 2, ToolGroup.MEASURE, DesignR.drawable.tv_tool_pricerange),
+        tool("daterange", "دامنه‌ی زمان", 2, ToolGroup.MEASURE, DesignR.drawable.tv_tool_daterange),
+        tool("dprange", "دامنه‌ی قیمت و زمان", 2, ToolGroup.MEASURE, DesignR.drawable.tv_tool_dprange),
         tool("forecast", "پیش‌بینی", 2, ToolGroup.MEASURE, DesignR.drawable.tv_tool_forecast),
         tool("ruler", "خط‌کش", 2, ToolGroup.MEASURE, DesignR.drawable.tv_tool_ruler),
         tool("cyclic", "خطوط دوره‌ای", 2, ToolGroup.MEASURE, DesignR.drawable.tv_tool_cyclic),

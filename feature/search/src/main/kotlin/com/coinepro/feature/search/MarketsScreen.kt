@@ -261,7 +261,7 @@ fun MarketsScreen(
                 onSelect = { chosen ->
                     lensChoice = chosen
                     // The sort goes with it. A sort is a refinement of whatever list is on screen,
-                    // and carrying «ارزش معاملات ↓» from the losers into «همهٔ بازارها» would answer
+                    // and carrying «ارزش معاملات ↓» from the losers into «همه‌ی بازارها» would answer
                     // a tap on a lens with a list ordered by something the reader chose for a
                     // different one.
                     sortKey = null
@@ -481,7 +481,7 @@ private fun Header(onOpenSearch: () -> Unit) {
  * these are not equal — the categories are the primary axis and always have been, and the lens
  * refines whichever of them is open. A row of pills under a tray says that; two trays do not.
  *
- * It scrolls because «همهٔ بازارها» and «بیشترین رشد» together are wider than a 360dp phone, and a
+ * It scrolls because «همه‌ی بازارها» and «بیشترین رشد» together are wider than a 360dp phone, and a
  * row of four pills that clipped its last one would hide the losers.
  */
 @Composable

@@ -13,7 +13,7 @@ import java.time.format.DateTimeParseException
  * ### Why the app reads this itself
  *
  * `academy/bn/calendar` on CoinePro-FX exists, is public, and its own documentation says what it
- * serves: «تقویمِ اقتصادیِ هفتگی … دادهٔ واقعیِ faireconomy/ForexFactory». It answers
+ * serves: «تقویمِ اقتصادیِ هفتگی … داده‌ی واقعیِ faireconomy/ForexFactory». It answers
  * `{"items":[]}` and has done since it was written, because the `news-worker` that fills its Redis
  * key has never been deployed. That is measured, not inferred — a plain `curl` returns the empty
  * envelope with a 200 today.

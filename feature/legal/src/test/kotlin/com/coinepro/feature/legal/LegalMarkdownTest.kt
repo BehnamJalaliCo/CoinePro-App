@@ -80,8 +80,8 @@ class LegalMarkdownTest {
 
     @Test
     fun `inline code is code and keeps no backticks`() {
-        val spans = paragraph("شناسهٔ نصب در هدر `X-Install-Id` فرستاده می‌شود")
-        assertEquals("شناسهٔ نصب در هدر X-Install-Id فرستاده می‌شود", spans.plainText())
+        val spans = paragraph("شناسه‌ی نصب در هدر `X-Install-Id` فرستاده می‌شود")
+        assertEquals("شناسه‌ی نصب در هدر X-Install-Id فرستاده می‌شود", spans.plainText())
         assertEquals(listOf("X-Install-Id"), spans.filter { it.code }.map { it.text })
     }
 
@@ -166,10 +166,10 @@ class LegalMarkdownTest {
 
     @Test
     fun `a blockquote splits at its own blank line`() {
-        val quote = LegalMarkdown.parse("> یادداشت اول\n> ادامهٔ آن\n>\n> یادداشت دوم")
+        val quote = LegalMarkdown.parse("> یادداشت اول\n> ادامه‌ی آن\n>\n> یادداشت دوم")
             .single() as LegalBlock.Quote
         assertEquals(
-            listOf("یادداشت اول ادامهٔ آن", "یادداشت دوم"),
+            listOf("یادداشت اول ادامه‌ی آن", "یادداشت دوم"),
             quote.paragraphs.map { it.plainText() },
         )
     }

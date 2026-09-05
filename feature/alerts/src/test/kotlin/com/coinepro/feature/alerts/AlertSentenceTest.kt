@@ -94,7 +94,7 @@ class AlertSentenceTest {
             ),
         )
 
-        assertEquals("BTC/USDT خروج از محدودهٔ 64,000.00 تا 66,000.00", sentence)
+        assertEquals("BTC/USDT خروج از محدوده‌ی 64,000.00 تا 66,000.00", sentence)
     }
 
     @Test

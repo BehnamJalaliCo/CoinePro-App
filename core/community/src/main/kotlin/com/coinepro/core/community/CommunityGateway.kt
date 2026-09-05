@@ -343,7 +343,7 @@ class NetworkCommunityGateway(
     /**
      * Crowning a reply, with the one 403 on this surface that is **not** a ban.
      *
-     * The route answers `403 {"detail":"فقط نویسندهٔ پست می‌تواند پاسخ برگزیده را تعیین کند."}` to
+     * The route answers `403 {"detail":"فقط نویسنده‌ی پست می‌تواند پاسخ برگزیده را تعیین کند."}` to
      * anyone who is not the post's author. Mapping that through [mapping] would tell the reader
      * their key is banned, so this call is deliberately outside it and the server's sentence
      * reaches the screen unchanged.

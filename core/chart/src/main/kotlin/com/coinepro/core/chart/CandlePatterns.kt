@@ -35,7 +35,7 @@ enum class CandlePattern(
     HANGING_MAN(1, "مرد آویزان"),
 
     /** The inverted hammer's shape, but after an advance. */
-    SHOOTING_STAR(1, "ستارهٔ دنباله‌دار"),
+    SHOOTING_STAR(1, "ستاره‌ی دنباله‌دار"),
 
     /** A body that swallows the one before it, the other way up. */
     ENGULFING(2, "پوشای صعودی", "پوشای نزولی"),
@@ -53,10 +53,10 @@ enum class CandlePattern(
     DARK_CLOUD_COVER(2, "پوشش ابر سیاه"),
 
     /** Fall, pause, rise. */
-    MORNING_STAR(3, "ستارهٔ صبحگاهی"),
+    MORNING_STAR(3, "ستاره‌ی صبحگاهی"),
 
     /** Rise, pause, fall. */
-    EVENING_STAR(3, "ستارهٔ شامگاهی"),
+    EVENING_STAR(3, "ستاره‌ی شامگاهی"),
 
     /** Three rising bars, each opening inside the last body. */
     THREE_WHITE_SOLDIERS(3, "سه سرباز سفید"),
@@ -170,7 +170,7 @@ object CandlePatterns {
         PatternOption("pattern_hammer", CandlePattern.HAMMER, "چکش"),
         PatternOption("pattern_inverted_hammer", CandlePattern.INVERTED_HAMMER, "چکش وارونه"),
         PatternOption("pattern_hanging_man", CandlePattern.HANGING_MAN, "مرد آویزان", PATTERN_BEAR),
-        PatternOption("pattern_shooting_star", CandlePattern.SHOOTING_STAR, "ستارهٔ دنباله‌دار", PATTERN_BEAR),
+        PatternOption("pattern_shooting_star", CandlePattern.SHOOTING_STAR, "ستاره‌ی دنباله‌دار", PATTERN_BEAR),
         PatternOption("pattern_marubozu", CandlePattern.MARUBOZU, "ماروبوزو"),
         PatternOption("pattern_engulfing", CandlePattern.ENGULFING, "پوشا"),
         PatternOption("pattern_harami", CandlePattern.HARAMI, "هارامی"),
@@ -179,8 +179,8 @@ object CandlePatterns {
         PatternOption("pattern_dark_cloud", CandlePattern.DARK_CLOUD_COVER, "پوشش ابر سیاه", PATTERN_BEAR),
         PatternOption("pattern_tweezer_top", CandlePattern.TWEEZER_TOP, "انبرک سقف", PATTERN_BEAR),
         PatternOption("pattern_tweezer_bottom", CandlePattern.TWEEZER_BOTTOM, "انبرک کف"),
-        PatternOption("pattern_morning_star", CandlePattern.MORNING_STAR, "ستارهٔ صبحگاهی"),
-        PatternOption("pattern_evening_star", CandlePattern.EVENING_STAR, "ستارهٔ شامگاهی", PATTERN_BEAR),
+        PatternOption("pattern_morning_star", CandlePattern.MORNING_STAR, "ستاره‌ی صبحگاهی"),
+        PatternOption("pattern_evening_star", CandlePattern.EVENING_STAR, "ستاره‌ی شامگاهی", PATTERN_BEAR),
         PatternOption("pattern_three_soldiers", CandlePattern.THREE_WHITE_SOLDIERS, "سه سرباز سفید"),
         PatternOption("pattern_three_crows", CandlePattern.THREE_BLACK_CROWS, "سه کلاغ سیاه", PATTERN_BEAR),
     )

@@ -4,6 +4,8 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -157,8 +159,15 @@ fun IndicatorPicker(
      */
     periods: Map<String, Int> = emptyMap(),
     onSetPeriod: ((String, Int) -> Unit)? = null,
+    /** The starred ids, and the way to star one. Null on the star hides it and the two chips. */
+    favourites: List<String> = emptyList(),
+    onToggleFavourite: ((String) -> Unit)? = null,
+    /** The most recently switched-on ids, newest first. See `IndicatorFavouritesStore`. */
+    recent: List<String> = emptyList(),
+    /** Whether the search field takes the keyboard as the sheet opens. The reference's does. */
+    autoFocusSearch: Boolean = false,
 ) {
-    var pane by remember { mutableStateOf<IndicatorPane?>(null) }
+    var chip by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
 
     // Typing overrides the chips rather than intersecting with them, exactly as in the tool rail.
@@ -167,9 +176,12 @@ fun IndicatorPicker(
     // combining quietly.
     val searching = query.isNotBlank()
     val offered = ChartCatalog.indicatorsFor(hasVolume)
+    val byId = remember(offered) { offered.associateBy { it.id } }
     val shown = when {
         searching -> ChartCatalog.matchingIndicators(query).filter { it in offered }
-        pane != null -> offered.filter { it.pane == pane }
+        chip == CHIP_FAVOURITES -> favourites.mapNotNull(byId::get)
+        chip == CHIP_RECENT -> recent.mapNotNull(byId::get)
+        chip != null -> offered.filter { ChartCatalog.categoryOf(it.id).name == chip }
         else -> offered
     }
 
@@ -179,32 +191,49 @@ fun IndicatorPicker(
             onValueChange = { query = it },
             placeholder = "جست‌وجوی اندیکاتور",
             modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
+            autoFocus = autoFocusSearch,
         )
         Spacer(Modifier.height(CoineProSpacing.OneHalf))
         if (!searching) {
+            // The reference's chips: Favourites and Recent first, then the families. The two
+            // personal chips exist only where something feeds them — a preview has no store.
+            val personal = if (onToggleFavourite != null) {
+                listOf(
+                    CoineProChip(id = CHIP_FAVOURITES, label = FAVOURITES_LABEL, count = favourites.size),
+                    CoineProChip(id = CHIP_RECENT, label = RECENT_LABEL, count = recent.size),
+                )
+            } else {
+                emptyList()
+            }
             CoineProChipRow(
-                options = IndicatorPane.entries.map { candidate ->
+                options = personal + IndicatorCategory.entries.map { candidate ->
                     CoineProChip(
                         id = candidate.name,
                         label = candidate.label,
-                        count = offered.count { it.pane == candidate },
+                        count = offered.count { ChartCatalog.categoryOf(it.id) == candidate },
                     )
                 },
-                selectedId = pane?.name,
-                onSelect = { id -> pane = id?.let(IndicatorPane::valueOf) },
+                selectedId = chip,
+                onSelect = { id -> chip = id },
                 allLabel = "همه",
             )
             Spacer(Modifier.height(CoineProSpacing.One))
         }
 
         if (shown.isEmpty()) {
-            CoineProSheetEmpty("اندیکاتوری با این نام پیدا نشد.")
+            CoineProSheetEmpty(
+                when (chip) {
+                    CHIP_FAVOURITES -> "هنوز اندیکاتوری ستاره نزده‌اید. ستاره‌ی کنار هر ردیف آن را اینجا می‌آورد."
+                    CHIP_RECENT -> "هنوز اندیکاتوری روشن نکرده‌اید."
+                    else -> "اندیکاتوری با این نام پیدا نشد."
+                },
+            )
             return@Column
         }
 
         // A heading only when the list actually spans both panes. Printing «روی قیمت» over a list
         // the reader just filtered *to* «روی قیمت» is a line of noise.
-        val grouped = !searching && pane == null
+        val grouped = !searching && chip == null
         LazyColumn(
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(bottom = CoineProSpacing.Two),
@@ -226,6 +255,8 @@ fun IndicatorPicker(
                         // A handful of the eighty-three have no entry in the shipped catalogue yet.
                         // They get no «؟» rather than one that opens nothing.
                         onHelp = option.helpId?.let { id -> onHelp?.let { { it(id) } } },
+                        starred = option.id in favourites,
+                        onToggleStar = onToggleFavourite?.let { toggle -> { toggle(option.id) } },
                         // Only on a switched-on indicator, and only where there is one lookback to
                         // change. A stepper on eighty-three rows at once would be a wall of numbers on a
                         // list whose job is choosing; a reader sets the length of the thing they
@@ -269,6 +300,7 @@ private fun GroupHeader(text: String) {
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PickerRow(
     label: String,
@@ -278,6 +310,8 @@ private fun PickerRow(
     onClick: () -> Unit,
     onHelp: (() -> Unit)?,
     period: PeriodControl? = null,
+    starred: Boolean = false,
+    onToggleStar: (() -> Unit)? = null,
 ) {
     // A selected row is a filled, hairlined card rather than a tick alone at the far end. On a
     // fifty-row list the reader scans down the left of the labels, and a mark parked on the other
@@ -302,7 +336,9 @@ private fun PickerRow(
                     Modifier
                 },
             )
-            .clickable(onClick = onClick)
+            // A long press is the reference's way to the indicator's own page; the «؟» stays
+            // for the reader who does not know that.
+            .combinedClickable(onClick = onClick, onLongClick = onHelp)
             .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
@@ -337,6 +373,22 @@ private fun PickerRow(
                 tint = accent ?: CoineProColors.Accent,
             )
         }
+        onToggleStar?.let { toggle ->
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = toggle),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(if (starred) DesignR.drawable.icon_filled_star else DesignR.drawable.icon_star),
+                    contentDescription = if (starred) UNSTAR_LABEL else STAR_LABEL,
+                    modifier = Modifier.size(18.dp),
+                    tint = if (starred) CoineProColors.Gold else CoineProColors.TextMuted,
+                )
+            }
+        }
         if (onHelp != null) HelpDot(onClick = onHelp)
     }
 }
@@ -364,6 +416,12 @@ private data class PeriodControl(
  * prices — and this control has to read the same as the label it produces. The app's rule, and one
  * of the few places in a Persian-first interface where Latin numerals are the correct answer.
  */
+/** The lookback stepper on its own, for the indicator settings sheet's Inputs tab. */
+@Composable
+fun IndicatorPeriodStepper(value: Int, bounds: IndicatorPeriod, accent: Color, onChange: (Int) -> Unit) {
+    PeriodStepper(PeriodControl(value = value, bounds = bounds, onChange = onChange), accent)
+}
+
 @Composable
 private fun PeriodStepper(control: PeriodControl, accent: Color) {
     Row(
@@ -466,6 +524,14 @@ private fun HelpDot(onClick: () -> Unit) {
         )
     }
 }
+
+/** The two personal chips' ids, kept apart from the family names they sit beside. */
+private const val CHIP_FAVOURITES = "__favourites"
+private const val CHIP_RECENT = "__recent"
+private const val FAVOURITES_LABEL = "برگزیده‌ها"
+private const val RECENT_LABEL = "اخیر"
+private const val STAR_LABEL = "افزودن به برگزیده‌ها"
+private const val UNSTAR_LABEL = "برداشتن از برگزیده‌ها"
 
 /** Read aloud in place of the icon, which has no text of its own. */
 private const val HELP_LABEL = "راهنما"
