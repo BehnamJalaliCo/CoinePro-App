@@ -15,7 +15,7 @@ it is for.
 
 ---
 
-## [Unreleased] — Pro Chart → TradingView-grade, Sprints A–E
+## [4.42.0] — 2026-09-05 — Pro Chart → TradingView-grade, Sprints A–E
 
 The visual master prompt, worked in order. The full account — numbers, pictures, self-scores and
 twenty open product decisions — is `docs/design/REPORT.md`.
