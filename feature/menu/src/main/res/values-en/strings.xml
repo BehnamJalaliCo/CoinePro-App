@@ -54,4 +54,5 @@
     <string name="menu_explore_title">Explore</string>
     <string name="menu_community_title">Community</string>
     <string name="menu_markets_title">Markets</string>
+    <string name="menu_appearance">Appearance and language</string>
 </resources>

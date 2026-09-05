@@ -187,7 +187,10 @@ private fun SignInStep(
         ) { onSignIn(email, password) }
     }
 
-    if (state.methods.google) {
+    // `googleUsable`, not `google`: the server advertising the method and the server sending an
+    // audience the app can use are two different things, and the second is what decides whether
+    // this button can do anything. See `AuthMethods.googleUsable`.
+    if (state.methods.googleUsable) {
         Spacer(Modifier.height(CoineProSpacing.One))
         GoogleButton(onClick = onGoogleSignIn)
     }

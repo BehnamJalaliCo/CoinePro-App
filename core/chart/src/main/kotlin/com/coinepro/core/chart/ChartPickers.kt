@@ -35,6 +35,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
@@ -505,10 +506,21 @@ private fun step(value: Int, up: Boolean, bounds: IndicatorPeriod): Int {
  * other mark in the row.
  */
 @Composable
-private fun HelpDot(onClick: () -> Unit) {
+internal fun HelpDot(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** The touch target. Smaller on a tool tile, where it shares a 88 dp square with the mark. */
+    size: Dp = 28.dp,
+    /** The glyph inside it. */
+    glyph: Dp = 18.dp,
+    // Brighter than the muted text it sat in before, which made it look disabled — it is a
+    // control, and on a list of eighteen chart types it is the one that answers the question
+    // the reader actually has. A tile that has inverted to near-black passes its own ink.
+    tint: Color = CoineProColors.TextSecondary,
+) {
     Box(
-        modifier = Modifier
-            .size(28.dp)
+        modifier = modifier
+            .size(size)
             .clip(CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -516,11 +528,8 @@ private fun HelpDot(onClick: () -> Unit) {
         Icon(
             painter = painterResource(DesignR.drawable.tv_help_circle),
             contentDescription = HELP_LABEL,
-            modifier = Modifier.size(18.dp),
-            // Brighter than the muted text it sat in before, which made it look disabled — it is a
-            // control, and on a list of eighteen chart types it is the one that answers the question
-            // the reader actually has.
-            tint = CoineProColors.TextSecondary,
+            modifier = Modifier.size(glyph),
+            tint = tint,
         )
     }
 }

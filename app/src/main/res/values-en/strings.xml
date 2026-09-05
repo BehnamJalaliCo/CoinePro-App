@@ -75,7 +75,7 @@
     <string name="profile_action_safety">Safety and version</string>
     <string name="profile_action_safety_note">Notifications, the crash report and the version</string>
     <string name="profile_action_delete">Delete account</string>
-    <string name="auth_google_not_registered">Google sign-in did not complete. Either this version\'s signing certificate is not registered with Google, or there is no Google account on this phone. Sign in with e-mail instead.</string>
+    <string name="auth_google_not_registered">Google sign-in did not complete. Either this version is not registered with Google, or there is no Google account on this phone.\n\nTo register it, create an Android OAuth client in the Google Cloud Console with these two values:\nPackage: %1$s\nSHA-1: %2$s\n\nUntil then, sign in with e-mail.</string>
     <string name="tampered_title">This is not the real Pro Chart</string>
     <string name="tampered_body">This file has been modified and re-signed with a different key. We did not build it and we do not know what was changed inside it. Please delete it now and install Pro Chart only from its official channel.</string>
     <string name="tampered_fingerprint">This file\'s signing fingerprint</string>
@@ -175,4 +175,6 @@
     <string name="nav_markets_title">Markets</string>
     <string name="screen_community">Community</string>
     <string name="screen_community_thread">Thread</string>
+    <string name="auth_google_unavailable">This server advertises Google sign-in but sent no client id for it. Sign in with e-mail instead.</string>
+    <string name="auth_google_fingerprint_unknown">unknown</string>
 </resources>

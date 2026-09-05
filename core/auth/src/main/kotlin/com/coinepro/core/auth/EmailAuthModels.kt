@@ -134,8 +134,31 @@ data class AuthMethods(
      */
     val terminalUrl: String? = null,
 ) {
-    val any: Boolean get() = emailPassword || google || telegram
+    val any: Boolean get() = emailPassword || googleUsable || telegram
+
+    /**
+     * Whether the Google button can do anything if it is pressed.
+     *
+     * [google] alone is the *server's* claim that the method exists; the audience is what the app
+     * needs to ask Google for a token, and Credential Manager refuses outright — with copy about a
+     * developer console — when it is given something that is not an OAuth client id. A deployment
+     * that reports the method on and sends no id, or sends a placeholder somebody left in a config
+     * file, produced a button that could only ever fail. The class note above already states the
+     * rule this closes: an action that is certain to fail is worse than a missing one.
+     *
+     * The test is the shape Google guarantees and nothing more — a non-blank id ending in
+     * `.apps.googleusercontent.com`. It cannot tell whether the client behind that id still exists
+     * (CoinePro-FX's had been **deleted** in the console while the server went on advertising it,
+     * which no client-side check can see) and it deliberately does not try: a probe against
+     * Google's authorize endpoint on the sign-in screen would be a network round trip in front of
+     * the reader for a fault only the console can fix.
+     */
+    val googleUsable: Boolean
+        get() = google && googleClientId?.trim()?.endsWith(GOOGLE_CLIENT_SUFFIX) == true
 }
+
+/** What every Google OAuth client id ends with. See [AuthMethods.googleUsable]. */
+private const val GOOGLE_CLIENT_SUFFIX = ".apps.googleusercontent.com"
 
 /**
  * The single reason a credential step failed, as the app needs to act on it.

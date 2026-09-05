@@ -78,7 +78,7 @@
     <string name="profile_action_safety">ایمنی و نسخه</string>
     <string name="profile_action_safety_note">اعلان‌ها، گزارش خطا و شماره‌ی نسخه</string>
     <string name="profile_action_delete">حذف حساب</string>
-    <string name="auth_google_not_registered">ورود با گوگل انجام نشد. یا گواهی امضای این نسخه در کنسول گوگل ثبت نشده، یا روی این گوشی حساب گوگلی وجود ندارد. با ایمیل وارد شوید.</string>
+    <string name="auth_google_not_registered">ورود با گوگل روی این نسخه انجام نشد. یا این نسخه در کنسول گوگل ثبت نشده، یا روی این گوشی حساب گوگلی نیست.\n\nبرای ثبت، در Google Cloud Console یک OAuth client از نوع Android با این دو مقدار بسازید:\nبسته: %1$s\nSHA-1: %2$s\n\nتا آن موقع با ایمیل وارد شوید.</string>
     <string name="tampered_title">این نسخه‌ی اصلی پرو چارت نیست</string>
     <string name="tampered_body">این فایل دستکاری و با کلید دیگری امضا شده است. ما آن را نساخته‌ایم و نمی‌دانیم داخلش چه تغییری داده شده. لطفاً همین حالا پاکش کنید و نسخه را فقط از کانال رسمی پرو چارت بگیرید.</string>
     <string name="tampered_fingerprint">اثر انگشت امضای این فایل</string>
@@ -179,4 +179,6 @@
     <string name="screen_community">انجمن</string>
     <!-- The community tab on TradeYar, which has no board. Not an outage; a fact about the platform. -->
     <string name="screen_community_thread">گفت‌وگو</string>
+    <string name="auth_google_unavailable">این سرور ورود با گوگل را اعلام کرده اما شناسه‌ی آن را نفرستاده است. با ایمیل وارد شوید.</string>
+    <string name="auth_google_fingerprint_unknown">نامشخص</string>
 </resources>

@@ -49,6 +49,7 @@ import androidx.navigation.navArgument
 import com.coinepro.app.alerts.InAppAlertBus
 import com.coinepro.app.alerts.LocalAlertScheduler
 import com.coinepro.app.auth.GoogleSignInClient
+import com.coinepro.app.security.AppIntegrity
 import com.coinepro.app.auth.GoogleSignInOutcome
 import com.coinepro.app.chart.rememberChartControllers
 import com.coinepro.app.notifications.PushCoordinator
@@ -132,6 +133,7 @@ import com.coinepro.core.designsystem.CoineProToast
 import com.coinepro.core.designsystem.LocalToaster
 import com.coinepro.core.designsystem.ToastTone
 import com.coinepro.core.designsystem.CoineProToastHost
+import com.coinepro.feature.profile.AppearanceQuickRow
 import com.coinepro.feature.profile.AppearanceSheet
 import com.coinepro.feature.profile.AppearanceTitle
 import com.coinepro.feature.profile.labelRes
@@ -1279,6 +1281,7 @@ fun CoineProApp(
                 aiVisionController = aiVisionController,
                 aiAssistantController = aiAssistantController,
                 marketIntelController = marketIntelController,
+                marketIntelControllers = marketIntelControllers,
                 announcementsController = announcementsController,
                 marketTickerStore = marketTickerStore,
                 watchlistSyncController = watchlistSyncController,
@@ -1504,6 +1507,7 @@ fun CoineProApp(
                         aiVisionController = aiVisionController,
                         aiAssistantController = aiAssistantController,
                         marketIntelController = marketIntelController,
+                        marketIntelControllers = marketIntelControllers,
                         announcementsController = announcementsController,
                         marketTickerStore = marketTickerStore,
                         watchlistSyncController = watchlistSyncController,
@@ -1599,7 +1603,7 @@ fun CoineProApp(
                             // Google without an audience to mint for, and that is a failure to
                             // say so about — the e-mail form beneath still works.
                             emailAuthController.reportGoogleFailure(
-                                context.getString(R.string.auth_google_not_registered),
+                                context.getString(R.string.auth_google_unavailable),
                             )
                         } else {
                             scope.launch {
@@ -1609,6 +1613,24 @@ fun CoineProApp(
                                     // Closing the sheet is a decision, not a failure. Saying
                                     // anything here would report a problem where there was none.
                                     GoogleSignInOutcome.Cancelled -> Unit
+                                    // The one refusal that can be acted on, said so it can be.
+                                    //
+                                    // Google reports "this build's certificate is not registered"
+                                    // and "there is no Google account on this phone" through the
+                                    // same exception, so the copy names both — and then gives the
+                                    // two values the console asks for, off this very install. A
+                                    // reader hands them to whoever owns the project; the owner
+                                    // reads them off their own phone. Before this, the message
+                                    // said something was wrong and left the fix to a guess.
+                                    GoogleSignInOutcome.Unregistered ->
+                                        emailAuthController.reportGoogleFailure(
+                                            context.getString(
+                                                R.string.auth_google_not_registered,
+                                                context.packageName,
+                                                AppIntegrity.fingerprints(context).firstOrNull()
+                                                    ?: context.getString(R.string.auth_google_fingerprint_unknown),
+                                            ),
+                                        )
                                     is GoogleSignInOutcome.Failed ->
                                         emailAuthController.reportGoogleFailure(outcome.message)
                                 }
@@ -1746,6 +1768,8 @@ private fun MainShell(
     aiVisionController: AiVisionController,
     aiAssistantController: AiAssistantController,
     marketIntelController: MarketIntelController,
+    /** Every platform's newsroom, for the news screen's own tabs. See `NewsScreen.readers`. */
+    marketIntelControllers: Map<MarketPlatform, MarketIntelController>,
     /** Null where the platform has no announcements route. See the shell's own note. */
     announcementsController: AnnouncementsController?,
     /** The day's figures for the platform on screen. See the shell's own note. */
@@ -3399,6 +3423,9 @@ private fun MainShell(
                 NewsScreen(
                     platform = activePlatform,
                     controller = marketIntelController,
+                    // Both, so «فارکس» and «کریپتو» are two tabs on this screen rather than a
+                    // reason to switch the whole app over. See `NewsScreen.readers`.
+                    readers = marketIntelControllers,
                     onOpenCalendar = { navController.navigate(CALENDAR_ROUTE) },
                     // Null draws no entry at all, which is how «this platform has no announcements»
                     // is said: absent, rather than a button that opens a screen answering 404.
@@ -3563,6 +3590,23 @@ private fun MainShell(
                     platformLabel = stringResource(activePlatform.labelRes()),
                     watchlistCount = watchlist.size,
                     onSignIn = onSignIn.takeIf { guest },
+                    // The theme and the language at the top of the menu, one tap from anywhere.
+                    // The sheet behind «ظاهر» on the profile page still exists and still carries
+                    // the market-colour choice; these two are the ones worth not hunting for.
+                    appearance = {
+                        val menuContext = LocalContext.current
+                        AppearanceQuickRow(
+                            theme = themeMode,
+                            onSelectTheme = onSetThemeMode,
+                            language = AppLanguageStore.current(menuContext),
+                            onSelectLanguage = { chosen ->
+                                AppLanguageStore.set(menuContext, chosen)
+                                // The locale is applied in `attachBaseContext`, so nothing already
+                                // composed would pick it up. See the note under the control.
+                                (menuContext as? Activity)?.recreate()
+                            },
+                        )
+                    },
                 )
             }
             sharedComposable(WATCHLIST_ROUTE) {

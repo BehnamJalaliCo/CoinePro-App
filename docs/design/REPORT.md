@@ -473,3 +473,15 @@ Numbered as the owner numbered them. The chart came first («مغز اصلی آ�
 | 8 | «روی چارت میزنم نمادهای فارکس» | `defaultScriptSymbol` took `watchlist.first()` regardless of platform. | First symbol that `belongsTo` the platform; the shown watchlist and the wheel are filtered the same way. |
 | 9 | «اسکرول نمادها … زشته، انیمیشنیش بکن» | Three tickers cut by the bar's edge, no cue that it turns. | Pill on `SurfaceElevated` with hairline, rows fading by distance, two carets, and a spring turn when the symbol changes under it. |
 
+---
+
+## 4.44.0 — five more, after 4.43.0
+
+| # | Ask | What was wrong | What changed |
+|---|---|---|---|
+| 1 | «در منو قسمت اخبار نشون نمیده ولی در کاوش نشون میده … اخبار فارکس و کریپتو رو جدا کنیم» | One newsroom per shell platform: whichever the app was switched to. If that desk answered nothing the screen said «اخبار بازار در دسترس نیست» and there was no way to the other. | `NewsScreen.readers` takes both `MarketIntelController`s; a segmented control picks the desk; the relevance chips, the calendar action and the announcements entry follow the tab. |
+| 2 | «هر جایی کریپتو و فارکس دیتایی دارند باید همونجا جدا بشوند» | Same root: the shell's platform decided every screen. | News is the screen that mixed them and now separates them in place. The rest is already per platform — watchlist and chart split in 4.43.0, markets/screener/portfolio/signals per controller — and the Home switch (restored in 4.43.0) is how the whole app moves. |
+| 3 | «حالت تیره و روشن و زبان باید یه جای دم دست باشه» | Both were on the appearance sheet, three taps in: menu → profile → «ظاهر». | `AppearanceQuickRow` at the top of the menu tab, one tap from anywhere; `MenuScreen.appearance` is a slot so `feature:menu` does not take a DataStore dependency to name an enum. |
+| 4 | «در استودیو ابزارها هر کدوم یدونه (؟) داشتند … اندیکاتورها سر جاشه ولی ابزارها نیستش» | `ChartPickers` draws a `HelpDot` per indicator row; `ToolRail.ToolCell` had help on `onLongClick` and nothing visible. | `HelpDot` is `internal` with size and tint parameters; every tool tile with an entry carries one in its corner. The long press still opens the same sheet. |
+| 5 | «ورود با گوگل مشکل داره درستش کن» | Measured against Google's own authorize endpoint: **CoinePro-FX's `google_client_id` returns `deleted_client` — the OAuth client was deleted.** No app, device or signing key can sign in against it. TradeYar's id is a live *Web* client (correct type), so what it needs is an Android OAuth client for `com.coinepro.app` + the installed build's SHA-1. | App side: the button is gated on `AuthMethods.googleUsable`, and a refusal now reports the package and SHA-1 to register. Console side is the owner's — both prompts carry the commands and the exact steps. |
+

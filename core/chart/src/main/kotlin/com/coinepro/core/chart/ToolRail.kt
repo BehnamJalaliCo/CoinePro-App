@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -665,7 +666,7 @@ private fun ToolCell(
     onClick: () -> Unit,
     onHelp: (() -> Unit)?,
 ) {
-    Column(
+    Box(
         modifier = Modifier
             // A fixed height, so a two-line name does not make its cell taller than the three
             // beside it. Rows in a grid size to their tallest cell, and the result was a ragged
@@ -676,7 +677,19 @@ private fun ToolCell(
             // Drawings sheet: 16 dp corners, the plate one step up from the sheet.
             .clip(CoineProShapes.large)
             .background(if (selected) CoineProColors.TextPrimary else CoineProColors.SurfaceElevated)
-            .combinedClickable(onClick = onClick, onLongClick = onHelp)
+            .combinedClickable(onClick = onClick, onLongClick = onHelp),
+    ) {
+    // The «؟», in the corner of the tile, and it is back because it went missing.
+    //
+    // «در کنار ابزارها ۹۲ مورد هر کدوم یدونه (؟) آموزشی داشتند که الان نیست، ولی اندیکاتورها سر
+    // جاشه.» Exactly right: `IndicatorPicker` draws a [HelpDot] on every row and this grid drew
+    // none — the help was reachable only by holding a tile down, which is a gesture nobody
+    // discovers on a control they have never used. The long press still works; the dot is what
+    // says the help is there at all. Every tool with an entry gets one, which today is ninety-two
+    // of them.
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
             .padding(horizontal = CoineProSpacing.Half),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -705,6 +718,18 @@ private fun ToolCell(
             // phone at any size worth reading, and a cell that grows to fit it breaks the grid.
             overflow = TextOverflow.Ellipsis,
         )
+    }
+    onHelp?.let { help ->
+        HelpDot(
+            onClick = help,
+            modifier = Modifier.align(Alignment.TopEnd),
+            size = 24.dp,
+            glyph = 15.dp,
+            // On the armed tile the plate is near-black, so the dot takes the stage's own
+            // colour rather than disappearing into it.
+            tint = if (selected) CoineProColors.Stage else CoineProColors.TextMuted,
+        )
+    }
     }
 }
 

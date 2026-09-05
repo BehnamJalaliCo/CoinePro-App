@@ -80,4 +80,6 @@
     <string name="announcements_important">مهم</string>
     <string name="announcements_read_more">متن کامل</string>
     <string name="announcements_open_failed">مرورگری برای باز کردن این نشانی پیدا نشد.</string>
+    <string name="news_platform_crypto">کریپتو</string>
+    <string name="news_platform_forex">فارکس</string>
 </resources>

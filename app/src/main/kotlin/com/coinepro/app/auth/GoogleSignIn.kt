@@ -8,7 +8,6 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
-import com.coinepro.app.R
 import com.coinepro.core.auth.GoogleSignInAttempt
 import com.coinepro.core.auth.GoogleSignInRefusal
 import com.coinepro.core.auth.googleSignInRefusal
@@ -28,6 +27,17 @@ sealed interface GoogleSignInOutcome {
     data class Token(val idToken: String) : GoogleSignInOutcome
 
     data object Cancelled : GoogleSignInOutcome
+
+    /**
+     * Google will not mint a token for this build, or the phone has no Google account.
+     *
+     * Its own outcome rather than a [Failed] carrying a sentence, because the two callers want
+     * different things from it: one shows copy, and the *host* — which is the only thing that knows
+     * this install's package name and signing fingerprint — can say what to register and where.
+     * That turns the one refusal nobody can act on into the one refusal anybody can fix in a
+     * minute. See `AppIntegrity.fingerprints`.
+     */
+    data object Unregistered : GoogleSignInOutcome
 
     /** [message] is what to tell the reader — see `googleSignInRefusal`; it is not always Google's. */
     data class Failed(val message: String?) : GoogleSignInOutcome
@@ -85,10 +95,7 @@ class GoogleSignInClient(private val context: Context) {
                             attempt = refusal.attempt
                         }
 
-                    GoogleSignInRefusal.Misconfigured ->
-                        return GoogleSignInOutcome.Failed(
-                            context.getString(R.string.auth_google_not_registered),
-                        )
+                    GoogleSignInRefusal.Misconfigured -> return GoogleSignInOutcome.Unregistered
 
                     GoogleSignInRefusal.PassThrough ->
                         return GoogleSignInOutcome.Failed(round.message)

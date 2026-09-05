@@ -15,6 +15,28 @@ it is for.
 
 ---
 
+## [4.44.0] — 2026-09-05 — Two newsrooms, settings in reach, the tools' «؟» back
+
+### Added
+- **The news screen carries both platforms.** «فارکس» and «کریپتو» are two tabs on the one screen,
+  each on its own newsroom, so a desk that answers nothing is no longer the whole screen — and
+  reading the other market's headlines does not mean switching the app over. The relevance chips,
+  the calendar entry and TradeYar's announcements all follow the tab rather than the shell.
+- **The theme and the language at the top of the menu**, one tap from anywhere, as two segmented
+  controls that answer immediately. The «ظاهر» sheet keeps the third question — which colour a
+  rise is drawn in — and is still where the profile row leads.
+
+### Fixed
+- **Every drawing tool shows its «؟» again.** The indicator rows draw one and the tool grid drew
+  none: the help was reachable only by holding a tile down, which is a gesture nobody discovers.
+  Ninety-two tools, one dot each, long press unchanged.
+- **The Google button is drawn only when it can work** — the server reporting the method on and
+  the server sending a usable client id are two different things — and when Google refuses, the
+  message now names this build's package and SHA-1 so the fix is a minute in the console rather
+  than a guess. **CoinePro-FX's OAuth client is deleted** (`deleted_client`, measured against
+  Google's authorize endpoint); TradeYar's is a live Web client that needs an Android client for
+  `com.coinepro.app`. Both are written up in `docs/backend/PROMPT_*.md`.
+
 ## [4.43.0] — 2026-09-05 — The chart's tools work; the pictures are back
 
 The owner's ten-point list after 4.42.0, the chart first: «مغز اصلی آپ من چارته».

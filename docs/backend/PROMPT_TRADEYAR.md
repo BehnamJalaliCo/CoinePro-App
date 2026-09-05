@@ -1,7 +1,7 @@
 # پرامپت برای Claude Code روی سرور تریدیار (کریپتو)
 
 > این متن را همان‌طور که هست به Claude Code روی سرور تریدیار بدهید. هر بخش یک کار مستقل است با
-> شرط پذیرش و دستور تأیید. اپ اندروید (Pro Chart) نسخه‌ی **4.43.0** روی این قرارداد بسته شده.
+> شرط پذیرش و دستور تأیید. اپ اندروید (Pro Chart) نسخه‌ی **4.44.0** روی این قرارداد بسته شده.
 
 ---
 
@@ -20,6 +20,35 @@
 **چیزی که به شما مربوط نیست:** لوگوی نمادهایی که اپ خودش نکشیده از میزبان CoinePro-FX می‌آید
 (`BuildConfig.API_BASE_URL`)، نه از شما؛ عکس‌های راهنما داخل خود APK هستند. اگر پرامپت فارکس را
 هم دیدید، آن کار آنجاست.
+
+---
+
+## کار ۰ — ورود با گوگل: یک Android OAuth client کم دارید (اولویت: بالا)
+
+خبر خوب: `google_client_id` شما
+(`1033486124390-07nqc4h9j1agsrcrpvq7cgsa5k6evced.apps.googleusercontent.com`) **زنده و از نوع
+Web است** — که همان چیزی است که `GetGoogleIdOption.setServerClientId` می‌خواهد. اندازه‌گیری:
+
+```bash
+curl -s -D - -o /dev/null -G "https://accounts.google.com/o/oauth2/v2/auth" \
+  --data-urlencode "client_id=1033486124390-07nqc4h9j1agsrcrpvq7cgsa5k6evced.apps.googleusercontent.com" \
+  --data-urlencode "redirect_uri=https://tradeyar.trade-future.ir/" \
+  --data-urlencode "response_type=code" --data-urlencode "scope=openid email profile" | grep -i ^location
+# پاسخ: redirect_uri_mismatch  ← یعنی client وجود دارد و زنده است
+```
+
+(برای مقایسه: client فارکس روی همان پروژه `deleted_client` می‌دهد — پاک شده. به پرامپت فارکس
+گفته‌ایم.)
+
+**چیزی که کم است:** در پروژه‌ی `1033486124390` باید یک **OAuth client از نوع Android** هم وجود
+داشته باشد، وگرنه Credential Manager روی گوشی توکن نمی‌سازد و اپ فقط می‌تواند بگوید «ثبت نشده»:
+
+- Package name: `com.coinepro.app`
+- SHA-1: اثر انگشت کلید امضای همان APK ی که نصب می‌شود (کلید release مالک، و در صورت تست، کلید
+  تست همان build). مالک این مقدار را از صفحه‌ی «ایمنی و نسخه» اپ می‌خواند و از ۴.۴۴.۰ متن خطای
+  ورود با گوگل هم همان را نشان می‌دهد.
+
+سمت شما تغییر کدی لازم نیست؛ فقط بگویید کدام SHA-1 ها الان در کنسول ثبت‌اند تا مالک تفاوت را ببیند.
 
 ---
 
@@ -132,7 +161,7 @@ minute = floor(epoch_millis / 60000)
 
 ## کار ۴ — عمق بازار (DOM) برای مهمان (اولویت: متوسط)
 
-اپ از 4.43.0 عمق بازار را **بر اساس نماد** به شما می‌فرستد، نه بر اساس تبِ فعال: هر نماد کریپتو
+اپ از 4.44.0 عمق بازار را **بر اساس نماد** به شما می‌فرستد، نه بر اساس تبِ فعال: هر نماد کریپتو
 (`BTCUSDT`، `ETHUSDT`، …) از هر تبی که باز شود، از `api/mobile/v1/market/depth` شما خوانده
 می‌شود. برای کاربر مهمان این روت ۴۰۱ می‌دهد و اپ به کتاب سفارش عمومی LBank می‌افتد
 (`SessionFallbackOrderBookGateway`). اگر می‌خواهید مهمان هم از خود شما بخواند، یک نسخه‌ی عمومی
@@ -182,8 +211,9 @@ openssl s_client -connect <host>:443 -servername <host> < /dev/null 2>/dev/null 
 
 ## خروجی‌ای که از شما می‌خواهیم
 
-یک پیام کوتاه با این چهار چیز:
+یک پیام کوتاه با این پنج چیز:
 
+0. کدام SHA-1 ها به‌عنوان Android OAuth client برای `com.coinepro.app` در پروژه ثبت‌اند (کار ۰).
 1. خروجی `curl` تقویم هفته (تعداد رویدادها).
 2. تأیید اینکه `source_image_url` روی مسیر عضو مستقر شده یا نه.
 3. پین اصلی + پین پشتیبان.

@@ -109,4 +109,7 @@
     <string name="profile_library_scripts">اسکریپت‌های ذخیره‌شده</string>
     <string name="appearance_language">زبان</string>
     <string name="appearance_language_note">با تغییر زبان، صفحه یک بار از نو ساخته می‌شود.</string>
+    <string name="appearance_theme_system_short">سیستم</string>
+    <string name="appearance_theme_light_short">روشن</string>
+    <string name="appearance_theme_dark_short">تیره</string>
 </resources>

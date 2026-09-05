@@ -2,6 +2,7 @@ package com.coinepro.feature.news
 
 import androidx.activity.compose.PredictiveBackHandler
 import kotlinx.coroutines.CancellationException
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
@@ -144,8 +145,33 @@ fun NewsScreen(
      * changes shape for it. The exact code is in the report's wiring section.
      */
     announcements: AnnouncementsController? = null,
+    /**
+     * Both platforms' newsrooms, so this screen carries a tab per platform.
+     *
+     * ### Why the screen and not the shell
+     *
+     * The shell has one active platform and every screen used to inherit it, so the news screen
+     * showed one newsroom and there was no way to the other except switching the whole app over —
+     * and if that one newsroom answered nothing, the reader got «اخبار بازار در دسترس نیست» with no
+     * hint that the other had twenty stories in it. That is the report: «در منو قسمت اخبار نشون
+     * نمیده ولی در قسمت کاوش رو نشون میده … باید اخبارهای فارکس و کریپتو رو جدا کنیم».
+     *
+     * Two readers rather than one merged list, because the two newsrooms are about different
+     * markets — a rate decision has no bearing on a listing and a token unlock none on bullion —
+     * and merging them would be the wrong answer to «جدا بشوند». Each tab refreshes its own reader
+     * the first time it is shown and never after, so opening the screen costs exactly what it did.
+     *
+     * Empty leaves the screen exactly as it was: one newsroom, no tabs. That is what the previews
+     * and the screenshot tests pass, and what a build with one configured platform gets.
+     */
+    readers: Map<MarketPlatform, MarketIntelController> = emptyMap(),
 ) {
-    val state by controller.state.collectAsStateWithLifecycle()
+    // Which newsroom is on screen. Saveable, so a rotation does not send a reader back to the tab
+    // the shell happened to be on.
+    var shown by rememberSaveable { mutableStateOf(platform) }
+    val tabs = remember(readers) { MarketPlatform.entries.filter { it in readers } }
+    val reader = readers[shown] ?: controller
+    val state by reader.state.collectAsStateWithLifecycle()
     var relevance by remember { mutableStateOf<MarketRelevance?>(null) }
     var savedOnly by rememberSaveable { mutableStateOf(false) }
     // The open story is held twice, and both halves earn their place.
@@ -173,7 +199,7 @@ fun NewsScreen(
     val savedFlow = remember(store) { store?.saved() ?: flowOf(emptyList()) }
     val savedArticles by savedFlow.collectAsStateWithLifecycle(emptyList())
 
-    LaunchedEffect(controller) { controller.refresh() }
+    LaunchedEffect(reader) { reader.refresh() }
 
     val filtered = remember(state.news, relevance, savedOnly, savedArticles) {
         when {
@@ -204,13 +230,13 @@ fun NewsScreen(
 
     // Only the markets this platform serves. A crypto session filtering by "Gold" would be asking
     // the feed for a market its own signals never mention.
-    val relevances = remember(platform) {
-        when (platform) {
+    val relevances = remember(shown) {
+        when (shown) {
             MarketPlatform.TRADEYAR -> listOf(MarketRelevance.CRYPTO)
             MarketPlatform.COINEPRO_FX -> listOf(MarketRelevance.GOLD, MarketRelevance.SILVER)
         }
     }
-    LaunchedEffect(platform) { relevance = null }
+    LaunchedEffect(shown) { relevance = null }
 
     // The item first, then the two lists — the second path is what a reader who was killed mid-story
     // comes back through, and it is why saving is worth offering at all: it is the only one of the
@@ -257,7 +283,7 @@ fun NewsScreen(
             store = store,
             feed = remember(state.news) { state.news.map(MarketNewsItem::asStory) },
             onOpenChart = onOpenChart,
-            fetchBody = { controller.articleBody(it.id, it.summary) },
+            fetchBody = { reader.articleBody(it.id, it.summary) },
             onOpen = { next ->
                 openArticle = next
                 openArticleId = next.id
@@ -313,7 +339,10 @@ fun NewsScreen(
                     // Only where there is a channel to open. On CoinePro-FX the route does not exist,
                     // so the icon does not exist either — the alternative is a control that reports a
                     // 404 as though the announcements service were down.
-                    if (announcements != null) {
+                    // The channel belongs to TradeYar, so it is offered on TradeYar's tab and not
+                    // on the forex desk's — where it would be one platform's notices under
+                    // another platform's headlines.
+                    if (announcements != null && shown == MarketPlatform.TRADEYAR) {
                         CoineProHeaderAction(
                             icon = CoineProIcons.Info,
                             label = stringResource(R.string.announcements_open),
@@ -327,7 +356,7 @@ fun NewsScreen(
                     // screen that could never fill however many times it was pressed. Three of the
                     // owner's «تقویم خالی است» reports are that door. The screen behind it now says
                     // so as well, for the reader who arrives from the menu.
-                    if (platform != MarketPlatform.TRADEYAR) {
+                    if (shown != MarketPlatform.TRADEYAR) {
                         CoineProHeaderAction(
                             icon = DesignR.drawable.icon_calendar_dots,
                             label = stringResource(R.string.news_calendar),
@@ -337,6 +366,18 @@ fun NewsScreen(
                 },
             )
             CoineProTeachingStrip(TeachingSurface.NEWS, gutter = false)
+
+            // The two newsrooms, named. Above the relevance chips because it answers the earlier
+            // question — *whose* news am I reading — and a reader who came here from the crypto
+            // side of the app should be able to see the forex desk without leaving the screen.
+            if (tabs.size > 1) {
+                CoineProSegmentedControl(
+                    options = tabs.map { it to stringResource(it.labelRes()) },
+                    selected = shown,
+                    onSelect = { shown = it },
+                    modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
+                )
+            }
 
             // A one-market platform gets no filter at all: a control with a single alternative to "all"
             // is a switch that says nothing. Nor does the saved list, which is the reader's own sequence
@@ -376,7 +417,7 @@ fun NewsScreen(
                     "error" -> CenterState(
                         message = state.error ?: stringResource(R.string.news_unavailable),
                         action = stringResource(R.string.news_retry),
-                        onAction = controller::refresh,
+                        onAction = reader::refresh,
                     )
                     "saved-empty" -> CoineProEmptyState(
                         icon = DesignR.drawable.icon_bookmark_simple,
@@ -400,19 +441,19 @@ fun NewsScreen(
                         ),
                         hint = stringResource(R.string.news_none_readable_hint),
                         action = stringResource(R.string.news_refresh),
-                        onAction = controller::refresh,
+                        onAction = reader::refresh,
                     )
                     "empty" -> CoineProEmptyState(
                         icon = CoineProIcons.News,
                         message = stringResource(R.string.news_empty),
                         action = stringResource(R.string.news_refresh),
-                        onAction = controller::refresh,
+                        onAction = reader::refresh,
                     )
                     // The strip stays: it says how old the headlines are, which the gesture cannot.
                     // What the gesture adds is the answer to a tug, which this list had none of.
                     else -> CoineProPullToRefresh(
                         refreshing = state.refreshing,
-                        onRefresh = controller::refresh,
+                        onRefresh = reader::refresh,
                     ) {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
@@ -436,7 +477,7 @@ fun NewsScreen(
                                         // failed since breakfast saw a list that simply never moved
                                         // and no reason for it.
                                         failed = state.failed,
-                                        onRefresh = controller::refresh,
+                                        onRefresh = reader::refresh,
                                     )
                                 }
                             }
@@ -837,3 +878,10 @@ internal fun alignmentFor(text: String): TextAlign = CoineProProse.alignment(tex
 
 /** The same copy, laid out in its own direction. See [CoineProProse.paragraph]. */
 internal fun paragraphOf(text: String): String = CoineProProse.paragraph(text)
+
+/** The platform's own short name, for the tab that selects its newsroom. */
+@StringRes
+private fun MarketPlatform.labelRes(): Int = when (this) {
+    MarketPlatform.TRADEYAR -> R.string.news_platform_crypto
+    MarketPlatform.COINEPRO_FX -> R.string.news_platform_forex
+}

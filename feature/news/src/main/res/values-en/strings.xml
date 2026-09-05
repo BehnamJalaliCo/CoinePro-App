@@ -76,4 +76,6 @@
     <string name="announcements_important">Important</string>
     <string name="announcements_read_more">The full text</string>
     <string name="announcements_open_failed">No browser was found to open this address.</string>
+    <string name="news_platform_crypto">Crypto</string>
+    <string name="news_platform_forex">Forex</string>
 </resources>

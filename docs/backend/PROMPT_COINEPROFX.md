@@ -1,7 +1,7 @@
 # پرامپت برای Claude Code روی سرور CoinePro-FX
 
 > این متن را همان‌طور که هست به Claude Code روی سرور فارکس بدهید. هر بخش یک کار مستقل است با
-> شرط پذیرش و دستور تأیید. اپ اندروید (Pro Chart) نسخه‌ی **4.43.0** روی این قرارداد بسته شده و
+> شرط پذیرش و دستور تأیید. اپ اندروید (Pro Chart) نسخه‌ی **4.44.0** روی این قرارداد بسته شده و
 > تا این‌ها انجام نشود، چند بخش از اپ خالی می‌ماند.
 
 ---
@@ -11,7 +11,7 @@
 اپ اندروید `Pro Chart` (مخزن `BehnamJalaliCo/CoinePro-App`) از نسخه‌ی 4.42.0 دو چیز را از روی
 گوشی برداشت و به سرور سپرد:
 
-1. ~~**۲۱۵ عکس راهنما** از داخل APK بیرون رفت~~ — **لغو شد.** در 4.43.0 عکس‌ها به داخل APK
+1. ~~**۲۱۵ عکس راهنما** از داخل APK بیرون رفت~~ — **لغو شد.** در 4.44.0 عکس‌ها به داخل APK
    برگشتند؛ سرور لازم نیست چیزی سرو کند. (کار ۱ پایین فقط برای سابقه مانده.)
 2. **خبر و تقویم اقتصادی** دیگر در نسخه‌ی release مستقیم از Investing.com و ForexFactory خوانده
    نمی‌شود (`DIRECT_THIRD_PARTY_FEEDS=false`). فقط روت‌های خودمان می‌مانند.
@@ -22,10 +22,51 @@
 
 ---
 
-## کار ۱ — ~~سرو کردن عکس‌های راهنما~~ (لغو شد در 4.43.0)
+## کار ۰ — ورود با گوگل: **client id شما حذف شده است** (اولویت: بحرانی)
+
+این را روی سرور خودتان اندازه گرفتیم، نه حدس:
+
+```bash
+CID=$(curl -s https://coineprofx.com/api/user/auth/methods | python3 -c "import json,sys;print(json.load(sys.stdin)['google_client_id'])")
+curl -s -D - -o /dev/null -G "https://accounts.google.com/o/oauth2/v2/auth" \
+  --data-urlencode "client_id=$CID" \
+  --data-urlencode "redirect_uri=https://coineprofx.com/" \
+  --data-urlencode "response_type=code" \
+  --data-urlencode "scope=openid email profile" | grep -i ^location
+```
+
+پاسخ گوگل، بعد از decode کردن `authError`:
+
+```
+deleted_client — The OAuth client was deleted.
+```
+
+یعنی `google_client_id` که `auth/methods` برمی‌گرداند
+(`1033486124390-nnr0l8q2k8e5mqjhpf0o4spmigakovsp.apps.googleusercontent.com`) در Google Cloud
+Console **پاک شده**. با یک client حذف‌شده، ورود با گوگل روی **هیچ** گوشی و **هیچ** نسخه‌ای کار
+نمی‌کند — نه اپ می‌تواند کاری بکند، نه امضای APK ربطی دارد.
+
+**کاری که باید بکنید**
+
+1. در همان پروژه‌ی Google Cloud (project number `1033486124390`) یک **OAuth client جدید از نوع
+   Web application** بسازید.
+2. شناسه‌ی آن را در `auth/methods` به‌عنوان `google_client_id` برگردانید و در سرویس تأیید توکن
+   (`POST user/auth/google`) هم همان را به‌عنوان `aud` بپذیرید.
+3. در همان پروژه یک **OAuth client از نوع Android** هم بسازید — بدون این، اپ اندروید حتی با یک
+   web client سالم هم توکن نمی‌گیرد:
+   - Package name: `com.coinepro.app`
+   - SHA-1: اثر انگشت کلید امضای همان APK ی که نصب می‌شود. مالک آن را از صفحه‌ی «ایمنی و نسخه»
+     داخل اپ می‌خواند؛ از نسخه‌ی ۴.۴۴.۰ متن خطای ورود با گوگل هم همین دو مقدار را نشان می‌دهد.
+
+**تأیید:** بعد از ساخت، همان `curl` بالا نباید `deleted_client` بدهد؛ `redirect_uri_mismatch`
+پاسخِ درستِ یک client زنده است.
+
+---
+
+## کار ۱ — ~~سرو کردن عکس‌های راهنما~~ (لغو شد در 4.44.0)
 
 در 4.42.0 قرار بود ۲۱۵ عکس راهنما از `{BASE}/assets/help/images/<file>.webp` سرو شود. مالک
-خواست عکس‌ها داخل خود اپ باشند و در 4.43.0 برگشتند (`core/help/src/main/assets/help/images`).
+خواست عکس‌ها داخل خود اپ باشند و در 4.44.0 برگشتند (`core/help/src/main/assets/help/images`).
 **هیچ کاری لازم نیست.** اگر قبلاً مسیر `assets/help/` را ساخته‌اید، بی‌ضرر است و می‌تواند بماند.
 
 ---
@@ -214,7 +255,8 @@ openssl s_client -connect coineprofx.com:443 -servername coineprofx.com < /dev/n
 2. خروجی `curl` روت خبر و روت تقویم (کار ۴ و ۵).
 3. پین اصلی + پین پشتیبان.
 4. Cloud project number ی که Play Integrity را با آن تأیید می‌کنید (اگر روشنش کردید).
-5. **برای ورود با گوگل:** client id ی که `auth/methods` برمی‌گرداند باید یک OAuth client از نوع
+5. **ورود با گوگل — کار ۰:** شناسه‌ی client جدید (Web) و تأیید اینکه Android client با
+   `com.coinepro.app` و SHA-1 ساخته شده. جزئیات: client id ی که `auth/methods` برمی‌گرداند باید یک OAuth client از نوع
    *Web application* باشد، و در همان پروژه‌ی Google Cloud باید یک OAuth client از نوع *Android*
    با نام بسته‌ی `com.coinepro.app` و **SHA-1 گواهی امضای نسخه‌ای که نصب می‌شود** ثبت شده باشد —
    وگرنه Credential Manager روی گوشی «ورود با گوگل انجام نشد» می‌دهد و هیچ صفحه‌ای باز نمی‌شود.

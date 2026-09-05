@@ -95,6 +95,19 @@ fun MenuScreen(
     watchlistCount: Int = 0,
     /** Offered, never demanded. Null when there is nothing to offer — i.e. already signed in. */
     onSignIn: (() -> Unit)? = null,
+    /**
+     * The two settings that decide whether the reader can read the app: the theme and the language.
+     *
+     * A slot rather than four parameters, because `ThemeMode` lives in `core:datastore` and this
+     * module is a directory of rows — giving it a DataStore dependency so it can name an enum would
+     * be the wrong trade. The shell passes `AppearanceQuickRow`, which is where those two controls
+     * are drawn and where the third one (which colour a rise is) deliberately is not.
+     *
+     * Here rather than on the profile page because it is one tap from anywhere: «حالت تیره و روشن
+     * و زبان باید یه جای دم دست باشه». Null draws nothing at all, which is what the previews and
+     * the screenshot tests get.
+     */
+    appearance: (@Composable () -> Unit)? = null,
 ) {
     val sections = remember(access) { MenuCatalogue.sections(access) }
 
@@ -114,6 +127,25 @@ fun MenuScreen(
                 onSignIn = onSignIn,
                 onOpenProfile = { onOpen("profile") },
             )
+        }
+
+        appearance?.let { row ->
+            item(key = "appearance") {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = stringResource(R.string.menu_appearance),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CoineProColors.TextMuted,
+                        modifier = Modifier.padding(
+                            start = CoineProSpacing.Gutter,
+                            end = CoineProSpacing.Gutter,
+                            top = CoineProSpacing.One,
+                            bottom = CoineProSpacing.Half,
+                        ),
+                    )
+                    row()
+                }
+            }
         }
 
         sections.forEach { section ->
