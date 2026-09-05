@@ -149,6 +149,7 @@ import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProMotionSpecs
 import com.coinepro.core.designsystem.CoineProConfirmDialog
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPillShape
@@ -174,6 +175,7 @@ import com.coinepro.core.marketdata.Timeframe
 import com.coinepro.core.marketdata.customOf
 import com.coinepro.core.symbols.MarketHours
 import com.coinepro.core.symbols.SymbolClassifier
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import java.time.ZoneId
@@ -181,7 +183,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.stringResource
@@ -973,6 +975,9 @@ fun ChartScreen(
                     onCrosshairMove = { crosshair ->
                         val price = crosshair?.price
                         val previous = lastCrosshairPrice
+                        // The crosshair taking hold under a long press: the platform's long-press
+                        // buzz, once, as it lands.
+                        if (crosshair != null && previous == null) haptics.longPress()
                         if (price != null && previous != null && price != previous) {
                             val low = minOf(previous, price)
                             val high = maxOf(previous, price)
@@ -1377,8 +1382,8 @@ fun ChartScreen(
         // the page growing rather than a second page appearing.
         AnimatedVisibility(
             visible = !fullscreenRequested,
-            enter = slideInVertically(tween(FULLSCREEN_SLIDE_MS)) { it } + fadeIn(tween(FULLSCREEN_SLIDE_MS)),
-            exit = slideOutVertically(tween(FULLSCREEN_SLIDE_MS)) { it } + fadeOut(tween(FULLSCREEN_SLIDE_MS)),
+            enter = slideInVertically(CoineProMotionSpecs.defaultSpatialFor()) { it } + fadeIn(tween(FULLSCREEN_SLIDE_MS)),
+            exit = slideOutVertically(CoineProMotionSpecs.defaultSpatialFor()) { it } + fadeOut(tween(FULLSCREEN_SLIDE_MS)),
         ) {
         ChartCommandBand(
             interval = state.interval,
@@ -2151,7 +2156,14 @@ private fun FullscreenChart(
         // Kept even though the window's own `dismissOnBackPress` would do it: this is the handler
         // that runs while a chart gesture has the pointer, and it is the one that is here in the
         // source for the next person who reads this looking for the back behaviour.
-        BackHandler(onBack = onExit)
+        PredictiveBackHandler { progress ->
+            try {
+                progress.collect { }
+            } catch (cancelled: CancellationException) {
+                return@PredictiveBackHandler
+            }
+            onExit()
+        }
 
     Box(
         modifier = Modifier
@@ -2614,13 +2626,18 @@ private fun IntervalPill(
     // TradingView's interval chip, measured off the phone app's date-range sheet: a grey plate
     // with 12 pt corners, 44 pt tall, the length in bold 16 pt; the chosen one inverted to the
     // primary ink with the page's ground for its text.
+    val haptics = rememberCoineProHaptics()
     Box(
         modifier = Modifier
             .clip(CoineProShapes.medium)
             .background(
                 if (active) CoineProColors.TextPrimary else CoineProColors.SurfaceElevated,
             )
-            .clickable(onClick = onClick)
+            .clickable {
+                // A tick on the change, not on a re-press of the key already down.
+                if (!active) haptics.select()
+                onClick()
+            }
             .heightIn(min = INTERVAL_KEY_HEIGHT)
             .widthIn(min = INTERVAL_KEY_WIDTH)
             .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),

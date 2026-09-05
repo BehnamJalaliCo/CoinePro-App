@@ -281,6 +281,75 @@ the physics have no still picture and are described by the constants that hold t
 (`check-benchmark-thresholds.py`: P95 frame ≤ 8 ms, zero overrun) are in the tree and in CI with
 `--allow-missing`; the numbers need a Pixel 6a, which this environment does not have.
 
+## Sprint D — motion and shell (D1–D8)
+
+Pictures: `docs/design/sprint-d/before/` and `after/` (home and the watchlist, dark Persian); the
+motion itself is described by the gate that now holds it.
+
+**What changed.**
+
+- **D1 springs.** Everything that *moves* is on a spring and everything that *fades* stays on a
+  tween — Material 3 Expressive's own line, and the one the design system already drew for
+  navigation. Converted: the three tab switches (community, news, calendar), the AI panel's
+  expand, the chart toolbar's slide before fullscreen, the symbol wheel's settle, list-row
+  placement and the shared element's bounds. `MaterialTheme(motionScheme = …)` itself is not
+  reachable: `MaterialExpressiveTheme` and `MotionScheme` are `internal` in the Material 3 this
+  build pins (1.4.0); the three spatial springs in `CoineProMotionSpecs` are that scheme's
+  fast / default / slow specs by hand. **The grep report is the gate**:
+  `check-motion-policy.sh` now fails on a `tween(` on the same line as a slide, an expand, a
+  shrink, a placement or a bounds transform, and reports «Spring policy passed» — zero today.
+  The tweens left are fades, colours, the price flash, the progress bar, the shimmer, the tape,
+  the splash and the chart's own 120–200 ms pulses: effects, all.
+- **D2 shared elements.** Watchlist row → chart was in (`SharedKeys.logo` / `ticker`, the
+  explore card too). New: a signal card's mark and ticker travel to the signal's page, keyed by
+  the signal so two cards on one market are two elements. Heatmap tile → symbol is not built:
+  the tiles are one `Canvas` (open decision 13).
+- **D3 predictive back.** `enableOnBackInvokedCallback` was on; the four custom `BackHandler`s
+  — the terminal's WebView history, a news story, a public news story, the fullscreen chart — are
+  `PredictiveBackHandler`s that let the system preview run and act only when the gesture commits.
+- **D4 haptics.** The vocabulary sits on the platform's own constants now: `select` is the
+  segment tick (`CLOCK_TICK`), `commit` is `CONFIRM`, `reject` is `REJECT`, and a new `longPress`
+  is `LONG_PRESS`. An order going through confirms and a refusal or a throttle rejects; the
+  timeframe key ticks on a change; the magnet's snap and every placed point tick (Sprint B); the
+  crosshair buzzes once as it takes hold.
+- **D5 shell.** The bar's glyph cross-fades outlined ↔ filled over 150 ms. Sheets are 28 dp,
+  handled, scrimmed at 40 % (Sprint A). No pill: the bar was measured off the reference, which
+  marks the tab with a filled glyph and no indicator, and that measurement stands (open decision
+  14). The sheet's own rise is Material's and not this app's to spring (15).
+- **D6 density and the hero.** The menu's subtitles were already cut to a seven-row whitelist
+  (`MenuCatalogue.DESCRIPTIVE_ROWS`) and its rows to 50 dp by the owner's own audit — the brief's
+  56–60 is not applied over that (16). Gutters are 16 and sections 24 (Sprint A). The home hero:
+  the balance in `Balance` (36, SemiBold, tabular), an 18 % → 0 accent wash behind it, the day's
+  move as a PnL pill, the equity sparkline under the figure; watchlist price cells flash on a
+  tick. Rolling digits in the symbol header are not built — the header is the chart's legend,
+  drawn on the canvas (17).
+- **D7 adaptive.** In place since 4.41.0: `CoineProWindowClass` decides the chart's permanent
+  tool and readings columns (`ChartWorkbench`), the watchlist split beside the chart
+  (`ChartWatchlistSplit`) and how many panes a window may open. Nothing to add.
+- **D8 widget.** In place: `WidgetConfigureActivity` behind `android:configure`, every row a
+  deep link to that market's chart with its own data URI, the plate opens the app. Glance would
+  not reduce code — the layout is eight fixed rows of `RemoteViews` for a reason `widget_markets.xml`
+  explains — so it stays.
+
+**Numbers.**
+
+| Measure | Before | After |
+| --- | --- | --- |
+| `tween(` on a spatial transition | 9 sites | 0 (gated) |
+| `spring(` in main sources | 6 | 8 + the three motion specs everywhere spatial |
+| Custom back handlers predictive | 0 of 4 | 4 of 4 |
+| Haptic vocabulary | 3 (text-handle, long-press ×2) | 4 on the platform's constants |
+| Shared-element flows | 2 (watchlist, explore → chart) | 3 (+ signal card → page) |
+
+**Self-score after Sprint D (dark, fa), out of 100:**
+
+| Screen | C | D | What moved, what did not |
+| --- | --- | --- | --- |
+| Home | 66 | 78 | Hero wash, PnL pill, tabular balance. Teaching banner still on top (owner's). |
+| Watchlist | 74 | 78 | Price cells flash; row → chart shares the mark. Explanatory banner still there. |
+| Menu | 68 | 70 | Glyph cross-fade on the bar. Rows at the owner's 50, not the brief's 56. |
+| Symbol + chart | 85 | 86 | Predictive back out of fullscreen, sprung toolbar slide, long-press buzz. |
+
 ## Open decisions
 
 1. **IRANYekanX Medium / SemiBold.** The shipped files are static Regular and Bold; a variable file or the two extra weights are the owner's licence to obtain. Until then Persian headings stay Bold and Latin/numerals get Inter's Medium and SemiBold (Sprint A2).
@@ -295,3 +364,9 @@ the physics have no still picture and are described by the constants that hold t
 10. **Session / weekend shading (C2).** `core:chart` has no market calendar; the forex feed has no weekend bars and crypto trades through the weekend, so there is no session to shade on either instrument this app lists. Left out until an instrument with sessions arrives.
 11. **Draw-loop allocation assertion and `MotionEventPredictor` (C7).** The chart draws on two canvases (plot, crosshair); a third cached layer and a debug assertion that the draw loop allocates nothing are a renderer restructuring, not a sprint task. `MotionEventPredictor` needs the raw `MotionEvent`, which Compose's pointer input does not hand over without `pointerInteropFilter` around the whole gesture stack. Both deferred with the owner's say-so.
 12. **Fling curve (C3).** The brief's exponential decay is in force behind `KineticScroll.FLING_CURVE`; the platform spline the app used from 4.41.0 is one word away if the owner prefers the lists' physics on the chart.
+13. **Heatmap tile → symbol shared element (D2).** The heatmap is one `Canvas`; a shared element needs a composable per tile. Rebuilding the treemap as composables is a screen rewrite, not a transition.
+14. **Bottom-bar pill (D5).** The bar was measured off the reference: a filled glyph on the selected tab and no indicator. The brief's springing pill contradicts that measurement; the measurement stands unless the owner prefers the pill.
+15. **Sheet spring (D5).** `ModalBottomSheet` in Material 3 1.4.0 owns its rise and offers no animation spec; the sheet's motion is Material's.
+16. **Menu row height (D6).** The owner's Phase A3 audit set the root menu at 50 dp with a seven-row subtitle whitelist and tests that pin both; the brief's 56–60 dp is not applied over that decision.
+17. **Rolling digits in the symbol header (D6).** The header on the chart is the canvas legend, so a rolling-digit composable has nowhere to go without moving the header off the canvas.
+18. **`MotionScheme.expressive()` (D1).** `MaterialExpressiveTheme` and `MotionScheme` are `internal` in Material 3 1.4.0; the scheme's springs are reproduced in `CoineProMotionSpecs` and will move onto the theme when the API opens.

@@ -64,6 +64,7 @@ import com.coinepro.core.community.CommunityUiState
 import com.coinepro.core.community.NetworkCommunityGateway
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProMotionSpecs
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProErrorState
 import com.coinepro.core.designsystem.CoineProHeaderAction
@@ -280,8 +281,8 @@ fun CommunityScreen(
         AnimatedContent(
             targetState = mode,
             transitionSpec = {
-                (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 8 }) togetherWith
-                    (fadeOut(tween(150)) + slideOutVertically(tween(150)) { -it / 12 })
+                (fadeIn(tween(220)) + slideInVertically(CoineProMotionSpecs.defaultSpatialFor()) { it / 8 }) togetherWith
+                    (fadeOut(tween(150)) + slideOutVertically(CoineProMotionSpecs.defaultSpatialFor()) { -it / 12 })
             },
             label = "community-state",
         ) { shown ->

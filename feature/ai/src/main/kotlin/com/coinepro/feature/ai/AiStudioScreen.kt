@@ -51,6 +51,7 @@ import com.coinepro.core.common.foldDigitsToLatin
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProMotionSpecs
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProRangeBar
 import com.coinepro.core.designsystem.CoineProSecondaryButton
@@ -588,7 +589,7 @@ private fun AiResultPanel(
 ) {
     AnimatedVisibility(
         visible = true,
-        enter = fadeIn(tween(220)) + expandVertically(tween(260)),
+        enter = fadeIn(tween(220)) + expandVertically(CoineProMotionSpecs.defaultSpatialFor()),
     ) {
         AiPanel(title = null) {
             Row(

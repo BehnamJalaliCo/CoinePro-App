@@ -30,6 +30,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -49,6 +51,9 @@ import com.coinepro.core.designsystem.CoineProAssetToken
 import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.numeric
+import com.coinepro.core.designsystem.CoineProTint
+import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProMarketRow
 import com.coinepro.core.designsystem.CoineProPrimaryButton
@@ -219,13 +224,27 @@ fun HomeScreen(
             }
 
             item {
-                BalanceBlock(
-                    portfolio = portfolio,
-                    state = state,
-                    hidden = balanceHidden,
-                    onToggleHidden = onToggleBalanceHidden,
-                    onOpenPortfolio = onOpenPortfolio,
-                )
+                // The brief's hero: the accent at 18 % fading to nothing down behind the balance.
+                // The one gradient a surface in this app carries; the gate's allow-list names it.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(CoineProShapes.large)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(CoineProColors.AccentFill.copy(alpha = HERO_WASH_ALPHA), Color.Transparent),
+                            ),
+                        )
+                        .padding(CoineProSpacing.Gutter),
+                ) {
+                    BalanceBlock(
+                        portfolio = portfolio,
+                        state = state,
+                        hidden = balanceHidden,
+                        onToggleHidden = onToggleBalanceHidden,
+                        onOpenPortfolio = onOpenPortfolio,
+                    )
+                }
             }
 
             item {
@@ -442,17 +461,23 @@ private fun BalanceBlock(
                     colour = if (portfolio.isUp) CoineProColors.Buy else CoineProColors.Sell,
                 )
             }
+            // The day's move as a pill — the reference's PnL chip — in the direction's tint.
+            // Masked, the pill is no longer a claim about direction, so it loses the direction's
+            // colour too: a green row of dots is still telling somebody over the shoulder that
+            // the day went well.
+            val tone = when {
+                hidden -> CoineProColors.TextMuted
+                portfolio.isUp -> CoineProColors.Buy
+                else -> CoineProColors.Sell
+            }
             Text(
                 text = CoineProPrivacy.mask(portfolio.changeLabel, hidden),
-                style = MaterialTheme.typography.bodyMedium,
-                // Masked, the line is no longer a claim about direction, so it loses the direction's
-                // colour too. A green row of dots is still telling somebody over the shoulder that
-                // the day went well.
-                color = when {
-                    hidden -> CoineProColors.TextMuted
-                    portfolio.isUp -> CoineProColors.Buy
-                    else -> CoineProColors.Sell
-                },
+                style = MaterialTheme.typography.labelMedium.numeric(),
+                color = tone,
+                modifier = Modifier
+                    .clip(CoineProPillShape)
+                    .background(CoineProTint.fill(tone, CoineProColors.Surface))
+                    .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.Half),
             )
         } else {
             // An account with no balance yet gets a dash rather than a zero, because a rendered
@@ -999,3 +1024,6 @@ private fun Shortcut(label: String, icon: Int, onClick: () -> Unit, modifier: Mo
  * is where the shape starts carrying information the change figure beside it does not already have.
  */
 private const val MIN_EQUITY_POINTS = 5
+
+/** The accent behind the balance: eighteen per cent at the top, nothing at the foot. */
+private const val HERO_WASH_ALPHA = 0.18f

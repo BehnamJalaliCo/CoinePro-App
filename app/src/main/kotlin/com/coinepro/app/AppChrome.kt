@@ -2,6 +2,8 @@ package com.coinepro.app
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -254,15 +256,22 @@ private fun BarItem(
                 .background(if (selected) CoineProColors.SurfaceElevated else Color.Transparent),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                // The filled cut marks the selection, not colour.
-                painter = painterResource(destination.icon(selected)),
-                contentDescription = null,
-                tint = ink,
-                modifier = Modifier
-                    .size(GLYPH)
-                    .testTag(AppChromeTestTags.barGlyph(destination.route)),
-            )
+            // The filled cut marks the selection, not colour — and the cut arrives on a 150 ms
+            // cross-fade rather than a swap, the reference's.
+            Crossfade(
+                targetState = selected,
+                animationSpec = tween(GLYPH_CROSSFADE_MS),
+                label = "bar-glyph",
+            ) { filled ->
+                Icon(
+                    painter = painterResource(destination.icon(filled)),
+                    contentDescription = null,
+                    tint = ink,
+                    modifier = Modifier
+                        .size(GLYPH)
+                        .testTag(AppChromeTestTags.barGlyph(destination.route)),
+                )
+            }
         }
         Text(
             text = stringResource(destination.labelRes),
@@ -292,6 +301,9 @@ private fun BarItem(
  * which is why this is a content height rather than a total.
  */
 private val BAR_HEIGHT = 64.dp
+
+/** The outlined-to-filled cross-fade on the selected glyph. An effect, so a tween. */
+private const val GLYPH_CROSSFADE_MS = 150
 
 /** The plate behind the selected glyph. Wide enough to read as a plate, narrow enough to fit five. */
 private val PLATE_WIDTH = 48.dp

@@ -51,6 +51,9 @@ import com.coinepro.core.common.parseWireInstant
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.designsystem.CoineProCard
+import com.coinepro.core.designsystem.sharedElement
+import com.coinepro.core.designsystem.SharedKeys
+import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProPageHeading
 import com.coinepro.core.designsystem.CoineProHeroFigure
 import com.coinepro.core.designsystem.CoineProReading
@@ -179,14 +182,29 @@ private fun SignalContent(
         // size that says it is the subject, and the call beside it. The three readings under it are
         // what a reader checks before acting — direction, the server's own confidence, and the
         // ratio the levels imply.
-        CoineProPageHeading(
-            title = BidiText.isolateLtr(signal.symbol),
-            eyebrow = stringResource(R.string.detail_eyebrow),
-            subtitle = listOfNotNull(signal.timeframe, signal.strategy)
-                .joinToString(" · ")
-                .takeIf { it.isNotBlank() },
-            modifier = Modifier.padding(horizontal = 0.dp),
-        )
+        // The other end of the card's shared mark and ticker: the logo lands here, and the
+        // heading's title is the ticker it carried.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+        ) {
+            CoineProAssetLogo(
+                symbol = signal.symbol,
+                size = DETAIL_LOGO,
+                modifier = Modifier.sharedElement(SharedKeys.signalLogo(signal.id)),
+            )
+            CoineProPageHeading(
+                title = BidiText.isolateLtr(signal.symbol),
+                eyebrow = stringResource(R.string.detail_eyebrow),
+                subtitle = listOfNotNull(signal.timeframe, signal.strategy)
+                    .joinToString(" · ")
+                    .takeIf { it.isNotBlank() },
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 0.dp)
+                    .sharedElement(SharedKeys.signalTicker(signal.id)),
+            )
+        }
         signal.currentQuote?.let { quote ->
             CoineProHeroFigure(
                 figure = formatPrice(signal.symbol, quote.price),
@@ -498,3 +516,6 @@ private fun riskRewardOf(signal: TradingSignal): Double? {
     if (risk == 0.0) return null
     return kotlin.math.abs(target - entry) / risk
 }
+
+/** The mark beside the heading, the size the watchlist's is on the chart it came from. */
+private val DETAIL_LOGO = 36.dp

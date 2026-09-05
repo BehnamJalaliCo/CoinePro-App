@@ -37,6 +37,7 @@ import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSkeleton
@@ -84,6 +85,15 @@ fun ExecutionScreen(
     val signalState by signalController.detailState.collectAsStateWithLifecycle()
     val connectionState by executionController.connections.collectAsStateWithLifecycle()
     val executionState by executionController.execution.collectAsStateWithLifecycle()
+    // An order is the one action on this screen a reader would want undone: the platform's
+    // confirm when it goes through, its reject when the venue refuses or throttles it.
+    val haptics = rememberCoineProHaptics()
+    LaunchedEffect(executionState.execution?.id) {
+        if (executionState.execution != null) haptics.commit()
+    }
+    LaunchedEffect(executionState.error, executionState.rateLimited) {
+        if (executionState.error != null || executionState.rateLimited) haptics.reject()
+    }
     val signal = signalState.signal
     val venue = when (signal?.market) {
         MarketType.FOREX -> ExecutionVenue.MT5

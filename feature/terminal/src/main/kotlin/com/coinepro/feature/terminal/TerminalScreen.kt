@@ -7,7 +7,8 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
+import kotlinx.coroutines.CancellationException
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,7 +53,12 @@ fun TerminalScreen(
     // The terminal is a single-page app with its own navigation. Back should walk that first and
     // only leave the screen once there is nothing left to go back to — otherwise one tap on back
     // from four panels deep drops the reader out of the whole feature.
-    BackHandler(enabled = true) {
+    PredictiveBackHandler(enabled = true) { progress ->
+        try {
+            progress.collect { }
+        } catch (cancelled: CancellationException) {
+            return@PredictiveBackHandler
+        }
         val view = webView
         if (view != null && view.canGoBack()) view.goBack() else onClose()
     }

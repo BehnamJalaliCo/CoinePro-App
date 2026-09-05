@@ -330,7 +330,12 @@ internal fun WatchlistFigureCell(
         // having its head sliced off by the clip. The magnitude is the part that must survive.
         softWrap = false,
         overflow = TextOverflow.Ellipsis,
-        modifier = modifier.width(widthOf(column)),
+        modifier = modifier
+            .width(widthOf(column))
+            // The cell tints for a moment on a tick, green up and red down — the one motion a
+            // trader reads. Only the price: a change column that flashed on its own change
+            // would flash on every tick twice.
+            .then(if (column == WatchlistColumn.LAST_PRICE) Modifier.coineProPriceFlash(value) else Modifier),
     )
 }
 

@@ -43,26 +43,26 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 @Immutable
 class CoineProHaptics internal constructor(private val feedback: HapticFeedback) {
 
-    /** A choice changed. The lightest tick there is. */
-    fun select() {
-        feedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-    }
-
-    /** Something was done that the reader would want undone if it were wrong. */
-    fun commit() {
-        feedback.performHapticFeedback(HapticFeedbackType.LongPress)
-    }
-
     /**
-     * The app declined.
-     *
-     * Two ticks rather than one, because Compose's portable vocabulary has no "error" and a single
-     * tick that means "no" is indistinguishable from the one that means "yes". Doubling is the
-     * oldest way to say a thing is different, and it survives every device's own interpretation of
-     * what these constants should feel like.
+     * A choice changed. The platform's segment tick — Android's `CLOCK_TICK` — which is what a
+     * chip, a timeframe key and the magnet's snap feel like on the reference.
      */
+    fun select() {
+        feedback.performHapticFeedback(HapticFeedbackType.SegmentTick)
+    }
+
+    /** Something was done that the reader would want undone if it were wrong: Android's `CONFIRM`. */
+    fun commit() {
+        feedback.performHapticFeedback(HapticFeedbackType.Confirm)
+    }
+
+    /** The app declined: Android's `REJECT`, which the platform makes feel unlike a confirm. */
     fun reject() {
-        feedback.performHapticFeedback(HapticFeedbackType.LongPress)
+        feedback.performHapticFeedback(HapticFeedbackType.Reject)
+    }
+
+    /** A long press took hold — the crosshair landing, a drag beginning. Android's `LONG_PRESS`. */
+    fun longPress() {
         feedback.performHapticFeedback(HapticFeedbackType.LongPress)
     }
 }

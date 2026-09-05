@@ -1,6 +1,7 @@
 package com.coinepro.feature.news
 
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
+import kotlinx.coroutines.CancellationException
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -98,7 +99,14 @@ fun PublicNewsScreen(
     var openId by rememberSaveable { mutableStateOf<String?>(null) }
     var open by remember { mutableStateOf<NewsStory?>(null) }
 
-    BackHandler(enabled = openId != null) {
+    // Predictive: the system's back preview runs while the gesture is in flight, and the story
+    // closes only once it commits — a cancelled gesture leaves it open.
+    PredictiveBackHandler(enabled = openId != null) { progress ->
+        try {
+            progress.collect { }
+        } catch (cancelled: CancellationException) {
+            return@PredictiveBackHandler
+        }
         openId = null
         open = null
     }

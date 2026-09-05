@@ -63,12 +63,10 @@ fun Modifier.sharedElement(key: String): Modifier {
         this@sharedElement.sharedElement(
             sharedContentState = rememberSharedContentState(key),
             animatedVisibilityScope = animated,
-            // The same duration the navigation slide runs at, so the element lands as the page
+            // The same spring the navigation slide runs on, so the element lands as the page
             // settles rather than arriving early and waiting, or still travelling over a page that
-            // has already stopped.
-            boundsTransform = { _, _ ->
-                tween(CoineProMotionSpecs.SLOW_MS, easing = CoineProMotionSpecs.Standard)
-            },
+            // has already stopped — and a back gesture half-way through carries its velocity.
+            boundsTransform = { _, _ -> CoineProMotionSpecs.defaultSpatialFor() },
         )
     }
 }
@@ -78,4 +76,9 @@ object SharedKeys {
     fun logo(symbol: String): String = "market-logo:" + symbol.uppercase()
 
     fun ticker(symbol: String): String = "market-ticker:" + symbol.uppercase()
+
+    /** A signal card's mark and ticker, keyed by the signal rather than the market: two cards on one market are two elements. */
+    fun signalLogo(id: Long): String = "signal-logo:$id"
+
+    fun signalTicker(id: Long): String = "signal-ticker:$id"
 }

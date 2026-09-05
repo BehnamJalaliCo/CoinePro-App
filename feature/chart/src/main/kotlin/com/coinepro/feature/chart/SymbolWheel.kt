@@ -54,6 +54,7 @@ import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProMotionSpecs
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTint
@@ -439,7 +440,8 @@ internal fun SymbolScrollWheel(
         if (dragging) return@LaunchedEffect
         val from = travel.floatValue
         if (from == 0f) return@LaunchedEffect
-        animate(initialValue = from, targetValue = 0f, animationSpec = tween(SETTLE_MS)) { value, _ ->
+        // A spring, not a curve: the wheel is a thing that moves, and it settles the way it was flicked.
+        animate(initialValue = from, targetValue = 0f, animationSpec = CoineProMotionSpecs.fastSpatial()) { value, _ ->
             move(value)
         }
     }
@@ -731,10 +733,3 @@ private val WHEEL_SCROLL_HEIGHT = 44.dp
 /** Eighty points, which is where the phone app cuts `IMXUSDT` to `IMXUSD` before the interval. */
 private val WHEEL_SCROLL_WIDTH = 80.dp
 
-/**
- * How long the wheel takes to walk its leftover travel back to zero when the finger lifts.
- *
- * Short enough to be over before the reader looks away from the control, long enough to read as
- * the wheel settling rather than as a second jump.
- */
-private const val SETTLE_MS = 160

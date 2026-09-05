@@ -52,6 +52,7 @@ import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProMotionSpecs
 import com.coinepro.core.designsystem.CoineProHeaderAction
 import com.coinepro.core.designsystem.CoineProListHeader
 import com.coinepro.core.designsystem.CoineProPrimaryButton
@@ -145,8 +146,8 @@ fun EconomicCalendarScreen(
         AnimatedContent(
             targetState = calendarMode(state, filtered),
             transitionSpec = {
-                (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 8 }) togetherWith
-                    (fadeOut(tween(150)) + slideOutVertically(tween(150)) { -it / 12 })
+                (fadeIn(tween(220)) + slideInVertically(CoineProMotionSpecs.defaultSpatialFor()) { it / 8 }) togetherWith
+                    (fadeOut(tween(150)) + slideOutVertically(CoineProMotionSpecs.defaultSpatialFor()) { -it / 12 })
             },
             label = "calendar-state",
         ) { mode ->

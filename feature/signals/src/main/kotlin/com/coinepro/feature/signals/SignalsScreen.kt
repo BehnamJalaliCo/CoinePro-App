@@ -39,6 +39,8 @@ import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.sharedElement
+import com.coinepro.core.designsystem.SharedKeys
 import com.coinepro.core.designsystem.CoineProSkeletonRows
 import com.coinepro.core.designsystem.CoineProColumnHeadings
 import com.coinepro.core.designsystem.CoineProEmptyState
@@ -546,12 +548,18 @@ private fun SignalCard(signal: TradingSignal, onClick: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CoineProAssetLogo(symbol = signal.symbol)
+            // The mark and the ticker travel to the detail page — the same two keys the watchlist
+            // row shares with the chart, so a market's identity moves and a page appears around it.
+            CoineProAssetLogo(
+                symbol = signal.symbol,
+                modifier = Modifier.sharedElement(SharedKeys.signalLogo(signal.id)),
+            )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = BidiText.isolateLtr(signal.symbol),
                     style = MaterialTheme.typography.titleSmall,
                     color = CoineProColors.TextPrimary,
+                    modifier = Modifier.sharedElement(SharedKeys.signalTicker(signal.id)),
                 )
                 // The strategy in Persian where it is a name this app knows, and the server's
                 // own words where it is not — see `SignalStrategyPersian`. It used to render as

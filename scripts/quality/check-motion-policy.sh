@@ -28,6 +28,21 @@ fi
 guarded="$( { git grep -lE 'rememberInfiniteTransition|infiniteRepeatable' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' || true; } | wc -l | tr -d ' ')"
 echo "Reduced-motion policy passed: ${guarded} file(s) use continuous motion, all guarded."
 
+# ── springs for everything that moves ────────────────────────────────────────────────────────
+#
+# Material 3 Expressive's line: *spatial* motion — a slide, an expand, a row travelling, a shared
+# element's bounds — is a spring, because a finger can interrupt it and a spring carries the
+# velocity it had; an *effect* — a fade, a colour, a progress bar — is a tween, because opacity
+# has no momentum. This is the grep the design brief asks for: a `tween(` on the same line as a
+# spatial transition is the violation.
+spatial_tween="$( { git grep -nE '(slideIn|slideOut|expandVertically|expandHorizontally|shrinkVertically|shrinkHorizontally|placementSpec|boundsTransform|slideIntoContainer|slideOutOfContainer)[^\n]*tween\(' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' || true; } )"
+if [[ -n "$spatial_tween" ]]; then
+  echo "$spatial_tween"
+  echo "::error::Something that moves is on a tween. Spatial motion springs — CoineProMotionSpecs.fastSpatial() / defaultSpatialFor(); a tween is for a fade, a colour or a progress bar."
+  exit 1
+fi
+echo "Spring policy passed: no tween on a slide, an expand, a placement or a shared element."
+
 # ── surface discipline ───────────────────────────────────────────────────────────────────────
 #
 # Three rules from the design direction, which are the reason this app reads as sharp rather than
@@ -73,7 +88,9 @@ fi
 # two fills and an area chart's ramp are the chart's own fill, which is one of the three places a
 # gradient belongs. The ramp itself is 0.28 to 0.05 — TradingView's own, and much shallower than the
 # 0.4-to-0 most clones reach for.
-gradient_allow='CoineProBrand.kt|CoineProSurfaces.kt|CoineProThinking.kt|CoineProMotionEffects.kt|EquityCurve.kt|CoineProChart.kt|ChartSeriesTypes.kt'
+# `HomeScreen.kt`: the balance hero's wash, 18 % of the accent fading to nothing behind the
+# figure — the design brief's, and the one gradient a surface carries.
+gradient_allow='CoineProBrand.kt|CoineProSurfaces.kt|CoineProThinking.kt|CoineProMotionEffects.kt|EquityCurve.kt|CoineProChart.kt|ChartSeriesTypes.kt|HomeScreen.kt'
 gradient_hits="$( { git grep -lE 'Brush\.(vertical|horizontal|linear|radial|sweep)Gradient' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' || true; } | grep -vE "$gradient_allow" || true)"
 if [[ -n "$gradient_hits" ]]; then
   echo "$gradient_hits"

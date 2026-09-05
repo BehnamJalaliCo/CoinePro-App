@@ -60,7 +60,9 @@ fun LazyItemScope.rowMotion(
             } else {
                 null
             },
-            placementSpec = tween(CoineProMotionSpecs.SLOW_MS, easing = CoineProMotionSpecs.Standard),
+            // A row travelling is spatial: a spring, so a second sort mid-flight carries the
+            // velocity rather than restarting a curve.
+            placementSpec = CoineProMotionSpecs.defaultSpatialFor(),
             fadeOutSpec = if (fades) {
                 tween(CoineProMotionSpecs.FAST_MS, easing = CoineProMotionSpecs.Exit)
             } else {

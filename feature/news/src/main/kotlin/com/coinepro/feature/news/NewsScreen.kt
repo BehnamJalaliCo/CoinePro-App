@@ -1,6 +1,7 @@
 package com.coinepro.feature.news
 
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
+import kotlinx.coroutines.CancellationException
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
@@ -46,6 +47,7 @@ import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProMotionSpecs
 import com.coinepro.core.designsystem.CoineProListDetail
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProHeaderAction
@@ -223,7 +225,12 @@ fun NewsScreen(
     // who swipes back out of a story should not leave the news screen entirely. Announcements are
     // checked first because the two surfaces cannot both be open — an announcement offers no way
     // into a story — so whichever is showing is the one the gesture closes.
-    BackHandler(enabled = showAnnouncements || openArticleId != null) {
+    PredictiveBackHandler(enabled = showAnnouncements || openArticleId != null) { progress ->
+        try {
+            progress.collect { }
+        } catch (cancelled: CancellationException) {
+            return@PredictiveBackHandler
+        }
         if (showAnnouncements) {
             showAnnouncements = false
         } else {
@@ -358,8 +365,8 @@ fun NewsScreen(
                     else -> "content"
                 },
                 transitionSpec = {
-                    (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 8 }) togetherWith
-                        (fadeOut(tween(150)) + slideOutVertically(tween(150)) { -it / 12 })
+                    (fadeIn(tween(220)) + slideInVertically(CoineProMotionSpecs.defaultSpatialFor()) { it / 8 }) togetherWith
+                        (fadeOut(tween(150)) + slideOutVertically(CoineProMotionSpecs.defaultSpatialFor()) { -it / 12 })
                 },
                 label = "news-state",
             ) { mode ->
