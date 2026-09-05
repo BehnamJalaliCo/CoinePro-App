@@ -3017,7 +3017,7 @@ private fun ComparisonBar(
                         .background(CoineProTint.fill(colour, CoineProColors.Stage))
                         .border(1.dp, CoineProTint.edge(colour), CoineProPillShape)
                         .clickable { onRemove(series.symbol) }
-                        .padding(horizontal = CoineProSpacing.One, vertical = 5.dp),
+                        .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -3070,7 +3070,7 @@ private fun SettingSwitch(
                 text = note,
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextMuted,
-                modifier = Modifier.padding(top = 2.dp),
+                modifier = Modifier.padding(top = 4.dp),
             )
         }
         Switch(
@@ -3436,7 +3436,7 @@ private fun ChartUnderline(
                 top = CoineProSpacing.One,
                 bottom = CoineProSpacing.Half,
             ),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         // What is being drawn: how long one candle is, how much history was asked for, and what
         // the window's high and low are. The span is named beside the length on purpose — the two
@@ -3597,7 +3597,7 @@ private fun SetupFigure(label: String, price: Double, tone: Color, modifier: Mod
                 text = formatPrice(price, decimalsFor(price)),
                 style = MaterialTheme.typography.labelMedium,
                 color = tone,
-                modifier = Modifier.padding(top = 2.dp),
+                modifier = Modifier.padding(top = 4.dp),
             )
         }
     }

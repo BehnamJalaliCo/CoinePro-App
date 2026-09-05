@@ -322,7 +322,7 @@ private fun MarkGrid(working: AvatarSpec, onSelect: (AvatarMark) -> Unit) {
             Cell(selected = mark == chosen, onClick = { onSelect(mark) }) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     CoineProAvatar(
                         spec = AvatarSpec(AvatarBase.Mark(mark), AvatarRing.NONE),

@@ -270,7 +270,7 @@ private fun SignalRow(signal: TradingSignal, onClick: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = CoineProSpacing.Two, vertical = 9.dp),
+                .padding(horizontal = CoineProSpacing.Two, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
         ) {
@@ -314,7 +314,7 @@ private fun SignalRow(signal: TradingSignal, onClick: () -> Unit) {
             signal.currentQuote?.let { quote ->
                 Column(
                     horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
                         text = formatPrice(signal.symbol, quote.price),
@@ -345,7 +345,7 @@ private fun SignalRow(signal: TradingSignal, onClick: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = CoineProSpacing.Two, end = CoineProSpacing.Two, bottom = 6.dp),
+                .padding(start = CoineProSpacing.Two, end = CoineProSpacing.Two, bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
         ) {
             LevelFigure(R.string.signals_metric_entry, signal.entry, signal.symbol, CoineProColors.TextSecondary)
@@ -369,7 +369,7 @@ private fun SignalRow(signal: TradingSignal, onClick: () -> Unit) {
             modifier = Modifier.padding(
                 start = CoineProSpacing.Two,
                 end = CoineProSpacing.Two,
-                bottom = 9.dp,
+                bottom = 8.dp,
             ),
         )
     }
@@ -627,7 +627,7 @@ private fun DirectionPill(direction: SignalDirection) {
         text = stringResource(direction.labelRes()),
         modifier = Modifier
             .background(colour.copy(alpha = 0.14f), CoineProPillShape)
-            .padding(horizontal = CoineProSpacing.OneHalf, vertical = 6.dp),
+            .padding(horizontal = CoineProSpacing.OneHalf, vertical = 8.dp),
         style = MaterialTheme.typography.labelMedium,
         color = colour,
     )

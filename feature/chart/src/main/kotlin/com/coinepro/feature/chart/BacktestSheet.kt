@@ -739,7 +739,7 @@ private fun TradeHeaderRow() {
  */
 @Composable
 private fun TradeRow(trade: EngineTrade) {
-    Row(modifier = Modifier.padding(vertical = 2.dp)) {
+    Row(modifier = Modifier.padding(vertical = 4.dp)) {
         Cell(
             text = if (trade.isLong) "خرید" else "فروش",
             width = DIRECTION_WIDTH,
@@ -766,7 +766,7 @@ private fun TradeRow(trade: EngineTrade) {
 private fun Cell(text: String, width: Dp, header: Boolean = false, tint: Color? = null) {
     Text(
         text = text,
-        modifier = Modifier.width(width).padding(horizontal = 2.dp),
+        modifier = Modifier.width(width).padding(horizontal = 4.dp),
         style = if (header) MaterialTheme.typography.labelSmall else CoineProTextStyles.RowFigure,
         color = tint ?: if (header) CoineProColors.TextMuted else CoineProColors.TextSecondary,
         fontWeight = if (header) FontWeight.Normal else FontWeight.Bold,

@@ -289,7 +289,7 @@ private fun ResultCount(state: ScreenerState) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.One),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
             text = stringResource(R.string.screener_count, state.matchCount.toPersianDigits()),
@@ -401,7 +401,7 @@ private fun Heading(label: String, sorted: Boolean, descending: Boolean, onClick
                 ),
                 contentDescription = null,
                 tint = CoineProColors.Accent,
-                modifier = Modifier.size(11.dp).padding(end = 2.dp),
+                modifier = Modifier.size(11.dp).padding(end = 4.dp),
             )
         }
         Text(
@@ -440,7 +440,7 @@ private fun ScreenerTableRow(
                 haptics.select()
                 onClick()
             }
-            .padding(horizontal = CoineProSpacing.Two, vertical = 9.dp),
+            .padding(horizontal = CoineProSpacing.Two, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // **The mark, which every other list in this app has and this one did not.**

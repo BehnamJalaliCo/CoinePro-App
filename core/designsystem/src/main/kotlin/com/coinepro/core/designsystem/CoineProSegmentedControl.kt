@@ -122,7 +122,7 @@ private fun RowScope.Segment(
             )
             // A filter above the balance should not weigh the same as the screen's primary
             // action. Nine points and the medium label put it at 40dp instead of 56.
-            .padding(vertical = 9.dp),
+            .padding(vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(

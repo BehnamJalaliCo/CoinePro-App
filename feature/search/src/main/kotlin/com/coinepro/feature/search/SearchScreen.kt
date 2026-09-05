@@ -263,7 +263,7 @@ fun SearchScreen(
                         Box(
                             Modifier
                                 .fillMaxWidth()
-                                .padding(start = CoineProSpacing.Gutter, end = 66.dp)
+                                .padding(start = CoineProSpacing.Gutter, end = 64.dp)
                                 .height(1.dp)
                                 .background(CoineProColors.Border),
                         )

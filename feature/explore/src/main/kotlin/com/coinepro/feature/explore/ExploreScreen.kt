@@ -557,7 +557,7 @@ private fun MarketCard(
         contentPadding = PaddingValues(CARD_PADDING),
         onClick = onClick,
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
@@ -651,7 +651,7 @@ private fun StoryRow(story: MarketNewsItem, onClick: (() -> Unit)?) {
             )
             .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 // The publisher and the moment, in that order, joined by the app's own separator.
                 // The source is a Latin wire-service name inside a Persian line, so it is isolated.

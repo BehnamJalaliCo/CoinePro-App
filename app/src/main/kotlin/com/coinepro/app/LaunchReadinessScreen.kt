@@ -111,7 +111,7 @@ fun LaunchReadinessScreen(
         }
         Column(
             modifier = Modifier.padding(horizontal = CoineProSpacing.Half),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
                 text = stringResource(R.string.safety_title),

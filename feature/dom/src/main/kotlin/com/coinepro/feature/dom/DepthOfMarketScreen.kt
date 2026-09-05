@@ -54,6 +54,7 @@ import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.numeric
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPillShape
@@ -452,7 +453,7 @@ private fun DepthSummary(book: OrderBook) {
 
 @Composable
 private fun SummaryFigure(label: String, value: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
@@ -753,7 +754,7 @@ private fun LadderRowView(
         )
         Text(
             text = price,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelMedium.numeric(),
             color = colour,
             textAlign = TextAlign.Right,
             modifier = Modifier.width(PriceColumnWidth),
@@ -823,7 +824,7 @@ private fun RowScope.QuantityCell(
             }
             Text(
                 text = MarketNumberFormatter.price(ladderFigure(row, figure), decimals),
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelSmall.numeric(),
                 // A stacked rung is the exception this ladder now exists to surface, so its size
                 // steps up one level of ink and weight with the mark. Two quiet signals on the same
                 // row rather than one loud one: the reader finds the row from across the table by

@@ -502,6 +502,28 @@ MATERIAL_ICON_IMPORT = re.compile(r"^import androidx\.compose\.material\.icons\.
 STOCK_ICON_USE = re.compile(r"\bIcons\.(Filled|Default|Outlined|Rounded|Sharp|TwoTone)\.")
 
 
+OFF_GRID_PADDING = re.compile(r"\b(?:padding|spacedBy)\([^()]*?\b(\d+)\.dp\b")
+
+
+def check_grid() -> None:
+    """Every padding and gap sits on the four-point grid.
+
+    Sizes are not gated — an icon is 22 dp and a row is 58 dp on purpose — but a padding of 10 or
+    a gap of 6 is a layout that was eyeballed, and two of them on one screen are the difference
+    between a page that lines up and one that nearly does. One dp is allowed: it is a hairline's
+    inset, not a padding."""
+    offenders: list[str] = []
+    for path in list(ROOT.glob("app/src/main/**/*.kt")) + list(ROOT.glob("feature/*/src/main/**/*.kt")) + list(ROOT.glob("core/*/src/main/**/*.kt")):
+        if "feature/admin/" in path.as_posix():
+            continue
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            for match in OFF_GRID_PADDING.finditer(line):
+                value = int(match.group(1))
+                if value != 1 and value % 4 != 0:
+                    offenders.append(f"{path.relative_to(ROOT)}:{number}: {value}.dp")
+    require(not offenders, "a padding or gap off the 4 dp grid:\n" + "\n".join(offenders))
+
+
 def check_icon_sources() -> None:
     """Every glyph comes from `CoineProIcons`.
 
@@ -538,6 +560,7 @@ def main() -> None:
     check_english_locale_is_english()
     check_string_lint()
     check_icon_sources()
+    check_grid()
     check_no_secret_logging()
     check_assets_clean()
     check_tabular_digits()

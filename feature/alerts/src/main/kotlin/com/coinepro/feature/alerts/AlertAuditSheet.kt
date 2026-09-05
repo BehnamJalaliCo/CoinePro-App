@@ -279,7 +279,7 @@ private fun AuditBody(entry: AlertAuditEntry, failed: Boolean) {
             style = MaterialTheme.typography.bodySmall,
             color = if (failed) CoineProColors.TextSecondary else CoineProColors.TextMuted,
             textAlign = TextAlign.Right,
-            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
         )
     }
 }

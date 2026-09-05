@@ -342,7 +342,7 @@ private fun BulletLine(text: String) {
     ) {
         Box(
             modifier = Modifier
-                .padding(top = 7.dp)
+                .padding(top = 8.dp)
                 .size(4.dp)
                 .clip(CircleShape)
                 .background(CoineProColors.TextMuted),

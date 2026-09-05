@@ -123,7 +123,7 @@ internal fun MarketListRow(
                     }
                 },
             )
-            .padding(horizontal = 16.dp, vertical = 9.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         // **Eight between the parts, not twelve.**
         //

@@ -314,7 +314,7 @@ internal fun TopicChip(label: String) {
                 CoineProTint.fill(CoineProColors.TextSecondary, CoineProColors.Surface),
                 CoineProPillShape,
             )
-            .padding(horizontal = CoineProSpacing.One, vertical = 3.dp),
+            .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
     )
 }
 
@@ -403,7 +403,7 @@ private fun ReactionRow(post: CommunityPost, onReact: ((String) -> Unit)?) {
                         },
                     )
                     .background(CoineProColors.SurfaceElevated, CoineProPillShape)
-                    .padding(horizontal = CoineProSpacing.One, vertical = 3.dp),
+                    .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
             )
         }
     }

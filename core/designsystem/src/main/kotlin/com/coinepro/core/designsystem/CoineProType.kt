@@ -1,11 +1,14 @@
 package com.coinepro.core.designsystem
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.sp
 
 /**
@@ -37,8 +40,35 @@ import androidx.compose.ui.unit.sp
  */
 val CoineProFontFamily = FontFamily(
     Font(R.font.iranyekanx_regular, FontWeight.Normal),
+    // Medium and SemiBold resolve to Bold on purpose. The shipped IRANYekanX is static Regular
+    // and Bold; the two middle weights are the owner's licence to obtain, and until they arrive a
+    // style asking for 500 must not fall back to Regular and quietly un-bold every title. When
+    // the files land, point these two entries at them and nothing else changes.
+    Font(R.font.iranyekanx_bold, FontWeight.Medium),
+    Font(R.font.iranyekanx_bold, FontWeight.SemiBold),
     Font(R.font.iranyekanx_bold, FontWeight.Bold),
 )
+
+/**
+ * Inter, for Latin and for every numeral in both locales.
+ *
+ * One variable file carries all four weights. It is the face for a figure — a price, a change, a
+ * quantity, a balance, an axis label, a ticker — because a market figure is compared down a
+ * column and against another app, and Inter's tabular figures (`tnum`, set on every numeric
+ * style below) line up to the pixel where a Persian text face's Latin digits merely nearly do.
+ * Persian prose stays on IRANYekanX; the two faces share x-height closely enough to sit on one
+ * line.
+ */
+@OptIn(ExperimentalTextApi::class)
+val CoineProLatinFontFamily = FontFamily(
+    Font(R.font.inter_variable, FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
+    Font(R.font.inter_variable, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
+    Font(R.font.inter_variable, FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
+    Font(R.font.inter_variable, FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700))),
+)
+
+/** Tabular figures, so a column of prices lines up and a ticking price does not shift its neighbours. */
+const val TABULAR_FIGURES = "tnum"
 
 /**
  * Persian glyphs sit taller than Latin ones, so line heights are trimmed to the first and last line
@@ -116,29 +146,72 @@ private fun coineProTextStyle(
  * rather than as body text that has been shrunk.
  */
 val CoineProTypography = Typography(
-    displayLarge = coineProTextStyle(52, 62, FontWeight.Bold, -0.5),
-    displayMedium = coineProTextStyle(42, 52, FontWeight.Bold, -0.25),
-    displaySmall = coineProTextStyle(34, 42, FontWeight.Bold),
+    // The audit's slots: display 32/40 SemiBold, headline 24/32, title 18/24 Medium, body 15/22,
+    // label 12/16 Medium — each the *Medium* size of its slot, with Large and Small a step either
+    // side so the scale still has room at both ends.
+    displayLarge = coineProTextStyle(40, 48, FontWeight.SemiBold, -0.5),
+    displayMedium = coineProTextStyle(32, 40, FontWeight.SemiBold, -0.25),
+    displaySmall = coineProTextStyle(28, 36, FontWeight.SemiBold),
 
-    headlineLarge = coineProTextStyle(30, 38, FontWeight.Bold),
-    headlineMedium = coineProTextStyle(25, 32, FontWeight.Bold),
-    headlineSmall = coineProTextStyle(22, 29, FontWeight.Bold),
+    headlineLarge = coineProTextStyle(28, 36, FontWeight.SemiBold),
+    headlineMedium = coineProTextStyle(24, 32, FontWeight.SemiBold),
+    headlineSmall = coineProTextStyle(20, 28, FontWeight.SemiBold),
 
-    titleLarge = coineProTextStyle(19, 26, FontWeight.Bold),
-    titleMedium = coineProTextStyle(17, 23, FontWeight.Bold),
-    titleSmall = coineProTextStyle(15, 20, FontWeight.Bold),
+    titleLarge = coineProTextStyle(20, 28, FontWeight.Medium),
+    titleMedium = coineProTextStyle(18, 24, FontWeight.Medium),
+    titleSmall = coineProTextStyle(16, 22, FontWeight.Medium),
 
-    bodyLarge = coineProTextStyle(16, 23, FontWeight.Normal),
-    bodyMedium = coineProTextStyle(14, 20, FontWeight.Normal),
+    bodyLarge = coineProTextStyle(16, 24, FontWeight.Normal),
+    bodyMedium = coineProTextStyle(15, 22, FontWeight.Normal),
     bodySmall = coineProTextStyle(13, 18, FontWeight.Normal),
 
-    labelLarge = coineProTextStyle(15, 20, FontWeight.Bold),
-    labelMedium = coineProTextStyle(13, 17, FontWeight.Bold),
-    labelSmall = coineProTextStyle(11, 15, FontWeight.Normal, 0.4),
+    labelLarge = coineProTextStyle(14, 20, FontWeight.Medium),
+    labelMedium = coineProTextStyle(12, 16, FontWeight.Medium),
+    labelSmall = coineProTextStyle(11, 16, FontWeight.Normal, 0.3),
 )
 
 /** Styles that carry a specific job rather than a place on the Material scale. */
+/**
+ * A figure style: Inter, tabular, left-to-right.
+ *
+ * Every price, quantity, percentage, balance and axis label goes through one of these or through
+ * [TextStyle.numeric]. The direction is pinned because a figure is Latin whatever the paragraph
+ * around it is, and a minus sign on the wrong side of a number is a different number.
+ */
+private fun numericTextStyle(
+    fontSize: Int,
+    lineHeight: Int,
+    weight: FontWeight,
+    letterSpacing: Double = 0.0,
+): TextStyle = TextStyle(
+    fontFamily = CoineProLatinFontFamily,
+    fontWeight = weight,
+    fontSize = fontSize.sp,
+    lineHeight = lineHeight.sp,
+    letterSpacing = letterSpacing.sp,
+    fontFeatureSettings = TABULAR_FIGURES,
+    textDirection = TextDirection.Ltr,
+    lineHeightStyle = PersianLineHeightStyle,
+)
+
+/**
+ * The same style, as a figure: Inter's face, tabular digits, left-to-right. Size, weight and line
+ * height are kept, so `MaterialTheme.typography.labelSmall.numeric()` is the small label with the
+ * digits that line up.
+ */
+fun TextStyle.numeric(): TextStyle = copy(
+    fontFamily = CoineProLatinFontFamily,
+    fontFeatureSettings = TABULAR_FIGURES,
+    textDirection = TextDirection.Ltr,
+)
+
 object CoineProTextStyles {
+
+    /** A figure in running text — a price in a row, a value in a legend. 13/16, tabular. */
+    val Numeric: TextStyle = numericTextStyle(13, 16, FontWeight.Normal)
+
+    /** A figure that is the point of its card — a last price, a total. 22/28 Medium, tabular. */
+    val NumericLarge: TextStyle = numericTextStyle(22, 28, FontWeight.Medium, -0.2)
 
     /**
      * The account total: the largest thing on any screen it appears on.
@@ -148,7 +221,7 @@ object CoineProTextStyles {
      * balance on a narrow phone. The negative tracking is what keeps a long Latin figure from
      * looking loose beside the Persian label above it.
      */
-    val Balance: TextStyle = coineProTextStyle(36, 46, FontWeight.Bold, -0.8)
+    val Balance: TextStyle = numericTextStyle(36, 46, FontWeight.SemiBold, -0.8)
 
     /**
      * A figure that is the subject of its row rather than an annotation on it — a price in a market
@@ -160,7 +233,7 @@ object CoineProTextStyles {
      * implement it. Sixteen does, and it is one point rather than three because the row still has
      * to stay a row.
      */
-    val RowFigure: TextStyle = coineProTextStyle(16, 21, FontWeight.Bold, -0.3)
+    val RowFigure: TextStyle = numericTextStyle(16, 21, FontWeight.SemiBold, -0.2)
 
     /**
      * The figure inside a small tile — a reading under a hero, a stat in a card.
@@ -169,7 +242,7 @@ object CoineProTextStyles {
      * read the pair as one block of text and had to *read* it to find the number. At eighteen the
      * answer is found before it is read, which is the whole point of putting it in a tile.
      */
-    val TileFigure: TextStyle = coineProTextStyle(18, 24, FontWeight.Bold, -0.3)
+    val TileFigure: TextStyle = numericTextStyle(18, 24, FontWeight.SemiBold, -0.2)
 
     /**
      * The small line that names a category above a title — «سیگنال» over «BTCUSDT خرید».

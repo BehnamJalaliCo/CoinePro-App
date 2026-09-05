@@ -242,7 +242,7 @@ private fun BarItem(
                 interactionSource = remember { MutableInteractionSource() },
                 onClick = onSelect,
             )
-            .padding(horizontal = 2.dp),
+            .padding(horizontal = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

@@ -5,27 +5,22 @@ import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
 /**
- * Radii for the "آرام" direction.
+ * Five radii, each with one job. See `docs/design/TOKENS.md`.
  *
- * Generous, because this direction separates content with whitespace and corner radius instead of
- * with rules and shadows. A card here has no border and no elevation, so the curve is the only
- * thing that tells the reader where the surface ends.
- *
- * [extraSmall] stays tight: it carries chips and status pills, where a large radius would make a
- * short Persian label look like a button.
+ *  * `extraSmall` 4 — a label on the chart's axis, a badge.
+ *  * `small` 8 — a chip that is not a pill, a text field.
+ *  * `medium` 12 — a button.
+ *  * `large` 16 — a card. Sixteen, down from eighteen: the reference this app is measured against
+ *    draws its cards at sixteen, and a card that is rounder than the sheet it sits in reads as
+ *    softer than the product around it.
+ *  * `extraLarge` 28 — a sheet's top corners.
  */
 val CoineProShapes = Shapes(
-    extraSmall = RoundedCornerShape(6.dp),
-    small = RoundedCornerShape(10.dp),
-    medium = RoundedCornerShape(14.dp),
-    // Eighteen, up from sixteen. [large] is the card, and the card is what the owner named when he
-    // put this app beside TradingView's: a corner is the one part of a flat surface that is pure
-    // manner, and two points of it is the difference between a rectangle with rounded corners and a
-    // shape that was drawn. Not more than two: past about twenty a card at this width starts to
-    // read as a pill and the content inside it has to be inset to clear the curve.
-    large = RoundedCornerShape(18.dp),
-    extraLarge = RoundedCornerShape(20.dp),
+    extraSmall = RoundedCornerShape(4.dp),
+    small = RoundedCornerShape(8.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(16.dp),
+    extraLarge = RoundedCornerShape(28.dp),
 )
 
-/** Fully rounded, for the row of primary actions under the balance. */
 val CoineProPillShape = RoundedCornerShape(percent = 50)

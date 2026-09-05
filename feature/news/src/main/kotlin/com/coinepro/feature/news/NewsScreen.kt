@@ -751,7 +751,7 @@ internal fun NewsCard(
             ),
             verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (story.impact != MarketImpact.UNKNOWN) ImpactPill(story.impact)
                 if (story.sentiment != NewsSentiment.UNKNOWN) SentimentPill(story.sentiment)
                 // Staleness is said, not implied by a dimmer grey nobody reads as a claim.

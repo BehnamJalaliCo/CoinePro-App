@@ -106,7 +106,7 @@ private fun ChartEventRow(event: ChartEvent, zone: ZoneId) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     EventPill(event.kind.label, CoineProColors.Accent)
                     EventPill(
                         text = stringResource(R.string.chart_events_importance, event.importance.label),

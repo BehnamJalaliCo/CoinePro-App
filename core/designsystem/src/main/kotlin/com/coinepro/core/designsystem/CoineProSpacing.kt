@@ -56,9 +56,9 @@ object CoineProSpacing {
      * as two named values rather than one so that a future direction can set them apart
      * deliberately; nothing should set them apart by accident.
      */
-    val CardHorizontal = 18.dp
-    val CardVertical = 18.dp
+    val CardHorizontal = 16.dp
+    val CardVertical = 16.dp
 
     /** Above and below one row inside a card. */
-    val Row = 10.dp
+    val Row = 12.dp
 }

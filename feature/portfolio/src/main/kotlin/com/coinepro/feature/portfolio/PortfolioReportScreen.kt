@@ -461,7 +461,7 @@ private fun GridCell(
 ) {
     Text(
         text = text,
-        modifier = Modifier.width(width).padding(vertical = CoineProSpacing.Half, horizontal = 2.dp),
+        modifier = Modifier.width(width).padding(vertical = CoineProSpacing.Half, horizontal = 4.dp),
         style = if (emphasised) CoineProTextStyles.RowFigure else MaterialTheme.typography.labelSmall,
         color = tint ?: if (muted) CoineProColors.TextMuted else CoineProColors.TextSecondary,
         fontWeight = if (emphasised) FontWeight.Bold else FontWeight.Normal,

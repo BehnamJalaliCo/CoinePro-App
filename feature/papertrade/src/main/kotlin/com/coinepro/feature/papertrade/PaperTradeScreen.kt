@@ -276,7 +276,7 @@ fun PaperBadge(modifier: Modifier = Modifier) {
         color = CoineProColors.Warning,
         modifier = modifier
             .background(CoineProColors.SurfaceElevated, CoineProShapes.small)
-            .padding(horizontal = CoineProSpacing.One, vertical = 2.dp),
+            .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
     )
 }
 

@@ -705,7 +705,7 @@ private fun RowScope.MarketFigures(
             CoineProPercentText(
                 percent = it,
                 style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             )
         }
     }

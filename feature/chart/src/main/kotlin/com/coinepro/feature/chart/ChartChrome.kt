@@ -218,7 +218,7 @@ internal fun ChartCommandBand(
             VerticalDivider(
                 color = CoineProColors.BorderSubtle,
                 thickness = 1.dp,
-                modifier = Modifier.height(TOOLBAR_GLYPH).padding(horizontal = 2.dp),
+                modifier = Modifier.height(TOOLBAR_GLYPH).padding(horizontal = 4.dp),
             )
             ToolbarButton(
                 icon = DesignR.drawable.icon_arrow_counter_clockwise,
@@ -511,7 +511,7 @@ private fun ReadingColumn(
             targetState = value,
             transitionSpec = { fadeIn() togetherWith fadeOut() },
             label = "reading-value",
-            modifier = Modifier.padding(top = 2.dp),
+            modifier = Modifier.padding(top = 4.dp),
         ) { word ->
             Text(
                 text = word,
@@ -539,7 +539,7 @@ private fun ReadingColumn(
             color = CoineProColors.TextDisabled,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 5.dp),
+            modifier = Modifier.padding(top = 4.dp),
         )
     }
 }
@@ -970,7 +970,7 @@ private fun HubScope.HubTile(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Icon(
                     painter = painterResource(icon),
                     contentDescription = null,

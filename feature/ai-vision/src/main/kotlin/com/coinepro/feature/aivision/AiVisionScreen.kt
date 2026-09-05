@@ -415,7 +415,7 @@ private fun VisionResultCard(
 
 @Composable
 private fun LabeledText(label: String, value: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = CoineProColors.TextMuted)
         // Model prose, shown as written: this is the part a reader judges the setup by.
         Text(value, style = MaterialTheme.typography.bodyMedium, color = CoineProColors.TextSecondary)

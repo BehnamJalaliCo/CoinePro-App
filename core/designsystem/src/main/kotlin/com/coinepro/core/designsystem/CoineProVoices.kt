@@ -86,7 +86,7 @@ fun CoineProPageHeading(
                         // was unreadable in the light theme on every screen that used it.
                         style = CoineProTextStyles.Eyebrow,
                         color = CoineProColors.pageAccentInk,
-                        modifier = Modifier.padding(bottom = 2.dp),
+                        modifier = Modifier.padding(bottom = 4.dp),
                     )
                 }
                 Text(
@@ -100,7 +100,7 @@ fun CoineProPageHeading(
                         text = it,
                         style = MaterialTheme.typography.bodySmall,
                         color = CoineProColors.TextMuted,
-                        modifier = Modifier.padding(top = 2.dp),
+                        modifier = Modifier.padding(top = 4.dp),
                     )
                 }
             }
@@ -203,7 +203,7 @@ fun CoineProReadingRow(
                         maxFontSize = CoineProTextStyles.TileFigure.fontSize,
                         stepSize = 1.sp,
                     ),
-                    modifier = Modifier.padding(top = 2.dp),
+                    modifier = Modifier.padding(top = 4.dp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -336,8 +336,8 @@ fun <T> CoineProSegmentTabs(
             .clip(CoineProShapes.small)
             .background(CoineProColors.Surface)
             .border(1.dp, CoineProColors.BorderSubtle, CoineProShapes.small)
-            .padding(3.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         options.forEach { (value, label) ->
             val active = value == selected
@@ -379,7 +379,7 @@ fun <T> CoineProSegmentTabs(
                         if (!active) haptics.select()
                         onSelect(value)
                     }
-                    .padding(vertical = 9.dp),
+                    .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -494,7 +494,7 @@ fun CoineProDenseRow(
                         }
                 } ?: plain
             }
-            .padding(horizontal = CoineProSpacing.Two, vertical = 9.dp),
+            .padding(horizontal = CoineProSpacing.Two, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
@@ -540,13 +540,13 @@ fun CoineProDenseRow(
                     style = MaterialTheme.typography.labelSmall.copy(textDirection = TextDirection.Ltr),
                     color = noteTone,
                     modifier = Modifier
-                        .padding(top = 2.dp)
+                        .padding(top = 4.dp)
                         .let { base ->
                             if (notePill) {
                                 base
                                     .clip(CoineProShapes.extraSmall)
                                     .background(noteTone.copy(alpha = NOTE_PILL_ALPHA))
-                                    .padding(horizontal = 5.dp, vertical = 1.dp)
+                                    .padding(horizontal = 4.dp, vertical = 1.dp)
                             } else {
                                 base
                             }

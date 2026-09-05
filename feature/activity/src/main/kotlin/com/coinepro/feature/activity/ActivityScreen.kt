@@ -428,7 +428,7 @@ private fun HeaderMetric(value: String, label: String, accent: Color, modifier: 
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, CoineProColors.Border),
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             FinancialText(value, color = accent, style = MaterialTheme.typography.titleMedium)
             Text(label, color = CoineProColors.TextMuted, style = MaterialTheme.typography.labelSmall)
         }
@@ -443,7 +443,7 @@ private fun PerformanceSection(
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         SectionHeaderContent(stringResource(R.string.activity_performance_title), if (coverageComplete) stringResource(R.string.activity_coverage_complete) else stringResource(R.string.activity_coverage_partial))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -591,7 +591,7 @@ private fun FilterPill(label: String, selected: Boolean, onClick: () -> Unit) {
     ) {
         Text(
             label,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             color = if (selected) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
@@ -616,7 +616,7 @@ private fun SignalHistoryCard(signal: TradingSignal, onClick: () -> Unit) {
     }
     PremiumCard(modifier = Modifier.clickable(onClick = onClick)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(signal.symbol, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                 Text(
                     listOfNotNull(signal.market.name, signal.timeframe, formatTimestamp(signal.closedAt)).joinToString(" · "),
@@ -695,7 +695,7 @@ private fun ExecutionHistoryCard(execution: SignalExecution, onOpenSignal: (Long
 private fun SectionHeader(title: String, subtitle: String) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         SectionHeaderContent(title, subtitle)
     }

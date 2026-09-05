@@ -178,7 +178,7 @@ fun EconomicCalendarScreen(
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         item {
                             CalendarFreshnessStrip(state.refreshing)
@@ -303,7 +303,7 @@ private fun TimelineEventCard(
 
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(
             modifier = Modifier.padding(top = 12.dp),
@@ -344,7 +344,7 @@ private fun TimelineEventCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ImpactBadge(event.impact)
                         if (event.isStale) MetaBadge(stringResource(R.string.calendar_stale), CoineProColors.Warning)
                     }

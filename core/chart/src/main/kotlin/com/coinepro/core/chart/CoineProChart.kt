@@ -68,6 +68,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.unit.sp
 import com.coinepro.core.common.AppLanguage
+import com.coinepro.core.designsystem.TABULAR_FIGURES
+import com.coinepro.core.designsystem.CoineProLatinFontFamily
 import com.coinepro.core.common.JalaliDate
 import com.coinepro.core.common.NumberStyle
 import com.coinepro.core.common.PersianDateTime
@@ -4885,7 +4887,11 @@ internal fun axisStyle(
 ) = TextStyle(
     color = colour,
     fontSize = sizeSp.sp,
-    fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
+    fontWeight = if (bold) FontWeight.SemiBold else FontWeight.Normal,
+    // Inter with tabular figures: the axis is a column of numbers, and a column of numbers has
+    // to line up — and a price label that changes from 2,574.9 to 2,575.0 must not move.
+    fontFamily = CoineProLatinFontFamily,
+    fontFeatureSettings = TABULAR_FIGURES,
     textDirection = TextDirection.Ltr,
 )
 

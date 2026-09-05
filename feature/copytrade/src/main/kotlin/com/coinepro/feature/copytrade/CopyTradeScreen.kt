@@ -76,7 +76,7 @@ fun CopyTradeScreen(controller: CopyTradeController) {
         item {
             Column(
                 modifier = Modifier.padding(horizontal = CoineProSpacing.Half),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
                     text = stringResource(R.string.copy_title),
@@ -316,7 +316,7 @@ private fun LinkedAccount(account: CopyAccount, onUnlink: () -> Unit) {
 
     Column(
         modifier = Modifier.padding(top = CoineProSpacing.OneHalf),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         account.broker?.let { Detail(stringResource(R.string.copy_broker), it) }
         account.server?.let { Detail(stringResource(R.string.copy_server), BidiText.isolateLtr(it)) }
@@ -396,7 +396,7 @@ private fun TermsCard(preferences: CopyPreferences) {
         )
         Column(
             modifier = Modifier.padding(top = CoineProSpacing.OneHalf),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             preferences.riskMode?.let { Detail(stringResource(R.string.copy_risk_mode), it.riskModeLabel()) }
             preferences.riskValue?.let {
@@ -636,7 +636,7 @@ private fun Absent() {
 private fun Health(alive: Boolean, status: String?) {
     val colour = if (alive) CoineProColors.Buy else CoineProColors.Warning
     Row(
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(6.dp).background(colour, CoineProPillShape))

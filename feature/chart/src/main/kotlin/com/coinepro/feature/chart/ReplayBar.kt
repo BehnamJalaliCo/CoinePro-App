@@ -244,7 +244,7 @@ internal fun GoToDateField(
                         typedDate = ""
                     }
                 }
-                .padding(horizontal = CoineProSpacing.OneHalf, vertical = 6.dp),
+                .padding(horizontal = CoineProSpacing.OneHalf, vertical = 8.dp),
         )
     }
 }
@@ -656,7 +656,7 @@ private fun OpenPositionRow(
     onClose: () -> Unit,
 ) {
     val profit = price?.let(position::profit) ?: 0.0
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
@@ -798,7 +798,7 @@ private fun ActionChip(label: String, colour: Color, enabled: Boolean, onClick: 
             .clip(CoineProShapes.small)
             .background(if (enabled) colour else Color.Transparent)
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = CoineProSpacing.OneHalf, vertical = 6.dp),
+            .padding(horizontal = CoineProSpacing.OneHalf, vertical = 8.dp),
     )
 }
 

@@ -165,7 +165,7 @@ fun NewsArticleScreen(
                 modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
                 verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (story.impact != MarketImpact.UNKNOWN) ImpactPill(story.impact)
                     if (story.sentiment != NewsSentiment.UNKNOWN) SentimentPill(story.sentiment)
                     if (story.isStale) {

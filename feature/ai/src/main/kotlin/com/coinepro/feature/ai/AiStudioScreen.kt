@@ -411,7 +411,7 @@ private val MIN_RR_OPTIONS = listOf(1.5, 2.0, 2.5, 3.0)
 
 @Composable
 private fun AiHeader(quota: AiSignalQuota?) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             stringResource(R.string.ai_eyebrow),
             style = MaterialTheme.typography.labelMedium,
@@ -529,7 +529,7 @@ private fun String.asFigure(): Double? = trim()
 private fun AiWorkingPanel(symbol: String, timeframe: String) {
     AiPanel(title = null) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             CoineProThinkingDots()

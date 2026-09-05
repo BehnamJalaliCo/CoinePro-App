@@ -358,7 +358,7 @@ internal fun ToolTemplateRow(
                             shape = CoineProPillShape,
                         )
                         .clickable { onApply(template) }
-                        .padding(horizontal = CoineProSpacing.One, vertical = 5.dp),
+                        .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
                 ) {

@@ -112,7 +112,7 @@ fun CoineProPercentPill(
             // Wide enough that a row of pills forms a column rather than a ragged edge — the point
             // of the shape is comparison down the list, and comparison needs alignment.
             .defaultMinSize(minWidth = 60.dp)
-            .padding(horizontal = 6.dp, vertical = 3.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -126,7 +126,7 @@ fun CoineProPercentPill(
             // And `softWrap` was on, so in a column narrower than the figure the layout was free to
             // break it. Pinned Ltr, the overflow — if the column is ever tight again — takes the
             // ellipsis at the tail, where it costs a decimal instead of the sign.
-            style = MaterialTheme.typography.labelSmall.copy(textDirection = TextDirection.Ltr),
+            style = MaterialTheme.typography.labelSmall.numeric(),
             color = ink,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
@@ -291,7 +291,7 @@ fun CoineProMarketRow(
                         )
                 } ?: base
             }
-            .padding(horizontal = horizontalPadding, vertical = 10.dp),
+            .padding(horizontal = horizontalPadding, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -366,7 +366,7 @@ fun CoineProMarketRow(
             // ticking price does not jitter either.
             modifier = Modifier.width(FIGURE_COLUMN),
             horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(3.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             // The price and the move **on one line**, the price leading.
             //

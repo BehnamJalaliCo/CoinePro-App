@@ -46,6 +46,7 @@ import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.pageAccent
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
@@ -190,7 +191,7 @@ fun ToolsScreen(
 private fun ToolkitHeader(expanded: ToolId?, onQuickOpen: (ToolId) -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(stringResource(R.string.tools_eyebrow), color = CoineProColors.Gold, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         Text(stringResource(R.string.tools_headline), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
@@ -234,7 +235,7 @@ private fun MetricPill(value: String, label: String, accent: Color, modifier: Mo
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, CoineProColors.Border),
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(value, color = accent, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(label, color = CoineProColors.TextMuted, style = MaterialTheme.typography.labelSmall)
         }
@@ -251,7 +252,7 @@ private fun QuickChip(label: String, selected: Boolean, onClick: () -> Unit) {
     ) {
         Text(
             label,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             color = if (selected) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
@@ -263,7 +264,7 @@ private fun QuickChip(label: String, selected: Boolean, onClick: () -> Unit) {
 private fun SectionHeader(title: String, subtitle: String) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Text(subtitle, color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
@@ -339,7 +340,7 @@ private fun CalculatorCard(tool: ToolId, expanded: Boolean, onToggle: () -> Unit
 @Composable
 private fun FormulaStrip(formula: String) {
     Surface(color = CoineProColors.Surface, shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, CoineProColors.Border)) {
-        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(stringResource(R.string.tools_formula), color = CoineProColors.TextMuted, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
             FinancialText(formula, color = CoineProColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
         }
@@ -568,7 +569,7 @@ private fun IntegerField(label: String, value: String, onValueChange: (String) -
 
 @Composable
 private fun DirectionSelector(direction: TradeDirection, onChange: (TradeDirection) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(stringResource(R.string.tools_direction), color = CoineProColors.TextMuted, style = MaterialTheme.typography.labelSmall)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             DirectionPill(stringResource(R.string.tools_long), direction == TradeDirection.LONG, CoineProColors.Buy, Modifier.weight(1f)) { onChange(TradeDirection.LONG) }
@@ -587,7 +588,7 @@ private fun DirectionPill(label: String, selected: Boolean, accent: Color, modif
     ) {
         Text(
             label,
-            modifier = Modifier.padding(vertical = 11.dp),
+            modifier = Modifier.padding(vertical = 12.dp),
             color = if (selected) accent else CoineProColors.TextSecondary,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
@@ -600,10 +601,10 @@ private fun DirectionPill(label: String, selected: Boolean, accent: Color, modif
 private fun CalculationResultPanel(result: ToolCalculation<*>?, rows: (Any) -> List<Pair<String, String>>) {
     when (result) {
         null -> Surface(color = CoineProColors.Surface, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, CoineProColors.Border)) {
-            Text(stringResource(R.string.tools_enter_all), modifier = Modifier.padding(14.dp), color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.tools_enter_all), modifier = Modifier.padding(16.dp), color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
         }
         is ToolCalculation.Invalid -> Surface(color = CoineProColors.Sell.copy(alpha = 0.08f), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, CoineProColors.Sell.copy(alpha = 0.35f))) {
-            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(stringResource(result.fieldRes), color = CoineProColors.Sell, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 Text(stringResource(result.messageRes, stringResource(result.fieldRes)), color = CoineProColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
@@ -615,14 +616,14 @@ private fun CalculationResultPanel(result: ToolCalculation<*>?, rows: (Any) -> L
 @Composable
 private fun ResultRows(rows: List<Pair<String, String>>) {
     Surface(color = CoineProColors.Gold.copy(alpha = 0.08f), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, CoineProColors.Gold.copy(alpha = 0.34f))) {
-        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.tools_result), color = CoineProColors.Gold, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
             rows.forEachIndexed { index, row ->
                 if (index > 0) HorizontalDivider(color = CoineProColors.Border.copy(alpha = 0.7f))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text(row.first, modifier = Modifier.weight(1f), color = CoineProColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.width(10.dp))
-                    FinancialText(row.second, color = CoineProColors.TextPrimary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    FinancialText(row.second, color = CoineProColors.TextPrimary, style = CoineProTextStyles.TileFigure)
                 }
             }
         }
@@ -666,7 +667,7 @@ private fun OperationalTools(
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(stringResource(R.string.tools_connected), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Text(stringResource(R.string.tools_connected_body), color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
@@ -740,7 +741,7 @@ private fun OperationalCard(title: String, description: String, button: String, 
         border = BorderStroke(1.dp, CoineProColors.Border),
         shape = RoundedCornerShape(18.dp),
     ) {
-        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Text(description, color = CoineProColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             Button(onClick = onClick, modifier = Modifier.fillMaxWidth()) { Text(button) }

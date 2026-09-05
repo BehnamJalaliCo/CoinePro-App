@@ -201,7 +201,7 @@ private fun Header(symbol: String, state: ScriptEditorState) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
             "نما اسکریپت",

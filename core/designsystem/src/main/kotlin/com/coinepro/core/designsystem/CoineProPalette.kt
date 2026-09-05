@@ -152,7 +152,7 @@ val CoineProDarkPalette = CoineProPalette(
     // the threshold an OLED panel resolves at all, so the card had no edge and the whole ladder
     // depended on a two-level fill difference nobody could see.
     borderSubtle = Color(0x14FFFFFF),
-    border = Color(0x1EFFFFFF),
+    border = Color(0x1AFFFFFF),
     borderStrong = Color(0x2EFFFFFF),
     textPrimary = Color(0xFFF0F1F2),
     textSecondary = Color(0xFFB7BDC6),
@@ -190,7 +190,7 @@ val CoineProDarkPalette = CoineProPalette(
  * near-black measure under 2:1 on white. The analysis blue is darkened for the same reason.
  */
 val CoineProLightPalette = CoineProPalette(
-    stage = Color(0xFFFFFFFF),
+    stage = Color(0xFFF7F8FA),
     // Pulled off the surface it used to share a value with. A chart ground identical to a card is
     // a chart with no ground.
     terminal = Color(0xFFF1F3F7),
@@ -211,8 +211,8 @@ val CoineProLightPalette = CoineProPalette(
     // Every ink was re-measured against it rather than assumed. The ramp loses about 4% of its
     // contrast on the darker ground and the tightest of them, the ink gold, still reads 4.84:1
     // against a 4.5 bar. `SurfaceLadderTest` holds all of it.
-    surface = Color(0xFFF1F2F6),
-    surfaceElevated = Color(0xFFEBEEF3),
+    surface = Color(0xFFFFFFFF),
+    surfaceElevated = Color(0xFFF0F3FA),
     // White, because in a light theme the thing that is lifted is the thing that is brightest.
     surfaceRaised = Color(0xFFFFFFFF),
     surfaceOverlay = Color(0xFFE8EBEF),
@@ -222,7 +222,7 @@ val CoineProLightPalette = CoineProPalette(
     // see. Ten is where a card edge reads as drawn; the strong step goes to twenty percent so a
     // selected border is unmistakably a choice.
     borderSubtle = Color(0x1A0D121C),
-    border = Color(0x240D121C),
+    border = Color(0x140D121C),
     borderStrong = Color(0x330D121C),
     textPrimary = Color(0xFF111318),
     textSecondary = Color(0xFF4E5661),

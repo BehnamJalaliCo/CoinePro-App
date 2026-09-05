@@ -170,7 +170,7 @@ fun CoineProSkeletonRows(
                 }
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     // Two unequal bars, not one. A title and its subtitle are never the same
                     // length, and a placeholder built from identical blocks reads as a loading
@@ -180,7 +180,7 @@ fun CoineProSkeletonRows(
                 }
                 Column(
                     horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     CoineProSkeleton(modifier = Modifier.width(64.dp), height = 13.dp)
                     CoineProSkeleton(modifier = Modifier.width(44.dp), height = 10.dp)

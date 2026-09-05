@@ -251,7 +251,7 @@ private fun ColourOption(
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Row),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Box(Modifier.size(width = CANDLE_WIDTH, height = SWATCH).background(up))
             Box(Modifier.size(width = CANDLE_WIDTH, height = SWATCH).background(down))
         }

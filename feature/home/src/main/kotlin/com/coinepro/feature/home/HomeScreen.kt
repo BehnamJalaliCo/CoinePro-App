@@ -232,7 +232,7 @@ fun HomeScreen(
                 // Three pills whose only difference used to be a word. A reader choosing among
                 // them had to read all three every time; with the glyphs the choice is a
                 // recognition, and the one-word labels stop carrying the whole burden.
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     CoineProPrimaryButton(
                         text = stringResource(R.string.home_action_signal),
                         onClick = onGenerateSignal,
@@ -384,7 +384,7 @@ private fun BalanceBlock(
         // between the screen gutter and the cards' own content — three different edges down one
         // scroll, which is the kind of thing that reads as "unfinished" without being nameable.
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -436,7 +436,7 @@ private fun BalanceBlock(
                 CoineProSparkline(
                     values = portfolio.equity,
                     modifier = Modifier
-                        .padding(top = 2.dp, bottom = 2.dp)
+                        .padding(top = 4.dp, bottom = 4.dp)
                         .fillMaxWidth(0.62f)
                         .height(30.dp),
                     colour = if (portfolio.isUp) CoineProColors.Buy else CoineProColors.Sell,
@@ -488,7 +488,7 @@ private fun BalanceBlock(
                         haptics.select()
                         onOpenPortfolio()
                     }
-                    .padding(vertical = 3.dp),
+                    .padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -522,7 +522,7 @@ private fun SubscriptionCard(subscription: HomeSubscription) {
         CardLabel(stringResource(R.string.home_subscription_title))
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.Row),
-            horizontalArrangement = Arrangement.spacedBy(13.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -733,7 +733,7 @@ private fun AssistantCard(briefing: HomeBriefing) {
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             CoineProAgentOrb(size = 22.dp)
@@ -805,9 +805,9 @@ private fun AssistantCard(briefing: HomeBriefing) {
 
 @Composable
 private fun ConnectionRow(state: MarketDataState) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(

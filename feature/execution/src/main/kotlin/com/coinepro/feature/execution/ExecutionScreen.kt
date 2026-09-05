@@ -117,7 +117,7 @@ fun ExecutionScreen(
         item {
             Column(
                 modifier = Modifier.padding(horizontal = CoineProSpacing.Half),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
                     text = stringResource(R.string.execution_title),
@@ -362,7 +362,7 @@ fun ExecutionScreen(
 @Composable
 private fun Level(label: String, value: String?, colour: Color) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(label, style = MaterialTheme.typography.bodySmall, color = CoineProColors.TextMuted)

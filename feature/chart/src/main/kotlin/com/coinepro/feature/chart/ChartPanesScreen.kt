@@ -422,7 +422,7 @@ private fun ChartPane(
                     Modifier
                         .clip(CoineProShapes.small)
                         .clickable { symbolSheet = true }
-                        .padding(horizontal = CoineProSpacing.Half, vertical = 2.dp)
+                        .padding(horizontal = CoineProSpacing.Half, vertical = 4.dp)
                 } else {
                     Modifier
                 },
@@ -449,7 +449,7 @@ private fun ChartPane(
                             Modifier
                                 .clip(CoineProShapes.small)
                                 .clickable { intervalSheet = true }
-                                .padding(horizontal = CoineProSpacing.Half, vertical = 2.dp)
+                                .padding(horizontal = CoineProSpacing.Half, vertical = 4.dp)
                         } else {
                             Modifier
                         },
@@ -686,7 +686,7 @@ private fun PaneSyncRow(
                                 text = stringResource(field.noteRes),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = CoineProColors.TextMuted,
-                                modifier = Modifier.padding(top = 2.dp),
+                                modifier = Modifier.padding(top = 4.dp),
                             )
                         }
                         Switch(

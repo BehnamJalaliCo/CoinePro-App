@@ -428,7 +428,7 @@ private fun VenuePill() {
         modifier = Modifier
             .clip(CoineProPillShape)
             .background(CoineProColors.SurfaceElevated)
-            .padding(horizontal = CoineProSpacing.One, vertical = 3.dp),
+            .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
     )
 }
 
@@ -442,7 +442,7 @@ private fun PausedPill() {
         modifier = Modifier
             .clip(CoineProPillShape)
             .background(CoineProColors.SurfaceElevated)
-            .padding(horizontal = CoineProSpacing.One, vertical = 3.dp),
+            .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
     )
 }
 

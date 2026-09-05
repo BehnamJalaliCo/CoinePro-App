@@ -223,7 +223,7 @@ private fun QuoteLine(quote: PaperQuote?) {
         )
         return
     }
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = PaperFormat.price(quote.last),
             style = MaterialTheme.typography.titleMedium,

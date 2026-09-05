@@ -436,7 +436,7 @@ private fun Controls(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = CoineProSpacing.Two, vertical = 2.dp),
+            .padding(horizontal = CoineProSpacing.Two, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
@@ -507,7 +507,7 @@ private fun SortDot(sorted: Boolean, descending: Boolean, onClick: () -> Unit) {
                 haptics.select()
                 onClick()
             }
-            .padding(horizontal = CoineProSpacing.Half, vertical = 3.dp),
+            .padding(horizontal = CoineProSpacing.Half, vertical = 4.dp),
     )
 }
 
@@ -552,7 +552,7 @@ private fun Headings(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = CoineProSpacing.Two, vertical = 2.dp),
+            .padding(horizontal = CoineProSpacing.Two, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         // The last of the row's own steps — [headingLead] carries the ones before it. The two have
         // to add up to the same number or every heading sits beside its column instead of over it.
@@ -664,7 +664,7 @@ private fun ReorderHandle(
     ) {
         // Three rules rather than a glyph: there is no drag-handle drawable in the icon set, and
         // three bars is what a grip looks like in every list that has one.
-        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             repeat(3) {
                 Box(
                     modifier = Modifier

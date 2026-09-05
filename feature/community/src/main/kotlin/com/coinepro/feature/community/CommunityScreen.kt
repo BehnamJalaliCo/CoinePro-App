@@ -755,7 +755,7 @@ private fun Composer(
                         style = CoineProTextStyles.Eyebrow,
                         color = CoineProColors.Accent,
                         textAlign = TextAlign.Right,
-                        modifier = Modifier.clickable(onClick = onChangeName).padding(vertical = 2.dp),
+                        modifier = Modifier.clickable(onClick = onChangeName).padding(vertical = 4.dp),
                     )
                 }
                 CoineProPrimaryButton(

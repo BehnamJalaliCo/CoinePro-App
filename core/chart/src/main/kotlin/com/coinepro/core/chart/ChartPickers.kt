@@ -368,7 +368,7 @@ private data class PeriodControl(
 private fun PeriodStepper(control: PeriodControl, accent: Color) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         StepperButton(
             glyph = DesignR.drawable.icon_caret_left,

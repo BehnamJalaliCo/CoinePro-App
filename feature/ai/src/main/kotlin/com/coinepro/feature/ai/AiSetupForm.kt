@@ -78,7 +78,7 @@ internal fun AiChip(
             // tall and there are twenty of them on this screen — a wall of chips a reader scrolls
             // past to reach the action. The medium label at 6dp is 30dp, which is where every
             // reference app puts one.
-            modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             style = MaterialTheme.typography.labelMedium,
             color = if (selected) CoineProColors.pageAccentInk else CoineProColors.TextSecondary,
         )

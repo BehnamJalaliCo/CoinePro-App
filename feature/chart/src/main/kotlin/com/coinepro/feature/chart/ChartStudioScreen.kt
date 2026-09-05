@@ -1035,7 +1035,7 @@ private fun ActionRow(
                 text = if (enabled) body else (disabledNote ?: body),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextMuted,
-                modifier = Modifier.padding(top = 2.dp),
+                modifier = Modifier.padding(top = 4.dp),
             )
         }
         if (enabled) {

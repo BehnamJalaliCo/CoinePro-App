@@ -157,7 +157,7 @@ fun HeatmapDetailSheet(
 @Composable
 private fun Figure(label: String, value: String, ink: Color? = null) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(

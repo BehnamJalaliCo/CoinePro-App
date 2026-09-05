@@ -141,7 +141,7 @@ private fun AiSymbolRow(
             .background(
                 if (selected) CoineProColors.pageAccent.copy(alpha = 0.10f) else CoineProColors.Surface,
             )
-            .padding(horizontal = CoineProSpacing.One, vertical = 10.dp),
+            .padding(horizontal = CoineProSpacing.One, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         verticalAlignment = Alignment.CenterVertically,
     ) {

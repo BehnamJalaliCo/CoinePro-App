@@ -121,7 +121,7 @@ fun ConnectionsScreen(
         item {
             Column(
                 modifier = Modifier.padding(horizontal = CoineProSpacing.Half),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
                     text = stringResource(R.string.connections_title),
@@ -619,7 +619,7 @@ private fun VenueHeader(name: String, status: String, colour: Color) {
     ) {
         Text(name, style = MaterialTheme.typography.titleMedium, color = CoineProColors.TextPrimary)
         Row(
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(Modifier.size(6.dp).background(colour, CoineProPillShape))

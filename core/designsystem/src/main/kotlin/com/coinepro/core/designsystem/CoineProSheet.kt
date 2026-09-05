@@ -65,6 +65,9 @@ fun CoineProSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = CoineProColors.Surface,
+        // Forty per cent, not Material's thirty-two: the chart stays legible behind a sheet, and
+        // the reference app's sheets are measured at this depth.
+        scrimColor = Color.Black.copy(alpha = SHEET_SCRIM_ALPHA),
         dragHandle = null,
         modifier = modifier,
     ) {
@@ -106,7 +109,7 @@ fun CoineProSheetBody(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     // TradingView's sheet title is its largest text — 24 px bold on a phone. It
                     // was `titleMedium` here, one step above the rows under it, and the sheet
@@ -452,3 +455,5 @@ fun CoineProSheetEmpty(text: String, modifier: Modifier = Modifier) {
 /** Transparent, for a chip that is not selected. Named so the intent is not read as a mistake. */
 internal val UnselectedChip: Color = Color.Transparent
 
+/** How much of the chart a sheet hides. See `CoineProSheet`. */
+internal const val SHEET_SCRIM_ALPHA = 0.4f

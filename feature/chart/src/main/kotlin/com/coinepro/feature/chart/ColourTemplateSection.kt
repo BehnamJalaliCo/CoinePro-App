@@ -297,7 +297,7 @@ private fun ColourTemplateChip(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             listOf(template.up, template.down, template.background, template.text).forEach { value ->
                 Box(
                     modifier = Modifier
