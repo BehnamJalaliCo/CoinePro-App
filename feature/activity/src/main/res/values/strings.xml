@@ -35,7 +35,7 @@
     <string name="activity_executions_empty_body">سرور هیچ رکورد اجرایی برنگرداند.</string>
     <string name="activity_execution_refresh_failed">به‌روزرسانی اجرا ناموفق بود</string>
     <string name="activity_alerts_title">هشدارها</string>
-    <string name="activity_alerts_subtitle">هشدار قیمت و تنظیمات اعلان، کنترل‌های عملیاتیِ متکی به سرور می‌مانند.</string>
+    <string name="activity_alerts_subtitle">هشدارهای قیمت و تنظیمات اعلان روی سرور مدیریت می‌شوند.</string>
     <string name="activity_notifications_title">اعلان‌ها</string>
     <string name="activity_notifications_subtitle">رویدادهای سیگنال و حساب که از سرویس اعلان می‌رسند.</string>
     <string name="activity_notifications_truncated">تازه‌ترین اعلان‌ها نمایش داده شده‌اند؛ قدیمی‌ترها در این فهرست نیستند.</string>

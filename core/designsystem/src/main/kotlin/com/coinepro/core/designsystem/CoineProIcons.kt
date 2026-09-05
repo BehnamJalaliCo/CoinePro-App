@@ -7,7 +7,7 @@ import androidx.annotation.DrawableRes
  *
  * Phosphor Icons (MIT), converted from `design/ui-icons/phosphor-regular` by
  * `scripts/design/svg-to-vector.py`. Chosen rather than drawn here, and rather than lifted out of
- * another product, for three reasons that all point the same way: it is the family the Pro CHart
+ * another product, for three reasons that all point the same way: it is the family the Pro Chart
  * web app already runs on, so the two products look related; every glyph in it is built on one
  * grid with one stroke weight, which is exactly what a hand-assembled set fails to give you the
  * moment a fifth icon lands beside four others; and it is a thousand-odd icons rather than the

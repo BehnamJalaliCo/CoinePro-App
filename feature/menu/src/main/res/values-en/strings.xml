@@ -22,7 +22,7 @@
     <string name="menu_search_title">Search markets</string>
     <string name="menu_screener_title">Screener</string>
     <string name="menu_screener_body">Filter on price, volume, volatility and any indicator.</string>
-    <string name="menu_heatmap_title">Market heat map</string>
+    <string name="menu_heatmap_title">Market heatmap</string>
     <string name="menu_news_title">Market news</string>
     <string name="menu_calendar_title">Economic calendar</string>
 

@@ -21,7 +21,7 @@
     <string name="news_none_readable_hint">این قطعی نیست، اختلافِ قالب است. از صفحهٔ تشخیص خروجی بگیرید و بفرستید؛ نام فیلدهای سرور و قالبِ تاریخش در آن ثبت شده است.</string>
     <string name="news_partly_readable">%1$s خبر از %2$s خبری که سرور فرستاد خوانده شد.</string>
     <string name="news_timestamp_note">زمان انتشار از تایم‌استمپ ISO سرور نرمال‌سازی شده است.</string>
-    <string name="news_stale">کهنه</string>
+    <string name="news_stale">قدیمی</string>
     <string name="news_relevance_gold">طلا</string>
     <string name="news_relevance_silver">نقره</string>
     <string name="news_relevance_crypto">کریپتو</string>

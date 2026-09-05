@@ -1,5 +1,7 @@
 package com.coinepro.app
 
+import com.coinepro.core.common.BrandConfig
+
 internal sealed interface CoineProDeepLink {
     data class Signal(val signalId: Long) : CoineProDeepLink
     data object Activity : CoineProDeepLink
@@ -43,7 +45,7 @@ internal sealed interface CoineProDeepLink {
  */
 private val RESET_HOSTS = mapOf(
     "user.tradeyar.trade-future.ir" to "reset",
-    "coineprofx.com" to "reset-password",
+    BrandConfig.RESET_HOST to "reset-password",
 )
 
 /**

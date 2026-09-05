@@ -33,7 +33,7 @@
     <string name="activity_executions_empty_body">The server returned no execution records.</string>
     <string name="activity_execution_refresh_failed">Execution refresh failed</string>
     <string name="activity_alerts_title">Alerts</string>
-    <string name="activity_alerts_subtitle">Price alerts and push preferences stay source-backed operational controls.</string>
+    <string name="activity_alerts_subtitle">Price alerts and notification settings are managed on the server.</string>
     <string name="activity_notifications_title">Notifications</string>
     <string name="activity_notifications_subtitle">Signal and account events received from the notification service.</string>
     <string name="activity_notifications_truncated">Showing the most recent notifications; older ones are not in this list.</string>
@@ -90,4 +90,5 @@
     <string name="activity_metric_executions">executions</string>
     <string name="activity_sample_size">n=%1$s</string>
     <string name="activity_alerts_body">Create, mute and delete an alert on any symbol.</string>
+    <string name="activity_signals_loaded_partial">%1$s of %2$s</string>
 </resources>

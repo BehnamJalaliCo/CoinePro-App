@@ -9,7 +9,7 @@
     <string name="nav_explore">کاوش</string>
     <string name="nav_chart">چارت</string>
     <!-- One word each, at the shipping type scale: a two-word tab label wraps and grows the bar. -->
-    <string name="nav_watchlist">دیدبان</string>
+    <string name="nav_watchlist">دیده‌بان</string>
     <string name="nav_ideas">ایده‌ها</string>
     <string name="nav_menu">منو</string>
     <string name="nav_community">انجمن</string>

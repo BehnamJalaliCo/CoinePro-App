@@ -28,7 +28,7 @@
     <string name="home_market_empty">هنوز داده‌ای از بازار نرسیده است.</string>
     <string name="home_market_connecting">در حال اتصال به داده‌های بازار…</string>
     <string name="home_retry">تلاش دوباره</string>
-    <string name="home_quote_stale">کهنه</string>
+    <string name="home_quote_stale">قدیمی</string>
     <string name="home_value_missing">—</string>
 
     <string name="home_signals_title">سیگنال‌های باز</string>
@@ -40,8 +40,8 @@
     <string name="home_status_idle">جریان بازار بی‌کار</string>
     <string name="home_status_degraded">اتصال لحظه‌ای در حال بازیابی · قیمت‌ها هر چند ثانیه تازه می‌شوند</string>
     <string name="home_status_offline">داده‌های بازار آفلاین است</string>
-    <string name="home_status_cached">تصویر ذخیره‌شده · آفلاین</string>
-    <string name="home_status_cached_refreshing">تصویر ذخیره‌شده · در حال به‌روزرسانی</string>
+    <string name="home_status_cached">آخرین دادهٔ ذخیره‌شده · آفلاین</string>
+    <string name="home_status_cached_refreshing">آخرین دادهٔ ذخیره‌شده · در حال به‌روزرسانی</string>
 
     <string name="home_cache_stored">ذخیره‌شده در %1$s · مقادیر لحظه‌ای نیستند</string>
     <string name="home_cache_unknown">تصویر ذخیره‌شدهٔ بازار · زمان نامشخص</string>

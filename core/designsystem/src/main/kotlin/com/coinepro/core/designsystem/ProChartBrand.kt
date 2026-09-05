@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * The Pro CHart mark and wordmark.
+ * The Pro Chart mark and wordmark.
  *
  * ### One asset per shape, and the colour comes from the theme
  *
@@ -118,7 +118,7 @@ private fun Painter.artworkAspect(): Float {
  * any surface that must stay selectable. Prefer [ProChartWordmark] wherever an image will do.
  *
  * One colour and one weight. The capital H is the owner's, settled, and it is deliberate rather
- * than a typo to be helpfully corrected: the artwork reads «Pro CHart» and so does every string in
+ * than a typo to be helpfully corrected: the artwork reads «Pro Chart» and so does every string in
  * the app. The Persian name is «پرو چارت» and is written out, never transliterated from this one.
  *
  * `textDirection = Ltr` on the style below matters more than it looks: the name is a Latin proper
@@ -140,7 +140,7 @@ fun ProChartWordmarkText(
 }
 
 /** The brand name in Latin, in one place so a rename is one edit. */
-const val PRO_CHART = "Pro CHart"
+const val PRO_CHART = "Pro Chart"
 
 /**
  * The brand name in Persian, which is what almost every reader of this app calls it.

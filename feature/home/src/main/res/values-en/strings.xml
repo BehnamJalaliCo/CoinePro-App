@@ -28,7 +28,7 @@
     <string name="home_market_empty">No market data has arrived yet.</string>
     <string name="home_market_connecting">Connecting to market data…</string>
     <string name="home_retry">Retry</string>
-    <string name="home_quote_stale">STALE</string>
+    <string name="home_quote_stale">Stale</string>
     <string name="home_value_missing">—</string>
 
     <string name="home_signals_title">Open signals</string>
@@ -39,8 +39,8 @@
     <string name="home_status_idle">Market stream idle</string>
     <string name="home_status_degraded">Realtime reconnecting · prices refresh every few seconds</string>
     <string name="home_status_offline">Market data offline</string>
-    <string name="home_status_cached">Cached snapshot · offline</string>
-    <string name="home_status_cached_refreshing">Cached snapshot · network refresh in progress</string>
+    <string name="home_status_cached">Last saved data · offline</string>
+    <string name="home_status_cached_refreshing">Last saved data · refreshing</string>
 
     <string name="home_cache_stored">Stored %1$s · values are not live</string>
     <string name="home_cache_unknown">Stored market snapshot · age unknown</string>

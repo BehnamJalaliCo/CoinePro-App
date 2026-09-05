@@ -62,6 +62,17 @@ class PublicMarketIntel(
      */
     private val calendarRelayBaseUrl: String? = null,
     /**
+     * Whether Investing.com, Cointelegraph and the ForexFactory calendar file may be read from
+     * the device.
+     *
+     * They are the fallback for a section our own hosts answered empty, and nothing else — see
+     * [news] and [calendar]. Off, the fallback is simply absent: an empty section stays empty and
+     * says so, rather than the phone reaching a third party's host directly. `docs/backend/FEEDS.md`
+     * is the contract the backend has to meet for that to be the right setting, and the app reads
+     * the switch from `BuildConfig.DIRECT_THIRD_PARTY_FEEDS`.
+     */
+    private val directFeeds: Boolean = true,
+    /**
      * CoinePro-FX's host, for its public academy routes — the newsroom and the week's calendar.
      *
      * Given to both platforms. The forex reader gets their own platform's Persian stories from it
@@ -83,7 +94,7 @@ class PublicMarketIntel(
      */
     suspend fun news(): List<MarketNewsItem> {
         ownRoute()?.takeIf { it.isNotEmpty() }?.let { return it }
-        return wires()
+        return if (directFeeds) wires() else emptyList()
     }
 
     private suspend fun ownRoute(): List<MarketNewsItem>? = when (platform) {
@@ -193,6 +204,7 @@ class PublicMarketIntel(
                 .takeIf { it.isNotEmpty() }
                 ?.let { return it }
         }
+        if (!directFeeds) return emptyList()
         return PublicCalendarFeed.parse(client.get(PublicCalendarFeed.URL), moment)
     }
 

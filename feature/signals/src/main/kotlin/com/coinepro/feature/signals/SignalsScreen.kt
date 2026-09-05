@@ -88,7 +88,7 @@ import com.coinepro.feature.membership.MembershipJourneyPanel
  * A reader without membership used to get one card here that named the Telegram bot and the web
  * panel and stopped. Somebody who installed this app from Google Play has never heard of either,
  * does not know which of two channels they would be joining, and — since §۶ of the published terms
- * says Pro CHart sells nothing — could not have bought what that card offered them anyway. It was
+ * says Pro Chart sells nothing — could not have bought what that card offered them anyway. It was
  * a dead end, and a dead end is where an app gets uninstalled.
  *
  * So the refusal now renders [MembershipJourneyPanel]: the closed-signal track record first, then

@@ -24,9 +24,9 @@ the file is split at that heading and each half is shipped as its own asset, whi
 the site builder does with it. `values-en/strings.xml` names the English asset, so Android's own
 resource qualification picks the right half and the app needs no locale code of its own.
 
-The terms exist only in Persian. Both `values/` and `values-en/` therefore name the same asset, and
-the English strings carry a line telling an English reader why the document they are looking at is
-Persian.
+The terms ship in both languages as well: `TERMS.md` is the Persian text and governs, `TERMS_EN.md`
+is its English translation and says so in its own opening lines. `values-en/strings.xml` names the
+English asset, the same way it names the English half of the privacy policy.
 """
 
 from __future__ import annotations
@@ -71,9 +71,11 @@ def split_privacy(text: str) -> tuple[str, str]:
 
 def documents() -> dict[Path, str]:
     terms = (SOURCE / "TERMS.md").read_text(encoding="utf-8")
+    terms_en = (SOURCE / "TERMS_EN.md").read_text(encoding="utf-8")
     persian, english = split_privacy((SOURCE / "PRIVACY_POLICY.md").read_text(encoding="utf-8"))
     return {
         TARGET / "terms.md": BANNER_FA + terms,
+        TARGET / "terms-en.md": BANNER_FA + terms_en,
         TARGET / "privacy.md": BANNER_FA + persian,
         TARGET / "privacy-en.md": BANNER_FA + english,
     }

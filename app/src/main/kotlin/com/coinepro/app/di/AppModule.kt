@@ -1173,6 +1173,7 @@ object AppModule {
             // The calendar relay is on TradeYar's host and the forex reader needs it more than
             // anybody: the file it relays is the forex calendar.
             calendarRelayBaseUrl = BuildConfig.TRADEYAR_API_BASE_URL,
+            directFeeds = BuildConfig.DIRECT_THIRD_PARTY_FEEDS,
             // The platform's own newsroom and its weekly calendar, both public. Measured live on
             // 2026-09-02 with twenty stories and fifty-one events — the routes this app had written
             // off as empty a month earlier.
@@ -1197,6 +1198,7 @@ object AppModule {
             // saw stories and a signed-in one saw nothing.
             platformBaseUrl = BuildConfig.TRADEYAR_API_BASE_URL,
             calendarRelayBaseUrl = BuildConfig.TRADEYAR_API_BASE_URL,
+            directFeeds = BuildConfig.DIRECT_THIRD_PARTY_FEEDS,
             // The macro calendar for the crypto reader too: a rate decision moves every USDT
             // pair, and the forex host's public route is the one that answers from Iran.
             forexAcademyBaseUrl = BuildConfig.API_BASE_URL,

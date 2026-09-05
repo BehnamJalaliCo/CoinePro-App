@@ -1,5 +1,6 @@
 package com.coinepro.app.notifications
 
+import com.coinepro.core.common.BrandConfig
 import android.Manifest
 import android.app.PendingIntent
 import android.content.Intent
@@ -40,13 +41,13 @@ class CoineProFirebaseMessagingService : FirebaseMessagingService() {
         val settings = runBlocking { settingsStore.settings.first() }
         if (!settings.shouldShow(category, System.currentTimeMillis(), minuteOfDay())) return
 
-        val title = data["_title"]?.takeIf { it.isNotBlank() } ?: "CoinePro"
+        val title = data["_title"]?.takeIf { it.isNotBlank() } ?: BrandConfig.DISPLAY_NAME
         val body = data["_body"].orEmpty()
         val signalId = positiveSignalId(data["signal_id"])
         val destination = if (signalId != null) {
-            Uri.parse("coinepro://signal/$signalId")
+            Uri.parse("${BrandConfig.SCHEME_PREFIX}signal/$signalId")
         } else {
-            Uri.parse("coinepro://activity")
+            Uri.parse("${BrandConfig.SCHEME_PREFIX}activity")
         }
         val intent = Intent(this, MainActivity::class.java).apply {
             action = Intent.ACTION_VIEW

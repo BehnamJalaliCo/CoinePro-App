@@ -1,5 +1,7 @@
 package com.coinepro.app.alerts
 
+import com.coinepro.core.common.BrandConfig
+
 /**
  * Where a fired alert's notification takes the reader.
  *
@@ -47,7 +49,7 @@ package com.coinepro.app.alerts
 object AlertDeepLink {
 
     /** The custom scheme. Unverified, which is why nothing carrying a credential uses it. */
-    const val SCHEME = "coinepro"
+    const val SCHEME = BrandConfig.SCHEME
 
     /** The host that means "a market's chart". Declared in the manifest; do not rename it. */
     const val CHART_HOST = "market"

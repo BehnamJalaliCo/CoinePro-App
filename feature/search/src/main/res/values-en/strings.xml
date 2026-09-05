@@ -92,7 +92,7 @@
     <string name="surface_backtest_body">Write a strategy and run it over the symbol\u2019s own history.</string>
     <string name="surface_screener_title">Screener</string>
     <string name="surface_screener_body">Filter on price, volume, volatility and any indicator.</string>
-    <string name="surface_heatmap_title">Market heat map</string>
+    <string name="surface_heatmap_title">Market heatmap</string>
     <string name="surface_heatmap_body">Tile size from market value, colour from the move.</string>
     <string name="surface_tools_title">Trader toolkit</string>
     <string name="surface_tools_body">Risk, position size, pips, compounding \u2014 local and exact.</string>

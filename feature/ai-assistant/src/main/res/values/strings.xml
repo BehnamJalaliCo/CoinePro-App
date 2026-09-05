@@ -26,7 +26,7 @@
     <string name="assistant_kind_risk">ریسک</string>
     <string name="assistant_kind_tool">ابزار</string>
     <string name="assistant_fresh">تازه</string>
-    <string name="assistant_stale">کهنه</string>
+    <string name="assistant_stale">قدیمی</string>
     <string name="assistant_freshness_unknown">تازگی نامشخص</string>
     <string name="assistant_unavailable_title">دستیار در این پلتفرم نیست</string>
     <string name="assistant_unavailable_body">این پلتفرم دستیار گفتگویی ندارد. برای تحلیل، از بخش سیگنال هوش مصنوعی استفاده کنید.</string>

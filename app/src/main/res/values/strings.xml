@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Default language: Persian. app_name is the brand and is not translated. -->
 <resources>
-    <string name="app_name" translatable="false">Pro CHart</string>
+    <string name="app_name" translatable="false">Pro Chart</string>
 
     <string name="action_back">بازگشت</string>
     <string name="action_safety">ایمنی</string>
@@ -15,7 +15,7 @@
     <string name="screen_delete_account">حذف حساب کاربری</string>
     <string name="screen_alerts">هشدارهای قیمت</string>
     <string name="screen_journal">ژورنال معاملاتی</string>
-    <string name="screen_script">نما اسکریپت</string>
+    <string name="screen_script">نمااسکریپت</string>
     <string name="screen_paper_trade">معاملهٔ آزمایشی</string>
     <string name="screen_ai_vision">تحلیل چارت</string>
     <string name="screen_ai">ستاپ‌ساز هوشمند</string>
@@ -48,8 +48,8 @@
     <string name="safety_open_settings">باز کردن تنظیمات اعلان</string>
     <string name="safety_risk_title">ریسک معامله و هوش مصنوعی</string>
     <string name="safety_risk_body">معامله و سرمایه‌گذاری ریسکِ زیان دارد. سیگنال، تحلیل و خروجی هوش مصنوعی تضمینِ نتیجه نیستند. اجرا به ارائه‌دهندهٔ بیرونی، دسترسی‌های حساب، شرایط بازار و تأیید سرور بستگی دارد. نتایج گذشته یا نمایش‌داده‌شده تضمینی برای آینده نیست. هر سفارش را پیش از تأیید بازبینی کن.</string>
-    <string name="safety_provider_title">حقیقتِ ارائه‌دهنده</string>
-    <string name="safety_provider_body">اتصالی که روی دستگاه تنظیم شده با اتصال تأییدشدهٔ زنده یکی نیست. پرو چارت کارهای وابسته به ارائه‌دهنده را فقط با شواهد صریحِ سرور فعال می‌کند؛ حالت‌های ناموجود، کهنه یا ناموفق در معرض دید می‌مانند.</string>
+    <string name="safety_provider_title">وضعیت واقعی کارگزار و صرافی</string>
+    <string name="safety_provider_body">اتصالی که روی گوشی ذخیره شده با اتصال زندهٔ تأییدشده یکی نیست. پرو چارت کارهایی را که به کارگزار یا صرافی وابسته‌اند فقط وقتی فعال می‌کند که سرور اتصال را تأیید کرده باشد؛ اتصال ناموجود، قدیمی یا ناموفق همیشه دیده می‌شود.</string>
     <string name="safety_privacy_title">حریم خصوصی</string>
     <string name="safety_privacy_body">این آپ هیچ SDK تحلیلی، تبلیغاتی یا ردیابی ندارد و موقعیت مکانی، دفترچه تلفن و شناسهٔ تبلیغاتی را نمی‌خواند. توکن ورودت با کلیدی که از دستگاه بیرون نمی‌آید رمز می‌شود و روی همین دستگاه می‌ماند؛ خروج از حساب، هم توکن نشست و هم توکن تازه‌سازی را پاک می‌کند. نام و کد ملی فقط اگر خودت فرم احراز هویت را پر کنی فرستاده می‌شوند، و تصویر چارت فقط وقتی خودت بفرستی. یک شناسهٔ تصادفیِ نصب همراه هر درخواست می‌رود تا محدودکنندهٔ نرخ سرور دو نصب پشت یک IP مشترک را از هم تشخیص دهد؛ به حساب یا دستگاه تو وصل نیست و با پاک‌کردن دادهٔ آپ عوض می‌شود.</string>
     <string name="safety_support_title">پشتیبانی و بازخورد</string>

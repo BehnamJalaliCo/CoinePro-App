@@ -37,7 +37,7 @@
     <string name="tools_pnl_group">P&amp;L and growth</string>
     <string name="tools_pnl_group_body">Deterministic local maths with explicit assumptions.</string>
     <string name="tools_eyebrow">Trader toolkit</string>
-    <string name="tools_headline">Decision maths, without execution risk.</string>
+    <string name="tools_headline">Do the math before you trade.</string>
     <string name="tools_note">Local calculators with deterministic formulas. No order routing, no broker state and no invented market data.</string>
     <string name="tools_local">Local</string>
     <string name="tools_quick_open">Quick open</string>
@@ -48,8 +48,8 @@
     <string name="tools_assumption">Assumption · %1$s</string>
     <string name="tools_reset">Reset inputs</string>
     <string name="tools_enter_all">Enter every input. Results update locally as values change.</string>
-    <string name="tools_connected">Connected surfaces</string>
-    <string name="tools_connected_body">Source-backed surfaces stay separate from local calculators.</string>
+    <string name="tools_connected">Online tools</string>
+    <string name="tools_connected_body">These run on live data from the server; the calculators run on the phone.</string>
     <string name="tools_news_title">Market news</string>
     <string name="tools_news_body">Structured news with source time, impact and sentiment.</string>
     <string name="tools_news_open">Open news</string>
@@ -183,4 +183,5 @@
     <string name="tools_paper_title">Paper trading</string>
     <string name="tools_paper_body">Live prices, no money. For the days before an account is funded.</string>
     <string name="tools_paper_open">Start</string>
+    <string name="tools_f_orders_none">None</string>
 </resources>

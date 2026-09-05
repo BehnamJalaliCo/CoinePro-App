@@ -15,6 +15,66 @@ it is for.
 
 ---
 
+## [4.33.0] — 2026-09-05 — The audit's twelve, read against the source
+
+A static audit of the 4.32.1 APK arrived with a seven-phase plan. Phase 0 — an inventory written
+from the repository rather than from the obfuscated binary — is in `docs/audit/PHASE0_INVENTORY.md`,
+and it records where the audit was right, where it was wrong (there *is* a navigation library; the
+logos *are* drawn; the Latin digits *are* tabular; there are seventy-four haptic call sites, not
+two), and which of its asks need something only the owner holds. This release is the audit's
+twelve "if you only have an hour" fixes, minus the one the owner declined (Persian stays the
+default locale), each pinned by a gate so it stays fixed.
+
+**One name.** `Pro CHart` — a capital H nobody chose — was the app's own `app_name` and appeared in
+twenty-nine strings; the privacy policy said `Pro-Chart`; a chart string said «پروچارت». The owner
+decided: **Pro Chart / پرو چارت**, with `CoinePro` staying as the company and the repository.
+`core/common/BrandConfig.kt` is where the name, the URI scheme, the recovery host and the legal base
+URL now live, and the consistency gate fails on any of the retired spellings.
+
+**Words a reader uses.** «شیءها» → «ترسیم‌ها», «واگرد / ازنو» → «برگرداندن / انجام دوباره», «بازپخش
+نوار» → «ریپلی», «دیدبان» → «دیده‌بان», «نما اسکریپت» → «نمااسکریپت», «نقشهٔ حرارتی» → «هیت‌مپ»,
+«کهنه» → «قدیمی»; *Studies* → *Indicators*, *Bar length* → *Timeframe*, *STALE* → *Stale*,
+*Analysis hub* / «بیشتر» → *Analysis* / «تحلیل». Seven strings that talked like an engineer —
+"the backend does not serve the events document", "the canvas does not yet report the crosshair",
+"source-backed surfaces", "provider truth", "a server-side setting" — say what the reader sees
+instead. Every retired word is now a gate failure.
+
+**Every string in both languages.** Seven of the app's own keys had no English and fell back to
+Persian: *Like*, *Reply*, *Best answer*, *%1$s of %2$s* (twice), *None*, *Clear*. The terminal's
+"disabled" message was the academy's, copied; it names the terminal now.
+
+**Terms of use in English.** `docs/legal/TERMS_EN.md`, a faithful translation that says in its own
+opening lines that the Persian text governs, shipped as an asset, named by the English locale and
+published at `/terms/en/`. The English privacy policy no longer stamps itself "App version 1.0".
+
+**A store build that is only the store build.** `BuildConfig.ADMIN_PANEL` is false in release, so R8
+drops the diagnostics destination and the resource shrinker drops the hundred and seventy-five
+`admin_*` strings behind it; the release ABI filter drops x86 and x86_64, which no phone has;
+`content.json.orig` — 847 KB packaged by accident for nine releases — is gone, with a gate on
+`src/main/assets` so nothing like it returns. `scripts/quality/check-release-surface.py` reads the
+built APK in the release workflow and fails on any of the three.
+
+**Help that is one entry per idea.** Four indicators had two help entries each, differing only in
+the case of the id: the web terminal's export, and a richer one written for this app that nothing
+pointed at. The indicators point at their own now, the export copies are gone, the old ids alias
+to the new (a saved layout or a link still opens the right sheet), and twenty-seven English fields
+that were blank — the *how*, *example* and *tips* of nine indicators — are written. A schema test
+now fails on any field that exists in one language only, and on any two ids that differ only in
+case.
+
+**Third-party feeds behind a switch.** Investing.com, Cointelegraph and the ForexFactory file are
+read from the phone only as the fallback for a section our own hosts answered empty, and
+`BuildConfig.DIRECT_THIRD_PARTY_FEEDS` is the one place that turns the fallback off. It stays on
+until the backend serves the two routes written down in `docs/backend/FEEDS.md`; off today would be
+an empty news screen for every reader, which is not a fix.
+
+**Digits stay tabular, by measurement.** IRANYekanX's Latin digits all advance 562 units (572 Bold)
+— a column of prices already lines up, and the audit's companion font would have changed the look of
+every number for nothing. The consistency gate now reads both TTFs and fails if a swapped or
+re-subset file makes that untrue.
+
+---
+
 ## [4.32.2] — 2026-09-05 — The wheel moves with the finger, and a guest has a price
 
 **A ticker cut off by its own card.** «کلمه T می‌افتد زیر چهارچوب.» The symbol picker over the plot

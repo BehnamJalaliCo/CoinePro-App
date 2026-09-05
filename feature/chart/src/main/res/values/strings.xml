@@ -17,9 +17,9 @@
     <string name="chart_band_draw">ترسیم</string>
     <string name="chart_band_studies">اندیکاتور</string>
     <string name="chart_band_type">نوع</string>
-    <string name="chart_band_objects">شیءها</string>
+    <string name="chart_band_objects">ترسیم‌ها</string>
     <string name="chart_band_fullscreen">تمام‌صفحه</string>
-    <string name="chart_band_more">بیشتر</string>
+    <string name="chart_band_more">تحلیل</string>
 
     <!-- Everything a reader reaches for about once a month, behind the band's «بیشتر». -->
     <string name="chart_more_title">مرکز تحلیل</string>
@@ -27,10 +27,10 @@
     <string name="chart_more_span">بازهٔ نمایش</string>
     <string name="chart_more_span_note">چقدر تاریخچه جلوی چشم باشد. هر بازه، طول کندل مناسب خودش را هم انتخاب می‌کند.</string>
     <string name="chart_more_goto">رفتن به تاریخ</string>
-    <string name="chart_more_undo">واگرد</string>
+    <string name="chart_more_undo">برگرداندن</string>
     <string name="chart_more_undo_note">آخرین تغییرِ اندیکاتور، بازه، نوعِ چارت یا ترسیم</string>
-    <string name="chart_more_redo">ازنو</string>
-    <string name="chart_more_redo_note">آنچه واگرد پس گرفت</string>
+    <string name="chart_more_redo">انجام دوباره</string>
+    <string name="chart_more_redo_note">آنچه برگرداندن پس گرفت</string>
     <string name="chart_more_compare">مقایسه با نماد دیگر</string>
     <string name="chart_more_compare_note">یک نماد دیده‌بان را روی همین نمودار بیندازید.</string>
     <string name="chart_more_scale">مقیاس قیمت</string>
@@ -44,7 +44,7 @@
     <string name="chart_more_share_note">فقط خود نمودار، بدون بقیهٔ صفحه.</string>
     <string name="chart_more_studio">استودیوی چارت</string>
     <string name="chart_more_ask_ai">تحلیل با هوش مصنوعی</string>
-    <string name="chart_more_studio_note">اندیکاتور، ابزار، بازپخش و اسکریپت.</string>
+    <string name="chart_more_studio_note">اندیکاتور، ابزار، ریپلی و اسکریپت.</string>
 
     <!-- The three readings, and the figure each one comes from. -->
     <string name="chart_reading_title">این بازار چه می‌کند</string>
@@ -60,20 +60,20 @@
     <string name="panes_single">یک نمودار</string>
     <string name="panes_count_label">تعداد قاب</string>
     <string name="panes_no_chart">این نماد در این پنجره چارت ندارد.</string>
-    <string name="panes_interval_title">بازهٔ زمانی</string>
+    <string name="panes_interval_title">تایم‌فریم</string>
     <string name="panes_symbol_title">نماد این قاب</string>
     <string name="panes_sync_title">هم‌گام‌سازی</string>
     <string name="panes_sync_none">هیچ‌کدام</string>
     <string name="panes_sync_open">باز کردن</string>
     <string name="panes_sync_close">بستن</string>
-    <string name="panes_sync_unavailable">بوم نمودار هنوز موقعیت نشانگر و پنجرهٔ دید را بیرون نمی‌دهد، پس این هم‌گام‌سازی فعلاً در دسترس نیست.</string>
+    <string name="panes_sync_unavailable">هم‌گام‌سازی نشانگر و محدودهٔ دید بین قاب‌ها هنوز آماده نیست.</string>
 
     <!-- The four ties. Each one runs from the first pane outward; with eight panes «the other
          one» is not a thing that exists. -->
     <string name="pane_sync_symbol">نماد</string>
     <string name="pane_sync_symbol_note">انتخاب نماد در قاب اول، همان نماد را در بقیه باز می‌کند.</string>
-    <string name="pane_sync_interval">بازهٔ زمانی</string>
-    <string name="pane_sync_interval_note">تغییر بازه در یک قاب، بازهٔ بقیه را هم عوض می‌کند.</string>
+    <string name="pane_sync_interval">تایم‌فریم</string>
+    <string name="pane_sync_interval_note">تغییر تایم‌فریم در یک قاب، تایم‌فریم بقیه را هم عوض می‌کند.</string>
     <string name="pane_sync_crosshair">نشانگر</string>
     <string name="pane_sync_crosshair_note">نشانگر روی یک نمودار، همان لحظه را روی بقیهٔ نمودارها هم نشان می‌دهد.</string>
     <string name="pane_sync_time_range">محدودهٔ زمانی</string>
@@ -172,8 +172,8 @@
     <string name="chart_partners_exchange">صرافی ارز دیجیتال — حساب اسپات و فیوچرز</string>
     <string name="chart_partners_open_account">افتتاح حساب</string>
     <string name="chart_partners_disclaimer">این‌ها معرفی هستند، نه توصیه. حساب و پول شما نزد همان مجموعه است و شرایط، کارمزد و ریسکش را باید از خودشان بخوانید. لینک‌ها در مرورگر خودتان باز می‌شوند.</string>
-    <string name="chart_partners_here">باز کردن در پروچارت</string>
-    <string name="chart_hub_replay">بازپخش نوار</string>
+    <string name="chart_partners_here">باز کردن در پرو چارت</string>
+    <string name="chart_hub_replay">ریپلی</string>
     <string name="chart_watermark_expand">نمایش نام برنامه</string>
     <string name="chart_watermark_collapse">بستن نام برنامه</string>
 </resources>

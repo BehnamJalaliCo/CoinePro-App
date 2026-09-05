@@ -26,7 +26,7 @@
     <string name="menu_search_title">جست‌وجوی بازار</string>
     <string name="menu_screener_title">اسکرینر</string>
     <string name="menu_screener_body">فیلتر روی قیمت، حجم، نوسان و هر اندیکاتور.</string>
-    <string name="menu_heatmap_title">نقشهٔ حرارتی بازار</string>
+    <string name="menu_heatmap_title">هیت‌مپ بازار</string>
     <string name="menu_news_title">اخبار بازار</string>
     <string name="menu_calendar_title">تقویم اقتصادی</string>
 

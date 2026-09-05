@@ -2637,7 +2637,11 @@ private fun MainShell(
                     onOpenPortfolio = { navController.navigate(PORTFOLIO_ROUTE) },
                 )
             }
-            composable(ADMIN_ROUTE) {
+            // A compile-time constant, not a runtime check: R8 folds `BuildConfig.ADMIN_PANEL` and
+            // drops this whole destination from the store build, and the resource shrinker then
+            // drops the hundred and seventy-five `admin_*` strings nothing references any more.
+            // `scripts/quality/check-release-surface.py` reads the built APK to prove it.
+            if (BuildConfig.ADMIN_PANEL) composable(ADMIN_ROUTE) {
                 val adminState by adminController.state.collectAsStateWithLifecycle()
                 AdminScreen(
                     state = adminState,
@@ -3546,7 +3550,14 @@ private fun MainShell(
                     onOpenNotificationSettings = onOpenNotificationSettings,
                     onSendFeedback = onSendFeedback,
                     versionLabel = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-                    onOpenDiagnostics = { navController.navigate(ADMIN_ROUTE) },
+                    // Null on the store build: the five taps on the version then do nothing, which
+                    // is the honest behaviour for a door that leads to a room the build does not
+                    // contain.
+                    onOpenDiagnostics = if (BuildConfig.ADMIN_PANEL) {
+                        { navController.navigate(ADMIN_ROUTE) }
+                    } else {
+                        null
+                    },
                     lastCrash = lastCrash,
                     onCopyCrash = { trace ->
                         val clipboard = context.getSystemService(ClipboardManager::class.java)

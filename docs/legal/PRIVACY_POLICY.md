@@ -157,18 +157,18 @@
 ---
 ---
 
-# Privacy Policy — Pro-Chart
+# Privacy Policy — Pro Chart
 
-**Last reviewed:** 2026-08-26 · **App version:** 1.0
+**Last reviewed:** 2026-08-26
 
 Every claim below was written from this repository's code rather than from a template. If the app's
 behaviour changes, this file changes with it.
 
 ## 1) What this app is
 
-Pro-Chart is a **market analysis and signals** app talking to two independent services — CoinePro-FX
+Pro Chart is a **market analysis and signals** app talking to two independent services — CoinePro-FX
 (forex and metals) and TradeYar (crypto). They are separate systems with separate user tables; an
-account on one is not an account on the other, and the app keeps everything per platform. Pro-Chart
+account on one is not an account on the other, and the app keeps everything per platform. Pro Chart
 is **not a broker**, does not hold your money, and does not give financial advice.
 
 ## 2) What is collected
@@ -214,7 +214,7 @@ public sources — `nfs.faireconomy.media` for the weekly economic calendar, and
 and `cointelegraph.com` RSS feeds for news. Those requests carry no token, no identifier and nothing
 about you. As with any web request the host can see your device's IP address; nothing else reaches
 them. A UID check asks the exchange one question — is this account linked to
-Pro-Chart, and is it funded — and gets back a yes/no and a balance state. It grants no access to your
+Pro Chart, and is it funded — and gets back a yes/no and a balance state. It grants no access to your
 exchange account.
 
 ## 5) Retention and deletion
@@ -226,7 +226,7 @@ Signing out clears both tokens. Uninstalling or clearing app data removes everyt
 | Route | Where |
 | --- | --- |
 | In the app | Settings → Delete account |
-| Outside the app | [The Pro-Chart website](https://behnamjalalico.github.io/CoinePro-App/delete-account/) |
+| Outside the app | [The Pro Chart website](https://behnamjalalico.github.io/CoinePro-App/delete-account/) |
 
 **Deleted:** the account, your e-mail and name, any identity details you entered, **your academy
 account and lesson progress where it was created with the same e-mail**, your exchange UID, exchange
@@ -238,7 +238,7 @@ months. They are no longer attributable to you.
 
 **How long:** the deletion is recorded immediately and is gone from backups within 30 days.
 
-**What it does not delete:** your account at the exchange. That account is yours; Pro-Chart neither
+**What it does not delete:** your account at the exchange. That account is yours; Pro Chart neither
 created it nor can close it. Ask the exchange.
 
 ## 6) Children

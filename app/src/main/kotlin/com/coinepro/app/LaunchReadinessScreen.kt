@@ -63,7 +63,8 @@ fun LaunchReadinessScreen(
     onOpenNotificationSettings: () -> Unit,
     onSendFeedback: () -> Unit,
     versionLabel: String = "",
-    onOpenDiagnostics: () -> Unit = {},
+    /** The way into the diagnostics panel, or null on a build that has none. */
+    onOpenDiagnostics: (() -> Unit)? = null,
     /**
      * The last crash, if the app has had one since it was cleared.
      *
@@ -194,7 +195,7 @@ fun LaunchReadinessScreen(
                         lastTapAt = now
                         if (taps >= TAPS_TO_OPEN) {
                             taps = 0
-                            onOpenDiagnostics()
+                            onOpenDiagnostics?.invoke()
                         }
                     },
                 style = MaterialTheme.typography.bodySmall,

@@ -170,6 +170,9 @@ jobs:
           # reflection. This once shipped a build where every sign-in posted single-letter keys, so
           # the dex is checked rather than the keep rules.
           ANDROID_HOME="$ANDROID_SDK_ROOT" python3 scripts/quality/check-release-wire-fields.py
+          # And that the store build is only the store build: no admin panel strings, no emulator
+          # ABIs, no `.orig` files. Read off the APK, not off the build script.
+          ANDROID_HOME="$ANDROID_SDK_ROOT" python3 scripts/quality/check-release-surface.py
 
       - name: Remove the keystore
         if: always()

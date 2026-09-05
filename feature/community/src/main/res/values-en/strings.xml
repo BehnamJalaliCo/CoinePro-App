@@ -73,4 +73,7 @@
     <string name="community_leaderboard_empty">Nobody has scored yet.</string>
     <string name="community_leaderboard_points">%1$s points</string>
     <string name="community_leaderboard_posts">%1$s posts</string>
+    <string name="community_like">Like</string>
+    <string name="community_reply">Reply</string>
+    <string name="community_best_badge">Best answer</string>
 </resources>

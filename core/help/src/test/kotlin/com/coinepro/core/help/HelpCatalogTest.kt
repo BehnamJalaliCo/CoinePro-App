@@ -31,7 +31,12 @@ class HelpCatalogTest {
         // (`table`) is the scripting primitive rather than the drawing tool, which is why the tool
         // is keyed `tabledraw`. Then one for the chart page itself — `chart`, behind the analysis
         // hub's «Help Center» — which is neither a tool nor an indicator.
-        assertEquals(177 + 9 + 55 + 1, catalog.size)
+        //
+        // Then four fewer: `chandeKroll`, `massIndex`, `netVolume` and `volumeProfile` were export
+        // entries for indicators this app had written better entries for under its own ids, and
+        // the pair of ids differed only in case. The export copies are gone and the old ids alias
+        // to the entries that replaced them — see `HelpCatalog.ALIASES` and the test below.
+        assertEquals(177 - 4 + 9 + 55 + 1, catalog.size)
     }
 
     @Test
@@ -79,6 +84,46 @@ class HelpCatalogTest {
         // give the gallery a tile that draws nothing — the exact failure the test above guards.
         val illustrated = catalog.ids.count { catalog[it]!!.hasImages }
         assertEquals(83, illustrated)
+    }
+
+    @Test
+    fun `no two ids differ only in case`() {
+        // `volumeProfile` beside `volumeprofile_ind` read as a typo and was worse than one: two
+        // real entries, and the indicator pointing at the one written for a different product.
+        val collisions = catalog.ids.groupBy { it.lowercase() }.filterValues { it.size > 1 }
+        assertTrue("ids that collide case-insensitively: $collisions", collisions.isEmpty())
+    }
+
+    @Test
+    fun `an id the export used still opens the entry that replaced it`() {
+        for ((old, current) in HelpCatalog.ALIASES) {
+            assertNull("the export id '$old' should no longer be an entry of its own", catalog.ids.firstOrNull { it == old })
+            assertEquals("'$old' should resolve to '$current'", catalog[current], catalog[old])
+            assertNotNull(catalog[old])
+        }
+    }
+
+    @Test
+    fun `every field an entry carries is written in both languages`() {
+        // The parser falls back from a missing language to the other one, which is right for a
+        // reader and wrong for a gate: it hides exactly the gap this test exists to find. So the
+        // raw JSON is read here, not the parsed catalogue.
+        val root = com.google.gson.JsonParser.parseString(assetFile("content.json").readText()).asJsonObject
+        val gaps = mutableListOf<String>()
+        for ((id, value) in root.entrySet()) {
+            val entry = value.asJsonObject
+            for (field in listOf("title", "useCase", "what", "example", "pitfall")) {
+                val node = entry.get(field)?.takeIf { it.isJsonObject }?.asJsonObject ?: continue
+                if (node.get("fa")?.asString.isNullOrBlank() || node.get("en")?.asString.isNullOrBlank()) gaps += "$id.$field"
+            }
+            for (field in listOf("how", "tips")) {
+                val node = entry.get(field)?.takeIf { it.isJsonObject }?.asJsonObject ?: continue
+                val fa = node.getAsJsonArray("fa")?.size() ?: 0
+                val en = node.getAsJsonArray("en")?.size() ?: 0
+                if ((fa == 0) != (en == 0)) gaps += "$id.$field"
+            }
+        }
+        assertTrue("one-language fields: $gaps", gaps.isEmpty())
     }
 
     @Test

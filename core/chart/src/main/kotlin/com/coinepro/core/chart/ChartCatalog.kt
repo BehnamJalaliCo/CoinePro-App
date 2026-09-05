@@ -322,9 +322,9 @@ object ChartCatalog {
         IndicatorOption("vwma", "میانگین متحرک وزن‌دار حجم (VWMA)", "vwma", IndicatorPane.PRICE, 0xFF10B981, DesignR.drawable.tv_chart_volcandles),
         IndicatorOption("tema", "میانگین نمایی سه‌گانه (TEMA)", "tema", IndicatorPane.PRICE, 0xFF2DD4BF, DesignR.drawable.tv_chart_line),
         IndicatorOption("dema", "میانگین نمایی دوگانه (DEMA)", "dema", IndicatorPane.PRICE, 0xFF38BDF8, DesignR.drawable.tv_chart_line),
-        IndicatorOption("chandekroll", "حد ضرر چاند-کرول", "chandeKroll", IndicatorPane.PRICE, 0xFFB08BC7, DesignR.drawable.tv_tool_longshort),
+        IndicatorOption("chandekroll", "حد ضرر چاند-کرول", "chandekroll", IndicatorPane.PRICE, 0xFFB08BC7, DesignR.drawable.tv_tool_longshort),
         IndicatorOption("volstop", "حد ضرر نوسانی", "volstop", IndicatorPane.PRICE, 0xFFF97316, DesignR.drawable.tv_tool_trend),
-        IndicatorOption("volumeprofile_ind", "پروفایل حجم", "volumeProfile", IndicatorPane.PRICE, 0xFF94A3B8, DesignR.drawable.tv_tool_volumeprofile),
+        IndicatorOption("volumeprofile_ind", "پروفایل حجم", "volumeprofile_ind", IndicatorPane.PRICE, 0xFF94A3B8, DesignR.drawable.tv_tool_volumeprofile),
 
         // Momentum and trend strength, on their own scale.
         IndicatorOption("stochrsi", "استوکاستیک RSI", "stochrsi", IndicatorPane.SEPARATE, 0xFF4FB3A5, DesignR.drawable.tv_tool_sine),
@@ -342,7 +342,7 @@ object ChartCatalog {
         IndicatorOption("coppock", "منحنی کاپاک (Coppock)", "coppock", IndicatorPane.SEPARATE, 0xFF34D399, DesignR.drawable.tv_tool_curve),
         IndicatorOption("rvi", "شاخص سرزندگی نسبی (RVI)", "rvi", IndicatorPane.SEPARATE, 0xFF22D3EE, DesignR.drawable.tv_tool_sine),
         IndicatorOption("woodiescci", "سی‌سی‌آی وودیز (Woodies CCI)", "woodiescci", IndicatorPane.SEPARATE, 0xFFA855F7, DesignR.drawable.tv_tool_sine),
-        IndicatorOption("massindex", "شاخص جرم (Mass Index)", "massIndex", IndicatorPane.SEPARATE, 0xFF7FA3C7, DesignR.drawable.tv_ruler),
+        IndicatorOption("massindex", "شاخص جرم (Mass Index)", "massindex", IndicatorPane.SEPARATE, 0xFF7FA3C7, DesignR.drawable.tv_ruler),
         IndicatorOption("ao", "اسیلاتور شگفت‌انگیز (AO)", "ao", IndicatorPane.SEPARATE, 0xFFD8A848, DesignR.drawable.tv_chart_columns),
         IndicatorOption("correlation", "ضریب همبستگی", "correlation", IndicatorPane.SEPARATE, 0xFF8E9BAE, DesignR.drawable.tv_tool_sync),
 
@@ -351,7 +351,7 @@ object ChartCatalog {
         IndicatorOption("mfi", "شاخص جریان نقدینگی", "mfi", IndicatorPane.SEPARATE, 0xFF0EA5E9, DesignR.drawable.tv_chart_volcandles),
         IndicatorOption("cmf", "جریان نقدینگی چایکین", "cmf", IndicatorPane.SEPARATE, 0xFFFB923C, DesignR.drawable.tv_chart_volcandles),
         IndicatorOption("pvo", "اسیلاتور درصدی حجم (PVO)", "pvo", IndicatorPane.SEPARATE, 0xFFFB7185, DesignR.drawable.tv_chart_columns),
-        IndicatorOption("netvolume", "حجم خالص", "netVolume", IndicatorPane.SEPARATE, 0xFFF0B90B, DesignR.drawable.tv_chart_columns),
+        IndicatorOption("netvolume", "حجم خالص", "netvolume", IndicatorPane.SEPARATE, 0xFFF0B90B, DesignR.drawable.tv_chart_columns),
 
         // ── Structure: levels and marks rather than a value per bar ─────────────────────────
         IndicatorOption("pivots", "پیووت (۵ روش)", null, IndicatorPane.STRUCTURE, 0xFF94A3B8, DesignR.drawable.tv_tool_hline),

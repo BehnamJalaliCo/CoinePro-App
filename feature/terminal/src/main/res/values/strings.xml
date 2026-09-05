@@ -3,7 +3,7 @@
     <string name="terminal_title">ترمینال حرفه‌ای</string>
     <string name="terminal_error_not_configured">آدرس ترمینال در این نسخه تنظیم نشده است.</string>
     <string name="terminal_error_no_token">ورود به ترمینال انجام نشد.</string>
-    <string name="terminal_error_disabled">آکادمی روی این سرور فعلاً بسته است.</string>
+    <string name="terminal_error_disabled">ترمینال روی این سرور فعلاً غیرفعال است.</string>
     <string name="terminal_error_load">صفحهٔ ترمینال باز نشد.</string>
     <string name="terminal_retry">دوباره</string>
     <string name="terminal_back">بازگشت</string>

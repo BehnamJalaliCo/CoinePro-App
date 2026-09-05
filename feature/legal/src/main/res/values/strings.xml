@@ -11,10 +11,9 @@
       written by scripts/release/sync-legal-documents.py from docs/legal/, which is the source of
       truth for both these and the published website.
     -->
-    <!-- Persian only, so it is the same file in every locale and is not a translatable string. -->
-    <string name="legal_asset_terms" translatable="false">legal/terms.md</string>
-    <!-- Overridden in values-en, so this one is deliberately translatable: the "translation" is the
-         name of the English file, not English prose. -->
+    <!-- Both overridden in values-en, so they are deliberately translatable: the "translation" is
+         the name of the English file, not English prose. -->
+    <string name="legal_asset_terms">legal/terms.md</string>
     <string name="legal_asset_privacy">legal/privacy.md</string>
 
     <string name="legal_title_terms">شرایط استفاده</string>

@@ -298,8 +298,158 @@ def check_staging_validation() -> None:
     require("does not expose `:app:testStagingUnitTest`" in phase17, "Phase 17 must explicitly document the absent staging unit-test task")
 
 
+# ── brand, assets and figures ──────────────────────────────────────────────────────────────────
+#
+# Three invariants a static audit of 4.32.1 found broken, each pinned here so it stays fixed.
+
+# The product is «Pro Chart» / «پرو چارت» — see core/common BrandConfig. Every other spelling the
+# app has used is listed, and any of them in a string resource or a document is a failure. `CoinePro`
+# is the company and the repository, which is a different thing, and is not on this list.
+# «کوین‌پرو اف‌ایکس» is the forex *platform*, CoinePro-FX, and is not the app; it is not listed.
+FORBIDDEN_BRAND_SPELLINGS = ("Pro CHart", "Pro-Chart", "پروچارت", "ProChart ")
+
+# Words a reader never uses for the thing they are looking at. The glossary in docs/audit names the
+# replacement for each; a new occurrence in a user-facing string is a regression.
+FORBIDDEN_UI_WORDS = {
+    "values/strings.xml": ("شیءها", "واگرد", "ازنو", "بازپخش نوار", "دیدبان<", "نما اسکریپت", "نقشهٔ حرارتی"),
+    "values-en/strings.xml": (">Studies<", ">Bar length<", "Connected surfaces", "Provider truth", ">STALE<", "server-side setting", "this build is pointed"),
+}
+
+STRAY_ASSET_SUFFIXES = (".orig", ".bak", ".rej", ".tmp")
+
+
+def string_files() -> list[Path]:
+    return [
+        path for path in ROOT.glob("*/src/main/res/values*/strings.xml")
+    ] + [path for path in ROOT.glob("*/*/src/main/res/values*/strings.xml")]
+
+
+def check_brand_spelling() -> None:
+    offenders: list[str] = []
+    documents = [
+        path
+        for path in list(ROOT.glob("docs/legal/*.md")) + list(ROOT.glob("feature/legal/src/main/assets/legal/*.md"))
+        # The working note beside the documents names the old source tree by its old name.
+        if path.name != "README.md"
+    ]
+    for path in string_files() + documents:
+        text = path.read_text(encoding="utf-8")
+        for spelling in FORBIDDEN_BRAND_SPELLINGS:
+            if spelling in text:
+                offenders.append(f"{path.relative_to(ROOT)}: {spelling!r}")
+    require(not offenders, "brand spelt a way BrandConfig does not allow:\n" + "\n".join(offenders))
+
+
+def check_ui_vocabulary() -> None:
+    offenders: list[str] = []
+    for path in string_files():
+        # The admin panel is internal-only and is allowed its engineering vocabulary.
+        if "feature/admin/" in str(path):
+            continue
+        text = path.read_text(encoding="utf-8")
+        for suffix, words in FORBIDDEN_UI_WORDS.items():
+            if not str(path).endswith(suffix):
+                continue
+            for word in words:
+                if word in text:
+                    offenders.append(f"{path.relative_to(ROOT)}: {word!r}")
+    require(not offenders, "a word the glossary retired is back in a user-facing string:\n" + "\n".join(offenders))
+
+
+def check_assets_clean() -> None:
+    stray = [
+        str(path.relative_to(ROOT))
+        for path in ROOT.glob("*/*/src/main/assets/**/*")
+        if path.is_file() and path.suffix.lower() in STRAY_ASSET_SUFFIXES
+    ]
+    require(not stray, f"editor droppings under src/main/assets would ship in the APK: {stray}")
+
+
+def _ttf_digit_advances(path: Path) -> dict[str, int]:
+    """Advance widths of U+0030..U+0039, read from the font's own tables.
+
+    A deliberately small TrueType reader — `cmap` format 4 and 12, `hhea`, `hmtx` — so the gate
+    has no dependency on fontTools being installed where CI runs.
+    """
+    import struct
+
+    data = path.read_bytes()
+    count = struct.unpack(">H", data[4:6])[0]
+    tables = {}
+    for index in range(count):
+        tag, _, offset, length = struct.unpack(">4sIII", data[12 + index * 16: 28 + index * 16])
+        tables[tag.decode("latin-1")] = (offset, length)
+    hhea = tables["hhea"][0]
+    metrics = struct.unpack(">H", data[hhea + 34: hhea + 36])[0]
+    hmtx = tables["hmtx"][0]
+    cmap = tables["cmap"][0]
+    sub_count = struct.unpack(">H", data[cmap + 2: cmap + 4])[0]
+    glyph_of: dict[int, int] = {}
+    for index in range(sub_count):
+        _, _, sub_offset = struct.unpack(">HHI", data[cmap + 4 + index * 8: cmap + 12 + index * 8])
+        sub = cmap + sub_offset
+        fmt = struct.unpack(">H", data[sub: sub + 2])[0]
+        if fmt == 4:
+            seg_x2 = struct.unpack(">H", data[sub + 6: sub + 8])[0]
+            segs = seg_x2 // 2
+            ends = struct.unpack(f">{segs}H", data[sub + 14: sub + 14 + seg_x2])
+            starts_at = sub + 16 + seg_x2
+            starts = struct.unpack(f">{segs}H", data[starts_at: starts_at + seg_x2])
+            deltas = struct.unpack(f">{segs}h", data[starts_at + seg_x2: starts_at + 2 * seg_x2])
+            ranges_at = starts_at + 2 * seg_x2
+            ranges = struct.unpack(f">{segs}H", data[ranges_at: ranges_at + seg_x2])
+            for code in range(0x30, 0x3A):
+                for seg in range(segs):
+                    if starts[seg] <= code <= ends[seg]:
+                        if ranges[seg] == 0:
+                            glyph_of[code] = (code + deltas[seg]) & 0xFFFF
+                        else:
+                            at = ranges_at + seg * 2 + ranges[seg] + (code - starts[seg]) * 2
+                            glyph = struct.unpack(">H", data[at: at + 2])[0]
+                            glyph_of[code] = (glyph + deltas[seg]) & 0xFFFF if glyph else 0
+                        break
+        elif fmt == 12 and not glyph_of:
+            groups = struct.unpack(">I", data[sub + 12: sub + 16])[0]
+            for group in range(groups):
+                start, end, first = struct.unpack(">III", data[sub + 16 + group * 12: sub + 28 + group * 12])
+                for code in range(0x30, 0x3A):
+                    if start <= code <= end:
+                        glyph_of[code] = first + (code - start)
+        if glyph_of:
+            break
+    advances = {}
+    for code, glyph in glyph_of.items():
+        index = min(glyph, metrics - 1)
+        advances[chr(code)] = struct.unpack(">H", data[hmtx + index * 4: hmtx + index * 4 + 2])[0]
+    return advances
+
+
+def check_tabular_digits() -> None:
+    """Every Latin digit in the app's typeface advances the same width.
+
+    A column of prices only reads as a column if every digit is the same width, and the standing
+    rule that market figures are Latin digits rests on this: IRANYekanX's Latin digits are
+    monospaced by design (562 units Regular, 572 Bold), its Persian digits are not (۱ at 238 against
+    ۳ at 655), and there is no feature tag that changes either. This reads the fonts so a swapped or
+    re-subset file cannot quietly make every price wobble.
+    """
+    for name in ("iranyekanx_regular.ttf", "iranyekanx_bold.ttf"):
+        path = ROOT / "core/designsystem/src/main/res/font" / name
+        require(path.exists(), f"{name} is missing")
+        advances = _ttf_digit_advances(path)
+        require(len(advances) == 10, f"{name}: could not read all ten Latin digits ({sorted(advances)})")
+        require(
+            len(set(advances.values())) == 1,
+            f"{name}: Latin digits are no longer tabular: {advances}",
+        )
+
+
 def main() -> None:
     check_module_map()
+    check_brand_spelling()
+    check_ui_vocabulary()
+    check_assets_clean()
+    check_tabular_digits()
     check_every_screen_is_rendered()
     check_bottom_navigation()
     check_learned_surfaces()

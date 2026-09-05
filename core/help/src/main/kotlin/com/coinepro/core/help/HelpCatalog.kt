@@ -31,12 +31,30 @@ class HelpCatalog private constructor(private val entries: Map<String, HelpEntry
      * Null is an ordinary answer, not a failure: a tool the app adds before the help is written has
      * no entry, and the right response is to hide its «؟» rather than to open an empty sheet.
      */
-    operator fun get(id: String): HelpEntry? = entries[id]
+    operator fun get(id: String): HelpEntry? = entries[id] ?: ALIASES[id]?.let(entries::get)
 
     fun imagePath(image: HelpImage): String = "$IMAGE_DIRECTORY/${image.file}"
 
     companion object {
         const val ASSET_PATH = "help/content.json"
+
+        /**
+         * Old ids that resolve to the entry that replaced them.
+         *
+         * Four indicators had two entries each: one exported from the web terminal under a
+         * camel-case id, and one written for this app under the indicator's own id — with a
+         * pitfall, an example on a market this app quotes, and steps that name this app's own
+         * picker. The indicators pointed at the export and the better entry was dead content, and
+         * the two ids differed only in case, which is the kind of pair that reads as a typo until
+         * a saved layout or a link names the wrong one. The export entries are gone; anything that
+         * still says their name lands here.
+         */
+        val ALIASES: Map<String, String> = mapOf(
+            "chandeKroll" to "chandekroll",
+            "massIndex" to "massindex",
+            "netVolume" to "netvolume",
+            "volumeProfile" to "volumeprofile_ind",
+        )
         const val IMAGE_DIRECTORY = "help/images"
 
         /** Read and parse the packaged catalogue. Call from a background dispatcher. */

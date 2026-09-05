@@ -1,5 +1,6 @@
 package com.coinepro.app.widget
 
+import com.coinepro.core.common.BrandConfig
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -231,7 +232,7 @@ object WidgetRenderer {
             // everything *except* their extras, so rows carrying only a different extra would all
             // resolve to the same pending intent — the classic widget bug where every row opens
             // the first market.
-            .setData(Uri.parse("coinepro://market/${Uri.encode(symbol)}"))
+            .setData(Uri.parse("${BrandConfig.SCHEME_PREFIX}market/${Uri.encode(symbol)}"))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return PendingIntent.getActivity(
             context,

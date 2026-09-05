@@ -93,7 +93,7 @@
     <string name="surface_backtest_body">استراتژی را بنویس و روی گذشتهٔ همان نماد اجرا کن.</string>
     <string name="surface_screener_title">اسکرینر</string>
     <string name="surface_screener_body">فیلتر روی قیمت، حجم، نوسان و هر اندیکاتور.</string>
-    <string name="surface_heatmap_title">نقشهٔ حرارتی بازار</string>
+    <string name="surface_heatmap_title">هیت‌مپ بازار</string>
     <string name="surface_heatmap_body">اندازهٔ هر خانه از ارزش بازار، رنگش از تغییر قیمت.</string>
     <string name="surface_tools_title">جعبه‌ابزار تریدر</string>
     <string name="surface_tools_body">ریسک، حجم پوزیشن، پیپ، سود مرکب — محلی و قطعی.</string>

@@ -14,11 +14,11 @@
     <string name="chart_interval_other">Other</string>
 
     <string name="chart_band_draw">Draw</string>
-    <string name="chart_band_studies">Studies</string>
+    <string name="chart_band_studies">Indicators</string>
     <string name="chart_band_type">Type</string>
     <string name="chart_band_objects">Objects</string>
     <string name="chart_band_fullscreen">Full screen</string>
-    <string name="chart_band_more">Analysis hub</string>
+    <string name="chart_band_more">Analysis</string>
 
     <string name="chart_more_title">Analysis hub</string>
     <string name="chart_more_subtitle">Span, date, comparison, axis and layouts</string>
@@ -42,7 +42,7 @@
     <string name="chart_more_share_note">The chart alone, without the rest of the page.</string>
     <string name="chart_more_studio">Chart studio</string>
     <string name="chart_more_ask_ai">Analyse with AI</string>
-    <string name="chart_more_studio_note">Studies, tools, replay and scripts.</string>
+    <string name="chart_more_studio_note">Indicators, tools, replay and scripts.</string>
 
     <string name="chart_reading_title">What this market is doing</string>
     <string name="chart_reading_strength">Trend strength</string>
@@ -55,18 +55,18 @@
     <string name="panes_single">One chart</string>
     <string name="panes_count_label">Panes</string>
     <string name="panes_no_chart">This symbol has no chart at this bar length.</string>
-    <string name="panes_interval_title">Bar length</string>
+    <string name="panes_interval_title">Timeframe</string>
     <string name="panes_symbol_title">This pane\'s symbol</string>
     <string name="panes_sync_title">Sync</string>
     <string name="panes_sync_none">Nothing</string>
     <string name="panes_sync_open">Open</string>
     <string name="panes_sync_close">Close</string>
-    <string name="panes_sync_unavailable">The chart canvas does not yet report the crosshair or the visible window, so this tie is not available.</string>
+    <string name="panes_sync_unavailable">Syncing the crosshair and the visible range between panes is not ready yet.</string>
 
     <string name="pane_sync_symbol">Symbol</string>
     <string name="pane_sync_symbol_note">Choosing a symbol in the first pane opens it in all the others.</string>
-    <string name="pane_sync_interval">Bar length</string>
-    <string name="pane_sync_interval_note">Changing the bar length in one pane changes it in the rest.</string>
+    <string name="pane_sync_interval">Timeframe</string>
+    <string name="pane_sync_interval_note">Changing the timeframe in one pane changes it in the rest.</string>
     <string name="pane_sync_crosshair">Crosshair</string>
     <string name="pane_sync_crosshair_note">The crosshair on one chart marks the same moment on the others.</string>
     <string name="pane_sync_time_range">Time range</string>

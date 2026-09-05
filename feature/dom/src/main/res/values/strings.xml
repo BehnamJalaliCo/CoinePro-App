@@ -24,7 +24,7 @@
     <string name="dom_unavailable_feed">این فید عمق بازار منتشر نمی‌کند.</string>
     <string name="dom_unavailable_feed_hint">کارگزارِ متاتریدر ۵ سطح دوم را منتشر نکرده است. تا وقتی منتشر نشود، دفتر سفارشی برای این بازار وجود ندارد.</string>
     <string name="dom_unavailable_endpoint">دفتر سفارش این بازار هنوز سرو نمی‌شود.</string>
-    <string name="dom_unavailable_endpoint_hint">سروری که این نسخه به آن وصل است قدیمی‌تر از مسیر دفتر سفارش است. با به‌روزرسانی سرور، این صفحه بدون تغییر در اپ کار می‌کند.</string>
+    <string name="dom_unavailable_endpoint_hint">سرور هنوز دفتر سفارش را ارائه نمی‌کند. با به‌روزرسانی سرور، این صفحه بدون تغییر در اپ کار می‌کند.</string>
     <string name="dom_unavailable_symbol">این بازار روی این پلتفرم سرو نمی‌شود.</string>
     <string name="dom_unavailable_symbol_hint">نمادی که خواسته شد بیرون از فهرست بازارهای این پلتفرم است. تلاش دوباره جواب نمی‌دهد؛ از فهرست بازارها یک نماد دیگر باز کن.</string>
     <string name="dom_unavailable_delisted">این بازار از صرافی حذف شده است.</string>
@@ -42,7 +42,7 @@
     <string name="dom_outage_exchange">صرافی در این لحظه پاسخ نمی‌دهد.</string>
     <string name="dom_outage_exchange_hint">اتصال تو و سرور هر دو سالم‌اند؛ صرافی است که در دسترس نیست. کمی بعد دوباره بگیر.</string>
     <string name="dom_outage_relay">سرور هنوز برای بازپخش دفتر آماده نیست.</string>
-    <string name="dom_outage_relay_hint">این یک تنظیم سمت سرور است و از سمت تو کاری ندارد. کمی بعد دوباره بگیر.</string>
+    <string name="dom_outage_relay_hint">مشکل از سمت سرور است و کاری از دست شما برنمی‌آید. کمی بعد دوباره امتحان کنید.</string>
     <string name="dom_retry">تلاش دوباره</string>
 
     <!-- A successful call whose answer is an empty queue. Not a failure and not a closed market. -->

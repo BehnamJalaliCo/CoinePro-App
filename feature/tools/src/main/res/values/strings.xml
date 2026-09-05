@@ -38,7 +38,7 @@
     <string name="tools_pnl_group">سود و رشد</string>
     <string name="tools_pnl_group_body">ریاضیِ قطعیِ محلی با فرض‌های صریح.</string>
     <string name="tools_eyebrow">جعبه‌ابزار تریدر</string>
-    <string name="tools_headline">ریاضیِ تصمیم، بدون ریسک اجرا.</string>
+    <string name="tools_headline">حساب‌وکتاب قبل از معامله.</string>
     <string name="tools_note">ماشین‌حساب‌های محلی با فرمول قطعی. بدون ارسال سفارش، بدون وضعیت کارگزار و بدون دادهٔ بازارِ ساختگی.</string>
     <string name="tools_local">محلی</string>
     <string name="tools_quick_open">دسترسی سریع</string>
@@ -49,15 +49,15 @@
     <string name="tools_assumption">فرض · %1$s</string>
     <string name="tools_reset">پاک‌کردن ورودی‌ها</string>
     <string name="tools_enter_all">همهٔ ورودی‌ها را وارد کن. نتیجه به‌صورت محلی و همزمان با تغییر مقادیر به‌روز می‌شود.</string>
-    <string name="tools_connected">ابزارهای متصل</string>
-    <string name="tools_connected_body">سطح‌های متکی به سرور از ماشین‌حساب‌های محلی جدا می‌مانند.</string>
+    <string name="tools_connected">ابزارهای آنلاین</string>
+    <string name="tools_connected_body">این ابزارها با دادهٔ زندهٔ سرور کار می‌کنند؛ ماشین‌حساب‌ها روی خودِ گوشی.</string>
     <string name="tools_news_title">اخبار بازار</string>
     <string name="tools_news_body">خبرِ ساختاریافته با زمان منبع، تأثیر و جهت.</string>
     <string name="tools_news_open">باز کردن اخبار</string>
     <string name="tools_calendar_title">تقویم اقتصادی</string>
     <string name="tools_calendar_body">واقعی، پیش‌بینی و قبلی — فقط وقتی منبع بدهد.</string>
     <string name="tools_calendar_open">باز کردن تقویم</string>
-    <string name="tools_heatmap_title">نقشهٔ حرارتی بازار</string>
+    <string name="tools_heatmap_title">هیت‌مپ بازار</string>
     <string name="tools_heatmap_body">اندازهٔ هر خانه از ارزش بازار، رنگش از تغییر قیمت.</string>
     <string name="tools_heatmap_open">باز کردن نقشه</string>
     <string name="tools_screener_title">اسکرینر</string>
@@ -179,7 +179,7 @@
     <string name="tools_journal_title">ژورنال معاملاتی</string>
     <string name="tools_journal_body">چه دیدی، چه حسی داشتی، دفعهٔ بعد چه می‌کنی. روی همین گوشی می‌ماند و جایی فرستاده نمی‌شود.</string>
     <string name="tools_journal_open">باز کردن ژورنال</string>
-    <string name="tools_script_title">نما اسکریپت</string>
+    <string name="tools_script_title">نمااسکریپت</string>
     <string name="tools_script_body">اندیکاتور خودتان را بنویسید، ذخیره کنید و روی نمودار ببینید. ده اسکریپت آماده و یک دورهٔ کوتاه هم همراهش هست.</string>
     <string name="tools_script_open">نوشتن</string>
     <string name="tools_paper_title">معاملهٔ آزمایشی</string>

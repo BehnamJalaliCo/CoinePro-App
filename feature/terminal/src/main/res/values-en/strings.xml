@@ -3,7 +3,7 @@
     <string name="terminal_title">Pro terminal</string>
     <string name="terminal_error_not_configured">No terminal address is set in this build.</string>
     <string name="terminal_error_no_token">Signing in to the terminal failed.</string>
-    <string name="terminal_error_disabled">The academy is closed on this server for now.</string>
+    <string name="terminal_error_disabled">The terminal is switched off on this server for now.</string>
     <string name="terminal_error_load">The terminal page could not be opened.</string>
     <string name="terminal_retry">Retry</string>
     <string name="terminal_back">Back</string>

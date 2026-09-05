@@ -232,6 +232,7 @@ PAGES = [
 ]
 INDEX = ROOT / "docs/site/index.md"
 PRIVACY = ROOT / "docs/legal/PRIVACY_POLICY.md"
+TERMS_EN = ROOT / "docs/legal/TERMS_EN.md"
 
 # The privacy policy carries a Persian text and an English one in a single file. On a page they are
 # two documents: an English paragraph inside an RTL column has its punctuation on the wrong side and
@@ -273,9 +274,16 @@ def build() -> dict[Path, str]:
         "/CoinePro-App/privacy/", lang="en",
     )
     for slug, title, source in PAGES:
-        files[OUT / slug / "index.html"] = page(
-            title, render(source.read_text(encoding="utf-8")), f"/CoinePro-App/{slug}/"
-        )
+        body = render(source.read_text(encoding="utf-8"))
+        if slug == "terms":
+            body += '\n<hr>\n<p><a href="/CoinePro-App/terms/en/">Read these terms in English</a></p>'
+        files[OUT / slug / "index.html"] = page(title, body, f"/CoinePro-App/{slug}/")
+    terms_en = TERMS_EN.read_text(encoding="utf-8")
+    files[OUT / "terms/en/index.html"] = page(
+        terms_en.splitlines()[0].lstrip("# ").strip(),
+        render(terms_en) + '\n<hr>\n<p><a href="/CoinePro-App/terms/">خواندن این شرایط به فارسی</a></p>',
+        "/CoinePro-App/terms/", lang="en",
+    )
     # Without this GitHub runs Jekyll over the output and silently drops anything it dislikes.
     files[OUT / ".nojekyll"] = ""
     return files

@@ -211,6 +211,19 @@ android {
         versionName = configuredVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        // Whether the app may read Investing.com, Cointelegraph and the ForexFactory calendar file
+        // from the device itself, as the fallback for a section the backend answered empty.
+        //
+        // A product decision, held in one place so it can be flipped in one place. The honest
+        // answer today is *yes*: `docs/backend/FEEDS.md` names the routes the backend would have
+        // to serve for this to be false, and until it serves them a `false` here is an empty news
+        // screen for every reader — see `PublicMarketIntel.directFeeds` for what turns off.
+        buildConfigField(
+            "boolean",
+            "DIRECT_THIRD_PARTY_FEEDS",
+            (signingProperty("COINEPRO_DIRECT_THIRD_PARTY_FEEDS") ?: "true").toBoolean().toString(),
+        )
+
         // The admin panel's credential. Only a PBKDF2-HMAC-SHA256 derivation travels into the
         // build; the password itself is stored nowhere. `signingProperty` reads a Gradle property
         // first and `local.properties` second, which is the same untracked path the release
@@ -307,6 +320,7 @@ val expectedSigners = (releaseSignerFingerprints() + extraExpectedSigners.split(
 
     buildTypes {
         debug {
+            buildConfigField("boolean", "ADMIN_PANEL", "true")
             buildConfigField("String", "BUILD_ENVIRONMENT", escapedBuildConfig("debug"))
             buildConfigField("String", "API_BASE_URL", escapedBuildConfig(debugApiBaseUrl))
             buildConfigField("String", "TRADEYAR_API_BASE_URL", escapedBuildConfig(debugTradeYarBaseUrl))
@@ -322,6 +336,14 @@ val expectedSigners = (releaseSignerFingerprints() + extraExpectedSigners.split(
             isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
+            // **The store build ships no admin panel.** `BuildConfig.ADMIN_PANEL` is a compile-time
+            // constant, so R8 removes the route, the screen and — through resource shrinking —
+            // every `admin_*` string behind it; `scripts/quality/check-release-surface.py` reads
+            // the built APK and fails if any of them survived. Debug, staging and benchmark keep it.
+            buildConfigField("boolean", "ADMIN_PANEL", "false")
+            // Phones only. x86 and x86_64 existed in the APK for emulators, which is what the
+            // debug and benchmark variants are for; a store build carried two ABIs no phone has.
+            ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
             if (releaseSigningConfigured) {
                 signingConfig = signingConfigs.getByName("release")
             }
@@ -353,6 +375,7 @@ val expectedSigners = (releaseSignerFingerprints() + extraExpectedSigners.split(
             } else {
                 signingConfigs.getByName("debug")
             }
+            buildConfigField("boolean", "ADMIN_PANEL", "true")
             buildConfigField("String", "BUILD_ENVIRONMENT", escapedBuildConfig("staging"))
             buildConfigField("String", "API_BASE_URL", escapedBuildConfig(stagingApiBaseUrl))
             buildConfigField("String", "TRADEYAR_API_BASE_URL", escapedBuildConfig(stagingTradeYarBaseUrl))
@@ -372,6 +395,10 @@ val expectedSigners = (releaseSignerFingerprints() + extraExpectedSigners.split(
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
             isDebuggable = false
+            buildConfigField("boolean", "ADMIN_PANEL", "true")
+            // The benchmark runs on an x86_64 emulator in CI, so the release ABI filter it would
+            // otherwise inherit is cleared: an APK whose `lib/` has no matching ABI does not install.
+            ndk { abiFilters.clear() }
             buildConfigField("String", "BUILD_ENVIRONMENT", escapedBuildConfig("benchmark"))
             buildConfigField("String", "API_BASE_URL", escapedBuildConfig("https://benchmark.example.invalid/"))
             buildConfigField("String", "TRADEYAR_API_BASE_URL", escapedBuildConfig("https://benchmark-tradeyar.example.invalid/"))
