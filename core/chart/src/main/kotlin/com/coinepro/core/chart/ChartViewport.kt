@@ -160,6 +160,15 @@ data class ChartViewport(
      */
     val includedPrices: List<Double> = emptyList(),
     /**
+     * The range the axis is drawn at this frame, when it is not the fitted one.
+     *
+     * The auto-scale is animated: when the fitted range moves — new bars, a pan, a zoom — the
+     * canvas springs the drawn range towards it over about 180 ms rather than jumping. This is
+     * where the in-between value goes. Transient like [pixelShift]: set by the draw pass, never
+     * persisted, and null on every viewport that is compared or saved.
+     */
+    val priceRangeOverride: ClosedFloatingPointRange<Double>? = null,
+    /**
      * How much of the price axis is shown, relative to what the visible bars need.
      *
      * One is the default and means "fit the bars, with headroom" — the behaviour the chart has
@@ -378,6 +387,12 @@ data class ChartViewport(
      * see [scaleMode] for why rebuilding this in their units would be work that changes nothing.
      */
     val priceRange: ClosedFloatingPointRange<Double> by lazy {
+        priceRangeOverride?.let { return@lazy it }
+        fittedPriceRange
+    }
+
+    /** The range the visible bars ask for, before any animation. See [priceRangeOverride]. */
+    val fittedPriceRange: ClosedFloatingPointRange<Double> by lazy {
         if (series.isEmpty || visibleCount == 0) return@lazy 0.0..1.0
         var low = Double.MAX_VALUE
         var high = -Double.MAX_VALUE
@@ -631,10 +646,30 @@ data class ChartViewport(
      * was asked for. Using the requested one would let the two axes drift apart at the ends of the
      * zoom range, which is exactly where a reader zooming hard would notice their drawings shearing.
      */
-    fun zoomedBy(scale: Float): ChartViewport {
+    fun zoomedBy(
+        scale: Float,
+        /**
+         * Where the pinch is, as a share of the plot's width from the left, or null to hold the
+         * right edge. With a focal point the bar under the fingers stays under the fingers, which
+         * is the reference's pinch; without one the present stays put, which is what a zoom asked
+         * for from a button means.
+         */
+        focal: Float? = null,
+    ): ChartViewport {
         if (scale <= 0f || !scale.isFinite()) return this
         val before = effectiveBarsPerView
         val bars = (before / scale).roundToInt().coerceIn(MIN_BARS_PER_VIEW, MAX_BARS_PER_VIEW)
+        if (focal != null && !series.isEmpty && bars != before) {
+            // The bar under the focal point, then the offset that keeps it there once the window
+            // is `bars` wide: the slots to its right are the same share of the new window.
+            val share = focal.coerceIn(0f, 1f)
+            val underFinger = firstVisible + (share * (visibleCount + blankSlots)).toInt()
+            val rightOfFinger = ((1f - share) * bars).roundToInt()
+            val newLast = underFinger + rightOfFinger - 1
+            return copy(barsPerView = bars).let { zoomed ->
+                zoomed.atOffset(series.size - 1 - newLast)
+            }
+        }
         // Whether the margin at the live edge was the resting one, asked *before* the bar count
         // moves. The margin is a share of the window, so a chart that was resting has to go on
         // resting at the new zoom — otherwise pinching out shrinks the air to a sliver and pinching
@@ -816,7 +851,7 @@ data class ChartViewport(
         const val MIN_BARS_PER_VIEW = 14
 
         /** Past this every bar is under a pixel wide and the wicks alias into a grey band. */
-        const val MAX_BARS_PER_VIEW = 600
+        const val MAX_BARS_PER_VIEW = 2400
 
         /** The share of a bar's slot the body occupies; the rest is the gap. */
         const val BODY_RATIO = 0.72f

@@ -221,6 +221,7 @@ class MainActivity : FragmentActivity() {
         consumeDeepLink(intent)
         updateNotificationPermissionState()
         enableEdgeToEdge()
+        preferHighestRefreshRate()
         // Before anything else is drawn, and before any controller is handed a screen.
         //
         // A repackaged copy gets this and nothing else. There is no point checking later: the whole
@@ -460,6 +461,25 @@ class MainActivity : FragmentActivity() {
     companion object {
         private const val LAUNCH_PREFERENCES = "launch_readiness"
         private const val KEY_NOTIFICATION_PERMISSION_REQUESTED = "notification_permission_requested"
+    }
+
+    /**
+     * Ask the panel for its fastest mode at the current resolution — 120 Hz where the phone has it.
+     *
+     * A chart under a finger is the one surface in this app that shows the difference between
+     * sixty and a hundred and twenty frames a second, and the window's preferred mode is the one
+     * knob an app has. The same resolution only: a mode that changes the pixel grid would
+     * re-layout the whole app for a frame rate.
+     */
+    private fun preferHighestRefreshRate() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        val panel = display ?: return
+        val current = panel.mode ?: return
+        val fastest = panel.supportedModes
+            .filter { it.physicalWidth == current.physicalWidth && it.physicalHeight == current.physicalHeight }
+            .maxByOrNull { it.refreshRate } ?: return
+        if (fastest.modeId == current.modeId) return
+        window.attributes = window.attributes.apply { preferredDisplayModeId = fastest.modeId }
     }
 }
 

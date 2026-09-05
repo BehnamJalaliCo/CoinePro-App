@@ -216,6 +216,71 @@ in `after/` was recaptured too, and now carries an eleventh screen, the indicato
 against TradingView. There is no device and no TradingView install in this environment; the
 recording is the owner's to make on a phone, and the pictures above are what can be produced here.
 
+## Sprint C — chart rendering and physics (C1–C8)
+
+Pictures: `docs/design/sprint-c/before/` and `after/` (the chart, dark Persian and light English);
+the physics have no still picture and are described by the constants that hold them.
+
+**What changed.**
+
+- **C1 coordinates.** Bodies snap to the pixel grid and wicks to `floor(x) + 0.5` (`barLeft`,
+  `strokeCentre`, `crispStroke`) already; bodies and gaps are at least a pixel by `optimalBarWidth`.
+  New: under 1.5 px a bar the candles are drawn as the closes' line, and the window can now open
+  as wide as half a pixel a bar (`MAX_BARS_PER_VIEW` 600 → 2400).
+- **C2 header, axes, labels.** The legend's mark is 20 dp and its title 17 sp (14 × 1.21); the
+  axis is Inter with tabular figures at 12 sp, every fifth rung SemiBold, the round hours bold on
+  the time axis; the last-price tag is filled with the bar's colour, white text, with the
+  countdown under it, and now **flashes for 200 ms on a tick**; volume is 18 % of the pane at 50 %;
+  the crosshair is a dashed hairline with 4 dp axis tags; the legend under a crosshair is the OHLCV
+  window with the studies' values; the watermark sits at 6 % at rest and full ink when tapped
+  open. Not done: time-label fade on zoom; session shading (open decision 10).
+- **C3 pan and fling.** Pan tracks the finger 1:1 quantised to whole bars with the remainder
+  carried. The fling is exponential decay at a friction multiplier of 1.35 behind
+  `KineticScroll.FLING_CURVE` — about a second from a hard flick, tested — with the platform spline
+  kept a word away. The rubber band is the brief's `o / (1 + o / (0.55·w))` up to half the
+  viewport, returning on `spring(400, 0.85)`. Older bars arrive behind a shimmer down the left
+  edge, and nothing jumps because the window is anchored at the newest bar.
+- **C4 zoom.** The pinch grows the bar spacing by 1.0025 per pixel of finger travel, anchored at
+  the fingers' centroid; a pinch that starts in the price gutter scales the price only; a drag on
+  the gutter scales the price; a drag on the time axis scales time; double-tap on the gutter resets
+  the price scale and on the plot returns to the live edge, both through the auto-scale spring.
+  Bar spacing is held between 0.5 and 50 px.
+- **C5 auto-scale.** The drawn range springs to the fitted range on `spring(700, 1.0)` — every
+  pan, zoom, new bar and timeframe — so the candles, grid, drawings and last-price tag slide
+  together; an unrelated range (another instrument) snaps. A timeframe change dissolves the
+  chart in over 150 ms.
+- **C6 realtime.** The newest bar's close, its wick and its axis tag travel to each tick over
+  150 ms.
+- **C7 rendering.** The gestures write plain holders and the draw pass reads them — the chart
+  state is read inside the draw already; the window asks the panel for its fastest mode at the
+  current resolution (120 Hz where it exists). Not done: a third cached layer, an allocation
+  assertion, `MotionEventPredictor` (open decision 11).
+- **C8 pane sync.** Symbol, interval, crosshair and window were all wired; the note claiming two
+  switches were dead was stale and is corrected.
+
+**Numbers.**
+
+| Measure | Before | After |
+| --- | --- | --- |
+| Fling curve | platform spline | exponential, f = 4.2 × 1.35 |
+| Overscroll cap / return | 40 dp, low-bouncy spring | 50 % of plot, `spring(400, 0.85)` |
+| Pinch rate / anchor | span ratio / right edge | 1.0025^Δpx / fingers |
+| Bar spacing range | 14–600 bars | 0.5–50 px (≤ 2400 bars) |
+| Auto-scale | jump | `spring(700, 1.0)` |
+| Live close / tag flash | jump / none | 150 ms / 200 ms |
+| Volume band | 20 % | 18 % |
+| Legend logo / watermark | 17 dp / full ink | 20 dp / 6 % |
+
+**Self-score after Sprint C (dark, fa), out of 100:**
+
+| Screen | B | C | What moved, what did not |
+| --- | --- | --- | --- |
+| Symbol + chart | 80 | 85 | Live tag, sprung scale, the brief's physics, 20 dp mark. No session shading; the header line is the legend's, not a bar above the plot. |
+
+**Acceptance note.** `ChartFlingBenchmark` (fling, pinch, pan-and-hold) and its judge
+(`check-benchmark-thresholds.py`: P95 frame ≤ 8 ms, zero overrun) are in the tree and in CI with
+`--allow-missing`; the numbers need a Pixel 6a, which this environment does not have.
+
 ## Open decisions
 
 1. **IRANYekanX Medium / SemiBold.** The shipped files are static Regular and Bold; a variable file or the two extra weights are the owner's licence to obtain. Until then Persian headings stay Bold and Latin/numerals get Inter's Medium and SemiBold (Sprint A2).
@@ -227,3 +292,6 @@ recording is the owner's to make on a phone, and the pictures above are what can
 7. **Analysis hub top row (B9).** The reference's six tiles across would give each 55 dp on a 411 dp phone, which cuts every Persian label; three across kept behind one constant.
 8. **Indicator descriptions (B6).** The reference's rows carry a one-line description. That is 84 new strings in two locales; not written in a sprint whose rule is no copy.
 9. **Indicator inputs beyond the lookback (B8).** The catalogue exposes one period per study; MACD's three, Bollinger's deviation and Ichimoku's spans are literals in the engine. Exposing them is an engine change.
+10. **Session / weekend shading (C2).** `core:chart` has no market calendar; the forex feed has no weekend bars and crypto trades through the weekend, so there is no session to shade on either instrument this app lists. Left out until an instrument with sessions arrives.
+11. **Draw-loop allocation assertion and `MotionEventPredictor` (C7).** The chart draws on two canvases (plot, crosshair); a third cached layer and a debug assertion that the draw loop allocates nothing are a renderer restructuring, not a sprint task. `MotionEventPredictor` needs the raw `MotionEvent`, which Compose's pointer input does not hand over without `pointerInteropFilter` around the whole gesture stack. Both deferred with the owner's say-so.
+12. **Fling curve (C3).** The brief's exponential decay is in force behind `KineticScroll.FLING_CURVE`; the platform spline the app used from 4.41.0 is one word away if the owner prefers the lists' physics on the chart.

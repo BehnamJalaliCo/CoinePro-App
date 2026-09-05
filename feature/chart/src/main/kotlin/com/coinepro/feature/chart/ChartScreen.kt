@@ -27,6 +27,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import com.coinepro.core.designsystem.CoineProSkeleton
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -584,11 +587,21 @@ fun ChartScreen(
      */
     val symbolFade = remember { Animatable(1f) }
     var fadedSymbol by remember { mutableStateOf(state.symbol) }
-    LaunchedEffect(state.symbol) {
-        if (state.symbol != fadedSymbol) {
-            fadedSymbol = state.symbol
-            symbolFade.snapTo(0f)
-            symbolFade.animateTo(1f, tween(SYMBOL_CROSSFADE_MS))
+    var fadedInterval by remember { mutableStateOf(state.interval) }
+    LaunchedEffect(state.symbol, state.interval) {
+        when {
+            state.symbol != fadedSymbol -> {
+                fadedSymbol = state.symbol
+                fadedInterval = state.interval
+                symbolFade.snapTo(0f)
+                symbolFade.animateTo(1f, tween(SYMBOL_CROSSFADE_MS))
+            }
+            // A timeframe change is a shorter dissolve: the same market, redrawn.
+            state.interval != fadedInterval -> {
+                fadedInterval = state.interval
+                symbolFade.snapTo(0f)
+                symbolFade.animateTo(1f, tween(INTERVAL_CROSSFADE_MS))
+            }
         }
     }
 
@@ -1046,10 +1059,19 @@ fun ChartScreen(
                     },
                 )
             }
+            // Older bars arriving: a shimmer down the left edge, where they will land, rather
+            // than a spinner in the corner. The viewport is anchored at the newest bar, so the
+            // bars on screen do not move when the history grows — see `ChartViewport.offset`.
             if (state.loadingMore) {
-                Box(modifier = Modifier.align(Alignment.TopStart).padding(CoineProSpacing.One)) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                }
+                CoineProSkeleton(
+                    modifier = Modifier
+                        .align(AbsoluteAlignment.TopLeft)
+                        .width(HISTORY_SKELETON_WIDTH)
+                        .fillMaxHeight()
+                        .zIndex(1f),
+                    height = 1.dp,
+                    shape = RectangleShape,
+                )
             }
             // **The armed tool says so on the plot, not under it.**
             //
@@ -2511,7 +2533,9 @@ private fun ChartWatermark(
         ProChartSignature(
             expanded = expanded,
             markSize = WATERMARK_MARK,
-            tint = CoineProColors.TextPrimary,
+            // Six per cent at rest — the reference's watermark is a ghost on the bars, not a
+            // badge — and full ink once tapped open, where it is a name being read.
+            tint = CoineProColors.TextPrimary.copy(alpha = if (expanded) 1f else WATERMARK_ALPHA),
             contentDescription = stringResource(
                 if (expanded) R.string.chart_watermark_collapse else R.string.chart_watermark_expand,
             ),
@@ -2521,6 +2545,9 @@ private fun ChartWatermark(
 
 /** Twelve points from the time axis, as the phone app sets it, and the floor for the lead. */
 private val WATERMARK_INSET = 12.dp
+
+/** The mark's ink at rest: six per cent, the design brief's measure of the reference. */
+private const val WATERMARK_ALPHA = 0.06f
 
 /**
  * How far in from the plot's leading edge the signature sits.
@@ -3843,6 +3870,10 @@ private const val INDICATOR_SHEET_HEIGHT = 0.92f
 /** The toolbar's slide out before the fullscreen window, and the chart's fade on a symbol switch. */
 private const val FULLSCREEN_SLIDE_MS = 200
 private const val SYMBOL_CROSSFADE_MS = 250
+private const val INTERVAL_CROSSFADE_MS = 150
+
+/** The shimmer down the left edge while older bars load. */
+private val HISTORY_SKELETON_WIDTH = 24.dp
 
 private val INTERVAL_KEY_HEIGHT = 44.dp
 private val INTERVAL_KEY_WIDTH = 56.dp

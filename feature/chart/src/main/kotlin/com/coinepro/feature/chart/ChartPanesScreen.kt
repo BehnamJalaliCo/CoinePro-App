@@ -612,8 +612,9 @@ private fun ChartPane(
  * permanent chrome of that size would take back what the extra panes were for. Closed, it is one
  * row that says what is tied; open, it is the four switches with their notes and nothing hidden.
  *
- * Independent on purpose — see [PaneSync]. The two the canvas cannot yet honour are drawn disabled
- * with the reason under them rather than as live switches that store a preference and do nothing.
+ * Independent on purpose — see [PaneSync]. All four are honoured: the symbol and the interval by
+ * the pane holder, the crosshair and the window by the canvas through `crosshairOverride` and
+ * `viewportOverride` — there is no longer a switch that stores a preference and does nothing.
  */
 @Composable
 private fun PaneSyncRow(

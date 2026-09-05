@@ -971,7 +971,7 @@ private val LEGEND_BUTTON_DP = 24.dp
 private const val TITLE_SCALE = 1.21f
 
 /** The mark before the title: 17 pt on TradingView's phone, measured. */
-private val LEGEND_LOGO_DP = 17.dp
+private val LEGEND_LOGO_DP = 20.dp
 
 /** The market-state dot: a 15 pt disc of the state colour at 15 %, with a 7 pt dot inside. */
 private val STATUS_DISC_DP = 15.dp

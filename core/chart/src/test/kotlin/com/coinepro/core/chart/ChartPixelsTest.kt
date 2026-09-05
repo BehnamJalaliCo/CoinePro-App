@@ -354,7 +354,7 @@ class ChartPixelsTest {
     fun `a fling decays to nothing and then stops on its own`() {
         // A phone density, not the JVM's 1×: the curve is physical, and at 1× a flick coasts three
         // times as far as it does on the hardware a reader holds.
-        val scroll = KineticScroll(PHONE_DENSITY)
+        val scroll = KineticScroll(PHONE_DENSITY, FlingCurve.SPLINE)
         val spline = FlingSpline(PHONE_DENSITY)
         scroll.start(5_000f)
         assertTrue(scroll.isRunning)
@@ -383,6 +383,32 @@ class ChartPixelsTest {
         assertTrue("a firm flick should coast for under a second", spline.durationMillis(5_000f) < 1_000L)
         // Ticking a finished animation is harmless.
         assertEquals(0f, scroll.tick(now + 16), 0f)
+    }
+
+    @Test
+    fun `the exponential curve coasts about a second from a hard flick and never speeds up`() {
+        // The design brief's curve: Compose's exponential decay at a friction multiplier of 1.35.
+        val scroll = KineticScroll(PHONE_DENSITY, FlingCurve.EXPONENTIAL)
+        scroll.start(4_000f)
+        assertTrue(scroll.isRunning)
+        var now = 0L
+        var previousStep = Float.MAX_VALUE
+        var travelled = 0f
+        var frames = 0
+        assertEquals(0f, scroll.tick(now), 0f)
+        while (scroll.isRunning && frames < 1_000) {
+            now += 16
+            val step = scroll.tick(now)
+            assertTrue("a fling must never speed up: $step after $previousStep", step <= previousStep + 1e-3f)
+            previousStep = step
+            travelled += step
+            frames++
+        }
+        assertFalse(scroll.isRunning)
+        val millis = frames * 16
+        assertTrue("a hard flick coasted for ${millis}ms", millis in 700..1_400)
+        // v / f, to the frame.
+        assertEquals(4_000f / (4.2f * 1.35f), travelled, 2f)
     }
 
     @Test

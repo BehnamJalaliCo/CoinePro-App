@@ -25,6 +25,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -731,36 +732,99 @@ fun CoineProChart(
      */
     val edgePull = remember { Animatable(0f) }
     val pullScope = rememberCoroutineScope()
-    val maxPull = with(density) { EDGE_PULL_MAX_DP.toPx() }
+    val fallbackPull = with(density) { EDGE_PULL_MAX_DP.toPx() }
+
+    /** The refused travel itself, before the band's resistance is applied. See [stretchEdge]. */
+    val edgeRaw = remember { floatArrayOf(0f) }
 
     /**
      * Stretch the band by [pixels] of refused travel, with the resistance a rubber band has.
      *
-     * The gain falls off as the band stretches — at the cap it is zero — so the reader feels the
-     * end coming rather than arriving at it. A constant gain would make the band a second, slower
-     * chart that still slides forever, which says the opposite of what it is here to say.
+     * The design brief's curve: `o / (1 + o / (0.55 · w))` of the raw overscroll `o` against the
+     * plot's width `w`, capped at half the viewport. The gain falls off as the band stretches so
+     * the reader feels the end coming rather than arriving at it; a constant gain would make the
+     * band a second, slower chart that still slides forever.
      */
     fun stretchEdge(pixels: Float) {
-        if (maxPull <= 0f || pixels == 0f) return
-        val slack = 1f - abs(edgePull.value) / maxPull
-        if (slack <= 0f) return
-        val next = (edgePull.value + pixels * EDGE_PULL_GAIN * slack).coerceIn(-maxPull, maxPull)
+        if (pixels == 0f) return
+        val width = lastView[0]?.plotWidth?.takeIf { it > 0f } ?: (fallbackPull * 2f)
+        val raw = edgeRaw[0] + pixels
+        edgeRaw[0] = raw
+        val magnitude = abs(raw)
+        val band = magnitude / (1f + magnitude / (RUBBER_BAND_KNEE * width))
+        val cap = width * OVERSCROLL_MAX_SHARE
+        val next = (if (raw < 0f) -band else band).coerceIn(-cap, cap)
         pullScope.launch { edgePull.snapTo(next) }
     }
 
     /** Let the band go. A no-op when it was never stretched, which is nearly every gesture. */
     fun releaseEdge() {
+        edgeRaw[0] = 0f
         if (edgePull.value == 0f) return
         pullScope.launch {
             edgePull.animateTo(
                 targetValue = 0f,
-                animationSpec = spring(
-                    // Bouncy enough to be seen at forty pixels, and not so bouncy that the bars
-                    // oscillate: one overshoot, small, and settled.
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = Spring.StiffnessMediumLow,
-                ),
+                // The brief's return: stiff and nearly critically damped, one small overshoot.
+                animationSpec = spring(dampingRatio = OVERSCROLL_DAMPING, stiffness = OVERSCROLL_STIFFNESS),
             )
+        }
+    }
+
+    /**
+     * The drawn price range, sprung towards the fitted one.
+     *
+     * The auto-scale never jumps: when the bars on screen change — a pan, a zoom, a new bar, a
+     * timeframe — the range the axis is drawn at springs to the range they need over about 180 ms
+     * (`spring(700, 1.0)`, the brief's). The draw pass writes the fitted range into [rangeGoal];
+     * this effect drives the two ends towards it and the draw reads them back, so the candles,
+     * the grid, the last-price tag and every drawing slide together. A range that has nothing in
+     * common with the last one — another instrument — is snapped, not sprung: a two-hundred-millisecond
+     * swing from gold's prices to a coin's is not a transition anybody wants to watch.
+     */
+    val rangeLow = remember { Animatable(0f) }
+    val rangeHigh = remember { Animatable(1f) }
+    var rangeGoal by remember { mutableStateOf<ClosedFloatingPointRange<Double>?>(null) }
+    val rangeSettled = remember { booleanArrayOf(false) }
+    LaunchedEffect(rangeGoal) {
+        val goal = rangeGoal ?: return@LaunchedEffect
+        val low = goal.start.toFloat()
+        val high = goal.endInclusive.toFloat()
+        val span = (rangeHigh.value - rangeLow.value).toDouble()
+        val ratio = if (span > 0.0) (goal.endInclusive - goal.start) / span else Double.MAX_VALUE
+        val unrelated = goal.endInclusive < rangeLow.value || goal.start > rangeHigh.value ||
+            ratio > RANGE_SNAP_RATIO || ratio < 1.0 / RANGE_SNAP_RATIO
+        if (!rangeSettled[0] || unrelated) {
+            rangeLow.snapTo(low)
+            rangeHigh.snapTo(high)
+            rangeSettled[0] = true
+        } else {
+            launch { rangeLow.animateTo(low, AUTO_SCALE_SPRING) }
+            rangeHigh.animateTo(high, AUTO_SCALE_SPRING)
+        }
+    }
+
+    /**
+     * The newest bar's close, animated between ticks, and the flash on the tag when it moves.
+     *
+     * A tick lands and the last candle's close — and the tag on the axis — travel to the new
+     * price over 150 ms rather than appearing there; the tag brightens for 200 ms as it goes. A
+     * new *bar* snaps: there is nothing to travel from.
+     */
+    val liveClose = remember { Animatable(0f) }
+    val tagFlash = remember { Animatable(0f) }
+    val liveBarTime = remember { longArrayOf(Long.MIN_VALUE) }
+    LaunchedEffect(display) {
+        val last = display.bars.lastOrNull() ?: return@LaunchedEffect
+        val close = last.c.toFloat()
+        if (last.t == liveBarTime[0] && liveClose.value != close) {
+            launch {
+                tagFlash.snapTo(1f)
+                tagFlash.animateTo(0f, tween(TICK_FLASH_MS))
+            }
+            liveClose.animateTo(close, tween(LIVE_CLOSE_MS))
+        } else if (last.t != liveBarTime[0]) {
+            liveBarTime[0] = last.t
+            liveClose.snapTo(close)
         }
     }
 
@@ -1280,7 +1344,11 @@ fun CoineProChart(
                                 // reason to rewrite it in order to read two more numbers off the
                                 // same pointers.
                                 awaitEachGesture {
-                                    awaitFirstDown(requireUnconsumed = false)
+                                    val first = awaitFirstDown(requireUnconsumed = false)
+                                    // A pinch that starts in the price gutter scales the price and
+                                    // only the price — the brief's, and the reference's.
+                                    val startFrame = frameOf(size.width.toFloat())
+                                    val onGutter = startFrame.inGutter(first.position.x, 0f)
                                     var lastX = 0f
                                     var lastY = 0f
                                     var timeResidue = 1f
@@ -1310,8 +1378,12 @@ fun CoineProChart(
                                         // gesture. Below the floor that axis simply does not move,
                                         // which is also exactly the behaviour a reader pinching
                                         // horizontally is asking for.
-                                        if (lastX >= floor && spanX >= floor) {
-                                            val ratio = spanX / lastX
+                                        if (!onGutter && lastX >= floor && spanX >= floor) {
+                                            // The brief's rate: the bar spacing grows by
+                                            // 1.0025 to the power of the pixels the fingers
+                                            // opened, so the same finger travel is the same zoom
+                                            // at every scale.
+                                            val ratio = PINCH_BASE.pow(spanX - lastX)
                                             if (abs(ratio - 1f) > ZOOM_DEADZONE) {
                                                 // Accumulated, because the bar count is a whole
                                                 // number: a slow pinch whose every frame rounds
@@ -1320,7 +1392,18 @@ fun CoineProChart(
                                                 timeResidue = (timeResidue * ratio)
                                                     .coerceIn(MIN_SCALE_RESIDUE, MAX_SCALE_RESIDUE)
                                                 val before = viewport.barsPerView
-                                                val zoomed = viewport.zoomedBy(timeResidue)
+                                                // Anchored where the fingers are: the bar under
+                                                // the centroid stays under it.
+                                                val plot = drawn().plotWidth
+                                                val centroidX = event.changes.filter { it.pressed }
+                                                    .map { it.position.x }.average().toFloat()
+                                                val focal = if (plot > 0f) {
+                                                    ((centroidX - startFrame.left) / plot).coerceIn(0f, 1f)
+                                                } else {
+                                                    null
+                                                }
+                                                val zoomed = viewport.zoomedBy(timeResidue, focal)
+                                                    .clampedToBarSpacing(plot)
                                                 if (zoomed.barsPerView != before) {
                                                     viewport = zoomed
                                                     timeResidue = 1f
@@ -2117,8 +2200,24 @@ fun CoineProChart(
             // the price ticks are prices and the time ticks are bar indices, and both are placed
             // through `xOf`, which is where the shift is applied.
             val pull = edgePull.value
-            val view = if (pull == 0f) settled else settled.copy(pixelShift = pull)
+            // The auto-scale, sprung. The fitted range is what the bars ask for; the drawn one
+            // is where the spring has got to. Written to state from the draw so the effect above
+            // can chase it; read back here so every frame of the chase repaints.
+            val fitted = settled.fittedPriceRange
+            if (rangeGoal != fitted) rangeGoal = fitted
+            val drawnRange = if (rangeSettled[0]) {
+                (rangeLow.value.toDouble()..rangeHigh.value.toDouble()).takeIf { it.start < it.endInclusive }
+            } else {
+                null
+            }
+            val view = settled.copy(
+                pixelShift = pull,
+                priceRangeOverride = drawnRange?.takeIf { it != fitted },
+            )
             lastView[0] = view
+            // The live close: only while the newest bar is on screen, and only for the bar types
+            // that draw a close. See `liveClose`.
+            val liveCloseNow = if (view.lastVisible == view.series.size - 1) liveClose.value.toDouble() else null
 
             // Everything below is in *plot* space: x zero is the plot's left edge, which is where
             // `ChartViewport.xOf` has always put the first bar. The gutters are painted at negative
@@ -2226,12 +2325,18 @@ fun CoineProChart(
                         )
                         drawnType.isLine ->
                             drawLineSeries(view, palette, filled = drawnType == ChartType.AREA, conflateGap = conflateGap)
+                        // Under a pixel and a half a bar there is no candle to draw — a body is a
+                        // gap and a wick is the whole slot — so the bars become the closes as a
+                        // line, which is what the reference does at the same zoom.
+                        view.barWidth < LINE_FALLBACK_PX ->
+                            drawLineSeries(view, palette, filled = false, conflateGap = conflateGap)
                         drawnType == ChartType.BARS -> drawOhlcBars(view, palette, metrics)
                         else -> drawCandles(
                             view = view,
                             palette = palette,
                             hollow = drawnType == ChartType.HOLLOW,
                             metrics = metrics,
+                            liveClose = liveCloseNow,
                         )
                     }
                 }
@@ -2341,6 +2446,7 @@ fun CoineProChart(
                             measurer = measurer,
                             cache = textCache,
                             twoLines = countdownLive && nowSeconds > 0L,
+                            price = liveCloseNow,
                         )
                     } else {
                         null
@@ -2429,6 +2535,8 @@ fun CoineProChart(
                         palette = palette,
                         measurer = measurer,
                         withAxis = decoration.showAxes,
+                        price = liveCloseNow,
+                        flash = tagFlash.value,
                         countdown = if (countdownLive && decoration.showAxes && nowSeconds > 0L) {
                             countdownLabel(view, nowSeconds)
                         } else {
@@ -2772,11 +2880,20 @@ private fun DrawScope.drawCandles(
     palette: ChartPalette,
     hollow: Boolean,
     metrics: CandleMetrics,
+    /** The newest bar's close as it is animating between ticks, or null to draw the series' own. */
+    liveClose: Double? = null,
 ) {
     val body = metrics.body
     val wick = crispStroke(metrics.wick)
+    val newest = view.series.size - 1
     for (index in view.firstVisible..view.lastVisible) {
-        val bar = view.series[index]
+        val stored = view.series[index]
+        // The live bar's close is the animated one, and its wick reaches it.
+        val bar = if (liveClose != null && index == newest && liveClose != stored.c) {
+            stored.copy(c = liveClose, h = max(stored.h, liveClose), l = min(stored.l, liveClose))
+        } else {
+            stored
+        }
         // Registered, and then everything else about this bar is measured from the registered edge
         // rather than from the geometric centre — see the note on `barLeft`. A body snapped onto a
         // pixel boundary with a wick still drawn at the unsnapped centre is a candle whose mast
@@ -3790,9 +3907,11 @@ private fun DrawScope.lastPriceTagY(
     cache: TextWidthCache<TextLayoutResult>,
     /** Whether the tag carries the countdown under the price, which doubles its height. */
     twoLines: Boolean,
+    /** The animated live close, or null for the bar's own. */
+    price: Double? = null,
 ): Float? {
     val bar = view.series.bars.getOrNull(view.lastVisible) ?: return null
-    val y = view.yOf(bar.c)
+    val y = view.yOf(price ?: bar.c)
     if (y < 0f || y > view.plotHeight) return null
     // A single glyph, in a fixed style, laid out to find one number: the line height of the axis
     // font. It never changes and it was measured afresh on every frame — twice on a chart with a
@@ -3841,11 +3960,19 @@ private fun DrawScope.drawLastPrice(
     withAxis: Boolean,
     /** The bar's time to run, already formatted, or null where there is no countdown to show. */
     countdown: String? = null,
+    /** The animated live close, or null for the bar's own. */
+    price: Double? = null,
+    /** How far into the 200 ms tick flash the tag is: one the frame a tick lands, zero at rest. */
+    flash: Float = 0f,
 ) {
     val bar = view.series.bars.getOrNull(view.lastVisible) ?: return
-    val y = view.yOf(bar.c)
+    val close = price ?: bar.c
+    val y = view.yOf(close)
     if (y < 0f || y > view.plotHeight) return
-    val colour = if (bar.up) palette.up else palette.down
+    val rising = if (price != null) close >= bar.o else bar.up
+    val direction = if (rising) palette.up else palette.down
+    // The flash: the tag lifts towards white as the tick lands and settles back over 200 ms.
+    val colour = if (flash > 0f) lerp(direction, Color.White, flash * TICK_FLASH_MIX) else direction
     drawRule(
         colour = colour.copy(alpha = LAST_PRICE_ALPHA),
         y = y,
@@ -3860,7 +3987,7 @@ private fun DrawScope.drawLastPrice(
     // arrangement, measured at 30 css px tall for two 12 px lines. It used to be a coloured tag
     // with a second, stage-coloured chip under it, which read as two labels rather than one fact.
     drawAxisTag(
-        text = view.axisText(bar.c),
+        text = view.axisText(close),
         y = y,
         frame = frame,
         fill = colour,
@@ -5188,7 +5315,7 @@ private const val SPAN_MULTI_YEAR = 60L * 60 * 24 * 400
  * A fifth. Enough to compare one bar against its neighbours, short enough that the candles above it
  * are never in doubt about which series the chart is about.
  */
-private const val VOLUME_INLINE = 0.20f
+private const val VOLUME_INLINE = 0.18f
 
 /**
  * How much of the plot's width the widest row of a volume profile reaches. See
@@ -5639,8 +5766,33 @@ private fun PointerEvent.axisSpan(vertical: Boolean): Float {
  */
 private val EDGE_PULL_MAX_DP = 40.dp
 
-/** The share of refused travel the band takes at rest. Falls to nothing as the band stretches. */
-private const val EDGE_PULL_GAIN = 0.45f
+/**
+ * The rubber band, as the design brief specifies it: the band may reach half the viewport, its
+ * resistance is `o / (1 + o / (0.55 · w))`, and it returns on `spring(400, 0.85)`.
+ */
+private const val OVERSCROLL_MAX_SHARE = 0.5f
+private const val RUBBER_BAND_KNEE = 0.55f
+private const val OVERSCROLL_STIFFNESS = 400f
+private const val OVERSCROLL_DAMPING = 0.85f
+
+/** The auto-scale's spring: `spring(700, 1.0)`, about 180 ms to settle. */
+private val AUTO_SCALE_SPRING = spring<Float>(dampingRatio = 1f, stiffness = 700f)
+
+/** A fitted range more than four times, or under a quarter of, the drawn one is another instrument. */
+private const val RANGE_SNAP_RATIO = 4.0
+
+/** The live close travels for 150 ms; the tag flashes for 200, a third of the way to white. */
+private const val LIVE_CLOSE_MS = 150
+private const val TICK_FLASH_MS = 200
+private const val TICK_FLASH_MIX = 0.35f
+
+/** The pinch rate: bar spacing × 1.0025 per pixel of finger travel. */
+private const val PINCH_BASE = 1.0025f
+
+/** Bar spacing limits, in pixels: half a pixel to fifty. Under a pixel and a half the bars are a line. */
+private const val MIN_BAR_SPACING_PX = 0.5f
+private const val MAX_BAR_SPACING_PX = 50f
+private const val LINE_FALLBACK_PX = 1.5f
 
 /**
  * How much of the chart a change has actually invalidated.
@@ -5719,4 +5871,17 @@ data class ChartZoomNudge(val serial: Int, val factor: Float) {
         /** One step, in or out. A quarter, which is about one notch of a pinch. */
         const val STEP = 1.25f
     }
+}
+
+/**
+ * The window held between the brief's bar-spacing limits for a plot [plotWidth] pixels wide:
+ * no fewer bars than fifty pixels each, no more than half a pixel each.
+ */
+private fun ChartViewport.clampedToBarSpacing(plotWidth: Float): ChartViewport {
+    if (plotWidth <= 0f) return this
+    val fewest = ceil(plotWidth / MAX_BAR_SPACING_PX).toInt()
+    val most = floor(plotWidth / MIN_BAR_SPACING_PX).toInt()
+    if (fewest > most) return this
+    val bars = barsPerView.coerceIn(fewest, most)
+    return if (bars == barsPerView) this else copy(barsPerView = bars).atOffset(offset)
 }

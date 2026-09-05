@@ -2,6 +2,8 @@ package com.coinepro.core.chart
 
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.ln
+import kotlin.math.exp
 import kotlin.math.atan
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -455,7 +457,7 @@ fun separateLabels(
  * spent recomputing a price scale that produced the same picture. A release that slow starts
  * nothing.
  */
-class KineticScroll(density: Float = 1f) {
+class KineticScroll(density: Float = 1f, private val curve: FlingCurve = FLING_CURVE) {
 
     private val spline = FlingSpline(density)
     private var direction = 0f
@@ -482,8 +484,20 @@ class KineticScroll(density: Float = 1f) {
             return
         }
         direction = if (velocity < 0f) -1f else 1f
-        distance = spline.distance(velocity)
-        duration = spline.durationMillis(velocity)
+        when (curve) {
+            FlingCurve.SPLINE -> {
+                distance = spline.distance(velocity)
+                duration = spline.durationMillis(velocity)
+            }
+            FlingCurve.EXPONENTIAL -> {
+                // Compose's `exponentialDecay`: velocity decays as e^(−f·t) with f = 4.2 × the
+                // friction multiplier; it is over when the speed drops under the cut-off. A hard
+                // flick at four thousand pixels a second lasts about a second.
+                val speed = abs(velocity)
+                distance = speed / EXPONENTIAL_FRICTION
+                duration = (ln(speed / MIN_VELOCITY) / EXPONENTIAL_FRICTION * 1000f).toLong()
+            }
+        }
         covered = 0f
         startedAt = 0L
         started = false
@@ -515,7 +529,10 @@ class KineticScroll(density: Float = 1f) {
         }
         val elapsed = nowMillis - startedAt
         if (elapsed <= 0L) return 0f
-        val position = distance * spline.progress(elapsed, duration)
+        val position = distance * when (curve) {
+            FlingCurve.SPLINE -> spline.progress(elapsed, duration)
+            FlingCurve.EXPONENTIAL -> exponentialProgress(elapsed, duration)
+        }
         val step = position - covered
         covered = position
         if (elapsed >= duration) stop()
@@ -532,11 +549,35 @@ class KineticScroll(density: Float = 1f) {
         running = false
     }
 
-    private companion object {
+    /** The share of the total travel at [elapsed] of [total] on the exponential curve. */
+    private fun exponentialProgress(elapsed: Long, total: Long): Float {
+        if (total <= 0L || elapsed >= total) return 1f
+        val end = 1f - exp(-EXPONENTIAL_FRICTION * total / 1000f)
+        if (end <= 0f) return 1f
+        return (1f - exp(-EXPONENTIAL_FRICTION * elapsed / 1000f)) / end
+    }
+
+    companion object {
         /** Below this many pixels a second the fling is over before it starts. See the class KDoc. */
         const val MIN_VELOCITY = 20f
+
+        /**
+         * Which curve a chart flick coasts on.
+         *
+         * The design brief measures TradingView at an exponential decay with a friction multiplier
+         * of about 1.35 — roughly 1.2 s from a hard fling. The platform spline is what every list
+         * on the phone uses and what this chart used before; it is kept behind this one constant
+         * so the owner can put the lists' physics back with a word.
+         */
+        val FLING_CURVE: FlingCurve = FlingCurve.EXPONENTIAL
+
+        /** 4.2 × 1.35, per second. See [FlingCurve.EXPONENTIAL]. */
+        private const val EXPONENTIAL_FRICTION = 4.2f * 1.35f
     }
 }
+
+/** The two decelerations [KineticScroll] knows. See [KineticScroll.FLING_CURVE]. */
+enum class FlingCurve { SPLINE, EXPONENTIAL }
 
 // ---------------------------------------------------------------------------- constants
 
