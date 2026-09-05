@@ -113,10 +113,26 @@ class WidgetSnapshotStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { preferences -> preferences[STALE] = "1" }
     }
 
+    /**
+     * Which watchlist the widget follows, or null for the starred list.
+     *
+     * One choice for every widget rather than one per widget id, because there is one snapshot:
+     * the worker fetches one set of prices and every widget draws it. A reader with two widgets
+     * on two lists is a second snapshot away, and nobody has asked for it.
+     */
+    val preferredListId: Flow<String?> = dataStore.data.map { preferences -> preferences[LIST]?.takeIf(String::isNotBlank) }
+
+    suspend fun setPreferredList(id: String?) {
+        dataStore.edit { preferences ->
+            if (id.isNullOrBlank()) preferences.remove(LIST) else preferences[LIST] = id
+        }
+    }
+
     companion object {
         internal val MARKETS = stringPreferencesKey("widget_markets")
         internal val CAPTURED_AT = stringPreferencesKey("widget_captured_at")
         internal val STALE = stringPreferencesKey("widget_stale")
+        internal val LIST = stringPreferencesKey("widget_list")
 
         /** Between markets. */
         internal const val GROUP = "\u001D"

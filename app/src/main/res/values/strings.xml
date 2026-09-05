@@ -163,6 +163,11 @@
     <string name="widget_refresh">به‌روزرسانی</string>
     <string name="widget_empty">هنوز قیمتی نرسیده. بازاری را در اپ ستاره کنید تا اینجا بیاید.</string>
     <string name="widget_now">همین حالا</string>
+    <string name="widget_configure_title">کدام دیده‌بان؟</string>
+    <string name="widget_configure_body">ویجت قیمت‌های همین فهرست را نشان می‌دهد. بعداً از همین‌جا می‌توانید عوضش کنید.</string>
+    <string name="widget_configure_starred">ستاره‌دارها</string>
+    <string name="widget_configure_save">افزودن ویجت</string>
+    <string name="widget_configure_count">%1$s نماد</string>
     <string name="widget_minutes">%1$s دقیقه پیش</string>
     <string name="widget_hours">%1$s ساعت پیش</string>
     <string name="widget_old">خیلی وقت پیش</string>

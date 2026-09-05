@@ -12,6 +12,7 @@
     <application
         android:name=".CoineProApplication"
         android:allowBackup="false"
+        android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -130,6 +131,15 @@
             carries anything an untrusted caller could use — the worst a hostile broadcast achieves
             is a price refresh.
         -->
+        <activity
+            android:name=".widget.WidgetConfigureActivity"
+            android:exported="true"
+            android:theme="@style/Theme.CoinePro">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <receiver
             android:name=".widget.MarketsWidget"
             android:label="@string/app_name"

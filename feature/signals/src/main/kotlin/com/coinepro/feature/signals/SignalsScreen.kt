@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,6 +39,7 @@ import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProSkeletonRows
 import com.coinepro.core.designsystem.CoineProColumnHeadings
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProHeaderAction
@@ -156,9 +156,10 @@ fun SignalsScreen(
         )
 
         when {
-            state.loading && state.items.isEmpty() -> Placeholder {
-                CircularProgressIndicator(color = CoineProColors.Gold, strokeWidth = 2.dp)
-            }
+            state.loading && state.items.isEmpty() -> CoineProSkeletonRows(
+                modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
+                count = 5,
+            )
 
             state.membershipRequired -> MembershipLocked(
                 platform = platform,

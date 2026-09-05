@@ -160,6 +160,11 @@
     <string name="widget_refresh">Refresh</string>
     <string name="widget_empty">No prices yet. Star a market in the app and it appears here.</string>
     <string name="widget_now">just now</string>
+    <string name="widget_configure_title">Which watchlist?</string>
+    <string name="widget_configure_body">The widget shows this list\'s prices. You can change it here later.</string>
+    <string name="widget_configure_starred">Starred</string>
+    <string name="widget_configure_save">Add widget</string>
+    <string name="widget_configure_count">%1$s symbols</string>
     <string name="widget_minutes">%1$s min ago</string>
     <string name="widget_hours">%1$s h ago</string>
     <string name="widget_old">a long time ago</string>

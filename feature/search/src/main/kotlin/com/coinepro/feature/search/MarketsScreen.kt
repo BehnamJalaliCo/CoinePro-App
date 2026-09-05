@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProSkeletonRows
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPercentText
@@ -298,9 +298,12 @@ fun MarketsScreen(
                 watchlistSync = watchlistSync,
                 modifier = Modifier.weight(1f),
             )
-            state.loading && state.results.isEmpty() -> Centred {
-                CircularProgressIndicator(color = CoineProColors.Gold, strokeWidth = 2.dp)
-            }
+            // Rows-to-be rather than a spinner: the reader sees the shape of the list that is
+            // coming, and nothing jumps when it arrives.
+            state.loading && state.results.isEmpty() -> CoineProSkeletonRows(
+                modifier = Modifier.weight(1f).padding(horizontal = CoineProSpacing.Gutter),
+                count = 8,
+            )
             // A failure is not an empty search. The controller has set `state.error` on every
             // catalogue failure since it was written and this screen never read it, so a reader
             // whose request failed was told «موردی یافت نشد» — the empty-search copy — with no
@@ -327,7 +330,7 @@ fun MarketsScreen(
                         onAction = { tickers?.refresh() },
                     )
                 } else {
-                    CircularProgressIndicator(color = CoineProColors.Gold, strokeWidth = 2.dp)
+                    CoineProSkeletonRows(count = 8, leading = false)
                 }
             }
             rows.isEmpty() -> Centred {

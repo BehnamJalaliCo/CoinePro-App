@@ -184,12 +184,18 @@ class WidgetRefreshEngine @Inject constructor(
      * placed is a widget that gets removed the same day.
      */
     private suspend fun symbols(): List<String> {
-        // The default list by name, not the active one. A widget is glanced at from the home
-        // screen with the app closed; having it follow whichever list happened to be open last
-        // would make its contents change for a reason the reader cannot see from where they are
-        // standing.
-        val starred = runCatching { watchlist.symbols(Watchlist.DEFAULT_LIST_ID).first() }
+        // The list the reader chose when placing the widget, and otherwise the default list by
+        // name — not the active one. A widget is glanced at from the home screen with the app
+        // closed; having it follow whichever list happened to be open last would make its contents
+        // change for a reason the reader cannot see from where they are standing. A chosen list
+        // that has since been deleted or emptied falls back to the default the same way.
+        val listId = runCatching { store.preferredListId.first() }.getOrNull() ?: Watchlist.DEFAULT_LIST_ID
+        val starred = runCatching { watchlist.symbols(listId).first() }
             .getOrDefault(emptyList())
+            .ifEmpty {
+                if (listId == Watchlist.DEFAULT_LIST_ID) emptyList()
+                else runCatching { watchlist.symbols(Watchlist.DEFAULT_LIST_ID).first() }.getOrDefault(emptyList())
+            }
         val chosen = starred.ifEmpty { MarketDataSymbols.crypto }
         return chosen.map { it.uppercase() }.distinct().take(WidgetSnapshotStore.MAX_MARKETS)
     }

@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -45,6 +44,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProSkeletonRows
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProMarketRow
 import com.coinepro.core.designsystem.CoineProPillShape
@@ -180,9 +180,10 @@ fun SearchScreen(
         }
 
         when {
-            state.loading && state.results.isEmpty() -> Centered {
-                CircularProgressIndicator(color = CoineProColors.Gold)
-            }
+            state.loading && state.results.isEmpty() -> CoineProSkeletonRows(
+                modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
+                count = 8,
+            )
 
             state.error != null && state.results.isEmpty() -> Centered {
                 Column(

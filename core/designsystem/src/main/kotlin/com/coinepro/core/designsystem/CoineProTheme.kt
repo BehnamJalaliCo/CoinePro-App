@@ -105,6 +105,10 @@ fun CoineProTheme(
         // navigation rail and a bottom bar at the same time.
         LocalCoineProWindowClass provides configurationWindowClass(),
     ) {
+        // Not `MaterialExpressiveTheme`: in the Material 3 this app builds against (1.4.0) the
+        // expressive motion scheme and its opt-in annotation are still `internal`, so the springs
+        // live in `CoineProMotionSpecs` and the navigation and sheets take them from there. Flip
+        // this to the expressive theme when the library makes it public.
         MaterialTheme(
             colorScheme = palette.toColorScheme(),
             shapes = CoineProShapes,

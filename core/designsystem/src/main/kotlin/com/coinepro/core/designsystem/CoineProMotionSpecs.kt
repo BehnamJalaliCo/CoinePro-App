@@ -3,6 +3,9 @@ package com.coinepro.core.designsystem
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -46,4 +49,38 @@ object CoineProMotionSpecs {
 
     @Composable
     fun <T> exit(): AnimationSpec<T> = remember { tween(STANDARD_MS, easing = Exit) }
+
+    // ------------------------------------------------------------------ springs
+
+    /*
+     * Material 3 Expressive draws a line between *spatial* motion — something moving, growing,
+     * sliding — and *effects* — colour, alpha, a progress bar. Spatial motion is a spring, because a
+     * finger can interrupt it half-way and a spring carries the velocity it had rather than
+     * restarting a curve from rest; effects stay on a tween, because a colour has no momentum.
+     * The three springs below are the scheme's fast / default / slow spatial specs; the tweens
+     * above remain the effects specs. `AppNavigationMotion` and the sheets use the springs; a
+     * loading bar never should.
+     */
+
+    /** A tap's response, a chip selecting, a sheet handle: brisk and just barely bouncy. */
+    fun fastSpatial(): FiniteAnimationSpec<Float> =
+        spring(dampingRatio = FAST_SPATIAL_DAMPING, stiffness = FAST_SPATIAL_STIFFNESS)
+
+    /** A screen sliding in, a card expanding, a sheet rising: the default for movement. */
+    fun defaultSpatial(): FiniteAnimationSpec<Float> =
+        spring(dampingRatio = DEFAULT_SPATIAL_DAMPING, stiffness = DEFAULT_SPATIAL_STIFFNESS)
+
+    /** A large surface crossing the screen — deliberate, never bouncy. */
+    fun slowSpatial(): FiniteAnimationSpec<Float> =
+        spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = SLOW_SPATIAL_STIFFNESS)
+
+    /** An offset or size spring for `slideIn` / `slideOut`, the same default-spatial feel. */
+    fun <T> defaultSpatialFor(): FiniteAnimationSpec<T> =
+        spring(dampingRatio = DEFAULT_SPATIAL_DAMPING, stiffness = DEFAULT_SPATIAL_STIFFNESS)
+
+    private const val FAST_SPATIAL_DAMPING = 0.6f
+    private const val FAST_SPATIAL_STIFFNESS = 800f
+    private const val DEFAULT_SPATIAL_DAMPING = 0.8f
+    private const val DEFAULT_SPATIAL_STIFFNESS = 380f
+    private const val SLOW_SPATIAL_STIFFNESS = 200f
 }

@@ -32,4 +32,5 @@
     android:maxResizeHeight="500dp"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
+    android:configure="com.coinepro.app.widget.WidgetConfigureActivity"
     android:updatePeriodMillis="0" />

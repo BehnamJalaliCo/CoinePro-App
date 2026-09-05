@@ -60,6 +60,10 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.lateral(): Boolean
 /**
  * Forward: the arriving screen comes in from the end edge, the covered one drifts a quarter.
  *
+ * The slide is a spring and the fade is a tween, on purpose: the slide is *spatial* — a reader can
+ * interrupt it with the back gesture half-way and a spring carries the velocity it had — while the
+ * fade is an *effect*, and an opacity has no momentum to carry. See `CoineProMotionSpecs`.
+ *
  * [motion] is the device's animator scale — "Remove animations" in accessibility, and battery
  * saver. When a reader has turned motion off, screens simply replace each other. Screenshot renders
  * report false as well, so captures are deterministic.
@@ -70,7 +74,7 @@ internal fun AnimatedContentTransitionScope<NavBackStackEntry>.appEnter(motion: 
         lateral() -> fadeIn(tween(CoineProMotionSpecs.STANDARD_MS, easing = CoineProMotionSpecs.Enter))
         else -> slideIntoContainer(
             towards = AnimatedContentTransitionScope.SlideDirection.Start,
-            animationSpec = tween(CoineProMotionSpecs.SLOW_MS, easing = CoineProMotionSpecs.Standard),
+            animationSpec = CoineProMotionSpecs.defaultSpatialFor(),
         ) + fadeIn(tween(CoineProMotionSpecs.STANDARD_MS, easing = CoineProMotionSpecs.Enter))
     }
 
@@ -80,7 +84,7 @@ internal fun AnimatedContentTransitionScope<NavBackStackEntry>.appExit(motion: B
         lateral() -> fadeOut(tween(CoineProMotionSpecs.STANDARD_MS, easing = CoineProMotionSpecs.Exit))
         else -> slideOutOfContainer(
             towards = AnimatedContentTransitionScope.SlideDirection.Start,
-            animationSpec = tween(CoineProMotionSpecs.SLOW_MS, easing = CoineProMotionSpecs.Standard),
+            animationSpec = CoineProMotionSpecs.defaultSpatialFor(),
             targetOffset = { full -> full / PARALLAX },
         ) + fadeOut(tween(CoineProMotionSpecs.SLOW_MS, easing = CoineProMotionSpecs.Exit))
     }
@@ -92,7 +96,7 @@ internal fun AnimatedContentTransitionScope<NavBackStackEntry>.appPopEnter(motio
         lateral() -> fadeIn(tween(CoineProMotionSpecs.STANDARD_MS, easing = CoineProMotionSpecs.Enter))
         else -> slideIntoContainer(
             towards = AnimatedContentTransitionScope.SlideDirection.End,
-            animationSpec = tween(CoineProMotionSpecs.SLOW_MS, easing = CoineProMotionSpecs.Standard),
+            animationSpec = CoineProMotionSpecs.defaultSpatialFor(),
             initialOffset = { full -> full / PARALLAX },
         ) + fadeIn(tween(CoineProMotionSpecs.STANDARD_MS, easing = CoineProMotionSpecs.Enter))
     }
@@ -103,6 +107,6 @@ internal fun AnimatedContentTransitionScope<NavBackStackEntry>.appPopExit(motion
         lateral() -> fadeOut(tween(CoineProMotionSpecs.STANDARD_MS, easing = CoineProMotionSpecs.Exit))
         else -> slideOutOfContainer(
             towards = AnimatedContentTransitionScope.SlideDirection.End,
-            animationSpec = tween(CoineProMotionSpecs.SLOW_MS, easing = CoineProMotionSpecs.Standard),
+            animationSpec = CoineProMotionSpecs.defaultSpatialFor(),
         ) + fadeOut(tween(CoineProMotionSpecs.SLOW_MS, easing = CoineProMotionSpecs.Exit))
     }
