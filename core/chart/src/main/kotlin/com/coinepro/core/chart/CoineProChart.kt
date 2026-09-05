@@ -287,6 +287,14 @@ fun CoineProChart(
      */
     onCrosshairMove: ((Crosshair?) -> Unit)? = null,
     /**
+     * The magnet pulled a placed point onto a bar's open, high, low or close.
+     *
+     * Fired once per placement, only when the point actually moved onto a channel — a tap with
+     * the magnet off, or one that landed outside the weak magnet's reach, is not a snap. The
+     * caller's haptic goes here; the chart itself makes no sound and no vibration.
+     */
+    onSnap: (() -> Unit)? = null,
+    /**
      * A crosshair placed by something other than this chart's own finger.
      *
      * Drawn instead of the local one when it is non-null, and it does not disturb the local one —
@@ -686,7 +694,7 @@ fun CoineProChart(
     }
 
     /** Momentum after a flick. See [KineticScroll] for why it is touch-only. */
-    val kinetic = remember { KineticScroll() }
+    val kinetic = remember(density) { KineticScroll(density.density) }
     var flinging by remember { mutableStateOf(false) }
 
     /**
@@ -1956,11 +1964,21 @@ fun CoineProChart(
                                         } else {
                                             null
                                         }
-                                        val placed = DrawingActions.tapSnapped(
-                                            state = state,
+                                        // The snap and the tap, in the open rather than through
+                                        // `tapSnapped`, because the snap's answer is wanted twice:
+                                        // once as the point to place, once to say whether the
+                                        // magnet did anything, which is what the haptic is for.
+                                        val snapped = DrawingActions.snap(
                                             point = constrained ?: view.rawChartPointAt(plot),
                                             series = display,
-                                            nearest = hit,
+                                            mode = state.effectiveMagnetMode,
+                                        )
+                                        if (snapped.channel != null) onSnap?.invoke()
+                                        val placed = DrawingActions.tap(
+                                            state,
+                                            snapped.point,
+                                            hit,
+                                            snapped.channel,
                                         )
                                         // Held for one point, exactly as the magnet is: a latch
                                         // nothing drops is a latch the reader turned on by accident

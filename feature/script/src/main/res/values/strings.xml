@@ -37,4 +37,6 @@
 
     <string name="script_strategy_directional_strength_name">قدرت و جهت روند</string>
     <string name="script_strategy_directional_strength_description">تقاطع ‎+DI و ‎−DI، فقط وقتی ADX می‌گوید روندی در کار است. ADX دیر می‌رسد: تا از آستانه بگذرد، بخشی از حرکت رفته است.</string>
+    <string name="script_failure_at">خط %1$s، ستون %2$s</string>
+    <string name="script_failure">خطا</string>
 </resources>

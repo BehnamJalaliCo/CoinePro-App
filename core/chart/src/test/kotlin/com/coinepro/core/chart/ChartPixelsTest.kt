@@ -352,8 +352,11 @@ class ChartPixelsTest {
 
     @Test
     fun `a fling decays to nothing and then stops on its own`() {
-        val scroll = KineticScroll()
-        scroll.start(1_200f)
+        // A phone density, not the JVM's 1×: the curve is physical, and at 1× a flick coasts three
+        // times as far as it does on the hardware a reader holds.
+        val scroll = KineticScroll(PHONE_DENSITY)
+        val spline = FlingSpline(PHONE_DENSITY)
+        scroll.start(5_000f)
         assertTrue(scroll.isRunning)
 
         var now = 1_000L
@@ -371,18 +374,20 @@ class ChartPixelsTest {
             frames++
         }
         assertFalse("the fling never stopped", scroll.isRunning)
-        // Roughly v / (1000 * (1 - decay)) pixels, less the tail below the cut-off.
-        assertEquals(393f, travelled, 20f)
-        // And it is over inside a second and a half of wall clock, not asymptotically approaching
-        // stillness for ever.
-        assertTrue("a fling ran for ${frames * 16}ms", frames * 16 < 1_600)
+        // Exactly the distance the platform's curve promises for that release, to the pixel the
+        // frame quantisation allows — the last tick lands on the curve's end, not short of it.
+        assertEquals(spline.distance(5_000f), travelled, 1f)
+        // And it is over when the curve says it is — under a second for a firm flick — not
+        // asymptotically approaching stillness for ever.
+        assertTrue("a fling ran for ${frames * 16}ms", frames * 16 <= spline.durationMillis(5_000f) + 32)
+        assertTrue("a firm flick should coast for under a second", spline.durationMillis(5_000f) < 1_000L)
         // Ticking a finished animation is harmless.
         assertEquals(0f, scroll.tick(now + 16), 0f)
     }
 
     @Test
     fun `a fling carries the direction it was thrown in`() {
-        val scroll = KineticScroll()
+        val scroll = KineticScroll(PHONE_DENSITY)
         scroll.start(-1_200f)
         scroll.tick(0L)
         assertTrue(scroll.tick(16L) < 0f)
@@ -392,7 +397,7 @@ class ChartPixelsTest {
     fun `a release slower than the cut-off starts nothing`() {
         // Twenty pixels a second is a third of a pixel per frame. Below it the chart would not move,
         // it would shimmer — and every frame of it costs a price-scale recomputation.
-        val scroll = KineticScroll()
+        val scroll = KineticScroll(PHONE_DENSITY)
         scroll.start(19f)
         assertFalse(scroll.isRunning)
         assertEquals(0f, scroll.tick(0L), 0f)
@@ -401,7 +406,7 @@ class ChartPixelsTest {
     @Test
     fun `stopping a fling ends it immediately`() {
         // What a finger landing on the chart does: the touch always beats the momentum.
-        val scroll = KineticScroll()
+        val scroll = KineticScroll(PHONE_DENSITY)
         scroll.start(2_000f)
         scroll.tick(0L)
         scroll.stop()
@@ -413,9 +418,31 @@ class ChartPixelsTest {
     fun `a fling starting at frame zero still moves`() {
         // `withFrameMillis` on a fresh process hands out small numbers, and zero is an ordinary
         // one. Treating it as "no clock yet" would make the first fling of a session inert.
-        val scroll = KineticScroll()
+        val scroll = KineticScroll(PHONE_DENSITY)
         scroll.start(1_000f)
         assertEquals(0f, scroll.tick(0L), 0f)
         assertTrue(scroll.tick(16L) > 0f)
+    }
+
+    @Test
+    fun `the platform curve coasts further and longer the harder it is thrown`() {
+        val spline = FlingSpline(PHONE_DENSITY)
+        assertTrue(spline.distance(5_000f) > spline.distance(2_000f))
+        assertTrue(spline.durationMillis(5_000f) > spline.durationMillis(2_000f))
+        // Progress is monotone from nothing to everything.
+        val duration = spline.durationMillis(5_000f)
+        var previous = 0f
+        for (t in 0..duration step 8) {
+            val progress = spline.progress(t, duration)
+            assertTrue("progress went backwards at ${t}ms", progress >= previous)
+            previous = progress
+        }
+        assertEquals(1f, spline.progress(duration, duration), 0f)
+        assertEquals(0f, spline.progress(0L, duration), 0f)
+    }
+
+    private companion object {
+        /** A 420 dpi phone — the density the fling curve is tuned against on real hardware. */
+        const val PHONE_DENSITY = 2.625f
     }
 }

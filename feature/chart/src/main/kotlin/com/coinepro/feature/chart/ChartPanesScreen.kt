@@ -47,6 +47,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.chart.ChartDecoration
 import com.coinepro.core.chart.ChartLegendChange
 import com.coinepro.core.chart.ChartMarketStatus
+import com.coinepro.core.chart.ChartViewport
+import com.coinepro.core.chart.Crosshair
+import com.coinepro.core.chart.CandleSeries
 import com.coinepro.core.chart.CoineProChart
 import com.coinepro.core.chart.decimalsFor
 import com.coinepro.core.chart.formatPrice
@@ -137,19 +140,6 @@ fun ChartPanesScreen(
     symbolChartStates: SymbolChartStateStore? = null,
     chartLayoutStore: ChartLayoutStore? = null,
     onBack: (() -> Unit)? = null,
-    /**
-     * Whether the canvas can report and accept a crosshair position yet.
-     *
-     * False today. `CoineProChart` owns its crosshair internally and hoists neither a report nor an
-     * override, so the switch is offered **disabled** with the reason on it rather than as a switch
-     * that stores a preference and changes nothing — which is the failure this codebase calls out
-     * by name: a setting that survives a restart and does nothing is worse than an absent one,
-     * because the reader believes it. The day the canvas hoists it, this becomes true and the
-     * switch works with no other change here.
-     */
-    crosshairSyncAvailable: Boolean = false,
-    /** The same, for the visible window of bars. See [crosshairSyncAvailable]. */
-    timeRangeSyncAvailable: Boolean = false,
 ) {
     val scope = rememberCoroutineScope()
     val maxPanes = maxPanesFor(coineProWindowClass())
@@ -166,6 +156,13 @@ fun ChartPanesScreen(
     }
     val symbols = remember(encoded) { encoded.split(',').filter(String::isNotBlank) }
     var sync by remember { mutableStateOf(PaneSync.OFF) }
+
+    // What the panes share when a tie is on. Each carries the pane it came from, so the source
+    // pane draws its own finger and its own window and only the *other* panes adopt them —
+    // otherwise the source would be handed back its own report and the two would chase each
+    // other round a loop. See [PaneCrosshair] and [PaneWindow].
+    var sharedCrosshair by remember { mutableStateOf<PaneCrosshair?>(null) }
+    var sharedWindow by remember { mutableStateOf<PaneWindow?>(null) }
 
     // Read once rather than collected. The switches and the symbols are edited here and written
     // back, and a collector would deliver each of this screen's own writes straight back as an
@@ -245,7 +242,10 @@ fun ChartPanesScreen(
                     val interval = head.state.value.interval
                     controllers.drop(1).forEach { it.setInterval(interval) }
                 }
-                PaneSyncField.CROSSHAIR, PaneSyncField.TIME_RANGE -> Unit
+                // Nothing to apply until a finger or a pan reports; switching off drops the
+                // shared copy so the other panes go back to their own.
+                PaneSyncField.CROSSHAIR -> sharedCrosshair = null
+                PaneSyncField.TIME_RANGE -> sharedWindow = null
             }
         }
     }
@@ -275,6 +275,12 @@ fun ChartPanesScreen(
                 // and eight timeframe strips is half the tablet spent saying what each pane is
                 // rather than showing it. Dense panes move both behind the pane's own header.
                 dense = symbols.size > CoineProWindowClass.PHONE_MAX_PANES,
+                index = index,
+                sync = sync,
+                sharedCrosshair = sharedCrosshair,
+                sharedWindow = sharedWindow,
+                onCrosshair = { crosshair -> sharedCrosshair = crosshair },
+                onWindow = { window -> sharedWindow = window },
                 modifier = paneModifier,
             )
         }
@@ -282,8 +288,6 @@ fun ChartPanesScreen(
         PaneSyncRow(
             sync = sync,
             onChange = setSync,
-            crosshairAvailable = crosshairSyncAvailable,
-            timeRangeAvailable = timeRangeSyncAvailable,
         )
     }
 }
@@ -381,6 +385,12 @@ private fun ChartPane(
     chartLayoutStore: ChartLayoutStore?,
     onSelectSymbol: (String) -> Unit,
     onSelectInterval: (ChartInterval) -> Unit,
+    index: Int,
+    sync: PaneSync,
+    sharedCrosshair: PaneCrosshair?,
+    sharedWindow: PaneWindow?,
+    onCrosshair: (PaneCrosshair?) -> Unit,
+    onWindow: (PaneWindow?) -> Unit,
     modifier: Modifier = Modifier,
     dense: Boolean = false,
 ) {
@@ -489,6 +499,24 @@ private fun ChartPane(
                         showCountdown = !state.replay.isOn,
                     ),
                     focusIndex = state.focusIndex,
+                    // The two halves of pane sync. Reported only while the tie is on, adopted only
+                    // from another pane: the source keeps its own finger and its own window.
+                    onCrosshairMove = if (sync.crosshair) {
+                        { crosshair -> onCrosshair(PaneCrosshair.of(index, state.visibleSeries, crosshair)) }
+                    } else {
+                        null
+                    },
+                    crosshairOverride = sharedCrosshair
+                        ?.takeIf { sync.crosshair && it.source != index }
+                        ?.at(state.visibleSeries),
+                    onViewportChange = if (sync.timeRange) {
+                        { view -> onWindow(PaneWindow(index, view.barsPerView, view.offset, view.priceZoom)) }
+                    } else {
+                        null
+                    },
+                    viewportOverride = sharedWindow
+                        ?.takeIf { sync.timeRange && it.source != index }
+                        ?.at(state.visibleSeries),
                     // Item 108, and this layout is the one that gains most: it draws no page
                     // header at all, so before this the move and the market's state were nowhere
                     // on screen.
@@ -591,8 +619,6 @@ private fun ChartPane(
 private fun PaneSyncRow(
     sync: PaneSync,
     onChange: (PaneSyncField, Boolean) -> Unit,
-    crosshairAvailable: Boolean,
-    timeRangeAvailable: Boolean,
 ) {
     var open by rememberSaveable { mutableStateOf(false) }
     Column(
@@ -645,11 +671,6 @@ private fun PaneSyncRow(
                 verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
             ) {
                 PaneSyncField.entries.forEach { field ->
-                    val available = when (field) {
-                        PaneSyncField.CROSSHAIR -> crosshairAvailable
-                        PaneSyncField.TIME_RANGE -> timeRangeAvailable
-                        else -> true
-                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -659,26 +680,17 @@ private fun PaneSyncRow(
                             Text(
                                 text = stringResource(field.labelRes),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = if (available) {
-                                    CoineProColors.TextPrimary
-                                } else {
-                                    CoineProColors.TextDisabled
-                                },
+                                color = CoineProColors.TextPrimary,
                             )
                             Text(
-                                text = if (available) {
-                                    stringResource(field.noteRes)
-                                } else {
-                                    stringResource(R.string.panes_sync_unavailable)
-                                },
+                                text = stringResource(field.noteRes),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = CoineProColors.TextMuted,
                                 modifier = Modifier.padding(top = 2.dp),
                             )
                         }
                         Switch(
-                            checked = available && sync.isOn(field),
-                            enabled = available,
+                            checked = sync.isOn(field),
                             onCheckedChange = { on -> onChange(field, on) },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = CoineProColors.OnAccent,
@@ -877,3 +889,43 @@ private val PANE_LOGO = 18.dp
  * panel scrolls inside itself instead. A control that hides what it controls is not a control.
  */
 private val SYNC_MAX_HEIGHT = 220.dp
+
+/**
+ * A crosshair one pane reported, as a moment in time rather than a bar index.
+ *
+ * Time and not index, because the panes may be on different timeframes or have loaded different
+ * depths of history, and bar 412 of one is nothing in particular on another. The moment is what
+ * a reader tied the panes to see: «where was everything else when this happened».
+ */
+data class PaneCrosshair(val source: Int, val time: Long) {
+    /** This moment on [series] — the last bar that had opened by then — or null off its history. */
+    fun at(series: CandleSeries): Crosshair? {
+        if (series.isEmpty) return null
+        val times = series.time
+        if (time < times.first()) return null
+        var index = times.binarySearch(time)
+        if (index < 0) index = -index - 2
+        index = index.coerceIn(0, series.size - 1)
+        return Crosshair(index, series.close[index])
+    }
+
+    companion object {
+        fun of(source: Int, series: CandleSeries, crosshair: Crosshair?): PaneCrosshair? {
+            val index = crosshair?.index ?: return null
+            if (index !in 0 until series.size) return null
+            return PaneCrosshair(source, series.time[index])
+        }
+    }
+}
+
+/**
+ * A window one pane reported: the three numbers `CoineProChart.viewportOverride` adopts.
+ *
+ * Bars from the live edge, bars per screen and the price stretch — not the whole viewport, which
+ * belongs to one series' prices. The offset is meaningful across panes on the same timeframe and
+ * approximate across different ones, which is what the tie says it is.
+ */
+data class PaneWindow(val source: Int, val barsPerView: Int, val offset: Int, val priceZoom: Float) {
+    fun at(series: CandleSeries): ChartViewport =
+        ChartViewport(series = series, barsPerView = barsPerView, offset = offset, priceZoom = priceZoom)
+}

@@ -37,4 +37,6 @@
 
     <string name="script_strategy_directional_strength_name">Trend strength and direction</string>
     <string name="script_strategy_directional_strength_description">A +DI and −DI cross taken only while the ADX says a trend is present. The ADX lags: by the time it clears its threshold, part of the move has already happened.</string>
+    <string name="script_failure_at">Line %1$s, column %2$s</string>
+    <string name="script_failure">Error</string>
 </resources>

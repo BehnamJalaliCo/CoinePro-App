@@ -402,6 +402,11 @@ fun ChartScreen(
      */
     var activeSymbol by rememberSaveable { mutableStateOf<String?>(null) }
 
+    // One haptics handle for the canvas: the magnet's snap and the crosshair crossing a level both
+    // tick through it. Neither is a sound the chart makes itself — see `CoineProChart.onSnap`.
+    val haptics = rememberCoineProHaptics()
+    var lastCrosshairPrice by remember { mutableStateOf<Double?>(null) }
+
     // The controller the whole screen works against.
     //
     // Shadowing the parameter deliberately: everything below this line means "the chart in front
@@ -901,6 +906,20 @@ fun ChartScreen(
                     // every terminal puts them and the one gesture on this chart a reader is
                     // likely to try by accident and be pleased to find.
                     onPriceAxisMenu = { sheet = ChartSheet.SCALE },
+                    // A tick when the magnet takes a point, and a tick when the crosshair crosses a
+                    // level — a stop, a target, an indicator line. The reader feels the line under
+                    // the finger without looking away from the price they are dragging towards.
+                    onSnap = { haptics.select() },
+                    onCrosshairMove = { crosshair ->
+                        val price = crosshair?.price
+                        val previous = lastCrosshairPrice
+                        if (price != null && previous != null && price != previous) {
+                            val low = minOf(previous, price)
+                            val high = maxOf(previous, price)
+                            if (state.levels.any { level -> level.price in low..high }) haptics.select()
+                        }
+                        lastCrosshairPrice = price
+                    },
                     // The bars on screen, back to the controller. One study reads it — the
                     // visible-range volume profile — and until this existed it was computed once
                     // against the whole series and never followed a pan, which is a "visible range"

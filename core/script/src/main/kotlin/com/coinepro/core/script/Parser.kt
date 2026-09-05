@@ -28,7 +28,7 @@ internal class Parser(private val tokens: List<Token>) {
             // `a = 1 b = 2` parses as something surprising instead of failing where it is written.
             if (!check(TokenType.EOF) && !check(TokenType.NEWLINE)) {
                 val token = peek()
-                throw ScriptError("پس از پایان دستور، «${token.text}» انتظار نمی‌رفت", token.line, token.column)
+                throw ScriptError("پس از پایان دستور، «${token.text}» انتظار نمی‌رفت", "Did not expect “${token.text}” after the end of the statement", token.line, token.column)
             }
             skipNewlines()
         }
@@ -55,7 +55,7 @@ internal class Parser(private val tokens: List<Token>) {
         if (!match(TokenType.QUESTION)) return condition
         val marker = previous()
         val whenTrue = expression()
-        expect(TokenType.COLON, "«:» برای بخش دوم شرط لازم است")
+        expect(TokenType.COLON, "«:» برای بخش دوم شرط لازم است", "“:” is needed before the second half of the condition")
         val whenFalse = expression()
         return Conditional(condition, whenTrue, whenFalse, marker.line, marker.column)
     }
@@ -92,7 +92,7 @@ internal class Parser(private val tokens: List<Token>) {
         while (check(TokenType.LBRACKET)) {
             val bracket = advance()
             val bars = expression()
-            expect(TokenType.RBRACKET, "«]» بسته نشده است")
+            expect(TokenType.RBRACKET, "«]» بسته نشده است", "“]” is never closed")
             target = Offset(target, bars, bracket.line, bracket.column)
         }
         return target
@@ -107,11 +107,11 @@ internal class Parser(private val tokens: List<Token>) {
             match(TokenType.FALSE) -> BoolLiteral(false, token.line, token.column)
             match(TokenType.LPAREN) -> {
                 val inner = expression()
-                expect(TokenType.RPAREN, "«)» بسته نشده است")
+                expect(TokenType.RPAREN, "«)» بسته نشده است", "“)” is never closed")
                 inner
             }
             match(TokenType.IDENT) -> qualified(previous())
-            else -> throw ScriptError("عبارت ناتمام است — «${token.text}» انتظار نمی‌رفت", token.line, token.column)
+            else -> throw ScriptError("عبارت ناتمام است — «${token.text}» انتظار نمی‌رفت", "The expression is incomplete — did not expect “${token.text}”", token.line, token.column)
         }
     }
 
@@ -121,7 +121,7 @@ internal class Parser(private val tokens: List<Token>) {
         var name = first.text
         if (check(TokenType.DOT)) {
             advance()
-            val member = expect(TokenType.IDENT, "پس از «.» نام لازم است")
+            val member = expect(TokenType.IDENT, "پس از «.» نام لازم است", "A name is needed after “.”")
             namespace = name
             name = member.text
             // `color.gold` is a constant rather than a call, and reads better than `color.gold()`.
@@ -140,7 +140,7 @@ internal class Parser(private val tokens: List<Token>) {
                 skipNewlines()
             } while (match(TokenType.COMMA))
         }
-        expect(TokenType.RPAREN, "«)» بسته نشده است")
+        expect(TokenType.RPAREN, "«)» بسته نشده است", "“)” is never closed")
         return Call(namespace, name, arguments, first.line, first.column)
     }
 
@@ -174,10 +174,10 @@ internal class Parser(private val tokens: List<Token>) {
         return true
     }
 
-    private fun expect(type: TokenType, message: String): Token {
+    private fun expect(type: TokenType, message: String, messageEn: String): Token {
         if (!check(type)) {
             val token = peek()
-            throw ScriptError(message, token.line, token.column)
+            throw ScriptError(message, messageEn, token.line, token.column)
         }
         return advance()
     }

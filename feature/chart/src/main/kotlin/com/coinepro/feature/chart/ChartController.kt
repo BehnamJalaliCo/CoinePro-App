@@ -2903,7 +2903,16 @@ class ChartController(
 
         // A new bar. The one it replaces is final now, so that is when it is kept.
         runCatching { archive.write(symbol, interval, listOf(last.toBar())) }
-        return publishTail(base, held + Candle(opensAt, tick.price, tick.price, tick.price, tick.price))
+        // A ring, not a list that grows for as long as the screen is open. A ten-second chart left
+        // on overnight would otherwise hold nine thousand bars by morning and rebuild every one
+        // of them on each tick; the oldest fall off the front once the archive has them, and a
+        // page back reads them from there. See [SECONDS_BARS_HELD].
+        val kept = if (interval is ChartInterval.Seconds && held.size >= SECONDS_BARS_HELD) {
+            held.subList(held.size - SECONDS_BARS_HELD + 1, held.size)
+        } else {
+            held
+        }
+        return publishTail(base, kept + Candle(opensAt, tick.price, tick.price, tick.price, tick.price))
     }
 
     /**
@@ -3130,6 +3139,15 @@ class ChartController(
 
         /** Bars one live poll re-reads: the open one, and two behind it in case a bar closed. */
         const val LIVE_TAIL_BARS = 3
+
+        /**
+         * The most seconds bars a live series holds in memory before the oldest fall off the front.
+         *
+         * Two thousand ten-second bars is five and a half hours on screen, which is more than any
+         * phone shows at once and less than a night's worth of ticks. Nothing is lost: each bar is
+         * written to the archive the moment it closes, and paging back reads it from there.
+         */
+        const val SECONDS_BARS_HELD = 2_000
 
         /**
          * How often the live edge is re-read, from the bar's own length.

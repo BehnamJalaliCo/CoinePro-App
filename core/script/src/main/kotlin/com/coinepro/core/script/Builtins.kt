@@ -254,7 +254,7 @@ internal object Builtins {
                 val condition = interpreter.flagLine(arguments.value(0), node)
                 val source = arguments.source(1)
                 // Zero is the latest occurrence, so this is a count and not a period.
-                val occurrence = if (arguments.size > 2) arguments.constant(2, "شمارهٔ رخداد").toInt().coerceAtLeast(0) else 0
+                val occurrence = if (arguments.size > 2) arguments.constant(2, "شماره‌ی رخداد", "The occurrence number").toInt().coerceAtLeast(0) else 0
                 val held = ArrayDeque<Double?>()
                 series(interpreter, Line.of(interpreter.barCount) { index ->
                     val fired = condition[index]?.let { it != 0.0 } ?: false
@@ -303,7 +303,7 @@ internal object Builtins {
             }
             "nz" -> {
                 val source = arguments.source(0)
-                val replacement = if (arguments.size > 1) arguments.constant(1, "مقدار جایگزین") else 0.0
+                val replacement = if (arguments.size > 1) arguments.constant(1, "مقدار جایگزین", "The replacement value") else 0.0
                 series(interpreter, Line.of(interpreter.barCount) { source[it] ?: replacement })
             }
 
@@ -320,7 +320,7 @@ internal object Builtins {
                 Value.Flag(true)
             }
 
-            else -> throw ScriptError("تابع «${node.qualified}» وجود ندارد", node.line, node.column)
+            else -> throw ScriptError("تابع «${node.qualified}» وجود ندارد", "There is no function “${node.qualified}”", node.line, node.column)
         }
     }
 
@@ -329,7 +329,7 @@ internal object Builtins {
     private fun band(arguments: Arguments): com.coinepro.core.chart.Band {
         val line = arguments.source(0)
         val period = arguments.length(1, default = 20)
-        val multiplier = if (arguments.size > 2) arguments.constant(2, "ضریب") else 2.0
+        val multiplier = if (arguments.size > 2) arguments.constant(2, "ضریب", "The multiplier") else 2.0
         val source = Source.of(line)
         if (source.values.isEmpty()) {
             val empty = Line.empty(line.size)
@@ -359,7 +359,7 @@ internal object Builtins {
         interpreter.candles.low,
         interpreter.candles.close,
         arguments.length(0, default = 10),
-        if (arguments.size > 1) arguments.constant(1, "ضریب") else 3.0,
+        if (arguments.size > 1) arguments.constant(1, "ضریب", "The multiplier") else 3.0,
     )
 
     private fun directional(
@@ -436,7 +436,7 @@ internal object Builtins {
     }
 
     private fun multiplierOf(arguments: Arguments, index: Int): Double =
-        if (arguments.size > index) arguments.constant(index, "ضریب") else 2.0
+        if (arguments.size > index) arguments.constant(index, "ضریب", "The multiplier") else 2.0
 
     private fun keltner(interpreter: Interpreter, arguments: Arguments): com.coinepro.core.chart.Band =
         Indicators.keltner(
@@ -450,7 +450,7 @@ internal object Builtins {
     private fun envelope(arguments: Arguments): com.coinepro.core.chart.Band {
         val line = arguments.source(0)
         val period = arguments.length(1, default = 20)
-        val percent = if (arguments.size > 2) arguments.constant(2, "درصد") else 1.0
+        val percent = if (arguments.size > 2) arguments.constant(2, "درصد", "The percentage") else 1.0
         val source = Source.of(line)
         if (source.values.isEmpty()) {
             val empty = Line.empty(line.size)
@@ -586,10 +586,10 @@ internal object Builtins {
     /* ------------------------------------------------------------------ inputs and output */
 
     private fun input(interpreter: Interpreter, node: Call, arguments: Arguments): Value {
-        val default = arguments.constant(0, "مقدار پیش‌فرض")
+        val default = arguments.constant(0, "مقدار پیش‌فرض", "The default value")
         val title = if (arguments.has("title")) arguments.named("title").let { arguments.textOf(it) } else "ورودی"
-        val minimum = if (arguments.has("min")) arguments.constantOf(arguments.named("min"), "کمینه") else null
-        val maximum = if (arguments.has("max")) arguments.constantOf(arguments.named("max"), "بیشینه") else null
+        val minimum = if (arguments.has("min")) arguments.constantOf(arguments.named("min"), "کمینه", "The minimum") else null
+        val maximum = if (arguments.has("max")) arguments.constantOf(arguments.named("max"), "بیشینه", "The maximum") else null
 
         // A value the reader set in the panel wins over the default written in the script — that is
         // the whole point of declaring an input. Clamped to the declared range so a stored value
@@ -608,6 +608,7 @@ internal object Builtins {
         if (value is Value.FlagSeries || value is Value.Flag) {
             throw ScriptError(
                 "plot یک سری عددی می‌خواهد. برای شرط از marker استفاده کنید",
+                "plot needs a number series; use marker for a condition",
                 node.line,
                 node.column,
             )
@@ -621,7 +622,7 @@ internal object Builtins {
             "خط " + (interpreter.plotCount + 1).toPersianDigits()
         }
         val colour = if (arguments.has("color")) arguments.colourOf(arguments.named("color")) else 0xFFD8A848
-        val width = if (arguments.has("width")) arguments.constantOf(arguments.named("width"), "ضخامت") else 1.4
+        val width = if (arguments.has("width")) arguments.constantOf(arguments.named("width"), "ضخامت", "The width") else 1.4
         val dashed = arguments.has("dashed") && arguments.flagOf(arguments.named("dashed"))
         val pane = if (arguments.has("pane")) {
             arguments.textOf(arguments.named("pane")) != "price"
@@ -673,7 +674,7 @@ internal object Builtins {
     }
 
     private fun hline(interpreter: Interpreter, node: Call, arguments: Arguments): Value {
-        val price = arguments.constant(0, "قیمت خط")
+        val price = arguments.constant(0, "قیمت خط", "The line price")
         val title = if (arguments.has("title")) arguments.textOf(arguments.named("title")) else null
         val colour = if (arguments.has("color")) arguments.colourOf(arguments.named("color")) else 0xFF848E9C
         val pane = if (arguments.has("pane")) arguments.textOf(arguments.named("pane")) != "price" else null
@@ -732,10 +733,10 @@ internal object Builtins {
         // A stop on the wrong side of entry is not a setup, it is a mistake worth naming: a long
         // whose stop is above its entry would render as a negative risk and a nonsense R:R.
         if (buy && stopPrice >= entryPrice) {
-            throw ScriptError("در خرید، حد ضرر باید پایین‌تر از ورود باشد", node.line, node.column)
+            throw ScriptError("در خرید، حد ضرر باید پایین‌تر از ورود باشد", "For a long, the stop must be below the entry", node.line, node.column)
         }
         if (!buy && stopPrice <= entryPrice) {
-            throw ScriptError("در فروش، حد ضرر باید بالاتر از ورود باشد", node.line, node.column)
+            throw ScriptError("در فروش، حد ضرر باید بالاتر از ورود باشد", "For a short, the stop must be above the entry", node.line, node.column)
         }
         interpreter.setSetup(ScriptSetup(buy, entryPrice, stopPrice, target?.get(bar), bar))
         return Value.Flag(true)
@@ -767,6 +768,7 @@ internal class Arguments(private val interpreter: Interpreter, private val node:
         if (index >= positional.size) {
             throw ScriptError(
                 "«${node.qualified}» به ورودی ${index + 1} نیاز دارد",
+                "“${node.qualified}” needs argument ${index + 1}",
                 node.line,
                 node.column,
             )
@@ -779,14 +781,14 @@ internal class Arguments(private val interpreter: Interpreter, private val node:
     fun length(index: Int, default: Int? = null): Int {
         if (index >= positional.size) {
             default?.let { return it }
-            throw ScriptError("«${node.qualified}» به طول دوره نیاز دارد", node.line, node.column)
+            throw ScriptError("«${node.qualified}» به طول دوره نیاز دارد", "“${node.qualified}” needs a length", node.line, node.column)
         }
-        return interpreter.period(value(index), node, "طول دوره")
+        return interpreter.period(value(index), node, "طول دوره", "The length")
     }
 
-    fun constant(index: Int, what: String): Double = interpreter.scalar(value(index), node, what)
+    fun constant(index: Int, what: String, whatEn: String): Double = interpreter.scalar(value(index), node, what, whatEn)
 
-    fun constantOf(value: Value, what: String): Double = interpreter.scalar(value, node, what)
+    fun constantOf(value: Value, what: String, whatEn: String): Double = interpreter.scalar(value, node, what, whatEn)
 
     fun text(index: Int): String = textOf(value(index))
 
@@ -794,18 +796,18 @@ internal class Arguments(private val interpreter: Interpreter, private val node:
         is Value.Text -> value.value
         is Value.Num -> com.coinepro.core.common.MarketNumberFormatter.priceAuto(value.value)
         is Value.Flag -> if (value.value) "درست" else "نادرست"
-        else -> throw ScriptError("اینجا متن لازم است، نه ${value.typeName}", node.line, node.column)
+        else -> throw ScriptError("اینجا متن لازم است، نه ${value.typeName}", "Text is needed here, not ${value.typeNameEn}", node.line, node.column)
     }
 
     fun colourOf(value: Value): Long = when (value) {
         is Value.Colour -> value.argb
-        else -> throw ScriptError("اینجا رنگ لازم است — مثلاً color.gold", node.line, node.column)
+        else -> throw ScriptError("اینجا رنگ لازم است — مثلاً color.gold", "A colour is needed here — color.gold, say", node.line, node.column)
     }
 
     fun flagOf(value: Value): Boolean = when (value) {
         is Value.Flag -> value.value
         is Value.Num -> value.value != 0.0
-        else -> throw ScriptError("اینجا درست/نادرست لازم است", node.line, node.column)
+        else -> throw ScriptError("اینجا درست/نادرست لازم است", "true or false is needed here", node.line, node.column)
     }
 
     private fun evaluated(expression: Expr): Value = evaluator(expression)

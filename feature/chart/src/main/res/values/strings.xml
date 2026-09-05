@@ -66,7 +66,6 @@
     <string name="panes_sync_none">هیچ‌کدام</string>
     <string name="panes_sync_open">باز کردن</string>
     <string name="panes_sync_close">بستن</string>
-    <string name="panes_sync_unavailable">هم‌گام‌سازی نشانگر و محدوده‌ی دید بین قاب‌ها هنوز آماده نیست.</string>
 
     <!-- The four ties. Each one runs from the first pane outward; with eight panes «the other
          one» is not a thing that exists. -->

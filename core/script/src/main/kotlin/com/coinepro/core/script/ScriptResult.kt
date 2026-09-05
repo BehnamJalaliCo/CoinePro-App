@@ -1,5 +1,6 @@
 package com.coinepro.core.script
 
+import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.chart.Line
 
 /** A line the script asked to be drawn. */
@@ -92,5 +93,13 @@ data class ScriptResult(
         get() = plots.isEmpty() && levels.isEmpty() && markers.isEmpty() && setup == null
 }
 
-/** A refusal, with the position to put a caret at. */
-data class ScriptFailure(val message: String, val line: Int, val column: Int)
+/**
+ * A refusal, with the position to put a caret at.
+ *
+ * Both languages travel together rather than one being chosen here, because the interpreter has
+ * no idea what language the app is in and should not: the screen that shows the caret picks with
+ * [text].
+ */
+data class ScriptFailure(val message: String, val messageEn: String, val line: Int, val column: Int) {
+    fun text(language: AppLanguage): String = if (language == AppLanguage.ENGLISH) messageEn else message
+}

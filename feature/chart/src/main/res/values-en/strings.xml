@@ -61,7 +61,6 @@
     <string name="panes_sync_none">Nothing</string>
     <string name="panes_sync_open">Open</string>
     <string name="panes_sync_close">Close</string>
-    <string name="panes_sync_unavailable">Syncing the crosshair and the visible range between panes is not ready yet.</string>
 
     <string name="pane_sync_symbol">Symbol</string>
     <string name="pane_sync_symbol_note">Choosing a symbol in the first pane opens it in all the others.</string>

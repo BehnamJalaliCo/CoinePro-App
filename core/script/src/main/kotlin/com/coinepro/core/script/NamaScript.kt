@@ -28,18 +28,18 @@ object NamaScript {
         overrides: Map<String, Double> = emptyMap(),
     ): ScriptResult = try {
         if (source.length > MAX_SOURCE_LENGTH) {
-            throw ScriptError("اسکریپت از حد مجاز بلندتر است")
+            throw ScriptError("اسکریپت از حد مجاز بلندتر است", "The script is longer than allowed")
         }
         if (series.bars.isEmpty()) {
-            throw ScriptError("برای اجرای اسکریپت، نمودار باید کندل داشته باشد")
+            throw ScriptError("برای اجرای اسکریپت، چارت باید کندل داشته باشد", "The chart needs bars before a script can run")
         }
         Interpreter(series, overrides).run(Parser(Lexer(source).scan()).parse())
     } catch (error: ScriptError) {
-        ScriptResult(error = ScriptFailure(error.bare, error.line, error.column))
+        ScriptResult(error = ScriptFailure(error.fa, error.en, error.line, error.column))
     } catch (error: StackOverflowError) {
         // A deeply nested expression can exhaust the stack before the node budget notices. Caught
         // by name rather than as Throwable, so a genuine bug in this package still surfaces as one.
-        ScriptResult(error = ScriptFailure("اسکریپت بیش از حد تودرتو است", 0, 0))
+        ScriptResult(error = ScriptFailure("اسکریپت بیش از حد تودرتو است", "The script is nested too deeply", 0, 0))
     }
 
     /**
@@ -50,12 +50,12 @@ object NamaScript {
      */
     fun check(source: String): ScriptFailure? = try {
         if (source.length > MAX_SOURCE_LENGTH) {
-            ScriptFailure("اسکریپت از حد مجاز بلندتر است", 0, 0)
+            ScriptFailure("اسکریپت از حد مجاز بلندتر است", "The script is longer than allowed", 0, 0)
         } else {
             Parser(Lexer(source).scan()).parse()
             null
         }
     } catch (error: ScriptError) {
-        ScriptFailure(error.bare, error.line, error.column)
+        ScriptFailure(error.fa, error.en, error.line, error.column)
     }
 }

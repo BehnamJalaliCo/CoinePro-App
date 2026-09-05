@@ -39,6 +39,17 @@ internal sealed interface Value {
             is NumberSeries -> "سری عددی"
             is FlagSeries -> "سری شرطی"
         }
+
+    /** The same, for a message in English. */
+    val typeNameEn: String
+        get() = when (this) {
+            is Num -> "a number"
+            is Text -> "text"
+            is Flag -> "true/false"
+            is Colour -> "a colour"
+            is NumberSeries -> "a number series"
+            is FlagSeries -> "a condition series"
+        }
 }
 
 /** Truthy where the value is present and non-zero. The one place a number becomes a condition. */

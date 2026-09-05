@@ -7,7 +7,6 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.pow
 import kotlin.math.round
 
 /**
@@ -442,46 +441,53 @@ fun separateLabels(
  *
  * ### The decay
  *
- * Exponential, at [DECAY_PER_MILLISECOND] per millisecond of wall clock rather than per frame. Per
- * frame would make the fling travel further on a 120Hz phone than on a 60Hz one, which is a chart
- * that behaves differently on different hardware for no reason a reader could ever discover. At
- * 0.997 the speed halves roughly every 230ms and is down to a twentieth of its starting value after
- * a second, which is about as long as a flick should keep going before it feels like the chart has
- * got away from the reader.
+ * The platform's own — [FlingSpline], the curve every list on the phone coasts on — read against
+ * wall clock rather than per frame. Per frame would make the fling travel further on a 120Hz phone
+ * than on a 60Hz one, which is a chart that behaves differently on different hardware for no reason
+ * a reader could ever discover. The curve fixes both the distance and the duration at release, so
+ * the fling *ends*, at a known time, rather than asymptotically approaching stillness — and the end
+ * of the fling is when the chart is allowed to go idle.
  *
  * ### The cut-off
  *
  * [MIN_VELOCITY] is **twenty pixels a second**. At 60Hz that is a third of a pixel per frame: below
- * it the chart is not moving, it is shimmering, and every frame spent there is a frame spent
- * recomputing a price scale that produced the same picture. Stopping at a threshold rather than at
- * zero is also what makes the fling *end* rather than asymptotically approach stillness, which
- * matters because the end of the fling is when the chart is allowed to go idle.
+ * it the chart would not be moving, it would be shimmering, and every frame spent there is a frame
+ * spent recomputing a price scale that produced the same picture. A release that slow starts
+ * nothing.
  */
-class KineticScroll {
+class KineticScroll(density: Float = 1f) {
 
-    private var velocity = 0f
-    private var lastTick = 0L
+    private val spline = FlingSpline(density)
+    private var direction = 0f
+    private var distance = 0f
+    private var duration = 0L
+    private var startedAt = 0L
+    private var covered = 0f
     private var started = false
     private var running = false
 
-    /** Whether a fling is still in flight. False before [start] and after the decay cuts off. */
+    /** Whether a fling is still in flight. False before [start] and after the curve runs out. */
     val isRunning: Boolean get() = running
 
     /**
      * Begin a fling at [velocity] pixels per second, positive meaning the content moves right.
      *
      * A velocity already below the cut-off starts nothing at all, so a slow drag that ends with the
-     * finger almost still does not produce a one-frame twitch after the release.
+     * finger almost still does not produce a one-frame twitch after the release. Distance and
+     * duration are fixed here, once, from the platform's curve — see [FlingSpline].
      */
     fun start(velocity: Float) {
         if (!velocity.isFinite() || abs(velocity) < MIN_VELOCITY) {
             stop()
             return
         }
-        this.velocity = velocity
-        lastTick = 0L
+        direction = if (velocity < 0f) -1f else 1f
+        distance = spline.distance(velocity)
+        duration = spline.durationMillis(velocity)
+        covered = 0f
+        startedAt = 0L
         started = false
-        running = true
+        running = duration > 0L && distance > 0f
     }
 
     /**
@@ -490,6 +496,9 @@ class KineticScroll {
      * The first tick after [start] establishes the clock and returns zero — there is no elapsed
      * time to integrate over yet, and guessing a frame's worth would make the fling's first step
      * depend on when the caller happened to ask.
+     *
+     * The position is read off the curve at the elapsed time rather than integrated frame by
+     * frame, so a dropped frame lands the chart where it would have been, not further along.
      *
      * Returns zero forever once the fling has stopped, so a caller that keeps ticking a finished
      * animation is harmless rather than wrong.
@@ -501,47 +510,31 @@ class KineticScroll {
         // "not started yet" would make the first fling of a session never advance at all.
         if (!started) {
             started = true
-            lastTick = nowMillis
+            startedAt = nowMillis
             return 0f
         }
-        val elapsed = nowMillis - lastTick
+        val elapsed = nowMillis - startedAt
         if (elapsed <= 0L) return 0f
-        lastTick = nowMillis
-        // Integrated over the interval rather than sampled at its start: at 60Hz the two differ by
-        // under a percent, but a dropped frame makes the sampled version overshoot by however long
-        // the stall was, which is exactly when a reader notices the chart jump.
-        val decayed = velocity * DECAY_PER_MILLISECOND.pow(elapsed.toFloat())
-        val travelled = (velocity - decayed) / DECAY_RATE
-        velocity = decayed
-        if (abs(velocity) < MIN_VELOCITY) stop()
-        return travelled / MILLIS_PER_SECOND
+        val position = distance * spline.progress(elapsed, duration)
+        val step = position - covered
+        covered = position
+        if (elapsed >= duration) stop()
+        return direction * step
     }
 
     /** Cancel the fling. Called on the next touch down, so a finger always beats the momentum. */
     fun stop() {
-        velocity = 0f
-        lastTick = 0L
+        distance = 0f
+        duration = 0L
+        covered = 0f
+        startedAt = 0L
         started = false
         running = false
     }
 
     private companion object {
-        /**
-         * The share of its speed a fling keeps per millisecond.
-         *
-         * Not per frame — see the class KDoc. 0.997 is the number every touch scroller in this
-         * class of app converges on; below 0.99 the fling stops under the finger and above 0.999 it
-         * coasts long enough to feel like the chart is ignoring the reader.
-         */
-        const val DECAY_PER_MILLISECOND = 0.997f
-
-        /** `1 − decay`, which is what the closed form of the integral divides by. */
-        const val DECAY_RATE = 1f - DECAY_PER_MILLISECOND
-
-        /** Below this many pixels a second the fling is over. See the class KDoc. */
+        /** Below this many pixels a second the fling is over before it starts. See the class KDoc. */
         const val MIN_VELOCITY = 20f
-
-        const val MILLIS_PER_SECOND = 1_000f
     }
 }
 

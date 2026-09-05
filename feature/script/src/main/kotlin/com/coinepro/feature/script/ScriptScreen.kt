@@ -35,6 +35,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
@@ -49,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.chart.CandleSeries
 import com.coinepro.core.chart.ChartDecoration
 import com.coinepro.core.chart.CoineProChart
+import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.database.SavedScriptEntity
@@ -63,6 +65,7 @@ import com.coinepro.core.designsystem.LtrDirection
 import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.script.ScriptController
+import com.coinepro.core.script.ScriptFailure
 import com.coinepro.core.script.ScriptEditorState
 import com.coinepro.core.script.ScriptInput
 import com.coinepro.core.script.ScriptLesson
@@ -276,7 +279,7 @@ private fun EditorTab(
         item { CodeField(source = state.source, onChange = controller::edit) }
 
         state.failure?.let { failure ->
-            item { FailureCard(message = failure.message, line = failure.line, column = failure.column) }
+            item { FailureCard(failure = failure) }
         }
 
         if (state.dirty && state.result != null) {
@@ -428,15 +431,26 @@ private fun NameField(name: String, onChange: (String) -> Unit) {
  * digits, because these are counts in prose and not market figures.
  */
 @Composable
-private fun FailureCard(message: String, line: Int, column: Int) {
+private fun FailureCard(failure: ScriptFailure) {
+    // The interpreter carries both languages and knows nothing about the app's; the screen picks.
+    val language = AppLanguage.fromTag(LocalConfiguration.current.locales[0].language)
+    val position = if (language == AppLanguage.ENGLISH) {
+        failure.line.toString() to failure.column.toString()
+    } else {
+        failure.line.toPersianDigits() to failure.column.toPersianDigits()
+    }
     CoineProCard(modifier = Modifier.fillMaxWidth(), accent = CoineProColors.Sell) {
         Text(
-            text = if (line > 0) "خط ${line.toPersianDigits()}، ستون ${column.toPersianDigits()}" else "خطا",
+            text = if (failure.line > 0) {
+                stringResource(R.string.script_failure_at, position.first, position.second)
+            } else {
+                stringResource(R.string.script_failure)
+            },
             style = MaterialTheme.typography.labelMedium,
             color = CoineProColors.Sell,
             fontWeight = FontWeight.Bold,
         )
-        Text(message, style = MaterialTheme.typography.bodyMedium, color = CoineProColors.TextPrimary)
+        Text(failure.text(language), style = MaterialTheme.typography.bodyMedium, color = CoineProColors.TextPrimary)
     }
 }
 
