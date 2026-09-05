@@ -10,7 +10,7 @@ Status of each item in the audit prompt, read against the source after the work.
 | Crash report leaves the device | `LaunchReadinessScreen.kt` `CrashCard`, `CoineProApp.kt` `onShareCrash` | «ارسال گزارش» opens the system share sheet with the trace as `text/plain`, subject `Pro Chart <version> crash`. No third-party SDK. |
 | Release surface is smaller than debug | `app/build.gradle.kts` `ADMIN_PANEL`, `DIRECT_THIRD_PARTY_FEEDS`; `scripts/quality/check-release-surface.py` | The audit asked for product flavours. A `BuildConfig` boolean that R8 folds does the same job with one build variant: the admin route and its strings are absent from the release APK (verified with `aapt2 dump resources`), and the CI gate reads the built APK to prove it on every run. |
 | ABI split | `app/build.gradle.kts` release `ndk.abiFilters` | `arm64-v8a` + `armeabi-v7a` in release; benchmark keeps every ABI. |
-| AAB alongside the APK | `.github/workflows/android-apk.yml` | Same signing properties, `:app:bundleRelease`, attached to the GitHub release as `CoinePro-<version>.aab`. |
+| AAB alongside the APK | `.github/workflows/android-apk.yml` | Same signing properties, `:app:bundleRelease`, attached to the GitHub release as `pro-chart-<version>.aab`. |
 | No secret reaches a log | `check-cross-phase-consistency.py` `check_no_secret_logging` | A log call and a secret-named identifier on one line in `core/security`, `core/auth`, `core/execution`, `core/copytrade`, `feature/connections`, `core/network` fails the gate. |
 | R8 full mode | — | AGP 9 default; nothing to switch on. `proguard-rules.pro` already keeps only the Gson wire models. |
 

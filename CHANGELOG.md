@@ -15,6 +15,48 @@ it is for.
 
 ---
 
+## [4.41.0] — 2026-09-05 — The audit's seven phases, and the app renamed on the shelf
+
+The seven phases that followed the audit's twelve fixes, in one version — the owner's call on the
+number, which jumps past 4.34–4.40 to say how much moved. The artefacts on the release page are
+`pro-chart-<version>.apk` and `.aab` from here on. Every phase has its own account under
+`docs/audit/PHASE{1..7}_REPORT.md`, each read against the source, each saying what waits on the
+owner's material rather than pretending.
+
+**Phase 1 — readiness.** Identity verification takes a country, a document type and its number; an
+Iranian card still sends `national_id`, everything else sends `country / document_type /
+document_number`. Every legal URL comes from `BrandConfig.LEGAL_BASE_URL`; the App Links that
+depend on it are written down. The gate refuses Persian in `values-en/` and a secret name on a log
+line.
+
+**Phase 2 — build and trust.** Certificate pinning behind `COINEPRO_CERTIFICATE_PINS`, inert until
+the owner supplies pins; «ارسال گزارش» hands a crash trace to the share sheet; the AAB is built and
+attached beside the APK; the download size a phone would pay for is measured (13.7–13.9 MiB) and
+gated at 16.
+
+**Phase 3 — one voice.** `tools/i18n/lint_strings.py` runs in the gate and in CI: parity both ways,
+placeholders, engineering words, retired spellings, informal second person outside Rasad's own
+lines, the hamza ezafe, a space where a ZWNJ belongs. It found 398 problems and this version fixes
+them: «ه‌ی» throughout, «شما» throughout, «چارت» not «نمودار», «اپ» not «آپ». The three families of
+feature descriptions collapse into one line per feature. `NumberStyle` is the one place a market
+figure is formatted. Rasad has its subtitle.
+
+**Phase 4 — the chart.** The fling runs on the platform's own curve, density-aware, tested to the
+pixel. Crosshair and visible range sync between panes; the «not ready yet» note is gone. A tick
+when the magnet takes a point and when the crosshair crosses a level. Seconds bars are a ring of
+2 000. Every NamaScript error carries English beside its Persian. `ChartFlingBenchmark` measures the
+frame budget on a phone.
+
+**Phase 5 — the shell.** Springs where things move, tweens where colours change; predictive back;
+skeleton rows where there were spinners; the widget asks which watchlist to follow.
+
+**Phase 6 — proof.** Every calculator rule reached by a test; goldens in English dark, on an 840 dp
+tablet and at a 1.3 font scale; a benchmark budget CI can hold when a device run exists;
+`docs/release/CHECKLIST.md`.
+
+**Phase 7 — the design system, written down.** `docs/design/TOKENS.md`, an icon gate, and
+`docs/design/BEFORE_AFTER.md`.
+
 ## [4.33.0] — 2026-09-05 — The audit's twelve, read against the source
 
 A static audit of the 4.32.1 APK arrived with a seven-phase plan. Phase 0 — an inventory written

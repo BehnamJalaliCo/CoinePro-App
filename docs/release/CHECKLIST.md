@@ -64,7 +64,7 @@ everything marked **CI**; the rest is a person with the owner's material.
 
 ## After publishing
 
-- [ ] The GitHub release carries `CoinePro-<version>.apk` and `.aab`, the tag matches
+- [ ] The GitHub release carries `pro-chart-<version>.apk` and `.aab`, the tag matches
       `version.py`, and the release note is the changelog entry.
 - [ ] Install over the previous version on a phone (same key, so it updates in place); open the
       chart, the watchlist, a signal, the widget.

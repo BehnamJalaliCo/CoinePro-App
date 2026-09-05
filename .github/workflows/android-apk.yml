@@ -164,7 +164,7 @@ jobs:
             ${{ vars.COINEPRO_PRODUCTION_API_BASE_URL && format('-PCOINEPRO_PRODUCTION_API_BASE_URL="{0}"', vars.COINEPRO_PRODUCTION_API_BASE_URL) || '' }} \
             ${{ vars.COINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL && format('-PCOINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL="{0}"', vars.COINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL) || '' }} \
             ${{ vars.COINEPRO_PRODUCTION_TERMINAL_URL && format('-PCOINEPRO_PRODUCTION_TERMINAL_URL="{0}"', vars.COINEPRO_PRODUCTION_TERMINAL_URL) || '' }}
-          cp app/build/outputs/apk/release/app-release.apk "CoinePro-${{ steps.ver.outputs.full }}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "pro-chart-${{ steps.ver.outputs.full }}.apk"
 
       - name: Bundle the same release as an AAB
         env:
@@ -186,13 +186,13 @@ jobs:
             ${{ vars.COINEPRO_PRODUCTION_API_BASE_URL && format('-PCOINEPRO_PRODUCTION_API_BASE_URL="{0}"', vars.COINEPRO_PRODUCTION_API_BASE_URL) || '' }} \
             ${{ vars.COINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL && format('-PCOINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL="{0}"', vars.COINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL) || '' }} \
             ${{ vars.COINEPRO_PRODUCTION_TERMINAL_URL && format('-PCOINEPRO_PRODUCTION_TERMINAL_URL="{0}"', vars.COINEPRO_PRODUCTION_TERMINAL_URL) || '' }}
-          cp app/build/outputs/bundle/release/app-release.aab "CoinePro-${{ steps.ver.outputs.full }}.aab"
+          cp app/build/outputs/bundle/release/app-release.aab "pro-chart-${{ steps.ver.outputs.full }}.aab"
 
       - name: Verify the APK is signed and its wire fields survived R8
         run: |
           set -euo pipefail
           BT="$ANDROID_SDK_ROOT/build-tools/36.0.0"
-          "$BT/apksigner" verify --verbose "CoinePro-${{ steps.ver.outputs.full }}.apk"
+          "$BT/apksigner" verify --verbose "pro-chart-${{ steps.ver.outputs.full }}.apk"
           # R8 renames anything it cannot see being read, and Gson reads request bodies by
           # reflection. This once shipped a build where every sign-in posted single-letter keys, so
           # the dex is checked rather than the keep rules.
@@ -216,7 +216,7 @@ jobs:
           # the help catalogue and any imagery move to an on-demand asset pack.
           curl -sSL -o bundletool.jar \
             https://github.com/google/bundletool/releases/download/1.17.2/bundletool-all-1.17.2.jar
-          bash scripts/release/check-bundle-size.sh "CoinePro-${{ steps.ver.outputs.full }}.aab" 16 bundletool.jar
+          bash scripts/release/check-bundle-size.sh "pro-chart-${{ steps.ver.outputs.full }}.aab" 16 bundletool.jar
 
       - name: Remove the keystore
         if: always()
@@ -226,7 +226,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
-          name: CoinePro ${{ steps.ver.outputs.full }}
+          name: Pro Chart ${{ steps.ver.outputs.full }}
           body: |
             نصب روی نسخهٔ قبلی، بدون حذف کردن آن.
 
@@ -239,8 +239,8 @@ jobs:
             (نسخهٔ debug یا یک build دستی). یک بار حذفش کنید؛ از آن به بعد هر build اینجا
             روی قبلی می‌نشیند.
           files: |
-            CoinePro-${{ steps.ver.outputs.full }}.apk
-            CoinePro-${{ steps.ver.outputs.full }}.aab
+            pro-chart-${{ steps.ver.outputs.full }}.apk
+            pro-chart-${{ steps.ver.outputs.full }}.aab
           fail_on_unmatched_files: true
           draft: false
           prerelease: true
