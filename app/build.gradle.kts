@@ -456,6 +456,15 @@ val expectedSigners = (releaseSignerFingerprints() + extraExpectedSigners.split(
                     "coinepro.golden.record",
                     System.getProperty("coinepro.golden.record") ?: "false",
                 )
+                // The design camera, the same way. See `DesignCaptureTest`.
+                it.systemProperty(
+                    "coinepro.design.capture",
+                    System.getProperty("coinepro.design.capture") ?: "false",
+                )
+                it.systemProperty(
+                    "coinepro.design.stage",
+                    System.getProperty("coinepro.design.stage") ?: "before",
+                )
             }
         }
     }
