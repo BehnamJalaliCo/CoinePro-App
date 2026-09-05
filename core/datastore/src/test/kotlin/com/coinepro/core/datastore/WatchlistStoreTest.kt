@@ -63,6 +63,34 @@ class WatchlistStoreTest {
     }
 
     @Test
+    fun `a store that has never been written opens on the starter list`() = runTest {
+        val starter = listOf("BTCUSDT", "ETHUSDT", "XAUUSD")
+        val store = WatchlistStore(FakeDataStore(), starter = starter)
+
+        assertEquals(starter, store.symbols.first())
+        assertEquals(starter, store.lists().first().single().symbols)
+    }
+
+    @Test
+    fun `the starter is a seed, not a floor - an emptied list stays empty`() = runTest {
+        val store = WatchlistStore(FakeDataStore(), starter = listOf("BTCUSDT"))
+
+        store.toggle("BTCUSDT")
+
+        assertEquals(emptyList<String>(), store.symbols.first())
+    }
+
+    @Test
+    fun `a legacy list wins over the starter`() = runTest {
+        val store = WatchlistStore(
+            FakeDataStore(mutablePreferencesOf(WatchlistStore.LEGACY_SYMBOLS to "SOLUSDT")),
+            starter = listOf("BTCUSDT"),
+        )
+
+        assertEquals(listOf("SOLUSDT"), store.symbols.first())
+    }
+
+    @Test
     fun `a store that has never been written still offers the default list`() = runTest {
         val lists = WatchlistStore(FakeDataStore()).lists().first()
 

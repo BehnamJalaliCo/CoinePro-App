@@ -94,6 +94,7 @@ import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
 import com.coinepro.core.designsystem.CoineProNavigationRail
 import com.coinepro.core.symbols.SymbolArtwork
+import com.coinepro.core.symbols.SymbolCategory
 import com.coinepro.core.symbols.SymbolClassifier
 import com.coinepro.core.symbols.SymbolMeta
 import com.coinepro.core.symbols.SymbolSearch
@@ -584,7 +585,39 @@ private fun domRoute(symbol: String) = "chart/" + Uri.encode(symbol) + "/dom"
  * platform does not carry would greet a first-time reader with an empty chart and an error.
  */
 private fun defaultScriptSymbol(platform: MarketPlatform, watchlist: List<String>): String =
-    watchlist.firstOrNull() ?: MarketDataSymbols.forPlatform(platform).first()
+    watchlist.firstOrNull { belongsTo(it, platform) } ?: MarketDataSymbols.forPlatform(platform).first()
+
+/**
+ * Whether a symbol is one of [platform]'s markets, decided from its spelling alone.
+ *
+ * TradeYar carries crypto and nothing else; CoinePro-FX carries everything an MT5 account does —
+ * forex, metals, indices, energy. The watchlist is one list across both, so «the reader's first
+ * market» on the crypto tab was `XAUUSD` whenever gold was starred first, and the chart tab opened
+ * a forex instrument on a crypto feed («روی چارت میزنم نمادهای فارکس رو نشون میداد»). A feed that
+ * quotes a symbol this rule would refuse — a BTCUSD CFD on the MT5 account — is let through by the
+ * callers that also hold the live table; this is the spelling half only.
+ */
+private fun belongsTo(symbol: String, platform: MarketPlatform): Boolean {
+    val crypto = SymbolClassifier.classify(symbol).category == SymbolCategory.CRYPTO
+    return crypto == (platform == MarketPlatform.TRADEYAR)
+}
+
+/**
+ * Which order book a symbol's depth comes from.
+ *
+ * By the symbol, never by the tab: a reader on the forex tab who opens BTCUSDT's ladder was shown
+ * the MT5 gateway's «this feed publishes no depth» with a MetaTrader note under a crypto pair
+ * («عمق بازار رو میزنم روی بیت‌کوین کارگزاری متاتریدر ۵ رو نشون میده»). The platform that carries
+ * the symbol is the one asked, when this build reaches it; the tab's own otherwise.
+ */
+private fun orderBookPlatformFor(
+    symbol: String,
+    available: Set<MarketPlatform>,
+    fallback: MarketPlatform,
+): MarketPlatform {
+    val wanted = if (belongsTo(symbol, MarketPlatform.TRADEYAR)) MarketPlatform.TRADEYAR else MarketPlatform.COINEPRO_FX
+    return if (wanted in available) wanted else fallback
+}
 
 /**
  * Which domain a route belongs to.
@@ -1205,7 +1238,7 @@ fun CoineProApp(
                 marketSearchController = marketSearchController,
                 screenerController = screenerController,
                 candleGateway = candleGateways.getValue(activePlatform),
-                orderBookGateway = orderBookGateways.getValue(activePlatform),
+                orderBookGateways = orderBookGateways,
                 candleCache = candleCache,
                 candleArchive = candleArchive,
                 chartDrawingStore = chartDrawingStore,
@@ -1232,7 +1265,7 @@ fun CoineProApp(
                 briefing = briefingState.toHomeBriefing(briefingReadAt),
                 portfolio = portfolioState.toHomePortfolio(),
                 subscription = current.entitlement.toHomeSubscription(),
-                watchlist = watchlist,
+                storedWatchlist = watchlist,
                 watchlistStore = watchlistStore,
                 onToggleWatch = { symbol -> scope.launch { watchlistStore.toggle(symbol) } },
                 onRefreshAccount = accountController::refresh,
@@ -1427,7 +1460,7 @@ fun CoineProApp(
                         // `SessionFallbackOrderBookGateway`: on a 401, and only on a 401, it reads
                         // the same book from LBank directly, so a guest gets the ladder their chart
                         // already implies rather than a sentence about their connection.
-                        orderBookGateway = orderBookGateways.getValue(activePlatform),
+                        orderBookGateways = orderBookGateways,
                         candleCache = candleCache,
                         candleArchive = candleArchive,
                         chartDrawingStore = chartDrawingStore,
@@ -1457,7 +1490,7 @@ fun CoineProApp(
                         briefing = HomeBriefing.Resting,
                         portfolio = null,
                         subscription = null,
-                        watchlist = watchlist,
+                        storedWatchlist = watchlist,
                         watchlistStore = watchlistStore,
                         onToggleWatch = { symbol -> scope.launch { watchlistStore.toggle(symbol) } },
                         onRefreshAccount = {},
@@ -1499,11 +1532,17 @@ fun CoineProApp(
                         onSubscribeSymbols = guestFeed::subscribe,
                         // The chart's ticks, which are also the whole of a seconds chart.
                         chartTicks = remember(guestFeed) { guestFeed.chartTicks() },
-                        // One platform, and no switcher. The public routes are TradeYar's; a
-                        // control offering CoinePro-FX would offer a feed with no public side.
-                        platforms = listOf(MarketPlatform.TRADEYAR),
+                        // The public routes are TradeYar's, so a guest is on crypto — but the
+                        // switch stays on the screen. It vanished for guests in an earlier build
+                        // and the first question back was «فارکس و کریپتو … الان کجاست؟»: a
+                        // control that disappears is a feature the reader thinks was removed.
+                        // Choosing forex here opens sign-in, because forex is where the account
+                        // is; the sign-in page says so.
+                        platforms = activePlatformStore.available,
                         activePlatform = MarketPlatform.TRADEYAR,
-                        onSelectPlatform = {},
+                        onSelectPlatform = { platform ->
+                            if (platform != MarketPlatform.TRADEYAR) signingIn = true
+                        },
                         onLogout = { signingIn = true },
                         appLockEnabled = appLockEnabled,
                         onSetAppLockEnabled = { on -> scope.launch { userPreferencesStore.setAppLockEnabled(on) } },
@@ -1643,8 +1682,8 @@ private fun MainShell(
     screenerController: ScreenerController,
     /** The candle source for the platform on screen. See the chart route below. */
     candleGateway: CandleGateway,
-    /** The order book for the platform on screen. See [DOM_PATTERN]. */
-    orderBookGateway: OrderBookGateway,
+    /** Every platform's order book; the depth route picks by symbol. See [orderBookPlatformFor]. */
+    orderBookGateways: Map<MarketPlatform, OrderBookGateway>,
     /** The bars already held, so a chart draws before it fetches. */
     candleCache: CandleCache,
     /** Every bar ever fetched, so paging back deepens across sessions. See [CandleArchive]. */
@@ -1744,9 +1783,13 @@ private fun MainShell(
     chartLayouts: List<ChartLayout>,
     onSaveLayout: (ChartLayout) -> Unit,
     onDeleteLayout: (String) -> Unit,
-    watchlist: List<String>,
     /**
-     * The store behind [watchlist], for the surfaces that need more than the active list's tickers.
+     * The active list as stored — both platforms' markets in one. The shell shows the platform's
+     * half as `watchlist`; see the note at the top of the body.
+     */
+    storedWatchlist: List<String>,
+    /**
+     * The store behind [storedWatchlist], for the surfaces that need more than the active list's tickers.
      *
      * Both, not one: nearly every caller wants only the flat list of the active list's symbols, and
      * making them all collect it themselves would put a `Flow` read in a dozen composables. The
@@ -1803,6 +1846,15 @@ private fun MainShell(
     // ticket, and the chart's wheel when the watchlist is too short to turn through.
     val catalogue: List<SymbolMeta> = remember(marketState.quotes.keys) {
         SymbolClassifier.classifyAll(marketState.quotes.keys.toList()).filter(SymbolArtwork::covers)
+    }
+    // The watchlist this platform can show. One list is stored for both platforms — a star is a
+    // star — but a forex tab listing BTCUSDT rows that never quote, and a crypto chart tab
+    // opening on XAUUSD, were the two faults one shared list produced. So the shell shows the
+    // markets that belong to the platform on screen by spelling, plus anything its feed actually
+    // quotes, which is how a BTCUSD CFD on the MT5 account keeps its row. Toggling still writes
+    // the stored list: a symbol's platform never changes, so the star reads the same either way.
+    val watchlist: List<String> = remember(storedWatchlist, activePlatform, marketState.quotes.keys) {
+        storedWatchlist.filter { belongsTo(it, activePlatform) || it in marketState.quotes }
     }
     // Item 2: the wheel is always there. The watchlist when the reader has starred two or more
     // markets; the platform's popular markets in the catalogue's own browse order otherwise.
@@ -3302,6 +3354,9 @@ private fun MainShell(
                 //
                 // The screen starts it and stops it; the scope here is only what outlives the
                 // in-flight request when the destination leaves.
+                val orderBookGateway = orderBookGateways.getValue(
+                    orderBookPlatformFor(activeChartSymbol, orderBookGateways.keys, activePlatform),
+                )
                 val depthController = remember(orderBookGateway, depthScope) {
                     OrderBookController(gateway = orderBookGateway, scope = depthScope)
                 }

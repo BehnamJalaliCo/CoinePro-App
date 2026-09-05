@@ -38,6 +38,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -471,16 +474,39 @@ internal fun SymbolScrollWheel(
             move(moved)
         }
     }
-    // The toolbar's cell, as the phone app draws it: the current ticker bold on the bar's centre
-    // line, the next one under it in a faint ink and cut off by the bar's edge, the previous one
-    // above it likewise. Five rows are drawn where three are visible, because a wheel that slides
-    // has to have something to slide *in* — with three, a drag revealed the empty stage above and
-    // below the column instead of the next instrument.
+    // A turn the reader did not drag: the symbol changed under the wheel — a tap on a neighbour,
+    // the picker over the plot, the watchlist strip, a search. The column starts one row off in
+    // the direction the list moved and springs home, so the wheel *turns* to the new ticker
+    // instead of the ticker being swapped in place. «اسکرول نمادها خیلی بدفرم و زشته، یکم خوشگل و
+    // انیمیشنیش بکن.» The drag's own step is excluded: it already carries its remainder above.
+    var settled by remember { mutableStateOf(current) }
+    LaunchedEffect(current) {
+        val from = settled
+        settled = current
+        if (dragging || from.equals(current, ignoreCase = true)) return@LaunchedEffect
+        val forward = symbolStep(symbols, from, 1).equals(current, ignoreCase = true)
+        val backward = symbolStep(symbols, from, -1).equals(current, ignoreCase = true)
+        val start = when {
+            forward -> stepPixels
+            backward -> -stepPixels
+            else -> 0f
+        }
+        if (start == 0f) return@LaunchedEffect
+        animate(initialValue = start, targetValue = 0f, animationSpec = CoineProMotionSpecs.fastSpatial()) { value, _ ->
+            move(value)
+        }
+    }
+    // The cell, as a control rather than as a column of text cut by the bar's edge.
+    //
+    // A pill on the elevated surface with a hairline round it, the current ticker bold on its
+    // centre line, the neighbours dimmed and faded out towards the pill's edges, and a pair of
+    // carets on the trailing side. The carets are the whole of the discoverability: three tickers
+    // stacked in the open read as a misprint, and a reader who does not know the cell turns will
+    // never drag it. Five rows are still drawn where one and two halves are visible, because a
+    // wheel that slides has to have something to slide *in*.
     Box(
         modifier = modifier
-            .width(WHEEL_SCROLL_WIDTH)
             .height(WHEEL_SCROLL_HEIGHT)
-            .clipToBounds()
             .draggable(
                 state = drag,
                 orientation = Orientation.Vertical,
@@ -496,34 +522,83 @@ internal fun SymbolScrollWheel(
             .semantics { contentDescription = wheelLabel },
         contentAlignment = Alignment.Center,
     ) {
-        Column(modifier = Modifier.graphicsLayer { translationY = travel.floatValue }) {
-            WheelSide(symbol = symbolStep(symbols, current, -2), onSelect = onSelect)
-            WheelSide(symbol = ring.previous, onSelect = onSelect)
-            WheelCurrent(symbol = current)
-            WheelSide(symbol = ring.next, onSelect = onSelect)
-            WheelSide(symbol = symbolStep(symbols, current, 2), onSelect = onSelect)
+        Row(
+            modifier = Modifier
+                .height(WHEEL_PILL_HEIGHT)
+                .clip(WHEEL_PILL_SHAPE)
+                .background(CoineProColors.SurfaceElevated)
+                .border(1.dp, CoineProColors.BorderSubtle, WHEEL_PILL_SHAPE)
+                .padding(start = WHEEL_PILL_INSET, end = WHEEL_PILL_INSET / 2),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(WHEEL_SCROLL_WIDTH)
+                    .fillMaxHeight()
+                    .clipToBounds(),
+                contentAlignment = Alignment.Center,
+            ) {
+                // The rows fade with distance from the centre — a neighbour at half ink, the row
+                // beyond it fainter still — which is the wheel's curvature written as alpha. Per
+                // row rather than as a gradient over the cell, because the gradient gate is
+                // right: a wash on a control is decoration, and a row's own ink is not.
+                Column(modifier = Modifier.graphicsLayer { translationY = travel.floatValue }) {
+                    WheelSide(symbol = symbolStep(symbols, current, -2), onSelect = onSelect, far = true)
+                    WheelSide(symbol = ring.previous, onSelect = onSelect, far = false)
+                    WheelCurrent(symbol = current)
+                    WheelSide(symbol = ring.next, onSelect = onSelect, far = false)
+                    WheelSide(symbol = symbolStep(symbols, current, 2), onSelect = onSelect, far = true)
+                }
+            }
+            Column(
+                modifier = Modifier.padding(start = CoineProSpacing.Half),
+                verticalArrangement = Arrangement.spacedBy(WHEEL_CARET_GAP),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                // Dimmed on the end the ring cannot turn towards, which is how the control says
+                // «this is the last one» without a toast.
+                WheelCaret(icon = DesignR.drawable.icon_caret_up, enabled = ring.previous != null)
+                WheelCaret(icon = DesignR.drawable.icon_caret_down, enabled = ring.next != null)
+            }
         }
     }
+}
+
+/** One of the pill's two carets: a hint that the cell turns, in the muted ink. */
+@Composable
+private fun WheelCaret(@DrawableRes icon: Int, enabled: Boolean) {
+    Icon(
+        painter = painterResource(icon),
+        contentDescription = null,
+        tint = if (enabled) CoineProColors.TextMuted else CoineProColors.TextDisabled,
+        modifier = Modifier.size(WHEEL_SCROLL_CARET),
+    )
 }
 
 /**
  * A neighbour, faint, above or below the middle.
  *
  * Still pressable: a reader who can see the ticker they want should not have to drag to it, and the
- * two ways of reaching it cost nothing beside each other. The same size and weight as the current
- * one — the phone app dims its neighbours, it does not shrink them — in the disabled ink, and cut
- * rather than ellipsised, because the cell's edge is doing the cutting anyway.
+ * two ways of reaching it cost nothing beside each other. The same weight as the current one in the
+ * disabled ink and a touch smaller — the wheel's far rows are further from the eye — and cut rather
+ * than ellipsised, because the pill's fade is doing the cutting anyway.
  *
  * An absent neighbour still takes its row. A wheel whose middle jumps up when the list is short is
  * a control that moves while you are reading it.
  */
 @Composable
-private fun WheelSide(symbol: String?, onSelect: (String) -> Unit) {
+private fun WheelSide(symbol: String?, onSelect: (String) -> Unit, far: Boolean) {
     val haptics = rememberCoineProHaptics()
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(WHEEL_SCROLL_ROW)
+            .alpha(if (far) WHEEL_FAR_ALPHA else WHEEL_NEAR_ALPHA)
+            .graphicsLayer {
+                scaleX = WHEEL_SIDE_SCALE
+                scaleY = WHEEL_SIDE_SCALE
+                transformOrigin = TransformOrigin(0f, 0.5f)
+            }
             .then(
                 if (symbol == null) {
                     Modifier
@@ -541,7 +616,7 @@ private fun WheelSide(symbol: String?, onSelect: (String) -> Unit) {
     }
 }
 
-/** The instrument the chart is drawing: bold, in the primary ink, on the bar's own centre line. */
+/** The instrument the chart is drawing: bold, in the primary ink, on the pill's own centre line. */
 @Composable
 private fun WheelCurrent(symbol: String) {
     Box(
@@ -727,8 +802,24 @@ private const val OVERLAY_ALPHA = 0.92f
  */
 private val WHEEL_SCROLL_ROW = 18.dp
 
-/** The cell is the toolbar's own height; what does not fit is clipped. */
+/** The touch target is the toolbar's own height; the pill inside it is shorter. */
 private val WHEEL_SCROLL_HEIGHT = 44.dp
+
+/** The pill: two rows of the wheel, so the neighbours show as halves fading into the surface. */
+private val WHEEL_PILL_HEIGHT = 36.dp
+private val WHEEL_PILL_SHAPE = RoundedCornerShape(10.dp)
+private val WHEEL_PILL_INSET = 10.dp
+
+/** The neighbours' ink, by distance from the centre row. */
+private const val WHEEL_NEAR_ALPHA = 0.55f
+private const val WHEEL_FAR_ALPHA = 0.25f
+
+/** The far rows, a touch smaller: the wheel is round and its far rows are further from the eye. */
+private const val WHEEL_SIDE_SCALE = 0.9f
+
+/** The carets that say the cell turns. */
+private val WHEEL_SCROLL_CARET = 10.dp
+private val WHEEL_CARET_GAP = 1.dp
 
 /** Eighty points, which is where the phone app cuts `IMXUSDT` to `IMXUSD` before the interval. */
 private val WHEEL_SCROLL_WIDTH = 80.dp

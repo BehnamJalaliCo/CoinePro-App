@@ -29,9 +29,9 @@ everything marked **CI**; the rest is a person with the owner's material.
 - [ ] `check-release-surface.py`: no admin strings, no emulator ABIs, no stray files in the APK — **CI**.
 - [ ] AAB built from the same commit and key (`:app:bundleRelease`) and attached to the release — **CI**.
 - [ ] Download size: `scripts/release/check-bundle-size.sh <aab> 16` — the largest per-device split
-      set under 9 MiB (4.33.0 measured 13.7–13.9 MiB with the help pictures in the base module; they
-      are served from the API host since 4.41.0, see docs/backend/HELP_IMAGES.md — the old note said 9 MiB was the target once an asset pack
-      exists) — **CI**.
+      set under 16 MiB (4.33.0 measured 13.7–13.9 MiB with the help pictures in the base module;
+      4.42.0 served them from the API host at a 9 MiB gate and 4.43.0 put them back in the APK at
+      the owner's request, see docs/backend/HELP_IMAGES.md) — **CI**.
 - [ ] Baseline profile present in the APK (`check-cross-phase-consistency.py` `check_baseline_profile`) — **CI**.
 
 ## Security

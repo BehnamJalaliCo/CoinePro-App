@@ -1,32 +1,16 @@
-# Help pictures — served from the API host, not shipped in the base module
+# Help pictures — shipped in the APK
 
-The help centre's 215 WebP pictures (8.4 MB) left `core/help/src/main/assets` in 4.41.0. The base
-module's download fell under the 9 MiB budget the store gate now enforces
-(`scripts/release/check-bundle-size.sh … 9`), and the pictures are fetched on first open through the
-app's image loader (Coil, the app's own OkHttp client, a disk cache) and read from disk after that.
+The help centre's 215 WebP pictures (8.4 MB) live in `core/help/src/main/assets/help/images` and
+ship in the base module. `HelpCatalogTest` fails when `content.json` references a file that is not
+there; the sheet decodes each one straight from the packaged asset.
 
-## What the backend serves
+## History
 
-| Path | Source in this repository | Content type |
-|---|---|---|
-| `GET {API_BASE_URL}/assets/help/images/<file>.webp` | `assets-cdn/help/images/<file>.webp` | `image/webp`, cacheable for a day or more |
+4.42.0 moved them out to `assets-cdn/help/images` and fetched them from
+`{API_BASE_URL}/assets/help/images/<file>` through Coil, to get the base download under nine
+megabytes. The owner's answer was that every picture behind «؟» has to be there from the first
+open, host or no host, and 4.43.0 put them back. **The API host does not need to serve them.** The
+store gate's budget is 16 MiB again (`scripts/release/check-bundle-size.sh … 16`).
 
-`{API_BASE_URL}` is the build's `BuildConfig.API_BASE_URL` — `https://coineprofx.com/` on a
-release. The file names are the ones `core/help/src/main/assets/help/content.json` references;
-`HelpCatalogTest` fails when a referenced name is missing from `assets-cdn/help/images`, so the
-directory in this repository is the source of truth the host mirrors.
-
-The same host already serves the symbol logos the vendored artwork does not cover
-(`/assets/logo/<SYMBOL>.webp`, see `LogoProvider`), so this is one more directory under the same
-static root.
-
-## Syncing
-
-Copy `assets-cdn/help/` to the static root as-is (`rsync -a assets-cdn/help/ <root>/assets/help/`).
-Nothing is renamed; nothing is processed. A picture edited here is a picture the host should re-sync.
-
-## What the app does without the host
-
-A skeleton while a picture loads; the caption alone if it never arrives; never a broken-image
-glyph. `content.json` — every topic's words — stays in the base module, so the help centre is
-complete without the pictures, and the pictures are complete once the host serves them.
+If the download size ever has to come down, the route is Play Asset Delivery on a store build, not
+a host: the owner takes the universal APK directly, and an asset pack is empty outside Play.

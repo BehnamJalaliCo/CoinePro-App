@@ -81,6 +81,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -1283,10 +1284,24 @@ class ChartController(
     private fun persistDrawings() {
         val store = drawings ?: return
         val snapshot = _state.value.drawing
-        scope.launch {
-            runCatching { store.save(symbol, snapshot.drawings.map { it.toStored(snapshot) }) }
+        // Trailing-edge debounce. This is called from `onDrawing`, which arrives at the rate of a
+        // drag — sixty states a second while a handle is held — and each call used to launch a
+        // DataStore write of the whole layer. Sixty serialised writes a second to one preferences
+        // file is where the seconds of lag under a drawing tool came from: the file lock queued
+        // behind itself and the main thread waited for `edit`. Only the last snapshot inside the
+        // window is written; a snapshot already on its way to disk is never cancelled, because a
+        // cancelled `edit` is a lost edit.
+        pendingDrawings?.cancel()
+        pendingDrawings = scope.launch {
+            delay(DRAWING_PERSIST_DEBOUNCE_MS)
+            withContext(NonCancellable) {
+                runCatching { store.save(symbol, snapshot.drawings.map { it.toStored(snapshot) }) }
+            }
         }
     }
+
+    /** The write [persistDrawings] is holding back, so the next call can supersede it. */
+    private var pendingDrawings: Job? = null
 
     /**
      * Writes this symbol's apparatus back, after every change to any part of it.
@@ -3706,3 +3721,6 @@ internal fun decodeChainSource(encoded: String): IndicatorSource? {
         else -> null
     }
 }
+
+/** How long a run of drawing edits is held before the layer is written. See `persistDrawings`. */
+private const val DRAWING_PERSIST_DEBOUNCE_MS = 300L

@@ -15,6 +15,38 @@ it is for.
 
 ---
 
+## [4.43.0] — 2026-09-05 — The chart's tools work; the pictures are back
+
+The owner's ten-point list after 4.42.0, the chart first: «مغز اصلی آپ من چارته».
+
+### Fixed
+- **Every drawing tool on the chart.** The gesture handlers were keyed on the bar series and on
+  the drawing state, so a live tick or the first frame of a drag cancelled the gesture that was in
+  progress — a handle moved one frame and stopped, a stroke died when a tick landed, a fling was
+  cut off. They are keyed on nothing that moves during a gesture and read the current state when a
+  finger lands. The drawing layer is written to disk once per 300 ms of edits rather than sixty
+  times a second, which was the seconds of lag under a tool.
+- **Depth of market on a crypto pair** asked the forex gateway when the forex tab was active and
+  showed the MetaTrader note under BTCUSDT. The book is chosen by the symbol.
+- **The chart tab opened on a forex symbol** on the crypto platform whenever gold was starred
+  first: the tab's default, the wheel and the shown watchlist follow the platform on screen.
+- **Explore's market card**: the sparkline sat on the percent pill and cut it. The line has a
+  column of its own; the card is 148 × 98.
+- **Google sign-in** is unchanged in code; the sign-in message names the two causes. See the
+  release note: the signing certificate's SHA-1 has to be registered in the Google Cloud project
+  that issued the `auth/methods` client id.
+
+### Changed
+- **Help pictures are in the APK again** — all 215, decoded from the packaged asset as before
+  4.42.0. The API host does not serve them; the store gate is 16 MiB.
+- **The toolbar's symbol wheel** is a pill on the elevated surface: the current ticker on the
+  centre line, the neighbours fading into the surface, a pair of carets that say it turns, and a
+  spring when the symbol changes under it.
+- **The platform switch is on Home for a guest too**; choosing forex opens sign-in, which is where
+  the forex account lives.
+- **A fresh install's watchlist holds fourteen markets**, seven on each platform, and the shell
+  shows the platform's seven.
+
 ## [4.42.0] — 2026-09-05 — Pro Chart → TradingView-grade, Sprints A–E
 
 The visual master prompt, worked in order. The full account — numbers, pictures, self-scores and

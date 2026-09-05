@@ -26,7 +26,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class WatchlistStoreSyncTest {
 
-    private fun store(clock: () -> Long = { 1_000L }) = WatchlistStore(FakeDataStore(), clock)
+    private fun store(clock: () -> Long = { 1_000L }) = WatchlistStore(FakeDataStore(), now = clock)
 
     @Test
     fun `deleting a list records when it was deleted`() = runTest {

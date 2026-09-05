@@ -55,7 +55,7 @@
     <string name="teaching_markets_lead">قیمت لحظه‌ای و تغییر ۲۴ ساعته‌ی همه‌ی نمادها، در یک فهرست.</string>
     <string name="teaching_markets_pitfall">درصد هر ردیف تغییر ۲۴ ساعت گذشته است، نه تغییر از اول امروز.</string>
 
-    <string name="teaching_chart_lead">قیمت یک نماد در طول زمان، با تایم‌فریم، اندیکاتور و ابزار ترسیم.</string>
+    <string name="teaching_chart_lead">قیمت یک نماد در طول زمان. نام نماد را بکشید تا عوض شود؛ مداد ابزار ترسیم، لغزنده‌ها اندیکاتورها، و «…» عمق بازار، مقایسه و بقیه را باز می‌کند.</string>
     <string name="teaching_chart_pitfall">آخرین کندل هنوز بسته نشده و تا پایان تایم‌فریم عوض می‌شود.</string>
 
     <string name="teaching_signals_lead">سیگنال‌های منتشرشده، با نقطه‌ی ورود، حد ضرر و هدف هرکدام.</string>

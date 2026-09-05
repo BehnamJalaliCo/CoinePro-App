@@ -212,11 +212,12 @@ jobs:
           # bundletool measures the split APKs Play would actually serve, which is the size that
           # matters on a metered connection. Fetched here rather than vendored; pinned by version.
           # The budget is 16 MiB: 4.33.0 measured 13.7–13.9 MiB per device, and a gate set below
-          # what ships is a gate that blocks every release. The audit's 9 MiB is the target once
-          # the help catalogue and any imagery move to an on-demand asset pack.
+          # what ships is a gate that blocks every release. 4.42.0 briefly served the help
+          # pictures from the API host at a 9 MiB gate; the owner wants them in the APK, so the
+          # gate is sixteen again.
           curl -sSL -o bundletool.jar \
             https://github.com/google/bundletool/releases/download/1.17.2/bundletool-all-1.17.2.jar
-          bash scripts/release/check-bundle-size.sh "pro-chart-${{ steps.ver.outputs.full }}.aab" 9 bundletool.jar
+          bash scripts/release/check-bundle-size.sh "pro-chart-${{ steps.ver.outputs.full }}.aab" 16 bundletool.jar
 
       - name: Remove the keystore
         if: always()

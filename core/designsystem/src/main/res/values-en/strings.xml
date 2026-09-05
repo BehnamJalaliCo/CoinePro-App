@@ -46,7 +46,7 @@
     <string name="teaching_markets_lead">Every symbol\'s live price and 24-hour change, in one list.</string>
     <string name="teaching_markets_pitfall">The percentage on a row is the change over the past 24 hours, not the change since midnight.</string>
 
-    <string name="teaching_chart_lead">One symbol\'s price over time, with timeframes, indicators and drawing tools.</string>
+    <string name="teaching_chart_lead">One symbol\'s price over time. Drag the ticker to change it; the pencil is the drawing tools, the sliders the indicators, and «…» holds depth of market, compare and the rest.</string>
     <string name="teaching_chart_pitfall">The last candle has not closed yet and keeps changing until the timeframe ends.</string>
 
     <string name="teaching_signals_lead">Published signals, each with its entry, stop loss and target.</string>

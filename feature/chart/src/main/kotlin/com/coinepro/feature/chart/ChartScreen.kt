@@ -28,6 +28,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import com.coinepro.core.designsystem.CoineProSkeleton
+import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.TeachingSurface
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -1426,6 +1428,12 @@ fun ChartScreen(
             onSymbolTravel = { wheelTravel.floatValue = it },
         )
         }
+
+        // Once, under the band, for the reader who has not found the band yet. «خیلی موارد رو
+        // کاربر بخواد پیدا کنه»: the wheel turns, the pencil is the tools, the sliders are the
+        // studies, and «…» holds depth, compare and the rest. Said in one line the first time and
+        // dismissed for good; the way back is the small «این صفحه چیست؟» the strip leaves behind.
+        if (!fullscreenRequested) CoineProTeachingStrip(TeachingSurface.CHART)
 
         // Only where they have nowhere better to be. On a window wide enough for the side column
         // these three are already drawn there, permanently, instead of below a plot the reader has

@@ -462,6 +462,16 @@ data class WatchlistSyncCursor(
  */
 class WatchlistStore(
     private val dataStore: DataStore<Preferences>,
+    /**
+     * What the default list holds on a phone that has never written one.
+     *
+     * A watchlist that opens empty is a screen that says «چیزی نیست» to the one reader who has
+     * not yet learned where the star is, and the owner's rule is at least seven markets from the
+     * first open. The seed is read-time, exactly like the migration below: the first write — a
+     * star, an unstar, a rename — records the list as the reader's own, and an emptied list stays
+     * empty. Nothing is re-seeded behind somebody who took every symbol off.
+     */
+    private val starter: List<String> = emptyList(),
     /** Injectable so a test can assert on `createdAt` without waiting for the wall clock. */
     private val now: () -> Long = System::currentTimeMillis,
 ) {
@@ -943,7 +953,7 @@ class WatchlistStore(
         val default = existing ?: Watchlist(
             id = Watchlist.DEFAULT_LIST_ID,
             name = Watchlist.DEFAULT_LIST_NAME,
-            symbols = if (stored.isBlank()) legacySymbols(preferences) else emptyList(),
+            symbols = if (stored.isBlank()) legacySymbols(preferences).ifEmpty { starter } else emptyList(),
         )
         return listOf(default) + decoded.filterNot { it.id == Watchlist.DEFAULT_LIST_ID }
     }

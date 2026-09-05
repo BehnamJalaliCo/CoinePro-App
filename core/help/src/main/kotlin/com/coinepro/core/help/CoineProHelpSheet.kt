@@ -8,11 +8,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
-import com.coinepro.core.designsystem.CoineProSkeleton
-import coil3.compose.SubcomposeAsyncImage
-import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.Image
+import android.graphics.BitmapFactory
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -218,20 +218,29 @@ private fun HelpPictureDialog(image: HelpImage, persian: Boolean, onDismiss: () 
  * this app's own assets — and no network, no cache invalidation and no placeholder state to manage.
  * A failed decode draws nothing rather than an error box: a missing illustration should not shout
  * over the text that was the point.
+ *
+ * ### Why the pictures are in the APK again
+ *
+ * 4.42.0 moved them to the API host to get the base download under nine megabytes, and the owner's
+ * answer was immediate: «تمام عکس‌های آموزشی که در نسخه‌های قبلی بودش … برگردون». A help page whose
+ * pictures depend on a host that has not been set up yet is a help page with empty boxes in it, and
+ * an empty box under «؟» is the one thing that reads as broken to the reader the panel exists for.
+ * The pictures ship in the base module; the size budget is back at sixteen.
  */
 @Composable
 private fun HelpPicture(image: HelpImage, persian: Boolean, onClick: () -> Unit) {
-    val url = helpImageUrl(image) ?: return
+    val bitmap = rememberHelpBitmap(image) ?: return
+    val ratio = bitmap.width.toFloat() / bitmap.height.coerceAtLeast(1)
+    // Clamped so neither a very wide panel nor a very tall portrait dominates the strip. The
+    // picture keeps its own proportions inside whatever width this yields.
+    val width = (GALLERY_HEIGHT * ratio).coerceIn(GALLERY_MIN_WIDTH, GALLERY_MAX_WIDTH)
+
     Column(
-        modifier = Modifier.width(GALLERY_TILE_WIDTH).clickable(onClick = onClick),
+        modifier = Modifier.width(width).clickable(onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
-        // Through the app's image loader and its disk cache: the pictures left the base module
-        // (nine and a half megabytes of them) and are fetched from the API host the first time a
-        // topic is opened, then read from disk. A skeleton while one loads; the caption alone if
-        // it never does — a broken-image glyph is not a help page.
-        SubcomposeAsyncImage(
-            model = url,
+        Image(
+            bitmap = bitmap.asImageBitmap(),
             contentDescription = image.alt.inLanguage(persian),
             modifier = Modifier
                 .fillMaxWidth()
@@ -239,8 +248,6 @@ private fun HelpPicture(image: HelpImage, persian: Boolean, onClick: () -> Unit)
                 .clip(CoineProShapes.medium)
                 .background(CoineProColors.Stage),
             contentScale = ContentScale.Fit,
-            loading = { CoineProSkeleton(modifier = Modifier.fillMaxWidth(), height = GALLERY_HEIGHT) },
-            error = { Box(Modifier.fillMaxWidth().height(GALLERY_HEIGHT).background(CoineProColors.SurfaceElevated)) },
         )
         Text(
             text = image.alt.inLanguage(persian),
@@ -257,20 +264,16 @@ private fun HelpPicture(image: HelpImage, persian: Boolean, onClick: () -> Unit)
 /** The same picture at full width, for the tap-to-enlarge sheet. */
 @Composable
 private fun HelpFullPicture(image: HelpImage, persian: Boolean, modifier: Modifier = Modifier) {
-    val url = helpImageUrl(image) ?: return
+    val bitmap = rememberHelpBitmap(image) ?: return
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
-        // Full width, its own proportions: the loader reports the picture's intrinsic size once it
-        // has it, and the height follows.
-        SubcomposeAsyncImage(
-            model = url,
+        Image(
+            bitmap = bitmap.asImageBitmap(),
             contentDescription = image.alt.inLanguage(persian),
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = GALLERY_HEIGHT)
+                .aspectRatio(bitmap.width.toFloat() / bitmap.height.coerceAtLeast(1))
                 .clip(CoineProShapes.medium),
             contentScale = ContentScale.Fit,
-            loading = { CoineProSkeleton(modifier = Modifier.fillMaxWidth(), height = GALLERY_HEIGHT) },
-            error = { Box(Modifier.fillMaxWidth().height(GALLERY_HEIGHT).background(CoineProColors.SurfaceElevated)) },
         )
         Text(
             text = image.alt.inLanguage(persian),
@@ -282,24 +285,22 @@ private fun HelpFullPicture(image: HelpImage, persian: Boolean, modifier: Modifi
     }
 }
 
-/**
- * The API host the help pictures are fetched from, or empty where this composition has none.
- *
- * The app's activity provides its `API_BASE_URL`; a preview, a test and the design captures
- * provide nothing and draw no pictures — the same rule `LocalLogoProvider` follows.
- */
-val LocalHelpImageBase = staticCompositionLocalOf { "" }
-
 @Composable
-private fun helpImageUrl(image: HelpImage): String? {
-    val base = LocalHelpImageBase.current
-    if (base.isBlank()) return null
-    return remember(base, image.file) { HelpCatalog.imageUrl(base, image) }
+private fun rememberHelpBitmap(image: HelpImage): android.graphics.Bitmap? {
+    val context = LocalContext.current
+    return remember(image.file) {
+        runCatching {
+            context.assets.open("${HelpCatalog.IMAGE_DIRECTORY}/${image.file}").use {
+                BitmapFactory.decodeStream(it)
+            }
+        }.getOrNull()
+    }
 }
 
-/** One band height for the whole strip, and one tile width: the proportions arrive with the picture. */
+/** One band height for the whole strip, whatever proportions the pictures have. */
 private val GALLERY_HEIGHT = 180.dp
-private val GALLERY_TILE_WIDTH = 240.dp
+private val GALLERY_MIN_WIDTH = 120.dp
+private val GALLERY_MAX_WIDTH = 300.dp
 
 @Composable
 private fun SectionTitle(text: String) {

@@ -138,6 +138,7 @@ import com.coinepro.core.notifications.NotificationGateway
 import com.coinepro.core.orderbook.DepthUnavailableReason
 import com.coinepro.core.orderbook.NoDepthGateway
 import com.coinepro.core.orderbook.OrderBookGateway
+import com.coinepro.core.symbols.WatchlistStarter
 import com.coinepro.core.orderbook.SessionFallbackOrderBookGateway
 import com.coinepro.core.orderbook.TradeYarOrderBookGateway
 import com.coinepro.core.papertrade.PaperLedgerStore
@@ -500,7 +501,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun watchlistStore(dataStore: DataStore<Preferences>): WatchlistStore = WatchlistStore(dataStore)
+    fun watchlistStore(dataStore: DataStore<Preferences>): WatchlistStore =
+        WatchlistStore(dataStore, starter = WatchlistStarter.ALL)
 
     /**
      * Device-wide preferences that belong to the phone rather than to whoever is signed in.

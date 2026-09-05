@@ -55,14 +55,8 @@ class HelpCatalog private constructor(private val entries: Map<String, HelpEntry
             "netVolume" to "netvolume",
             "volumeProfile" to "volumeprofile_ind",
         )
+        /** Where the pictures live inside this module's assets. They ship in the APK. */
         const val IMAGE_DIRECTORY = "help/images"
-
-        /**
-         * Where a picture is fetched from: the API host's `assets/help/images/`, the same path the
-         * repository keeps them under in `assets-cdn/`. See `docs/backend/HELP_IMAGES.md`.
-         */
-        fun imageUrl(base: String, image: HelpImage): String =
-            base.trimEnd('/') + "/assets/" + IMAGE_DIRECTORY + "/" + image.file
 
         /** Read and parse the packaged catalogue. Call from a background dispatcher. */
         fun load(assets: AssetManager): HelpCatalog =

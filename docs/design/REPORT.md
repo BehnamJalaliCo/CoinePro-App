@@ -358,7 +358,9 @@ No pictures: nothing here draws differently. Everything is a build, a host or a 
   default locale.» `values/` stays Persian and `values-en/` English; the existing gate that the
   English locale is English stands in for the brief's «no Arabic script in `values/`» check, which
   is meaningless under the layout the owner chose. Open decision 3.
-- **E2 help pictures off the base module.** The 215 WebP files (8.4 MB) moved from
+- **E2 help pictures off the base module — reverted in 4.43.0.** The owner wants every picture
+  behind «؟» in the APK, host or no host; they are back in `core/help/src/main/assets` and the gate
+  is 16 MiB again. What follows is the 4.42.0 record. The 215 WebP files (8.4 MB) moved from
   `core/help/src/main/assets` to `assets-cdn/help/images` in the repository; the help sheet fetches
   them from `{API_BASE_URL}/assets/help/images/<file>` through Coil and the app's disk cache, with a
   skeleton while one loads and the caption alone if it never does. `content.json` stays in the base
@@ -451,3 +453,23 @@ tree; the environment this was built in has no device, no emulator with a GPU an
 18. **`MotionScheme.expressive()` (D1).** `MaterialExpressiveTheme` and `MotionScheme` are `internal` in Material 3 1.4.0; the scheme's springs are reproduced in `CoineProMotionSpecs` and will move onto the theme when the API opens.
 19. **The `.ir` App Link (E4).** `docs/release/APP_LINKS.md` records the owner's decision to keep it: the host is the owner's own crypto backend and the recovery e-mail already sends that link. A manifest intent filter cannot be gated by a Gradle property without a second manifest, which is more surface than the line.
 20. **Play Integrity policy (E3).** The app sends the verdict and never refuses; whether an unattested sign-in is stepped up or blocked is the backend's policy, written in `docs/security/INTEGRITY.md` for the owner to set.
+
+---
+
+## 4.43.0 — the owner's ten points after 4.42.0
+
+Numbered as the owner numbered them. The chart came first («مغز اصلی آپ من چارته»).
+
+| # | Ask | What was wrong | What changed |
+|---|---|---|---|
+| 10 | «هیچ‌کدام از ابزارها روی چارت کار نمی‌کنند … چند ثانیه دیلی داره» | Eleven `pointerInput` blocks in `CoineProChart` were keyed on `display` (changes on every tick) and four on `drawing`/`onDrawing` (change on every frame of a drag). A key change cancels the detector mid-gesture and the restarted one waits for a press that already happened: a handle moved one frame, a freehand stroke died on the next tick, a fling was cut. `ChartController.onDrawing` launched a full DataStore write per frame. | Handlers keyed on `Unit`, `armed != null`, `freehandArmed`, `tolerancePx`, `axisWidth` only; state read through `rememberUpdatedState` (`currentDrawing`, `currentOnDrawing`, `currentDisplay`, `currentEraser`, `currentScalePanes`). The freehand drag consumes its changes. `persistDrawings` is a 300 ms trailing debounce with the save under `NonCancellable`. |
+| 1 | «تمام عکس‌های آموزشی … برگردون» | E2 moved 215 pictures to the API host, which nobody had set up; the «؟» sheet showed skeletons then empty boxes. | Pictures back in `core/help/src/main/assets/help/images`, decoded from the asset as before; Coil out of `core:help`; gate 16 MiB; `HELP_IMAGES.md` rewritten; FX prompt's task 1 cancelled. |
+| 2 | «ورود با گوگل کار نمی‌کنه … مگه نباید ببره تو یه صفحه ایمیل و رمز؟» | Credential Manager shows Google's own account sheet — there is no e-mail/password page in the Google flow; that is the modern model. It fails when the installed build's signing SHA-1 is not registered against the Cloud project that issued the `auth/methods` client id. The delivered APK is signed with the scratchpad test key. | No code change. Owner action: register the SHA-1s (test key `7ad289032ac80deb118a79beb6884c6cd6035fd7`, plus the release key's) on an *Android* OAuth client in the same project; FX prompt asks the server which SHA-1s are registered. |
+| 3 | «عمق بازار … بیت‌کوین کارگزاری متاتریدر ۵» | `MainShell` took one `OrderBookGateway` chosen by the active tab; the guest shell passed the store's platform, often forex. | `MainShell` takes the map; the depth route picks by `orderBookPlatformFor(symbol)`. |
+| 4 | «فارکس و کریپتو … الان کجاست؟» | The guest shell set `platforms = listOf(TRADEYAR)` and Home draws the switch only for two. | Guest Home shows both; forex opens sign-in. |
+| 5 | «خیلی موارد رو کاربر بخواد پیدا کنه» | No teaching on the chart page; the wheel had no affordance. | `TeachingSurface.CHART` strip under the command band with copy that names the pencil, the sliders, «…» and the wheel; carets on the wheel. |
+| 6 | «کاوش … درصد و کارت نامرتبه» | Sparkline shared a row with the pill and drew over it. | Price and pill stacked, sparkline in its own 48 × 36 column; card 148 × 98. |
+| 7 | «حداقل ۷ نماد در دیده‌بان» | Fresh list was empty. | `WatchlistStarter`: 7 crypto + 7 forex seeded on first read; the shell shows the platform's half. |
+| 8 | «روی چارت میزنم نمادهای فارکس» | `defaultScriptSymbol` took `watchlist.first()` regardless of platform. | First symbol that `belongsTo` the platform; the shown watchlist and the wheel are filtered the same way. |
+| 9 | «اسکرول نمادها … زشته، انیمیشنیش بکن» | Three tickers cut by the bar's edge, no cue that it turns. | Pill on `SurfaceElevated` with hairline, rows fading by distance, two carets, and a spring turn when the symbol changes under it. |
+

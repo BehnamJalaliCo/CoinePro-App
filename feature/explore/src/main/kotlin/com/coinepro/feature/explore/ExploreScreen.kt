@@ -583,37 +583,50 @@ private fun MarketCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(
-                // A market figure, so Latin digits with the decimals its own magnitude needs.
-                // `'—'` where the feed carried no price at all, which this card should not be
-                // showing — `ExploreBoard.cards` drops those — and says so honestly if it ever does.
-                text = card.price?.let(MarketNumberFormatter::priceAuto) ?: NO_VALUE,
-                // A step down from `titleMedium`. Seventeen points inside a card ninety tall was
-                // the largest type on the screen and it belonged to a figure in a strip, not to
-                // the page.
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = CoineProColors.TextPrimary,
-                maxLines = 1,
-            )
+            // The figure and the move stacked on the reading edge, the last day's line beside
+            // them on its own forty-eight points. The line used to share a row with the pill and
+            // take whatever was left, which at 128 wide was the pill's own pixels — the owner's
+            // screenshot shows «+0.19%» cut and the wire over it. A column that owns its width
+            // cannot be drawn on.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
             ) {
-                card.changePercent?.let { percent ->
-                    CoineProPercentPill(percent = percent, background = CoineProColors.Surface)
-                } ?: Text(
-                    text = NO_VALUE,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = CoineProColors.TextMuted,
-                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        // A market figure, so Latin digits with the decimals its own magnitude
+                        // needs. `'—'` where the feed carried no price at all, which this card
+                        // should not be showing — `ExploreBoard.cards` drops those — and says
+                        // so honestly if it ever does.
+                        text = card.price?.let(MarketNumberFormatter::priceAuto) ?: NO_VALUE,
+                        // A step down from `titleMedium`. Seventeen points inside a card ninety
+                        // tall was the largest type on the screen and it belonged to a figure in
+                        // a strip, not to the page.
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = CoineProColors.TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    card.changePercent?.let { percent ->
+                        CoineProPercentPill(percent = percent, background = CoineProColors.Surface)
+                    } ?: Text(
+                        text = NO_VALUE,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CoineProColors.TextMuted,
+                    )
+                }
                 CoineProSparkline(
                     values = line,
-                    modifier = Modifier.weight(1f).height(20.dp),
+                    modifier = Modifier.width(CARD_SPARKLINE_WIDTH).height(CARD_SPARKLINE_HEIGHT),
                     // The line takes the move's own colour so the two read as one object rather
                     // than as a figure with a decoration beside it.
                     colour = CoineProColors.marketMove(card.changePercent),
+                    fill = true,
                 )
             }
         }
@@ -718,10 +731,16 @@ private fun LoadingStrip() {
  * A hundred and twenty-eight, down from a hundred and forty-eight. The number is arithmetic: at
  * 411 points a strip inset by the 16-point gutter has 379 to spend, and at 148 plus an 8-point gap
  * that is two cards and a sliver — so the row *reads* as two, and a reader has no way to know the
- * strip continues. At 128 it is two whole cards and most of a third, which is what tells the eye
- * to push it sideways. On a 393-point phone the same arithmetic gives 2.7 rather than 2.4.
+ * strip continues. At 148 it is two whole cards and a third of the next, which is what tells the
+ * eye to push it sideways — and, since the sparkline took a column of its own beside the figure,
+ * the least a price like `104,224.5` and a pill need side by side. On a 393-point phone the
+ * arithmetic gives 2.3.
  */
-private val CARD_WIDTH = 128.dp
+private val CARD_WIDTH = 148.dp
+
+/** The last day's line: its own column, so nothing else on the card can be drawn over. */
+private val CARD_SPARKLINE_WIDTH = 48.dp
+private val CARD_SPARKLINE_HEIGHT = 36.dp
 
 private val CARD_PADDING = 12.dp
 
@@ -748,14 +767,15 @@ private val CARD_LOGO = 22.dp
  *
  * ### The number
  *
- * Ninety-two, which is what the tile's own content measures at `fontScale = 1.0` — the disc, the
- * ticker, the price, the move and the line, plus the card's twelve points of padding at each end —
- * rounded up to an even number so a half-point never lands between two device pixels. It is not
+ * Ninety-eight, which is what the tile's own content measures at `fontScale = 1.0` — the disc and
+ * the ticker, then the price stacked over the move beside the line's own thirty-six points, plus
+ * the card's twelve points of padding at each end — rounded up to an even number so a half-point
+ * never lands between two device pixels. It is not
  * chosen; it is the content's own height written down. At a larger font scale the content grows
  * past it and the card clips, which is the trade a fixed-height tile makes and is why the strip is
  * a *taste* of the catalogue with the full list one tap away.
  */
-private val MARKET_CARD_HEIGHT = 92.dp
+private val MARKET_CARD_HEIGHT = 98.dp
 
 /**
  * The category strip's own height, held whether or not there is a category to show.

@@ -885,6 +885,22 @@ fun CoineProChart(
     val currentDrawing = rememberUpdatedState(drawing)
     val currentOnDrawing = rememberUpdatedState(onDrawing)
 
+    /**
+     * The series, the eraser flag and the pane-scale callback, for the gestures to read the same way.
+     *
+     * Every gesture handler below used to be keyed on `display`, and most of the drawing ones on
+     * `drawing` and `onDrawing` as well. On a live chart `display` changes on every tick and
+     * `drawing` on every frame of a drag, and a `pointerInput` whose key changes is cancelled and
+     * restarted — with the finger still down, so the new coroutine waits for a press that already
+     * happened. That was the whole of «the tools do not work»: a handle moved one frame and stopped,
+     * a stroke died when a tick landed, a fling was cut off mid-flight. The handlers are keyed on
+     * nothing that moves during a gesture and read the current value at the moment they need it.
+     */
+    val currentDisplay = rememberUpdatedState(display)
+    val currentEraser = rememberUpdatedState(eraser)
+    val currentScalePanes = rememberUpdatedState(onScalePanes)
+    val freehandArmed = armed?.points == 0
+
     // Pull every magnet-bound anchor back onto its channel whenever the bars are replaced.
     //
     // This is what the binding is *for*, and without it the whole apparatus — the channel chosen at
@@ -1238,7 +1254,7 @@ fun CoineProChart(
                         Modifier
                     } else {
                         Modifier
-                            .pointerInput(display, armed) {
+                            .pointerInput(armed != null) {
                                 // Panning is off while a tool is armed. A one-finger drag on a
                                 // chart in drawing mode is a placement, and a chart that scrolls
                                 // under the finger at the same time places the point somewhere the
@@ -1309,7 +1325,7 @@ fun CoineProChart(
                                     },
                                 )
                             }
-                            .pointerInput(display) {
+                            .pointerInput(Unit) {
                                 // Stage two of the zoom: a pinch that means one axis, or both,
                                 // depending on which way the fingers went.
                                 //
@@ -1428,7 +1444,7 @@ fun CoineProChart(
                                     }
                                 }
                             }
-                            .pointerInput(display, armed) {
+                            .pointerInput(armed != null) {
                                 // Momentum, and the one thing that had to be built for it: a
                                 // release with a speed attached.
                                 //
@@ -1569,29 +1585,42 @@ fun CoineProChart(
                                     }
                                 }
                             }
-                            .pointerInput(display, armed, drawing, onDrawing) {
-                                if (onDrawing == null || drawing == null) return@pointerInput
+                            .pointerInput(freehandArmed) {
                                 // Freehand is the one tool family that needs a drag: the stroke is
                                 // the gesture. Everything else is N taps, which is the only thing
                                 // that works for a five-point pattern on a phone — a five-point
                                 // drag would have to be one continuous gesture with four pauses.
-                                if (armed?.points != 0) return@pointerInput
+                                if (!freehandArmed) return@pointerInput
                                 val samples = mutableListOf<ChartPoint>()
                                 detectDragGestures(
                                     onDragStart = { position ->
                                         samples.clear()
+                                        val held = currentDrawing.value ?: return@detectDragGestures
                                         val plot = frameOf(size.width.toFloat()).toPlot(position)
-                                        lastView[0]?.let { samples += it.chartPointAt(plot, display, drawing.magnetMode) }
+                                        lastView[0]?.let {
+                                            samples += it.chartPointAt(plot, currentDisplay.value, held.magnetMode)
+                                        }
                                     },
                                     onDrag = { change, _ ->
+                                        val held = currentDrawing.value ?: return@detectDragGestures
+                                        change.consume()
                                         val plot = frameOf(size.width.toFloat()).toPlot(change.position)
-                                        lastView[0]?.let { samples += it.chartPointAt(plot, display, drawing.magnetMode) }
+                                        lastView[0]?.let {
+                                            samples += it.chartPointAt(plot, currentDisplay.value, held.magnetMode)
+                                        }
                                     },
-                                    onDragEnd = { onDrawing(DrawingActions.stroke(drawing, samples.toList())) },
+                                    onDragEnd = {
+                                        val held = currentDrawing.value
+                                        val emit = currentOnDrawing.value
+                                        if (held != null && emit != null && samples.isNotEmpty()) {
+                                            emit(DrawingActions.stroke(held, samples.toList()))
+                                        }
+                                        samples.clear()
+                                    },
                                     onDragCancel = { samples.clear() },
                                 )
                             }
-                            .pointerInput(display, drawing, onDrawing, tolerancePx) {
+                            .pointerInput(tolerancePx) {
                                 // Editing a drawing after it has been placed.
                                 //
                                 // `DrawingActions.movePoint` and `moveBy` have existed since the
@@ -1607,7 +1636,7 @@ fun CoineProChart(
                                 var origin: ChartPoint? = null
                                 detectDragGestures(
                                     onDragStart = { position ->
-                                        val state = drawing ?: return@detectDragGestures
+                                        val state = currentDrawing.value ?: return@detectDragGestures
                                         if (state.tool != null) return@detectDragGestures
                                         val id = state.selectedId ?: return@detectDragGestures
                                         val view = lastView[0] ?: return@detectDragGestures
@@ -1623,17 +1652,17 @@ fun CoineProChart(
                                         // Only a handle: dragging the whole object moves everything
                                         // under the finger and there is no single anchor to mark.
                                         grabbedHandle = handle
-                                        origin = view.chartPointAt(plot, display, state.magnetMode)
+                                        origin = view.chartPointAt(plot, currentDisplay.value, state.magnetMode)
                                     },
                                     onDrag = { change, _ ->
-                                        val state = drawing ?: return@detectDragGestures
-                                        val emit = onDrawing ?: return@detectDragGestures
+                                        val state = currentDrawing.value ?: return@detectDragGestures
+                                        val emit = currentOnDrawing.value ?: return@detectDragGestures
                                         val id = state.selectedId ?: return@detectDragGestures
                                         val view = lastView[0] ?: return@detectDragGestures
                                         val from = origin ?: return@detectDragGestures
                                         val to = view.chartPointAt(
                                             frameOf(size.width.toFloat()).toPlot(change.position),
-                                            display,
+                                            currentDisplay.value,
                                             state.magnetMode,
                                         )
                                         change.consume()
@@ -1677,8 +1706,10 @@ fun CoineProChart(
                                         // Held for one adjustment, like the magnet and like the
                                         // placing tap above. See the long-press branch.
                                         if (handle >= 0) {
-                                            drawing?.takeIf { it.constrainAngle }?.let { held ->
-                                                onDrawing?.invoke(DrawingActions.setConstrainAngle(held, false))
+                                            currentDrawing.value?.takeIf { it.constrainAngle }?.let { held ->
+                                                currentOnDrawing.value?.invoke(
+                                                    DrawingActions.setConstrainAngle(held, false),
+                                                )
                                             }
                                         }
                                         handle = -1
@@ -1692,7 +1723,7 @@ fun CoineProChart(
                                     },
                                 )
                             }
-                            .pointerInput(display, onScalePanes) {
+                            .pointerInput(onScalePanes != null) {
                                 // The divider between the candles and the first indicator pane:
                                 // drag it to give the pane more or less of the canvas.
                                 //
@@ -1723,10 +1754,10 @@ fun CoineProChart(
                                     if (boundary <= 0f) return@detectVerticalDragGestures
                                     // Dragging *up* grows the panes, because the divider moves up
                                     // and the space below it is theirs.
-                                    onScalePanes(1f - dragAmount / boundary * DIVIDER_SENSITIVITY)
+                                    currentScalePanes.value?.invoke(1f - dragAmount / boundary * DIVIDER_SENSITIVITY)
                                 }
                             }
-                            .pointerInput(display, axisWidth) {
+                            .pointerInput(axisWidth) {
                                 // The price gutter: drag it to stretch or compress the scale.
                                 //
                                 // The gesture every terminal uses, and the reason it is worth
@@ -1759,7 +1790,7 @@ fun CoineProChart(
                                     invalidate(Invalidation.FULL)
                                 }
                             }
-                            .pointerInput(display) {
+                            .pointerInput(Unit) {
                                 // Stage three: a drag along the dates scales time and leaves the
                                 // price alone.
                                 //
@@ -1805,7 +1836,7 @@ fun CoineProChart(
                                     }
                                 }
                             }
-                            .pointerInput(display, drawing, onDrawing, eraser, tolerancePx) {
+                            .pointerInput(tolerancePx) {
                                 // A long press means one of five things, decided by where it lands
                                 // and by what is armed.
                                 //
@@ -1834,6 +1865,9 @@ fun CoineProChart(
                                         val inGutter = frame.inGutter(position.x, GUTTER_REACH_DP.toPx())
                                         val alert = currentAlert.value
                                         val axisMenu = currentAxisMenu.value
+                                        val drawing = currentDrawing.value
+                                        val onDrawing = currentOnDrawing.value
+                                        val eraser = currentEraser.value
                                         val erasing = eraser && drawing != null &&
                                             onDrawing != null && view != null && !inGutter
                                         // Where a long press means «hold it straight» instead —
@@ -1905,9 +1939,12 @@ fun CoineProChart(
                                     onDragCancel = {},
                                 )
                             }
-                            .pointerInput(display, armed, drawing, onDrawing, eraser, tolerancePx) {
+                            .pointerInput(tolerancePx) {
                                 detectTapGestures(
                                     onDoubleTap = { position ->
+                                        val drawing = currentDrawing.value
+                                        val onDrawing = currentOnDrawing.value
+                                        val armed = drawing?.tool
                                         // A double tap means the first of these that applies.
                                         //
                                         // With a path or a polyline part-drawn it ends the shape,
@@ -2004,13 +2041,14 @@ fun CoineProChart(
                                                 return@detectTapGestures
                                             }
                                         }
-                                        val state = drawing ?: return@detectTapGestures
-                                        val emit = onDrawing ?: return@detectTapGestures
+                                        val state = currentDrawing.value ?: return@detectTapGestures
+                                        val emit = currentOnDrawing.value ?: return@detectTapGestures
                                         val view = lastView[0] ?: return@detectTapGestures
+                                        val display = currentDisplay.value
                                         val plot = frameOf(size.width.toFloat()).toPlot(position)
                                         // The eraser takes the tap whole. It is not a tool that
                                         // places anything, so nothing below this would be right.
-                                        if (eraser) {
+                                        if (currentEraser.value) {
                                             eraseAt(
                                                 state = state,
                                                 x = plot.x,
