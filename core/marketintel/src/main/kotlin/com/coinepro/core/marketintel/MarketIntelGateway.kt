@@ -179,6 +179,21 @@ class NetworkMarketIntelGateway private constructor(
      * a picture found afterwards changes nothing about how many rows arrived or how many were read.
      */
     private suspend fun MarketIntelSnapshot.withPictures(): MarketIntelSnapshot {
+        // **The gap it filled has been closed at the source, so it no longer fires.**
+        //
+        // TradeYar deployed `source_image_url` on the members' route on 2026-09-03 and measured it
+        // against production with a real token on 2026-09-05: three rows, three pictures, the
+        // container's file matching the repository's. `docs/SERVER_ASK_NEWS_MEDIA.md` is answered
+        // and they told us we could take this out.
+        //
+        // What remains is a guard, not a fetch. A story that arrives with a picture never reaches
+        // the request below — that was already true — and on a day when the newsroom itself
+        // published some stories without one, the public route no longer has anything the members'
+        // route lacks, because they read the same column of the same table. So it is kept for the
+        // one case it can still answer: a server rolled back, or an older deployment of it, where
+        // the column is missing again and a reader would otherwise get a news screen designed
+        // around a picture with no picture in it. On today's servers it is a comparison that
+        // returns immediately.
         val sources = publicSources ?: return this
         if (news.isEmpty() || news.none { it.imageUrl == null }) return this
         val illustrated = sources.illustrate(news)

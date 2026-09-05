@@ -26,6 +26,7 @@ import com.coinepro.app.sync.BackgroundSyncScheduler
 import com.coinepro.core.academy.AcademyController
 import com.coinepro.core.community.CommunityController
 import com.coinepro.core.chartevents.ChartEventController
+import com.coinepro.core.common.SiteAssets
 import com.coinepro.feature.terminal.TerminalController
 import com.coinepro.core.account.AccountController
 import com.coinepro.core.auth.PlatformCapabilities
@@ -484,12 +485,16 @@ class MainActivity : FragmentActivity() {
 }
 
 /**
- * `/assets/logo/<SYMBOL>.webp` on the API host, for a symbol the vendored artwork does not draw.
+ * `/assets/logo/<SYMBOL>.webp` on the API host's **site**, for a symbol the artwork does not draw.
  *
  * The host is the build's own; a debug build points at staging and a release at production, and
  * the fetch rides the app's OkHttp client with its pins. Everything the artwork covers never asks.
+ *
+ * Through [SiteAssets] and not by appending to the API base, which is the bug it documents: the
+ * forex base carries an `/api` prefix that the static root does not, so this asked
+ * `…/api/assets/logo/XAUUSD.webp` and got a JSON 404 for every symbol it was built to cover. The
+ * server publishing the twenty-one forex marks on 2026-09-05 is what made a silent miss visible.
  */
 private val remoteLogos: LogoProvider = LogoProvider { symbol ->
-    val base = BuildConfig.API_BASE_URL.trimEnd('/')
-    if (base.isBlank()) null else "$base/assets/logo/${symbol.uppercase()}.webp"
+    SiteAssets.url(BuildConfig.API_BASE_URL, "assets/logo/${symbol.uppercase()}.webp")
 }

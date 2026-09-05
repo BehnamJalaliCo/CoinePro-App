@@ -137,6 +137,7 @@ import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.notifications.NotificationGateway
 import com.coinepro.core.orderbook.DepthUnavailableReason
 import com.coinepro.core.orderbook.NoDepthGateway
+import com.coinepro.core.orderbook.LBankPublicOrderBookGateway
 import com.coinepro.core.orderbook.OrderBookGateway
 import com.coinepro.core.symbols.WatchlistStarter
 import com.coinepro.core.orderbook.SessionFallbackOrderBookGateway
@@ -1547,7 +1548,15 @@ object AppModule {
     @Singleton
     @CryptoPlatform
     fun cryptoOrderBookGateway(@CryptoPlatform retrofit: Retrofit): OrderBookGateway =
-        SessionFallbackOrderBookGateway(TradeYarOrderBookGateway(retrofit))
+        SessionFallbackOrderBookGateway(
+            relay = TradeYarOrderBookGateway(retrofit),
+            // The platform's own public depth route first — same handler, same book, our host —
+            // and the exchange direct behind it. See `SessionFallbackOrderBookGateway.fallbacks`.
+            fallbacks = listOf(
+                TradeYarOrderBookGateway(retrofit, path = TradeYarOrderBookGateway.PUBLIC_PATH),
+                LBankPublicOrderBookGateway(),
+            ),
+        )
 
     /**
      * CoinePro-FX has no order book, and that is the finished answer rather than a gap to fill.

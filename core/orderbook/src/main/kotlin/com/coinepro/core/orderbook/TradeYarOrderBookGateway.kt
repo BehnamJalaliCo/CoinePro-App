@@ -13,6 +13,7 @@ import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.http.GET
 import retrofit2.http.Query
+import retrofit2.http.Url
 
 internal interface CryptoDepthApi {
     /**
@@ -24,8 +25,9 @@ internal interface CryptoDepthApi {
      * that server and answers `404`; this gateway would then read its own misspelling as
      * [DepthUnavailableReason.ENDPOINT_NOT_SERVED] and tell every reader the relay had not shipped.
      */
-    @GET("api/mobile/v1/market/depth")
+    @GET
     suspend fun depth(
+        @Url path: String,
         @Query("symbol") symbol: String,
         @Query("depth") depth: Int,
     ): CryptoDepthDto
@@ -129,6 +131,20 @@ internal data class CryptoDepthDto(
 class TradeYarOrderBookGateway(
     retrofit: Retrofit,
     private val pollMillis: Long = DEFAULT_POLL_MILLIS,
+    /**
+     * Which of the relay's two depth routes this instance reads.
+     *
+     * There are two now, they run the *same handler* on the server, and the difference is only who
+     * may call them. [MEMBER_PATH] wants the mobile bearer; [PUBLIC_PATH] — shipped 2026-09-05 at
+     * this app's request — wants nothing, and is what a reader with no TradeYar session gets. The
+     * responses are byte-identical in shape, which is why one gateway reads both instead of a
+     * second class copying eighty lines of error mapping to change one string.
+     *
+     * The public route documents its page size as `limit` and accepts `depth` as an alias, so the
+     * query below is unchanged for both. Sending only one of the pair is deliberate: the server
+     * answers `422` when both arrive and disagree, and it is right to.
+     */
+    private val path: String = MEMBER_PATH,
 ) : OrderBookGateway {
 
     private val api = retrofit.create(CryptoDepthApi::class.java)
@@ -141,7 +157,7 @@ class TradeYarOrderBookGateway(
 
     override suspend fun load(symbol: String, depth: Int): AppResult<OrderBook> = try {
         val requested = depth.coerceIn(1, MAX_DEPTH)
-        val response = api.depth(symbol.uppercase(), requested)
+        val response = api.depth(path, symbol.uppercase(), requested)
         AppResult.Success(
             OrderBook.of(
                 // The server's spelling of the symbol wins where it sent one, exactly as the candle
@@ -250,7 +266,7 @@ class TradeYarOrderBookGateway(
         // ladder for no visible change.
     }.distinctUntilChanged()
 
-    private companion object {
+    companion object {
         /**
          * TradeYar's own ceiling for the `depth` parameter: above it they answer `422`.
          *
@@ -260,6 +276,20 @@ class TradeYarOrderBookGateway(
          * the contract as it stands today, and a client that sends 500 on the strength of a
          * sentence in a chat log is a client that breaks on the deploy that enforces it.
          */
+        /** The members' route: the mobile bearer, and no public twin until 2026-09-05. */
+        const val MEMBER_PATH = "api/mobile/v1/market/depth"
+
+        /**
+         * The public twin, same handler and same scope gate, for a reader with no session.
+         *
+         * It exists because this app asked for it: the crypto chart and its price both have public
+         * routes and the ladder did not, so a guest — and every reader whose account lives on the
+         * other platform — met a `401` on one screen out of three. Reading it goes through this
+         * app's own host rather than the exchange's CDN, which is the part that matters from an
+         * Iranian handset. `LBankPublicOrderBookGateway` stays behind it as the last resort.
+         */
+        const val PUBLIC_PATH = "api/v1/public/market/depth"
+
         const val MAX_DEPTH = 200
 
         /** One second between snapshots. See [stream]. */

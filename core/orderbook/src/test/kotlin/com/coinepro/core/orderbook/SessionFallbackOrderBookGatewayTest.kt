@@ -181,4 +181,60 @@ class SessionFallbackOrderBookGatewayTest {
         assertEquals("LBank Futures", gateway.sourceName)
         assertEquals(gateway.sourceName, LBankPublicOrderBookGateway().sourceName)
     }
+
+    @Test
+    fun `the platform's own public route is tried before the exchange, and stops it`() = runTest {
+        // The order TradeYar's public depth route was built for: our host answers, so an Iranian
+        // handset never has to reach LBank's CDN at all.
+        val ours = book("BTCUSDT", 79_961.5)
+        val platform = Fake(AppResult.Success(ours), streamed = ours)
+        val exchange = Fake(AppResult.Success(book("BTCUSDT", 77_766.4)))
+        val gateway = SessionFallbackOrderBookGateway(
+            relay = Fake(depthUnavailable(DepthUnavailableReason.SESSION_REQUIRED)),
+            fallbacks = listOf(platform, exchange),
+        )
+
+        val result = gateway.load("BTCUSDT")
+
+        assertEquals(ours, (result as AppResult.Success).value)
+        assertEquals("the exchange must not be touched once our own route answered", 0, exchange.loads)
+        // And the poll follows the one that answered, not the relay and not the venue.
+        assertEquals(listOf(ours), gateway.stream("BTCUSDT").toList())
+    }
+
+    @Test
+    fun `the exchange still answers when our own public route cannot`() = runTest {
+        val venue = book("BTCUSDT", 77_766.4)
+        val platform = Fake(AppResult.Failure(ErrorKind.NETWORK))
+        val exchange = Fake(AppResult.Success(venue), streamed = venue)
+        val gateway = SessionFallbackOrderBookGateway(
+            relay = Fake(depthUnavailable(DepthUnavailableReason.SESSION_REQUIRED)),
+            fallbacks = listOf(platform, exchange),
+        )
+
+        assertEquals(venue, (gateway.load("BTCUSDT") as AppResult.Success).value)
+        assertEquals(1, platform.loads)
+        assertEquals(listOf(venue), gateway.stream("BTCUSDT").toList())
+    }
+
+    @Test
+    fun `every fallback failing still reports the relay's refusal`() = runTest {
+        val relay = depthUnavailable(DepthUnavailableReason.SESSION_REQUIRED)
+        val gateway = SessionFallbackOrderBookGateway(
+            relay = Fake(relay),
+            fallbacks = listOf(
+                Fake(AppResult.Failure(ErrorKind.NETWORK)),
+                Fake(depthOutage(DepthOutageReason.EXCHANGE_UNREACHABLE)),
+            ),
+        )
+
+        val result = gateway.load("BTCUSDT")
+
+        assertTrue(result is AppResult.Failure)
+        assertEquals(
+            "the reader has to sign in; which other doors were tried is not their situation",
+            DepthUnavailableReason.SESSION_REQUIRED,
+            (result as AppResult.Failure).depthUnavailableReason,
+        )
+    }
 }

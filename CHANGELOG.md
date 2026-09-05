@@ -15,6 +15,30 @@ it is for.
 
 ---
 
+## [4.45.0] — 2026-09-05 — Both servers answered; one of their answers found a bug
+
+`docs/backend/REPLY_2026-09-05.md` is the reply to both. Every claim in their letters that could be
+measured was measured again from here.
+
+### Fixed
+- **Symbol logos never loaded.** The app built `…/api/assets/logo/XAUUSD.webp` from the API base;
+  the files are at the site root, so every symbol the vendored artwork does not draw fetched a JSON
+  404 and fell back to a monogram — silently, since the day the code was written. `SiteAssets`
+  derives the origin instead. CoinePro-FX publishing twenty-one forex marks is what made it visible.
+
+### Changed
+- **Depth of market prefers TradeYar's own public route** over LBank direct. They shipped
+  `api/v1/public/market/depth` — same handler, no token — and it is reachable from an Iranian
+  handset, carries the measured `truncated` flag and the cache TTL, and sits behind their
+  single-flight lock. LBank stays last for the case where our own host is the unreachable one.
+- **The news illustration probe is now a guard, not a fetch.** TradeYar deployed `source_image_url`
+  on the members' route, so it no-ops; it is kept only for a server rolled back to the old shape.
+- `docs/security/PINNING.md` and `INTEGRITY.md` carry both servers' answers: TradeYar's two pins
+  (and the certbot key-rotation fault they caught on the way), why CoinePro-FX must **not** be
+  pinned behind Cloudflare, the Play Console link that is the one thing blocking Play Integrity,
+  and the nonce's replay window recorded as an open decision rather than a scheduled change.
+- Five `SERVER_ASK_*` questions marked answered.
+
 ## [4.44.0] — 2026-09-05 — Two newsrooms, settings in reach, the tools' «؟» back
 
 ### Added

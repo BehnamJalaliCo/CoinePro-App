@@ -69,3 +69,76 @@ the verdict, and a decision about what a failed verdict blocks. The natural seam
 `AdminGate` and the signature tamper screen (`EXPECTED_SIGNERS`) are where an integrity verdict
 would be consulted on sign-in, on saving an exchange key and on executing a signal. Until the
 project exists, the tamper screen is the only layer and it says so in `PHASE2_REPORT.md`.
+
+---
+
+## What the two servers answered — 2026-09-05
+
+Both were asked for a primary pin and a backup. The two answers were **different in kind**, and the
+app's position follows the answers rather than the request.
+
+### TradeYar — two pins, and the rotation fault they found on the way
+
+| | SHA-256 SPKI |
+|---|---|
+| primary | `RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=` |
+| backup | `Q1JB2C45jMeyX4xQi8ZE83kmB+EfduUc2utHJ+H6YHI=` |
+
+Both P-256 ECDSA. Worth recording what they found while producing them: `certbot 5.6` **changes the
+key on every renewal** unless told otherwise, and theirs was doing exactly that — two separate
+`privkey` files in the archive, June and 8 August. The current certificate expires 6 November, so
+the next renewal was due around **7 October**: the failure this document was written to prevent,
+arriving from a cron job nobody was watching. `reuse_key = True` is now set and `--dry-run` passes.
+They accept the 30-day notice.
+
+### CoinePro-FX — **do not pin**, and they are right
+
+`coineprofx.com` is behind Cloudflare. The certificate a handset sees is Cloudflare's edge
+certificate, not the origin's:
+
+```
+subject = CN = coineprofx.com
+issuer  = C = US, O = Google Trust Services, CN = WE1     ← Cloudflare Universal SSL
+```
+
+Cloudflare renews it with a **new key** and no notice, and has changed CA before (DigiCert →
+Let's Encrypt → Google Trust Services). The 30-day agreement this document asks for cannot be kept
+by a party that does not control the certificate, so a leaf pin there is a dated lock-out — every
+install, no remote fix, a Play release to recover. Their own recommendation is not to pin, and it
+stands: a public app with Certificate Transparency and a network security config gains little from
+pinning and risks everything.
+
+If pinning CoinePro-FX ever becomes a requirement, the route is a Cloudflare **Custom Certificate**
+whose key we hold — then the pins they generated (intermediate `GTS WE1`, root `GTS Root R4`, plus
+an offline RSA-4096 backup never used on a server) become meaningful and the 30-day agreement
+becomes enforceable.
+
+## Why the pins above are recorded and not switched on
+
+`COINEPRO_CERTIFICATE_PINS` is still empty, and that is a deliberate hold rather than an oversight.
+
+A pin that does not match locks out every install of that build with no remote fix, so it must be
+verified **against the live host from an ordinary network** before it ships. It could not be here:
+this repository's builds run behind an egress proxy that terminates TLS, so `openssl s_client` from
+the build environment returns the proxy's certificate, not the server's — measured, and the reason
+this section exists instead of a wired-up pin.
+
+The one command that settles it, run from a normal network:
+
+```bash
+openssl s_client -connect tradeyar.trade-future.ir:443 -servername tradeyar.trade-future.ir < /dev/null 2>/dev/null \
+  | openssl x509 -pubkey -noout | openssl pkey -pubin -outform der \
+  | openssl dgst -sha256 -binary | base64
+# expect: RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=
+```
+
+When that matches, pinning is switched on for TradeYar alone — CoinePro-FX stays unpinned for the
+reason above — by building with:
+
+```
+-PCOINEPRO_CERTIFICATE_PINS="tradeyar.trade-future.ir=sha256/RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=;tradeyar.trade-future.ir=sha256/Q1JB2C45jMeyX4xQi8ZE83kmB+EfduUc2utHJ+H6YHI="
+```
+
+Both pins together, never one: OkHttp accepts a chain matching **any** pin for the host, and the
+backup is what makes the next key rotation a non-event instead of an outage.
+
