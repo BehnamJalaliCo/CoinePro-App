@@ -15,6 +15,17 @@ it is for.
 
 ---
 
+## [4.45.2] — 2026-09-05 — The two dormant switches can actually be turned on
+
+### Fixed
+- **CI passed neither `COINEPRO_PLAY_INTEGRITY_PROJECT` nor `COINEPRO_CERTIFICATE_PINS`**, so the
+  console work both backends are waiting on would have changed nothing in a released build: the
+  app would still have sent no integrity token and no pins. Both are now forwarded from repository
+  variables, guarded the same way the base URLs are — unset, the build is byte-for-byte what it was.
+- `docs/OWNER_ACTIONS.md` is the click-by-click for the three things only the owner can do: the
+  Play Console link, the two Google OAuth clients (with the three SHA-1s and where to read each),
+  and the one command that must verify a TLS pin before it is ever switched on.
+
 ## [4.45.1] — 2026-09-05 — «کهنه» is an age, not a default
 
 ### Fixed

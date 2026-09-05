@@ -154,6 +154,24 @@ jobs:
           #
           # The production base URLs are the defaults in app/build.gradle.kts and are not repeated
           # here. Override them with repository variables only if a deployment moves.
+          #
+          # The last two are the switches for the two features that are built, tested and dormant
+          # until somebody turns them on, and they are **repository variables rather than secrets**
+          # because neither is one: a Cloud project number is printed in the Play Console and a
+          # certificate pin is a hash of a public key anybody can fetch.
+          #
+          #   COINEPRO_PLAY_INTEGRITY_PROJECT   the Cloud project number, once the package is
+          #                                     linked to it in Play Console. Unset, the app sends
+          #                                     no integrity header at all and both servers see
+          #                                     "absent", which they pass. See docs/security/INTEGRITY.md.
+          #   COINEPRO_CERTIFICATE_PINS         host=sha256/… pairs, semicolon separated, **only
+          #                                     after the pin has been measured from an ordinary
+          #                                     network** — a wrong pin locks out every install and
+          #                                     is recoverable only by a new Play release. Never
+          #                                     pin coineprofx.com: it is behind Cloudflare, whose
+          #                                     key rotates without notice. See docs/security/PINNING.md.
+          #
+          # Unset, both expand to nothing and the build is byte-for-byte what it is today.
           gradle --no-daemon :app:assembleRelease \
             -PCOINEPRO_VERSION_CODE=${{ steps.ver.outputs.code }} \
             -PCOINEPRO_VERSION_NAME=${{ steps.ver.outputs.full }} \
@@ -163,7 +181,9 @@ jobs:
             -PCOINEPRO_RELEASE_KEY_PASSWORD="$KEY_PASS" \
             ${{ vars.COINEPRO_PRODUCTION_API_BASE_URL && format('-PCOINEPRO_PRODUCTION_API_BASE_URL="{0}"', vars.COINEPRO_PRODUCTION_API_BASE_URL) || '' }} \
             ${{ vars.COINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL && format('-PCOINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL="{0}"', vars.COINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL) || '' }} \
-            ${{ vars.COINEPRO_PRODUCTION_TERMINAL_URL && format('-PCOINEPRO_PRODUCTION_TERMINAL_URL="{0}"', vars.COINEPRO_PRODUCTION_TERMINAL_URL) || '' }}
+            ${{ vars.COINEPRO_PRODUCTION_TERMINAL_URL && format('-PCOINEPRO_PRODUCTION_TERMINAL_URL="{0}"', vars.COINEPRO_PRODUCTION_TERMINAL_URL) || '' }} \
+            ${{ vars.COINEPRO_PLAY_INTEGRITY_PROJECT && format('-PCOINEPRO_PLAY_INTEGRITY_PROJECT="{0}"', vars.COINEPRO_PLAY_INTEGRITY_PROJECT) || '' }} \
+            ${{ vars.COINEPRO_CERTIFICATE_PINS && format('-PCOINEPRO_CERTIFICATE_PINS="{0}"', vars.COINEPRO_CERTIFICATE_PINS) || '' }}
           cp app/build/outputs/apk/release/app-release.apk "pro-chart-${{ steps.ver.outputs.full }}.apk"
 
       - name: Bundle the same release as an AAB
@@ -185,7 +205,9 @@ jobs:
             -PCOINEPRO_RELEASE_KEY_PASSWORD="$KEY_PASS" \
             ${{ vars.COINEPRO_PRODUCTION_API_BASE_URL && format('-PCOINEPRO_PRODUCTION_API_BASE_URL="{0}"', vars.COINEPRO_PRODUCTION_API_BASE_URL) || '' }} \
             ${{ vars.COINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL && format('-PCOINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL="{0}"', vars.COINEPRO_PRODUCTION_TRADEYAR_API_BASE_URL) || '' }} \
-            ${{ vars.COINEPRO_PRODUCTION_TERMINAL_URL && format('-PCOINEPRO_PRODUCTION_TERMINAL_URL="{0}"', vars.COINEPRO_PRODUCTION_TERMINAL_URL) || '' }}
+            ${{ vars.COINEPRO_PRODUCTION_TERMINAL_URL && format('-PCOINEPRO_PRODUCTION_TERMINAL_URL="{0}"', vars.COINEPRO_PRODUCTION_TERMINAL_URL) || '' }} \
+            ${{ vars.COINEPRO_PLAY_INTEGRITY_PROJECT && format('-PCOINEPRO_PLAY_INTEGRITY_PROJECT="{0}"', vars.COINEPRO_PLAY_INTEGRITY_PROJECT) || '' }} \
+            ${{ vars.COINEPRO_CERTIFICATE_PINS && format('-PCOINEPRO_CERTIFICATE_PINS="{0}"', vars.COINEPRO_CERTIFICATE_PINS) || '' }}
           cp app/build/outputs/bundle/release/app-release.aab "pro-chart-${{ steps.ver.outputs.full }}.aab"
 
       - name: Verify the APK is signed and its wire fields survived R8
