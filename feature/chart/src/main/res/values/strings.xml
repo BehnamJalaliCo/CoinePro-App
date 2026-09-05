@@ -108,6 +108,8 @@
     <string name="chart_position_target">حد سود</string>
     <!-- The vertical symbol scroll in the chart tool row — the control circled in the owner's
          screenshot. The count is a prose count, so Persian digits; the ticker is not. -->
+    <string name="chart_seconds_warming">نمودار %1$s روی همین گوشی از تیک‌های قیمت ساخته می‌شود.</string>
+    <string name="chart_seconds_warming_hint">اولین میله با اولین تغییر قیمت ساخته می‌شود؛ روی بازار آرام چند ثانیه طول می‌کشد. صفحه را باز نگه دار.</string>
     <string name="chart_wheel_scroll">نماد: %1$s، از %2$s نماد فهرست. برای تعویض بکشید.</string>
     <!-- ── Bar replay: the reader's own trades, and the report that comes out of them ─────────
          The replay used to step bars and stop there. These are the strings for the other half:

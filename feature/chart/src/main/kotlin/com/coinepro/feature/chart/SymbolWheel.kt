@@ -3,6 +3,8 @@ package com.coinepro.feature.chart
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,12 +21,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -33,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -381,14 +387,16 @@ internal fun SymbolScrollWheel(
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
     /**
-     * Whether a finger is on the wheel.
+     * Whether a finger is on the wheel, and how far it has travelled since the last step.
      *
-     * The chart page draws [SymbolWheelOverlay] over the plot for as long as this is true — the big
-     * picker TradingView's phone shows while the toolbar's ticker is being dragged. The wheel does
-     * not draw it itself because the overlay belongs over the *chart*, which is not this cell's
-     * parent.
+     * The chart page draws [SymbolWheelOverlay] over the plot for as long as the first is true — the
+     * big picker TradingView's phone shows while the toolbar's ticker is being dragged — and slides
+     * it by the second, so the card and the cell move as one control rather than as two things that
+     * happen to agree about a symbol. The wheel does not draw the overlay itself because the overlay
+     * belongs over the *chart*, which is not this cell's parent.
      */
     onDragging: (Boolean) -> Unit = {},
+    onTravel: (Float) -> Unit = {},
 ) {
     val ring = remember(symbols, current) { symbolNeighbours(symbols, current) }
     if (ring.isEmpty) return
@@ -401,28 +409,71 @@ internal fun SymbolScrollWheel(
     // Read in composition, not inside the semantics lambda: `stringResource` is a composable and
     // the semantics block is not one.
     val wheelLabel = stringResource(R.string.chart_wheel_scroll, current, ring.total.toPersianDigits())
-    // Held across the frames of one drag, exactly as the chart's own pan holds its residue: throwing
-    // the remainder away every frame turns a slow drag into a control that does nothing at all.
-    var travel by remember(current) { mutableStateOf(0f) }
+
+    // **The wheel moves with the finger, and it did not before.**
+    //
+    // «باید خیلی انیمیشن روانی داشته باشه.» The residue used to be a number nothing drew: the
+    // tickers stood still through seventeen points of drag and then jumped a whole row on the
+    // eighteenth. That is not a wheel, it is a button being pressed by a swipe — and it is why the
+    // control felt stiff however smooth each individual step was.
+    //
+    // So the residue is now the cell's own translation. A `graphicsLayer` rather than an offset:
+    // it moves at draw time, so a drag does not relayout five rows of text a frame.
+    //
+    // Read only inside `graphicsLayer` and inside the drag callback — never in composition. A float
+    // that changes every frame and is read where the tree is built is a recomposition of this whole
+    // page per frame of a drag, which is the opposite of what it was added for.
+    // **Not keyed on the symbol.** The remainder has to survive the step that consumed it, or the
+    // carry below is thrown away by the very recomposition it exists to smooth over.
+    val travel = remember { mutableFloatStateOf(0f) }
+    var dragging by remember { mutableStateOf(false) }
+    // Publishing it is one assignment into the page's own float state, and the picker reads that
+    // the same deferred way. See `SymbolWheelOverlay`.
+    fun move(to: Float) {
+        travel.floatValue = to
+        onTravel(to)
+    }
+    // What is left over when the finger lifts is walked back to zero rather than dropped. Dropping
+    // it is a jump of up to a row at the one moment the reader is looking straight at the control.
+    LaunchedEffect(dragging) {
+        if (dragging) return@LaunchedEffect
+        val from = travel.floatValue
+        if (from == 0f) return@LaunchedEffect
+        animate(initialValue = from, targetValue = 0f, animationSpec = tween(SETTLE_MS)) { value, _ ->
+            move(value)
+        }
+    }
     val drag = rememberDraggableState { delta ->
-        travel += delta
-        // One step per frame at most, and the residue dropped when one is taken. `current` is the
-        // symbol the *chart* is on and it comes back through recomposition, so a second step in the
-        // same frame would be measured from a symbol the reader has already left — which on a hard
-        // flick is how a wheel skips two instruments and loads a chart nobody asked for.
-        if (travel <= -stepPixels || travel >= stepPixels) {
-            val forward = travel <= -stepPixels
-            travel = 0f
-            symbolStep(symbols, current, if (forward) 1 else -1)?.let { landed ->
+        val moved = travel.floatValue + delta
+        // One step per frame at most. `current` is the symbol the *chart* is on and it comes back
+        // through recomposition, so a second step in the same frame would be measured from a symbol
+        // the reader has already left — which on a hard flick is how a wheel skips two instruments
+        // and loads a chart nobody asked for.
+        if (moved <= -stepPixels || moved >= stepPixels) {
+            val forward = moved <= -stepPixels
+            val landed = symbolStep(symbols, current, if (forward) 1 else -1)
+            if (landed == null) {
+                // Nothing to step to — a ring of one. The wheel is held at the boundary rather
+                // than allowed to run off it.
+                move(moved.coerceIn(-stepPixels, stepPixels))
+            } else {
+                // **The remainder is carried, not zeroed.** Landing on the new symbol moves the
+                // column one row on its own; subtracting exactly one row of travel is what makes
+                // that shift invisible. Zeroing it here is a visible kick backwards at the exact
+                // instant the wheel steps forward.
+                move(moved + if (forward) stepPixels else -stepPixels)
                 haptics.select()
                 onSelect(landed)
             }
+        } else {
+            move(moved)
         }
     }
     // The toolbar's cell, as the phone app draws it: the current ticker bold on the bar's centre
     // line, the next one under it in a faint ink and cut off by the bar's edge, the previous one
-    // above it likewise. Three rows of eighteen in a cell of forty-four, clipped — the rows that
-    // do not fit are *meant* not to fit; the cut edge is what says there is more to scroll to.
+    // above it likewise. Five rows are drawn where three are visible, because a wheel that slides
+    // has to have something to slide *in* — with three, a drag revealed the empty stage above and
+    // below the column instead of the next instrument.
     Box(
         modifier = modifier
             .width(WHEEL_SCROLL_WIDTH)
@@ -431,16 +482,24 @@ internal fun SymbolScrollWheel(
             .draggable(
                 state = drag,
                 orientation = Orientation.Vertical,
-                onDragStarted = { onDragging(true) },
-                onDragStopped = { onDragging(false) },
+                onDragStarted = {
+                    dragging = true
+                    onDragging(true)
+                },
+                onDragStopped = {
+                    dragging = false
+                    onDragging(false)
+                },
             )
             .semantics { contentDescription = wheelLabel },
         contentAlignment = Alignment.Center,
     ) {
-        Column {
+        Column(modifier = Modifier.graphicsLayer { translationY = travel.floatValue }) {
+            WheelSide(symbol = symbolStep(symbols, current, -2), onSelect = onSelect)
             WheelSide(symbol = ring.previous, onSelect = onSelect)
             WheelCurrent(symbol = current)
             WheelSide(symbol = ring.next, onSelect = onSelect)
+            WheelSide(symbol = symbolStep(symbols, current, 2), onSelect = onSelect)
         }
     }
 }
@@ -535,6 +594,14 @@ internal fun SymbolWheelOverlay(
     current: String,
     visible: Boolean,
     modifier: Modifier = Modifier,
+    /**
+     * How far the wheel has travelled since its last step. The card slides by the same amount.
+     *
+     * A lambda rather than a float, and read inside `graphicsLayer`: the value changes every frame
+     * of a drag, and taking it as a parameter would recompose the chart page — the picker's own
+     * parent — sixty times a second to move a card twelve points.
+     */
+    travelPx: () -> Float = { 0f },
 ) {
     AnimatedVisibility(
         visible = visible,
@@ -542,23 +609,37 @@ internal fun SymbolWheelOverlay(
         exit = fadeOut(),
         modifier = modifier,
     ) {
+        // Two rows further out than the card shows, for the reason the toolbar cell draws five: a
+        // card that slides needs a row waiting outside each edge, or the slide reveals the card's
+        // own padding.
         val rows = remember(symbols, current) {
-            (-OVERLAY_REACH..OVERLAY_REACH).map { step ->
+            (-OVERLAY_DRAWN..OVERLAY_DRAWN).map { step ->
                 if (step == 0) current else symbolStep(symbols, current, step)
             }
         }
         LtrDirection {
             Column(
                 modifier = Modifier
-                    .width(OVERLAY_WIDTH)
+                    // **Wide enough for the ticker, rather than a number that happened to fit.**
+                    //
+                    // «کلمه T می‌افتد زیر چهارچوب.» The card was a fixed 200 points and the middle
+                    // row is a 32 pt logo, a gap and a 32 sp bold ticker — which for `ADAUSDT` comes
+                    // to a little over that, so the last letter was cut off by the card's own edge.
+                    // A width that is measured off one screenshot is a width that is wrong for the
+                    // next symbol; the card now takes the width of its widest row and keeps 200 as
+                    // a floor so a short ticker does not shrink it into a chip.
+                    .widthIn(min = OVERLAY_MIN_WIDTH)
+                    .height(OVERLAY_HEIGHT)
                     .clip(CoineProShapes.large)
                     .background(CoineProColors.Stage.copy(alpha = OVERLAY_ALPHA))
                     .border(1.dp, CoineProColors.BorderSubtle, CoineProShapes.large)
                     .padding(vertical = CoineProSpacing.One, horizontal = CoineProSpacing.OneHalf),
                 verticalArrangement = Arrangement.Center,
             ) {
-                rows.forEachIndexed { index, symbol ->
-                    OverlayRow(symbol = symbol, distance = abs(index - OVERLAY_REACH))
+                Column(modifier = Modifier.graphicsLayer { translationY = travelPx() }) {
+                    rows.forEachIndexed { index, symbol ->
+                        OverlayRow(symbol = symbol, distance = abs(index - OVERLAY_DRAWN))
+                    }
                 }
             }
         }
@@ -575,8 +656,9 @@ internal fun SymbolWheelOverlay(
 private fun OverlayRow(symbol: String?, distance: Int) {
     val rung = OVERLAY_RUNGS[distance.coerceIn(0, OVERLAY_RUNGS.lastIndex)]
     Row(
+        // No `fillMaxWidth`: the card is as wide as its widest row, and a row that filled the
+        // width would make that measurement the whole screen.
         modifier = Modifier
-            .fillMaxWidth()
             .height(rung.row)
             .alpha(rung.alpha),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
@@ -611,8 +693,24 @@ private val OVERLAY_RUNGS = listOf(
 /** How many neighbours the picker shows on each side of the current symbol. */
 private const val OVERLAY_REACH = 4
 
-/** The card: 197 pt wide on the phone app, white at 92 % over the bars. */
-private val OVERLAY_WIDTH = 200.dp
+/** How many it *draws*: two more, waiting outside the card's edges for the slide to reveal. */
+private const val OVERLAY_DRAWN = OVERLAY_REACH + 1
+
+/**
+ * The card's height: the nine rows it shows, plus its own padding.
+ *
+ * Fixed rather than wrapped, because the column inside it is two rows taller than that and slides.
+ * A card that sized itself to what it contains would grow by the rows that are meant to be hidden.
+ */
+private val OVERLAY_HEIGHT = 224.dp
+
+/**
+ * The floor under the card's width.
+ *
+ * 197 pt on the phone app, which is what a five-letter ticker needs. The card takes the width of
+ * its widest row above that — see [SymbolWheelOverlay].
+ */
+private val OVERLAY_MIN_WIDTH = 200.dp
 private const val OVERLAY_ALPHA = 0.92f
 
 /**
@@ -626,3 +724,11 @@ private val WHEEL_SCROLL_HEIGHT = 44.dp
 
 /** Eighty points, which is where the phone app cuts `IMXUSDT` to `IMXUSD` before the interval. */
 private val WHEEL_SCROLL_WIDTH = 80.dp
+
+/**
+ * How long the wheel takes to walk its leftover travel back to zero when the finger lifts.
+ *
+ * Short enough to be over before the reader looks away from the control, long enough to read as
+ * the wheel settling rather than as a second jump.
+ */
+private const val SETTLE_MS = 160

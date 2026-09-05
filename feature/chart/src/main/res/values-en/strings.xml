@@ -91,6 +91,8 @@
     <string name="chart_position_entry">Entry</string>
     <string name="chart_position_stop">Stop loss</string>
     <string name="chart_position_target">Take profit</string>
+    <string name="chart_seconds_warming">The %1$s chart is built on this phone from price ticks.</string>
+    <string name="chart_seconds_warming_hint">The first bar appears on the next price change; on a quiet market that takes a few seconds. Keep the screen open.</string>
     <string name="chart_wheel_scroll">Symbol: %1$s, of %2$s in the list. Drag to switch.</string>
     <!-- Bar replay: the reader\'s own trades, and the report that comes out of them. -->
     <string name="replay_ledger_show">Practice trade</string>

@@ -164,6 +164,8 @@ internal fun ChartCommandBand(
     onUndo: (() -> Unit)? = null,
     /** A finger landing on or leaving the symbol wheel; the page draws the big picker meanwhile. */
     onSymbolDrag: (Boolean) -> Unit = {},
+    /** How far the wheel has moved since its last step, so the picker over the plot slides with it. */
+    onSymbolTravel: (Float) -> Unit = {},
 ) {
     // Unused here since the intervals moved into the date-range sheet and the wheel stopped
     // printing a move beside the ticker, kept on the signature so the two-pane and fullscreen
@@ -188,6 +190,7 @@ internal fun ChartCommandBand(
                     current = symbol,
                     onSelect = select,
                     onDragging = onSymbolDrag,
+                    onTravel = onSymbolTravel,
                 )
             }
             ToolbarText(text = interval.wire, onClick = onMoreIntervals)

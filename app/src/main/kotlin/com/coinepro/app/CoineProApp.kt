@@ -158,6 +158,7 @@ import com.coinepro.core.guest.GuestCandleGateway
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.guest.GuestGateway
 import com.coinepro.core.guest.GuestMarketCatalogGateway
+import com.coinepro.core.guest.GuestPriceFeed
 import com.coinepro.core.guest.GuestMembershipState
 import com.coinepro.core.journal.JournalController
 import com.coinepro.core.marketdata.AcademyTokenStore
@@ -1360,8 +1361,21 @@ fun CoineProApp(
                     // lifetime is this branch: signing in disposes them along with the shell.
                     val guestCatalog = remember(guestGateway) { GuestMarketCatalogGateway(guestGateway) }
                     val guestCandles = remember(guestGateway) { GuestCandleGateway(guestGateway) }
-                    val guestSearch = remember(guestCatalog, scope) {
-                        MarketSearchController(gateway = guestCatalog, scope = scope)
+                    // **A guest has a live price now, and did not.**
+                    //
+                    // The catalogue is read once when a screen opens, so every price a guest saw was
+                    // frozen at that instant — and a sub-minute bar, which is built out of ticks and
+                    // nothing else, could never draw a single candle. Both were reported: «قیمت‌ها
+                    // باید لحظه‌ای باشند» and «تایم‌فریم ۱۰ ثانیه تا ۵۰ ثانیه کار نمی‌کند». See
+                    // `GuestPriceFeed`: the public prices route, polled only while a screen is
+                    // asking, fast while a chart is open and slower for a list.
+                    val guestFeed = remember(guestGateway, scope) { GuestPriceFeed(guestGateway, scope) }
+                    val guestSearch = remember(guestCatalog, scope, guestFeed) {
+                        MarketSearchController(
+                            gateway = guestCatalog,
+                            scope = scope,
+                            liveQuotes = guestFeed.quotes,
+                        )
                     }
                     // The guest's own screener, on the guest's own catalogue and candles. The
                     // signed-in one reads authenticated routes, which for a guest is a 401 worded
@@ -1476,7 +1490,9 @@ fun CoineProApp(
                         onOpenNotificationSettings = onOpenNotificationSettings,
                         onSendFeedback = onSendFeedback,
                         onMarketRetry = { guestSearch.refresh() },
-                        onSubscribeSymbols = {},
+                        onSubscribeSymbols = guestFeed::subscribe,
+                        // The chart's ticks, which are also the whole of a seconds chart.
+                        chartTicks = remember(guestFeed) { guestFeed.chartTicks() },
                         // One platform, and no switcher. The public routes are TradeYar's; a
                         // control offering CoinePro-FX would offer a feed with no public side.
                         platforms = listOf(MarketPlatform.TRADEYAR),

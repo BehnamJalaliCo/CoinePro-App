@@ -72,6 +72,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -730,6 +731,9 @@ fun ChartScreen(
     // the plot — see `SymbolWheelOverlay`. Held here because the wheel is in the band and the
     // picker is over the chart, and neither is the other's parent.
     var wheelDragging by remember { mutableStateOf(false) }
+    // And how far it has turned since its last step, so the picker slides with the cell rather than
+    // waiting for the symbol to change. See `SymbolScrollWheel`.
+    val wheelTravel = remember { mutableFloatStateOf(0f) }
 
     // Where a trade from this chart goes: the trade sheet when the chart carries a setup, the
     // terminal where the deployment reports one, and nowhere on a build with neither — in which
@@ -798,11 +802,21 @@ fun ChartScreen(
                 symbols = wheelSymbols,
                 current = state.symbol,
                 visible = wheelDragging,
+                travelPx = wheelTravel::floatValue,
                 modifier = Modifier.align(Alignment.Center).zIndex(2f),
             )
             when {
                 state.loading && state.series.isEmpty -> Loading()
                 state.error != null && state.series.isEmpty -> ChartFailure(state.error!!, controller::retry)
+                // **A seconds chart with nothing on it yet is not a broken chart.**
+                //
+                // No venue serves a bar shorter than a minute, so these are built here out of the
+                // price feed — see `ChartInterval.Seconds`. Before the first tick lands there is
+                // genuinely nothing to draw, and what was drawn instead was an empty grid with an
+                // empty axis, which reads exactly like a chart that failed. «تایم‌فریم ۱۰ ثانیه کار
+                // نمی‌کند» is what that looks like from the other side of the screen.
+                state.series.isEmpty && state.interval is ChartInterval.Seconds ->
+                    SecondsWarmingUp(state.interval)
                 else -> CoineProChart(
                     series = state.visibleSeries,
                     modifier = Modifier.fillMaxSize(),
@@ -1296,6 +1310,7 @@ fun ChartScreen(
             // the ticker in the scroll and the figure in the row it came from are one number.
             quotes = watchlistQuotes,
             onSymbolDrag = { wheelDragging = it },
+            onSymbolTravel = { wheelTravel.floatValue = it },
         )
 
         // Only where they have nowhere better to be. On a window wide enough for the side column
@@ -3598,6 +3613,38 @@ internal fun studioSummary(indicators: Int, drawings: Int): String {
 private fun Loading() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.dp)
+    }
+}
+
+/**
+ * The wait before a sub-minute chart has a first bar, said in words.
+ *
+ * It is a different wait from every other one on this screen and it deserves different copy: no
+ * request is in flight and none is going to be. The bars are folded from the price feed on this
+ * phone, so the first one appears when the market next ticks — and on a quiet market that can be
+ * several seconds. A spinner would promise something arriving from somewhere; this says what is
+ * actually happening, and it names the length so a reader who wanted a minute chart can see they
+ * are not on one.
+ */
+@Composable
+private fun SecondsWarmingUp(interval: ChartInterval) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(CoineProSpacing.Four),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = stringResource(R.string.chart_seconds_warming, interval.label),
+            style = MaterialTheme.typography.bodyMedium,
+            color = CoineProColors.TextSecondary,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = stringResource(R.string.chart_seconds_warming_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = CoineProColors.TextMuted,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

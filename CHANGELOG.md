@@ -15,6 +15,43 @@ it is for.
 
 ---
 
+## [4.32.2] — 2026-09-05 — The wheel moves with the finger, and a guest has a price
+
+**A ticker cut off by its own card.** «کلمه T می‌افتد زیر چهارچوب.» The symbol picker over the plot
+was a fixed 200 points, measured off one screenshot, and the middle row is a 32 pt logo, a gap and a
+32 sp bold ticker — which for `ADAUSDT` comes to a little more than that, so the last letter was
+clipped by the card's edge. The card takes the width of its widest row now, with 200 as a floor, so
+no ticker can be cut by a number somebody typed.
+
+**A wheel that jumped rather than turned.** The drag residue was a float nothing drew: the tickers
+stood still through seventeen points of travel and then jumped a whole row on the eighteenth. It is
+the cell's own translation now, so the column follows the finger; five rows are drawn where three
+are visible, so a slide reveals the next instrument rather than the empty stage; the remainder is
+*carried* across a step instead of zeroed, which is what makes the step itself invisible; and what
+is left when the finger lifts is walked back to zero in 160 ms rather than dropped. The picker over
+the plot slides by the same amount, so the card and the cell are one control. Every one of those
+reads happens in the draw phase — a float that changes each frame, read where the tree is built,
+would recompose the chart page sixty times a second to move a card twelve points.
+
+**Ten-second bars that could never draw.** «تایم‌فریم ۱۰ ثانیه تا ۵۰ ثانیه کار نمی‌کند» — and on a
+guest build it never could. No venue serves a bar shorter than a minute, so these are folded on the
+phone out of the price feed; the guest shell had no feed at all, only a catalogue read once when a
+screen opened. So a sub-minute chart was not slow, it was permanently blank — and every price a
+guest saw was frozen at the instant its screen opened, which is the same fault the 4.32.1 note
+describes fixing for members.
+
+`GuestPriceFeed` is the missing half: TradeYar's public prices route, polled only while a screen is
+asking, once a second while a chart is open and once every three for a list, stopped entirely when
+nothing is on screen. A repeated snapshot keeps its previous instant, so a cached answer is not a
+tick — stamping each poll with the clock would draw a row of identical candles that never traded.
+The latency is a second rather than the socket's few milliseconds, and that is written down rather
+than hidden: an account is what buys the rest.
+
+And a seconds chart with no bars yet says so. It used to be an empty grid with an empty axis, which
+is indistinguishable from a chart that failed.
+
+---
+
 ## [4.32.1] — 2026-09-04 — Five things the owner found by using the app
 
 Every one of these came from a screenshot, and every one of them is the same kind of fault: a
