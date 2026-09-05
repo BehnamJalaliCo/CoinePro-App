@@ -25,9 +25,29 @@ class MarketIntelMapperTest {
     }
 
     @Test
-    fun `missing stale flag is treated as stale rather than fresh`() {
-        val item = readNews(newsRow(stale = null))
-        assertTrue(requireNotNull(item).isStale)
+    fun `a missing stale flag is answered by the story's own age, not by a default`() {
+        // It used to default to stale, which put a «کهنه» pill on a story published two minutes
+        // ago whenever the route left the key out — indistinguishable, to a reader, from the feed
+        // having stopped. The app knows when the story was published; that is what staleness means.
+        val old = readNews(newsRow(stale = null, publishedAt = "2020-01-01T00:00:00Z"))
+        assertTrue("a story from 2020 is stale whoever asks", requireNotNull(old).isStale)
+
+        val fresh = readNews(
+            newsRow(stale = null, publishedAt = Instant.now().minusSeconds(600).toString()),
+        )
+        assertFalse("ten minutes old is not stale", requireNotNull(fresh).isStale)
+    }
+
+    @Test
+    fun `the server's own flag still wins over the age rule`() {
+        // A newsroom that says a fresh row is stale knows something the clock does not — a
+        // correction pending, a re-publish of an old wire — and it is still the authority.
+        val recent = Instant.now().minusSeconds(60).toString()
+        assertTrue(requireNotNull(readNews(newsRow(stale = true, publishedAt = recent))).isStale)
+        assertFalse(
+            "and a server vouching for an old story is believed too",
+            requireNotNull(readNews(newsRow(stale = false, publishedAt = "2020-01-01T00:00:00Z"))).isStale,
+        )
     }
 
     @Test

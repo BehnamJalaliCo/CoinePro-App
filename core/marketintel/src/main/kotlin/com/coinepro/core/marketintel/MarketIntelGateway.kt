@@ -312,8 +312,20 @@ internal fun readNews(row: JsonObject): MarketNewsItem? {
         sentiment = parseSentiment(row.text(SENTIMENT_KEYS)),
         impact = parseImpact(row.text(IMPACT_KEYS)),
         relevance = parseRelevance(row.strings(RELEVANCE_KEYS)),
-        // Absent reads as stale. A feed that did not say is one the app must not vouch for.
-        isStale = row.flag(STALE_KEYS) != false,
+        // The server's flag where it sent one; the story's own age where it did not.
+        //
+        // It used to be "absent reads as stale", on the reasoning that a feed which did not say is
+        // one the app must not vouch for. That is the wrong default for the one field the app can
+        // work out for itself: staleness *is* an age judgement, `publishedAt` is right there, and
+        // the previous rule put a «کهنه» pill on a story published two minutes ago whenever the
+        // route left the key out — which reads to a reader as exactly the complaint this feed has
+        // collected for months, that the news is not moving.
+        //
+        // Twenty-four hours, which is what [TradeYarPublicNews], [AcademyPublicNews] and
+        // [PublicNewsFeed] have always used. Before this the same story was stale or fresh
+        // depending on which of the four routes served it, and a reader who signed in watched the
+        // pills appear.
+        isStale = row.flag(STALE_KEYS) ?: published.isBefore(Instant.now().minusSeconds(NEWS_STALE_AFTER_SECONDS)),
         imageUrl = safeHttpsUrl(row.text(IMAGE_KEYS)),
         body = articleBody(row.text(BODY_KEYS), summary),
     )
@@ -338,9 +350,18 @@ internal fun readEvent(row: JsonObject): EconomicEvent? {
         forecast = row.text(FORECAST_KEYS),
         previous = row.text(PREVIOUS_KEYS),
         relevance = parseRelevance(row.strings(RELEVANCE_KEYS)),
-        isStale = row.flag(STALE_KEYS) != false,
+        // Same rule as the news above, on the boundary the calendar's own sources use: two hours
+        // past its moment a release has been priced in. See [PublicCalendarFeed].
+        isStale = row.flag(STALE_KEYS)
+            ?: scheduled.isBefore(Instant.now().minusSeconds(EVENT_STALE_AFTER_SECONDS)),
     )
 }
+
+/** A story older than a day. The boundary every other news source in this module already uses. */
+private const val NEWS_STALE_AFTER_SECONDS = 24 * 60 * 60L
+
+/** A release more than two hours past its moment. See [PublicCalendarFeed.STALE_AFTER_SECONDS]. */
+private const val EVENT_STALE_AFTER_SECONDS = 2 * 60 * 60L
 
 /**
  * Every spelling each field plausibly arrives under, in order of preference.

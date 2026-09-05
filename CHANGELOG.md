@@ -15,6 +15,17 @@ it is for.
 
 ---
 
+## [4.45.1] — 2026-09-05 — «کهنه» is an age, not a default
+
+### Fixed
+- **A story with no `stale` key wore the «کهنه» pill however fresh it was.** The members' route's
+  flag was read as "absent means stale"; it is now "the server's flag if it sent one, the story's
+  own age if it did not" — 24 hours for news, two hours past its moment for a calendar release,
+  which is what the three public news sources and the public calendar have always used. The same
+  story was previously stale or fresh depending on which of four routes served it, and a reader
+  who signed in watched the pills appear. Asked of both servers in
+  `docs/backend/REPLY_2026-09-05.md`.
+
 ## [4.45.0] — 2026-09-05 — Both servers answered; one of their answers found a bug
 
 `docs/backend/REPLY_2026-09-05.md` is the reply to both. Every claim in their letters that could be
