@@ -356,6 +356,58 @@ def check_ui_vocabulary() -> None:
     require(not offenders, "a word the glossary retired is back in a user-facing string:\n" + "\n".join(offenders))
 
 
+ARABIC_SCRIPT = re.compile(r"[\u0600-\u06FF]")
+
+
+def check_english_locale_is_english() -> None:
+    """No Persian text in `values-en/`.
+
+    Persian is the default locale by the owner's decision, so the failure that matters is the
+    inverse of the audit's: an English reader shown Persian because a key was copied across without
+    being translated. Keys marked `translatable="false"` are asset paths and brand names and are
+    allowed whatever they contain.
+    """
+    # English strings that quote a Persian word on purpose — a search hint showing what a Persian
+    # name looks like. Each entry is a decision, not a leak, and the list should stay this short.
+    quoting_persian = {"search_empty_hint"}
+    offenders: list[str] = []
+    for path in string_files():
+        if not str(path).endswith("values-en/strings.xml"):
+            continue
+        for match in re.finditer(r'<string name="([^"]+)"([^>]*)>(.*?)</string>', path.read_text(encoding="utf-8"), re.S):
+            if 'translatable="false"' in match.group(2) or match.group(1) in quoting_persian:
+                continue
+            if ARABIC_SCRIPT.search(match.group(3)):
+                offenders.append(f"{path.relative_to(ROOT)}: {match.group(1)}")
+    require(not offenders, "Persian text in the English locale:\n" + "\n".join(offenders))
+
+
+SECRET_MODULES = ("core/security", "core/auth", "core/execution", "core/copytrade", "feature/connections", "core/network")
+SECRET_NAMES = re.compile(r"(?i)(apiKey|apiSecret|secretKey|password|passphrase|bearer|token)")
+LOG_CALL = re.compile(r"\b(Log\.[dievw]|println|appLog\.\w+|log\.\w+)\s*\(")
+
+
+def check_no_secret_logging() -> None:
+    """No log call in a module that handles credentials names one on the same line.
+
+    The audit asked for a test that fails if a `Log.*` receives a value typed `ApiKey`/`Secret`.
+    There are no such wrapper types and Gson serialises the request bodies those values sit in by
+    field, so a wrapper is a hazard in its own right. What can be checked, and is: a log statement
+    in a credential-handling module whose arguments name a key, a secret, a password or a token.
+    Today there are none; this keeps it that way.
+    """
+    offenders: list[str] = []
+    for module in SECRET_MODULES:
+        for path in (ROOT / module / "src" / "main").rglob("*.kt"):
+            for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                stripped = line.strip()
+                if stripped.startswith(("//", "*", "/*")):
+                    continue
+                if LOG_CALL.search(line) and SECRET_NAMES.search(line):
+                    offenders.append(f"{path.relative_to(ROOT)}:{number}: {stripped[:100]}")
+    require(not offenders, "a credential-handling module logs something that names a secret:\n" + "\n".join(offenders))
+
+
 def check_assets_clean() -> None:
     stray = [
         str(path.relative_to(ROOT))
@@ -448,6 +500,8 @@ def main() -> None:
     check_module_map()
     check_brand_spelling()
     check_ui_vocabulary()
+    check_english_locale_is_english()
+    check_no_secret_logging()
     check_assets_clean()
     check_tabular_digits()
     check_every_screen_is_rendered()

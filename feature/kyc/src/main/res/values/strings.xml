@@ -5,13 +5,22 @@
     <string name="kyc_state_approved">احراز هویت تأیید شد</string>
     <string name="kyc_state_rejected">احراز هویت رد شد</string>
 
-    <string name="kyc_body_not_started">برای باز شدن امکانات حساب، این چهار مورد را وارد کنید.</string>
+    <string name="kyc_body_not_started">برای باز شدن امکانات حساب، این چند مورد را وارد کنید.</string>
     <string name="kyc_body_pending">اطلاعات شما ثبت شد و در حال بررسی است. تا اعلام نتیجه کاری لازم نیست.</string>
     <string name="kyc_body_approved">حساب شما احراز شده است.</string>
     <string name="kyc_body_rejected">اطلاعات ارسالی پذیرفته نشد. توضیح زیر را بخوانید و دوباره بفرستید.</string>
 
     <string name="kyc_full_name">نام و نام خانوادگی</string>
     <string name="kyc_national_id">کد ملی</string>
+    <string name="kyc_country">کشور</string>
+    <string name="kyc_country_search">جست‌وجوی کشور</string>
+    <string name="kyc_document_type">مدرک شناسایی</string>
+    <string name="kyc_document_national_id">کارت ملی</string>
+    <string name="kyc_document_passport">گذرنامه</string>
+    <string name="kyc_document_driver_licence">گواهی‌نامه</string>
+    <string name="kyc_passport_number">شماره‌ی گذرنامه</string>
+    <string name="kyc_licence_number">شماره‌ی گواهی‌نامه</string>
+    <string name="kyc_id_number">شماره‌ی مدرک</string>
     <string name="kyc_birth_date">تاریخ تولد</string>
     <string name="kyc_phone">شمارهٔ موبایل</string>
 

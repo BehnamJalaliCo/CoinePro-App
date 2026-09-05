@@ -3,7 +3,6 @@ package com.coinepro.core.account
 import com.coinepro.core.common.AppResult
 import com.coinepro.core.common.ErrorKind
 import com.coinepro.core.common.RetryAfter
-import com.coinepro.core.common.foldDigitsToLatin
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.network.ApiErrors
 import java.io.IOException
@@ -27,18 +26,11 @@ interface AccountGateway {
     /**
      * Submits level-1 verification.
      *
-     * [birthDate] is passed through untouched. CoinePro-FX accepts a Jalali date and converts it
-     * server-side, so the app must **not** convert: an Iranian reader knows their birthday in the
-     * Jalali calendar, and a client-side conversion would put a second implementation of a famously
-     * fiddly calendar in the path of a field whose refusal message says nothing about dates. One
-     * conversion, on the side that owns the answer.
+     * The identity carries the country and the document — see [KycIdentity] — and the gateway
+     * decides the wire shape from it: an Iranian national card goes as the server has always
+     * received it, anything else as the generic fields. See `KycLevel1Request.of`.
      */
-    suspend fun submitKycLevel1(
-        fullName: String,
-        nationalId: String,
-        birthDate: String,
-        phone: String,
-    ): AppResult<KycStatus>
+    suspend fun submitKycLevel1(identity: KycIdentity): AppResult<KycStatus>
 
     /**
      * Destroys the account and everything attributable to it.
@@ -104,25 +96,8 @@ class NetworkAccountGateway internal constructor(
 
     override suspend fun kyc(): AppResult<KycStatus> = call { api.kyc(paths.kyc).toStatus() }
 
-    override suspend fun submitKycLevel1(
-        fullName: String,
-        nationalId: String,
-        birthDate: String,
-        phone: String,
-    ): AppResult<KycStatus> = call {
-        api.submitKycLevel1(
-            paths.kycLevel1,
-            KycLevel1Request(
-                fullName = fullName.trim(),
-                // Persian and Arabic-Indic digits are accepted by the server, but folding them here
-                // keeps what the app sends identical to what the reader believes they typed.
-                nationalId = nationalId.foldDigitsToLatin().filter(Char::isDigit),
-                // Digits folded but the calendar left alone: the server reads Jalali and Gregorian
-                // both, and Persian numerals are what a Persian keyboard produces for either.
-                birthDate = birthDate.foldDigitsToLatin().trim(),
-                phone = phone.foldDigitsToLatin().filter { it.isDigit() || it == '+' },
-            ),
-        ).toStatus()
+    override suspend fun submitKycLevel1(identity: KycIdentity): AppResult<KycStatus> = call {
+        api.submitKycLevel1(paths.kycLevel1, KycLevel1Request.of(identity)).toStatus()
     }
 
     override suspend fun deleteAccount(): AppResult<DeletionOutcome> = call {

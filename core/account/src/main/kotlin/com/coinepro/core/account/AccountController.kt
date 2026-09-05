@@ -133,11 +133,11 @@ class AccountController(
      * no better explanation for why a particular id was refused, and inventing one in the service's
      * voice would be worse than saying nothing.
      */
-    fun submitKycLevel1(fullName: String, nationalId: String, birthDate: String, phone: String) {
+    fun submitKycLevel1(identity: KycIdentity) {
         if (kycSubmissionMutable.value is KycSubmission.Sending) return
         kycSubmissionMutable.value = KycSubmission.Sending
         scope.launch {
-            when (val result = gateway.submitKycLevel1(fullName, nationalId, birthDate, phone)) {
+            when (val result = gateway.submitKycLevel1(identity)) {
                 is AppResult.Success -> {
                     kycMutable.value = result.value
                     kycSubmissionMutable.value = KycSubmission.Accepted

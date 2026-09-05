@@ -1,5 +1,6 @@
 package com.coinepro.feature.account
 
+import com.coinepro.core.common.BrandConfig
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -353,6 +354,6 @@ private fun Context.copyLink(label: String, url: String): Boolean = runCatching 
 // Compiled in, and never rendered. Both pages are reached by the named buttons above; the strings
 // themselves reach the reader only through the browser they open, or through the clipboard when
 // they ask for the address.
-private const val SITE = "https://behnamjalalico.github.io/CoinePro-App"
+private const val SITE = BrandConfig.LEGAL_BASE_URL
 private const val DELETION_URL = "$SITE/delete-account/"
 private const val POLICY_URL = "$SITE/privacy/"

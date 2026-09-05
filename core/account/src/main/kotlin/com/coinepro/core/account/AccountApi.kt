@@ -1,5 +1,6 @@
 package com.coinepro.core.account
 
+import com.coinepro.core.common.foldDigitsToLatin
 import com.coinepro.core.model.MarketPlatform
 import retrofit2.Response
 import retrofit2.http.Body
@@ -69,12 +70,49 @@ internal class AccountPaths(private val prefix: String) {
     }
 }
 
+/**
+ * The level-one body, in the server's own field names.
+ *
+ * Two shapes share one class. An Iranian national card travels exactly as it always has —
+ * `national_id` and nothing else about the document — so a server that predates the generic fields
+ * keeps working unchanged. Every other identity travels as `country`, `document_type` and
+ * `document_number`, and `national_id` is absent: Gson omits a null field, so the old server sees
+ * a body missing the one field it requires and refuses it in its own words, which is the honest
+ * outcome for a deployment that has not yet learned the wider contract.
+ */
 internal data class KycLevel1Request(
     val fullName: String,
-    val nationalId: String,
     val birthDate: String,
     val phone: String,
-)
+    val nationalId: String? = null,
+    val country: String? = null,
+    val documentType: String? = null,
+    val documentNumber: String? = null,
+) {
+    companion object {
+        fun of(identity: KycIdentity): KycLevel1Request {
+            // Persian and Arabic-Indic digits are accepted by the server, but folding them here
+            // keeps what the app sends identical to what the reader believes they typed.
+            val number = identity.documentNumber.foldDigitsToLatin().trim()
+            val base = KycLevel1Request(
+                fullName = identity.fullName.trim(),
+                // Digits folded but the calendar left alone: the server reads Jalali and Gregorian
+                // both, and Persian numerals are what a Persian keyboard produces for either.
+                birthDate = identity.birthDate.foldDigitsToLatin().trim(),
+                phone = identity.phone.foldDigitsToLatin().filter { it.isDigit() || it == '+' },
+            )
+            return if (identity.isIranianNationalId) {
+                base.copy(nationalId = number.filter(Char::isDigit))
+            } else {
+                base.copy(
+                    country = identity.country.trim().uppercase(),
+                    documentType = identity.documentType.wire,
+                    documentNumber = number,
+                )
+            }
+        }
+    }
+}
 
 internal data class BriefingDto(
     val body: String? = null,

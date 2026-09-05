@@ -1,5 +1,6 @@
 package com.coinepro.feature.membership
 
+import com.coinepro.core.common.BrandConfig
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -765,4 +766,4 @@ private const val DEFAULT_EXCHANGE = "lbank"
 // Compiled in, and never rendered. The reader reaches the page through the named button
 // above — the address itself is not on any screen, and printing it would put a personal
 // hosting address in front of somebody who asked to read the terms.
-private const val TERMS_URL = "https://behnamjalalico.github.io/CoinePro-App/terms/"
+private const val TERMS_URL = "${BrandConfig.LEGAL_BASE_URL}/terms/"

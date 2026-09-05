@@ -5,13 +5,22 @@
     <string name="kyc_state_approved">Identity verified</string>
     <string name="kyc_state_rejected">Verification refused</string>
 
-    <string name="kyc_body_not_started">Enter these four details to open the rest of your account.</string>
+    <string name="kyc_body_not_started">Enter these details to open the rest of your account.</string>
     <string name="kyc_body_pending">Your details were received and are being reviewed. Nothing more is needed for now.</string>
     <string name="kyc_body_approved">Your account is verified.</string>
     <string name="kyc_body_rejected">The details were not accepted. Read the note below and send them again.</string>
 
     <string name="kyc_full_name">Full name</string>
     <string name="kyc_national_id">National ID</string>
+    <string name="kyc_country">Country</string>
+    <string name="kyc_country_search">Search countries</string>
+    <string name="kyc_document_type">Identity document</string>
+    <string name="kyc_document_national_id">National ID card</string>
+    <string name="kyc_document_passport">Passport</string>
+    <string name="kyc_document_driver_licence">Driving licence</string>
+    <string name="kyc_passport_number">Passport number</string>
+    <string name="kyc_licence_number">Licence number</string>
+    <string name="kyc_id_number">Document number</string>
     <string name="kyc_birth_date">Date of birth</string>
     <string name="kyc_phone">Mobile number</string>
 

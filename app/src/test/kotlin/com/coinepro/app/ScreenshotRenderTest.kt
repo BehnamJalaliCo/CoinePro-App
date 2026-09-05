@@ -52,6 +52,8 @@ import com.coinepro.app.notifications.channelNameRes
 import com.coinepro.app.security.TamperedScreen
 import com.coinepro.core.academy.AcademyExtra
 import com.coinepro.core.account.AccountController
+import com.coinepro.core.account.KycDocumentType
+import com.coinepro.core.account.KycIdentity
 import com.coinepro.core.aiassistant.AiAssistantController
 import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.auth.AuthFailure
@@ -403,7 +405,16 @@ class ScreenshotRenderTest {
             ),
             scope,
         )
-        controller.submitKycLevel1("بهنام جلالی", "0012345678", "1370/05/12", "09121234567")
+        controller.submitKycLevel1(
+            KycIdentity(
+                fullName = "بهنام جلالی",
+                country = KycIdentity.IRAN,
+                documentType = KycDocumentType.NATIONAL_ID,
+                documentNumber = "0012345678",
+                birthDate = "1370/05/12",
+                phone = "09121234567",
+            ),
+        )
         KycScreen(controller = controller)
     }
 

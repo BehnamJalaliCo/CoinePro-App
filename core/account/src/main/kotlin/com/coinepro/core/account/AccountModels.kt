@@ -58,6 +58,57 @@ data class AccountHolding(
     val changePercent: Double? = null,
 )
 
+/**
+ * The document a reader verifies with.
+ *
+ * Three kinds, and the wire spelling of each is fixed here rather than derived from the enum name,
+ * because a rename in Kotlin must never change what the server receives.
+ */
+enum class KycDocumentType(val wire: String) {
+    NATIONAL_ID("national_id"),
+    PASSPORT("passport"),
+    DRIVER_LICENCE("driver_licence"),
+    ;
+
+    companion object {
+        fun fromWire(value: String?): KycDocumentType? = entries.firstOrNull { it.wire == value?.trim()?.lowercase() }
+    }
+}
+
+/**
+ * What a reader submits for level-one verification.
+ *
+ * ### Region-aware, not Iran-shaped
+ *
+ * The form used to be four fields with «کد ملی» hard-wired as the second, which is the right form
+ * for an Iranian reader and a wrong one for everybody else — a reader in Berlin has no national id
+ * in that sense and was asked for one anyway. The identity is now a country and a document: an
+ * Iranian reader chooses the national card and types the same ten digits; anyone else names their
+ * country and a passport or licence. The server's existing contract is untouched — see
+ * [isIranianNationalId] and `KycLevel1Request` — so this is a wider door, not a moved one.
+ *
+ * [country] is ISO 3166-1 alpha-2, upper case. [birthDate] is passed through untouched, in whatever
+ * calendar the reader wrote it: the server reads Jalali and Gregorian both, and a conversion here
+ * would put a second implementation of a famously fiddly calendar in front of a field whose refusal
+ * message says nothing about dates.
+ */
+data class KycIdentity(
+    val fullName: String,
+    val country: String,
+    val documentType: KycDocumentType,
+    val documentNumber: String,
+    val birthDate: String,
+    val phone: String,
+) {
+    /** The one case the server's original contract was written for: an Iranian national card. */
+    val isIranianNationalId: Boolean
+        get() = country.equals(IRAN, ignoreCase = true) && documentType == KycDocumentType.NATIONAL_ID
+
+    companion object {
+        const val IRAN = "IR"
+    }
+}
+
 /** How far identity verification has got, and what is still needed. */
 data class KycStatus(
     val level: Int,

@@ -1,5 +1,6 @@
 package com.coinepro.core.marketintel
 
+import com.coinepro.core.common.BrandConfig
 import java.io.IOException
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -91,6 +92,6 @@ class OkHttpPublicFeedClient(private val client: OkHttpClient) : PublicFeedClien
     }
 
     private companion object {
-        const val USER_AGENT = "ProChart-Android/1.0 (+https://behnamjalalico.github.io/CoinePro-App/)"
+        const val USER_AGENT = "ProChart-Android/1.0 (+${BrandConfig.LEGAL_BASE_URL}/)"
     }
 }

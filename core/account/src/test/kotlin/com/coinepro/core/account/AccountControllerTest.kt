@@ -155,12 +155,7 @@ private class FakeAccountGateway(
     override suspend fun briefing() = briefing
     override suspend fun portfolio() = portfolio
     override suspend fun kyc() = kyc
-    override suspend fun submitKycLevel1(
-        fullName: String,
-        nationalId: String,
-        birthDate: String,
-        phone: String,
-    ) = kyc
+    override suspend fun submitKycLevel1(identity: KycIdentity) = kyc
 
     override suspend fun deleteAccount() = deletion
 }

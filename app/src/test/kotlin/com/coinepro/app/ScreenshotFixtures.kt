@@ -4,6 +4,7 @@ import com.coinepro.core.account.AccountBriefing
 import com.coinepro.core.account.AccountGateway
 import com.coinepro.core.account.AccountPortfolio
 import com.coinepro.core.account.DeletionOutcome
+import com.coinepro.core.account.KycIdentity
 import com.coinepro.core.account.KycState
 import com.coinepro.core.account.KycStatus
 import com.coinepro.core.aisignal.AiCandle
@@ -1925,12 +1926,7 @@ internal class FakeAccountGateway(
 
     override suspend fun kyc(): AppResult<KycStatus> = AppResult.Success(status)
 
-    override suspend fun submitKycLevel1(
-        fullName: String,
-        nationalId: String,
-        birthDate: String,
-        phone: String,
-    ): AppResult<KycStatus> = submitResult ?: AppResult.Success(status)
+    override suspend fun submitKycLevel1(identity: KycIdentity): AppResult<KycStatus> = submitResult ?: AppResult.Success(status)
 
     override suspend fun deleteAccount(): AppResult<DeletionOutcome> = deletionResult
 }
