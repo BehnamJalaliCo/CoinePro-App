@@ -498,6 +498,27 @@ def check_tabular_digits() -> None:
         )
 
 
+MATERIAL_ICON_IMPORT = re.compile(r"^import androidx\.compose\.material\.icons\.", re.MULTILINE)
+STOCK_ICON_USE = re.compile(r"\bIcons\.(Filled|Default|Outlined|Rounded|Sharp|TwoTone)\.")
+
+
+def check_icon_sources() -> None:
+    """Every glyph comes from `CoineProIcons`.
+
+    The stock Material set draws a different stroke weight and a different optical size from the
+    app's own icons, and one of them on a row beside three of ours is the one thing on the screen
+    that looks pasted in. The design system may import the library to *build* an icon; nothing
+    else may reach for it."""
+    offenders: list[str] = []
+    for path in list(ROOT.glob("app/src/main/**/*.kt")) + list(ROOT.glob("feature/*/src/main/**/*.kt")) + list(ROOT.glob("core/*/src/main/**/*.kt")):
+        if "core/designsystem/" in path.as_posix():
+            continue
+        text = path.read_text(encoding="utf-8")
+        if MATERIAL_ICON_IMPORT.search(text) or STOCK_ICON_USE.search(text):
+            offenders.append(str(path.relative_to(ROOT)))
+    require(not offenders, "a stock Material icon outside the design system:\n" + "\n".join(offenders))
+
+
 def check_string_lint() -> None:
     """Delegates to tools/i18n/lint_strings.py: parity, glossary, register and orthography of every
     strings.xml. It lives in tools/ because it is also the reviewer's tool; this gate is what makes
@@ -516,6 +537,7 @@ def main() -> None:
     check_ui_vocabulary()
     check_english_locale_is_english()
     check_string_lint()
+    check_icon_sources()
     check_no_secret_logging()
     check_assets_clean()
     check_tabular_digits()
