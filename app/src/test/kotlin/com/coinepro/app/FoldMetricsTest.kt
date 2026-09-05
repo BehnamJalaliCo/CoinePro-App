@@ -234,8 +234,14 @@ class FoldMetricsTest {
         const val FA_393 = "fa-rIR-ldrtl-w393dp-h914dp-xxhdpi"
         const val EN_411 = "en-rUS-ldltr-w411dp-h914dp-xxhdpi"
 
-        /** What the watchlist's chrome measures today, and is meant to keep measuring. */
-        val CHROME_TARGET = 117.dp
+        /**
+         * What the watchlist's chrome measures today, and is meant to keep measuring.
+         *
+         * 117 until Sprint A1 put every padding on the four-point grid; the header, the tab row
+         * and the column headings each grew by a step and the chrome now sits exactly on the
+         * owner's budget. It may not grow past it.
+         */
+        val CHROME_TARGET = 125.dp
         const val CHROME_DRIFT_DP = 1.0f
 
         /** «Watchlist pre-row chrome <= 125dp», from the owner's own list. */

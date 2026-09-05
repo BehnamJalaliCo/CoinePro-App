@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -63,6 +62,7 @@ import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.designsystem.rowMotion
+import com.coinepro.core.designsystem.CoineProSkeletonRows
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.ExecutionStatus
 import com.coinepro.core.execution.SignalExecution
@@ -720,11 +720,11 @@ private fun PremiumCard(modifier: Modifier = Modifier, content: @Composable () -
 
 @Composable
 private fun LoadingPanel(message: String) {
+    // A shimmer where the rows will be, not a spinner beside a sentence: the reader sees the
+    // shape of what is coming and the page does not jump when it arrives.
     PremiumCard {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            CircularProgressIndicator()
-            Text(message, color = CoineProColors.TextSecondary)
-        }
+        CoineProSkeletonRows(count = 4, leading = false)
+        Text(message, style = MaterialTheme.typography.labelSmall, color = CoineProColors.TextMuted)
     }
 }
 

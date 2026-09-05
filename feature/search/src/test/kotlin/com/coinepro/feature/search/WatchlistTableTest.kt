@@ -171,26 +171,40 @@ class WatchlistTableTest {
     @Test
     fun `the default column set fits a 393dp phone without the move being cut`() {
         // The claim `WatchlistColumn.DEFAULT` makes, checked rather than trusted: the flag rail,
-        // the reorder grip, the logo, the ticker column and the gap between each of them, then the
-        // chosen figure columns with eight between those.
+        // the logo, the ticker column and the gap between each of them, then the chosen figure
+        // columns with eight between those.
         //
         // **393 and not 411.** The reference width this design system is measured against is wider
         // than the phone most readers hold, and the difference is exactly what shipped broken: at
         // 393 the old set ran fourteen points over, the figure block scrolls, the page is
         // right-to-left, and so the last column lost its leading characters — `+0.35%` reaching
         // the reader as `.35%`. A test that only ever asked about 411 could not see it.
-        val leading = 3 + RowGap.value.toInt() + HandleWidth.value.toInt() + RowGap.value.toInt() +
-            LogoSize.value.toInt() + RowGap.value.toInt() + SymbolColumn.value.toInt() +
-            RowGap.value.toInt()
+        val leading = 3 + RowGap.value.toInt() + LogoSize.value.toInt() + RowGap.value.toInt() +
+            SymbolColumn.value.toInt() + RowGap.value.toInt()
         val figures = WatchlistColumn.DEFAULT
             .filter { it != WatchlistColumn.FLAG }
-            .sumOf { widthOf(it).value.toInt() } + 8
+            .sumOf { widthOf(it).value.toInt() } + 8 * 2
 
-        assertEquals(351, leading + figures)
+        assertEquals(359, leading + figures)
         assertTrue(
             "the default set is $leading + $figures wide and a 393dp phone has ${393 - 32}",
             leading + figures <= 393 - 32,
         )
+    }
+
+    @Test
+    fun `with the reorder grip on the row the sparkline leaves and the rest still fits 393dp`() {
+        // Reordering puts a 32-point grip and its gap in front of the logo; `WatchlistPanel`
+        // drops the sparkline for the duration, so the price and the move keep their places.
+        val leading = 3 + RowGap.value.toInt() + HandleWidth.value.toInt() + RowGap.value.toInt() +
+            LogoSize.value.toInt() + RowGap.value.toInt() + SymbolColumn.value.toInt() +
+            RowGap.value.toInt()
+        val figures = WatchlistColumn.DEFAULT
+            .filter { it != WatchlistColumn.FLAG && it != WatchlistColumn.SPARKLINE }
+            .sumOf { widthOf(it).value.toInt() } + 8
+
+        assertEquals(339, leading + figures)
+        assertTrue(leading + figures <= 393 - 32)
     }
 }
 

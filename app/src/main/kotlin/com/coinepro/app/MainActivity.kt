@@ -57,6 +57,8 @@ import com.coinepro.app.security.AppIntegrity
 import com.coinepro.app.security.IntegrityState
 import com.coinepro.app.security.TamperedScreen
 import com.coinepro.core.designsystem.CoineProTheme
+import com.coinepro.core.designsystem.LocalLogoProvider
+import com.coinepro.core.designsystem.LogoProvider
 import com.coinepro.app.alerts.LocalAlertScheduler
 import com.coinepro.app.alerts.InAppAlertBus
 import com.coinepro.core.datastore.LocalAlertStore
@@ -237,6 +239,8 @@ class MainActivity : FragmentActivity() {
             // than inside it, so no screen has to be handed a store it does not otherwise use.
             CompositionLocalProvider(
                 LocalTeachingDismissals provides rememberTeachingDismissals(teachingStore),
+                // Logos the drawn set does not cover, from the API host. See `LogoProvider`.
+                LocalLogoProvider provides remoteLogos,
             ) {
             CoineProApp(
                 sessionController = sessionController,
@@ -454,4 +458,15 @@ class MainActivity : FragmentActivity() {
         private const val LAUNCH_PREFERENCES = "launch_readiness"
         private const val KEY_NOTIFICATION_PERMISSION_REQUESTED = "notification_permission_requested"
     }
+}
+
+/**
+ * `/assets/logo/<SYMBOL>.webp` on the API host, for a symbol the vendored artwork does not draw.
+ *
+ * The host is the build's own; a debug build points at staging and a release at production, and
+ * the fetch rides the app's OkHttp client with its pins. Everything the artwork covers never asks.
+ */
+private val remoteLogos: LogoProvider = LogoProvider { symbol ->
+    val base = BuildConfig.API_BASE_URL.trimEnd('/')
+    if (base.isBlank()) null else "$base/assets/logo/${symbol.uppercase()}.webp"
 }

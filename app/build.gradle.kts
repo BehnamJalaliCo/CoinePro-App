@@ -477,6 +477,10 @@ dependencies {
     implementation(libs.google.id)
     implementation(project(":core:security"))
     implementation(project(":core:network"))
+    // Coil, with the OkHttp fetcher: the one image loader, disk-cached, for the imagery the
+    // vendored artwork does not cover. See `CoineProImageLoader`.
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
     implementation(project(":core:database"))
     implementation(project(":core:datastore"))
     implementation(project(":core:chart"))

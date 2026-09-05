@@ -159,7 +159,7 @@ val CoineProTypography = Typography(
 
     titleLarge = coineProTextStyle(20, 28, FontWeight.Medium),
     titleMedium = coineProTextStyle(18, 24, FontWeight.Medium),
-    titleSmall = coineProTextStyle(16, 22, FontWeight.Medium),
+    titleSmall = coineProTextStyle(15, 20, FontWeight.Medium),
 
     bodyLarge = coineProTextStyle(16, 24, FontWeight.Normal),
     bodyMedium = coineProTextStyle(15, 22, FontWeight.Normal),
@@ -167,7 +167,7 @@ val CoineProTypography = Typography(
 
     labelLarge = coineProTextStyle(14, 20, FontWeight.Medium),
     labelMedium = coineProTextStyle(12, 16, FontWeight.Medium),
-    labelSmall = coineProTextStyle(11, 16, FontWeight.Normal, 0.3),
+    labelSmall = coineProTextStyle(11, 15, FontWeight.Normal, 0.3),
 )
 
 /** Styles that carry a specific job rather than a place on the Material scale. */

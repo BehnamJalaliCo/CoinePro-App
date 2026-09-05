@@ -1,6 +1,14 @@
 package com.coinepro.app
 
 import android.app.Application
+import coil3.ImageLoader
+import coil3.PlatformContext
+import coil3.SingletonImageLoader
+import coil3.disk.DiskCache
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import coil3.request.crossfade
+import okhttp3.OkHttpClient
+import okio.Path.Companion.toOkioPath
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.coinepro.app.notifications.NotificationChannels
@@ -13,8 +21,27 @@ import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
 @HiltAndroidApp
-class CoineProApplication : Application(), Configuration.Provider {
+class CoineProApplication : Application(), Configuration.Provider, SingletonImageLoader.Factory {
     @Inject lateinit var workerFactory: HiltWorkerFactory
+
+    /** The app's own client, so a logo fetch carries the same pins and timeouts as a price. */
+    @Inject lateinit var httpClient: OkHttpClient
+
+    /**
+     * The one image loader. Disk-cached at two per cent of free space, memory-cached at Coil's
+     * default, fetching over the injected OkHttp client. Built lazily on first use so a launch
+     * that never shows a remote picture never pays for it.
+     */
+    override fun newImageLoader(context: PlatformContext): ImageLoader = ImageLoader.Builder(context)
+        .components { add(OkHttpNetworkFetcherFactory(callFactory = { httpClient })) }
+        .diskCache {
+            DiskCache.Builder()
+                .directory(context.cacheDir.resolve("images").toOkioPath())
+                .maxSizePercent(IMAGE_DISK_CACHE_SHARE)
+                .build()
+        }
+        .crossfade(true)
+        .build()
 
     /**
      * Field-injected rather than taken in the constructor, because an `Application` has none.
@@ -67,3 +94,6 @@ class CoineProApplication : Application(), Configuration.Provider {
         FirebaseApp.initializeApp(this, options)
     }
 }
+
+/** Two per cent of the cache partition, which on any phone this app runs on is tens of megabytes of logos. */
+private const val IMAGE_DISK_CACHE_SHARE = 0.02

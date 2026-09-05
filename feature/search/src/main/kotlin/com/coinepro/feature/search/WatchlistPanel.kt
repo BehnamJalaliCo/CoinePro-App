@@ -170,10 +170,19 @@ fun WatchlistPanel(
     // who pushes the columns sideways moves the whole table rather than one row out of alignment
     // with its neighbours.
     val figureScroll = rememberScrollState()
-    val columns = remember(settings.columns) {
+    val reordering = editing && settings.sort.isManual
+    val columns = remember(settings.columns, reordering) {
         // Enum order, not set order: the reader ticks boxes in whatever order they think of them,
         // and a column set that rearranged itself according to that would be unreadable.
-        WatchlistColumn.entries.filter { it in settings.columns && it != WatchlistColumn.FLAG }
+        //
+        // The sparkline steps aside while the reorder grip is on the row. The grip is forty points
+        // the row does not otherwise spend, the line is the one column that carries no figure,
+        // and a reader dragging rows is reading tickers, not trends — see `widthOf` for the
+        // arithmetic that makes the default set fit a 393 dp phone in both states.
+        WatchlistColumn.entries.filter {
+            it in settings.columns && it != WatchlistColumn.FLAG &&
+                !(reordering && it == WatchlistColumn.SPARKLINE)
+        }
     }
     val flagged = remember(settings.flags) { settings.flags.values.toSet() }
     // The flag column *is* the rail. Unticking it in the column sheet takes the rail off every
@@ -755,7 +764,7 @@ internal fun sortRows(
                 WatchlistColumn.DAY_LOW -> figures.dayLow
                 WatchlistColumn.VOLUME -> figures.volume
                 WatchlistColumn.QUOTE_VOLUME -> figures.quoteVolume
-                WatchlistColumn.FLAG -> null
+                WatchlistColumn.FLAG, WatchlistColumn.SPARKLINE -> null
             }
         }
     }

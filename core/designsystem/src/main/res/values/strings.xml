@@ -80,7 +80,7 @@
     <string name="teaching_heatmap_pitfall">اندازه‌ی خانه ارزش بازار نیست؛ نقدشوندگی یا حجمی است که در تنظیمات انتخاب کرده‌ای.</string>
 
     <string name="teaching_watchlist_lead">نمادهایی که خودتان ستاره زده‌اید، جدا از فهرست کامل بازار.</string>
-    <string name="teaching_watchlist_pitfall">دیده‌بان فهرست تماشای توست، نه سبد دارایی؛ ستاره زدن چیزی نمی‌خرد.</string>
+    <string name="teaching_watchlist_pitfall">دیده‌بان فهرست تماشای شماست، نه سبد دارایی؛ ستاره زدن چیزی نمی‌خرد.</string>
 
     <string name="teaching_alerts_lead">شرط قیمتی می‌گذاری و وقتی برقرار شد اعلان می‌گیری.</string>
     <string name="teaching_alerts_pitfall">هشدار فقط خبر می‌دهد؛ هیچ معامله‌ای را باز یا بسته نمی‌کند.</string>

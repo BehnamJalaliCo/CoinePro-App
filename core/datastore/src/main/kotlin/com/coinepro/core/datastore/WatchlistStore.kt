@@ -193,6 +193,9 @@ enum class WatchlistColumn(
 
     /** Traded value in the quote asset over the session — comparable across instruments. */
     QUOTE_VOLUME("quote_volume", "ارزش معاملات", WatchlistColumnUnit.QUOTE_AMOUNT),
+
+    /** The day's line, 64×24, in the change's colour. Not a figure: nothing to sort by. */
+    SPARKLINE("sparkline", "روند", WatchlistColumnUnit.NONE),
     ;
 
     /** Whether this column holds a market figure, and so is rendered in Latin digits, right-aligned. */
@@ -202,33 +205,34 @@ enum class WatchlistColumn(
         /**
          * What a watchlist row shows until the reader says otherwise.
          *
-         * Three, and the number is arithmetic rather than taste — arithmetic that was done
+         * Four, and the number is arithmetic rather than taste — arithmetic that was done
          * against the wrong phone once and had to be redone.
          *
          * It used to be measured at 411dp, which is the design system's reference width and is
-         * **wider than the device most readers hold**. A Pixel is 393dp, and there the same set
+         * **wider than the device most readers hold**. A Pixel is 393dp, and there an earlier set
          * ran about fourteen points past the row's far edge; because the figure block scrolls and
          * the page is right-to-left, what fell off was the left end of the *last* column, so the
          * move read `.35%` with its sign and its integer gone. So the numbers below are 393dp's.
          *
          * A row spends 16dp of gutter at each edge, leaving 361. Before the figures it spends 3 on
-         * the flag rail, 32 on the reorder grip, 28 on the asset logo, 96 on the ticker and its
-         * Persian name, and 8 between each of those four: 191 in all. The price column is 88 and
-         * the percentage pill 64, with 8 between them, which is 160. Two figure columns land at
-         * 351 of the 361 available. A third at 78 would overflow, and the first thing to be cut
-         * would be the price, which is the one thing a market row may not truncate.
+         * the flag rail, 28 on the asset logo, 96 on the ticker and its Persian name, and 8 between
+         * each of those and after the last: 151 in all. The day's line is 52, the price column 80
+         * and the percentage 60, with 8 between the three, which is 208. The set lands at 359 of
+         * the 361 available. While the reader is reordering, the 32-point grip and its gap join
+         * the row and the sparkline leaves it — it is the one column with no figure in it — so
+         * 191 + 148 fits the same glass.
          *
          * A phone narrower still — 360dp — does not fit this and is not made to: the figure block
          * scrolls sideways in step with its headings, which is the row's answer to a reader who
          * asks for more columns than the glass has room for.
          *
-         * So the default is [FLAG], [LAST_PRICE] and [CHANGE_PERCENT]: the colour the reader
-         * assigned, the number they came for, and the move they scan for. Everything else is one
-         * tap away in the column control, and choosing more than fits is the reader's business —
-         * the row scrolls its figure block sideways, in step with its neighbours and with the
-         * headings, rather than refusing.
+         * So the default is [FLAG], [SPARKLINE], [LAST_PRICE] and [CHANGE_PERCENT]: the colour the
+         * reader assigned, the shape of the day, the number they came for, and the move they scan
+         * for. Everything else is one tap away in the column control, and choosing more than fits
+         * is the reader's business — the row scrolls its figure block sideways, in step with its
+         * neighbours and with the headings, rather than refusing.
          */
-        val DEFAULT: Set<WatchlistColumn> = setOf(FLAG, LAST_PRICE, CHANGE_PERCENT)
+        val DEFAULT: Set<WatchlistColumn> = setOf(FLAG, SPARKLINE, LAST_PRICE, CHANGE_PERCENT)
 
         /** The column with this stored id, or null for one this build does not know. */
         fun ofId(id: String): WatchlistColumn? = entries.firstOrNull { it.id == id }

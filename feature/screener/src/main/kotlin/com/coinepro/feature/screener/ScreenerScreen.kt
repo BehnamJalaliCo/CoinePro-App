@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -62,6 +61,7 @@ import com.coinepro.core.designsystem.coineProPriceFlash
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.designsystem.rowMotion
+import com.coinepro.core.designsystem.CoineProSkeletonRows
 import com.coinepro.core.symbols.SymbolCategory
 import com.coinepro.feature.screener.model.ScreenerField
 import com.coinepro.feature.screener.model.ScreenerFilter
@@ -140,9 +140,10 @@ fun ScreenerScreen(
         )
 
         when {
-            state.loading && state.rows.isEmpty() -> Centred {
-                CircularProgressIndicator(color = CoineProColors.Gold, strokeWidth = 2.dp)
-            }
+            state.loading && state.rows.isEmpty() -> CoineProSkeletonRows(
+                count = 8,
+                modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
+            )
 
             // A failure is not an empty result, and the two must not share copy. The markets list
             // shipped for a release telling readers on a dead connection that no market matched.

@@ -1,6 +1,5 @@
 package com.coinepro.core.designsystem
 
-import android.graphics.BitmapFactory
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,7 +26,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -43,11 +40,11 @@ import com.coinepro.core.model.AvatarMark
 import com.coinepro.core.model.AvatarRing
 import com.coinepro.core.model.AvatarSpec
 import java.io.File
+import coil3.compose.SubcomposeAsyncImageContent
+import coil3.compose.SubcomposeAsyncImage
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
  * A reader's avatar, whatever they chose it to be.
@@ -140,37 +137,26 @@ private fun AvatarRing.color(): Color = when (this) {
  */
 @Composable
 private fun AvatarPhoto(path: String, initial: String, tint: Color, size: Dp) {
-    val bitmap by produceState<ImageBitmap?>(initialValue = null, path) {
-        value = withContext(Dispatchers.IO) { decodeAvatar(path) }
-    }
-    val image = bitmap
-    if (image == null) {
+    // Through the image loader rather than a hand-rolled decode: it downsamples to the size on
+    // screen, keeps the result in memory across the screens that show the same face, and shows
+    // the shimmer while it works. The initial stays underneath in case the file is gone.
+    val file = File(path)
+    if (!file.isFile) {
         CoineProAssetToken(label = initial.trim().take(1).ifEmpty { "?" }, tint = tint, size = size)
-    } else {
-        Image(
-            bitmap = image,
-            contentDescription = null,
-            modifier = Modifier.size(size).clip(CircleShape),
-            contentScale = ContentScale.Crop,
-        )
+        return
     }
+    SubcomposeAsyncImage(
+        model = file,
+        contentDescription = null,
+        modifier = Modifier.size(size).clip(CircleShape),
+        contentScale = ContentScale.Crop,
+        loading = { CoineProSkeleton(modifier = Modifier.size(size), height = size, shape = CircleShape) },
+        error = { CoineProAssetToken(label = initial.trim().take(1).ifEmpty { "?" }, tint = tint, size = size) },
+        success = { SubcomposeAsyncImageContent(modifier = Modifier.size(size).clip(CircleShape)) },
+    )
 }
 
 /** Bounds-first, then a power-of-two subsample. The cheapest correct way to do this on Android. */
-private fun decodeAvatar(path: String): ImageBitmap? {
-    val file = File(path)
-    if (!file.isFile) return null
-    return runCatching {
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(path, bounds)
-        val longest = maxOf(bounds.outWidth, bounds.outHeight)
-        if (longest <= 0) return null
-        var sample = 1
-        while (longest / (sample * 2) >= DECODE_PX) sample *= 2
-        val options = BitmapFactory.Options().apply { inSampleSize = sample }
-        BitmapFactory.decodeFile(path, options)?.asImageBitmap()
-    }.getOrNull()
-}
 
 /* ------------------------------------------------------------------ the marks */
 

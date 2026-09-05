@@ -2,7 +2,7 @@
 <!-- Default language: Persian. -->
 <resources>
     <string name="activity_eyebrow">فعالیت و عملکرد</string>
-    <string name="activity_headline">کارنامه‌ی معاملاتی تو، بر پایه‌ی شواهد سرور.</string>
+    <string name="activity_headline">کارنامه‌ی معاملاتی شما، بر پایه‌ی شواهد سرور.</string>
     <string name="activity_note">سیگنال‌های بسته، چرخه‌ی اجرا و شواهد عملکرد از هم جدا می‌مانند. داده‌ی ناموجود، ناموجود می‌ماند.</string>
     <string name="activity_refresh">به‌روزرسانی</string>
     <string name="activity_refreshing">در حال به‌روزرسانی</string>

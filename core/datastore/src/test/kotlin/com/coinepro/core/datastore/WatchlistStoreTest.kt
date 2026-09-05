@@ -289,13 +289,15 @@ class WatchlistStoreTest {
     }
 
     @Test
-    fun `a list nobody has configured shows the three columns that fit a narrow phone`() = runTest {
+    fun `a list nobody has configured shows the columns that fit a narrow phone`() = runTest {
         val store = WatchlistStore(FakeDataStore())
 
         val settings = store.settings(Watchlist.DEFAULT_LIST_ID).first()
 
+        // The flag rail, the day's line, the price and the change: 52 + 80 + 60 dp of figures and
+        // the rest to the name, which on a 393 dp phone is still wider than «بیت‌کوین/تتر».
         assertEquals(
-            setOf(WatchlistColumn.FLAG, WatchlistColumn.LAST_PRICE, WatchlistColumn.CHANGE_PERCENT),
+            setOf(WatchlistColumn.FLAG, WatchlistColumn.SPARKLINE, WatchlistColumn.LAST_PRICE, WatchlistColumn.CHANGE_PERCENT),
             settings.columns,
         )
         assertTrue(settings.sort.isManual)

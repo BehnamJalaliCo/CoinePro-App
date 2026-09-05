@@ -76,12 +76,25 @@ fun CoineProAssetLogo(
             contentScale = ContentScale.Crop,
         )
     } else {
-        CoineProAssetToken(
-            label = initialFor(symbol),
-            tint = CoineProColors.assetTint(symbol),
-            modifier = modifier,
-            size = size,
-        )
+        // No drawn mark. A provider may have a picture; the monogram is drawn either way, under
+        // the picture until it arrives and instead of it if it never does. See `LogoProvider`.
+        val remote = LocalLogoProvider.current.url(symbol)
+        if (remote != null) {
+            RemoteLogo(
+                url = remote,
+                label = initialFor(symbol),
+                tint = CoineProColors.assetTint(symbol),
+                modifier = modifier,
+                size = size,
+            )
+        } else {
+            CoineProAssetToken(
+                label = initialFor(symbol),
+                tint = CoineProColors.assetTint(symbol),
+                modifier = modifier,
+                size = size,
+            )
+        }
     }
 }
 

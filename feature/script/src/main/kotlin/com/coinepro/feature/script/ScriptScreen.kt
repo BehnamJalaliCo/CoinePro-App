@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -64,6 +63,7 @@ import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.LtrDirection
 import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.TeachingSurface
+import com.coinepro.core.designsystem.CoineProSkeleton
 import com.coinepro.core.script.ScriptController
 import com.coinepro.core.script.ScriptFailure
 import com.coinepro.core.script.ScriptEditorState
@@ -249,9 +249,10 @@ private fun EditorTab(
                 contentAlignment = Alignment.Center,
             ) {
                 when {
-                    loading && series.isEmpty -> CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
+                    loading && series.isEmpty -> CoineProSkeleton(
+                        modifier = Modifier.fillMaxWidth().padding(CoineProSpacing.Two),
+                        height = PREVIEW_HEIGHT - CoineProSpacing.Two * 2,
+                        shape = CoineProShapes.small,
                     )
                     series.isEmpty -> Text(
                         "کندلی برای اجرا نیست",

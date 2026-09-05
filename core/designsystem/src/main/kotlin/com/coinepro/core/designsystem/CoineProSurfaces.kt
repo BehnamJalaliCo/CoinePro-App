@@ -568,7 +568,14 @@ fun CoineProSparkline(
     values: List<Double>,
     modifier: Modifier = Modifier,
     colour: Color = CoineProColors.TextMuted,
-    widthDp: Float = 1.4f,
+    widthDp: Float = 1.6f,
+    /**
+     * A wash under the line, the line's own colour fading from 24 % at the top to nothing at the
+     * bottom. What turns a wire into a shape: on a 64×24 cell the eye reads the filled area as
+     * "the last day" before it reads the line as a value. Off by default because the equity curve
+     * on the home card and the preview sheet draw their own ground.
+     */
+    fill: Boolean = false,
 ) {
     if (values.size < 2) {
         Box(modifier = modifier)
@@ -586,6 +593,22 @@ fun CoineProSparkline(
             val y = ((high - value) / span).toFloat() * size.height
             if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
         }
+        if (fill) {
+            val area = Path().apply {
+                addPath(path)
+                lineTo(size.width, size.height)
+                lineTo(0f, size.height)
+                close()
+            }
+            drawPath(
+                path = area,
+                brush = Brush.verticalGradient(
+                    colors = listOf(colour.copy(alpha = SPARKLINE_FILL_ALPHA), colour.copy(alpha = 0f)),
+                    startY = 0f,
+                    endY = size.height,
+                ),
+            )
+        }
         drawPath(
             path = path,
             color = colour,
@@ -597,3 +620,6 @@ fun CoineProSparkline(
         )
     }
 }
+
+/** The top of the sparkline's wash. See [CoineProSparkline]. */
+private const val SPARKLINE_FILL_ALPHA = 0.24f

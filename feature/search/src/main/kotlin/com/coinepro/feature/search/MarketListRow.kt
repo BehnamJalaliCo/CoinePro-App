@@ -40,6 +40,8 @@ import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.SharedKeys
 import com.coinepro.core.designsystem.sharedElement
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.numeric
+import com.coinepro.core.designsystem.CoineProSparkline
 import com.coinepro.core.designsystem.CoineProPercentText
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProShapes
@@ -216,6 +218,8 @@ internal data class WatchlistFigures(
     val dayLow: Double? = null,
     val volume: Double? = null,
     val quoteVolume: Double? = null,
+    /** The day's closes, oldest first, for the sparkline column. */
+    val line: List<Double> = emptyList(),
 )
 
 /**
@@ -247,6 +251,7 @@ internal fun figuresFor(row: MarketSearchRow, line: List<Double>): WatchlistFigu
         null
     }
     return WatchlistFigures(
+        line = line,
         price = price,
         change = if (price != null && open != null) price - open else null,
         changePercent = percent,
@@ -280,7 +285,18 @@ internal fun WatchlistFigureCell(
         WatchlistColumn.DAY_LOW -> figures.dayLow
         WatchlistColumn.VOLUME -> figures.volume
         WatchlistColumn.QUOTE_VOLUME -> figures.quoteVolume
-        WatchlistColumn.FLAG -> null
+        WatchlistColumn.FLAG, WatchlistColumn.SPARKLINE -> null
+    }
+    if (column == WatchlistColumn.SPARKLINE) {
+        // The day's line in the move's colour, with the wash under it. 52×24, as the reference.
+        val rising = (figures.changePercent ?: 0.0) >= 0.0
+        CoineProSparkline(
+            values = figures.line,
+            colour = if (rising) CoineProColors.MarketUp else CoineProColors.MarketDown,
+            fill = true,
+            modifier = modifier.width(widthOf(column)).height(SPARKLINE_HEIGHT),
+        )
+        return
     }
     // **Plain text, not the pill.** The pill is a card's shape: one market, one figure, and a fill
     // that makes the move findable where there is no column to find it in. Forty of them down a
@@ -297,7 +313,7 @@ internal fun WatchlistFigureCell(
     }
     Text(
         text = value?.let { formatFigure(column.unit, it) } ?: EmDash,
-        style = MaterialTheme.typography.labelMedium.copy(textDirection = TextDirection.Ltr),
+        style = MaterialTheme.typography.labelMedium.numeric(),
         color = when {
             value == null -> CoineProColors.TextDisabled
             // Movement, not execution — the same distinction the percent column makes.
@@ -359,12 +375,19 @@ internal fun WatchlistColumnHeading(
  */
 internal fun widthOf(column: WatchlistColumn): Dp = when (column) {
     WatchlistColumn.FLAG -> 0.dp
-    // Eighty-eight rather than ninety-two. Thirteen-point bold digits put `104,532.45` at about
-    // seventy-eight points, so four of the twelve that were spare buy the row back some width and
-    // the decimal point still lands where `CoineProMarketRow` puts it.
-    WatchlistColumn.LAST_PRICE -> 88.dp
+    // Fifty-two by twenty-four. The reference draws its line at about this; and it is what a
+    // 393 dp phone can afford beside the price and the move: 3 + 8 + 28 + 8 + 96 + 8 in front of
+    // the figures is 151, and 52 + 80 + 60 with eight between the three is 208 — 359 of the 361
+    // the row has after its gutters. While the reorder grip's forty points are on the row the
+    // sparkline is not (see `WatchlistPanel`), and 191 + 148 fits the same glass.
+    WatchlistColumn.SPARKLINE -> 52.dp
+    // Eighty. Thirteen-point tabular Inter puts `104,532.45` at about seventy-three points, so
+    // the column keeps its margin and the decimal point still lands where `CoineProMarketRow`
+    // puts it.
+    WatchlistColumn.LAST_PRICE -> 80.dp
     WatchlistColumn.CHANGE -> 78.dp
-    WatchlistColumn.CHANGE_PERCENT -> 64.dp
+    // Sixty: `+12.34%` at thirteen points is about fifty-two, and the sign never falls off.
+    WatchlistColumn.CHANGE_PERCENT -> 60.dp
     WatchlistColumn.DAY_HIGH, WatchlistColumn.DAY_LOW -> 82.dp
     WatchlistColumn.VOLUME, WatchlistColumn.QUOTE_VOLUME -> 76.dp
 }
@@ -455,3 +478,6 @@ internal val MarketRowHeight = 58.dp
 
 /** What a cell with no figure says. Not a zero, which would be a claim. */
 private const val EmDash = "—"
+
+/** The sparkline cell's height — the reference draws its lines 24 dp tall. */
+private val SPARKLINE_HEIGHT = 24.dp

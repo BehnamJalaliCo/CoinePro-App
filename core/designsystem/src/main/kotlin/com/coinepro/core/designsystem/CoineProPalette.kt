@@ -214,14 +214,14 @@ val CoineProLightPalette = CoineProPalette(
     surface = Color(0xFFFFFFFF),
     surfaceElevated = Color(0xFFF0F3FA),
     // White, because in a light theme the thing that is lifted is the thing that is brightest.
-    surfaceRaised = Color(0xFFFFFFFF),
+    surfaceRaised = Color(0xFFE8ECF4),
     surfaceOverlay = Color(0xFFE8EBEF),
     surfaceHover = Color(0xFFE9EDF2),
     surfacePressed = Color(0xFFE1E6EC),
     // Seven percent black on white is #EEEFF1, which is a line you can measure and not one you can
     // see. Ten is where a card edge reads as drawn; the strong step goes to twenty percent so a
     // selected border is unmistakably a choice.
-    borderSubtle = Color(0x1A0D121C),
+    borderSubtle = Color(0x100D121C),
     border = Color(0x140D121C),
     borderStrong = Color(0x330D121C),
     textPrimary = Color(0xFF111318),

@@ -202,9 +202,11 @@ class MenuRowMetricsTest {
          *
          * Fifty is the title, its leading and the eight points of air at each end. One more line of
          * `labelSmall` is what a descriptive row buys, and this is that — so a subtitle that wraps
-         * to two lines, or a third line, fails here.
+         * to two lines, or a third line, fails here. Sixty is the top of the master prompt's
+         * «56–60 dp» band for a two-line row; the second line got a point of leading in Sprint A2
+         * (`labelSmall` 11/15) and a descriptive row now measures fifty-three.
          */
-        val MAX_ROW_HEIGHT: Dp = 52.dp
+        val MAX_ROW_HEIGHT: Dp = 60.dp
 
         /** The seven the audit kept. See [MenuCatalogue.DESCRIPTIVE_ROWS] for the argument. */
         val AUDITED_DESCRIPTIVE_ROWS = setOf(

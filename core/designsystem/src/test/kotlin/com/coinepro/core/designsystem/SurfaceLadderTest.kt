@@ -46,13 +46,18 @@ class SurfaceLadderTest {
     }
 
     @Test
-    fun `raised means lighter, in both themes`() {
-        // The whole reason it is its own token rather than a rung: "further along the ladder" runs
-        // in opposite directions in the two themes, and "lifted" does not.
-        palettes.forEach { palette ->
+    fun `raised means lighter in the dark, and a tint on the white in the light`() {
+        // In the dark theme a plate lifted off a card catches more light. In the light theme the
+        // cards are white and there is no lighter than white: the reference draws its raised
+        // plates as a tint on the card (TradingView's #F0F3FA tiles), so raised is *darker* there.
+        // Either way it is a different value — the first test above — and the direction is the
+        // theme's, not a universal.
+        listOf(CoineProDarkPalette, CoineProLightPalette).forEach { palette ->
+            val raised = palette.surfaceRaised.luminance()
+            val container = palette.surface.luminance()
             assertTrue(
-                "raised is not lighter than its container (isDark=${palette.isDark})",
-                palette.surfaceRaised.luminance() > palette.surface.luminance(),
+                "raised is on the wrong side of its container (isDark=${palette.isDark})",
+                if (palette.isDark) raised > container else raised < container,
             )
         }
     }

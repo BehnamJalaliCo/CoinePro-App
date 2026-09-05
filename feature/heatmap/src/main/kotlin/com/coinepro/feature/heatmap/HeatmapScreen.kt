@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,6 +61,7 @@ import com.coinepro.core.designsystem.LocalCoineProPalette
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.TeachingSurface
+import com.coinepro.core.designsystem.CoineProSkeleton
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.symbols.SymbolCategory
 
@@ -248,11 +248,7 @@ fun HeatmapScreen(
             }
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when {
-                    assets.isEmpty() && loading -> CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        color = CoineProColors.Gold,
-                        strokeWidth = 2.dp,
-                    )
+                    assets.isEmpty() && loading -> HeatmapSkeleton(Modifier.fillMaxSize())
 
                     drawn.isEmpty() -> CoineProEmptyState(
                         message = stringResource(R.string.heatmap_empty),
@@ -801,3 +797,36 @@ private val TILE_PADDING = 3.dp
 private val MIN_LABEL_WIDTH = 26.dp
 
 private val MIN_LABEL_HEIGHT = 14.dp
+
+/**
+ * The map before the map: a grid of shimmering tiles the size the real ones will roughly be.
+ *
+ * A spinner in the middle of an empty page tells the reader nothing about what is coming; twelve
+ * plates in three columns tell them "a treemap", and the real tiles land on the same ground.
+ */
+@Composable
+private fun HeatmapSkeleton(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.padding(CoineProSpacing.One),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        repeat(SKELETON_ROWS) {
+            Row(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            ) {
+                repeat(SKELETON_COLUMNS) {
+                    CoineProSkeleton(
+                        modifier = Modifier.weight(1f).fillMaxSize(),
+                        height = SKELETON_TILE,
+                        shape = MaterialTheme.shapes.small,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private const val SKELETON_ROWS = 4
+private const val SKELETON_COLUMNS = 3
+private val SKELETON_TILE = 120.dp
