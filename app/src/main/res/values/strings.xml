@@ -66,6 +66,7 @@
     <string name="screen_activity">فعالیت</string>
     <string name="safety_crash_title">آخرین خطای برنامه</string>
     <string name="safety_crash_copy">کپی گزارش</string>
+    <string name="safety_crash_send">ارسال گزارش</string>
     <string name="safety_crash_clear">پاک کردن</string>
     <string name="screen_profile">نیمرخ</string>
     <string name="platform_crypto">کریپتو</string>

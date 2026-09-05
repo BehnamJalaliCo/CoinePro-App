@@ -211,6 +211,16 @@ android {
         versionName = configuredVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        // Certificate pins for the two API hosts, or empty for none. `host=sha256/…;host=sha256/…`,
+        // read by `NetworkFactory.parsePins`. Empty until the owner produces them from the live
+        // certificates — see docs/security/PINNING.md — because a wrong pin is an app that cannot
+        // reach its own server and cannot say why.
+        buildConfigField(
+            "String",
+            "CERTIFICATE_PINS",
+            escapedBuildConfig(signingProperty("COINEPRO_CERTIFICATE_PINS").orEmpty()),
+        )
+
         // Whether the app may read Investing.com, Cointelegraph and the ForexFactory calendar file
         // from the device itself, as the fallback for a section the backend answered empty.
         //

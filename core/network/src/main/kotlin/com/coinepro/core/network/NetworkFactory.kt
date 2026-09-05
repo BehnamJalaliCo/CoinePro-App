@@ -3,6 +3,7 @@ package com.coinepro.core.network
 import com.google.gson.FieldNamingPolicy
 import com.google.gson.GsonBuilder
 import java.util.concurrent.TimeUnit
+import okhttp3.CertificatePinner
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -32,6 +33,15 @@ object NetworkFactory {
          */
         recorder: Interceptor? = null,
         enableHttpLogging: Boolean = false,
+        /**
+         * Certificate pins, `host` to `sha256/…` digests, as [parsePins] reads them off the build.
+         *
+         * Empty means no pinning, which is what a build with no `COINEPRO_CERTIFICATE_PINS`
+         * property gets — and is the honest default until the owner has produced the pins from the
+         * live certificates and a backup, because a wrong pin is an app that cannot reach its own
+         * server and cannot be told why. See `docs/security/PINNING.md`.
+         */
+        pins: Map<String, List<String>> = emptyMap(),
     ): OkHttpClient {
         val auth = Interceptor { chain ->
             // A call that set its own Authorization keeps it. CoinePro-FX's chart routes take an
@@ -79,6 +89,13 @@ object NetworkFactory {
             .callTimeout(CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .pingInterval(20, TimeUnit.SECONDS)
             .apply { recorder?.let(::addInterceptor) }
+            .apply {
+                if (pins.isNotEmpty()) {
+                    val pinner = CertificatePinner.Builder()
+                    pins.forEach { (host, digests) -> digests.forEach { pinner.add(host, it) } }
+                    certificatePinner(pinner.build())
+                }
+            }
             .addInterceptor(auth)
 
         if (enableHttpLogging) {
@@ -92,6 +109,30 @@ object NetworkFactory {
         }
 
         return builder.build()
+    }
+
+    /**
+     * Reads the build's pin list.
+     *
+     * The format is one line a property can carry: `host=sha256/AAAA…;host=sha256/BBBB…`. The same
+     * host may appear more than once, which is how a primary and a backup pin are both listed —
+     * OkHttp accepts a chain that matches any pin for the host, and a rotation is listing the next
+     * certificate's pin beside the current one a release ahead of the switch. Anything that is not
+     * `host=sha256/…` is refused loudly rather than skipped: a pin that did not parse is a build
+     * that believes it is pinned and is not.
+     */
+    fun parsePins(raw: String?): Map<String, List<String>> {
+        if (raw.isNullOrBlank()) return emptyMap()
+        val pins = linkedMapOf<String, MutableList<String>>()
+        raw.split(';').map(String::trim).filter(String::isNotEmpty).forEach { entry ->
+            val host = entry.substringBefore('=', "").trim()
+            val digest = entry.substringAfter('=', "").trim()
+            require(host.isNotEmpty() && digest.startsWith("sha256/") && digest.length > "sha256/".length) {
+                "A certificate pin must read host=sha256/<base64>, not '$entry'."
+            }
+            pins.getOrPut(host) { mutableListOf() }.add(digest)
+        }
+        return pins
     }
 
     fun retrofit(baseUrl: String, client: OkHttpClient): Retrofit {

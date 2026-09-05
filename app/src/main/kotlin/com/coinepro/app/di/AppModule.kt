@@ -334,6 +334,7 @@ object AppModule {
         appVersion = BuildConfig.VERSION_NAME,
         recorder = RequestLogInterceptor(requestLog, MarketPlatform.COINEPRO_FX, appLog = appLog),
         enableHttpLogging = BuildConfig.DEBUG,
+        pins = NetworkFactory.parsePins(BuildConfig.CERTIFICATE_PINS),
     )
 
     @Provides
@@ -380,6 +381,7 @@ object AppModule {
         appVersion = BuildConfig.VERSION_NAME,
         recorder = RequestLogInterceptor(requestLog, MarketPlatform.TRADEYAR, appLog = appLog),
         enableHttpLogging = BuildConfig.DEBUG,
+        pins = NetworkFactory.parsePins(BuildConfig.CERTIFICATE_PINS),
     )
 
     @Provides

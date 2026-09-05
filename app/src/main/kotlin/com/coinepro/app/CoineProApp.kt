@@ -3,6 +3,7 @@ package com.coinepro.app
 import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
@@ -70,6 +71,7 @@ import com.coinepro.core.auth.SessionState
 import com.coinepro.core.auth.sessionForShell
 import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.common.BidiText
+import com.coinepro.core.common.BrandConfig
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.chartevents.ChartEventController
 import com.coinepro.core.copytrade.CopyTradeController
@@ -3559,6 +3561,19 @@ private fun MainShell(
                         null
                     },
                     lastCrash = lastCrash,
+                    onShareCrash = { trace ->
+                        // The system sheet, not a hard-wired destination: the reader chooses the
+                        // chat or the mail. Nothing leaves the phone until they do.
+                        val send = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "${BrandConfig.DISPLAY_NAME} ${BuildConfig.VERSION_NAME} crash")
+                            putExtra(
+                                Intent.EXTRA_TEXT,
+                                "${BrandConfig.DISPLAY_NAME} ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\n\n" + trace,
+                            )
+                        }
+                        context.startActivity(Intent.createChooser(send, null))
+                    },
                     onCopyCrash = { trace ->
                         val clipboard = context.getSystemService(ClipboardManager::class.java)
                         clipboard?.setPrimaryClip(

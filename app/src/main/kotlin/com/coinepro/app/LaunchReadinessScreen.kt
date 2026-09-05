@@ -75,6 +75,12 @@ fun LaunchReadinessScreen(
      */
     lastCrash: Crash? = null,
     onCopyCrash: (String) -> Unit = {},
+    /**
+     * Hands the trace to another app — a Telegram chat with support, an e-mail — through the
+     * system share sheet. The app has no crash service and deliberately no analytics SDK; this is
+     * the whole of "send a report", and it happens only when the reader presses the button.
+     */
+    onShareCrash: (String) -> Unit = {},
     onClearCrash: () -> Unit = {},
     /**
      * The certificate this install is actually signed with — SHA-1 first, then SHA-256.
@@ -101,7 +107,7 @@ fun LaunchReadinessScreen(
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
     ) {
         lastCrash?.let { crash ->
-            CrashCard(crash = crash, onCopy = onCopyCrash, onClear = onClearCrash)
+            CrashCard(crash = crash, onCopy = onCopyCrash, onShare = onShareCrash, onClear = onClearCrash)
         }
         Column(
             modifier = Modifier.padding(horizontal = CoineProSpacing.Half),
@@ -266,7 +272,7 @@ private fun NotificationPermissionUiState.copyRes(): Int = when (this) {
  * exactly what should be pasted into a message.
  */
 @Composable
-private fun CrashCard(crash: Crash, onCopy: (String) -> Unit, onClear: () -> Unit) {
+private fun CrashCard(crash: Crash, onCopy: (String) -> Unit, onShare: (String) -> Unit, onClear: () -> Unit) {
     CoineProCard(modifier = Modifier.fillMaxWidth(), accent = CoineProColors.Sell) {
         Text(
             text = stringResource(R.string.safety_crash_title),
@@ -302,6 +308,11 @@ private fun CrashCard(crash: Crash, onCopy: (String) -> Unit, onClear: () -> Uni
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         ) {
             CoineProPrimaryButton(
+                text = stringResource(R.string.safety_crash_send),
+                onClick = { onShare(crash.trace) },
+                modifier = Modifier.weight(1f),
+            )
+            CoineProSecondaryButton(
                 text = stringResource(R.string.safety_crash_copy),
                 onClick = { onCopy(crash.trace) },
                 modifier = Modifier.weight(1f),
