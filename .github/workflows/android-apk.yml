@@ -129,6 +129,10 @@ jobs:
           set -euo pipefail
           python3 scripts/quality/check-cross-phase-consistency.py
           python3 tools/i18n/lint_strings.py
+          # The frame and start-up budget, read from macrobenchmark JSON when a device run has
+          # produced one. This runner has no device, so an absent result is a skip, not a pass —
+          # the script says which.
+          python3 scripts/quality/check-benchmark-thresholds.py --allow-missing
           bash scripts/quality/check-motion-policy.sh
           bash scripts/quality/check-kotlin-style.sh
           bash scripts/security/scan-secrets.sh
@@ -196,6 +200,20 @@ jobs:
           # And that the store build is only the store build: no admin panel strings, no emulator
           # ABIs, no `.orig` files. Read off the APK, not off the build script.
           ANDROID_HOME="$ANDROID_SDK_ROOT" python3 scripts/quality/check-release-surface.py
+
+      - name: Check the download size a phone would pay for
+        env:
+          KEYSTORE_FILE: ci-release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          # bundletool measures the split APKs Play would actually serve, which is the size that
+          # matters on a metered connection. Fetched here rather than vendored; pinned by version.
+          curl -sSL -o bundletool.jar \
+            https://github.com/google/bundletool/releases/download/1.17.2/bundletool-all-1.17.2.jar
+          bash scripts/release/check-bundle-size.sh "CoinePro-${{ steps.ver.outputs.full }}.aab" 9 bundletool.jar
 
       - name: Remove the keystore
         if: always()

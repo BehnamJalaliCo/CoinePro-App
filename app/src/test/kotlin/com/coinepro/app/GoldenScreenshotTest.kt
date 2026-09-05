@@ -165,6 +165,36 @@ class GoldenScreenshotTest {
     fun menuLight() =
         composeRule.assertMatchesGolden("menu-fa-411-light", darkTheme = false) { Menu() }
 
+    /* ------------------------------------------------------------------ the wider matrix */
+
+    /*
+     * Phase 6 of the audit: the same screens in the other locale, on a tablet, and at the largest
+     * font scale a reader is likely to set. Not every screen at every point — twelve screens times
+     * sixteen combinations is a diff nobody reads — but each axis on the screen where it bites:
+     * the menu for the mirrored layout and the large font (the longest strings), the watchlist for
+     * the tablet (the two-pane threshold).
+     */
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_411)
+    fun menuEnglishDark() = composeRule.assertMatchesGolden("menu-en-411-dark") { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_840)
+    fun watchlistTablet() = composeRule.assertMatchesGolden("watchlist-fa-840") { Watchlist() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_840)
+    fun menuTablet() = composeRule.assertMatchesGolden("menu-fa-840") { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_411, fontScale = 1.3f)
+    fun menuLargeType() = composeRule.assertMatchesGolden("menu-fa-411-font130") { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_393, fontScale = 1.3f)
+    fun watchlistLargeType() = composeRule.assertMatchesGolden("watchlist-fa-393-font130") { Watchlist() }
+
     /* ------------------------------------------------------------------ the bar */
 
     /**
@@ -319,6 +349,9 @@ class GoldenScreenshotTest {
 
         /** The mirrored layout. */
         const val EN_411 = "en-rUS-ldltr-w411dp-h914dp-xxhdpi"
+
+        /** A tablet in portrait — past the width where lists and charts go two-pane. */
+        const val FA_840 = "fa-rIR-ldrtl-w840dp-h1280dp-xhdpi"
     }
 }
 
