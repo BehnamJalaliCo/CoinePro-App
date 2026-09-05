@@ -33,13 +33,17 @@ java -jar "$jar" build-apks \
 
 # `get-size total` prints MIN,MAX in bytes across every device configuration in the set; the
 # maximum is the largest download any single phone would make, which is the number to bound.
-sizes="$(java -jar "$jar" get-size total --apks="$work/app.apks" | tail -n 1)"
+# bundletool writes CRLF line ends; the carriage return has to go before any arithmetic sees it.
+sizes="$(java -jar "$jar" get-size total --apks="$work/app.apks" | tr -d '\r' | tail -n 1)"
 min_bytes="${sizes%%,*}"
 max_bytes="${sizes##*,}"
 limit=$(( max_mib * 1024 * 1024 ))
 
-printf 'Base module download size: %d–%d bytes (%.2f–%.2f MiB); budget %s MiB\n' \
-  "$min_bytes" "$max_bytes" "$(echo "$min_bytes / 1048576" | bc -l)" "$(echo "$max_bytes / 1048576" | bc -l)" "$max_mib"
+printf 'Base module download size: %d–%d bytes (%d.%02d–%d.%02d MiB); budget %s MiB\n' \
+  "$min_bytes" "$max_bytes" \
+  $(( min_bytes / 1048576 )) $(( (min_bytes % 1048576) * 100 / 1048576 )) \
+  $(( max_bytes / 1048576 )) $(( (max_bytes % 1048576) * 100 / 1048576 )) \
+  "$max_mib"
 
 if [ "$max_bytes" -gt "$limit" ]; then
   echo "::error::base module download size $max_bytes bytes exceeds the ${max_mib} MiB budget"
