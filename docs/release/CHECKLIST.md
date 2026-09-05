@@ -29,7 +29,8 @@ everything marked **CI**; the rest is a person with the owner's material.
 - [ ] `check-release-surface.py`: no admin strings, no emulator ABIs, no stray files in the APK — **CI**.
 - [ ] AAB built from the same commit and key (`:app:bundleRelease`) and attached to the release — **CI**.
 - [ ] Download size: `scripts/release/check-bundle-size.sh <aab> 16` — the largest per-device split
-      set under 16 MiB (4.33.0 measures 13.7–13.9 MiB; 9 MiB is the target once an asset pack
+      set under 9 MiB (4.33.0 measured 13.7–13.9 MiB with the help pictures in the base module; they
+      are served from the API host since 4.41.0, see docs/backend/HELP_IMAGES.md — the old note said 9 MiB was the target once an asset pack
       exists) — **CI**.
 - [ ] Baseline profile present in the APK (`check-cross-phase-consistency.py` `check_baseline_profile`) — **CI**.
 
@@ -68,3 +69,17 @@ everything marked **CI**; the rest is a person with the owner's material.
       `version.py`, and the release note is the changelog entry.
 - [ ] Install over the previous version on a phone (same key, so it updates in place); open the
       chart, the watchlist, a signal, the widget.
+
+## Hosts the 4.41.0 build points at
+
+- **Legal pages** live on the brand's host: `BrandConfig.LEGAL_BASE_URL = https://coineprofx.com/legal`,
+  so `/legal/terms/`, `/legal/privacy/` and `/legal/delete-account/` must be served there (the
+  markdown is `docs/legal/`; the in-app copies are synced by `sync-legal-documents.py`). The
+  GitHub Pages copies can redirect.
+- **Help pictures** are fetched from `{API_BASE_URL}/assets/help/images/` — see
+  `docs/backend/HELP_IMAGES.md`. Until the host serves them the help centre shows captions alone.
+- **Third-party feeds** are off in a release build (`DIRECT_THIRD_PARTY_FEEDS` defaults to
+  `false` there); the news and the calendar come from `docs/backend/FEEDS.md`'s routes, and a
+  section the backend answers empty says so.
+- **Play Integrity** sends a verdict once `COINEPRO_PLAY_INTEGRITY_PROJECT` is set — see
+  `docs/security/INTEGRITY.md`.

@@ -42,6 +42,11 @@ object NetworkFactory {
          * server and cannot be told why. See `docs/security/PINNING.md`.
          */
         pins: Map<String, List<String>> = emptyMap(),
+        /**
+         * An attestation interceptor — the app's Play Integrity one — installed after the auth
+         * interceptor so it sees the request as it will be sent. Null installs nothing.
+         */
+        attestation: Interceptor? = null,
     ): OkHttpClient {
         val auth = Interceptor { chain ->
             // A call that set its own Authorization keeps it. CoinePro-FX's chart routes take an
@@ -97,6 +102,7 @@ object NetworkFactory {
                 }
             }
             .addInterceptor(auth)
+            .apply { attestation?.let(::addInterceptor) }
 
         if (enableHttpLogging) {
             val logging = HttpLoggingInterceptor().apply {

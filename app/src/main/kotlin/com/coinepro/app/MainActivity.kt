@@ -47,6 +47,7 @@ import com.coinepro.core.datastore.DrawingSyncStore
 import com.coinepro.core.datastore.ChartEventPrefsStore
 import com.coinepro.core.datastore.TimeZonePrefStore
 import com.coinepro.core.datastore.IndicatorFavouritesStore
+import com.coinepro.core.help.LocalHelpImageBase
 import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.TeachingStore
 import com.coinepro.core.designsystem.LocalTeachingDismissals
@@ -244,6 +245,8 @@ class MainActivity : FragmentActivity() {
                 LocalTeachingDismissals provides rememberTeachingDismissals(teachingStore),
                 // Logos the drawn set does not cover, from the API host. See `LogoProvider`.
                 LocalLogoProvider provides remoteLogos,
+                // The help pictures, from the same host. See `HelpCatalog.imageUrl`.
+                LocalHelpImageBase provides BuildConfig.API_BASE_URL,
             ) {
             CoineProApp(
                 sessionController = sessionController,

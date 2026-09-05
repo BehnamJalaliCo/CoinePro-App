@@ -121,7 +121,7 @@ Play asks for.
 | Question | Answer |
 | --- | --- |
 | In-app deletion | **Yes** — Settings → Delete account. Both servers serve it; the app hides the button where a deployment reports `accountDeletion: false`, so it is never a button that does nothing. |
-| Web deletion URL | `https://behnamjalalico.github.io/CoinePro-App/delete-account/` |
+| Web deletion URL | `https://coineprofx.com/legal/delete-account/` |
 
 The web page requires no sign-in, which is what Play checks for.
 
@@ -202,9 +202,9 @@ than a demo account: a credential can expire between submission and review, and 
 | Field | Value |
 | --- | --- |
 | Email | `behnamjalali88@gmail.com` |
-| Website | `https://behnamjalalico.github.io/CoinePro-App/` |
-| Privacy policy URL | `https://behnamjalalico.github.io/CoinePro-App/privacy/` |
-| Terms URL | `https://behnamjalalico.github.io/CoinePro-App/terms/` |
+| Website | `https://coineprofx.com/` |
+| Privacy policy URL | `https://coineprofx.com/legal/privacy/` |
+| Terms URL | `https://coineprofx.com/legal/terms/` |
 
 All three pages are live and were checked for a `200` rather than assumed. The English privacy
 policy is at `/privacy/en/` for a reviewer who does not read Persian.

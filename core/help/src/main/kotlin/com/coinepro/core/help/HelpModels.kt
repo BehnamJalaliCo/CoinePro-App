@@ -12,7 +12,7 @@ data class Bilingual(val fa: String, val en: String) {
 
 /** One screenshot, with the caption a reader would hear if they could not see it. */
 data class HelpImage(
-    /** File name inside `assets/help/images`. */
+    /** File name under `help/images` on the API host (and in the repository's `assets-cdn/`). */
     val file: String,
     val alt: Bilingual,
 )

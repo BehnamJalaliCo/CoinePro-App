@@ -216,7 +216,7 @@ jobs:
           # the help catalogue and any imagery move to an on-demand asset pack.
           curl -sSL -o bundletool.jar \
             https://github.com/google/bundletool/releases/download/1.17.2/bundletool-all-1.17.2.jar
-          bash scripts/release/check-bundle-size.sh "pro-chart-${{ steps.ver.outputs.full }}.aab" 16 bundletool.jar
+          bash scripts/release/check-bundle-size.sh "pro-chart-${{ steps.ver.outputs.full }}.aab" 9 bundletool.jar
 
       - name: Remove the keystore
         if: always()

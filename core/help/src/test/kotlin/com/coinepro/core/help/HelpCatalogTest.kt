@@ -60,10 +60,13 @@ class HelpCatalogTest {
     }
 
     @Test
-    fun `every referenced image file is actually packaged`() {
-        // The export and the images are two directories that can drift apart. A missing file draws
-        // nothing at runtime — silently — so it is caught here instead.
-        val images = assetFile("images")
+    fun `every referenced image file is in the repository's CDN staging directory`() {
+        // The export and the images are two directories that can drift apart. The pictures no
+        // longer ship in the base module — they are served from the API host out of
+        // `assets-cdn/help/images` (see docs/backend/HELP_IMAGES.md) — so the reference is checked
+        // against that directory instead.
+        val images = File("../../assets-cdn/help/images")
+        assertTrue("assets-cdn/help/images is missing: ${images.absolutePath}", images.isDirectory)
         var referenced = 0
         for (id in catalog.ids) {
             for (image in catalog[id]!!.images) {

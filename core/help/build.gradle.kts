@@ -23,5 +23,7 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
+    // The pictures come from the API host through the app's image loader; see `HelpImages`.
+    implementation(libs.coil.compose)
     testImplementation(libs.junit)
 }

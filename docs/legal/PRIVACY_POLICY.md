@@ -119,7 +119,7 @@
 | راه | کجا |
 | --- | --- |
 | از داخل اپ | تنظیمات ← حذف حساب کاربری |
-| از بیرون اپ | [وبگاه پرو چارت](https://behnamjalalico.github.io/CoinePro-App/delete-account/) |
+| از بیرون اپ | [وبگاه پرو چارت](https://coineprofx.com/legal/delete-account/) |
 
 **چه چیزی حذف می‌شود:** حساب، ایمیل، نام، اطلاعات احراز هویتی که خودتان وارد کرده‌اید، **حساب
 آکادمی و پیشرفت درس‌هایتان اگر با همین ایمیل ساخته شده باشد**، UID صرافی،
@@ -226,7 +226,7 @@ Signing out clears both tokens. Uninstalling or clearing app data removes everyt
 | Route | Where |
 | --- | --- |
 | In the app | Settings → Delete account |
-| Outside the app | [The Pro Chart website](https://behnamjalalico.github.io/CoinePro-App/delete-account/) |
+| Outside the app | [The Pro Chart website](https://coineprofx.com/legal/delete-account/) |
 
 **Deleted:** the account, your e-mail and name, any identity details you entered, **your academy
 account and lesson progress where it was created with the same e-mail**, your exchange UID, exchange

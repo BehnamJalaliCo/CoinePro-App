@@ -65,6 +65,7 @@ import com.coinepro.core.datastore.DrawingSyncStore
 import com.coinepro.core.datastore.DrawingTemplateStore
 import com.coinepro.core.datastore.IndicatorTemplateStore
 import com.coinepro.core.datastore.InstallIdStore
+import com.coinepro.app.security.PlayIntegrityInterceptor
 import com.coinepro.core.datastore.IndicatorFavouritesStore
 import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.TeachingStore
@@ -328,6 +329,7 @@ object AppModule {
         installIds: InstallIdStore,
         requestLog: RequestLog,
         appLog: AppLog,
+        @ApplicationContext context: Context,
     ): OkHttpClient = NetworkFactory.okHttpClient(
         bearerToken = memory::token,
         onUnauthorized = memory::notifyUnauthorized,
@@ -336,6 +338,7 @@ object AppModule {
         recorder = RequestLogInterceptor(requestLog, MarketPlatform.COINEPRO_FX, appLog = appLog),
         enableHttpLogging = BuildConfig.DEBUG,
         pins = NetworkFactory.parsePins(BuildConfig.CERTIFICATE_PINS),
+        attestation = PlayIntegrityInterceptor(context, BuildConfig.PLAY_INTEGRITY_PROJECT),
     )
 
     @Provides
@@ -375,6 +378,7 @@ object AppModule {
         installIds: InstallIdStore,
         requestLog: RequestLog,
         appLog: AppLog,
+        @ApplicationContext context: Context,
     ): OkHttpClient = NetworkFactory.okHttpClient(
         bearerToken = memory::token,
         onUnauthorized = memory::notifyUnauthorized,
@@ -383,6 +387,7 @@ object AppModule {
         recorder = RequestLogInterceptor(requestLog, MarketPlatform.TRADEYAR, appLog = appLog),
         enableHttpLogging = BuildConfig.DEBUG,
         pins = NetworkFactory.parsePins(BuildConfig.CERTIFICATE_PINS),
+        attestation = PlayIntegrityInterceptor(context, BuildConfig.PLAY_INTEGRITY_PROJECT),
     )
 
     @Provides

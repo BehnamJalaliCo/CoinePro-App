@@ -350,6 +350,85 @@ motion itself is described by the gate that now holds it.
 | Menu | 68 | 70 | Glyph cross-fade on the bar. Rows at the owner's 50, not the brief's 56. |
 | Symbol + chart | 85 | 86 | Predictive back out of fullscreen, sprung toolbar slide, long-press buzz. |
 
+## Sprint E — release blockers (E1–E7)
+
+No pictures: nothing here draws differently. Everything is a build, a host or a contract.
+
+- **E1 locale inversion — not done, by the owner's standing rule.** `CLAUDE.md`: «Persian is the
+  default locale.» `values/` stays Persian and `values-en/` English; the existing gate that the
+  English locale is English stands in for the brief's «no Arabic script in `values/`» check, which
+  is meaningless under the layout the owner chose. Open decision 3.
+- **E2 help pictures off the base module.** The 215 WebP files (8.4 MB) moved from
+  `core/help/src/main/assets` to `assets-cdn/help/images` in the repository; the help sheet fetches
+  them from `{API_BASE_URL}/assets/help/images/<file>` through Coil and the app's disk cache, with a
+  skeleton while one loads and the caption alone if it never does. `content.json` stays in the base
+  module. The store gate's budget is **9 MiB** now (it was 16, with a note that 9 was the target);
+  CI ships the AAB already. A Gradle task, `checkStrayAssets`, runs before every build and refuses a
+  `*.orig|*.bak|*.rej|*.tmp` under any `assets/`. `docs/backend/HELP_IMAGES.md` is the host's
+  contract. The CDN route rather than Play Asset Delivery because the owner takes the universal
+  APK directly, and an asset pack is empty outside Play.
+- **E3 pinning and Play Integrity.** Pinning was wired (`CertificatePinner` behind
+  `COINEPRO_CERTIFICATE_PINS`, primary + backup, rotation in `docs/security/PINNING.md`). New:
+  `PlayIntegrityInterceptor` asks Play for a verdict on sign-in, on saving exchange keys and on
+  executing a signal, bound to a nonce the backend can recompute (`docs/security/INTEGRITY.md`), on
+  when `COINEPRO_PLAY_INTEGRITY_PROJECT` is set; the app never refuses on its own — a phone without
+  Play is not a corner case here — and the signature check stays the second layer.
+  `SecretLoggingRulesTest` fails the build if any `Log.*` or `println` is handed a value named
+  like a key, a secret, a password or a token (zero today).
+- **E4 the `.ir` App Link — kept, per `docs/release/APP_LINKS.md`.** The host is the owner's own
+  crypto backend and the link is the one its recovery e-mail sends; the document records why it is
+  neither removed nor gated. Open decision 19.
+- **E5 third-party feeds.** A release build no longer reads Investing.com, Cointelegraph or the
+  ForexFactory file from the device: `DIRECT_THIRD_PARTY_FEEDS` defaults to `false` in the release
+  build type (debug keeps the fallback). The news and the calendar come from the routes
+  `docs/backend/FEEDS.md` names, and a section the backend answers empty says so
+  (`news_unavailable`).
+- **E6 `BrandConfig` and the legal host.** One object since Phase 1. The legal pages moved from
+  GitHub Pages to the brand's host: `LEGAL_BASE_URL = https://coineprofx.com/legal`, the four
+  in-app legal documents' links with it (re-synced), and `docs/PLAY_LISTING.md`. The host has to
+  serve `/legal/terms/`, `/legal/privacy/` and `/legal/delete-account/` — `docs/release/CHECKLIST.md`
+  says so.
+- **E7 product flavours — not done, by Phase 2's decision.** A `BuildConfig` gate plus an
+  APK-reading check (`check-release-surface.py`) already keep admin and debug tooling out of the
+  store build. Open decision 4.
+
+**Numbers.**
+
+| Measure | Before | After |
+| --- | --- | --- |
+| Help pictures in the base module | 215 files, 8.4 MB | 0 |
+| Base download budget in CI | 16 MiB | 9 MiB |
+| Third-party feed hosts reachable from a release build | 3 | 0 |
+| Requests carrying a Play Integrity verdict | 0 | sign-in, exchange keys, execution |
+| Legal URL host | GitHub Pages | `coineprofx.com/legal` |
+
+**Acceptance note.** The base-module download after this sprint needs the CI run with bundletool
+to measure; 4.41.0 measured 13.7–13.9 MiB with the pictures in, and the pictures were 8.4 MB of
+that.
+
+## Final report — the definition of done, item by item
+
+| Item | State | Where |
+| --- | --- | --- |
+| BEFORE / AFTER pairs, 10 screens × dark/light × fa/en | done, 40 + 44 files, plus per-sprint pairs | `docs/design/before`, `after`, `sprint-b..d` |
+| Self-scores ≥ 85 per screen | **not reached**: chart 86; the sheets 76–82; home 78; watchlist 78; menu 70 | the tables above say what is left on each |
+| Coil live; logos, flags, pair logos, sparklines on watchlist, home, header, wheel | done — vendored art first, Coil behind it; sparkline on the watchlist rows and the home hero | Sprint A |
+| Four weights in both scripts; `tnum` on every numeral | Inter carries four; IRANYekanX has two on disk (decision 1); `tnum` on every figure style | Sprint A |
+| One icon family; lint blocks material-icons in `ui/**` | done, was in place | `check_icon_sources` |
+| Skeletons everywhere; zero centred spinners on list screens | done; two inline spinners left on the chart | Sprint A |
+| Sprint B side-by-side recording; every B screenshot matches the reference layout | pictures done; **the recording needs a phone and TradingView** | Sprint B |
+| `ChartFlingBenchmark` p95 ≤ 8 ms, 0 jank, in CI; 120 fps recording; price-axis pinch vertical-only; auto-scale never jumps | benchmark and judge in CI (`--allow-missing`); **numbers need a Pixel 6a**; pinch and scale done | Sprint C |
+| Expressive springs; zero interactive `tween`; shared elements on three flows; predictive back; haptics | springs and the gate done; two of three shared flows (heatmap is one canvas, decision 13); back and haptics done | Sprint D |
+| `values/` English, `values-fa/` Persian; build check | **not done — owner's standing rule** (decision 3) | — |
+| AAB with PAD help images; base ≤ 9 MB; no stray assets | AAB in CI; pictures on the API host rather than PAD (the APK path); 9 MiB gate; stray-asset task | Sprint E |
+| Pinning + Play Integrity live; secrets never logged (test) | wired, on when the owner sets the pins and the project; test in | Sprint E |
+| No `.ir` App Link; no direct third-party feed calls in release | feeds: done; the link: **kept by the owner's recorded decision** (19) | Sprint E |
+| `REPORT.md` lists every open product decision | twenty, below | — |
+
+**What only a phone can produce.** The two recordings, the benchmark numbers and the measured
+base download after the pictures left. The benchmark, its judge and the capture rig are in the
+tree; the environment this was built in has no device, no emulator with a GPU and no TradingView.
+
 ## Open decisions
 
 1. **IRANYekanX Medium / SemiBold.** The shipped files are static Regular and Bold; a variable file or the two extra weights are the owner's licence to obtain. Until then Persian headings stay Bold and Latin/numerals get Inter's Medium and SemiBold (Sprint A2).
@@ -370,3 +449,5 @@ motion itself is described by the gate that now holds it.
 16. **Menu row height (D6).** The owner's Phase A3 audit set the root menu at 50 dp with a seven-row subtitle whitelist and tests that pin both; the brief's 56–60 dp is not applied over that decision.
 17. **Rolling digits in the symbol header (D6).** The header on the chart is the canvas legend, so a rolling-digit composable has nowhere to go without moving the header off the canvas.
 18. **`MotionScheme.expressive()` (D1).** `MaterialExpressiveTheme` and `MotionScheme` are `internal` in Material 3 1.4.0; the scheme's springs are reproduced in `CoineProMotionSpecs` and will move onto the theme when the API opens.
+19. **The `.ir` App Link (E4).** `docs/release/APP_LINKS.md` records the owner's decision to keep it: the host is the owner's own crypto backend and the recovery e-mail already sends that link. A manifest intent filter cannot be gated by a Gradle property without a second manifest, which is more surface than the line.
+20. **Play Integrity policy (E3).** The app sends the verdict and never refuses; whether an unattested sign-in is stepped up or blocked is the backend's policy, written in `docs/security/INTEGRITY.md` for the owner to set.

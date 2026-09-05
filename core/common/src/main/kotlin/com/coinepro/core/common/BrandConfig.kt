@@ -35,7 +35,7 @@ object BrandConfig {
     const val RESET_HOST = "coineprofx.com"
 
     /** Where the published terms, privacy policy and account-deletion page live. */
-    const val LEGAL_BASE_URL = "https://behnamjalalico.github.io/CoinePro-App"
+    const val LEGAL_BASE_URL = "https://coineprofx.com/legal"
 
     /** Support, which is a Telegram channel and not an e-mail address. */
     const val SUPPORT_URL = "https://t.me/CoinePro_Admin"

@@ -15,6 +15,37 @@ it is for.
 
 ---
 
+## [Unreleased] — Pro Chart → TradingView-grade, Sprints A–E
+
+The visual master prompt, worked in order. The full account — numbers, pictures, self-scores and
+twenty open product decisions — is `docs/design/REPORT.md`.
+
+### Added
+- Inter (variable, OFL) for Latin and every numeral with tabular figures; `CoineProTokens`; a
+  four-point grid gate; Coil with a `LogoProvider` behind the vendored artwork; a sparkline column
+  on the watchlist; skeletons on the last four list screens; the 40-picture BEFORE / AFTER rig.
+- Drawing settings with Style · Coordinates · Visibility; an indicator settings sheet with
+  Inputs · Style · Visibility and a persisted colour and stroke per study; Favourites and Recent on
+  the indicator sheet; a readout on the held handle; a placement pulse.
+- A sprung auto-scale, a live close, a tick flash, focal-anchored pinch, the brief's rubber band
+  and fling curve, a line under 1.5 px a bar, older bars behind a left-edge shimmer.
+- Predictive back on every custom handler; the platform's haptic vocabulary; a spring gate in the
+  motion policy; the home hero's wash and PnL pill; signal card → page shared element.
+- Play Integrity on sign-in, exchange keys and execution (off until the project is set); a
+  secret-logging test; `checkStrayAssets` before every build; help pictures served from the API
+  host; a 9 MiB base-download gate.
+
+### Changed
+- Toolbar 48 dp with badges and dividers; sheets with a 32 dp close disc and 44 dp search; tool
+  tiles three across at 88; date-range chips at 48; hub tiles at 88; the symbol picker at five rows;
+  volume at 18 %; watermark at 6 %; legend mark at 20 dp.
+- 321 hamza-on-heh ezafe in Kotlin literals → «ه‌ی», and the string lint reads Kotlin now.
+- A release build reads no third-party feed from the device; the legal pages live on
+  `coineprofx.com/legal`.
+
+### Removed
+- The 215 help pictures from the base module (8.4 MB): the unsigned release APK is 9.2 MB, from 17.0.
+
 ## [4.41.0] — 2026-09-05 — The audit's seven phases, and the app renamed on the shelf
 
 The seven phases that followed the audit's twelve fixes, in one version — the owner's call on the

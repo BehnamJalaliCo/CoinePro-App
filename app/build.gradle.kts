@@ -341,9 +341,27 @@ val expectedSigners = (releaseSignerFingerprints() + extraExpectedSigners.split(
             buildConfigField("String", "TERMINAL_URL", escapedBuildConfig(debugTerminalUrl))
             // Empty: a debug build is signed with the debug key and must never refuse to run.
             buildConfigField("String", "EXPECTED_SIGNERS", escapedBuildConfig(""))
+            buildConfigField("long", "PLAY_INTEGRITY_PROJECT", "0L")
         }
         release {
             isDebuggable = false
+            // **A store build never reads a third party's feed from the device.** The news and
+            // the calendar come from this product's own hosts (`docs/backend/FEEDS.md`); a
+            // section the backend answers empty stays empty and says so. Debug keeps the
+            // device-side fallback so a developer without the routes still sees stories.
+            buildConfigField(
+                "boolean",
+                "DIRECT_THIRD_PARTY_FEEDS",
+                (signingProperty("COINEPRO_DIRECT_THIRD_PARTY_FEEDS") ?: "false").toBoolean().toString(),
+            )
+            // Play Integrity: the Google Cloud project number the verdict is issued for, or zero
+            // to send no token. Read from `COINEPRO_PLAY_INTEGRITY_PROJECT`; see
+            // docs/security/INTEGRITY.md for what the backend verifies.
+            buildConfigField(
+                "long",
+                "PLAY_INTEGRITY_PROJECT",
+                (signingProperty("COINEPRO_PLAY_INTEGRITY_PROJECT")?.toLongOrNull() ?: 0L).toString() + "L",
+            )
             isMinifyEnabled = true
             isShrinkResources = true
             // **The store build ships no admin panel.** `BuildConfig.ADMIN_PANEL` is a compile-time
@@ -481,6 +499,8 @@ dependencies {
     // vendored artwork does not cover. See `CoineProImageLoader`.
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    // A Play Integrity verdict on sign-in, on saving exchange keys and on executing a signal.
+    implementation(libs.play.integrity)
     implementation(project(":core:database"))
     implementation(project(":core:datastore"))
     implementation(project(":core:chart"))
@@ -583,3 +603,6 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
 }
+
+// No build without the stray-asset check; see the task in the root build script.
+tasks.named("preBuild") { dependsOn(rootProject.tasks.named("checkStrayAssets")) }

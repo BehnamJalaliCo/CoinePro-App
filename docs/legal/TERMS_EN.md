@@ -152,7 +152,7 @@ The service is provided "as is", with no guarantee of uninterrupted or error-fre
 ## 9) Deleting your account
 
 You can delete your account at any time — from inside the app, under "Settings → Delete account", or
-from [this page](https://behnamjalalico.github.io/CoinePro-App/delete-account/).
+from [this page](https://coineprofx.com/legal/delete-account/).
 
 What is deleted, what is kept and why is set out in the
 [Privacy Policy, section 5](PRIVACY_POLICY.md). Deleting your Pro Chart account does not delete your
