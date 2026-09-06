@@ -15,6 +15,25 @@ it is for.
 
 ---
 
+## [4.46.0] — 2026-09-05 — A certificate pin now has to say when it expires
+
+The owner measured TradeYar's leaf pin from an ordinary network and it matched exactly, then asked
+the right question: a Let's Encrypt leaf rotates, so should the backup pin be the ISRG root?
+
+**No — and the reason is the change.** `CertificatePinner` accepts a chain matching *any* pin for
+the host, so a root pin beside a leaf pin means every certificate Let's Encrypt will ever issue for
+that name passes, and the leaf pin constrains nothing. That is "trust Let's Encrypt for this host",
+which is what the platform trust store already does. The backup has to be an offline key that has
+never signed anything — which is what TradeYar produced.
+
+### Added
+- **`COINEPRO_CERTIFICATE_PINS_UNTIL`, and the build refuses pins without it.** Past that date the
+  pinner is not installed and the platform trust store validates the chain, exactly as every build
+  to date has. HPKP's `max-age`, for the reason that header carried one: it turns a stale pin from
+  *every install off the network until a Play release reaches them* into *unprotected from a date
+  somebody chose*. That bound is what makes pinning the leaf and its offline backup safe to enable
+  at all. Both variables are forwarded by CI; the analysis is in `docs/security/PINNING.md`.
+
 ## [4.45.2] — 2026-09-05 — The two dormant switches can actually be turned on
 
 ### Fixed

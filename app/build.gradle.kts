@@ -1,5 +1,7 @@
 import java.security.KeyStore
 import java.security.MessageDigest
+import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.Properties
 
 plugins {
@@ -199,6 +201,35 @@ require(releaseSigningValues.none { it != null } || releaseSigningConfigured) {
 
 fun escapedBuildConfig(value: String): String = "\"${value.replace("\"", "\\\"")}\""
 
+/**
+ * When the certificate pins stop being enforced, in epoch milliseconds, or zero when none are set.
+ *
+ * A date rather than a duration counted from the build, because a duration makes two builds of the
+ * same commit different artefacts and because the person who decides to pin is the person who
+ * should decide, in writing, how long they are prepared to be wrong for.
+ */
+val certificatePinsUntilEpochMs: Long = run {
+    val pins = signingProperty("COINEPRO_CERTIFICATE_PINS")
+    val until = signingProperty("COINEPRO_CERTIFICATE_PINS_UNTIL")
+    require(pins == null || until != null) {
+        "COINEPRO_CERTIFICATE_PINS is set without COINEPRO_CERTIFICATE_PINS_UNTIL. A pin with no " +
+            "end date is an app that one unexpected certificate renewal takes off the network " +
+            "with no way back except a Play release. Set it to a YYYY-MM-DD you are willing to be " +
+            "wrong until — six months out is a reasonable first answer. See docs/security/PINNING.md."
+    }
+    if (until == null) {
+        0L
+    } else {
+        val day = runCatching { LocalDate.parse(until.trim()) }.getOrNull()
+        requireNotNull(day) { "COINEPRO_CERTIFICATE_PINS_UNTIL must read YYYY-MM-DD, not '$until'." }
+        require(day.isAfter(LocalDate.now())) {
+            "COINEPRO_CERTIFICATE_PINS_UNTIL is '$until', which is already past. Pins would never " +
+                "be enforced, which is the same as not setting them and is not what anybody meant."
+        }
+        day.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+    }
+}
+
 android {
     namespace = "com.coinepro.app"
     compileSdk = 36
@@ -220,6 +251,16 @@ android {
             "CERTIFICATE_PINS",
             escapedBuildConfig(signingProperty("COINEPRO_CERTIFICATE_PINS").orEmpty()),
         )
+
+        // The date the pins above stop being enforced — `COINEPRO_CERTIFICATE_PINS_UNTIL`, as
+        // `YYYY-MM-DD`, read as the start of that day in UTC.
+        //
+        // **Setting pins without it fails the build, on purpose.** A wrong or outdated pin is the
+        // one fault in this app with no remote fix: every install of that build stops reaching the
+        // server and the only cure is a new release through Play. The expiry turns that from
+        // "bricked" into "unpinned from a date somebody chose", which is exactly the protection
+        // level this app has today. See `NetworkFactory.okHttpClient`'s `pinnedUntilEpochMs`.
+        buildConfigField("long", "CERTIFICATE_PINS_UNTIL", "${certificatePinsUntilEpochMs}L")
 
         // Whether the app may read Investing.com, Cointelegraph and the ForexFactory calendar file
         // from the device itself, as the fallback for a section the backend answered empty.

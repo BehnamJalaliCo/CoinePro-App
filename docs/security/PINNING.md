@@ -142,3 +142,85 @@ reason above — by building with:
 Both pins together, never one: OkHttp accepts a chain matching **any** pin for the host, and the
 backup is what makes the next key rotation a non-event instead of an outage.
 
+---
+
+## The owner's measurement, and the chain it exposed — 2026-09-05
+
+Run from an ordinary network, the leaf matched TradeYar's answer exactly:
+
+```
+RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=   CN=tradeyar.trade-future.ir   (leaf)
+s/tdAOmUzd8syaTuqfgGvFcn6DzA5Cmb+Vby1ST+U3Y=   Let's Encrypt               (intermediate)
+sCkq5UWXjg+7mKu9lMhhYF5bGLsy7VI/UNW3tccdR7w=   ISRG Root                   (root)
+```
+
+So the pin is confirmed. The chain, though, raises the right question, and the answer is not the
+obvious one.
+
+### Why the backup pin must not be the root or the intermediate
+
+The instinct is sound — a Let's Encrypt leaf is short-lived, and pinning only a leaf whose key
+rotates is a dated lock-out. The proposed remedy is not, and the reason is a property of how OkHttp
+matches:
+
+> **`CertificatePinner` accepts a chain that matches *any* pin listed for that host.**
+
+Pin the leaf *and* the ISRG root, and every chain that reaches ISRG root passes — which is every
+certificate Let's Encrypt will ever issue for that name. The leaf pin then constrains nothing; it
+is present in the configuration and absent from the security. What is left is "trust Let's Encrypt
+for this host", and Let's Encrypt issues to whoever can answer an ACME challenge. An attacker who
+can take the domain for ten minutes — a DNS compromise, a BGP hijack, a registrar mistake — gets a
+certificate that satisfies the pin. That is the same bar the platform trust store already applies,
+with Certificate Transparency on top of it.
+
+So pinning the root buys approximately nothing over not pinning, while carrying all of pinning's
+operational cost. Pinning the intermediate is worse again: Let's Encrypt rotates intermediates on
+its own schedule, so it reintroduces the lock-out the root was meant to remove.
+
+**The backup pin has to be a key, held offline, that has never signed anything** — which is exactly
+what TradeYar produced (`Q1JB2C45jMeyX4xQi8ZE83kmB+EfduUc2utHJ+H6YHI=`). The day they need to
+rotate, they issue with that key and every installed app keeps working. That is the only backup
+that is both a real fallback and a real constraint.
+
+### And the leaf key is not, in fact, rotating
+
+`certbot` changes the key on every renewal **unless** `reuse_key` is set, and TradeYar found that
+fault and set it while producing these pins. So the leaf's SPKI stays put across renewals. That is
+a setting on a server, though, not a law: a `--force-renewal`, a rebuilt host or a lost config
+brings a third key that matches neither pin.
+
+## What this app does about a pin that goes wrong
+
+`COINEPRO_CERTIFICATE_PINS_UNTIL` — a `YYYY-MM-DD`, and **the build refuses to accept pins without
+it**:
+
+```
+> COINEPRO_CERTIFICATE_PINS is set without COINEPRO_CERTIFICATE_PINS_UNTIL. A pin with no end date
+  is an app that one unexpected certificate renewal takes off the network with no way back except
+  a Play release.
+```
+
+Past that date `NetworkFactory.okHttpClient` simply does not install the pinner and the platform
+trust store validates the chain — which is what every build of this app has done to date. It is
+HPKP's `max-age`, for the reason that header carried one: it converts the failure from *bricked
+until a release reaches everybody* into *unprotected from a date somebody chose*.
+
+That is what makes it safe to pin the leaf and its offline backup and nothing else. Pick a date you
+are willing to be wrong until — six months is a reasonable first answer — and move it forward with
+each release.
+
+## The settings, together
+
+| Variable | Value |
+|---|---|
+| `COINEPRO_CERTIFICATE_PINS` | `tradeyar.trade-future.ir=sha256/RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=;tradeyar.trade-future.ir=sha256/Q1JB2C45jMeyX4xQi8ZE83kmB+EfduUc2utHJ+H6YHI=` |
+| `COINEPRO_CERTIFICATE_PINS_UNTIL` | six months out, e.g. `2027-03-31` |
+
+`coineprofx.com` appears in neither, for the Cloudflare reason above.
+
+**Is it worth switching on at all?** It is a genuine judgement and not a foregone one. The gain
+over Certificate Transparency plus the platform trust store, for a consumer app, is modest; the
+cost is an operational commitment — the 30-day notice, the backup key, the date moved forward every
+release. With the expiry in place the downside is bounded, so the answer can be yes. Without it,
+the honest answer was no.
+

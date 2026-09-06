@@ -41,4 +41,38 @@ class CertificatePinsTest {
             assertTrue("'$bad' should have been refused", outcome.isFailure)
         }
     }
+
+    @Test
+    fun `pins are enforced before their date and dropped after it`() {
+        val pins = mapOf("tradeyar.trade-future.ir" to listOf("sha256/RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c="))
+        val deadline = 1_800_000_000_000L
+
+        val live = NetworkFactory.okHttpClient(
+            pins = pins,
+            pinnedUntilEpochMs = deadline,
+            now = { deadline - 1 },
+        )
+        assertEquals(1, live.certificatePinner.pins.size)
+
+        // Past the date the pinner is simply not installed and the platform trust store is what
+        // validates the chain — the same thing every build of this app has done to date. That is
+        // the whole point: an outdated pin degrades to today's behaviour instead of taking every
+        // install off the network with no way back but a Play release.
+        val expired = NetworkFactory.okHttpClient(
+            pins = pins,
+            pinnedUntilEpochMs = deadline,
+            now = { deadline },
+        )
+        assertTrue(expired.certificatePinner.pins.isEmpty())
+    }
+
+    @Test
+    fun `pins with no date are never installed`() {
+        // The build refuses this combination outright, so it cannot ship; the client refuses it
+        // too, because a default that pins for ever is the wrong thing for a caller to inherit.
+        val client = NetworkFactory.okHttpClient(
+            pins = mapOf("example.test" to listOf("sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")),
+        )
+        assertTrue(client.certificatePinner.pins.isEmpty())
+    }
 }

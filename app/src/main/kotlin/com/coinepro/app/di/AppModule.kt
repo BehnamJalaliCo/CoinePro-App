@@ -340,6 +340,9 @@ object AppModule {
         recorder = RequestLogInterceptor(requestLog, MarketPlatform.COINEPRO_FX, appLog = appLog),
         enableHttpLogging = BuildConfig.DEBUG,
         pins = NetworkFactory.parsePins(BuildConfig.CERTIFICATE_PINS),
+        // Pins stop being enforced on this date. See `NetworkFactory.okHttpClient`: a pin with no end
+        // date is the one fault in this app that cannot be fixed from a server.
+        pinnedUntilEpochMs = BuildConfig.CERTIFICATE_PINS_UNTIL,
         attestation = PlayIntegrityInterceptor(context, BuildConfig.PLAY_INTEGRITY_PROJECT),
     )
 
@@ -389,6 +392,9 @@ object AppModule {
         recorder = RequestLogInterceptor(requestLog, MarketPlatform.TRADEYAR, appLog = appLog),
         enableHttpLogging = BuildConfig.DEBUG,
         pins = NetworkFactory.parsePins(BuildConfig.CERTIFICATE_PINS),
+        // Pins stop being enforced on this date. See `NetworkFactory.okHttpClient`: a pin with no end
+        // date is the one fault in this app that cannot be fixed from a server.
+        pinnedUntilEpochMs = BuildConfig.CERTIFICATE_PINS_UNTIL,
         attestation = PlayIntegrityInterceptor(context, BuildConfig.PLAY_INTEGRITY_PROJECT),
     )
 

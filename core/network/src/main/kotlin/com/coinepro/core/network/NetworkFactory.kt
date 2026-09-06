@@ -43,6 +43,31 @@ object NetworkFactory {
          */
         pins: Map<String, List<String>> = emptyMap(),
         /**
+         * When [pins] stop being enforced, as epoch milliseconds. Zero means "no expiry set".
+         *
+         * ### Why a pin needs an end date
+         *
+         * Because the failure mode has no remote fix. A pin that stops matching — a certificate
+         * re-issued with a new key, a host moved, a `--force-renewal` somebody ran at 2am — is
+         * every install of that build unable to reach the server, recoverable only by shipping a
+         * new release through Play and waiting for people to take it. There is no server-side
+         * switch, because the app will not talk to the server.
+         *
+         * An expiry bounds that. Past it the pinner is simply not installed: the app falls back to
+         * the platform trust store, which is what it uses today and what every other Android app
+         * uses. So the worst case stops being "bricked until a release reaches everybody" and
+         * becomes "unprotected after a date the owner chose", which is the same protection level
+         * this app shipped with for its whole life and is a bad outcome rather than a fatal one.
+         *
+         * This is HPKP's `max-age` and it exists for the same reason that header carried one.
+         *
+         * Checked once, when the client is built. A process alive across the boundary keeps
+         * pinning until it is next started, which is a few hours at most and errs safe.
+         */
+        pinnedUntilEpochMs: Long = 0L,
+        /** The clock, so a test can stand either side of the expiry without waiting for it. */
+        now: () -> Long = System::currentTimeMillis,
+        /**
          * An attestation interceptor — the app's Play Integrity one — installed after the auth
          * interceptor so it sees the request as it will be sent. Null installs nothing.
          */
@@ -95,7 +120,11 @@ object NetworkFactory {
             .pingInterval(20, TimeUnit.SECONDS)
             .apply { recorder?.let(::addInterceptor) }
             .apply {
-                if (pins.isNotEmpty()) {
+                // Pins with no expiry are refused rather than installed for ever — see
+                // [pinnedUntilEpochMs]. A build that pins permanently is a build one bad renewal
+                // turns into a brick, and the property that sets the pins is the property that has
+                // to set the date.
+                if (pins.isNotEmpty() && pinnedUntilEpochMs > 0L && now() < pinnedUntilEpochMs) {
                     val pinner = CertificatePinner.Builder()
                     pins.forEach { (host, digests) -> digests.forEach { pinner.add(host, it) } }
                     certificatePinner(pinner.build())
