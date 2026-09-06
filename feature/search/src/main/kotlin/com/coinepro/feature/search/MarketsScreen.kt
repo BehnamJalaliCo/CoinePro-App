@@ -228,16 +228,34 @@ fun MarketsScreen(
         // this app does not allow them in.
         val visible = state.results.filter { row ->
             when (tab) {
-                MarketsTab.ALL -> true
-                MarketsTab.CRYPTO -> row.meta.category == SymbolCategory.CRYPTO
-                MarketsTab.FOREX -> row.meta.category == SymbolCategory.FOREX
-                MarketsTab.METAL -> row.meta.category == SymbolCategory.METAL
                 MarketsTab.WATCHLIST -> row.meta.symbol.uppercase() in watched
+                else -> tab.category == null || row.meta.category == tab.category
             }
         }
         arrangeMarkets(rows = visible, tickers = tickerState, lens = lens, sort = sort)
     }
     val panel = tab == MarketsTab.WATCHLIST && watchlistStore != null
+
+    // **Only the categories this platform actually carries.**
+    //
+    // The strip was five fixed tabs, so on TradeYar «فارکس» and «فلزات» were two doors onto an
+    // empty screen — and, because nothing had been searched, onto the *search* screen's copy:
+    // «بازاری با این نام پیدا نشد». A reader who presses a tab the app drew and is told their
+    // search found nothing concludes the list is broken, which is exactly what was reported.
+    //
+    // Computed from the catalogue rather than from the platform, so it needs no table of which
+    // backend carries what and it is right the day either of them adds a family. «همه» and the
+    // watchlist are always drawn: the first is the list itself and the second is the reader's own,
+    // which is allowed to be empty and has copy that says so.
+    val offered = remember(state.results) {
+        val families = state.results.mapTo(HashSet()) { it.meta.category }
+        MarketsTab.entries.filter { candidate ->
+            candidate.category == null || candidate.category in families
+        }
+    }
+    // A tab that has just gone away — the platform switched under the reader — must not leave the
+    // list filtered by it, which would be an invisible filter with no chip to unset.
+    LaunchedEffect(offered) { if (tab !in offered) tab = MarketsTab.ALL }
 
     Column(modifier = modifier.fillMaxSize().background(CoineProColors.Stage)) {
         Header(onOpenSearch = onOpenSearch)
@@ -247,7 +265,7 @@ fun MarketsScreen(
         // once and forgotten once. It is also how this row ended up without the tick every other
         // control in the app answers a tap with.
         CoineProSegmentTabs(
-            options = MarketsTab.entries.map { it to stringResource(it.labelRes) },
+            options = offered.map { it to stringResource(it.labelRes) },
             selected = tab,
             onSelect = { tab = it },
         )
@@ -340,7 +358,15 @@ fun MarketsScreen(
                         // The table arrived and nothing in it qualifies — a real answer, and a
                         // different one from "no market matches that name".
                         lens != MarketLens.NONE -> stringResource(R.string.markets_lens_empty)
-                        else -> stringResource(R.string.search_empty)
+                        // Nothing was typed here — this screen has no field — so the search
+                        // screen's «بازاری با این نام پیدا نشد» was answering a question the
+                        // reader never asked. The tab is the only filter left that can empty the
+                        // list, and it is named.
+                        tab.category != null -> stringResource(
+                            R.string.markets_category_empty,
+                            stringResource(tab.labelRes),
+                        )
+                        else -> stringResource(R.string.markets_none)
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = CoineProColors.TextMuted,
@@ -433,11 +459,19 @@ fun MarketsScreen(
 /** The open-signal line at the foot of the list. */
 data class MarketsSignalStrip(val count: Int, val summary: String, val onClick: () -> Unit)
 
-private enum class MarketsTab(val labelRes: Int) {
+/**
+ * The strip over the market list.
+ *
+ * [category] is what the tab narrows to, and null means it narrows by something else — «همه»
+ * narrows by nothing and the watchlist by the reader's own stars. It is here rather than in a
+ * `when` so that one fact — which tabs a catalogue can fill — is read off the same place the
+ * filter uses. See `offered`.
+ */
+private enum class MarketsTab(val labelRes: Int, val category: SymbolCategory? = null) {
     ALL(R.string.search_category_all),
-    CRYPTO(R.string.search_category_crypto),
-    FOREX(R.string.search_category_forex),
-    METAL(R.string.search_category_metal),
+    CRYPTO(R.string.search_category_crypto, SymbolCategory.CRYPTO),
+    FOREX(R.string.search_category_forex, SymbolCategory.FOREX),
+    METAL(R.string.search_category_metal, SymbolCategory.METAL),
     WATCHLIST(R.string.markets_watchlist),
 }
 

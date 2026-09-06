@@ -2196,7 +2196,7 @@ private fun FullscreenChart(
             // The same glyph as the toolbar's, flipped inward: the button that opened the mode
             // is the button that closes it.
             FloatingChartButton(
-                icon = DesignR.drawable.tv_minimize2,
+                icon = DesignR.drawable.icon_arrows_in,
                 label = stringResource(R.string.chart_fullscreen_exit),
                 onClick = onExit,
             )

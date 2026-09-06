@@ -109,4 +109,6 @@
     <!-- Long-press preview -->
     <string name="preview_alert">Alert</string>
     <string name="preview_chart">Chart</string>
+    <string name="markets_category_empty">This platform carries no %1$s markets.</string>
+    <string name="markets_none">No markets in the list yet.</string>
 </resources>

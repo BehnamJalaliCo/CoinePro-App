@@ -231,7 +231,15 @@ internal fun ChartCommandBand(
                 onClick = onUndo,
             )
             ToolbarButton(
-                icon = DesignR.drawable.tv_maximize2,
+                // Phosphor's four-corner arrows, not TradingView's `maximize2`.
+                //
+                // That glyph is four thin corner brackets drawn inside the middle 57% of its own
+                // 28-unit box, so at 22 dp of ink it renders as a few grey hairlines with a hole
+                // in the middle — on the toolbar it read as a smudge beside the undo arrow rather
+                // than as the button that grows the chart, which is the one control on this bar a
+                // reader looks for by shape. The arrows reach the edges of their box and point
+                // outward, which is the same picture every video player and every browser uses.
+                icon = DesignR.drawable.icon_arrows_out,
                 label = stringResource(R.string.chart_band_fullscreen),
                 active = false,
                 onClick = onFullscreen,

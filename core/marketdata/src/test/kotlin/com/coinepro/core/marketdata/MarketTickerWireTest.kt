@@ -242,4 +242,42 @@ class MarketTickerWireTest {
         assertNull(row.changePercent24h)
         assertNull(row.open24h)
     }
+
+    @Test
+    fun `the public twin's camelCase rows parse as the members' snake_case ones do`() {
+        // Measured from the live public route on 2026-09-05. Its rows are spelled `price`,
+        // `change24h` and `volume24h`; the members' route spells the same three `last`,
+        // `change_percent_24h` and `volume_24h`. Read with only the second set of names every
+        // field comes back null, the row is dropped as "not a market", and the lens screens are
+        // empty behind a perfectly successful 200 — which is the failure this pins shut.
+        val body = """
+            {"tickers":[{"symbol":"BTCUSDT","price":79950.01,"change24h":0.356,"volume24h":792474552.7}]}
+        """.trimIndent()
+
+        val table = gson.fromJson(body, MarketTickersDto::class.java)
+        val row = table.tickers.single()
+
+        assertEquals("BTCUSDT", row.symbol)
+        assertEquals(79950.01, row.last!!, 0.001)
+        assertEquals(0.356, row.changePercent24h!!, 0.0001)
+        assertEquals(792474552.7, row.volume24h!!, 1.0)
+        assertNotNull("and it survives the mapping to a domain row", row.toDomain())
+    }
+
+    @Test
+    fun `with both spellings present Gson takes the last one in the body, not the primary`() {
+        // Measured, because the intuition is wrong and it is worth writing down: `alternate` is
+        // not a fallback order, it is a set of accepted names, and the value that survives is
+        // whichever key appears **last** in the JSON object. So a server that sent both would
+        // decide the answer by field order.
+        //
+        // No route does — the members' route sends only `last`, the public twin only `price` — and
+        // this is here so that the day one of them sends both, the failure is a red test rather
+        // than a price that changes when the server reorders its serialiser.
+        val primaryFirst = """{"tickers":[{"symbol":"BTCUSDT","last":1.0,"price":2.0}]}"""
+        val alternateFirst = """{"tickers":[{"symbol":"BTCUSDT","price":2.0,"last":1.0}]}"""
+
+        assertEquals(2.0, gson.fromJson(primaryFirst, MarketTickersDto::class.java).tickers.single().last!!, 0.001)
+        assertEquals(1.0, gson.fromJson(alternateFirst, MarketTickersDto::class.java).tickers.single().last!!, 0.001)
+    }
 }

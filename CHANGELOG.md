@@ -15,6 +15,26 @@ it is for.
 
 ---
 
+## [4.46.1] — 2026-09-05 — The markets screen stops blaming a search nobody made
+
+### Fixed
+- **«داغ», «بیشترین رشد» and «بیشترین افت» answered «آمار امروز بازار در دسترس نیست»** for anyone
+  without a TradeYar session — which per `SERVER_ASK_ONE_ACCOUNT_TWO_BACKENDS.md` is most readers.
+  The day's figures now fall back to TradeYar's public ticker route on a 401/403, the same hole
+  and the same fix as depth of market. Its rows are spelled `price`/`change24h`/`volume24h` where
+  the members' route says `last`/`change_percent_24h`/`volume_24h`; both are read now, with a test,
+  because the wrong spelling parses as a row of nulls behind a successful 200. The public route
+  serves five headline markets to the members' eight hundred — widening it is asked for in
+  `docs/backend/REPLY_2026-09-05.md`.
+- **A category tab the platform cannot fill is no longer drawn.** «فارکس» and «فلزات» on a crypto
+  catalogue were two doors onto an empty screen showing the *search* screen's copy — «بازاری با
+  این نام پیدا نشد» — on a screen with no search field. The strip is computed from the catalogue,
+  so it is right for either backend and for whatever family they add next; an emptied tab now says
+  which family it was.
+- **The fullscreen button had no recognisable glyph.** TradingView's `maximize2` is four hairline
+  corner brackets inside the middle 57% of its box, which at toolbar size reads as a smudge beside
+  the undo arrow. Fullscreen and its exit use Phosphor's arrows-out and arrows-in, edge to edge.
+
 ## [4.46.0] — 2026-09-05 — A certificate pin now has to say when it expires
 
 The owner measured TradeYar's leaf pin from an ordinary network and it matched exactly, then asked

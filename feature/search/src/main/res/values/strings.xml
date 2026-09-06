@@ -110,4 +110,6 @@
     <!-- ── پیش‌نمایش با فشار طولانی ──────────────────────────────────────────────────────── -->
     <string name="preview_alert">هشدار</string>
     <string name="preview_chart">چارت</string>
+    <string name="markets_category_empty">این پلتفرم بازار «%1$s» ندارد.</string>
+    <string name="markets_none">هنوز بازاری در فهرست نیست.</string>
 </resources>

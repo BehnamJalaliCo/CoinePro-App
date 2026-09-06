@@ -2,6 +2,7 @@ package com.coinepro.core.marketdata
 
 import com.coinepro.core.model.MarketPlatform
 import com.google.gson.annotations.SerializedName
+import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.http.GET
 import retrofit2.http.Query
@@ -259,6 +260,32 @@ class UnsupportedMarketTickerGateway : MarketTickerGateway {
 class NetworkMarketTickerGateway private constructor(
     private val api: MarketTickerApi,
     private val path: String,
+    /**
+     * The public twin of [path], for a reader the members' route will not serve, or null where
+     * there is none.
+     *
+     * ### Why the day's figures need one at all
+     *
+     * `api/mobile/v1/market/tickers` answers `401` without a TradeYar session, and per
+     * `docs/SERVER_ASK_ONE_ACCOUNT_TWO_BACKENDS.md` that is not the rare case: an account made
+     * before 1.27.0 exists on CoinePro-FX and not here, one made in the app is the reverse, and a
+     * guest holds neither. For all of them «داغ», «بیشترین رشد» and «بیشترین افت» — three of the
+     * four chips on the markets screen — answered «آمار امروز بازار در دسترس نیست» with a retry
+     * button that re-sent the same tokenless request for as long as it was pressed. The catalogue
+     * and the prices on the same screen were arriving the whole time, from routes that are public.
+     *
+     * The exact shape of the depth hole, and it is closed the same way: the platform's own public
+     * route, tried only when the members' one refuses. See `SessionFallbackOrderBookGateway`.
+     *
+     * ### What it costs, and it is not nothing
+     *
+     * The public route serves the **headline markets only** — five rows, measured 2026-09-05 —
+     * where the members' route serves the whole catalogue of eight hundred. So a signed-out reader
+     * gets a lens over five markets rather than over everything. That is a smaller answer, not a
+     * wrong one, and it beats an error card by the width of the screen; the app asks for the
+     * catalogue-wide version in `docs/backend/REPLY_2026-09-05.md`.
+     */
+    private val publicPath: String? = null,
 ) : MarketTickerGateway {
 
     override val supported: Boolean = true
@@ -268,7 +295,17 @@ class NetworkMarketTickerGateway private constructor(
         // request, 801 rows, and a five-second cache in front of it, so naming symbols would cost
         // the same round trip for less answer.
         val requested = symbols?.takeIf { it.isNotEmpty() }?.joinToString(",")
-        val response = api.tickers(path, requested)
+        val response = try {
+            api.tickers(path, requested)
+        } catch (refusal: HttpException) {
+            // `401` and `403` are the same fact to a reader: the token that reached the route was
+            // not one it accepts, and asking again will not change that. Every other failure —
+            // a timeout, a 500, a symbol the route will not serve — is the truth about the day's
+            // figures and is left to reach the caller, which reports it and offers the retry that
+            // can actually help.
+            val twin = publicPath?.takeIf { refusal.code() == 401 || refusal.code() == 403 } ?: throw refusal
+            api.tickers(twin, requested)
+        }
         return MarketTickerTable(
             tickers = response.tickers.mapNotNull { it.toDomain() }.associateBy { it.symbol },
             serverTimeEpochMillis = response.serverTimeMs,
@@ -302,6 +339,9 @@ class NetworkMarketTickerGateway private constructor(
                     MarketPlatform.TRADEYAR -> TRADEYAR_PATH
                     MarketPlatform.COINEPRO_FX -> FOREX_PATH
                 },
+                // Only TradeYar has one. CoinePro-FX's own route answers `200` to a caller with no
+                // token at all — measured 2026-09-05 — so there is nothing for it to fall back to.
+                publicPath = TRADEYAR_PUBLIC_PATH.takeIf { platform == MarketPlatform.TRADEYAR },
             )
 
         /**
@@ -310,6 +350,16 @@ class NetworkMarketTickerGateway private constructor(
          * different server.
          */
         internal const val TRADEYAR_PATH = "api/mobile/v1/market/tickers"
+
+        /**
+         * The public twin, on the public prefix rather than the mobile one. See [publicPath].
+         *
+         * Measured 2026-09-05: `200` with five headline markets for a caller carrying no token,
+         * where `api/mobile/v1/market/tickers` answers `401`. Its rows are spelled `price`,
+         * `change24h` and `volume24h` where the members' route spells them `last`,
+         * `change_percent_24h` and `volume_24h` — both are read, see [WireTickerDto].
+         */
+        internal const val TRADEYAR_PUBLIC_PATH = "api/v1/public/tickers"
 
         /**
          * And under `user/mobile` on the forex side, where the rest of that platform's app surface
@@ -380,12 +430,18 @@ internal fun PriceFeedDto.toDomain(): PriceFeedStatus = PriceFeedStatus(
  */
 internal data class WireTickerDto(
     val symbol: String? = null,
-    val last: Double? = null,
+    // Both spellings on the three fields the public twin carries, and for the reason this file's
+    // sibling `AuthMethodsDto` gives at length: the members' route says `last`,
+    // `change_percent_24h`, `volume_24h`, and TradeYar's public one says `price`, `change24h`,
+    // `volume24h`. A row read with the wrong name does not fail — it parses every field as null
+    // and is dropped as "not a market", so the screen is empty behind a perfectly successful 200.
+    @SerializedName(value = "last", alternate = ["price"]) val last: Double? = null,
     @SerializedName("open_24h") val open24h: Double? = null,
     @SerializedName("high_24h") val high24h: Double? = null,
     @SerializedName("low_24h") val low24h: Double? = null,
-    @SerializedName("change_percent_24h") val changePercent24h: Double? = null,
-    @SerializedName("volume_24h") val volume24h: Double? = null,
+    @SerializedName(value = "change_percent_24h", alternate = ["change24h", "changePercent24h"])
+    val changePercent24h: Double? = null,
+    @SerializedName(value = "volume_24h", alternate = ["volume24h"]) val volume24h: Double? = null,
     @SerializedName("turnover_24h") val turnover24h: Double? = null,
     @SerializedName("funding_rate") val fundingRate: Double? = null,
     @SerializedName("funding_interval_s") val fundingIntervalSeconds: Long? = null,
