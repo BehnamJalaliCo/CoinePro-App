@@ -1,5 +1,6 @@
 package com.coinepro.feature.heatmap
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProSegmentTabs
 import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -107,10 +109,10 @@ fun HeatmapSettingsSheet(
                 )
                 when {
                     !HeatmapMetrics.anyWeightFor(assets, options.size) ->
-                        Note(stringResource(R.string.heatmap_size_volume_note))
+                        Note(R.string.heatmap_size_volume_note)
 
                     options.size == HeatmapSize.LIQUIDITY ->
-                        Note(stringResource(R.string.heatmap_size_note))
+                        Note(R.string.heatmap_size_note)
                 }
             }
             Section(stringResource(R.string.heatmap_density)) {
@@ -123,7 +125,7 @@ fun HeatmapSettingsSheet(
                     selected = options.density,
                     onSelect = { onOptions(options.copy(density = it)) },
                 )
-                Note(stringResource(R.string.heatmap_density_note))
+                Note(R.string.heatmap_density_note)
             }
             Section(stringResource(R.string.heatmap_grouping)) {
                 CoineProSegmentTabs(
@@ -136,7 +138,7 @@ fun HeatmapSettingsSheet(
                     onSelect = { onOptions(options.copy(grouping = it)) },
                 )
                 if (options.grouping != HeatmapGrouping.NONE) {
-                    Note(stringResource(R.string.heatmap_grouping_note))
+                    Note(R.string.heatmap_grouping_note)
                 }
             }
             Section(stringResource(R.string.heatmap_palette)) {
@@ -152,7 +154,7 @@ fun HeatmapSettingsSheet(
                 // Said in words as well as shown, because a reader who needs this palette is
                 // exactly the reader who cannot confirm from the swatches that it helps.
                 if (options.palette == HeatmapPalette.COLOUR_BLIND) {
-                    Note(stringResource(R.string.heatmap_palette_note))
+                    Note(R.string.heatmap_palette_note)
                 }
             }
         }
@@ -174,6 +176,12 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 }
 
 /** A sentence under a strip, saying what the strip cannot say on its own. */
+@Composable
+private fun Note(@StringRes id: Int) {
+    CoineProNote(id, modifier = Modifier.padding(horizontal = CoineProSpacing.Two, vertical = 4.dp))
+}
+
+/** A line that is not a note but a fact about the data — an axis nothing can size — stays words. */
 @Composable
 private fun Note(text: String) {
     Text(

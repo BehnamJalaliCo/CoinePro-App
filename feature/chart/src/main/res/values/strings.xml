@@ -160,7 +160,7 @@
     <string name="chart_quote_scale">مقیاس قیمت</string>
     <string name="chart_interval_heading">تایم‌فریم</string>
     <string name="chart_interval_seconds">ثانیه — ساخته‌شده روی همین گوشی</string>
-    <string name="chart_interval_seconds_note">هیچ سروری کندل زیر یک دقیقه نمی‌دهد؛ این کندل‌ها از جریان زنده‌ی قیمت روی همین گوشی ساخته می‌شوند. بار اول خالی باز می‌شود و با هر معامله پر می‌شود، و هرچه بسازد برای دفعه‌ی بعد می‌ماند.</string>
+    <string name="chart_interval_seconds_note">کندل زیر یک دقیقه از جریان زنده‌ی قیمت روی همین گوشی ساخته می‌شود. بار اول خالی باز می‌شود و با هر معامله پر می‌شود، و هرچه بسازد برای دفعه‌ی بعد می‌ماند.</string>
     <string name="chart_hub_more">بیشتر</string>
     <string name="chart_hub_help">مرکز راهنما</string>
     <string name="chart_hub_trade">معامله با کارگزار</string>

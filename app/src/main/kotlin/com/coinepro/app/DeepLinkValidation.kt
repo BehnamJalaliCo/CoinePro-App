@@ -39,12 +39,17 @@ internal sealed interface CoineProDeepLink {
  * verifies against each host's `assetlinks.json`. Accepting a token from any other host would mean
  * acting on a link nobody proved ownership of.
  *
- * The two spell the path differently and that is theirs to decide, not ours to normalise: TradeYar
- * serves `/reset`, CoinePro-FX serves `/reset-password`. A single pattern covering both would also
- * cover a third nobody has vetted.
+ * The two spell the path differently and that is theirs to decide, not ours to normalise: the
+ * brand host serves `/reset`, CoinePro-FX serves `/reset-password`. A single pattern covering both
+ * would also cover a third nobody has vetted.
+ *
+ * TradeYar's `user.tradeyar.trade-future.ir/reset` was claimed here until 4.47.0 and is not any
+ * more: the store build carries the brand's own host and the API hosts it talks to, and nothing
+ * else. Its recovery e-mail still works — the link opens in the browser, which is where somebody
+ * without the app was always going to read it.
  */
 private val RESET_HOSTS = mapOf(
-    "user.tradeyar.trade-future.ir" to "reset",
+    BrandConfig.WEB_HOST to BrandConfig.WEB_RESET_PATH,
     BrandConfig.RESET_HOST to "reset-password",
 )
 

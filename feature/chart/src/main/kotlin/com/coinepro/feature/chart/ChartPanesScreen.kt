@@ -59,6 +59,7 @@ import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProGoldRule
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSheet
@@ -683,10 +684,9 @@ private fun PaneSyncRow(
                                 style = MaterialTheme.typography.labelMedium,
                                 color = CoineProColors.TextPrimary,
                             )
-                            Text(
-                                text = stringResource(field.noteRes),
+                            CoineProNote(
+                                field.noteRes,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = CoineProColors.TextMuted,
                                 modifier = Modifier.padding(top = 4.dp),
                             )
                         }

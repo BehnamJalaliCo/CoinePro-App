@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="signals_title">Signals</string>
-    <string name="signals_subtitle">Actionable setups with server-truth entry, risk and targets.</string>
+    <string name="signals_subtitle">Actionable setups with entry, risk and targets.</string>
 
     <string name="signals_market_forex">Forex</string>
     <string name="signals_market_crypto">Crypto</string>
@@ -35,5 +35,5 @@
     <string name="signals_empty_active_hint">Open positions appear here as soon as the desk publishes one.</string>
     <string name="signals_empty_recent_hint">The most recently published calls collect here.</string>
     <string name="signals_empty_closed_hint">Every signal that reaches its target or its stop stays here with its result.</string>
-    <string name="signals_not_shown">%1$s more on the server than this list can hold. See the history.</string>
+    <string name="signals_not_shown">%1$s more signals in the history</string>
 </resources>

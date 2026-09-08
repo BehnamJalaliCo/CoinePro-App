@@ -12,9 +12,9 @@
     <string name="message_alert_not_updated">The alert was not changed.</string>
     <string name="message_alert_not_deleted">The alert was not deleted and is still armed.</string>
     <string name="message_markets_unavailable">Markets are unavailable.</string>
-    <string name="message_ai_job_expired">The request expired on the server.</string>
+    <string name="message_ai_job_expired">This request expired.</string>
     <string name="message_ai_entitlement_required">This needs an active subscription.</string>
-    <string name="message_ai_result_unusable">The server returned a result with no valid structure; it cannot be opened or executed.</string>
+    <string name="message_ai_result_unusable">The result has no valid structure; it cannot be opened or executed.</string>
     <string name="message_ai_generation_failed">Signal generation failed.</string>
     <string name="message_ai_symbol_unsupported">That symbol is not supported.</string>
     <string name="message_ai_message_empty">Write a message before sending.</string>
@@ -27,8 +27,8 @@
     <string name="offline_bar">This phone has no internet. Prices are the last that arrived.</string>
     <string name="field_reveal">Show</string>
     <string name="field_hide">Hide</string>
-    <string name="message_session_not_revalidated">A stored session could not be revalidated. Anything that needs an account stays locked until the server is reachable.</string>
-    <string name="message_telegram_sign_in_not_configured">Telegram sign-in is not configured on this server.</string>
+    <string name="message_session_not_revalidated">Your stored session could not be confirmed. Anything that needs an account stays locked until the connection is back.</string>
+    <string name="message_telegram_sign_in_not_configured">Telegram sign-in is not available on this platform.</string>
     <string name="message_telegram_sign_in_config_unavailable">The Telegram sign-in configuration could not be loaded. Check the connection and retry.</string>
     <string name="a11y_navigation_rail">Main navigation</string>
     <string name="pane_detail_empty">Choose a row from the list and it opens here.</string>
@@ -92,13 +92,13 @@
     <string name="teaching_portfolio_pitfall">Only closed trades are in these figures; an open position\'s floating profit is not counted.</string>
 
     <string name="teaching_connections_lead">You connect an exchange account with an API key so orders can be placed from the app.</string>
-    <string name="teaching_connections_pitfall">The key is held on the server and never stored on the phone, and withdrawal permission is not needed.</string>
+    <string name="teaching_connections_pitfall">The key is never stored on the phone, and withdrawal permission is not needed.</string>
 
     <string name="teaching_membership_lead">Your subscription\'s state, and which parts of the app each plan opens.</string>
     <string name="teaching_membership_pitfall">A subscription opens parts of the app, not profit or a guaranteed signal.</string>
 
-    <string name="teaching_activity_lead">The record of your closed signals and the executions the server logged.</string>
-    <string name="teaching_activity_pitfall">Every figure here comes from the server; nothing is estimated on the phone.</string>
+    <string name="teaching_activity_lead">The record of your closed signals and executions.</string>
+    <string name="teaching_activity_pitfall">Every figure here comes from your account; nothing is estimated on the phone.</string>
 
     <string name="teaching_academy_lead">Short lessons about the market and about using this app.</string>
     <string name="teaching_academy_pitfall">The lessons teach; none of them names a symbol to buy.</string>

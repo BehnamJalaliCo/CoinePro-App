@@ -138,7 +138,7 @@
     <string name="chart_quote_scale">Price scale</string>
     <string name="chart_interval_heading">Timeframe</string>
     <string name="chart_interval_seconds">Seconds — built on this phone</string>
-    <string name="chart_interval_seconds_note">No venue serves a bar shorter than a minute, so these are built here from the live price feed. The first one opens empty and fills as the market trades; whatever it builds is kept for next time.</string>
+    <string name="chart_interval_seconds_note">Bars under a minute are built from the live price stream on this phone. The chart opens empty the first time and fills with every trade, and whatever it builds is kept for next time.</string>
     <string name="chart_hub_more">More</string>
     <string name="chart_hub_help">Help Center</string>
     <string name="chart_hub_trade">Trade with your broker</string>

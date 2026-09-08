@@ -40,6 +40,7 @@ import com.coinepro.core.academy.QuizResult
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProPageHeading
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -104,11 +105,7 @@ fun LessonScreen(
                     // The route hands back a path with a three-hour student-bound token, and a
                     // player that cannot present that token would fail in a way that looks like a
                     // broken video rather than a missing feature.
-                    Text(
-                        text = stringResource(R.string.academy_video_note),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = CoineProColors.TextMuted,
-                    )
+                    CoineProNote(R.string.academy_video_note, style = MaterialTheme.typography.bodySmall)
                 }
 
                 Text(

@@ -59,6 +59,7 @@ import com.coinepro.core.designsystem.CoineProHeroFigure
 import com.coinepro.core.designsystem.CoineProReading
 import com.coinepro.core.designsystem.CoineProReadingRow
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProTextStyles
@@ -377,11 +378,7 @@ private fun SignalContent(
                     onClick = { onExecute(signal.id) },
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Text(
-                    text = stringResource(R.string.detail_execute_note),
-                    color = CoineProColors.TextMuted,
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                CoineProNote(R.string.detail_execute_note, style = MaterialTheme.typography.bodySmall)
             } else if (onOpenCopyTrading != null) {
                 // Says how this signal reaches an account here, which is not by pressing anything
                 // on this screen. Without it the absence of a button reads as an omission.

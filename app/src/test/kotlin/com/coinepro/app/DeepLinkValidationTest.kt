@@ -40,7 +40,7 @@ class DeepLinkValidationTest {
         val token = "a".repeat(32)
         assertEquals(
             CoineProDeepLink.PasswordReset(token),
-            parseCoineProDeepLink("https", "user.tradeyar.trade-future.ir", listOf("reset"), token),
+            parseCoineProDeepLink("https", "pro-chart.com", listOf("reset"), token),
         )
 
         // Another host may serve the same path; nobody proved it belongs to this app.
@@ -48,11 +48,11 @@ class DeepLinkValidationTest {
         // A custom scheme any installed app may register is not somewhere to accept a credential.
         assertNull(parseCoineProDeepLink("coinepro", "reset", listOf("reset"), token))
         // The App Link claims /reset only; the rest of that site stays in the browser.
-        assertNull(parseCoineProDeepLink("https", "user.tradeyar.trade-future.ir", listOf("login"), token))
-        assertNull(parseCoineProDeepLink("https", "user.tradeyar.trade-future.ir", listOf("reset"), null))
-        assertNull(parseCoineProDeepLink("https", "user.tradeyar.trade-future.ir", listOf("reset"), "short"))
+        assertNull(parseCoineProDeepLink("https", "pro-chart.com", listOf("login"), token))
+        assertNull(parseCoineProDeepLink("https", "pro-chart.com", listOf("reset"), null))
+        assertNull(parseCoineProDeepLink("https", "pro-chart.com", listOf("reset"), "short"))
         assertNull(
-            parseCoineProDeepLink("https", "user.tradeyar.trade-future.ir", listOf("reset"), "$token <script>"),
+            parseCoineProDeepLink("https", "pro-chart.com", listOf("reset"), "$token <script>"),
         )
     }
 }

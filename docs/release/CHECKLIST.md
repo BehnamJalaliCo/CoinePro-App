@@ -44,7 +44,7 @@ everything marked **CI**; the rest is a person with the owner's material.
 
 ## App Links and deep links
 
-- [ ] `docs/release/APP_LINKS.md`: `assetlinks.json` on `coineprofx.com` carries the release
+- [ ] `docs/release/APP_LINKS.md`: `assetlinks.json` on `pro-chart.com` and `coineprofx.com` carries the release
       certificate's SHA-256; `adb shell pm get-app-links com.coinepro.app` shows `verified`.
 - [ ] `coinepro://market/<ticker>`, `coinepro://signal/<id>`, `coinepro://activity` open the right
       screen from a cold start (`DeepLinkValidation` refuses anything else).
@@ -72,7 +72,7 @@ everything marked **CI**; the rest is a person with the owner's material.
 
 ## Hosts the 4.41.0 build points at
 
-- **Legal pages** live on the brand's host: `BrandConfig.LEGAL_BASE_URL = https://coineprofx.com/legal`,
+- **Legal pages** live on the brand's host: `BrandConfig.LEGAL_BASE_URL = https://pro-chart.com/legal`,
   so `/legal/terms/`, `/legal/privacy/` and `/legal/delete-account/` must be served there (the
   markdown is `docs/legal/`; the in-app copies are synced by `sync-legal-documents.py`). The
   GitHub Pages copies can redirect.

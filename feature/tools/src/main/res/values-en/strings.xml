@@ -49,7 +49,7 @@
     <string name="tools_reset">Reset inputs</string>
     <string name="tools_enter_all">Enter every input. Results update locally as values change.</string>
     <string name="tools_connected">Online tools</string>
-    <string name="tools_connected_body">These run on live data from the server; the calculators run on the phone.</string>
+    <string name="tools_connected_body">These run on live data; the calculators run on the phone.</string>
     <string name="tools_news_title">Market news</string>
     <string name="tools_news_open">Open news</string>
     <string name="tools_calendar_title">Economic calendar</string>

@@ -20,7 +20,7 @@
     <string name="dom_unavailable_feed">This feed does not publish order-book data.</string>
     <string name="dom_unavailable_feed_hint">The MetaTrader 5 broker does not publish Level II. Until it does, there is no order book for this market.</string>
     <string name="dom_unavailable_endpoint">The order book for this market is not available yet.</string>
-    <string name="dom_unavailable_endpoint_hint">The server does not offer the order book yet. Once it is updated, this screen works without any change to the app.</string>
+    <string name="dom_unavailable_endpoint_hint">The order book is not offered for this market yet. Once it is, this screen works without any change to the app.</string>
     <string name="dom_unavailable_symbol">This market has no order book on this platform.</string>
     <string name="dom_unavailable_symbol_hint">The symbol requested is outside this platform\'s list of markets. Trying again will not help; open a different market from the list.</string>
     <string name="dom_unavailable_delisted">This market has been removed by the exchange.</string>
@@ -31,9 +31,9 @@
     <string name="dom_failed">The order book is unavailable.</string>
     <string name="dom_failed_hint">Check the connection and load it again.</string>
     <string name="dom_outage_exchange">The exchange is not responding right now.</string>
-    <string name="dom_outage_exchange_hint">Your connection and the server are both fine; it is the exchange that is unreachable. Try again shortly.</string>
-    <string name="dom_outage_relay">The server is not ready to pass the book on yet.</string>
-    <string name="dom_outage_relay_hint">The problem is on the server and there is nothing to do at your end. Try again shortly.</string>
+    <string name="dom_outage_exchange_hint">Your connection is fine; it is the exchange that is unreachable. Try again shortly.</string>
+    <string name="dom_outage_relay">The order book is temporarily unavailable.</string>
+    <string name="dom_outage_relay_hint">The problem is not at your end. Try again shortly.</string>
     <string name="dom_retry">Try again</string>
 
     <string name="dom_empty">There are no resting orders right now.</string>

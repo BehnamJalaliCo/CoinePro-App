@@ -121,7 +121,7 @@ Play asks for.
 | Question | Answer |
 | --- | --- |
 | In-app deletion | **Yes** — Settings → Delete account. Both servers serve it; the app hides the button where a deployment reports `accountDeletion: false`, so it is never a button that does nothing. |
-| Web deletion URL | `https://coineprofx.com/legal/delete-account/` |
+| Web deletion URL | `https://pro-chart.com/legal/delete-account/` — **only once the host serves it**; until then `https://coineprofx.com/legal/delete-account/` (see `docs/release/DOMAINS.md`) |
 
 The web page requires no sign-in, which is what Play checks for.
 
@@ -202,9 +202,9 @@ than a demo account: a credential can expire between submission and review, and 
 | Field | Value |
 | --- | --- |
 | Email | `behnamjalali88@gmail.com` |
-| Website | `https://coineprofx.com/` |
-| Privacy policy URL | `https://coineprofx.com/legal/privacy/` |
-| Terms URL | `https://coineprofx.com/legal/terms/` |
+| Website | `https://pro-chart.com/` — once live; `https://coineprofx.com/` until then |
+| Privacy policy URL | `https://pro-chart.com/legal/privacy/` — once live; the store rejects a URL that does not answer, so `https://coineprofx.com/legal/privacy/` until then |
+| Terms URL | `https://pro-chart.com/legal/terms/` — same rule |
 
 All three pages are live and were checked for a `200` rather than assumed. The English privacy
 policy is at `/privacy/en/` for a reviewer who does not read Persian.

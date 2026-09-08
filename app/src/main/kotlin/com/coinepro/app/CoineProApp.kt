@@ -2813,13 +2813,13 @@ private fun MainShell(
                             // for them as it is for a member.
                             ProfileAction(
                                 label = stringResource(R.string.screen_notifications),
-                                note = stringResource(R.string.profile_action_notifications_note),
+                                noteRes = R.string.profile_action_notifications_note,
                                 icon = CoineProIcons.Bell,
                                 onClick = { navController.navigate(NOTIFICATIONS_ROUTE) },
                             ),
                             ProfileAction(
                                 label = stringResource(R.string.profile_action_safety),
-                                note = stringResource(R.string.profile_action_safety_note),
+                                noteRes = R.string.profile_action_safety_note,
                                 icon = CoineProIcons.Secure,
                                 onClick = { navController.navigate(LAUNCH_READINESS_ROUTE) },
                             ),
@@ -2829,7 +2829,7 @@ private fun MainShell(
                             add(
                                 ProfileAction(
                                     label = stringResource(R.string.screen_membership),
-                                    note = stringResource(R.string.profile_action_membership_note),
+                                    noteRes = R.string.profile_action_membership_note,
                                     icon = CoineProIcons.Wallet,
                                     onClick = { navController.navigate(MEMBERSHIP_ROUTE) },
                                 ),
@@ -2844,7 +2844,7 @@ private fun MainShell(
                             add(
                                 ProfileAction(
                                     label = stringResource(R.string.screen_notifications),
-                                    note = stringResource(R.string.profile_action_notifications_note),
+                                    noteRes = R.string.profile_action_notifications_note,
                                     icon = CoineProIcons.Bell,
                                     onClick = { navController.navigate(NOTIFICATIONS_ROUTE) },
                                 ),
@@ -2899,7 +2899,7 @@ private fun MainShell(
                             add(
                                 ProfileAction(
                                     label = stringResource(R.string.profile_action_support),
-                                    note = stringResource(R.string.profile_action_support_note),
+                                    noteRes = R.string.profile_action_support_note,
                                     icon = CoineProIcons.Help,
                                     onClick = onSendFeedback,
                                 ),
@@ -2907,7 +2907,7 @@ private fun MainShell(
                             add(
                                 ProfileAction(
                                     label = stringResource(R.string.profile_action_safety),
-                                    note = stringResource(R.string.profile_action_safety_note),
+                                    noteRes = R.string.profile_action_safety_note,
                                     icon = CoineProIcons.Secure,
                                     onClick = { navController.navigate(LAUNCH_READINESS_ROUTE) },
                                 ),

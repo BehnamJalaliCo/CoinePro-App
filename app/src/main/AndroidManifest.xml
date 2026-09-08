@@ -96,7 +96,16 @@
                 Correcting the fingerprint later turns the same link into an in-app one with no
                 change here and no change to the email already sent.
 
-                CoinePro-FX's own host joins this list once it is known.
+                The brand host, pro-chart.com, is claimed first (BrandConfig.WEB_HOST): it is
+                where recovery links will come from once the backends move behind it, and
+                claiming it now means that day needs a change to an e-mail template and not a
+                release. Until it serves assetlinks.json the claim simply fails verification and
+                the link opens in the browser — see docs/release/DOMAINS.md.
+
+                TradeYar's own host (user.tradeyar.trade-future.ir) was claimed here until 4.47.0
+                and is not any more: the store manifest names the brand's host and the API hosts
+                it talks to, nothing else. That backend's recovery e-mail still works in the
+                browser.
             -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
@@ -104,12 +113,13 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="https"
-                    android:host="user.tradeyar.trade-future.ir"
+                    android:host="pro-chart.com"
                     android:pathPrefix="/reset" />
                 <!--
                     CoinePro-FX's own recovery link, on its API host. The path differs from
-                    TradeYar's because the two web apps spell it differently; both are named
-                    exactly, because verification is per host and a pattern host is not verified.
+                    the brand host's because the two web apps spell it differently; both are
+                    named exactly, because verification is per host and a pattern host is not
+                    verified.
 
                     Note that the app's *own* recovery flow is not a link at all — it mails a code
                     that the reader types back. This filter is for somebody who opens the web

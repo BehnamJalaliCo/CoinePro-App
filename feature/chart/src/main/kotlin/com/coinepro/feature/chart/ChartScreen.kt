@@ -151,6 +151,7 @@ import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProMotionSpecs
 import com.coinepro.core.designsystem.CoineProConfirmDialog
 import com.coinepro.core.designsystem.CoineProIcons
@@ -3310,11 +3311,7 @@ private fun SecondsIntervalSection(selected: ChartInterval, onSelect: (ChartInte
             )
         }
     }
-    Text(
-        text = stringResource(R.string.chart_interval_seconds_note),
-        style = MaterialTheme.typography.bodySmall,
-        color = CoineProColors.TextMuted,
-    )
+    CoineProNote(R.string.chart_interval_seconds_note, style = MaterialTheme.typography.bodySmall)
     HorizontalDivider(color = CoineProColors.Border)
 }
 

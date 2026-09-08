@@ -12,6 +12,7 @@ import androidx.compose.ui.res.stringResource
 import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.datastore.ThemeMode
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.CoineProSpacing
 
@@ -64,10 +65,9 @@ fun AppearanceQuickRow(
         // The one thing a reader has to be told before they press it, and the reason it is one
         // line here rather than the sheet's paragraph: the activity restarts, because the locale
         // is applied in `attachBaseContext` and nothing already composed would pick it up.
-        Text(
-            text = stringResource(R.string.appearance_language_note),
+        CoineProNote(
+            R.string.appearance_language_note,
             style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextMuted,
             modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.Half),
         )
     }

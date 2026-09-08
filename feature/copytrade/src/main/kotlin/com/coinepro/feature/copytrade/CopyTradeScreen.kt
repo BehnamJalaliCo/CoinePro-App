@@ -41,6 +41,7 @@ import com.coinepro.core.copytrade.CopyPreferences
 import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
@@ -434,11 +435,10 @@ private fun TermsCard(preferences: CopyPreferences) {
                     ?: stringResource(R.string.copy_symbols_all),
             )
         }
-        Text(
-            text = stringResource(R.string.copy_terms_note),
+        CoineProNote(
+            R.string.copy_terms_note,
             modifier = Modifier.padding(top = CoineProSpacing.One),
             style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextMuted,
         )
     }
 }
@@ -532,11 +532,10 @@ private fun EventsCard(events: List<CopyExecutionEvent>) {
             style = MaterialTheme.typography.titleSmall,
             color = CoineProColors.TextPrimary,
         )
-        Text(
-            text = stringResource(R.string.copy_events_note),
+        CoineProNote(
+            R.string.copy_events_note,
             modifier = Modifier.padding(top = 4.dp),
             style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextMuted,
         )
         if (events.isEmpty()) {
             Text(

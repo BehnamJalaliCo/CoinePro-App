@@ -11,8 +11,8 @@
     <string name="ai_group_how">ستاپ چطور شکل بگیرد</string>
     <string name="ai_group_size">اندازه‌ی پوزیشن</string>
     <string name="ai_group_how_hint">هر گزینه‌ای که انتخاب نکنید، تصمیمش با مدل است. برای برداشتن انتخاب، دوباره روی همان بزنید.</string>
-    <string name="ai_group_size_hint">این سه اختیاری‌اند. اگر موجودی و درصد ریسک بدهید، سرور حجم پیشنهادی را حساب می‌کند؛ اگر ندهید، حجمی پیشنهاد نمی‌شود.</string>
-    <string name="ai_group_size_hint_no_lot">این دو اختیاری‌اند. اگر موجودی و درصد ریسک بدهید، سرور اندازه‌ی پیشنهادی را حساب می‌کند؛ اگر ندهید، اندازه‌ای پیشنهاد نمی‌شود. لات مالِ متاتریدر است و این پلتفرم آن را نمی‌پذیرد.</string>
+    <string name="ai_group_size_hint">این سه اختیاری‌اند. اگر موجودی و درصد ریسک بدهید، حجم پیشنهادی حساب می‌شود؛ اگر ندهید، حجمی پیشنهاد نمی‌شود.</string>
+    <string name="ai_group_size_hint_no_lot">این دو اختیاری‌اند. اگر موجودی و درصد ریسک بدهید، اندازه‌ی پیشنهادی حساب می‌شود؛ اگر ندهید، اندازه‌ای پیشنهاد نمی‌شود. لات مالِ متاتریدر است و این پلتفرم آن را نمی‌پذیرد.</string>
 
     <string name="ai_symbol">نماد</string>
     <string name="ai_symbol_change">تغییر نماد</string>
@@ -20,7 +20,7 @@
     <string name="ai_symbol_search">جست‌وجوی نماد یا نام</string>
     <string name="ai_symbol_none">نمادی با این جست‌وجو پیدا نشد</string>
     <string name="ai_symbol_category">دسته</string>
-    <string name="ai_symbol_source_server">%1$s نماد — فهرستی که سرور پذیرفته است</string>
+    <string name="ai_symbol_source_server">%1$s نماد پشتیبانی‌شده</string>
     <string name="ai_symbol_source_catalogue">%1$s نماد — همه‌ی بازارهایی که این پلتفرم می‌دهد</string>
     <string name="ai_symbol_source_fallback">%1$s نماد — فهرست بازارها هنوز نیامده؛ فعلاً همین‌ها در دسترس است</string>
     <string name="ai_symbol_loading">در حال گرفتن فهرست بازارها…</string>
@@ -33,9 +33,9 @@
     <string name="ai_category_other">سایر</string>
 
     <string name="ai_timeframe">تایم‌فریم</string>
-    <string name="ai_timeframe_server_note">این بازه‌ها همان‌هایی‌اند که سرور اعلام کرده می‌پذیرد.</string>
-    <string name="ai_timeframe_scope_note">چارت بازه‌های بیشتری دارد، چون خودش آن‌ها را از کندل ریزتر می‌سازد. این درخواست را سرور اجرا می‌کند و فقط همین بازه‌ها را می‌شناسد.</string>
-    <string name="ai_timeframe_unknown">سرور تایم‌فریم %1$s را هم اعلام کرده که این نسخه‌ی اپ آن را نمی‌شناسد.</string>
+    <string name="ai_timeframe_server_note">فقط این بازه‌ها برای تحلیل پشتیبانی می‌شوند.</string>
+    <string name="ai_timeframe_scope_note">چارت بازه‌های بیشتری دارد، چون خودش آن‌ها را از کندل ریزتر می‌سازد. تحلیل فقط همین بازه‌ها را می‌شناسد.</string>
+    <string name="ai_timeframe_unknown">تایم‌فریم %1$s هم پشتیبانی می‌شود، ولی این نسخه‌ی اپ آن را نمی‌شناسد.</string>
 
     <string name="ai_trade_style">سبک معامله</string>
     <string name="ai_risk_appetite">اشتهای ریسک</string>
@@ -60,7 +60,7 @@
 
     <string name="ai_generate">ساخت ستاپ</string>
     <string name="ai_analysing">در حال تحلیل…</string>
-    <string name="ai_working_body">درخواست روی سرور در حال پردازش است. مدت آن از پیش مشخص نیست، پس درصد پیشرفت نشان داده نمی‌شود.</string>
+    <string name="ai_working_body">درخواست در حال پردازش است. مدت آن از پیش مشخص نیست، پس درصد پیشرفت نشان داده نمی‌شود.</string>
     <string name="ai_unavailable">ساخت ستاپ روی این حساب فعال نیست.</string>
 
     <string name="ai_entry">ورود</string>
@@ -92,17 +92,17 @@
     <string name="ai_evidence_footnote">این مقادیر همان چیزی است که به مدل داده شد. مقدار محاسبه‌نشده «—» نشان داده می‌شود، نه صفر.</string>
     <string name="ai_reading_missing">—</string>
 
-    <string name="ai_error_rejected">سرور این درخواست را نپذیرفت. یکی از پارامترها را عوض کنید و دوباره بفرستید.</string>
-    <string name="ai_error_rejected_field">سرور این درخواست را نپذیرفت و «%1$s» را ایراد گرفت.</string>
+    <string name="ai_error_rejected">این درخواست پذیرفته نشد. یکی از پارامترها را عوض کنید و دوباره بفرستید.</string>
+    <string name="ai_error_rejected_field">این درخواست پذیرفته نشد؛ «%1$s» ایراد دارد.</string>
     <string name="ai_error_entitlement">این بخش به اشتراک فعال نیاز دارد.</string>
     <string name="ai_error_quota">سهمیه‌ی امروز تمام شده است.</string>
     <string name="ai_error_quota_reset">سهمیه‌ی امروز تمام شده است. %1$s تازه می‌شود.</string>
-    <string name="ai_error_expired">این درخواست روی سرور منقضی شد. دوباره بفرستید.</string>
+    <string name="ai_error_expired">این درخواست منقضی شد. دوباره بفرستید.</string>
     <string name="ai_error_failed">مدل نتوانست ستاپی بسازد. دوباره بفرستید یا پارامترها را عوض کنید.</string>
-    <string name="ai_error_unusable">سرور نتیجه‌ای برگرداند که سطوح لازم را ندارد و قابل خواندن نیست.</string>
+    <string name="ai_error_unusable">نتیجه سطوح لازم را ندارد و قابل خواندن نیست.</string>
     <string name="ai_error_symbol">این نماد معتبر نیست. یک نماد از فهرست انتخاب کنید.</string>
     <string name="ai_error_quota_unknown">سهمیه‌ی امروز خوانده نشد. اتصال را بررسی کنید و دوباره تلاش کنید.</string>
-    <string name="ai_error_network">پاسخی از سرور نرسید. اتصال را بررسی کنید و دوباره تلاش کنید.</string>
+    <string name="ai_error_network">پاسخی نرسید. اتصال را بررسی کنید و دوباره تلاش کنید.</string>
     <string name="ai_error_code">کد خطا: %1$s</string>
 
     <string name="ai_chart_analysis_title">تحلیل تصویر چارت</string>

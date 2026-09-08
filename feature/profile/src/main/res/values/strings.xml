@@ -6,7 +6,7 @@
     <string name="profile_avatar_description">تصویر نیمرخ شما</string>
     <string name="profile_edit_avatar">تغییر تصویر</string>
     <string name="profile_account_section">حساب</string>
-    <string name="profile_local_note">نام، تصویر و توضیح شما فقط روی همین گوشی ذخیره می‌شود و به هیچ سروری فرستاده نمی‌شود. با حذف یا نصب دوباره‌ی برنامه از بین می‌رود.</string>
+    <string name="profile_local_note">نام، تصویر و توضیح شما فقط روی همین گوشی ذخیره می‌شود. با حذف یا نصب دوباره‌ی برنامه از بین می‌رود.</string>
 
     <string name="profile_signin_title">حساب بسازید، اگر خواستید</string>
     <string name="profile_signin_body">بازارها، چارت حرفه‌ای، جست‌وجو، ژورنال معاملات، معامله‌ی آزمایشی و نمااسکریپت بدون حساب کار می‌کنند. حساب فقط سیگنال‌ها، هوش مصنوعی، کیف پول و کپی‌ترید را اضافه می‌کند.</string>
@@ -67,7 +67,7 @@
     <string name="profile_session_section">خروج و حذف</string>
 
     <string name="profile_fact_unknown">نامشخص</string>
-    <string name="profile_library_note">این‌ها روی همین گوشی ذخیره می‌شوند و به هیچ سروری فرستاده نمی‌شوند؛ با حذف برنامه از بین می‌روند و روی گوشی دیگر نیستند.</string>
+    <string name="profile_library_note">این‌ها فقط روی همین گوشی ذخیره می‌شوند؛ با حذف برنامه از بین می‌روند و روی گوشی دیگر نیستند.</string>
 
     <string name="profile_standing_membership">عضویت</string>
     <string name="profile_standing_verification">احراز هویت</string>

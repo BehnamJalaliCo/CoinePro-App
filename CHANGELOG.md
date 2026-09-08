@@ -15,6 +15,44 @@ it is for.
 
 ---
 
+## [4.47.0] — 2026-09-08 — The app stops talking about its servers, and stops explaining itself under every switch
+
+The first section of the owner's «Pro Chart — chart, NamaScript, tablet, web» plan: copy hygiene,
+done before any module moves so that the strings the modules carry are already the right ones.
+
+### Changed
+- **«سرور» / “server” is gone from user-facing copy.** A hundred Persian and a hundred English
+  strings that said where a thing was computed now say what the reader is waiting on, or nothing:
+  «هشدار روی حساب شما بررسی می‌شود», not «سرور بررسی می‌کند». The exceptions are the ones the plan
+  names — the Safety & version screen, the admin panel, and the MetaTrader 5 «سرور» field, which is
+  the word the terminal itself uses.
+- **A note under an option is now an ⓘ unless not reading it costs something.** Of the 258
+  `_note` / `_hint` / `_body` strings, 44 stay inline — every one prevents a real mistake: money
+  (copy trading, the MetaTrader credentials, the paper-trade assumptions), deletion (the three
+  confirm dialogs, what deleting the account keeps), security (the app lock, the webhook secret,
+  the password rule), permissions (notifications, the camera). The other subtitles fold into an ⓘ
+  with the same text in a tooltip, one tap away. The catalogue descriptions, empty-state bodies,
+  notification-channel descriptions and field labels that happen to share the suffix are
+  classified as what they are and left alone. The policy is `NotePolicy` in `core/designsystem`,
+  the registry is `tools/i18n/notes.tsv`, and the string lint fails on a new note key that is not
+  registered, on a `visible` list over sixty, on the registry and the policy disagreeing, and on
+  feature code resolving a demoted key to a string instead of handing it to `CoineProNote`.
+- **The brand host is `pro-chart.com`.** `BrandConfig.WEB_HOST`, `WEB_URL` and `LEGAL_BASE_URL`
+  point there; the four legal documents' own links do too; the manifest claims
+  `https://pro-chart.com/reset` as an App Link and `print-assetlinks.sh` prints its file. The host
+  does not serve yet — `docs/release/DOMAINS.md` says what has to go there, in what order, and why
+  the Play listing keeps the `coineprofx.com` URLs until it does. The API hosts do not move.
+
+### Removed
+- **`user.tradeyar.trade-future.ir` from the store manifest**, from `DeepLinkValidation.kt` and
+  from the assetlinks script. That backend's recovery e-mail opens the browser now, which works.
+  `docs/release/APP_LINKS.md` records the reversal of the earlier decision to keep it.
+
+### Not done, and why
+- The plan says English is the default locale and Persian the translation. The app's standing rule
+  (CLAUDE.md) says the opposite — Persian in `values/`, English in `values-en/` — and the rule
+  predates the plan, so the locales were not inverted. Everything else in §0 is done.
+
 ## [4.46.1] — 2026-09-05 — The markets screen stops blaming a search nobody made
 
 ### Fixed

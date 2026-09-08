@@ -34,7 +34,7 @@
     <string name="copy_server">سرور</string>
     <string name="copy_login">شماره‌ی حساب</string>
     <string name="copy_password">رمز حساب</string>
-    <string name="copy_password_warning">این رمز به سرور فرستاده می‌شود تا ترمینال بتواند به حساب شما وارد شود. رمز «سرمایه‌گذار» (Investor) برای این کار کافی نیست و باید رمز اصلی حساب معاملاتی را وارد کنید — پس با همان دقتی که با یک رمز واقعی رفتار می‌کنید وارد کنید.</string>
+    <string name="copy_password_warning">این رمز برای ورود ترمینال به حساب شما لازم است. رمز «سرمایه‌گذار» (Investor) کافی نیست و باید رمز اصلی حساب معاملاتی را وارد کنید — پس با همان دقتی که با یک رمز واقعی رفتار می‌کنید وارد کنید.</string>
     <string name="copy_link">وصل کردن حساب</string>
     <string name="copy_unlink">جدا کردن حساب</string>
     <string name="copy_linking">در حال وصل کردن…</string>

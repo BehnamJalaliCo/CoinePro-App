@@ -13,10 +13,10 @@
     <string name="news_refreshing">Refreshing source timestamps…</string>
     <string name="news_newest">Newest story in this list: %1$s</string>
     <string name="news_refresh_failed">Last refresh failed — newest story in this list: %1$s</string>
-    <string name="news_none_readable">The server sent %1$s stories and none arrived in a shape this version can read.</string>
-    <string name="news_none_readable_hint">This is not an outage, it is a format mismatch. Take a diagnostics export and send it: the server\'s own field names and date format are recorded in it.</string>
-    <string name="news_partly_readable">%1$s of the %2$s stories the server sent could be read.</string>
-    <string name="news_timestamp_note">Publication times are normalised from the server ISO timestamps.</string>
+    <string name="news_none_readable">Headlines cannot be shown right now.</string>
+    <string name="news_none_readable_hint">This is not an outage; the stories arrived in a shape this version cannot read. Updating the app, or a report from the Safety &amp; version screen, resolves it.</string>
+    <string name="news_partly_readable">%1$s of %2$s stories could be read.</string>
+    <string name="news_timestamp_note">Publication times are shown in your device time.</string>
     <string name="news_stale">Stale</string>
     <string name="news_relevance_gold">Gold</string>
     <string name="news_relevance_silver">Silver</string>
@@ -39,7 +39,7 @@
     <string name="news_save">Save to your profile</string>
     <string name="news_unsave">Remove from saved</string>
     <string name="news_image_of">Picture for: %1$s</string>
-    <string name="news_no_summary">The server sent no summary for this story.</string>
+    <string name="news_no_summary">This story has no summary.</string>
     <string name="news_summary_is_all">What you have just read is the whole of the text the source published.</string>
     <string name="news_published_by">Published by %1$s</string>
     <string name="news_open_source">The source\'s page</string>
@@ -69,7 +69,7 @@
     <string name="announcements_loading">Reading the announcements…</string>
     <string name="announcements_empty">Nothing has been announced yet.</string>
     <string name="announcements_empty_hint">This is not a feed and it does not fill itself; it fills when we have something to say — a service outage, a new version, a new market, a change to how membership works. Whatever is written here stays, even if you miss the notification. Its being empty means nothing has been said, not that something is broken.</string>
-    <string name="announcements_offline">The announcements could not be read; the device did not reach the server.</string>
+    <string name="announcements_offline">Could not connect. Announcements will update later.</string>
     <string name="announcements_unavailable">The announcements service did not answer.</string>
     <string name="announcements_retry">Try again</string>
     <string name="announcements_refresh_failed">The refresh did not go through; what you see is the last that was read.</string>

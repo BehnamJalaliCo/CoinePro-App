@@ -1,5 +1,6 @@
 package com.coinepro.feature.notifications
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -32,6 +33,7 @@ import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPageHeading
 import com.coinepro.core.designsystem.CoineProPress
@@ -163,10 +165,9 @@ fun NotificationSettingsScreen(
         }
 
         item {
-            Text(
-                text = stringRes(R.string.notifications_channel_note),
+            CoineProNote(
+                R.string.notifications_channel_note,
                 style = MaterialTheme.typography.bodySmall,
-                color = CoineProColors.TextMuted,
                 modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
             )
         }
@@ -273,7 +274,7 @@ private fun MasterCard(settings: NotificationSettings, onSetEnabled: (Boolean) -
     CoineProCard(modifier = Modifier.fillMaxWidth().padding(horizontal = CoineProSpacing.Gutter)) {
         CategoryRow(
             label = stringRes(R.string.notifications_master),
-            note = stringRes(R.string.notifications_master_note),
+            noteRes = R.string.notifications_master_note,
             checked = settings.enabled,
             enabled = true,
             onChange = onSetEnabled,
@@ -299,7 +300,7 @@ private fun QuietHoursCard(
         Column {
             CategoryRow(
                 label = stringRes(R.string.notifications_quiet),
-                note = stringRes(R.string.notifications_quiet_note),
+                noteRes = R.string.notifications_quiet_note,
                 checked = quiet.enabled,
                 enabled = settings.enabled,
                 onChange = { on -> onSet(on, quiet.fromMinuteOfDay, quiet.toMinuteOfDay) },
@@ -453,11 +454,7 @@ private fun LocalAlertsCard(
                 onClick = onAdd,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Text(
-                text = stringRes(R.string.notifications_alerts_local_note),
-                style = MaterialTheme.typography.bodySmall,
-                color = CoineProColors.TextMuted,
-            )
+            CoineProNote(R.string.notifications_alerts_local_note, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -538,11 +535,14 @@ private fun alertSentence(alert: LocalPriceAlert): String {
 @Composable
 private fun CategoryRow(
     label: String,
-    note: String,
     checked: Boolean,
     enabled: Boolean,
     onChange: (Boolean) -> Unit,
     padded: Boolean = true,
+    /** The line under the label, as words the caller already resolved. */
+    note: String? = null,
+    /** The same line by id, so that the note policy decides whether it is words or an ⓘ. */
+    @StringRes noteRes: Int? = null,
 ) {
     Row(
         modifier = Modifier
@@ -560,11 +560,14 @@ private fun CategoryRow(
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (enabled) CoineProColors.TextPrimary else CoineProColors.TextDisabled,
             )
-            Text(
-                text = note,
-                style = MaterialTheme.typography.bodySmall,
-                color = CoineProColors.TextMuted,
-            )
+            note?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = CoineProColors.TextMuted,
+                )
+            }
+            noteRes?.let { CoineProNote(it, style = MaterialTheme.typography.bodySmall) }
         }
         Switch(
             checked = checked,

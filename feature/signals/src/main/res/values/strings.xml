@@ -2,7 +2,7 @@
 <!-- Default language: Persian. Numbers stay Latin so prices match broker and exchange terminals. -->
 <resources>
     <string name="signals_title">سیگنال‌ها</string>
-    <string name="signals_subtitle">موقعیت‌های قابل اجرا با ورود، حد ضرر و اهداف، بر پایه‌ی داده‌های سرور.</string>
+    <string name="signals_subtitle">موقعیت‌های قابل اجرا با ورود، حد ضرر و اهداف.</string>
 
     <string name="signals_market_forex">فارکس</string>
     <string name="signals_market_crypto">کریپتو</string>
@@ -36,5 +36,5 @@
     <string name="signals_empty_active_hint">سیگنال باز اینجا می‌آید؛ همین که میز معاملات یکی منتشر کرد.</string>
     <string name="signals_empty_recent_hint">تازه‌ترین سیگنال‌های منتشرشده اینجا جمع می‌شوند.</string>
     <string name="signals_empty_closed_hint">هر سیگنالی که به هدف یا حد ضرر برسد، اینجا با نتیجه‌اش می‌ماند.</string>
-    <string name="signals_not_shown">%1$s مورد دیگر روی سرور هست که این فهرست جا نداد. در تاریخچه ببینید.</string>
+    <string name="signals_not_shown">%1$s سیگنال دیگر در تاریخچه</string>
 </resources>

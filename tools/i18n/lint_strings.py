@@ -13,7 +13,12 @@ Runs over every `src/main/res/values/strings.xml` (Persian, the default locale) 
   * the hamza-on-heh ezafe (U+0654 / U+06C0) — the app writes «معامله‌ی», not «معاملهٔ»,
   * a space where a ZWNJ belongs («می رود», «آن ها», «بزرگ تر») and «بروز» for «به‌روز»,
   * an exclamation mark or an emoji in English copy (the greeting is the one place for it),
-  * a merged feature description (`feature_*_body`) longer than the row can show.
+  * a merged feature description (`feature_*_body`) longer than the row can show,
+  * the note policy: every `*_note` / `*_hint` / `*_body` key must be registered in
+    `tools/i18n/notes.tsv` with a class; the `visible` class must match `NotePolicy.visible` in
+    `core/designsystem` and stay within its budget; and a key in the `tip` class must never be
+    resolved to a string by feature code (`stringResource(R.string.x_note)`) — it is handed to
+    `CoineProNote(R.string.x_note)`, which decides whether it is drawn or folded into an ⓘ.
 
 Usage: `python3 tools/i18n/lint_strings.py [--root DIR]`. Exit status is the failure count,
 capped at one, so it can sit in the CI gate list beside the other checks.
@@ -135,6 +140,25 @@ PLACEHOLDER = re.compile(r"%(\d+\$)?[sdf]")
 
 FEATURE_BODY_MAX_FA_CHARS = 40
 FEATURE_BODY_MAX_EN_WORDS = 6
+
+# The note policy. Every key ending in one of these suffixes is a subtitle candidate and must be
+# registered with a class; see `core/designsystem/.../CoineProNote.kt` for what the classes mean.
+NOTE_SUFFIX = re.compile(r"_(note|hint|body)$")
+NOTE_REGISTRY = Path("tools/i18n/notes.tsv")
+NOTE_POLICY_SOURCE = Path("core/designsystem/src/main/kotlin/com/coinepro/core/designsystem/CoineProNote.kt")
+NOTE_CLASSES = {
+    "visible",  # drawn inline: prevents a real mistake (money, deletion, security, permissions)
+    "tip",  # folded into ⓘ by CoineProNote
+    "state",  # the body of an empty / error / locked panel — the panel's content, not a subtitle
+    "catalogue",  # a destination's one-line description in the menu, tools and search catalogues
+    "system",  # an Android notification channel description or a notification body
+    "label",  # a misnamed key that is really a field label or placeholder
+    "admin",  # the internal panel, out of the store build
+}
+NOTE_BUDGET = 60
+# A tip-class key resolved to a string in feature code bypasses the policy. These are the calls
+# that do the resolving; passing the bare id to CoineProNote / noteRes is the sanctioned shape.
+NOTE_RESOLVERS = re.compile(r"\b(stringResource|getString|stringRes)\(\s*(?:[A-Za-z]+\.)?R\.string\.([a-z0-9_]+)")
 
 
 # ---------------------------------------------------------------------------------------------
@@ -292,7 +316,87 @@ class Lint:
                 if HAMZA_ON_HEH.search(line):
                     self.fail(path, f"line {number}", "hamza-on-heh ezafe in a Kotlin literal — write «ه‌ی»")
 
+    # -- note policy --------------------------------------------------------------------------
+
+    def load_note_registry(self) -> dict[str, str]:
+        path = self.root / NOTE_REGISTRY
+        if not path.exists():
+            self.fail(path, None, "note registry missing")
+            return {}
+        registry: dict[str, str] = {}
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            if not line.strip() or line.startswith("#"):
+                continue
+            parts = line.split("\t")
+            if len(parts) < 2 or parts[1] not in NOTE_CLASSES:
+                self.fail(path, Entry(parts[0], "", True, number), f"note class must be one of {sorted(NOTE_CLASSES)}")
+                continue
+            registry[parts[0]] = parts[1]
+        return registry
+
+    def load_note_policy(self) -> set[str]:
+        path = self.root / NOTE_POLICY_SOURCE
+        if not path.exists():
+            self.fail(path, None, "NotePolicy source missing")
+            return set()
+        text = path.read_text(encoding="utf-8")
+        match = re.search(r"val visible: Set<String> = setOf\((.*?)\n    \)", text, re.DOTALL)
+        if not match:
+            self.fail(path, None, "NotePolicy.visible not found")
+            return set()
+        return set(re.findall(r'"([a-z0-9_]+)"', match.group(1)))
+
+    def check_note_registry(self, path: Path, entries: dict[str, Entry], registry: dict[str, str], seen: set[str]) -> None:
+        for entry in entries.values():
+            if not NOTE_SUFFIX.search(entry.key):
+                continue
+            seen.add(entry.key)
+            if entry.key not in registry:
+                self.fail(
+                    path,
+                    entry,
+                    "new note key: register it in tools/i18n/notes.tsv — class `tip` unless not reading it "
+                    "costs money, data, security or a permission, in which case `visible` and NotePolicy.visible",
+                )
+
+    def check_note_policy(self, registry: dict[str, str], seen: set[str]) -> None:
+        registry_path = self.root / NOTE_REGISTRY
+        for key in sorted(set(registry) - seen):
+            self.fail(registry_path, Entry(key, "", True, 0), "registered note key no longer exists in any strings.xml")
+        visible = {key for key, klass in registry.items() if klass == "visible"}
+        if len(visible) > NOTE_BUDGET:
+            self.fail(registry_path, None, f"{len(visible)} visible notes; the budget is {NOTE_BUDGET}")
+        policy = self.load_note_policy()
+        policy_path = self.root / NOTE_POLICY_SOURCE
+        for key in sorted(visible - policy):
+            self.fail(registry_path, Entry(key, "", True, 0), "visible in the registry but absent from NotePolicy.visible")
+        for key in sorted(policy - visible):
+            self.fail(policy_path, Entry(key, "", True, 0), "in NotePolicy.visible but not `visible` in tools/i18n/notes.tsv")
+        # A demoted key resolved to a string by feature code is a subtitle that escaped the policy.
+        tips = {key for key, klass in registry.items() if klass == "tip"}
+        for path in self.root.rglob("*.kt"):
+            posix = path.as_posix()
+            if "/build/" in posix or "/src/test/" in posix or "/src/androidTest/" in posix or "/feature/admin/" in posix:
+                continue
+            if path.name == "CoineProNote.kt":
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            for number, line in enumerate(text.splitlines(), start=1):
+                for match in NOTE_RESOLVERS.finditer(line):
+                    key = match.group(2)
+                    if key in tips:
+                        self.fail(
+                            path,
+                            Entry(key, "", True, number),
+                            "tip-class note resolved to a string; pass the id to CoineProNote(...) instead",
+                        )
+
     def run(self) -> int:
+        registry = self.load_note_registry()
+        seen_notes: set[str] = set()
         fa_files = sorted(
             list(self.root.glob("*/src/main/res/values/strings.xml"))
             + list(self.root.glob("*/*/src/main/res/values/strings.xml"))
@@ -310,6 +414,7 @@ class Lint:
                 self.fail(fa_path, None, "module has Persian strings and no values-en/strings.xml")
             self.check_parity(fa_path, fa, en_path, en)
             self.check_orthography(fa_path, fa)
+            self.check_note_registry(fa_path, fa, registry, seen_notes)
             if internal:
                 continue
             self.check_vocabulary(fa_path, fa, "fa")
@@ -320,12 +425,13 @@ class Lint:
                 self.check_english_tone(en_path, en)
                 self.check_feature_bodies(en_path, en, "en")
         self.check_kotlin_literals()
+        self.check_note_policy(registry, seen_notes)
         for failure in self.failures:
             print(failure)
         if self.failures:
             print(f"lint_strings: {len(self.failures)} problem(s) in {len(fa_files)} module(s)", file=sys.stderr)
             return 1
-        print(f"lint_strings: {len(fa_files)} module(s) clean — parity, glossary, register, orthography.")
+        print(f"lint_strings: {len(fa_files)} module(s) clean — parity, glossary, register, orthography, note policy.")
         return 0
 
 

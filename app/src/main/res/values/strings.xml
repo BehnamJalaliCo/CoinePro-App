@@ -111,7 +111,7 @@
     <string name="notify_watchlist_move">نوسان بازارهای ستاره‌دار</string>
     <string name="notify_watchlist_move_note">حرکت غیرعادی در بازارهایی که ستاره زده‌اید — بدون تعیین عدد</string>
     <string name="notify_news">اخبار مهم</string>
-    <string name="notify_news_note">تیترهایی که سرور مهم علامت زده</string>
+    <string name="notify_news_note">تیترهای مهم</string>
     <string name="notify_calendar">تقویم اقتصادی</string>
     <string name="notify_calendar_note">پیش از رویدادهای پراهمیت</string>
     <string name="notify_ai_setup">ستاپ هوش مصنوعی</string>
@@ -179,6 +179,6 @@
     <string name="screen_community">انجمن</string>
     <!-- The community tab on TradeYar, which has no board. Not an outage; a fact about the platform. -->
     <string name="screen_community_thread">گفت‌وگو</string>
-    <string name="auth_google_unavailable">این سرور ورود با گوگل را اعلام کرده اما شناسه‌ی آن را نفرستاده است. با ایمیل وارد شوید.</string>
+    <string name="auth_google_unavailable">ورود با گوگل روی این پلتفرم فعلاً فعال نیست. با ایمیل وارد شوید.</string>
     <string name="auth_google_fingerprint_unknown">نامشخص</string>
 </resources>

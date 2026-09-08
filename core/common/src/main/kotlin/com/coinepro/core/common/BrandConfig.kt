@@ -31,11 +31,31 @@ object BrandConfig {
     /** The URI scheme the app claims for its own links: `coinepro://signal/…`, `coinepro://market/…`. */
     const val SCHEME = "coinepro"
 
-    /** The host password-recovery links arrive from. Declared in the manifest as an App Link too. */
+    /**
+     * The brand's own host: the website, the legal pages, and — once the web terminal exists — the
+     * terminal itself. Owned by the owner, registered, and **not yet serving** (see
+     * `docs/release/DOMAINS.md` for what has to be put there and in what order). The API hosts are
+     * not here: they are deployment addresses, set per build in `app/build.gradle.kts`, and stay on
+     * the backends' own domains until each backend moves.
+     */
+    const val WEB_HOST = "pro-chart.com"
+
+    /** `https://pro-chart.com` — the site, for building a link. No trailing slash. */
+    const val WEB_URL = "https://$WEB_HOST"
+
+    /**
+     * The host password-recovery links arrive from, for the one backend that mails a link rather
+     * than a code. This is CoinePro-FX's own host, not the brand's: the link is whatever that
+     * server puts in its e-mail, and the app can only claim the host the e-mail actually names.
+     * Declared in the manifest as an App Link too. Moves to [WEB_HOST] when that server does.
+     */
     const val RESET_HOST = "coineprofx.com"
 
+    /** The recovery path on the brand host, claimed now so the day the e-mail changes needs no release. */
+    const val WEB_RESET_PATH = "reset"
+
     /** Where the published terms, privacy policy and account-deletion page live. */
-    const val LEGAL_BASE_URL = "https://coineprofx.com/legal"
+    const val LEGAL_BASE_URL = "$WEB_URL/legal"
 
     /** Support, which is a Telegram channel and not an e-mail address. */
     const val SUPPORT_URL = "https://t.me/CoinePro_Admin"

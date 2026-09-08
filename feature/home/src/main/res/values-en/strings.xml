@@ -71,5 +71,5 @@
     <string name="home_market_more">%1$s more markets</string>
     <string name="home_holdings_count">%1$s holdings · portfolio</string>
     <string name="home_shortcut_news">News</string>
-    <string name="home_value_missing_note">No balance has arrived from the server yet.</string>
+    <string name="home_value_missing_note">No balance has arrived yet.</string>
 </resources>

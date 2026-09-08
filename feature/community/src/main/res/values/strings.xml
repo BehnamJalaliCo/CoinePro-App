@@ -57,7 +57,7 @@
 
     <!-- HTTP 200 with rows in the body, none of them in a shape this build can read. Counted rather
          than described, because the count is the whole diagnosis. -->
-    <string name="community_unreadable">سرور %1$s پست فرستاد و هیچ‌کدام به شکلی نبود که این نسخه بتواند بخواند.</string>
+    <string name="community_unreadable">%1$s پست رسید و هیچ‌کدام به شکلی نبود که این نسخه بتواند بخواند.</string>
     <string name="community_unreadable_hint">این قطعی نیست، اختلافِ قالب است. از صفحه‌ی تشخیص خروجی بگیرید و بفرستید.</string>
 
     <string name="community_compose_label">چه چیزی در بازار دیدید؟</string>

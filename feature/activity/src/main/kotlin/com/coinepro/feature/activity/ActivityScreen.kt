@@ -54,6 +54,7 @@ import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.pageAccent
 import com.coinepro.core.designsystem.CoineProHeaderAction
 import com.coinepro.core.designsystem.CoineProListHeader
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProPullToRefresh
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -380,9 +381,9 @@ private fun ActivityHeader(
         // chrome before the first entry is three lines nobody reads twice.
         CoineProListHeader(
             title = stringResource(R.string.activity_headline),
-            subtitle = stringResource(R.string.activity_note),
             modifier = Modifier.padding(horizontal = 0.dp),
             actions = {
+                CoineProNote(R.string.activity_note)
                 CoineProHeaderAction(
                     icon = DesignR.drawable.icon_arrows_clockwise,
                     label = stringResource(if (refreshing) R.string.activity_refreshing else R.string.activity_refresh),
@@ -500,11 +501,7 @@ private fun PerformanceSection(
                 EvidenceCount(stringResource(R.string.activity_breakeven), summary.breakeven, CoineProColors.Silver)
                 EvidenceCount(stringResource(R.string.activity_pnl_missing), summary.unknownPnl, CoineProColors.Warning)
             }
-            Text(
-                stringResource(R.string.activity_zero_note),
-                color = CoineProColors.TextMuted,
-                style = MaterialTheme.typography.bodySmall,
-            )
+            CoineProNote(R.string.activity_zero_note, style = MaterialTheme.typography.bodySmall)
         }
     }
 }

@@ -13,9 +13,9 @@
     <string name="message_alert_not_updated">هشدار تغییر نکرد.</string>
     <string name="message_alert_not_deleted">هشدار حذف نشد و همچنان فعال است.</string>
     <string name="message_markets_unavailable">بازارها در دسترس نیستند.</string>
-    <string name="message_ai_job_expired">درخواست روی سرور منقضی شد.</string>
+    <string name="message_ai_job_expired">این درخواست منقضی شد.</string>
     <string name="message_ai_entitlement_required">این بخش به اشتراک فعال نیاز دارد.</string>
-    <string name="message_ai_result_unusable">سرور نتیجه‌ای برگرداند که ساختار معتبری ندارد و قابل باز کردن یا اجرا نیست.</string>
+    <string name="message_ai_result_unusable">نتیجه ساختار معتبری ندارد و قابل باز کردن یا اجرا نیست.</string>
     <string name="message_ai_generation_failed">ساخت سیگنال انجام نشد.</string>
     <string name="message_ai_symbol_unsupported">این نماد پشتیبانی نمی‌شود.</string>
     <string name="message_ai_message_empty">پیش از ارسال، پیامی بنویسید.</string>
@@ -29,8 +29,8 @@
     <string name="field_reveal">نمایش</string>
     <string name="field_hide">پنهان کردن</string>
     <string name="field_clear">پاک کردن</string>
-    <string name="message_session_not_revalidated">نشست ذخیره‌شده هست ولی سرور تأییدش نکرد. تا وقتی سرور در دسترس نباشد، بخش‌های نیازمند حساب قفل می‌مانند.</string>
-    <string name="message_telegram_sign_in_not_configured">ورود با تلگرام روی این سرور تنظیم نشده است.</string>
+    <string name="message_session_not_revalidated">نشست ذخیره‌شده تأیید نشد. تا برقراری اتصال، بخش‌های نیازمند حساب قفل می‌مانند.</string>
+    <string name="message_telegram_sign_in_not_configured">ورود با تلگرام روی این پلتفرم فعال نیست.</string>
     <string name="message_telegram_sign_in_config_unavailable">تنظیمات ورود با تلگرام خوانده نشد. اتصال را بررسی کنید و دوباره امتحان کنید.</string>
     <!-- The rail replaces the bottom bar on a tablet; a screen reader needs to be told that the
          column of five glyphs down the edge of the screen is the app's navigation and not content. -->
@@ -101,13 +101,13 @@
     <string name="teaching_portfolio_pitfall">فقط معامله‌های بسته‌شده در این عددها هستند؛ سود شناور پوزیشن باز شمرده نمی‌شود.</string>
 
     <string name="teaching_connections_lead">حساب صرافی را با کلید API وصل می‌کنی تا سفارش از داخل برنامه ثبت شود.</string>
-    <string name="teaching_connections_pitfall">کلید روی سرور نگه داشته می‌شود و در گوشی ذخیره نمی‌شود؛ دسترسی برداشت هم لازم نیست.</string>
+    <string name="teaching_connections_pitfall">کلید روی گوشی ذخیره نمی‌شود، و دسترسی برداشت هم لازم نیست.</string>
 
     <string name="teaching_membership_lead">وضعیت اشتراکت و اینکه هر پلن کدام بخش‌ها را باز می‌کند.</string>
     <string name="teaching_membership_pitfall">اشتراک دسترسی به بخش‌های برنامه را باز می‌کند، نه سود یا سیگنال تضمینی.</string>
 
-    <string name="teaching_activity_lead">کارنامه‌ی سیگنال‌های بسته و اجراهایی که سرور ثبت کرده است.</string>
-    <string name="teaching_activity_pitfall">هر عددی اینجا از سرور می‌آید؛ چیزی روی گوشی تخمین زده نمی‌شود.</string>
+    <string name="teaching_activity_lead">کارنامه‌ی سیگنال‌های بسته و اجراهای ثبت‌شده‌ی شما.</string>
+    <string name="teaching_activity_pitfall">هر عددی اینجا از حساب شما می‌آید؛ چیزی روی گوشی تخمین زده نمی‌شود.</string>
 
     <string name="teaching_academy_lead">درس‌های کوتاه درباره‌ی بازار و کار با همین برنامه.</string>
     <string name="teaching_academy_pitfall">درس‌ها آموزش‌اند؛ هیچ‌کدام نمادی را برای خرید معرفی نمی‌کند.</string>

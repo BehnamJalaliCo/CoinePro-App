@@ -39,6 +39,8 @@ import com.coinepro.core.copytrade.Mt5LinkStage
 import com.coinepro.core.copytrade.toMt5Link
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProInfoTip
+import com.coinepro.core.designsystem.noteVisible
 import com.coinepro.core.designsystem.CoineProConfirmDialog
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPrimaryButton
@@ -190,10 +192,7 @@ fun ConnectionsScreen(
                 // Under the card, because the question a reader asks after connecting here is what
                 // the connection is actually for and where its result is shown.
                 item {
-                    Caution(
-                        stringResource(R.string.connections_mt5_copy_note),
-                        CoineProColors.TextSecondary,
-                    )
+                    Caution(R.string.connections_mt5_copy_note, CoineProColors.TextSecondary)
                 }
             }
 
@@ -378,10 +377,7 @@ private fun Mt5Card(
                     link.serverNote ?: stringResource(R.string.connections_mt5_locked_default),
                     CoineProColors.Accent,
                 )
-                Caution(
-                    stringResource(R.string.connections_mt5_locked_note),
-                    CoineProColors.TextSecondary,
-                )
+                Caution(R.string.connections_mt5_locked_note, CoineProColors.TextSecondary)
                 if (sent) {
                     Caution(
                         stringResource(R.string.connections_mt5_sent),
@@ -647,6 +643,20 @@ private fun Caution(message: String, accent: Color = CoineProColors.Warning) {
         style = MaterialTheme.typography.bodySmall,
         color = accent,
     )
+}
+
+/** A caution by id: the note policy decides whether it is the plate or an ⓘ beside the card. */
+@Composable
+private fun Caution(@StringRes id: Int, accent: Color = CoineProColors.Warning) {
+    if (noteVisible(id)) {
+        Caution(stringResource(id), accent)
+    } else {
+        CoineProInfoTip(
+            stringResource(id),
+            modifier = Modifier.padding(horizontal = CoineProSpacing.Two),
+            tint = accent,
+        )
+    }
 }
 
 /**

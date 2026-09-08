@@ -14,7 +14,7 @@
     <string name="heatmap_size_volume">حجم</string>
     <string name="heatmap_size_turnover">گردش</string>
     <string name="heatmap_size_mono">یکسان</string>
-    <string name="heatmap_size_note">اندازه بر پایه‌ی رتبه‌بندی نقدشوندگی خودِ اپ است؛ هیچ‌کدام از دو سرور ارزش بازار نمی‌فرستند.</string>
+    <string name="heatmap_size_note">اندازه بر پایه‌ی رتبه‌بندی نقدشوندگی است، نه ارزش بازار.</string>
     <string name="heatmap_size_volume_note">این فید حجمی نمی‌فرستد، پس اندازه‌ها به رتبه‌بندی نقدشوندگی برمی‌گردند.</string>
 
     <string name="heatmap_colour">رنگ بر پایه</string>

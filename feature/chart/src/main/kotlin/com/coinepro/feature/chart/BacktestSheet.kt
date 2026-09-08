@@ -66,6 +66,7 @@ import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.CoineProShapes
@@ -312,11 +313,7 @@ internal fun ReplayReportBody(report: ReplayReport, modifier: Modifier = Modifie
             ReportTab.LIST -> TradeListTab(report)
         }
 
-        Text(
-            text = stringResource(R.string.replay_report_note),
-            style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextMuted,
-        )
+        CoineProNote(R.string.replay_report_note, style = MaterialTheme.typography.bodySmall)
     }
 }
 

@@ -79,13 +79,13 @@
     <string name="alerts_sound_loud_note">روی خروجی زنگ هشدار پخش می‌شود، با صدای زنگ هشدار گوشی؛ بلندتر از اعلان‌های دیگر.</string>
     <string name="alerts_venue">جای بررسی</string>
     <string name="alerts_venue_device">روی دستگاه</string>
-    <string name="alerts_venue_server">روی سرور</string>
+    <string name="alerts_venue_server">روی حساب</string>
     <string name="alerts_venue_device_note">روی همین گوشی بررسی می‌شود. به حساب کاربری نیاز ندارد، اما برنامه باید نصب باشد و گوشی روشن.</string>
-    <string name="alerts_venue_server_note">سرور بررسی می‌کند و با بسته‌ی برنامه هم ادامه می‌دهد. به حساب کاربری نیاز دارد.</string>
-    <string name="alerts_venue_server_unavailable">سرور فقط قیمت یک نماد را در برابر یک سطح می‌بیند؛ این شرط را باید روی دستگاه بررسی کرد.</string>
-    <string name="alerts_server_refused">سرور این هشدار را نپذیرفت. برای هشدار سروری باید وارد حساب شده باشید. همین هشدار را می‌توانید روی دستگاه بسازید.</string>
-    <string name="alerts_venue_badge">سرور</string>
-    <string name="alerts_audit_server">این هشدار روی سرور بررسی می‌شود، پس رویدادهایش روی این گوشی ثبت نمی‌شود.</string>
+    <string name="alerts_venue_server_note">با بسته‌بودن برنامه هم بررسی می‌شود. به حساب کاربری نیاز دارد.</string>
+    <string name="alerts_venue_server_unavailable">هشدار روی حساب فقط قیمت یک نماد را در برابر یک سطح می‌بیند؛ این شرط را باید روی دستگاه بررسی کرد.</string>
+    <string name="alerts_server_refused">برای ساخت این هشدار باید وارد حساب شده باشید. همین هشدار را می‌توانید روی دستگاه بسازید.</string>
+    <string name="alerts_venue_badge">حساب</string>
+    <string name="alerts_audit_server">این هشدار روی حساب شما بررسی می‌شود، پس رویدادهایش روی این گوشی ثبت نمی‌شود.</string>
 
     <!-- ── webhooks: the sheet behind the alert centre's second header action ─────────── -->
     <string name="webhooks_title">وب‌هوک</string>

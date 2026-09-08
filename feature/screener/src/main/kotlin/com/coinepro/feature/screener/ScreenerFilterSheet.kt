@@ -32,6 +32,7 @@ import com.coinepro.core.common.foldDigitsToLatin
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
@@ -125,11 +126,7 @@ internal fun ScreenerFilterSheet(
                 onSave = onSave,
             )
 
-            Text(
-                text = stringResource(R.string.screener_free_note),
-                style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextMuted,
-            )
+            CoineProNote(R.string.screener_free_note)
 
             CoineProPrimaryButton(
                 text = stringResource(R.string.screener_apply),

@@ -54,6 +54,7 @@ import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.numeric
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
@@ -437,17 +438,10 @@ private fun DepthSummary(book: OrderBook) {
     }
     share?.let {
         ImbalanceMeter(it)
-        Text(
-            // The band is printed with the meter and not left implied. A bid share over twenty
-            // levels and one over the hundred loaded are different claims about the market wearing
-            // the same percent sign, and neither the figure nor the bar can say which it is.
-            text = stringResource(
-                R.string.dom_imbalance_note,
-                OrderBookGateway.IMBALANCE_LEVELS.toPersianDigits(),
-            ),
-            style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.TextMuted,
-        )
+        // The band is printed with the meter and not left implied. A bid share over twenty
+        // levels and one over the hundred loaded are different claims about the market wearing
+        // the same percent sign, and neither the figure nor the bar can say which it is.
+        CoineProNote(R.string.dom_imbalance_note, OrderBookGateway.IMBALANCE_LEVELS.toPersianDigits())
     }
 }
 
@@ -1025,27 +1019,12 @@ private fun DepthFootnotes(showOrdersNote: Boolean, showStepNote: Boolean) {
         // [showOrdersNote] does: a line that appears only while a step is selected explains the
         // feature exactly to the readers who have already found it.
         if (showStepNote) {
-            Text(
-                text = stringResource(R.string.dom_step_note),
-                style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextMuted,
-            )
+            CoineProNote(R.string.dom_step_note)
         }
         if (showOrdersNote) {
-            Text(
-                text = stringResource(
-                    R.string.dom_orders_note,
-                    STACKED_ORDERS_THRESHOLD.toPersianDigits(),
-                ),
-                style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextMuted,
-            )
+            CoineProNote(R.string.dom_orders_note, STACKED_ORDERS_THRESHOLD.toPersianDigits())
         }
-        Text(
-            text = stringResource(R.string.dom_data_note),
-            style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.TextMuted,
-        )
+        CoineProNote(R.string.dom_data_note)
     }
 }
 

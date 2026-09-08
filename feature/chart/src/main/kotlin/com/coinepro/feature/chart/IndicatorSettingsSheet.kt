@@ -34,6 +34,7 @@ import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.chart.IndicatorOption
 import com.coinepro.core.chart.IndicatorPeriodStepper
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSegmentedControl
@@ -157,11 +158,7 @@ internal fun IndicatorSettingsBody(
                             onChange = { next -> onSetPeriod(next) },
                         )
                     }
-                    Text(
-                        text = stringResource(R.string.indicator_settings_length_note),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = CoineProColors.TextMuted,
-                    )
+                    CoineProNote(R.string.indicator_settings_length_note, style = MaterialTheme.typography.bodySmall)
                 }
             }
             IndicatorSettingsTab.STYLE -> {
@@ -231,11 +228,7 @@ internal fun IndicatorSettingsBody(
                             style = MaterialTheme.typography.labelMedium,
                             color = CoineProColors.TextPrimary,
                         )
-                        Text(
-                            text = stringResource(R.string.indicator_settings_show_note),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = CoineProColors.TextMuted,
-                        )
+                        CoineProNote(R.string.indicator_settings_show_note, style = MaterialTheme.typography.bodySmall)
                     }
                     Switch(
                         checked = !hidden,

@@ -1,5 +1,6 @@
 package com.coinepro.feature.alerts
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +36,7 @@ import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPrimaryButton
@@ -482,11 +484,9 @@ private fun DrawingPicker(
                 )
             }
         }
-        Text(
-            text = stringResource(R.string.alerts_drawing_note),
-            style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.TextMuted,
-            textAlign = TextAlign.Right,
+        CoineProNote(
+            R.string.alerts_drawing_note,
+            style = MaterialTheme.typography.labelSmall.copy(textAlign = TextAlign.Right),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.Half),
@@ -578,7 +578,7 @@ private fun ScopeRow(draft: AlertDraft, onSelect: (String?) -> Unit) {
         compact = true,
     )
     if (draft.scopeListId != null) {
-        Note(stringResource(R.string.alerts_scope_list_note))
+        Note(R.string.alerts_scope_list_note)
     }
 }
 
@@ -623,13 +623,11 @@ private fun VenueRow(draft: AlertDraft, serverOffered: Boolean, onSelect: (Alert
         }
     }
     Note(
-        stringResource(
-            when {
-                !serverOffered -> R.string.alerts_venue_server_unavailable
-                draft.venue == AlertVenue.SERVER -> R.string.alerts_venue_server_note
-                else -> R.string.alerts_venue_device_note
-            },
-        ),
+        when {
+            !serverOffered -> R.string.alerts_venue_server_unavailable
+            draft.venue == AlertVenue.SERVER -> R.string.alerts_venue_server_note
+            else -> R.string.alerts_venue_device_note
+        },
     )
 }
 
@@ -668,21 +666,15 @@ private fun LoudnessRow(draft: AlertDraft, onSelect: (AlertLoudness) -> Unit) {
             )
         }
     }
-    Note(
-        stringResource(
-            if (draft.loud) R.string.alerts_sound_loud_note else R.string.alerts_sound_normal_note,
-        ),
-    )
+    Note(if (draft.loud) R.string.alerts_sound_loud_note else R.string.alerts_sound_normal_note)
 }
 
 /** A supporting line under a group of controls. Muted, small, and always the same shape. */
 @Composable
-private fun Note(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelSmall,
-        color = CoineProColors.TextMuted,
-        textAlign = TextAlign.Right,
+private fun Note(@StringRes id: Int) {
+    CoineProNote(
+        id,
+        style = MaterialTheme.typography.labelSmall.copy(textAlign = TextAlign.Right),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = CoineProSpacing.Gutter),

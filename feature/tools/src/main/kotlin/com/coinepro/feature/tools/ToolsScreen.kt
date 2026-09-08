@@ -46,6 +46,7 @@ import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.pageAccent
 import com.coinepro.core.designsystem.CoineProPrimaryButton
@@ -153,7 +154,7 @@ fun ToolsScreen(
             )
         }
         item { CoineProTeachingStrip(TeachingSurface.TOOLS) }
-        item { SectionHeader(stringResource(R.string.tools_risk_group), stringResource(R.string.tools_risk_group_body)) }
+        item { SectionHeader(stringResource(R.string.tools_risk_group), R.string.tools_risk_group_body) }
         items(riskTools.filter { it.servesMarket(platform.marketType) }, key = ToolId::name) { tool ->
             CalculatorCard(
                 tool = tool,
@@ -161,7 +162,7 @@ fun ToolsScreen(
                 onToggle = { expanded = if (expanded == tool) null else tool },
             )
         }
-        item { SectionHeader(stringResource(R.string.tools_pnl_group), stringResource(R.string.tools_pnl_group_body)) }
+        item { SectionHeader(stringResource(R.string.tools_pnl_group), R.string.tools_pnl_group_body) }
         items(pnlTools.filter { it.servesMarket(platform.marketType) }, key = ToolId::name) { tool ->
             CalculatorCard(
                 tool = tool,
@@ -195,8 +196,8 @@ private fun ToolkitHeader(expanded: ToolId?, onQuickOpen: (ToolId) -> Unit) {
     ) {
         Text(stringResource(R.string.tools_eyebrow), color = CoineProColors.Gold, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         Text(stringResource(R.string.tools_headline), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Text(
-            stringResource(R.string.tools_note),
+        CoineProNote(
+            R.string.tools_note,
             color = CoineProColors.TextSecondary,
             style = MaterialTheme.typography.bodyMedium,
         )
@@ -261,13 +262,13 @@ private fun QuickChip(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SectionHeader(title: String, subtitle: String) {
+private fun SectionHeader(title: String, @StringRes subtitleRes: Int) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text(subtitle, color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
+        CoineProNote(subtitleRes, style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -296,8 +297,8 @@ private fun CalculatorCard(tool: ToolId, expanded: Boolean, onToggle: () -> Unit
                         style = MaterialTheme.typography.titleSmall,
                         color = CoineProColors.TextPrimary,
                     )
-                    Text(
-                        text = stringResource(tool.descriptionRes),
+                    CoineProNote(
+                        tool.descriptionRes,
                         color = CoineProColors.TextSecondary,
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -670,7 +671,7 @@ private fun OperationalTools(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(stringResource(R.string.tools_connected), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text(stringResource(R.string.tools_connected_body), color = CoineProColors.TextMuted, style = MaterialTheme.typography.bodySmall)
+        CoineProNote(R.string.tools_connected_body, style = MaterialTheme.typography.bodySmall)
         // First of the four, because it is the only one that needs nothing: no account, no
         // connection, no network. A reader can start keeping a journal on the day they install.
         onOpenPaperTrade?.let {

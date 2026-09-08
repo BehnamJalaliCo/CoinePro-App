@@ -1,6 +1,7 @@
 package com.coinepro.feature.profile
 
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,6 +39,7 @@ import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProGoldRule
 import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProReading
 import com.coinepro.core.designsystem.CoineProReadingRow
@@ -59,6 +61,8 @@ import com.coinepro.core.model.AvatarSpec
 data class ProfileAction(
     val label: String,
     val note: String? = null,
+    /** A note by resource id, so that [com.coinepro.core.designsystem.NotePolicy] decides how it shows. */
+    @StringRes val noteRes: Int? = null,
     val destructive: Boolean = false,
     /**
      * The row's own glyph.
@@ -247,7 +251,7 @@ fun ProfileScreen(
                     // server — there is no route for a watchlist or a chart layout on either
                     // backend — so a reader about to reinstall is entitled to know that before
                     // they do, and not afterwards.
-                    note = stringResource(R.string.profile_library_note),
+                    noteRes = R.string.profile_library_note,
                 )
             }
         }
@@ -295,10 +299,9 @@ fun ProfileScreen(
         }
 
         item {
-            Text(
-                text = stringResource(R.string.profile_local_note),
+            CoineProNote(
+                R.string.profile_local_note,
                 style = MaterialTheme.typography.bodySmall,
-                color = CoineProColors.TextMuted,
                 modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
             )
         }
@@ -423,11 +426,7 @@ private fun SignInInvitation(onSignIn: () -> Unit) {
                 onClick = onSignIn,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Text(
-                text = stringResource(R.string.profile_signin_note),
-                style = MaterialTheme.typography.bodySmall,
-                color = CoineProColors.TextMuted,
-            )
+            CoineProNote(R.string.profile_signin_note, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -471,15 +470,15 @@ private fun IdentityCard(
                 // What this card is *for*, not what it holds. The hero two inches above already
                 // shows the name and the line; repeating them here made the top of the page say
                 // the same thing twice and pushed the account rows below the fold.
-                Text(
-                    text = if (displayName == null && tagline == null) {
-                        stringResource(R.string.profile_identity_unset)
-                    } else {
-                        stringResource(R.string.profile_identity_hint)
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = CoineProColors.TextMuted,
-                )
+                if (displayName == null && tagline == null) {
+                    Text(
+                        text = stringResource(R.string.profile_identity_unset),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CoineProColors.TextMuted,
+                    )
+                } else {
+                    CoineProNote(R.string.profile_identity_hint, style = MaterialTheme.typography.bodySmall)
+                }
             } else {
                 CoineProTextField(
                     value = name,
@@ -559,6 +558,7 @@ private fun ActionRow(action: ProfileAction) {
                     color = CoineProColors.TextMuted,
                 )
             }
+            action.noteRes?.let { CoineProNote(it, style = MaterialTheme.typography.bodySmall) }
         }
         action.value?.let { current ->
             Text(

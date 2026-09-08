@@ -6,7 +6,7 @@ anyway for anyone reading the e-mail on a desktop.
 
 | Host | Serve at | Claims |
 | --- | --- | --- |
-| `user.tradeyar.trade-future.ir` | `/.well-known/assetlinks.json` | `/reset…` |
+| `pro-chart.com` | `/.well-known/assetlinks.json` | `/reset…` |
 | `coineprofx.com` | `/.well-known/assetlinks.json` | `/reset-password…` |
 
 Requirements, all three of which are the usual reasons this silently fails:

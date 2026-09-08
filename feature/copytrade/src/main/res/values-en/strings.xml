@@ -34,7 +34,7 @@
     <string name="copy_server">Server</string>
     <string name="copy_login">Account number</string>
     <string name="copy_password">Account password</string>
-    <string name="copy_password_warning">This password is sent to the server so the terminal can sign into your account. An Investor password is not enough — it has to be the trading account\'s own password, so enter it with the care a real password deserves.</string>
+    <string name="copy_password_warning">This password is what lets the terminal sign into your account. An Investor password is not enough — it has to be the trading account\'s own password, so enter it with the care a real password deserves.</string>
     <string name="copy_link">Link account</string>
     <string name="copy_unlink">Unlink account</string>
     <string name="copy_linking">Linking…</string>

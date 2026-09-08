@@ -17,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import com.coinepro.core.chart.EventKind
 import com.coinepro.core.chart.EventVisibility
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProSpacing
 
 /**
@@ -63,11 +64,7 @@ fun ChartEventSettings(
             style = MaterialTheme.typography.titleSmall,
             color = CoineProColors.TextPrimary,
         )
-        Text(
-            text = stringResource(R.string.chart_events_settings_note),
-            style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextMuted,
-        )
+        CoineProNote(R.string.chart_events_settings_note, style = MaterialTheme.typography.bodySmall)
         notice?.let { reason ->
             Text(
                 text = stringResource(reason.reasonRes()),

@@ -8,17 +8,18 @@ link that could be one tap shorter.
 | Claim | Where it is declared | Who owns the host |
 |---|---|---|
 | `coinepro://signal/…`, `coinepro://activity`, `coinepro://market/…` | `AndroidManifest.xml`, `BrandConfig.SCHEME` | the app; nothing to serve |
+| `https://pro-chart.com/reset` | `AndroidManifest.xml`, `BrandConfig.WEB_HOST` + `WEB_RESET_PATH`, `DeepLinkValidation.kt` | the brand (owner) — see `DOMAINS.md` |
 | `https://coineprofx.com/reset-password` | `AndroidManifest.xml`, `BrandConfig.RESET_HOST`, `DeepLinkValidation.kt` | CoinePro-FX |
-| `https://user.tradeyar.trade-future.ir/reset` | `AndroidManifest.xml` | TradeYar |
 
-## The decision on the TradeYar link
+## The decision on the TradeYar link (revised 4.47.0)
 
-The audit asked for the `.ir` App Link to be removed or gated behind a build flag. It stays: the
-host is the owner's own crypto backend, the link is the one its recovery e-mail already sends, and
-removing the claim would make that e-mail open a browser for readers who have the app. A manifest
-intent filter cannot be switched by a Gradle property without a second manifest source set, and a
-second manifest for one `<data>` line is more surface than the line. If the host ever moves behind a
-brand domain, this is the one place to change and `print-assetlinks.sh` regenerates the file below.
+Until 4.47.0 the manifest also claimed `https://user.tradeyar.trade-future.ir/reset`, on the
+reasoning that the link is the one that backend's recovery e-mail already sends. The owner's
+brand plan reversed that: the store manifest names the brand's host and the API hosts it talks
+to, and nothing else. The claim is gone from the manifest, from `DeepLinkValidation.kt` and from
+`print-assetlinks.sh`. That e-mail's link now opens the browser on every phone, which is where a
+reader without the app was always going to read it, and which works. If TradeYar ever mails a
+`pro-chart.com/reset` link instead, the claim above already covers it.
 
 ## What each host must serve
 
@@ -52,8 +53,10 @@ adb shell pm get-app-links com.coinepro.app
 was not reachable or the fingerprint did not match. Android re-verifies on install and on update;
 after fixing a file, reinstall rather than waiting.
 
-## When the brand domain exists
+## The brand domain
 
-Add `<data android:scheme="https" android:host="<brand-domain>" android:pathPrefix="/reset" />` to the
-same intent filter, update `BrandConfig.RESET_HOST` and `DeepLinkValidation.kt`, and serve the same
-`assetlinks.json` there. The old hosts can stay claimed for as long as their e-mails are in inboxes.
+`pro-chart.com` is claimed already (`BrandConfig.WEB_HOST`), and `DeepLinkValidation.kt` accepts a
+`/reset?token=…` from it. What is missing is the host itself: as of 2026-09-08 it does not answer
+on 80 or 443, so the claim fails verification and the link opens the browser, harmlessly. The
+order of work to make it real is in `docs/release/DOMAINS.md`. `coineprofx.com` stays claimed for
+as long as CoinePro-FX's e-mails name it.

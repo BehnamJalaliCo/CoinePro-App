@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
+import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -51,6 +52,7 @@ import com.coinepro.core.common.foldDigitsToLatin
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProMotionSpecs
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProRangeBar
@@ -216,9 +218,9 @@ fun AiStudioScreen(
                 )
                 AiFootnote(
                     if (state.quota?.timeframes.orEmpty().isNotEmpty()) {
-                        stringResource(R.string.ai_timeframe_server_note)
+                        R.string.ai_timeframe_server_note
                     } else {
-                        stringResource(R.string.ai_timeframe_scope_note)
+                        R.string.ai_timeframe_scope_note
                     },
                 )
                 // A length the server offers that this build has no wire value for. Saying so beats
@@ -264,7 +266,7 @@ fun AiStudioScreen(
                     selected = minRiskReward,
                     onSelect = { minRiskReward = it },
                 )
-                AiFootnote(stringResource(R.string.ai_group_how_hint))
+                AiFootnote(R.string.ai_group_how_hint)
             }
         }
 
@@ -294,13 +296,11 @@ fun AiStudioScreen(
                     onValueChange = { balance = it },
                 )
                 AiFootnote(
-                    stringResource(
-                        if (sizesInLots) {
-                            R.string.ai_group_size_hint
-                        } else {
-                            R.string.ai_group_size_hint_no_lot
-                        },
-                    ),
+                    if (sizesInLots) {
+                        R.string.ai_group_size_hint
+                    } else {
+                        R.string.ai_group_size_hint_no_lot
+                    },
                 )
             }
         }
@@ -791,6 +791,12 @@ private fun AiFootnote(text: String) {
         color = CoineProColors.TextMuted,
         textAlign = TextAlign.Right,
     )
+}
+
+/** The same footnote by id, so that the note policy decides whether it is text or an ⓘ. */
+@Composable
+private fun AiFootnote(@StringRes id: Int) {
+    CoineProNote(id, style = MaterialTheme.typography.bodySmall.copy(textAlign = TextAlign.Right))
 }
 
 @Composable

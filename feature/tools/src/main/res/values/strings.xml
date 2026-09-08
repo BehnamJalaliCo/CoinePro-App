@@ -50,7 +50,7 @@
     <string name="tools_reset">پاک‌کردن ورودی‌ها</string>
     <string name="tools_enter_all">همه‌ی ورودی‌ها را وارد کنید. نتیجه به‌صورت محلی و همزمان با تغییر مقادیر به‌روز می‌شود.</string>
     <string name="tools_connected">ابزارهای آنلاین</string>
-    <string name="tools_connected_body">این ابزارها با داده‌ی زنده‌ی سرور کار می‌کنند؛ ماشین‌حساب‌ها روی خودِ گوشی.</string>
+    <string name="tools_connected_body">این ابزارها با داده‌ی زنده کار می‌کنند؛ ماشین‌حساب‌ها روی خودِ گوشی.</string>
     <string name="tools_news_title">اخبار بازار</string>
     <string name="tools_news_open">باز کردن اخبار</string>
     <string name="tools_calendar_title">تقویم اقتصادی</string>

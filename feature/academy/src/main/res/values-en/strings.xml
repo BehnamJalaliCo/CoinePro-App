@@ -15,7 +15,7 @@
     <string name="academy_locked_tier_body">This lesson is part of the subscription.</string>
 
     <string name="academy_error_network">The academy could not be loaded.</string>
-    <string name="academy_error_disabled">The academy is closed on this server for now.</string>
+    <string name="academy_error_disabled">The academy is not available right now.</string>
     <string name="academy_retry">Retry</string>
 
     <string name="academy_reading_time">%1$s min read</string>

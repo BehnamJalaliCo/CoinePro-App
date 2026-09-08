@@ -50,6 +50,7 @@ import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
@@ -181,11 +182,7 @@ fun AiVisionScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = CoineProColors.TextPrimary,
                         )
-                        Text(
-                            text = stringResource(R.string.vision_prepared_note),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = CoineProColors.TextMuted,
-                        )
+                        CoineProNote(R.string.vision_prepared_note, style = MaterialTheme.typography.bodySmall)
                         val ready = !state.uploading && state.job?.isPending != true
                         CoineProPrimaryButton(
                             text = stringResource(

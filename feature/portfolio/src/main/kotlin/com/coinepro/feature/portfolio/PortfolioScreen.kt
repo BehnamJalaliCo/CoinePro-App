@@ -35,6 +35,7 @@ import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProHeroFigure
 import com.coinepro.core.designsystem.CoineProPageHeading
 import com.coinepro.core.designsystem.CoineProPrimaryButton
@@ -262,11 +263,9 @@ private fun CurveCard(stats: PortfolioStats) {
         EquityCurve(points = stats.equity, fromZero = !stats.equityIsBalance)
         if (!stats.equityIsBalance) {
             Spacer(Modifier.height(CoineProSpacing.One))
-            Text(
-                text = stringResource(R.string.portfolio_curve_profit_note),
-                style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextMuted,
-                fontWeight = FontWeight.Normal,
+            CoineProNote(
+                R.string.portfolio_curve_profit_note,
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Normal),
             )
         }
     }

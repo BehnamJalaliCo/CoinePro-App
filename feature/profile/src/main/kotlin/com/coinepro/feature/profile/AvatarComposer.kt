@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSegmentTabs
@@ -273,11 +274,7 @@ private fun MineTab(
             onClick = onPickPhoto,
             modifier = Modifier.fillMaxWidth(),
         )
-        Text(
-            text = stringResource(R.string.avatar_photo_note),
-            style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextMuted,
-        )
+        CoineProNote(R.string.avatar_photo_note, style = MaterialTheme.typography.bodySmall)
     }
 }
 

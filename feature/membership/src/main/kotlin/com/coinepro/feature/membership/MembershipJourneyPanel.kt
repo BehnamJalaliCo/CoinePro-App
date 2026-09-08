@@ -39,6 +39,7 @@ import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProBrandButton
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
@@ -393,11 +394,7 @@ private fun StepAction(
                         color = CoineProColors.Sell,
                     )
                     if (journey.uidFormOffered) {
-                        Text(
-                            text = stringResource(R.string.membership_access_exchange_uid_note),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = CoineProColors.TextMuted,
-                        )
+                        CoineProNote(R.string.membership_access_exchange_uid_note, style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 ExchangeLinks(terms = terms, onOpenUrl = onOpenUrl)

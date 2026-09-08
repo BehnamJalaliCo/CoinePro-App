@@ -65,6 +65,7 @@ import com.coinepro.core.chart.ObjectTree
 import com.coinepro.core.datastore.DrawingTemplate
 import com.coinepro.core.datastore.DrawingTemplateStore
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProShapes
@@ -570,11 +571,7 @@ private fun VisibilityTab(
                 style = MaterialTheme.typography.labelMedium,
                 color = CoineProColors.TextPrimary,
             )
-            Text(
-                text = stringResource(R.string.drawing_settings_lock_note),
-                style = MaterialTheme.typography.bodySmall,
-                color = CoineProColors.TextMuted,
-            )
+            CoineProNote(R.string.drawing_settings_lock_note, style = MaterialTheme.typography.bodySmall)
         }
         Switch(
             checked = drawing.locked,
@@ -595,11 +592,7 @@ private fun VisibilityTab(
             style = MaterialTheme.typography.labelMedium.numeric(),
             color = CoineProColors.TextSecondary,
         )
-        Text(
-            text = stringResource(R.string.drawing_settings_timeframe_note),
-            style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextMuted,
-        )
+        CoineProNote(R.string.drawing_settings_timeframe_note, style = MaterialTheme.typography.bodySmall)
     }
 
     HorizontalDivider(color = CoineProColors.Border)

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="connections_title">Connections</string>
-    <string name="connections_subtitle">Connect an account only to execute Pro Chart signals. Credentials travel to the server over HTTPS and are never stored by the app.</string>
-    <string name="connections_setup_not_proof">What you enter here is setup input, not proof of a connection. Connected state comes only from the server and the venue; if verification does not arrive, execution stays pending rather than being guessed locally.</string>
+    <string name="connections_subtitle">Connect an account only to execute Pro Chart signals. Credentials are sent encrypted and are never stored by the app.</string>
+    <string name="connections_setup_not_proof">What you enter here is setup input, not proof of a connection. Connected state arrives only once the venue confirms it; until then execution stays pending rather than being guessed locally.</string>
     <string name="connections_lbank_body">Create an LBank API key with only the permission you need: spot or futures. Withdrawal permission is not required. Saving a key does not mean the exchange has verified it.</string>
     <string name="connections_api_key">API key</string>
     <string name="connections_api_secret">API secret</string>
@@ -28,11 +28,11 @@
     <string name="connections_disconnect_body">This account\'s details are cleared and any copying running from it stops. We do not keep those details anywhere, so reconnecting means entering them again.</string>
     <string name="connections_keep">Keep it</string>
     <!-- MetaTrader 5, on CoinePro-FX. The same account link the copy-trading screen writes. -->
-    <string name="connections_subtitle_mt5">Link your MetaTrader 5 account so the copy service can open Pro Chart trades on it. Credentials travel to the server over HTTPS and are never stored by the app.</string>
-    <string name="connections_setup_not_proof_mt5">What you enter here is setup input, not proof of a connection. Connected state arrives only once a terminal reports in on this same account; until then the link stays pending rather than being guessed locally.</string>
+    <string name="connections_subtitle_mt5">Link your MetaTrader 5 account so the copy service can open Pro Chart trades on it. Credentials are sent encrypted and are never stored by the app.</string>
+    <string name="connections_setup_not_proof_mt5">What you enter here is setup input, not proof of a connection. Connected state arrives only once the terminal reports in with this account; until then the connection stays pending rather than being guessed locally.</string>
     <string name="connections_mt5_name">MetaTrader 5</string>
     <string name="connections_mt5_body">The same details you sign into the MetaTrader 5 terminal with: broker, server, account number and account password.</string>
-    <string name="connections_mt5_password_warning">This password is sent to the server so the terminal can sign into your account. An Investor password is not enough — it has to be the trading account\'s own password, so enter it with the care a real password deserves.</string>
+    <string name="connections_mt5_password_warning">This password is what lets the terminal sign into your account. An Investor password is not enough — it has to be the trading account\'s own password, so enter it with the care a real password deserves.</string>
     <string name="connections_mt5_broker">Broker</string>
     <string name="connections_mt5_server">Server</string>
     <string name="connections_mt5_login">Account number</string>
@@ -45,9 +45,9 @@
     <string name="connections_mt5_status_attention">Needs attention</string>
     <string name="connections_mt5_status_locked">Not readable</string>
     <string name="connections_mt5_pending_note">Details saved; no terminal has reported in on this account yet. Copying does not run on it until one does.</string>
-    <string name="connections_mt5_mismatch">The terminal is signed into account %1$s, not the one linked here. Until they match, the server withholds this account\'s positions and copying does not run on it.</string>
+    <string name="connections_mt5_mismatch">The terminal is signed into account %1$s, not the one linked here. Until they match, this account\'s positions are withheld and copying does not run on it.</string>
     <string name="connections_mt5_locked_default">There is no active subscription on this account.</string>
-    <string name="connections_mt5_locked_note">Reading the connection state is behind a subscription; linking an account is not. You can send the details now, but until you hold a subscription nothing here will say what the server did with them.</string>
+    <string name="connections_mt5_locked_note">Reading the connection state is behind a subscription; linking an account is not. You can send the details now, but until you hold a subscription nothing here will say what became of them.</string>
     <string name="connections_mt5_sent">Details sent. The outcome is not readable here, because reading the state needs a subscription.</string>
     <string name="connections_mt5_copy_note">This is the same link the copy-trading screen runs on: the account is connected once and the service opens the trades on it.</string>
 </resources>

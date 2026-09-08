@@ -108,7 +108,7 @@
     <string name="notify_watchlist_move">Starred market moves</string>
     <string name="notify_watchlist_move_note">Unusual moves in markets you starred — no number to choose</string>
     <string name="notify_news">Important news</string>
-    <string name="notify_news_note">Headlines the server marked important</string>
+    <string name="notify_news_note">Important headlines</string>
     <string name="notify_calendar">Economic calendar</string>
     <string name="notify_calendar_note">Before high-importance releases</string>
     <string name="notify_ai_setup">AI setup</string>
@@ -175,6 +175,6 @@
     <string name="nav_markets_title">Markets</string>
     <string name="screen_community">Community</string>
     <string name="screen_community_thread">Thread</string>
-    <string name="auth_google_unavailable">This server advertises Google sign-in but sent no client id for it. Sign in with e-mail instead.</string>
+    <string name="auth_google_unavailable">Google sign-in is not available on this platform yet. Sign in with e-mail instead.</string>
     <string name="auth_google_fingerprint_unknown">unknown</string>
 </resources>

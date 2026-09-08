@@ -2,7 +2,7 @@
 <!-- Default language: Persian. -->
 <resources>
     <string name="execution_title">اجرای سیگنال</string>
-    <string name="execution_subtitle">این صفحه فقط همین سیگنال را اجرا می‌کند. نماد، جهت، ورود، حد ضرر و اهداف متعلق به سرورند و اینجا قابل تغییر نیستند.</string>
+    <string name="execution_subtitle">این صفحه فقط همین سیگنال را اجرا می‌کند. نماد، جهت، ورود، حد ضرر و اهداف از خود سیگنال‌اند و اینجا قابل تغییر نیستند.</string>
     <string name="execution_timeframe">تایم‌فریم</string>
     <string name="execution_entry">ورود</string>
     <string name="execution_stop">حد ضرر</string>
@@ -14,7 +14,7 @@
     <string name="execution_venue">محل اجرا: %1$s</string>
     <string name="execution_venue_label">محل اجرا</string>
     <string name="execution_no_connection">هیچ اتصالی تنظیم نشده است.</string>
-    <string name="execution_connection_confirmed">اتصال را سرور تأیید کرد.</string>
+    <string name="execution_connection_confirmed">اتصال تأیید شد.</string>
     <string name="execution_lbank_pending">کلیدهای الْبانک ذخیره شده‌اند ولی تأیید صرافی نیامده است. درخواست می‌تواند در صف برود، اما تا تأیید صرافی معامله‌ی باز نیست.</string>
     <string name="execution_connection_status">وضعیت اتصال: %1$s</string>
     <string name="execution_connection_pending">وضعیت اتصال هنوز مشخص نیست.</string>
@@ -45,6 +45,6 @@
     <string name="execution_explain_failed">ارائه‌دهنده اجرا را ناموفق گزارش کرد.</string>
     <string name="execution_explain_cancelled">درخواستِ در صف پیش از تأیید ارائه‌دهنده لغو شد.</string>
     <string name="execution_explain_unknown">وضعیت کارگزار نامشخص است؛ اپ باز یا بسته بودن را حدس نمی‌زند.</string>
-    <string name="execution_rate_limited">سرور این درخواست را به‌دلیل سرعت زیاد نپذیرفت. هیچ سفارشی ارسال نشد و اپ خودش دوباره تلاش نمی‌کند. چند لحظه صبر کنید و دوباره بزنید.</string>
+    <string name="execution_rate_limited">این درخواست به‌دلیل سرعت زیاد پذیرفته نشد. هیچ سفارشی ارسال نشد و اپ خودش دوباره تلاش نمی‌کند. چند لحظه صبر کنید و دوباره بزنید.</string>
     <string name="execution_unsupported">این پلتفرم سفارش را از داخل اپ ثبت نمی‌کند.</string>
 </resources>

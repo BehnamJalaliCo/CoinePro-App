@@ -79,13 +79,13 @@
     <string name="alerts_sound_loud_note">Plays on the alarm output, at the phone\'s alarm volume — louder than other notifications.</string>
     <string name="alerts_venue">Checked</string>
     <string name="alerts_venue_device">On this device</string>
-    <string name="alerts_venue_server">On the server</string>
+    <string name="alerts_venue_server">On your account</string>
     <string name="alerts_venue_device_note">Checked on this phone. Needs no account, but the app must be installed and the phone awake.</string>
-    <string name="alerts_venue_server_note">The server checks it and keeps watching with the app closed. Needs an account.</string>
-    <string name="alerts_venue_server_unavailable">The server only compares one symbol\'s price against one level, so this condition is checked on the device.</string>
-    <string name="alerts_server_refused">The server would not take this alert. A server alert needs you to be signed in. You can make the same alert on this device.</string>
-    <string name="alerts_venue_badge">Server</string>
-    <string name="alerts_audit_server">This alert is checked on the server, so its events are not recorded on this phone.</string>
+    <string name="alerts_venue_server_note">Checked even with the app closed. Needs an account.</string>
+    <string name="alerts_venue_server_unavailable">An account alert only compares one symbol\'s price against one level, so this condition is checked on the device.</string>
+    <string name="alerts_server_refused">Sign in to create this alert. You can make the same alert on this device.</string>
+    <string name="alerts_venue_badge">Account</string>
+    <string name="alerts_audit_server">This alert is checked on your account, so its events are not recorded on this phone.</string>
 
     <!-- ── webhooks: the sheet behind the alert centre's second header action ─────────── -->
     <string name="webhooks_title">Webhooks</string>

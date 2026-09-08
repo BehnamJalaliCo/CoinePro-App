@@ -6,7 +6,7 @@
     <string name="profile_avatar_description">Your profile picture</string>
     <string name="profile_edit_avatar">Change picture</string>
     <string name="profile_account_section">Account</string>
-    <string name="profile_local_note">Your name, picture and description are kept on this phone only and are never sent to a server. Uninstalling the app loses them.</string>
+    <string name="profile_local_note">Your name, picture and description are kept on this phone only. Uninstalling the app loses them.</string>
 
     <string name="profile_signin_title">Make an account, if you want one</string>
     <string name="profile_signin_body">Markets, the professional chart, search, the journal, paper trading and NamaScript all work without an account. An account adds signals, the AI, the wallet and copy trading.</string>
@@ -65,7 +65,7 @@
     <string name="profile_session_section">Signing out and deleting</string>
 
     <string name="profile_fact_unknown">Not known</string>
-    <string name="profile_library_note">All of this is kept on this phone and is never sent to a server. Uninstalling the app loses it, and it is not on your other devices.</string>
+    <string name="profile_library_note">All of this is kept on this phone only. Uninstalling the app loses it, and it is not on your other devices.</string>
 
     <string name="profile_standing_membership">Membership</string>
     <string name="profile_standing_verification">Verification</string>

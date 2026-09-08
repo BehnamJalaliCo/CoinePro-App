@@ -37,6 +37,7 @@ import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProMarketRow
 import com.coinepro.core.designsystem.ProChartWordmark
@@ -240,11 +241,7 @@ private fun ProfileHeader(avatar: AvatarSpec, onOpenProfile: (() -> Unit)?) {
                 fontWeight = FontWeight.Bold,
                 color = CoineProColors.TextPrimary,
             )
-            Text(
-                text = stringResource(R.string.guest_greeting_note),
-                style = MaterialTheme.typography.bodySmall,
-                color = CoineProColors.TextMuted,
-            )
+            CoineProNote(R.string.guest_greeting_note, style = MaterialTheme.typography.bodySmall)
         }
         CoineProAvatar(
             spec = avatar,

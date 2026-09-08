@@ -2,9 +2,9 @@
 # Prints the assetlinks.json that must be served for the password-recovery App Link.
 #
 # The app declares an autoVerify intent filter on
-#   https://user.tradeyar.trade-future.ir/reset
+#   https://pro-chart.com/reset
 # and Android verifies that claim by fetching
-#   https://user.tradeyar.trade-future.ir/.well-known/assetlinks.json
+#   https://pro-chart.com/.well-known/assetlinks.json
 # on install. Until that file is served with the right fingerprint the link is not verified, the
 # recovery email opens a browser instead of the app, and nothing anywhere reports why.
 #
@@ -55,7 +55,7 @@ JSON
 cat >&2 <<'NEXT'
 
 Serve the JSON above at:
-  https://user.tradeyar.trade-future.ir/.well-known/assetlinks.json
+  https://pro-chart.com/.well-known/assetlinks.json
 
 It must be Content-Type: application/json, reachable without a redirect, and without
 authentication. Verify afterwards with:

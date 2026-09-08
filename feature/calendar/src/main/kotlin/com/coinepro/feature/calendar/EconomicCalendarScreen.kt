@@ -52,6 +52,7 @@ import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProMotionSpecs
 import com.coinepro.core.designsystem.CoineProHeaderAction
 import com.coinepro.core.designsystem.CoineProListHeader
@@ -258,10 +259,8 @@ internal fun calendarMode(state: MarketIntelState, filtered: List<EconomicEvent>
 @Composable
 private fun CalendarFreshnessStrip(refreshing: Boolean) {
     if (!refreshing) {
-        Text(
-            text = stringResource(R.string.calendar_timezone_note),
-            color = CoineProColors.TextMuted,
-            style = MaterialTheme.typography.labelSmall,
+        CoineProNote(
+            R.string.calendar_timezone_note,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = CoineProSpacing.Half, vertical = CoineProSpacing.Half),
@@ -374,11 +373,7 @@ private fun TimelineEventCard(
                     style = MaterialTheme.typography.labelSmall,
                 )
                 if (event.impact == MarketImpact.UNKNOWN) {
-                    Text(
-                        text = stringResource(R.string.calendar_impact_unknown_note),
-                        color = CoineProColors.TextMuted,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
+                    CoineProNote(R.string.calendar_impact_unknown_note, style = MaterialTheme.typography.bodySmall)
                 }
                 // A release the server tagged with no market gets no button: the calendar is macro
                 // and moves everything, but "everything" is not a chart this app can open.

@@ -16,7 +16,7 @@
     <string name="academy_locked_tier_body">این درس بخشی از اشتراک است.</string>
 
     <string name="academy_error_network">آکادمی خوانده نشد.</string>
-    <string name="academy_error_disabled">آکادمی روی این سرور فعلاً بسته است.</string>
+    <string name="academy_error_disabled">آکادمی فعلاً در دسترس نیست.</string>
     <string name="academy_retry">دوباره</string>
 
     <string name="academy_reading_time">%1$s دقیقه خواندن</string>

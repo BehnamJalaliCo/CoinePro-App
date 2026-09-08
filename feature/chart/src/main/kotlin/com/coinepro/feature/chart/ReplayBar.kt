@@ -58,6 +58,7 @@ import com.coinepro.core.common.foldDigitsToLatin
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSheet
@@ -565,11 +566,9 @@ private fun ReplayLedgerPanel(state: ReplayState, onSetupOverlay: (SignalOverlay
                     ) { reportOpen = true }
                 }
 
-                Text(
-                    text = stringResource(R.string.replay_ledger_note),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = CoineProColors.TextMuted,
-                    fontWeight = FontWeight.Normal,
+                CoineProNote(
+                    R.string.replay_ledger_note,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Normal),
                 )
             }
         }

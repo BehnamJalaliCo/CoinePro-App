@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +49,7 @@ import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProPageHeading
 import com.coinepro.core.designsystem.CoineProSecondaryButton
@@ -202,11 +204,9 @@ private fun CurveCard(metrics: TradeMetrics, zone: ZoneId) {
             )
         }
         Spacer(Modifier.height(CoineProSpacing.One))
-        Text(
-            text = stringResource(R.string.portfolio_report_peak_note),
-            style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.TextMuted,
-            fontWeight = FontWeight.Normal,
+        CoineProNote(
+            R.string.portfolio_report_peak_note,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Normal),
         )
     }
 }
@@ -254,7 +254,7 @@ private fun MetricsCard(metrics: TradeMetrics) {
         // Beside the fall and before it, because a report that prints only the fall makes a
         // steady account and a wild one look identical. `core/chart`'s backtest engine has walked
         // both in one pass since it was written; this is the same pair over a real history.
-        MetricNote(stringResource(R.string.portfolio_report_runup_note))
+        MetricNote(R.string.portfolio_report_runup_note)
         MetricRow(
             label = stringResource(R.string.portfolio_max_drawdown),
             value = metrics.drawdown?.let { drawdownFigure(it) },
@@ -263,7 +263,7 @@ private fun MetricsCard(metrics: TradeMetrics) {
         // Said on the screen and not only in the KDoc. This is the one figure on the page a reader
         // is likely to arrive already holding a wrong definition of, and a report that prints it
         // without the correction is a report that confirms the wrong definition.
-        MetricNote(stringResource(R.string.portfolio_report_drawdown_note))
+        MetricNote(R.string.portfolio_report_drawdown_note)
         MetricRow(
             label = stringResource(R.string.portfolio_metric_longest_drawdown),
             value = metrics.longestDrawdown?.let { run ->
@@ -287,7 +287,7 @@ private fun MetricsCard(metrics: TradeMetrics) {
         MetricRow(stringResource(R.string.portfolio_metric_sortino), metrics.sortino?.let {
             MarketNumberFormatter.price(it, 2)
         }, tint = metrics.sortino)
-        MetricNote(stringResource(R.string.portfolio_report_ratio_note))
+        MetricNote(R.string.portfolio_report_ratio_note)
 
         Divider()
         MetricRow(
@@ -603,6 +603,16 @@ private fun MetricNote(text: String) {
         style = MaterialTheme.typography.labelSmall,
         color = CoineProColors.TextMuted,
         fontWeight = FontWeight.Normal,
+        modifier = Modifier.padding(bottom = CoineProSpacing.Half),
+    )
+}
+
+/** The same line by id, for the notes the policy may fold into an ⓘ. */
+@Composable
+private fun MetricNote(@StringRes id: Int) {
+    CoineProNote(
+        id,
+        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Normal),
         modifier = Modifier.padding(bottom = CoineProSpacing.Half),
     )
 }

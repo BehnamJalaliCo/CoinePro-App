@@ -32,6 +32,7 @@ import com.coinepro.core.common.BidiText
 import com.coinepro.core.datastore.MarketColorScheme
 import com.coinepro.core.datastore.ThemeMode
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProDarkPalette
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProLightPalette
@@ -149,11 +150,9 @@ fun ColumnScope.AppearanceOptions(
                 onSelect = { onSelectLanguage(option) },
             )
         }
-        Text(
-            text = stringResource(R.string.appearance_language_note),
-            style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextMuted,
-            textAlign = TextAlign.Right,
+        CoineProNote(
+            R.string.appearance_language_note,
+            style = MaterialTheme.typography.bodySmall.copy(textAlign = TextAlign.Right),
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -320,11 +319,7 @@ private fun ThemeOption(
                 style = MaterialTheme.typography.bodyMedium,
                 color = CoineProColors.TextPrimary,
             )
-            Text(
-                text = stringResource(mode.noteRes()),
-                style = MaterialTheme.typography.bodySmall,
-                color = CoineProColors.TextMuted,
-            )
+            CoineProNote(mode.noteRes(), style = MaterialTheme.typography.bodySmall)
         }
         if (selected) {
             Icon(

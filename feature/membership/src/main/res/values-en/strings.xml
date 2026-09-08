@@ -40,7 +40,7 @@
     <string name="membership_journey_exchange_detail">This step is not optional and cannot be fixed later: an account opened through any other link is not tied to Pro Chart in the exchange\'s own system, and cannot be verified.</string>
     <string name="membership_journey_funding">Fund the account to the threshold</string>
     <string name="membership_journey_funding_amount">Fund your exchange account to at least %1$s USDT. The money stays yours, at the exchange; Pro Chart never takes or holds it.</string>
-    <string name="membership_journey_funding_plain">Fund your exchange account to the threshold the exchange and the server state. The money stays yours, at the exchange; Pro Chart never takes or holds it.</string>
+    <string name="membership_journey_funding_plain">Fund your exchange account to the stated threshold. The money stays yours, at the exchange; Pro Chart never takes or holds it.</string>
     <string name="membership_journey_uid">Submit your exchange UID</string>
     <string name="membership_journey_uid_detail">Copy the UID from your exchange account profile and enter it here, in the app.</string>
     <string name="membership_journey_verification">Automatic verification</string>
@@ -49,14 +49,14 @@
     <string name="membership_step_done">Done</string>
     <string name="membership_step_current">Current step</string>
     <string name="membership_step_ahead">After the current step</string>
-    <string name="membership_step_unknown">The server has not said</string>
+    <string name="membership_step_unknown">Not known yet</string>
     <string name="membership_step_blocked">This step did not pass</string>
 
     <string name="membership_access_open">Your access is open.</string>
     <string name="membership_access_reload">Show the signals</string>
     <string name="membership_access_recheck">Check access again</string>
-    <string name="membership_access_waiting">The check is running on the server. There is nothing for you to do; ask again here whenever you like.</string>
-    <string name="membership_access_unreadable">Your membership status could not be read just now, so this screen claims nothing about your steps. The conditions below still stand.</string>
+    <string name="membership_access_waiting">The check is in progress. There is nothing for you to do; ask again here whenever you like.</string>
+    <string name="membership_access_unreadable">Your membership status could not be read just now, so this page makes no claim about your steps. The terms below are what they are.</string>
     <string name="membership_access_terms">Full membership terms</string>
     <string name="membership_access_fund_note">Your account is confirmed as a Pro Chart sub-account and only the balance is short. Top it up and verification runs again by itself.</string>
     <string name="membership_access_open_exchange">Open another account, this time through the link below. The UID on file cannot be accepted.</string>
@@ -71,5 +71,5 @@
     <string name="membership_ourbit_note">If you only want the signals and will place your own orders:</string>
     <string name="membership_open_lbank">Register on LBank</string>
     <string name="membership_open_ourbit">Register on Ourbit</string>
-    <string name="membership_links_unavailable">The registration link did not arrive from the server. Try again shortly — the referral link is never compiled into the app, because a stale one silently costs you your membership.</string>
+    <string name="membership_links_unavailable">The registration link did not arrive. Try again shortly — the referral link is never compiled into the app, because a stale one silently costs you your membership.</string>
 </resources>

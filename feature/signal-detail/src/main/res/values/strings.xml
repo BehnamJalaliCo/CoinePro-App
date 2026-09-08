@@ -29,7 +29,7 @@
     <string name="detail_pnl">سود و زیان</string>
     <string name="detail_source">منبع: %1$s</string>
     <string name="detail_execute">اجرای این سیگنال</string>
-    <string name="detail_execute_note">اجرا دقیقاً از همین سیگنالِ سرور استفاده می‌کند؛ فرم معامله‌ی دستی وجود ندارد.</string>
+    <string name="detail_execute_note">اجرا دقیقاً از همین سیگنال استفاده می‌کند؛ فرم معامله‌ی دستی وجود ندارد.</string>
     <string name="detail_copy_note">این سیگنال از راه کپی‌ترید روی حساب متاتریدر شما باز می‌شود، نه از این صفحه.</string>
     <string name="detail_open_copy">رفتن به کپی‌ترید</string>
     <string name="detail_high_impact_title">بازه‌ی خبر پرتأثیر</string>

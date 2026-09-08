@@ -1,5 +1,6 @@
 package com.coinepro.feature.profile
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProRowDivider
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -116,6 +118,8 @@ fun ProfileFactList(
     modifier: Modifier = Modifier,
     /** One line under the card, for something true of every row in it. Dropped with the card. */
     note: String? = null,
+    /** The same line by id, so that the note policy decides whether it is words or an ⓘ. */
+    @StringRes noteRes: Int? = null,
 ) {
     val shown = facts.filter { it.value != null || it.onOpen != null }
     if (shown.isEmpty()) return
@@ -142,6 +146,17 @@ fun ProfileFactList(
                 if (index > 0) CoineProRowDivider()
                 ProfileFactRow(fact)
             }
+        }
+        noteRes?.let {
+            CoineProNote(
+                it,
+                style = MaterialTheme.typography.bodySmall.copy(textAlign = TextAlign.Right),
+                modifier = Modifier.padding(
+                    start = CoineProSpacing.Gutter,
+                    end = CoineProSpacing.Gutter,
+                    top = CoineProSpacing.Half,
+                ),
+            )
         }
         note?.let {
             Text(
