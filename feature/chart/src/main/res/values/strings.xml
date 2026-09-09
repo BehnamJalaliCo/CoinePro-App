@@ -176,4 +176,11 @@
     <string name="indicator_settings_show">Show on chart</string>
     <string name="indicator_settings_show_note">Turning this off hides the indicator and keeps its settings.</string>
     <string name="indicator_settings_remove">Remove from chart</string>
+    <!-- The panels a wide window docks beside the chart, and the rail that opens them. -->
+    <string name="chart_side_rail">Chart panels</string>
+    <string name="chart_panel_watchlist">Watchlist</string>
+    <string name="chart_panel_objects">Objects</string>
+    <string name="chart_panel_depth">Depth of market</string>
+    <string name="chart_panel_alerts">Alerts</string>
+    <string name="chart_panel_script">NamaScript</string>
 </resources>

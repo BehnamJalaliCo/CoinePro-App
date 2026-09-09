@@ -242,6 +242,316 @@ class GoldenScreenshotTest {
     @Config(sdk = [34], qualifiers = FA_393, fontScale = 1.3f)
     fun watchlistLargeType() = composeRule.assertMatchesGolden("watchlist-fa-393-font130") { Watchlist() }
 
+    /* ------------------------------------------------------------------ the device matrix */
+    /*
+     * Item 2 of the 4.52 run: the five top-level screens on the plan's three devices, dark and
+     * light, Persian and English. The qualifiers are the panels' own dp (see `FA_S9U` and the
+     * fold constants). `docs/qa/PARITY_MATRIX.md` is generated from these.
+     */
+    // Pixel Tablet, landscape
+    @Test
+    @Config(sdk = [34], qualifiers = FA_1280)
+    fun watchlistFa1280Light() = composeRule.assertMatchesGolden("watchlist-fa-1280-light", darkTheme = false) { Watchlist() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_1280)
+    fun watchlistEn1280Dark() = composeRule.assertMatchesGolden("watchlist-en-1280") { Watchlist() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_1280)
+    fun watchlistEn1280Light() = composeRule.assertMatchesGolden("watchlist-en-1280-light", darkTheme = false) { Watchlist() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_1280)
+    fun exploreFa1280Light() = composeRule.assertMatchesGolden("explore-fa-1280-light", darkTheme = false) { Explore() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_1280)
+    fun exploreEn1280Dark() = composeRule.assertMatchesGolden("explore-en-1280") { Explore() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_1280)
+    fun exploreEn1280Light() = composeRule.assertMatchesGolden("explore-en-1280-light", darkTheme = false) { Explore() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_1280)
+    fun ideasSignalsFa1280Light() = composeRule.assertMatchesGolden("ideas-signals-fa-1280-light", darkTheme = false) { Ideas(IdeasFace.SIGNALS) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_1280)
+    fun ideasSignalsEn1280Dark() = composeRule.assertMatchesGolden("ideas-signals-en-1280") { Ideas(IdeasFace.SIGNALS) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_1280)
+    fun ideasSignalsEn1280Light() = composeRule.assertMatchesGolden("ideas-signals-en-1280-light", darkTheme = false) { Ideas(IdeasFace.SIGNALS) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_1280)
+    fun menuFa1280Light() = composeRule.assertMatchesGolden("menu-fa-1280-light", darkTheme = false) { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_1280)
+    fun menuEn1280Dark() = composeRule.assertMatchesGolden("menu-en-1280") { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_1280)
+    fun menuEn1280Light() = composeRule.assertMatchesGolden("menu-en-1280-light", darkTheme = false) { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_1280)
+    fun chartFa1280Light() = composeRule.assertMatchesGolden("chart-fa-1280-light", darkTheme = false) { ChartScreen(controller = ScreenshotFixtures.chartController(scope)) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_1280)
+    fun chartEn1280Dark() = composeRule.assertMatchesGolden("chart-en-1280") { ChartScreen(controller = ScreenshotFixtures.chartController(scope)) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_1280)
+    fun chartEn1280Light() = composeRule.assertMatchesGolden("chart-en-1280-light", darkTheme = false) { ChartScreen(controller = ScreenshotFixtures.chartController(scope)) }
+
+    // Galaxy Tab S9 Ultra, landscape
+    @Test
+    @Config(sdk = [34], qualifiers = FA_S9U)
+    fun watchlistFaS9UDark() = composeRule.assertMatchesGolden("watchlist-fa-s9u") { Watchlist() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_S9U)
+    fun watchlistFaS9ULight() = composeRule.assertMatchesGolden("watchlist-fa-s9u-light", darkTheme = false) { Watchlist() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_S9U)
+    fun watchlistEnS9UDark() = composeRule.assertMatchesGolden("watchlist-en-s9u") { Watchlist() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_S9U)
+    fun watchlistEnS9ULight() = composeRule.assertMatchesGolden("watchlist-en-s9u-light", darkTheme = false) { Watchlist() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_S9U)
+    fun exploreFaS9UDark() = composeRule.assertMatchesGolden("explore-fa-s9u") { Explore() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_S9U)
+    fun exploreFaS9ULight() = composeRule.assertMatchesGolden("explore-fa-s9u-light", darkTheme = false) { Explore() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_S9U)
+    fun exploreEnS9UDark() = composeRule.assertMatchesGolden("explore-en-s9u") { Explore() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_S9U)
+    fun exploreEnS9ULight() = composeRule.assertMatchesGolden("explore-en-s9u-light", darkTheme = false) { Explore() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_S9U)
+    fun ideasSignalsFaS9UDark() = composeRule.assertMatchesGolden("ideas-signals-fa-s9u") { Ideas(IdeasFace.SIGNALS) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_S9U)
+    fun ideasSignalsFaS9ULight() = composeRule.assertMatchesGolden("ideas-signals-fa-s9u-light", darkTheme = false) { Ideas(IdeasFace.SIGNALS) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_S9U)
+    fun ideasSignalsEnS9UDark() = composeRule.assertMatchesGolden("ideas-signals-en-s9u") { Ideas(IdeasFace.SIGNALS) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_S9U)
+    fun ideasSignalsEnS9ULight() = composeRule.assertMatchesGolden("ideas-signals-en-s9u-light", darkTheme = false) { Ideas(IdeasFace.SIGNALS) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_S9U)
+    fun menuFaS9UDark() = composeRule.assertMatchesGolden("menu-fa-s9u") { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_S9U)
+    fun menuFaS9ULight() = composeRule.assertMatchesGolden("menu-fa-s9u-light", darkTheme = false) { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_S9U)
+    fun menuEnS9UDark() = composeRule.assertMatchesGolden("menu-en-s9u") { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_S9U)
+    fun menuEnS9ULight() = composeRule.assertMatchesGolden("menu-en-s9u-light", darkTheme = false) { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_S9U)
+    fun chartFaS9UDark() = composeRule.assertMatchesGolden("chart-fa-s9u") { ChartScreen(controller = ScreenshotFixtures.chartController(scope)) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_S9U)
+    fun chartFaS9ULight() = composeRule.assertMatchesGolden("chart-fa-s9u-light", darkTheme = false) { ChartScreen(controller = ScreenshotFixtures.chartController(scope)) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_S9U)
+    fun chartEnS9UDark() = composeRule.assertMatchesGolden("chart-en-s9u") { ChartScreen(controller = ScreenshotFixtures.chartController(scope)) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_S9U)
+    fun chartEnS9ULight() = composeRule.assertMatchesGolden("chart-en-s9u-light", darkTheme = false) { ChartScreen(controller = ScreenshotFixtures.chartController(scope)) }
+
+    // Pixel Fold, inner display
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_OPEN)
+    fun watchlistFaFoldopenDark() = composeRule.assertMatchesGolden("watchlist-fa-foldopen") { Watchlist() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_OPEN)
+    fun watchlistFaFoldopenLight() = composeRule.assertMatchesGolden("watchlist-fa-foldopen-light", darkTheme = false) { Watchlist() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_OPEN)
+    fun watchlistEnFoldopenDark() = composeRule.assertMatchesGolden("watchlist-en-foldopen") { Watchlist() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_OPEN)
+    fun watchlistEnFoldopenLight() = composeRule.assertMatchesGolden("watchlist-en-foldopen-light", darkTheme = false) { Watchlist() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_OPEN)
+    fun exploreFaFoldopenDark() = composeRule.assertMatchesGolden("explore-fa-foldopen") { Explore() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_OPEN)
+    fun exploreFaFoldopenLight() = composeRule.assertMatchesGolden("explore-fa-foldopen-light", darkTheme = false) { Explore() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_OPEN)
+    fun exploreEnFoldopenDark() = composeRule.assertMatchesGolden("explore-en-foldopen") { Explore() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_OPEN)
+    fun exploreEnFoldopenLight() = composeRule.assertMatchesGolden("explore-en-foldopen-light", darkTheme = false) { Explore() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_OPEN)
+    fun ideasSignalsFaFoldopenDark() = composeRule.assertMatchesGolden("ideas-signals-fa-foldopen") { Ideas(IdeasFace.SIGNALS) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_OPEN)
+    fun ideasSignalsFaFoldopenLight() = composeRule.assertMatchesGolden("ideas-signals-fa-foldopen-light", darkTheme = false) { Ideas(IdeasFace.SIGNALS) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_OPEN)
+    fun ideasSignalsEnFoldopenDark() = composeRule.assertMatchesGolden("ideas-signals-en-foldopen") { Ideas(IdeasFace.SIGNALS) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_OPEN)
+    fun ideasSignalsEnFoldopenLight() = composeRule.assertMatchesGolden("ideas-signals-en-foldopen-light", darkTheme = false) { Ideas(IdeasFace.SIGNALS) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_OPEN)
+    fun menuFaFoldopenDark() = composeRule.assertMatchesGolden("menu-fa-foldopen") { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_OPEN)
+    fun menuFaFoldopenLight() = composeRule.assertMatchesGolden("menu-fa-foldopen-light", darkTheme = false) { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_OPEN)
+    fun menuEnFoldopenDark() = composeRule.assertMatchesGolden("menu-en-foldopen") { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_OPEN)
+    fun menuEnFoldopenLight() = composeRule.assertMatchesGolden("menu-en-foldopen-light", darkTheme = false) { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_OPEN)
+    fun chartFaFoldopenDark() = composeRule.assertMatchesGolden("chart-fa-foldopen") { ChartScreen(controller = ScreenshotFixtures.chartController(scope)) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_OPEN)
+    fun chartFaFoldopenLight() = composeRule.assertMatchesGolden("chart-fa-foldopen-light", darkTheme = false) { ChartScreen(controller = ScreenshotFixtures.chartController(scope)) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_OPEN)
+    fun chartEnFoldopenDark() = composeRule.assertMatchesGolden("chart-en-foldopen") { ChartScreen(controller = ScreenshotFixtures.chartController(scope)) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_OPEN)
+    fun chartEnFoldopenLight() = composeRule.assertMatchesGolden("chart-en-foldopen-light", darkTheme = false) { ChartScreen(controller = ScreenshotFixtures.chartController(scope)) }
+
+    // Pixel Fold, cover display
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_CLOSED)
+    fun watchlistFaFoldclosedDark() = composeRule.assertMatchesGolden("watchlist-fa-foldclosed") { Watchlist() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_CLOSED)
+    fun watchlistFaFoldclosedLight() = composeRule.assertMatchesGolden("watchlist-fa-foldclosed-light", darkTheme = false) { Watchlist() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_CLOSED)
+    fun watchlistEnFoldclosedDark() = composeRule.assertMatchesGolden("watchlist-en-foldclosed") { Watchlist() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_CLOSED)
+    fun watchlistEnFoldclosedLight() = composeRule.assertMatchesGolden("watchlist-en-foldclosed-light", darkTheme = false) { Watchlist() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_CLOSED)
+    fun exploreFaFoldclosedDark() = composeRule.assertMatchesGolden("explore-fa-foldclosed") { Explore() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_CLOSED)
+    fun exploreFaFoldclosedLight() = composeRule.assertMatchesGolden("explore-fa-foldclosed-light", darkTheme = false) { Explore() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_CLOSED)
+    fun exploreEnFoldclosedDark() = composeRule.assertMatchesGolden("explore-en-foldclosed") { Explore() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_CLOSED)
+    fun exploreEnFoldclosedLight() = composeRule.assertMatchesGolden("explore-en-foldclosed-light", darkTheme = false) { Explore() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_CLOSED)
+    fun ideasSignalsFaFoldclosedDark() = composeRule.assertMatchesGolden("ideas-signals-fa-foldclosed") { Ideas(IdeasFace.SIGNALS) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_CLOSED)
+    fun ideasSignalsFaFoldclosedLight() = composeRule.assertMatchesGolden("ideas-signals-fa-foldclosed-light", darkTheme = false) { Ideas(IdeasFace.SIGNALS) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_CLOSED)
+    fun ideasSignalsEnFoldclosedDark() = composeRule.assertMatchesGolden("ideas-signals-en-foldclosed") { Ideas(IdeasFace.SIGNALS) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_CLOSED)
+    fun ideasSignalsEnFoldclosedLight() = composeRule.assertMatchesGolden("ideas-signals-en-foldclosed-light", darkTheme = false) { Ideas(IdeasFace.SIGNALS) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_CLOSED)
+    fun menuFaFoldclosedDark() = composeRule.assertMatchesGolden("menu-fa-foldclosed") { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_CLOSED)
+    fun menuFaFoldclosedLight() = composeRule.assertMatchesGolden("menu-fa-foldclosed-light", darkTheme = false) { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_CLOSED)
+    fun menuEnFoldclosedDark() = composeRule.assertMatchesGolden("menu-en-foldclosed") { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_CLOSED)
+    fun menuEnFoldclosedLight() = composeRule.assertMatchesGolden("menu-en-foldclosed-light", darkTheme = false) { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_CLOSED)
+    fun chartFaFoldclosedDark() = composeRule.assertMatchesGolden("chart-fa-foldclosed") { ChartScreen(controller = ScreenshotFixtures.chartController(scope)) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_FOLD_CLOSED)
+    fun chartFaFoldclosedLight() = composeRule.assertMatchesGolden("chart-fa-foldclosed-light", darkTheme = false) { ChartScreen(controller = ScreenshotFixtures.chartController(scope)) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_CLOSED)
+    fun chartEnFoldclosedDark() = composeRule.assertMatchesGolden("chart-en-foldclosed") { ChartScreen(controller = ScreenshotFixtures.chartController(scope)) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_FOLD_CLOSED)
+    fun chartEnFoldclosedLight() = composeRule.assertMatchesGolden("chart-en-foldclosed-light", darkTheme = false) { ChartScreen(controller = ScreenshotFixtures.chartController(scope)) }
+
     /* ------------------------------------------------------------------ the bar */
 
     /**
@@ -402,6 +712,19 @@ class GoldenScreenshotTest {
 
         /** The same tablet on its side — the labelled rail, and a plot wider than it is tall. */
         const val FA_1280 = "fa-rIR-ldrtl-sw800dp-w1280dp-h800dp-xhdpi"
+        const val EN_1280 = "en-rUS-ldltr-sw800dp-w1280dp-h800dp-xhdpi"
+
+        /** Galaxy Tab S9 Ultra: 2960×1848 at hdpi is 1973×1232 dp, the widest window the app meets. */
+        const val FA_S9U = "fa-rIR-ldrtl-sw1232dp-w1973dp-h1232dp-hdpi"
+        const val EN_S9U = "en-rUS-ldltr-sw1232dp-w1973dp-h1232dp-hdpi"
+
+        /** Pixel Fold open: 2208×1840 at 380 dpi is 930×775 dp — expanded, but not by much. */
+        const val FA_FOLD_OPEN = "fa-rIR-ldrtl-sw775dp-w930dp-h775dp-xhdpi"
+        const val EN_FOLD_OPEN = "en-rUS-ldltr-sw775dp-w930dp-h775dp-xhdpi"
+
+        /** Pixel Fold closed: the cover is a 411×797 dp phone. */
+        const val FA_FOLD_CLOSED = "fa-rIR-ldrtl-w411dp-h797dp-xxhdpi"
+        const val EN_FOLD_CLOSED = "en-rUS-ldltr-w411dp-h797dp-xxhdpi"
     }
 }
 

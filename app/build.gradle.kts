@@ -628,6 +628,9 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    // The navigation suite (bar → rail by window) and the pane navigator for list-detail.
+    implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
+    implementation(libs.androidx.compose.material3.adaptive.navigation)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
 

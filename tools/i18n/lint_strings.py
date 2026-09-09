@@ -230,7 +230,9 @@ class Lint:
             if entry.translatable and key not in en:
                 self.fail(fa_path, entry, "has no English translation")
         for key, entry in en.items():
-            if key not in fa:
+            # A key marked untranslatable lives in the default set alone since 4.52.0 — the brand,
+            # an asset path — and has no Persian copy to be missing.
+            if key not in fa and entry.translatable:
                 self.fail(en_path, entry, "has no Persian source")
         for key in fa.keys() & en.keys():
             fa_slots = Counter(PLACEHOLDER.findall(fa[key].text))

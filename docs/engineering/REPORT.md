@@ -249,6 +249,21 @@ fa-hdpi … fa-xxxhdpi
 
 No `(en)` configuration remains from the app's own resources (the `en-rAU`… entries in the APK are AndroidX's). Gates and the full unit suite are green on the inverted tree; the goldens did not change because every golden already ran under a `fa-rIR` qualifier.
 
+### Item 2 — tablet layout (4.53.0) — done on Material's scaffolds; device screenshots by qualifier
+
+| asked | done | proof |
+| --- | --- | --- |
+| `material3-adaptive` + `WindowSizeClass` | `material3-adaptive` 1.1.0 (+ `-layout`, `-navigation`), `material3-window-size-class` 1.4.0, navigation suite 1.4.0, `window-core` 1.5.0 added (Compose BOM 2025.09.01). `CoineProWindowClass` now derives Compact / Medium / Expanded from `androidx.window.core.layout.WindowSizeClass`'s breakpoints and the app feeds it the activity's own window (`currentWindowDpSize()`) | `WindowClassTest` «the breakpoints are the window library's own» |
+| `NavigationSuiteScaffold`: bar → rail on Medium/Expanded | the shell's `Scaffold` no longer has a `bottomBar`; `NavigationSuiteScaffoldLayout` places the bar (`NavigationBar`) on Compact and the rail (`NavigationRail`) otherwise, `None` on sub-screens; the bar and the rail stay the app's own composables so the goldens hold | `NavigationParityTest`, tablet goldens |
+| Watchlist ⇄ Chart as `ListDetailPaneScaffold`, list 320–400 dp, drag-to-resize, detail keeps state | `CoineProListDetail` is `ListDetailPaneScaffold` with a `PaneScaffoldDirective` built from the measured width (list 360 dp preferred), a **`VerticalDragHandle` on the divider** snapping to the list's width or half the screen, and `AnimatedPane`s; the paired symbol is `rememberSaveable` as before. Used by markets, screener, ideas and news | `SheetShapeTest`, `watchlist-*` goldens, `ChartWindowPublishTest` |
+| chart: drawing rail, right price scale, timeframe bar, `SupportingPaneScaffold` panels (Watchlist / Object tree / DOM / Alerts / NamaScript), layouts 1–8 | **new** `ChartSidePanel` + `ChartSidePanelHost` on `SupportingPaneScaffold`: a 48 dp rail at the end edge with five glyphs; the chosen panel docks at 360 dp beside the plot and the workbench re-measures its columns. Needs ≥ 1128 dp (tools 280 + plot 440 + panel 360 + rail 48): the Pixel Tablet and the S9 Ultra in landscape; a tablet upright keeps the sheets. Layouts 1/2H/2V/3/4/6/8 and `panes_layout_label` from 4.49.0 unchanged | `ChartSidePanelTest` (rail on 1280, none on 840, open/close), `chart-fa-1280.png` |
+| sheets → dialogs ≤ 560 dp on Expanded | 4.51.0, unchanged | `SheetShapeTest` |
+| foldables with `FoldingFeature` | 4.51.0's `CoineProFold` unchanged; `material3-adaptive`'s `Posture` reads the same feature | `CoineProFoldTest`, `ChartFoldTest` |
+| screenshots: Pixel Tablet + Tab S9 Ultra + Pixel Fold, dark/light, fa/en | **75 new goldens** in `GoldenScreenshotTest`: five screens × {Pixel Tablet `sw800dp-w1280dp-h800dp-xhdpi`, Galaxy Tab S9 Ultra `sw1232dp-w1973dp-h1232dp-hdpi`, Pixel Fold open `sw775dp-w930dp-h775dp-xhdpi`, cover `w411dp-h797dp-xxhdpi`} × {dark, light} × {fa, en}. Robolectric renders at the panels' dp; not photographs of the devices | `app/src/test/goldens/` (139 files, 22 MB) |
+| parity matrix | regenerated with one column per device: every top-level screen has renders on every device; sheets, alerts, screener and terminal still phone-only | `docs/qa/PARITY_MATRIX.md` |
+
+Not done: the home 12-column grid, DOM as a resizable table, journal/academy two-pane, ChromeOS/DeX on hardware, TalkBack order on the rail.
+
 ## Definition of done — as it stands
 
 - [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).

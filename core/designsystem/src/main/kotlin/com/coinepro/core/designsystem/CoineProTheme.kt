@@ -68,6 +68,13 @@ fun CoineProTheme(
      * See `MarketColorScheme` in `core:datastore` for why this switch exists.
      */
     risingIsGreen: Boolean = true,
+    /**
+     * The window, when the caller has a real one. The app passes
+     * `CoineProWindowClass.of(currentWindowDpSize())` — the window's own metrics, which differ from
+     * the configuration's in split screen and free-form. Null reads the configuration, which is
+     * what a preview and a screenshot render have.
+     */
+    windowClass: CoineProWindowClass? = null,
     content: @Composable () -> Unit,
 ) {
     // Direction follows the language the app is running in, not the device locale. The two differ
@@ -103,7 +110,7 @@ fun CoineProTheme(
         // "how much room is there". A screen that computed its own would disagree with the shell
         // the day the app runs in a window smaller than the display, and the two would then draw a
         // navigation rail and a bottom bar at the same time.
-        LocalCoineProWindowClass provides configurationWindowClass(),
+        LocalCoineProWindowClass provides (windowClass ?: configurationWindowClass()),
     ) {
         // Not `MaterialExpressiveTheme`: in the Material 3 this app builds against (1.4.0) the
         // expressive motion scheme and its opt-in annotation are still `internal`, so the springs

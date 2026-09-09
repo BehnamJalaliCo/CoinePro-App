@@ -54,10 +54,10 @@ JVM_EVIDENCE = {
     ],
 }
 
-COLUMNS = ["phone", "tablet-portrait", "tablet-landscape", "fold-open", "fold-closed"]
+COLUMNS = ["phone", "tablet-portrait", "pixel-tablet", "tab-s9-ultra", "fold-open", "fold-closed"]
 
 SCREENS = [
-    ("watchlist", ("watchlist", "home", "fold")),
+    ("watchlist", ("watchlist", "home")),
     ("chart", ("chart", "tablet-chart", "desk", "keyboard", "keys")),
     ("explore", ("explore", "market", "guest")),
     ("ideas / signals", ("ideas", "signal")),
@@ -78,8 +78,17 @@ GOLDEN_RE = re.compile(r'(?:assertMatchesGolden|capture|captureRaw)\("([^"]+)"')
 
 
 def window_of(qualifier: str) -> str | None:
+    """The device a qualifier stands for. The four named devices are the plan's; their dp are the
+    real panels': Pixel Tablet 1280×800 (xhdpi), Galaxy Tab S9 Ultra 1973×1232 (hdpi), Pixel Fold
+    open 930×775 (xhdpi) and its cover 411×797 (xxhdpi)."""
+    if "w1973dp" in qualifier:
+        return "tab-s9-ultra"
     if "w1280dp" in qualifier:
-        return "tablet-landscape"
+        return "pixel-tablet"
+    if "w930dp" in qualifier:
+        return "fold-open"
+    if "w411dp-h797dp" in qualifier:
+        return "fold-closed"
     if "w840dp" in qualifier or ("sw800dp" in qualifier and "w800dp" in qualifier):
         return "tablet-portrait"
     if "w393dp" in qualifier or "w411dp" in qualifier:
@@ -140,9 +149,10 @@ def render(cells: dict[str, dict[str, list[str]]]) -> str:
     out.append("| --- | --- | --- |")
     out.append("| phone | `w393dp` / `w411dp` | every phone; the closed cover of a foldable |")
     out.append("| tablet-portrait | `w840dp` / `sw800dp-w800dp` | the two-pane threshold; an unfolded device |")
-    out.append("| tablet-landscape | `sw800dp-w1280dp` | labelled rail, workbench chart, eight panes |")
-    out.append("| fold-open | = tablet-portrait window class, plus the hinge | `CoineProFold` table-top and book postures — JVM, Robolectric has no hinge |")
-    out.append("| fold-closed | = phone window class | no posture; the cover display is a narrow phone |")
+    out.append("| pixel-tablet | `sw800dp-w1280dp-h800dp-xhdpi` | Pixel Tablet, landscape: labelled rail, workbench chart, docked panels, eight panes |")
+    out.append("| tab-s9-ultra | `sw1232dp-w1973dp-h1232dp-hdpi` | Galaxy Tab S9 Ultra (12.4″), landscape |")
+    out.append("| fold-open | `sw775dp-w930dp-h775dp-xhdpi` | Pixel Fold, inner display; the hinge itself is `CoineProFold` — JVM, Robolectric has no hinge |")
+    out.append("| fold-closed | `w411dp-h797dp-xxhdpi` | Pixel Fold, cover display |")
     out.append("")
     out.append("| screen | " + " | ".join(COLUMNS) + " |")
     out.append("| --- | " + " | ".join("---" for _ in COLUMNS) + " |")
@@ -151,12 +161,9 @@ def render(cells: dict[str, dict[str, list[str]]]) -> str:
         row = cells.get(screen, {})
         counts = []
         for column in COLUMNS:
-            if column == "fold-open":
-                n = len(row.get("tablet-portrait", [])) + (len(JVM_EVIDENCE["fold-open"]) if screen == "chart" else 0)
-            elif column == "fold-closed":
-                n = len(row.get("phone", []))
-            else:
-                n = len(row.get(column, []))
+            n = len(row.get(column, []))
+            if column == "fold-open" and screen == "chart":
+                n += len(JVM_EVIDENCE["fold-open"])
             counts.append(str(n) if n else "—")
         if any(c != "—" for c in counts):
             out.append(f"| {screen} | " + " | ".join(counts) + " |")
@@ -169,14 +176,14 @@ def render(cells: dict[str, dict[str, list[str]]]) -> str:
             continue
         out.append(f"### {screen}")
         out.append("")
-        for column in ["phone", "tablet-portrait", "tablet-landscape"]:
+        for column in COLUMNS:
             tests = sorted(set(row.get(column, [])))
             if tests:
                 out.append(f"- **{column}** ({len(tests)}): " + ", ".join(f"`{t}`" for t in tests))
         out.append("")
     out.append("## The fold, on the JVM")
     out.append("")
-    out.append("A hinge cannot be rendered off-device — `androidx.window` needs an activity and Robolectric reports no folding features — so the fold columns are the window-class columns plus these pure assertions on the posture mapping and the decisions taken from it:")
+    out.append("A hinge cannot be rendered off-device — `androidx.window` needs an activity and Robolectric reports no folding features — so the fold columns render the Pixel Fold's two displays at their dp, and the posture mapping and the decisions taken from it are pure assertions:")
     out.append("")
     for path, name in JVM_EVIDENCE["fold-open"]:
         out.append(f"- `{name}` — `{path}`")

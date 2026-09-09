@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi::class)
+
 package com.coinepro.app
 
 import android.app.Activity
@@ -137,7 +139,20 @@ import com.coinepro.feature.profile.AppearanceQuickRow
 import com.coinepro.feature.profile.AppearanceSheet
 import com.coinepro.feature.profile.AppearanceTitle
 import com.coinepro.feature.profile.labelRes
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import com.coinepro.feature.chart.ChartSidePanel
+import com.coinepro.core.designsystem.R as DesignR
+import com.coinepro.feature.chart.R as ChartR
 import com.coinepro.core.designsystem.CoineProTheme
+import com.coinepro.core.designsystem.CoineProWindowClass
+import androidx.compose.material3.adaptive.currentWindowDpSize
 import com.coinepro.core.designsystem.ProvideToaster
 import com.coinepro.core.designsystem.PageAccent
 import com.coinepro.core.designsystem.ProvidePageAccent
@@ -1206,6 +1221,9 @@ fun CoineProApp(
     CoineProTheme(
         darkTheme = darkTheme,
         risingIsGreen = marketColors == MarketColorScheme.GREEN_UP,
+        // The activity's own window, not the configuration: in a split screen or a free-form
+        // window the two differ, and the rail must follow the glass the app actually has.
+        windowClass = CoineProWindowClass.of(currentWindowDpSize()),
     ) {
         // One toaster for the whole tree, so a composable anywhere below can report a finished
         // action without a `Scaffold` and a `SnackbarHostState` being threaded to it. See
@@ -2315,33 +2333,27 @@ private fun MainShell(
                 )
             }
         },
-        bottomBar = {
-            if (!isSubScreen && !window.showsNavigationRail) {
-                CoineProBottomBar(
-                    currentRoute = currentRoute,
-                    onSelect = { destination ->
-                        // Written on the tap rather than watched off `currentRoute`: a back stack
-                        // restore, a deep link and a pop all change the current route without the
-                        // reader choosing anything, and "where I left off" means where they chose
-                        // to be. See `UserPreferencesStore.lastRootRoute`.
-                        onRootVisited(destination.route)
-                        navController.navigate(destination.route) {
-                            tabSwitch(navController, destination.route)
-                        }
-                    },
-                )
-            }
-        },
+        // No bottomBar slot: the bar and the rail are placed by `NavigationSuiteScaffoldLayout`
+        // below, from the same window class. The scaffold keeps only the top inset for itself.
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
     ) { innerPadding ->
         // A box, so the toast host at the bottom of it can overlay whatever screen is up without
         // that screen having to know it exists. See `CoineProToastHost`.
-        Box(modifier = Modifier.fillMaxSize()) {
-        // The rail first, so it takes the *start* edge — the right in Persian. Nothing here names
-        // a side and nothing must: a rail pinned to a physical edge is the first thing a reader of
-        // a right-to-left app sees, and it is wrong in a way that looks deliberate.
-        Row(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-        if (!isSubScreen && window.showsNavigationRail) {
-            CoineProNavigationRail(
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        // Bar or rail, decided by the window and placed by Material's navigation suite: the bar
+        // below the content on a compact window, the rail beside it on medium and expanded. The
+        // rail takes the *start* edge — the right in Persian — because the layout places it
+        // relative to the reading direction; nothing here names a side and nothing must.
+        val suite = when {
+            isSubScreen -> NavigationSuiteType.None
+            window.showsNavigationRail -> NavigationSuiteType.NavigationRail
+            else -> NavigationSuiteType.NavigationBar
+        }
+        NavigationSuiteScaffoldLayout(
+            layoutType = suite,
+            navigationSuite = {
+                when (suite) {
+                    NavigationSuiteType.NavigationRail -> CoineProNavigationRail(
                 items = coineProRailItems(),
                 selectedKey = currentRoute,
                 onSelect = { item ->
@@ -2358,9 +2370,34 @@ private fun MainShell(
                         }
                     }
                 },
-            )
-        }
-        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    )
+                    NavigationSuiteType.NavigationBar -> CoineProBottomBar(
+                        currentRoute = currentRoute,
+                    onSelect = { destination ->
+                        // Written on the tap rather than watched off `currentRoute`: a back stack
+                        // restore, a deep link and a pop all change the current route without the
+                        // reader choosing anything, and "where I left off" means where they chose
+                        // to be. See `UserPreferencesStore.lastRootRoute`.
+                        onRootVisited(destination.route)
+                        navController.navigate(destination.route) {
+                            tabSwitch(navController, destination.route)
+                        }
+                    },
+                    )
+                    else -> Unit
+                }
+            },
+        ) {
+        Row(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                // The bar carries the navigation inset itself; with a rail or nothing, the
+                // content has to.
+                .then(if (suite == NavigationSuiteType.NavigationBar) Modifier else Modifier.windowInsetsPadding(WindowInsets.navigationBars)),
+        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
         // Above every screen and below the bar, because being offline changes what every one of
         // them is showing. It takes its own row rather than floating, so it never covers a line.
         CoineProOfflineBar(online = online)
@@ -2454,7 +2491,54 @@ private fun MainShell(
             // previous symbol's trade painted over this symbol's bars.
             val paperBook by paperTradeController.state.collectAsStateWithLifecycle()
             val openPosition = paperBook.book.positionFor(activeChartSymbol)
+            // The panels a wide window docks beside the plot. Each is the screen the phone
+            // reaches by a route, composed here because the chart cannot see the modules that
+            // own them; the chart decides whether there is room. See `ChartSidePanel`.
+            val chartState by chartController.state.collectAsStateWithLifecycle()
+            val sidePanels = listOf(
+                ChartSidePanel("watchlist", ChartR.string.chart_panel_watchlist, DesignR.drawable.icon_star) {
+                    WatchlistScreen(
+                        controller = marketSearchController,
+                        store = watchlistStore,
+                        sparklines = sparklineStore,
+                        onOpenSymbol = { symbol -> navController.navigate(chartRoute(symbol)) },
+                        watchlistSync = watchlistSyncController,
+                    )
+                },
+                ChartSidePanel("depth", ChartR.string.chart_panel_depth, DesignR.drawable.tv_chart_columns) {
+                    // The same construction as the depth route: a controller per gateway, started
+                    // and stopped by the screen, so a docked ladder is as live as a full-screen one.
+                    val depthScope = rememberCoroutineScope()
+                    val orderBookGateway = orderBookGateways.getValue(
+                        orderBookPlatformFor(activeChartSymbol, orderBookGateways.keys, activePlatform),
+                    )
+                    val depthController = remember(orderBookGateway, depthScope) {
+                        OrderBookController(gateway = orderBookGateway, scope = depthScope)
+                    }
+                    val depthPreferences = remember(symbolChartStateStore) {
+                        SymbolChartDepthPreferences(symbolChartStateStore)
+                    }
+                    DepthOfMarketScreen(
+                        controller = depthController,
+                        symbol = activeChartSymbol,
+                        preferences = depthPreferences,
+                        onPickPrice = { price -> alertFromChart = activeChartSymbol to price },
+                    )
+                },
+                ChartSidePanel("alerts", ChartR.string.chart_panel_alerts, DesignR.drawable.icon_bell) {
+                    AlertCenterScreen(controller = alertsController, initialSymbol = activeChartSymbol)
+                },
+                ChartSidePanel("script", ChartR.string.chart_panel_script, DesignR.drawable.tv_code2) {
+                    ScriptScreen(
+                        controller = scriptController,
+                        symbol = activeChartSymbol,
+                        series = chartState.series,
+                        loading = chartState.loading,
+                    )
+                },
+            )
             ChartScreen(
+                sidePanels = sidePanels,
                 position = openPosition,
                 layouts = chartLayouts,
                 onSaveLayout = onSaveLayoutAnnounced,
@@ -3698,10 +3782,12 @@ private fun MainShell(
         }
         }
         }
+        // Above every screen and below nothing: inside the suite's content, so a message never
+        // covers the bar or the rail a reader is aiming at.
+        CoineProToastHost()
         }
-        // Above every screen and below nothing. Placed inside the scaffold's content rather than
-        // over the whole window so a message never covers the bottom bar a reader is aiming at.
-        CoineProToastHost(modifier = Modifier.padding(innerPadding))
+        }
+        }
         }
     }
 

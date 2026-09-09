@@ -9,6 +9,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.material3.VerticalDragHandle
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.layout.AnimatedPane
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
+import androidx.compose.material3.adaptive.layout.PaneExpansionAnchor
+import androidx.compose.material3.adaptive.layout.PaneExpansionState
+import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldDefaults
+import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldDestinationItem
+import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldScope
+import androidx.compose.material3.adaptive.layout.calculateThreePaneScaffoldValue
+import androidx.compose.material3.adaptive.layout.defaultDragHandleSemantics
+import androidx.compose.material3.adaptive.layout.rememberPaneExpansionState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +68,9 @@ object CoineProPaneDefaults {
      * something here rather than being borrowed.
      */
     val MIN_DETAIL_WIDTH: Dp = 480.dp
+
+    /** The draggable divider between the panes: wide enough to grab, narrow enough to read as a line. */
+    val DIVIDER_WIDTH: Dp = 12.dp
 }
 
 /**
@@ -86,6 +107,7 @@ object CoineProPaneDefaults {
  * Nothing in this file names left or right; the divider is a sibling between the two panes and
  * lands correctly in both directions for the same reason.
  */
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun CoineProListDetail(
     modifier: Modifier = Modifier,
@@ -115,21 +137,78 @@ fun CoineProListDetail(
             list(false)
             return@BoxWithConstraints
         }
-        Row(modifier = Modifier.fillMaxSize()) {
-            Box(modifier = Modifier.width(listWidth).fillMaxHeight()) { list(true) }
-            VerticalDivider(color = CoineProColors.Border)
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    // The stage, so the detail pane is the page and the list beside it is the
-                    // chrome — rather than two panels of equal weight with a rule between them,
-                    // which is what makes a desktop mail client look like a filing cabinet.
-                    .background(CoineProColors.Stage),
-            ) {
-                if (detail != null) detail() else empty()
-            }
-        }
+        // Material's list-detail scaffold, told the answer rather than asked for it: the
+        // directive is built from the width *this* composable measured, which is the window less
+        // the rail — see the class KDoc for why the window's own class would put two panes where
+        // one fits. Two partitions, and the reader can drag the divider between them.
+        val directive = PaneScaffoldDirective(
+            maxHorizontalPartitions = 2,
+            horizontalPartitionSpacerSize = CoineProPaneDefaults.DIVIDER_WIDTH,
+            maxVerticalPartitions = 1,
+            verticalPartitionSpacerSize = 0.dp,
+            defaultPanePreferredWidth = listWidth,
+            excludedBounds = emptyList(),
+        )
+        val value = calculateThreePaneScaffoldValue(
+            maxHorizontalPartitions = 2,
+            adaptStrategies = ListDetailPaneScaffoldDefaults.adaptStrategies(),
+            currentDestination = ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.List, null),
+        )
+        val expansion = rememberPaneExpansionState(
+            keyProvider = value,
+            anchors = listOf(
+                PaneExpansionAnchor.Offset.fromStart(listWidth),
+                PaneExpansionAnchor.Proportion(0.5f),
+            ),
+        )
+        ListDetailPaneScaffold(
+            directive = directive,
+            value = value,
+            listPane = {
+                AnimatedPane(modifier = Modifier.preferredWidth(listWidth)) { list(true) }
+            },
+            detailPane = {
+                AnimatedPane {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(CoineProColors.Stage),
+                    ) {
+                        if (detail != null) detail() else empty()
+                    }
+                }
+            },
+            paneExpansionState = expansion,
+            paneExpansionDragHandle = { state -> CoineProPaneDragHandle(state) },
+        )
+    }
+}
+
+/**
+ * The divider between the two panes, and the handle that moves it.
+ *
+ * A hairline in the design system's border colour, as the old fixed divider was, with Material's
+ * pill in the middle so the affordance is visible; the whole spacer width is draggable. Snaps to
+ * the list's default width or to half the screen — the two widths anybody actually wants.
+ */
+@OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun ThreePaneScaffoldScope.CoineProPaneDragHandle(state: PaneExpansionState) {
+    val interaction = remember { MutableInteractionSource() }
+    Box(
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(CoineProPaneDefaults.DIVIDER_WIDTH)
+            .paneExpansionDraggable(
+                state = state,
+                minTouchTargetSize = LocalMinimumInteractiveComponentSize.current,
+                interactionSource = interaction,
+                semanticsProperties = state.defaultDragHandleSemantics(),
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        VerticalDivider(color = CoineProColors.Border)
+        VerticalDragHandle(interactionSource = interaction)
     }
 }
 

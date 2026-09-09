@@ -33,6 +33,13 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material3)
+    // The window size classes and the adaptive scaffolds — Material's own numbers and layouts,
+    // exposed as `api` so a feature that lays out by window reads the same types. See
+    // `CoineProWindowClass` for how the class is derived and `CoineProListDetail` for the panes.
+    api(libs.androidx.window.core)
+    api(libs.androidx.compose.material3.window.size)
+    api(libs.androidx.compose.material3.adaptive)
+    api(libs.androidx.compose.material3.adaptive.layout)
     implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui)

@@ -5,6 +5,8 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.DpSize
+import androidx.window.core.layout.WindowSizeClass
 
 /**
  * How much room there is, in the three sizes the product actually makes a decision at.
@@ -73,12 +75,20 @@ data class CoineProWindowClass(
     val widthDp: Int,
     val heightDp: Int,
 ) {
+    /**
+     * The same window as `androidx.window.core`'s [WindowSizeClass] — what `material3-adaptive`'s
+     * `currentWindowAdaptiveInfo()` and the navigation suite read. Since 4.53.0 the three sizes
+     * below are *derived* from its breakpoints rather than from local constants, so the shell and
+     * the library can never disagree about where a rail begins.
+     */
+    val sizeClass: WindowSizeClass get() = WindowSizeClass(widthDp, heightDp)
+
     /** Which of the three widths this is. Almost every decision in the product reads this one. */
     val width: CoineProWindowSize
         get() = when {
-            widthDp < MEDIUM_WIDTH_DP -> CoineProWindowSize.COMPACT
-            widthDp < EXPANDED_WIDTH_DP -> CoineProWindowSize.MEDIUM
-            else -> CoineProWindowSize.EXPANDED
+            sizeClass.isWidthAtLeastBreakpoint(EXPANDED_WIDTH_DP) -> CoineProWindowSize.EXPANDED
+            sizeClass.isWidthAtLeastBreakpoint(MEDIUM_WIDTH_DP) -> CoineProWindowSize.MEDIUM
+            else -> CoineProWindowSize.COMPACT
         }
 
     /**
@@ -89,9 +99,9 @@ data class CoineProWindowClass(
      */
     val height: CoineProWindowSize
         get() = when {
-            heightDp < MEDIUM_HEIGHT_DP -> CoineProWindowSize.COMPACT
-            heightDp < EXPANDED_HEIGHT_DP -> CoineProWindowSize.MEDIUM
-            else -> CoineProWindowSize.EXPANDED
+            sizeClass.isHeightAtLeastBreakpoint(EXPANDED_HEIGHT_DP) -> CoineProWindowSize.EXPANDED
+            sizeClass.isHeightAtLeastBreakpoint(MEDIUM_HEIGHT_DP) -> CoineProWindowSize.MEDIUM
+            else -> CoineProWindowSize.COMPACT
         }
 
     /**
@@ -142,14 +152,15 @@ data class CoineProWindowClass(
          * in landscape reports a little over it — which is the point: the class changes exactly
          * when there is genuinely room for a second column.
          */
-        const val MEDIUM_WIDTH_DP = 600
+        /** `androidx.window.core`'s breakpoint; the number is the library's, not this file's. */
+        const val MEDIUM_WIDTH_DP = WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND
 
         /**
          * Where a tablet with its whole screen starts. Below it a "tablet layout" is a tablet
          * layout on a device that is not one, which is how a two-pane list ends up with a 260dp
          * detail pane.
          */
-        const val EXPANDED_WIDTH_DP = 840
+        const val EXPANDED_WIDTH_DP = WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND
 
         /**
          * Where the rail can afford its labels. See [prefersLabelledRail] for why this is not 840.
@@ -165,8 +176,8 @@ data class CoineProWindowClass(
         const val LABELLED_RAIL_WIDTH_DP = 1080
 
         /** Material 3's height breakpoints. Only the chart's pane grid reads them. */
-        const val MEDIUM_HEIGHT_DP = 480
-        const val EXPANDED_HEIGHT_DP = 900
+        const val MEDIUM_HEIGHT_DP = WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND
+        const val EXPANDED_HEIGHT_DP = WindowSizeClass.HEIGHT_DP_EXPANDED_LOWER_BOUND
 
         /** See `ChartPanesScreen` for the argument. Named here so the cap is one number. */
         const val PHONE_MAX_PANES = 2
@@ -180,6 +191,10 @@ data class CoineProWindowClass(
          */
         fun of(widthDp: Int, heightDp: Int): CoineProWindowClass =
             CoineProWindowClass(widthDp = widthDp, heightDp = heightDp)
+
+        /** From the window's own size — `currentWindowDpSize()` in the activity. */
+        fun of(size: DpSize): CoineProWindowClass =
+            CoineProWindowClass(widthDp = size.width.value.toInt(), heightDp = size.height.value.toInt())
 
         /**
          * What a composition with no theme around it reports.

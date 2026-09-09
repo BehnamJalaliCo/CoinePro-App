@@ -198,4 +198,11 @@
     <string name="indicator_settings_show">نمایش روی چارت</string>
     <string name="indicator_settings_show_note">خاموش کردن، اندیکاتور را پنهان می‌کند و تنظیماتش را نگه می‌دارد.</string>
     <string name="indicator_settings_remove">برداشتن از چارت</string>
+    <!-- The panels a wide window docks beside the chart, and the rail that opens them. -->
+    <string name="chart_side_rail">پنل‌های چارت</string>
+    <string name="chart_panel_watchlist">دیده‌بان</string>
+    <string name="chart_panel_objects">اشیا</string>
+    <string name="chart_panel_depth">عمق بازار</string>
+    <string name="chart_panel_alerts">هشدارها</string>
+    <string name="chart_panel_script">نمااسکریپت</string>
 </resources>

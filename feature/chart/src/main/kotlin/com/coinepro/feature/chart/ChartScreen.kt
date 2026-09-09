@@ -309,6 +309,8 @@ fun ChartScreen(
      * screen's own state in the shell.
      */
     drawingTemplates: DrawingTemplateStore? = null,
+    /** Panels the shell can dock beside the plot on a wide window — see [ChartSidePanel]. */
+    sidePanels: List<ChartSidePanel> = emptyList(),
     /** Takes the drawn setup as a paper trade. See [SetupSheetBody]. */
     onPaperTrade: (
         (
@@ -1252,8 +1254,28 @@ fun ChartScreen(
     // is a pass-through: `ChartWorkbench` hands the page the whole modifier and composes neither
     // column, so nothing below this line behaves differently on the device the page was designed
     // for.
+    // The object tree is the chart's own panel; the rest come from the shell. First in the rail
+    // because it is the one a reader drawing on a tablet reaches for most.
+    val objectTreePanel = ChartSidePanel(
+        id = "objects",
+        labelRes = R.string.chart_panel_objects,
+        icon = DesignR.drawable.icon_list_bullets,
+    ) {
+        ObjectTreeSheetBody(
+            groups = objectTree,
+            drawings = state.drawing.drawings,
+            selectedId = state.drawing.selectedId,
+            onSelect = controller::selectDrawing,
+            onToggleHidden = controller::toggleDrawingHidden,
+            onToggleLocked = { node -> controller.setDrawingLocked(node.id, !node.locked) },
+            onDelete = controller::deleteDrawing,
+            onReorder = controller::reorderDrawing,
+            onOpenStyle = { id -> styling = id },
+        )
+    }
     ChartWorkbench(
         modifier = Modifier.fillMaxSize(),
+        sidePanels = listOf(objectTreePanel) + sidePanels,
         tools = { railModifier ->
             ChartToolColumn(
                 state = state,

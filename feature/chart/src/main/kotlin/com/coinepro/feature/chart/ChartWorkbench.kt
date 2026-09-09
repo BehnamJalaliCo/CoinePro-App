@@ -109,9 +109,33 @@ internal fun ChartWorkbench(
      * It has to know, because the blocks that moved into the side column must not also be drawn in
      * the page — two readings panels on one screen is the failure this parameter exists to prevent.
      */
+    /**
+     * Panels the reader can dock beside the plot on a wide window — see [ChartSidePanel].
+     * Ignored where they do not fit, which is every phone and a tablet held upright.
+     */
+    sidePanels: List<ChartSidePanel> = emptyList(),
     page: @Composable (Modifier, ChartWorkbenchColumns) -> Unit,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        if (sidePanels.isNotEmpty() && sidePanelsFit(maxWidth.value)) {
+            ChartSidePanelHost(panels = sidePanels, modifier = Modifier.fillMaxSize()) { hostModifier ->
+                ChartWorkbenchColumns(hostModifier, tools, readings, page)
+            }
+        } else {
+            ChartWorkbenchColumns(Modifier.fillMaxSize(), tools, readings, page)
+        }
+    }
+}
+
+/** The columns themselves, measured against whatever the host left. */
+@Composable
+private fun ChartWorkbenchColumns(
+    modifier: Modifier,
+    tools: (@Composable (Modifier) -> Unit)?,
+    readings: (@Composable (Modifier) -> Unit)?,
+    page: @Composable (Modifier, ChartWorkbenchColumns) -> Unit,
+) {
+    BoxWithConstraints(modifier = modifier) {
         val columns = columnsFor(
             width = maxWidth,
             hasTools = tools != null,

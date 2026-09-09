@@ -15,6 +15,34 @@ it is for.
 
 ---
 
+## [4.53.0] — 2026-09-09 — the tablet on Material's own scaffolds
+
+Item 2 of the 4.52 run. The window class, the two-pane pages and the chart's columns were the
+app's own arithmetic; they now stand on `material3-adaptive`, `material3-window-size-class` and
+the navigation suite, and the chart gains the docked panels the plan named.
+
+### Added
+- **`material3-adaptive` 1.1.0, `adaptive-layout`, `adaptive-navigation`, the navigation suite
+  1.4.0 and `window-size-class` 1.4.0** (Compose BOM 2025.09.01), with `androidx.window:window-core`.
+- **`NavigationSuiteScaffoldLayout`** places the bottom bar on a compact window and the rail on
+  medium and expanded; the bar and the rail are still the app's own composables.
+- **`ListDetailPaneScaffold`** under `CoineProListDetail` (markets ⇄ chart, screener ⇄ chart,
+  ideas ⇄ signal, news ⇄ article), with a **drag-to-resize divider** that snaps to the list's
+  width or to half the screen.
+- **`SupportingPaneScaffold`** beside the chart on a window at least 1128 dp wide: a rail of five
+  panels — object tree, watchlist, depth of market, alerts, NamaScript — each the same screen the
+  phone reaches by a route, docked at 360 dp. `ChartScreen.sidePanels` is the slot; the shell fills it.
+- **Device goldens**: Pixel Tablet, Galaxy Tab S9 Ultra and Pixel Fold (open and cover), dark and
+  light, Persian and English, for the five top-level screens; `docs/qa/PARITY_MATRIX.md` gains
+  one column per device.
+
+### Changed
+- `CoineProWindowClass` derives its three sizes from `androidx.window.core.layout.WindowSizeClass`'s
+  breakpoints, and the app feeds it the activity's own window (`currentWindowDpSize()`), so a
+  split-screen or free-form window is classed by what it has, not by the display.
+- Sheets on an expanded window (4.51.0's dialogs), the eight-pane grid and the fold posture
+  (`CoineProFold` from `FoldingFeature`) are unchanged and re-proven.
+
 ## [4.52.0] — 2026-09-09 — English is the resource default; Persian is the qualified set
 
 Item 1 of the 4.52 run, the owner's decision after five deferrals: `values/` is now English in

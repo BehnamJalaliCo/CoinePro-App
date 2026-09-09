@@ -1,6 +1,7 @@
 package com.coinepro.core.designsystem
 
 import androidx.compose.ui.unit.dp
+import androidx.window.core.layout.WindowSizeClass
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -172,5 +173,20 @@ class WindowClassTest {
         // A missing provider must not hand a preview a rail and two panes inside 411dp: that
         // failure looks like a layout bug rather than like the missing provider it is.
         assertEquals(CoineProWindowSize.COMPACT, CoineProWindowClass.Phone.width)
+    }
+
+    /**
+     * The breakpoints are `androidx.window.core`'s, not this module's: what the shell decides on is
+     * the same [WindowSizeClass] `material3-adaptive` and the navigation suite read.
+     */
+    @Test
+    fun `the breakpoints are the window library's own`() {
+        assertEquals(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND, CoineProWindowClass.MEDIUM_WIDTH_DP)
+        assertEquals(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND, CoineProWindowClass.EXPANDED_WIDTH_DP)
+        assertEquals(600, CoineProWindowClass.MEDIUM_WIDTH_DP)
+        assertEquals(840, CoineProWindowClass.EXPANDED_WIDTH_DP)
+        val tablet = CoineProWindowClass.of(840, 1280)
+        assertTrue(tablet.sizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND))
+        assertFalse(CoineProWindowClass.of(839, 1280).sizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND))
     }
 }
