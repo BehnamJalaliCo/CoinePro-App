@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 1277208.533
+// expect: plot 0 238 1282193.184
+// expect: plot 0 239 1288302.976
+// ta.cum
+plot(ta.cum(volume), title="ta.cum")

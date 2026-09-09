@@ -1,0 +1,2 @@
+// expect: plot 0 7 7
+plot(bar_index[0])

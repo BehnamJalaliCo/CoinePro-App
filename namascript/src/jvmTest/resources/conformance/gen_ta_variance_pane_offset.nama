@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 0.9036180366
+// expect: plot 0 238 0.8352781743
+// expect: plot 0 239 0.7513393106
+// ta.variance, own pane, one bar back
+x = ta.variance(close, 20)
+plot(x[1], title="ta.variance[1]", pane="own")

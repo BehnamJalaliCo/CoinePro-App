@@ -1,0 +1,2 @@
+// expect: plot 0 0 10
+plot(input(50, title="L", min=1, max=10))

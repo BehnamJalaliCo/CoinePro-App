@@ -1,0 +1,4 @@
+// expect: plot 0 0 4
+// expect: plot 1 0 8
+plot(math.sqrt(16))
+plot(math.pow(2, 3))

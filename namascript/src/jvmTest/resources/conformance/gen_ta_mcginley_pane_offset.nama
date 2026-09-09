@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.5714739
+// expect: plot 0 238 109.5985063
+// expect: plot 0 239 109.6612069
+// ta.mcginley, own pane, one bar back
+x = ta.mcginley(close, 14)
+plot(x[1], title="ta.mcginley[1]", pane="own")

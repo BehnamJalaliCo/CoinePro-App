@@ -1,0 +1,2 @@
+// expect: plot 0 0 -6
+plot(-2 * 3)

@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.2891798
+// expect: plot 0 238 109.6628509
+// expect: plot 0 239 109.9552567
+// math.min, own pane, one bar back
+x = math.min(close, open)
+plot(x[1], title="math.min[1]", pane="own")

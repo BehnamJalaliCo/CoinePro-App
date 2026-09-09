@@ -15,6 +15,58 @@ it is for.
 
 ---
 
+## [4.50.0] — 2026-09-09 — NamaScript is written down, filled out, and held to a suite
+
+§3 of the Pro Chart plan. The language is a vectorising interpreter — every expression is a
+whole series — and the plan asks for a Pine-v5-class, bar-by-bar language with a compiler. That
+is v2, and `docs/namascript/SPEC.md` §10 says so plainly, with a table of what stands. What this
+release does is make v1.1 complete, specified, diagnosable and tested to the plan's numbers.
+
+### Added
+- **`docs/namascript/SPEC.md`**: the grammar, the types, absence and history, the built-ins,
+  the execution model, every diagnostic code with an example, the sandbox, performance, and the
+  v2 table.
+- **Sixty-three new built-ins.** `ta.`: ppo, pvo, tsi, aroon, mfi, cmf, dpo, kst, mass, stochrsi,
+  psar, ao, ac, dema, tema, t3, vwma, the three alligator lines, cmo, coppock, rvi, vstop,
+  netvolume, correlation, variance, avg and their signals — the rest of the engine's library, so
+  a script can reach every indicator the chart can draw. `math.`: exp, log10, sin, cos, tan, avg,
+  clamp. `input.int`, `input.float`, `input.bool`, `color.new`, `plotshape` and `plotchar` with
+  Pine's shape names, `bgcolor` and `alertcondition` (both in `ScriptResult`; the chart draws
+  backgrounds and the alert centre reads conditions in a later cut).
+- **Diagnostics with codes and hints.** Every refusal now carries a stable code (`E101`…`E406`)
+  and, for each, a one-line fix in Persian and English; the studio shows both under the message.
+  `ScriptDiagnosticsTest` holds the sources, the hint table and the spec's list together.
+- **A clock in the sandbox**: two seconds of wall time per run (`E406`), beside the node budget,
+  the size cap, the plot cap and the stack guard.
+- **The conformance suite**: 351 scripts under `namascript/src/jvmTest/resources/conformance` —
+  277 generated, one per built-in and per form (own pane, one bar back, inputs, plots, colours),
+  with expectations recorded from the engine and committed, and 74 hand-written with
+  expectations a person worked out: absence, history, broadcasting, precedence, every error
+  code. `scripts/quality/gen_namascript_conformance.py` regenerates the first kind;
+  `-Dnamascript.conformance.record=true` re-records.
+- **The reference, generated**: `docs/namascript/reference/fa.md` and `en.md` from the table the
+  studio shows (`ReferenceDocsTest` fails when stale; `-Dnamascript.reference.write=true`
+  rewrites), with an English line for every function (`ScriptReferenceEn`) and a test that every
+  bound built-in is documented. The studio's reference tab shows the English line when the app is.
+- **The Pine paste helper**: `PineTranslator` rewrites what has a direct equivalent — the header,
+  `input.*`, `ta.rma`/`ta.stoch`/…, `plotshape` with `shape.*`, `plot(x, "title")`, colours, `var`
+  and `:=` — and names, with its line, each thing it could not: control flow, functions,
+  collections, `request.*`, drawing objects, strategy orders.
+- **The editor** keeps its caret: a completion strip over the word being typed, from the same
+  names the reference lists (a function completes with its parenthesis); line numbers; a typed
+  `(`, `[` or `"` brings its closing half and typing the closing half steps over it.
+- **Performance, measured**: `ScriptPerformanceTest` — a 303-line script with ten `ta.` calls
+  over 20 000 bars parses in 2.6 ms and evaluates in 1.4 s on this JVM. The plan's Pixel 6a
+  targets need a device; the evaluate figure says the vectorising interpreter allocates a series
+  per line and that a typed-array VM is the right v2 shape, not an option.
+
+### Not done
+- v2 itself: bar-by-bar execution with `var`/`varip`, functions, loops, collections, user types,
+  libraries, `request.security`, `strategy.*`, drawing objects, a bytecode VM, incremental
+  evaluation. SPEC.md §10 is the table; the route is a second front end on the same bindings.
+- `fill`, `plotcandle`, `barcolor`; text and choice inputs; the memory cap; repainting warnings
+  (no lookahead is possible in v1.1); `.nama` import/export and share links.
+
 ## [4.49.0] — 2026-09-09 — The engine is held to an outside reference, and learns the desk
 
 §2 of the Pro Chart plan. The engine already had most of what the plan lists — eighteen series

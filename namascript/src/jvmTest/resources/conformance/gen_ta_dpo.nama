@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 1.558529558
+// expect: plot 0 238 0.6024709552
+// expect: plot 0 239 -0.08642239235
+// ta.dpo
+plot(ta.dpo(close, 20), title="ta.dpo")

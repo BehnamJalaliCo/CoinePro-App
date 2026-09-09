@@ -1,0 +1,2 @@
+// expect: error E302
+close = 5

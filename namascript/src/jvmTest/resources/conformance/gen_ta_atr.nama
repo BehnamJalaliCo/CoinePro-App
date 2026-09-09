@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 1.922802475
+// expect: plot 0 238 1.862419065
+// expect: plot 0 239 1.818547816
+// ta.atr
+plot(ta.atr(14), title="ta.atr")

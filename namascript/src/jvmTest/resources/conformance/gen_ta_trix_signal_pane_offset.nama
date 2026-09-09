@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -4.453349059
+// expect: plot 0 238 -4.274227617
+// expect: plot 0 239 -4.066421878
+// ta.trix_signal, own pane, one bar back
+x = ta.trix_signal(close, 18, 9)
+plot(x[1], title="ta.trix_signal[1]", pane="own")

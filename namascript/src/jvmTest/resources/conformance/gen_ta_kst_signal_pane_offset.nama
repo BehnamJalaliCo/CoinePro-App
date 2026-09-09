@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -8.483706657
+// expect: plot 0 238 -7.497303782
+// expect: plot 0 239 -6.536839826
+// ta.kst_signal, own pane, one bar back
+x = ta.kst_signal(close)
+plot(x[1], title="ta.kst_signal[1]", pane="own")

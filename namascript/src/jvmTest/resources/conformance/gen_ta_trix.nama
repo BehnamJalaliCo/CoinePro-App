@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -3.557741846
+// expect: plot 0 238 -3.235198922
+// expect: plot 0 239 -2.851772280
+// ta.trix
+plot(ta.trix(close, 18, 9), title="ta.trix")

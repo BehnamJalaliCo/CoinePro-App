@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.5936259
+// expect: plot 0 238 109.6170774
+// expect: plot 0 239 109.6256191
+// ta.kama
+plot(ta.kama(close, 10, 2, 30), title="ta.kama")

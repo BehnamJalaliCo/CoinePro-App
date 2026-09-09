@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -2059.348577
+// expect: plot 0 238 -1188.349577
+// expect: plot 0 239 6.409679531
+// ta.klinger_signal, own pane, one bar back
+x = ta.klinger_signal(34, 55, 13)
+plot(x[1], title="ta.klinger_signal[1]", pane="own")

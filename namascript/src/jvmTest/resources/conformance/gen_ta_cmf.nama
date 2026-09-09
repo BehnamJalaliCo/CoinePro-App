@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 0.1615435581
+// expect: plot 0 238 0.1982661134
+// expect: plot 0 239 0.1716745751
+// ta.cmf
+plot(ta.cmf(20), title="ta.cmf")

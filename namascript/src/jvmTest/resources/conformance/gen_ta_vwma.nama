@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.3417630
+// expect: plot 0 238 109.4718260
+// expect: plot 0 239 109.6600847
+// ta.vwma
+plot(ta.vwma(20), title="ta.vwma")

@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 5.661887798e+47
+// expect: plot 0 238 9.818269213e+47
+// expect: plot 0 239 9.437064889e+47
+// math.exp
+plot(math.exp(close), title="math.exp")

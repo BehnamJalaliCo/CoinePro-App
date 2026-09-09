@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 1267894.590
+// expect: plot 0 238 1277208.533
+// expect: plot 0 239 1282193.184
+// ta.cum, own pane, one bar back
+x = ta.cum(volume)
+plot(x[1], title="ta.cum[1]", pane="own")

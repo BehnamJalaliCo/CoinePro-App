@@ -1,0 +1,22 @@
+// expect: ok
+// expect: plots 5
+// expect: plot 0 237 109.3444133
+// expect: plot 0 238 110.2907067
+// expect: plot 0 239 110.1401030
+// expect: plot 1 237 109.5480278
+// expect: plot 1 238 110.3623858
+// expect: plot 1 239 110.2487834
+// expect: plot 2 237 109.5767336
+// expect: plot 2 238 110.2606036
+// expect: plot 2 239 110.3130236
+// expect: plot 3 237 237.0000000
+// expect: plot 3 238 238.0000000
+// expect: plot 3 239 239.0000000
+// expect: plot 4 237 1700853200
+// expect: plot 4 238 1700856800
+// expect: plot 4 239 1700860400
+plot(hl2)
+plot(hlc3)
+plot(ohlc4)
+plot(bar_index, pane="own")
+plot(time, pane="own")

@@ -1,0 +1,2 @@
+// expect: error E208
+plot(close, title=close > open)

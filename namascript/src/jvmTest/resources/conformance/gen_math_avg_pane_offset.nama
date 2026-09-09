@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.4760154
+// expect: plot 0 238 109.8090538
+// expect: plot 0 239 110.2305005
+// math.avg, own pane, one bar back
+x = math.avg(close, open)
+plot(x[1], title="math.avg[1]", pane="own")

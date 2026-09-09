@@ -1,0 +1,4 @@
+// expect: plot 0 4 na
+// expect: plot 0 5 0
+x = bar_index[2]
+plot(x[3])

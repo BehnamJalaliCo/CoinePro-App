@@ -1,0 +1,4 @@
+// expect: ok
+// expect: plots 0
+// expect: alerts 0 19
+alertcondition(ta.crossover(close, ta.sma(close, 20)), "golden")

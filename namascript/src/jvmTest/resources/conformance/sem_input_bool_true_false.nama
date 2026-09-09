@@ -1,0 +1,4 @@
+// expect: plot 0 0 1
+// expect: plot 1 0 0
+plot(input.bool(true, title="a") ? 1 : 0)
+plot(input.bool(false, title="b") ? 1 : 0)

@@ -64,9 +64,19 @@ class ScriptError(
     val en: String,
     val line: Int = 0,
     val column: Int = 0,
+    /**
+     * A stable code: `E1xx` from the parser, `E2xx` a type, `E3xx` a name, `E4xx` a limit the
+     * sandbox enforces — `docs/namascript/SPEC.md` §7 lists them. What a reader searches for, and
+     * what the editor keys its one-line fix hints on.
+     */
+    val code: String = "E000",
 ) : Exception(if (line > 0) "خط $line: $fa" else fa) {
     /** The message without the line prefix, for a caller that renders the position itself. */
     val bare: String get() = fa
+
+    /** The one-line fix for [code], in both languages; empty where the message is the fix. */
+    val hint: String get() = ScriptDiagnostics.hint(code)
+    val hintEn: String get() = ScriptDiagnostics.hintEn(code)
 }
 
 /**
@@ -135,7 +145,7 @@ internal class Lexer(private val source: String) {
         while (position < source.length && (source[position].isDigit() || source[position] == '.')) advance()
         val text = source.substring(start, position)
         val value = text.toDoubleOrNull()
-            ?: throw ScriptError("«$text» عدد معتبری نیست", "“$text” is not a valid number", startLine, startColumn)
+            ?: throw ScriptError("«$text» عدد معتبری نیست", "“$text” is not a valid number", startLine, startColumn, code = "E105")
         return Token(TokenType.NUMBER, text, startLine, startColumn, value)
     }
 
@@ -159,7 +169,7 @@ internal class Lexer(private val source: String) {
         val builder = StringBuilder()
         while (position < source.length && source[position] != quote) {
             if (source[position] == '\n') {
-                throw ScriptError("رشته بسته نشده است", "The string is never closed", startLine, startColumn)
+                throw ScriptError("رشته بسته نشده است", "The string is never closed", startLine, startColumn, code = "E106")
             }
             if (source[position] == '\\' && position + 1 < source.length) {
                 advance()
@@ -176,7 +186,7 @@ internal class Lexer(private val source: String) {
             builder.append(source[position])
             advance()
         }
-        if (position >= source.length) throw ScriptError("رشته بسته نشده است", "The string is never closed", startLine, startColumn)
+        if (position >= source.length) throw ScriptError("رشته بسته نشده است", "The string is never closed", startLine, startColumn, code = "E106")
         advance() // the closing quote
         return Token(TokenType.STRING, builder.toString(), startLine, startColumn)
     }
@@ -214,7 +224,7 @@ internal class Lexer(private val source: String) {
             ')' -> make(TokenType.RPAREN, 1)
             '[' -> make(TokenType.LBRACKET, 1)
             ']' -> make(TokenType.RBRACKET, 1)
-            else -> throw ScriptError("نویسه‌ی ناشناخته «${source[position]}»", "Unexpected character “${source[position]}”", startLine, startColumn)
+            else -> throw ScriptError("نویسه‌ی ناشناخته «${source[position]}»", "Unexpected character “${source[position]}”", startLine, startColumn, code = "E107")
         }
     }
 

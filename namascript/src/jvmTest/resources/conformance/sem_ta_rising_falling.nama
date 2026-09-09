@@ -1,0 +1,4 @@
+// expect: markers 0 237
+// expect: markers 1 0
+marker(ta.rising(bar_index, 3), title="r")
+marker(ta.falling(bar_index, 3), title="f")

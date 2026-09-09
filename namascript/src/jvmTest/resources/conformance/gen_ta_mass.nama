@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 25.81901328
+// expect: plot 0 238 25.58301050
+// expect: plot 0 239 25.35379635
+// ta.mass
+plot(ta.mass(25, 9), title="ta.mass")

@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.5985063
+// expect: plot 0 238 109.6612069
+// expect: plot 0 239 109.7170449
+// ta.mcginley
+plot(ta.mcginley(close, 14), title="ta.mcginley")

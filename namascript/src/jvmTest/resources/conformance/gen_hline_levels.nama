@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 52.16402993
+// expect: plot 0 238 55.50544490
+// expect: plot 0 239 55.20670147
+plot(ta.rsi(close, 14), pane="own")
+hline(70, title="over", color=color.sell, pane="own")
+hline(30, title="under", color=color.buy, pane="own")

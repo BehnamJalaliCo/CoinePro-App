@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 111.2334365
+// expect: plot 0 238 111.0956029
+// expect: plot 0 239 110.9632827
+// ta.psar, own pane, one bar back
+x = ta.psar(0.02, 0.2)
+plot(x[1], title="ta.psar[1]", pane="own")

@@ -1,0 +1,2 @@
+// expect: plot 0 0 1
+plot("a" == "a" ? 1 : 0)

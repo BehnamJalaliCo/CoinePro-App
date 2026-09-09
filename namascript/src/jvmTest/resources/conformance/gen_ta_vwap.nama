@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 107.5134969
+// expect: plot 0 238 107.5245722
+// expect: plot 0 239 107.5374918
+// ta.vwap
+plot(ta.vwap(), title="ta.vwap")

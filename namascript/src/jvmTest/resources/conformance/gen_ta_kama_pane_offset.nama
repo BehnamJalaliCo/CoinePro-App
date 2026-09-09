@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.5913939
+// expect: plot 0 238 109.5936259
+// expect: plot 0 239 109.6170774
+// ta.kama, own pane, one bar back
+x = ta.kama(close, 10, 2, 30)
+plot(x[1], title="ta.kama[1]", pane="own")

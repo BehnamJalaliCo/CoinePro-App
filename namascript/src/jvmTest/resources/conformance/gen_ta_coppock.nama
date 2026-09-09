@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 0.3420406734
+// expect: plot 0 238 0.2681082436
+// expect: plot 0 239 0.2981030629
+// ta.coppock
+plot(ta.coppock(close, 14, 11, 10), title="ta.coppock")

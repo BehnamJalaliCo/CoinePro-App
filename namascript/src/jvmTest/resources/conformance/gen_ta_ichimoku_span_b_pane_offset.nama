@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 110.3491180
+// expect: plot 0 238 110.3491180
+// expect: plot 0 239 110.3491180
+// ta.ichimoku_span_b, own pane, one bar back
+x = ta.ichimoku_span_b(9, 26, 52)
+plot(x[1], title="ta.ichimoku_span_b[1]", pane="own")

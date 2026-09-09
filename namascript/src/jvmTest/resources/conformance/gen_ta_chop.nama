@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 71.94074973
+// expect: plot 0 238 71.37752283
+// expect: plot 0 239 72.01836431
+// ta.chop
+plot(ta.chop(14), title="ta.chop")

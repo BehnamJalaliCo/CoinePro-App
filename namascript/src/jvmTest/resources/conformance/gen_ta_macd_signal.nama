@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -0.2103109434
+// expect: plot 0 238 -0.1763204160
+// expect: plot 0 239 -0.1354711491
+// ta.macd_signal
+plot(ta.macd_signal(close, 12, 26, 9), title="ta.macd_signal")

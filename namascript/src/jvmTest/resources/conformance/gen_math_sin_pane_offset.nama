@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 0.2887222106
+// expect: plot 0 238 0.0004861351573
+// expect: plot 0 239 -0.5226883804
+// math.sin, own pane, one bar back
+x = math.sin(close)
+plot(x[1], title="math.sin[1]", pane="own")

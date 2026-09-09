@@ -1,0 +1,10 @@
+// expect: ok
+// expect: plots 2
+// expect: plot 0 237 1.000000000
+// expect: plot 0 238 1.000000000
+// expect: plot 0 239 0.000000000
+// expect: plot 1 237 108.6439779
+// expect: plot 1 238 108.6964674
+// expect: plot 1 239 108.7532757
+plot(iff(close > open, 1, 0), pane="own")
+plot(nz(ta.sma(close, 200), 0), pane="own")

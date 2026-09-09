@@ -1,0 +1,18 @@
+// expect: ok
+// expect: plots 4
+// expect: plot 0 237 109.9552567
+// expect: plot 0 238 110.5057442
+// expect: plot 0 239 110.4661444
+// expect: plot 1 237 109.6628509
+// expect: plot 1 238 109.9552567
+// expect: plot 1 239 110.5057442
+// expect: plot 2 237 109.3444133
+// expect: plot 2 238 110.2907067
+// expect: plot 2 239 110.1401030
+// expect: plot 3 237 109.5480278
+// expect: plot 3 238 110.3623858
+// expect: plot 3 239 110.2487834
+plot(close, color=color.silver)
+plot(open, color=color.purple)
+plot(hl2, color=color.teal)
+plot(hlc3, color=color.orange)

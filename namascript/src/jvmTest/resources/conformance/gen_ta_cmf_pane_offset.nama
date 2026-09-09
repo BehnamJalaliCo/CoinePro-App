@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 0.09148399571
+// expect: plot 0 238 0.1615435581
+// expect: plot 0 239 0.1982661134
+// ta.cmf, own pane, one bar back
+x = ta.cmf(20)
+plot(x[1], title="ta.cmf[1]", pane="own")

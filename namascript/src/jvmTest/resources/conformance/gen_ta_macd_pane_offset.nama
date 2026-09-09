@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -0.1886434013
+// expect: plot 0 238 -0.1309587630
+// expect: plot 0 239 -0.04035830652
+// ta.macd, own pane, one bar back
+x = ta.macd(close, 12, 26, 9)
+plot(x[1], title="ta.macd[1]", pane="own")

@@ -1,0 +1,4 @@
+// expect: plots 1
+// expect: plot 0 0 42
+// expect: plot 0 239 42
+plot(42, title="forty two")

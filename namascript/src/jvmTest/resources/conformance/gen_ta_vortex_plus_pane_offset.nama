@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 1.013019208
+// expect: plot 0 238 0.9978546835
+// expect: plot 0 239 1.020652777
+// ta.vortex_plus, own pane, one bar back
+x = ta.vortex_plus(14)
+plot(x[1], title="ta.vortex_plus[1]", pane="own")

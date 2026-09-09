@@ -1,0 +1,2 @@
+// expect: error E107
+plot(close $ 2)

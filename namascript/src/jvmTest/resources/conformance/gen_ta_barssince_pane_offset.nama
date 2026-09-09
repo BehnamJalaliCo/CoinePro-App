@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 0.000000000
+// expect: plot 0 238 0.000000000
+// expect: plot 0 239 0.000000000
+// ta.barssince, own pane, one bar back
+x = ta.barssince(close > open)
+plot(x[1], title="ta.barssince[1]", pane="own")

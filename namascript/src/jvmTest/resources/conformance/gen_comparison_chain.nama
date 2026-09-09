@@ -1,0 +1,4 @@
+// expect: ok
+// expect: plots 0
+// expect: markers 0 177
+marker(close > open and high > high[1] or low < low[1], title="mix")

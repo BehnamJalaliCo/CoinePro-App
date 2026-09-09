@@ -1,0 +1,3 @@
+// expect: plot 0 0 -1
+// expect: plot 0 3 0
+plot(nz(bar_index[3], -1))

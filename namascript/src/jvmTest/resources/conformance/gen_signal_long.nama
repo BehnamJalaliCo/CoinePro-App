@@ -1,0 +1,4 @@
+// expect: ok
+// expect: plots 0
+atr = ta.atr(14)
+signal(close > ta.sma(close, 20), close, close - 2 * atr, close + 3 * atr)

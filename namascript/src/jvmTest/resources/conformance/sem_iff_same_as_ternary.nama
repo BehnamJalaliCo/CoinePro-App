@@ -1,0 +1,3 @@
+// expect: plot 0 0 1
+// expect: plot 0 10 2
+plot(iff(bar_index < 5, 1, 2))

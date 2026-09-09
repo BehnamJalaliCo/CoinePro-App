@@ -1,0 +1,2 @@
+// expect: error E301
+plot(closs)

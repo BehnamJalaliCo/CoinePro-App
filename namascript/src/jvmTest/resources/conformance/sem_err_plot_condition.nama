@@ -1,0 +1,2 @@
+// expect: error E207
+plot(close > open)

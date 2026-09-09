@@ -1,0 +1,3 @@
+// expect: plot 0 0 na
+// expect: plot 0 5 2
+plot(ta.change(bar_index * 2, 1))

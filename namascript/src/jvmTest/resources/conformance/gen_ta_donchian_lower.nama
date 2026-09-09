@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 106.8921646
+// expect: plot 0 238 106.8921646
+// expect: plot 0 239 106.8921646
+// ta.donchian_lower
+plot(ta.donchian_lower(20), title="ta.donchian_lower")

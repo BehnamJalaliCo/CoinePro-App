@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 274.8881419
+// expect: plot 0 238 276.2643606
+// expect: plot 0 239 276.1653609
+k = input.float(2.5, title="Mult")
+plot(close * k)

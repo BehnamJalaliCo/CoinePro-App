@@ -1,0 +1,2 @@
+// expect: error E201
+plot(-"x")

@@ -1,0 +1,5 @@
+// expect: ok
+// expect: plots 0
+// expect: markers 0 19
+// ta.crossover: a condition series, counted through a marker
+marker(ta.crossover(close, ta.sma(close, 20)), title="x")

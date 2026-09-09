@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 11.76426006
+// expect: plot 0 238 11.27813261
+// expect: plot 0 239 11.65213993
+// ta.di_minus
+plot(ta.di_minus(14), title="ta.di_minus")

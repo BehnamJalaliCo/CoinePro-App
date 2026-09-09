@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 110.0000000
+// expect: plot 0 238 111.0000000
+// expect: plot 0 239 110.0000000
+// math.round
+plot(math.round(close), title="math.round")

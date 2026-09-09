@@ -1,0 +1,2 @@
+// expect: error E202
+plot(close[bar_index])

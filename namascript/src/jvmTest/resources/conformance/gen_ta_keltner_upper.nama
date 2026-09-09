@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 113.4601860
+// expect: plot 0 238 113.3756341
+// expect: plot 0 239 113.3303609
+// ta.keltner_upper
+plot(ta.keltner_upper(20, 2), title="ta.keltner_upper")

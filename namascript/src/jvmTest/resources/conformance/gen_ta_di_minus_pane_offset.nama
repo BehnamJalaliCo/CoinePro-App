@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 12.54567065
+// expect: plot 0 238 11.76426006
+// expect: plot 0 239 11.27813261
+// ta.di_minus, own pane, one bar back
+x = ta.di_minus(14)
+plot(x[1], title="ta.di_minus[1]", pane="own")

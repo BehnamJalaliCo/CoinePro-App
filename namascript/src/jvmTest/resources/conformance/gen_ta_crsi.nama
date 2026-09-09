@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 72.95762696
+// expect: plot 0 238 83.19603631
+// expect: plot 0 239 48.42185668
+// ta.crsi
+plot(ta.crsi(close, 3, 2, 100), title="ta.crsi")

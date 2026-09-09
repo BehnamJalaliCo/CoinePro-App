@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -4.765270774
+// expect: plot 0 238 -3.366143610
+// expect: plot 0 239 -2.430394276
+// ta.pvo_signal, own pane, one bar back
+x = ta.pvo_signal(12, 26, 9)
+plot(x[1], title="ta.pvo_signal[1]", pane="own")

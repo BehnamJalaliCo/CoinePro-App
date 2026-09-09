@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 49.10479550
+// expect: plot 0 238 45.34792459
+// expect: plot 0 239 36.43424897
+// ta.mfi
+plot(ta.mfi(14), title="ta.mfi")

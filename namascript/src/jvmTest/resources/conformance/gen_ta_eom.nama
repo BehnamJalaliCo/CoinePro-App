@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 1664.147123
+// expect: plot 0 238 2802.452071
+// expect: plot 0 239 2080.825318
+// ta.eom
+plot(ta.eom(14), title="ta.eom")

@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.3538720
+// expect: plot 0 238 109.4924233
+// expect: plot 0 239 109.6239545
+// ta.bb_basis
+plot(ta.bb_basis(close, 20, 2), title="ta.bb_basis")

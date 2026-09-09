@@ -1,0 +1,2 @@
+// expect: error E103
+plot(close > open ? 1)

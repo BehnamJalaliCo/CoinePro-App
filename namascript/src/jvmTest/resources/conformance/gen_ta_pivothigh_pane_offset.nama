@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 na
+// expect: plot 0 238 na
+// expect: plot 0 239 na
+// ta.pivothigh, own pane, one bar back
+x = ta.pivothigh(5, 5)
+plot(x[1], title="ta.pivothigh[1]", pane="own")

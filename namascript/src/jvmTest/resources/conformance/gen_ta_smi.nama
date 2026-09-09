@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 0.5688711652
+// expect: plot 0 238 5.677775354
+// expect: plot 0 239 8.706843178
+// ta.smi
+plot(ta.smi(close, 20, 5, 5), title="ta.smi")

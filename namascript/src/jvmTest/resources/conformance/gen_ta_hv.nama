@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 11.57299232
+// expect: plot 0 238 11.43970697
+// expect: plot 0 239 11.06847500
+// ta.hv
+plot(ta.hv(close, 10), title="ta.hv")

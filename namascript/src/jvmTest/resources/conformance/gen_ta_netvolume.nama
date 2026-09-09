@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 41731.17687
+// expect: plot 0 238 46715.82778
+// expect: plot 0 239 40606.03553
+// ta.netvolume
+plot(ta.netvolume(), title="ta.netvolume")

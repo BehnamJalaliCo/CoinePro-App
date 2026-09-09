@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 1.000000000
+// expect: plot 0 238 1.000000000
+// expect: plot 0 239 1.000000000
+// math.sign, own pane, one bar back
+x = math.sign(close)
+plot(x[1], title="math.sign[1]", pane="own")

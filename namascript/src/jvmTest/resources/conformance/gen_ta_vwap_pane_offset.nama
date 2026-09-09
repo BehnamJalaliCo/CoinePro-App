@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 107.4985512
+// expect: plot 0 238 107.5134969
+// expect: plot 0 239 107.5245722
+// ta.vwap, own pane, one bar back
+x = ta.vwap()
+plot(x[1], title="ta.vwap[1]", pane="own")

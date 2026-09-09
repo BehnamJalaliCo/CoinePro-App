@@ -1,0 +1,2 @@
+// expect: backgrounds 0 5
+bgcolor(bar_index < 5, color.gold)

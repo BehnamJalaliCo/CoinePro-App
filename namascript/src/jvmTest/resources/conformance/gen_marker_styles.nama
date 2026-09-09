@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 0
+// expect: markers 0 128
+// expect: markers 1 112
+// expect: markers 2 0
+marker(close > open, title="up", style="up")
+marker(close < open, title="down", style="down")
+marker(close == open, title="flat")

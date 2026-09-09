@@ -1,0 +1,2 @@
+// expect: plot 0 0 9
+plot((1 + 2) * 3)

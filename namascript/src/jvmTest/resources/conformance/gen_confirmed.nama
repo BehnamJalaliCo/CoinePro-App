@@ -1,0 +1,4 @@
+// expect: ok
+// expect: plots 0
+// expect: markers 0 128
+marker(close > open and confirmed, title="closed")

@@ -1,0 +1,2 @@
+// expect: error E105
+plot(1.2.3)

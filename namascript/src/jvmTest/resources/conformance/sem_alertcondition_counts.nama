@@ -1,0 +1,2 @@
+// expect: alerts 0 1
+alertcondition(bar_index == 239, "last")

@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -0.2960762223
+// expect: plot 0 238 0.1560764345
+// expect: plot 0 239 0.5804441728
+// ta.fisher
+plot(ta.fisher(9), title="ta.fisher")

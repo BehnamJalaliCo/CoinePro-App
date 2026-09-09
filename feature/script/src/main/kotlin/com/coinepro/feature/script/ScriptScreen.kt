@@ -38,6 +38,9 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
+import com.coinepro.core.script.ScriptReferenceEn
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -371,33 +374,159 @@ private fun EditorTab(
  */
 @Composable
 private fun CodeField(source: String, onChange: (String) -> Unit) {
-    LtrDirection {
-        BasicTextField(
-            value = source,
-            onValueChange = onChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = CODE_MIN_HEIGHT)
-                .background(CoineProColors.Terminal, CoineProShapes.medium)
-                .border(1.dp, CoineProColors.Border, CoineProShapes.medium)
-                .padding(CoineProSpacing.OneHalf),
-            textStyle = LocalTextStyle.current.merge(
-                TextStyle(
-                    color = CoineProColors.TextPrimary,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = CODE_TEXT_SIZE,
-                    lineHeight = CODE_LINE_HEIGHT,
-                    textDirection = TextDirection.Ltr,
+    // The text with its cursor. The controller owns the string; this owns where the caret is,
+    // which is what completion and bracket closing need and what a plain `String` cannot carry.
+    var value by remember { mutableStateOf(TextFieldValue(source)) }
+    if (value.text != source) value = value.copy(text = source, selection = TextRange(source.length.coerceAtMost(value.selection.end)))
+
+    val completions = remember(value) { completionsFor(value) }
+    val lineCount = remember(source) { source.count { it == '\n' } + 1 }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        LtrDirection {
+            BasicTextField(
+                value = value,
+                onValueChange = { next ->
+                    val closed = autoClose(value, next)
+                    value = closed
+                    if (closed.text != source) onChange(closed.text)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = CODE_MIN_HEIGHT)
+                    .background(CoineProColors.Terminal, CoineProShapes.medium)
+                    .border(1.dp, CoineProColors.Border, CoineProShapes.medium)
+                    .padding(CoineProSpacing.OneHalf),
+                textStyle = LocalTextStyle.current.merge(
+                    TextStyle(
+                        color = CoineProColors.TextPrimary,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = CODE_TEXT_SIZE,
+                        lineHeight = CODE_LINE_HEIGHT,
+                        textDirection = TextDirection.Ltr,
+                    ),
                 ),
-            ),
-            cursorBrush = SolidColor(CoineProColors.Gold),
-            keyboardOptions = KeyboardOptions(
-                autoCorrectEnabled = false,
-                capitalization = KeyboardCapitalization.None,
-            ),
-        )
+                cursorBrush = SolidColor(CoineProColors.Gold),
+                keyboardOptions = KeyboardOptions(
+                    autoCorrectEnabled = false,
+                    capitalization = KeyboardCapitalization.None,
+                ),
+                decorationBox = { field ->
+                    Row {
+                        // Line numbers: what a diagnostic's «line 7» points at. Latin digits,
+                        // because the code beside them is Latin and the two columns are read as one.
+                        Column(modifier = Modifier.padding(end = CoineProSpacing.One)) {
+                            for (line in 1..lineCount) {
+                                Text(
+                                    text = line.toString(),
+                                    style = TextStyle(
+                                        color = CoineProColors.TextMuted,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = CODE_TEXT_SIZE,
+                                        lineHeight = CODE_LINE_HEIGHT,
+                                    ),
+                                )
+                            }
+                        }
+                        Box(modifier = Modifier.weight(1f)) { field() }
+                    }
+                },
+            )
+        }
+        // The completions for the word under the caret: the reference's own names, so the strip
+        // and the reference tab can never disagree about what exists. Tapping one finishes the
+        // word and, for a function, opens its parenthesis.
+        if (completions.isNotEmpty()) {
+            LtrDirection {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                    modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.Half),
+                ) {
+                    items(completions, key = { it }) { name ->
+                        Box(
+                            modifier = Modifier
+                                .background(CoineProColors.Surface, CoineProShapes.small)
+                                .border(1.dp, CoineProColors.Border, CoineProShapes.small)
+                                .clickable {
+                                    val completed = complete(value, name)
+                                    value = completed
+                                    onChange(completed.text)
+                                }
+                                .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half),
+                        ) {
+                            Text(
+                                name,
+                                style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
+                                color = CoineProColors.Gold,
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
+
+/** The identifier (with its namespace) ending at the caret, or null when the caret is not on one. */
+internal fun wordBeforeCaret(value: TextFieldValue): Pair<Int, String>? {
+    if (!value.selection.collapsed) return null
+    val end = value.selection.end
+    var start = end
+    while (start > 0 && (value.text[start - 1].isLetterOrDigit() || value.text[start - 1] == '_' || value.text[start - 1] == '.')) start--
+    val word = value.text.substring(start, end)
+    return if (word.length >= 2 && word.first().isLetter()) start to word else null
+}
+
+internal fun completionsFor(value: TextFieldValue): List<String> {
+    val (_, word) = wordBeforeCaret(value) ?: return emptyList()
+    return COMPLETION_NAMES.filter { it.startsWith(word) && it != word }.take(COMPLETION_LIMIT)
+}
+
+/** [name] put in place of the word under the caret; a function gets its «(» and the caret inside it. */
+internal fun complete(value: TextFieldValue, name: String): TextFieldValue {
+    val (start, word) = wordBeforeCaret(value) ?: return value
+    val isFunction = name !in SERIES_NAMES
+    val insertion = if (isFunction) "$name()" else name
+    val text = value.text.substring(0, start) + insertion + value.text.substring(start + word.length)
+    val caret = start + insertion.length - if (isFunction) 1 else 0
+    return TextFieldValue(text, TextRange(caret))
+}
+
+/**
+ * A typed «(» or «[» brings its closing half with it, the caret between them; a typed «)» over an
+ * existing «)» steps over it. Only for a single typed character with a collapsed caret — a paste,
+ * a deletion or a selection is left exactly as the keyboard sent it.
+ */
+internal fun autoClose(before: TextFieldValue, after: TextFieldValue): TextFieldValue {
+    if (!after.selection.collapsed || after.text.length != before.text.length + 1) return after
+    val caret = after.selection.end
+    if (caret == 0 || after.text.substring(0, caret - 1) != before.text.substring(0, caret - 1)) return after
+    val typed = after.text[caret - 1]
+    val closing = when (typed) {
+        '(' -> ')'
+        '[' -> ']'
+        '"' -> '"'
+        else -> null
+    }
+    val follows = after.text.getOrNull(caret)
+    return when {
+        typed == ')' && follows == ')' -> TextFieldValue(before.text, TextRange(caret))
+        typed == ']' && follows == ']' -> TextFieldValue(before.text, TextRange(caret))
+        closing != null && (follows == null || follows == ' ' || follows == ')' || follows == ',' || follows == '\n') ->
+            TextFieldValue(after.text.substring(0, caret) + closing + after.text.substring(caret), TextRange(caret))
+        else -> after
+    }
+}
+
+private val SERIES_NAMES: Set<String> = ScriptReference.SERIES.map { it.signature.substringBefore('(') }.toSet()
+
+private val COMPLETION_NAMES: List<String> = (
+    ScriptReference.SERIES.map { it.signature.substringBefore('(') } +
+        ScriptReference.ALL_GROUPS.flatMap { group -> group.functions.map { it.signature.substringBefore('(').trim() } } +
+        ScriptReference.COLOUR_NAMES
+    ).distinct().sorted()
+
+private const val COMPLETION_LIMIT = 8
 
 @Composable
 private fun NameField(name: String, onChange: (String) -> Unit) {
@@ -453,6 +582,25 @@ private fun FailureCard(failure: ScriptFailure) {
             fontWeight = FontWeight.Bold,
         )
         Text(failure.text(language), style = MaterialTheme.typography.bodyMedium, color = CoineProColors.TextPrimary)
+        val hint = failure.hint(language == AppLanguage.ENGLISH)
+        if (hint.isNotBlank()) {
+            Text(
+                hint,
+                style = MaterialTheme.typography.bodySmall,
+                color = CoineProColors.TextSecondary,
+                modifier = Modifier.padding(top = CoineProSpacing.Half),
+            )
+        }
+        if (failure.code != "E000") {
+            LtrDirection {
+                Text(
+                    failure.code,
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                    color = CoineProColors.TextMuted,
+                    modifier = Modifier.padding(top = CoineProSpacing.Half),
+                )
+            }
+        }
     }
 }
 
@@ -772,13 +920,16 @@ private fun ReferenceTab(onInsert: (String) -> Unit) {
                 }
             }
         }
-        ScriptReference.GROUPS.forEach { group ->
+        ScriptReference.ALL_GROUPS.forEach { group ->
             item { SectionTitle(group.title, "${group.functions.size.toPersianDigits()} تابع") }
             items(group.functions, key = { it.signature }) { function ->
                 CoineProCard(modifier = Modifier.fillMaxWidth().clickable { onInsert(function.signature) }) {
                     Snippet(function.signature)
+                    // The interpreter's table is Persian; the English line sits beside it for a
+                    // reader whose app is in English, from the same table the docs are built from.
+                    val english = AppLanguage.fromTag(LocalConfiguration.current.locales[0].language) == AppLanguage.ENGLISH
                     Text(
-                        function.summary,
+                        if (english) ScriptReferenceEn.summaryFor(function) ?: function.summary else function.summary,
                         style = MaterialTheme.typography.bodySmall,
                         color = CoineProColors.TextSecondary,
                         modifier = Modifier.padding(top = CoineProSpacing.Half),

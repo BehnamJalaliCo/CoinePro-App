@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -0.04824086257
+// expect: plot 0 238 -0.04656045261
+// expect: plot 0 239 -0.03187620930
+// ta.rvi_signal
+plot(ta.rvi_signal(10), title="ta.rvi_signal")

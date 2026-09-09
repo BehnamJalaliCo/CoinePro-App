@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 158.6837470
+// expect: plot 0 238 528.0129186
+// expect: plot 0 239 418.0186679
+// ta.force
+plot(ta.force(13), title="ta.force")

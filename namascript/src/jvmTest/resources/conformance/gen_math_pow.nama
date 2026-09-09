@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 12090.15848
+// expect: plot 0 238 12211.51951
+// expect: plot 0 239 12202.76905
+// math.pow
+plot(math.pow(close, 2), title="math.pow")

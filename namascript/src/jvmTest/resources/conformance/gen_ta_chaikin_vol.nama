@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 6.413357724
+// expect: plot 0 238 -9.188162113
+// expect: plot 0 239 -16.93231953
+// ta.chaikin_vol
+plot(ta.chaikin_vol(10, 10), title="ta.chaikin_vol")

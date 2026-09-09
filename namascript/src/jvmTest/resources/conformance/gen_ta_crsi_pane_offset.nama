@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 67.96904857
+// expect: plot 0 238 72.95762696
+// expect: plot 0 239 83.19603631
+// ta.crsi, own pane, one bar back
+x = ta.crsi(close, 3, 2, 100)
+plot(x[1], title="ta.crsi[1]", pane="own")

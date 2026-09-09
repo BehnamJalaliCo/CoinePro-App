@@ -1,0 +1,4 @@
+// expect: ok
+// expect: plots 0
+// expect: backgrounds 0 134
+bgcolor(close > ta.sma(close, 20), color.new(color.gold, 80))

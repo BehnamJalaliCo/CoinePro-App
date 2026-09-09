@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.9552567
+// expect: plot 0 238 110.0000000
+// expect: plot 0 239 110.0000000
+// math.clamp
+plot(math.clamp(close, 90, 110), title="math.clamp")

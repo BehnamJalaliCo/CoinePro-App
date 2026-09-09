@@ -1,0 +1,6 @@
+// expect: ok
+// expect: plots 0
+// expect: markers 0 128
+// expect: markers 1 112
+plotshape(close > open, title="tri", style="triangleup", color=color.green)
+plotchar(close < open, title="chr", style="arrowdown")

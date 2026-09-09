@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -0.1396374692
+// expect: plot 0 238 0.9682120933
+// expect: plot 0 239 0.3282122749
+// ta.momentum
+plot(ta.momentum(close, 10), title="ta.momentum")

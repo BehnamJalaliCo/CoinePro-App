@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 108.1618626
+// expect: plot 0 238 108.2603333
+// expect: plot 0 239 108.3974990
+// ta.env_lower, own pane, one bar back
+x = ta.env_lower(close, 20, 1)
+plot(x[1], title="ta.env_lower[1]", pane="own")

@@ -84,12 +84,16 @@ data class ScriptResult(
     /** Lines the script printed with `log(...)`, newest last. Capped; see the interpreter. */
     val log: List<String> = emptyList(),
     val error: ScriptFailure? = null,
+    /** Where `bgcolor(...)` laid a colour behind the bars. */
+    val backgrounds: List<ScriptBackground> = emptyList(),
+    /** The conditions `alertcondition(...)` named, with the bars they held on. */
+    val alerts: List<ScriptAlert> = emptyList(),
 ) {
     val ok: Boolean get() = error == null
 
     /** Whether anything at all would be drawn. A script that runs and draws nothing is worth saying so. */
     val isEmpty: Boolean
-        get() = plots.isEmpty() && levels.isEmpty() && markers.isEmpty() && setup == null
+        get() = plots.isEmpty() && levels.isEmpty() && markers.isEmpty() && setup == null && backgrounds.isEmpty()
 }
 
 /**
@@ -99,7 +103,26 @@ data class ScriptResult(
  * no idea what language the app is in and should not: the screen that shows the caret picks with
  * [text].
  */
-data class ScriptFailure(val message: String, val messageEn: String, val line: Int, val column: Int) {
+data class ScriptFailure(
+    val message: String,
+    val messageEn: String,
+    val line: Int,
+    val column: Int,
+    /** The diagnostic's code — `E301`, say. See `docs/namascript/SPEC.md` §7. */
+    val code: String = "E000",
+) {
     /** The message in one language: English when [english], Persian otherwise. */
     fun text(english: Boolean): String = if (english) messageEn else message
+
+    /** The one-line fix, or empty where the message is the fix. */
+    fun hint(english: Boolean): String = if (english) ScriptDiagnostics.hintEn(code) else ScriptDiagnostics.hint(code)
+}
+
+/** A colour laid behind the bars where a condition held: `bgcolor(cond, color.gold)`. */
+data class ScriptBackground(val bars: List<Int>, val colour: Long)
+
+/** A named condition a reader can attach an alert to: `alertcondition(cond, "cross")`. */
+data class ScriptAlert(val title: String, val bars: List<Int>) {
+    /** Whether the condition holds on the last bar — what an alert on this script would fire on. */
+    fun firing(barCount: Int): Boolean = bars.lastOrNull() == barCount - 1
 }

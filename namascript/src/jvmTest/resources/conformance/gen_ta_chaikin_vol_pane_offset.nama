@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 20.51923462
+// expect: plot 0 238 6.413357724
+// expect: plot 0 239 -9.188162113
+// ta.chaikin_vol, own pane, one bar back
+x = ta.chaikin_vol(10, 10)
+plot(x[1], title="ta.chaikin_vol[1]", pane="own")

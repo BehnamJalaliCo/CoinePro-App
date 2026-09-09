@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 146.6072684
+// expect: plot 0 238 171.4420331
+// expect: plot 0 239 196.3975289
+// ta.pvt, own pane, one bar back
+x = ta.pvt()
+plot(x[1], title="ta.pvt[1]", pane="own")

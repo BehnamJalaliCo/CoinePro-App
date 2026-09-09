@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 219.6181077
+// expect: plot 0 238 220.4610010
+// expect: plot 0 239 220.9718886
+plot(close + \
+  open)

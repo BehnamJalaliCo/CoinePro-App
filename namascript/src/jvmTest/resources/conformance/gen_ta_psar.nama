@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 111.0956029
+// expect: plot 0 238 110.9632827
+// expect: plot 0 239 110.8362553
+// ta.psar
+plot(ta.psar(0.02, 0.2), title="ta.psar")

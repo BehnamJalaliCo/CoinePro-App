@@ -1,0 +1,4 @@
+// expect: plot 0 0 3
+// expect: plot 1 0 -1
+plot(math.abs(-3))
+plot(math.sign(-3))

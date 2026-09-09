@@ -1,0 +1,2 @@
+// expect: error E304
+plot(ta.magic(close))

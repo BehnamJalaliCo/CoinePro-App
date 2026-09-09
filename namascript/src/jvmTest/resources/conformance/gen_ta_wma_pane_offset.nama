@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.4538041
+// expect: plot 0 238 109.4887006
+// expect: plot 0 239 109.6000872
+// ta.wma, own pane, one bar back
+x = ta.wma(close, 14)
+plot(x[1], title="ta.wma[1]", pane="own")

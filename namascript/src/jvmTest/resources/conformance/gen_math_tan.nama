@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -0.0004861352147
+// expect: plot 0 238 0.6131070717
+// expect: plot 0 239 0.5598859616
+// math.tan
+plot(math.tan(close), title="math.tan")

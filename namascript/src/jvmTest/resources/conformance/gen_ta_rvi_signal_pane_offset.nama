@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -0.03679401815
+// expect: plot 0 238 -0.04824086257
+// expect: plot 0 239 -0.04656045261
+// ta.rvi_signal, own pane, one bar back
+x = ta.rvi_signal(10)
+plot(x[1], title="ta.rvi_signal[1]", pane="own")

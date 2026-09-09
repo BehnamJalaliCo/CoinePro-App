@@ -1,0 +1,2 @@
+// expect: markers 0 239
+marker(bar_index >= 1 and bar_index < 300 or false, title="m")

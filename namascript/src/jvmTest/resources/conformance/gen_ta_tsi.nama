@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -3.284522019
+// expect: plot 0 238 -1.129006561
+// expect: plot 0 239 0.5351944174
+// ta.tsi
+plot(ta.tsi(close, 25, 13, 13), title="ta.tsi")

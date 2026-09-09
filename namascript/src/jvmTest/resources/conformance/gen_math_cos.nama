@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -0.9999998818
+// expect: plot 0 238 -0.8525238161
+// expect: plot 0 239 -0.8725484322
+// math.cos
+plot(math.cos(close), title="math.cos")

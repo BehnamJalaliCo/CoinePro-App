@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -0.1194633255
+// expect: plot 0 238 -0.03679373441
+// expect: plot 0 239 0.02544604206
+// ta.ppo
+plot(ta.ppo(close, 12, 26, 9), title="ta.ppo")

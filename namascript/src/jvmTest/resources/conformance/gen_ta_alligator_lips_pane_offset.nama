@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.4726925
+// expect: plot 0 238 109.4139879
+// expect: plot 0 239 109.3851004
+// ta.alligator_lips, own pane, one bar back
+x = ta.alligator_lips()
+plot(x[1], title="ta.alligator_lips[1]", pane="own")

@@ -1,0 +1,6 @@
+// expect: plot 0 0 1
+// expect: plot 1 0 2
+// expect: plot 2 0 2
+plot(math.floor(1.6))
+plot(math.ceil(1.2))
+plot(math.round(1.5))

@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 1.000000000
+// expect: plot 0 238 1.000000000
+// expect: plot 0 239 1.000000000
+// ta.supertrend_trend, own pane, one bar back
+x = ta.supertrend_trend(10, 3)
+plot(x[1], title="ta.supertrend_trend[1]", pane="own")

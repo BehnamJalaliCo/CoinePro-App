@@ -256,5 +256,87 @@ object ScriptReference {
      * accepts cannot drift apart. A reference that offers a colour the interpreter refuses is a
      * reference that teaches an error.
      */
+    /** The functions 4.50.0 added; kept as their own group so the reference reads in the order the language grew. */
+    val ADDED_4_50: List<ScriptReferenceGroup> = listOf(
+        ScriptReferenceGroup(
+            "میانگین‌ها و روند (۴٫۵۰)",
+            listOf(
+                ScriptFunction("ta.dema(close, 20)", "میانگین نمایی دوگانه؛ کم‌تأخیرتر از EMA.", "سری عددی"),
+                ScriptFunction("ta.tema(close, 20)", "میانگین نمایی سه‌گانه.", "سری عددی"),
+                ScriptFunction("ta.t3(close, 10, 0.7)", "میانگین T3 تیلسون با ضریب حجم.", "سری عددی"),
+                ScriptFunction("ta.vwma(20)", "میانگین وزنی حجم روی close نمودار.", "سری عددی"),
+                ScriptFunction("ta.alligator_jaw()", "آرواره‌ی تمساح ویلیامز (SMMA ۱۳، جابه‌جایی ۸).", "سری عددی"),
+                ScriptFunction("ta.alligator_teeth()", "دندان‌های تمساح (SMMA ۸، جابه‌جایی ۵).", "سری عددی"),
+                ScriptFunction("ta.alligator_lips()", "لب‌های تمساح (SMMA ۵، جابه‌جایی ۳).", "سری عددی"),
+                ScriptFunction("ta.psar(0.02, 0.2)", "پارابولیک SAR وایلدر؛ گام و بیشینه‌ی شتاب.", "سری عددی"),
+                ScriptFunction("ta.vstop(20, 2)", "حد ضرر نوسانی: ATR × ضریب از سقف/کف روند.", "سری عددی"),
+                ScriptFunction("ta.aroon_up(14)", "آرون بالا: چند درصد از دوره از آخرین سقف گذشته.", "سری عددی"),
+                ScriptFunction("ta.aroon_down(14)", "آرون پایین.", "سری عددی"),
+                ScriptFunction("ta.mass(25, 9)", "شاخص جرم دورسی؛ برآمدگی بالای ۲۷ خبر از برگشت می‌دهد.", "سری عددی"),
+                ScriptFunction("ta.correlation(close, open, 20)", "ضریب همبستگی پیرسون دو سری روی پنجره.", "سری عددی"),
+            ),
+        ),
+        ScriptReferenceGroup(
+            "نوسان‌نماها (۴٫۵۰)",
+            listOf(
+                ScriptFunction("ta.ppo(close, 12, 26, 9)", "نوسان‌نمای درصدی قیمت: مکدی تقسیم بر میانگین کند، در درصد.", "سری عددی"),
+                ScriptFunction("ta.ppo_signal(close, 12, 26, 9)", "خط سیگنال PPO.", "سری عددی"),
+                ScriptFunction("ta.pvo(12, 26, 9)", "نوسان‌نمای درصدی حجم.", "سری عددی"),
+                ScriptFunction("ta.pvo_signal(12, 26, 9)", "خط سیگنال PVO.", "سری عددی"),
+                ScriptFunction("ta.tsi(close, 25, 13, 13)", "شاخص قدرت واقعی؛ تکانه‌ی دوبار هموارشده.", "سری عددی"),
+                ScriptFunction("ta.tsi_signal(close, 25, 13, 13)", "خط سیگنال TSI.", "سری عددی"),
+                ScriptFunction("ta.stochrsi_k(close, 14, 14, 3, 3)", "استوکاستیک روی RSI، خط K.", "سری عددی"),
+                ScriptFunction("ta.stochrsi_d(close, 14, 14, 3, 3)", "استوکاستیک روی RSI، خط D.", "سری عددی"),
+                ScriptFunction("ta.ao()", "نوسان‌نمای شگفت‌انگیز: SMA ۵ منهای SMA ۳۴ روی میانه‌ی کندل.", "سری عددی"),
+                ScriptFunction("ta.ac()", "شتاب‌دهنده: AO منهای SMA ۵ خودش.", "سری عددی"),
+                ScriptFunction("ta.cmo(close, 9)", "نوسان‌نمای تکانه‌ی چاند.", "سری عددی"),
+                ScriptFunction("ta.coppock(close, 14, 11, 10)", "منحنی کاپاک: WMA جمع دو ROC.", "سری عددی"),
+                ScriptFunction("ta.rvi(10)", "شاخص قوت نسبی (RVI) روی open/high/low/close نمودار.", "سری عددی"),
+                ScriptFunction("ta.rvi_signal(10)", "خط سیگنال RVI.", "سری عددی"),
+                ScriptFunction("ta.kst(close)", "Know Sure Thing: چهار ROC هموارشده با وزن ۱ تا ۴.", "سری عددی"),
+                ScriptFunction("ta.kst_signal(close)", "خط سیگنال KST (SMA ۹).", "سری عددی"),
+                ScriptFunction("ta.dpo(close, 20)", "نوسان‌نمای بی‌روند: قیمت منهای میانگینِ جابه‌جاشده.", "سری عددی"),
+                ScriptFunction("ta.variance(close, 20)", "واریانس پنجره (مجذور انحراف معیار).", "سری عددی"),
+                ScriptFunction("ta.avg(close, 20)", "میانگین ساده‌ی پنجره؛ همان ta.sma با نام کوتاه.", "سری عددی"),
+            ),
+        ),
+        ScriptReferenceGroup(
+            "حجم (۴٫۵۰)",
+            listOf(
+                ScriptFunction("ta.mfi(14)", "شاخص جریان پول: RSI وزن‌دار با حجم.", "سری عددی"),
+                ScriptFunction("ta.cmf(20)", "جریان پول چایکین.", "سری عددی"),
+                ScriptFunction("ta.netvolume()", "حجم خالص: حجم با علامت جهت کندل.", "سری عددی"),
+            ),
+        ),
+        ScriptReferenceGroup(
+            "ریاضی (۴٫۵۰)",
+            listOf(
+                ScriptFunction("math.exp(x)", "e به توان x.", "عدد یا سری"),
+                ScriptFunction("math.log10(x)", "لگاریتم در پایه‌ی ده.", "عدد یا سری"),
+                ScriptFunction("math.sin(x)", "سینوس (رادیان).", "عدد یا سری"),
+                ScriptFunction("math.cos(x)", "کسینوس.", "عدد یا سری"),
+                ScriptFunction("math.tan(x)", "تانژانت.", "عدد یا سری"),
+                ScriptFunction("math.avg(a, b)", "میانگین دو مقدار.", "عدد یا سری"),
+                ScriptFunction("math.clamp(x, lo, hi)", "x را بین دو کران ثابت نگه می‌دارد.", "عدد یا سری"),
+            ),
+        ),
+        ScriptReferenceGroup(
+            "ورودی، خروجی، هشدار (۴٫۵۰)",
+            listOf(
+                ScriptFunction("input.int(14, title = \"طول\", min = 1, max = 100)", "ورودی عددی که به عدد صحیح گرد می‌شود.", "عدد"),
+                ScriptFunction("input.float(2.0, title = \"ضریب\")", "ورودی اعشاری؛ همان input.", "عدد"),
+                ScriptFunction("input.bool(true, title = \"نمایش\")", "ورودی روشن/خاموش.", "درست/نادرست"),
+                ScriptFunction("color.new(color.gold, 50)", "همان رنگ با درصد شفافیت (۰ تا ۱۰۰).", "رنگ"),
+                ScriptFunction("plotshape(cond, title = \"…\", style = \"triangleup\")", "همان marker با نام‌های شکل پاین: triangleup، triangledown، arrowup، arrowdown.", "عدد"),
+                ScriptFunction("plotchar(cond, title = \"…\")", "همان marker.", "عدد"),
+                ScriptFunction("bgcolor(cond, color.new(color.gold, 80))", "رنگ پس‌زمینه روی هر کندلی که شرط برقرار است.", "عدد"),
+                ScriptFunction("alertcondition(cond, \"نام\")", "شرطی نام‌دار که مرکز هشدار می‌تواند دنبال کند؛ روی کندل آخر درست است اگر شرط برقرار باشد.", "درست/نادرست"),
+            ),
+        ),
+    )
+
+    /** Every group, the original ones first. */
+    val ALL_GROUPS: List<ScriptReferenceGroup> get() = GROUPS + ADDED_4_50
+
     val COLOUR_NAMES: List<String> = Interpreter.COLOURS.keys.sorted()
 }

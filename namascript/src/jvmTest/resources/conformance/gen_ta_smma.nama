@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.6379954
+// expect: plot 0 238 109.6999775
+// expect: plot 0 239 109.7547037
+// ta.smma
+plot(ta.smma(close, 14), title="ta.smma")

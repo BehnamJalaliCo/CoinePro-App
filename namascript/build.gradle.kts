@@ -29,3 +29,9 @@ tasks.register("testDebugUnitTest") {
     description = "Runs the JVM tests, under the name the Android modules use."
     dependsOn("jvmTest")
 }
+
+// The conformance suite's record switch, forwarded from the Gradle JVM to the test worker.
+tasks.withType<Test>().configureEach {
+    systemProperty("namascript.conformance.record", System.getProperty("namascript.conformance.record") ?: "false")
+    systemProperty("namascript.reference.write", System.getProperty("namascript.reference.write") ?: "false")
+}

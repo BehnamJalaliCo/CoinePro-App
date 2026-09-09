@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.6135907
+// expect: plot 0 238 109.6379954
+// expect: plot 0 239 109.6999775
+// ta.smma, own pane, one bar back
+x = ta.smma(close, 14)
+plot(x[1], title="ta.smma[1]", pane="own")

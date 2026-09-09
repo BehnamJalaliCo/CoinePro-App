@@ -1,0 +1,2 @@
+// expect: error E106
+plot(close, title="abc)

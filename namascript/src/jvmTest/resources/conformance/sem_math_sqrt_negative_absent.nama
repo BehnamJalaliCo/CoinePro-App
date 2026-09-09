@@ -1,0 +1,2 @@
+// expect: plot 0 0 na
+plot(math.sqrt(-1))

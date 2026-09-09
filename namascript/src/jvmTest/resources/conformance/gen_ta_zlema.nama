@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.4856641
+// expect: plot 0 238 109.7817487
+// expect: plot 0 239 109.9935899
+// ta.zlema
+plot(ta.zlema(close, 14), title="ta.zlema")

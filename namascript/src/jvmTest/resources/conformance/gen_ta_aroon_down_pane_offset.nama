@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 71.42857143
+// expect: plot 0 238 64.28571429
+// expect: plot 0 239 57.14285714
+// ta.aroon_down, own pane, one bar back
+x = ta.aroon_down(14)
+plot(x[1], title="ta.aroon_down[1]", pane="own")

@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -0.3015649849
+// expect: plot 0 238 -0.0004861352147
+// expect: plot 0 239 0.6131070717
+// math.tan, own pane, one bar back
+x = math.tan(close)
+plot(x[1], title="math.tan[1]", pane="own")

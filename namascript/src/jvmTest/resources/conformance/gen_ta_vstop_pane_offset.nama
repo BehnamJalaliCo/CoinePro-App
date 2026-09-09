@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 110.9858719
+// expect: plot 0 238 110.9858719
+// expect: plot 0 239 110.9858719
+// ta.vstop, own pane, one bar back
+x = ta.vstop(20, 2)
+plot(x[1], title="ta.vstop[1]", pane="own")

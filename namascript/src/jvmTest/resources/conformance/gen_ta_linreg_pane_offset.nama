@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.8489598
+// expect: plot 0 238 109.8502720
+// expect: plot 0 239 109.9022758
+// ta.linreg, own pane, one bar back
+x = ta.linreg(close, 20)
+plot(x[1], title="ta.linreg[1]", pane="own")

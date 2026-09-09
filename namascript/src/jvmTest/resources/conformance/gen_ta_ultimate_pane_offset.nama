@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 46.56401986
+// expect: plot 0 238 51.70194165
+// expect: plot 0 239 54.41473669
+// ta.ultimate, own pane, one bar back
+x = ta.ultimate(7, 14, 28)
+plot(x[1], title="ta.ultimate[1]", pane="own")

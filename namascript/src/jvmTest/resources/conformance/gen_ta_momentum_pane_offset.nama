@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -1.249550594
+// expect: plot 0 238 -0.1396374692
+// expect: plot 0 239 0.9682120933
+// ta.momentum, own pane, one bar back
+x = ta.momentum(close, 10)
+plot(x[1], title="ta.momentum[1]", pane="own")

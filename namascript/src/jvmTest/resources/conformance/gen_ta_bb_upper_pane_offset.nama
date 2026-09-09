@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 111.1555831
+// expect: plot 0 238 111.1817431
+// expect: plot 0 239 111.2260199
+// ta.bb_upper, own pane, one bar back
+x = ta.bb_upper(close, 20, 2)
+plot(x[1], title="ta.bb_upper[1]", pane="own")

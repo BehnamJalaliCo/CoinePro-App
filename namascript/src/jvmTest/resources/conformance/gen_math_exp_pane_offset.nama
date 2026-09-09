@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 4.226404213e+47
+// expect: plot 0 238 5.661887798e+47
+// expect: plot 0 239 9.818269213e+47
+// math.exp, own pane, one bar back
+x = math.exp(close)
+plot(x[1], title="math.exp[1]", pane="own")

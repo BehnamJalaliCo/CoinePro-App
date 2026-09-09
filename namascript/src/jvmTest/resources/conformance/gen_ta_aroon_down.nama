@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 64.28571429
+// expect: plot 0 238 57.14285714
+// expect: plot 0 239 50.00000000
+// ta.aroon_down
+plot(ta.aroon_down(14), title="ta.aroon_down")

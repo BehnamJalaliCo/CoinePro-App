@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -47.58577246
+// expect: plot 0 238 -34.27492910
+// expect: plot 0 239 -35.23245742
+// ta.williams_r
+plot(ta.williams_r(14), title="ta.williams_r")

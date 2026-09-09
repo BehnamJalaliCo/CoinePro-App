@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -876.7038259
+// expect: plot 0 238 1502.804937
+// expect: plot 0 239 2972.708825
+// ta.chaikin_osc, own pane, one bar back
+x = ta.chaikin_osc(3, 10)
+plot(x[1], title="ta.chaikin_osc[1]", pane="own")

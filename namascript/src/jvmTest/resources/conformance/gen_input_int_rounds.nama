@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 20.00000000
+// expect: plot 0 238 20.00000000
+// expect: plot 0 239 20.00000000
+len = input.int(19.6, title="Length")
+plot(len)

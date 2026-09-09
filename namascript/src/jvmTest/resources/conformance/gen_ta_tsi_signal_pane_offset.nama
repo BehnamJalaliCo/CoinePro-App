@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -6.552726994
+// expect: plot 0 238 -6.085840569
+// expect: plot 0 239 -5.377721425
+// ta.tsi_signal, own pane, one bar back
+x = ta.tsi_signal(close, 25, 13, 13)
+plot(x[1], title="ta.tsi_signal[1]", pane="own")

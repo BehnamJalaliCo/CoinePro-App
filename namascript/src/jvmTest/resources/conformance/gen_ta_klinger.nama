@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 4037.644423
+// expect: plot 0 238 7174.965220
+// expect: plot 0 239 6727.216237
+// ta.klinger
+plot(ta.klinger(34, 55, 13), title="ta.klinger")

@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 110710.5944
+// expect: plot 0 238 110372.8140
+// expect: plot 0 239 107793.5344
+// ta.sum
+plot(ta.sum(volume, 20), title="ta.sum")

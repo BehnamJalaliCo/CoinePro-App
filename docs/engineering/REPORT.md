@@ -132,7 +132,31 @@ terminal's copy reported in `docs/backend/PROMPT_WEB_TERMINAL.md`):
 
 ---
 
-## §3 NamaScript — see below, filled as the section lands
+## §3 NamaScript — v1.1 completed, specified and tested; v2 stated as v2 (4.50.0)
+
+The language is a **vectorising interpreter**: an expression is a whole series, `ta.*` delegates to
+the chart's own indicators. The plan asks for a Pine-v5-class, bar-by-bar language with a typed
+compiler and a VM. That is a different execution model and is **not built**; `docs/namascript/SPEC.md`
+§10 tables every v2 item against what exists. What was built:
+
+| Asked | Done | Proof |
+| --- | --- | --- |
+| `docs/namascript/SPEC.md` first, then implement | written first: lexical structure, EBNF grammar, types, `na` and `[]`, built-ins, execution model, diagnostic codes, sandbox, performance, the v2 table | the file; `ScriptDiagnosticsTest` holds its code table to the sources |
+| `ta.*` "all TV indicators" | 130 `ta.` bindings — every indicator in `:chart-core` (63 added in 4.50.0) | `ReferenceDocsTest` fails on a bound name with no reference entry; `ConformanceSuiteTest` runs each |
+| `math.*`, `color.*`, `input.*` | `math` ×17, `color.new` + 12 names, `input`/`input.int`/`input.float`/`input.bool` | conformance scripts `gen_math_*`, `gen_input_*` |
+| plot family | `plot hline marker plotshape plotchar bgcolor alertcondition signal log`; `fill`, `plotcandle`, `barcolor` open | `gen_plot_styles`, `gen_bgcolor`, `gen_alertcondition` |
+| `request.security`, `strategy.*`, `label/line/box/table`, collections, UDTs, libraries, `var`/`varip`, loops, functions | **not done** — v2 | SPEC §10 |
+| Compiler / bytecode VM / incremental evaluation | **not done** — v2; the measured evaluate time (below) is the argument for it | `ScriptPerformanceTest` |
+| Sandbox: CPU budget, memory cap, timeout with a friendly diagnostic, no I/O | node budget (250 000), wall clock (2 s, `E406`), size (20 000 chars), output caps, stack guard; no I/O by construction; **memory cap open** | SPEC §8; `sem_err_too_long`, `sem_plot_count_limit` |
+| Diagnostics: line/column, error code, one-line fix hint, both languages; warnings | codes `E101`–`E406` with hints FA + EN, shown in the studio under the message; **warnings open** (no lookahead exists to warn about in v1.1) | `ScriptDiagnosticsTest`; 24 `sem_err_*` scripts |
+| Performance: 300 lines / 10 `ta.` / 20k bars, compile < 50 ms, evaluate < 40 ms, realtime < 2 ms (Pixel 6a) | measured on this JVM: **parse 2.6 ms, evaluate 1 378 ms** for 303 lines over 20 000 bars; the device targets are unmeasured here and the evaluate figure is out of the plan's budget by ~30× — a series allocation per line is the cost, a typed-array VM is the fix | `ScriptPerformanceTest` prints the figures |
+| Editor: highlighting, autocomplete with signatures, bracket matching, squiggles, format-on-save, snippets, find/replace, undo/redo, line numbers, minimap, split view, shortcuts | **done**: completion strip from the reference (function → with parenthesis), line numbers, bracket auto-close and step-over, the error card with code + hint, presets as snippets (existed), reference tab in both languages. **Open**: highlighting, squiggles at the column, format-on-save, find/replace, minimap, split view (§4's tablet layout is where it belongs) | `CodeFieldTest` |
+| Console/log, "Add to chart" live, input UI from `input.*`, publish/library, import/export `.nama`, share link | log (existed), run-on-edit (existed), inputs panel (existed, now with `input.bool`), library (existed); **import/export and share link open** | — |
+| Pine paste helper with a diff of unsupported calls | `PineTranslator`: rewrites headers, inputs, `ta.` spellings, `plotshape`/`shape.*`, titles, colours, `var`/`:=`; reports control flow, functions, collections, `request.*`, drawing objects, strategy orders with their line numbers; **not yet surfaced in the studio's UI** | `PineTranslatorTest` (a real EMA-cross indicator translates and runs) |
+| Conformance suite ≥ 300 scripts with expected outputs; property tests; parser fuzz; plot goldens | **351 scripts**: 277 generated (one per built-in and form, expectations recorded from the engine and committed), 74 hand-written with worked-out expectations (absence, history, broadcasting, precedence, every error code). **Open**: property-based tests, a parser fuzzer, plot-type screenshot goldens | `ConformanceSuiteTest` |
+| Reference docs generated from the stdlib into `docs/namascript/reference/` and the in-app help, FA + EN | `fa.md` and `en.md` generated from `ScriptReference` + `ScriptReferenceEn` (every function has both); the studio's reference tab shows the English line under an English locale; **help-catalogue integration open** | `ReferenceDocsTest` fails when the committed docs are stale |
+
+Numbers: 351 conformance scripts, 130 `ta.` bindings, 26 diagnostic codes, 69 tests in `:namascript:jvmTest`.
 
 ## §4 Tablet — see below
 

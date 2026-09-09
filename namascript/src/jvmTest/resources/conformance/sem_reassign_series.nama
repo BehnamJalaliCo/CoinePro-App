@@ -1,0 +1,4 @@
+// expect: plot 0 4 8
+x = bar_index
+x := x * 2
+plot(x)

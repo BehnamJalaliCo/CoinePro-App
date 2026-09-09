@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 0.8352781743
+// expect: plot 0 238 0.7513393106
+// expect: plot 0 239 0.6441788852
+// ta.variance
+plot(ta.variance(close, 20), title="ta.variance")

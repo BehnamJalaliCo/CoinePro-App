@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 0.03343038615
+// expect: plot 0 238 0.03166605631
+// expect: plot 0 239 0.02928584568
+// ta.bb_width
+plot(ta.bb_width(close, 20, 2), title="ta.bb_width")

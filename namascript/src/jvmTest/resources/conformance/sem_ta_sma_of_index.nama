@@ -1,0 +1,4 @@
+// expect: plot 0 2 na
+// expect: plot 0 3 1.5
+// expect: plot 0 239 237.5
+plot(ta.sma(bar_index, 4))

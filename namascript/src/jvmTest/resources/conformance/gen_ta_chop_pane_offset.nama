@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 72.55400115
+// expect: plot 0 238 71.94074973
+// expect: plot 0 239 71.37752283
+// ta.chop, own pane, one bar back
+x = ta.chop(14)
+plot(x[1], title="ta.chop[1]", pane="own")

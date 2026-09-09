@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 23.31456601
+// expect: plot 0 238 93.51732445
+// expect: plot 0 239 79.65234386
+// ta.cci
+plot(ta.cci(20), title="ta.cci")

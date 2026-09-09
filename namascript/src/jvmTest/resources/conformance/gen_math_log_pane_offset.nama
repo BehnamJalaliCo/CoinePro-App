@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 4.697410668
+// expect: plot 0 238 4.700073526
+// expect: plot 0 239 4.705067504
+// math.log, own pane, one bar back
+x = math.log(close)
+plot(x[1], title="math.log[1]", pane="own")

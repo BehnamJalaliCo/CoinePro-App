@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 47.31871276
+// expect: plot 0 238 56.29146618
+// expect: plot 0 239 69.38030800
+// ta.stochrsi_d
+plot(ta.stochrsi_d(close, 14, 14, 3, 3), title="ta.stochrsi_d")

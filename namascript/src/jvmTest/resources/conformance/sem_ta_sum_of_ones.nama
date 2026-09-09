@@ -1,0 +1,2 @@
+// expect: plot 0 9 10
+plot(ta.sum(bar_index >= 0 ? 1 : 0, 10))

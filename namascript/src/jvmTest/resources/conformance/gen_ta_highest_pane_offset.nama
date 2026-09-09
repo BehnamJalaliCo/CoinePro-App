@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 111.9232291
+// expect: plot 0 238 111.9232291
+// expect: plot 0 239 111.9232291
+// ta.highest, own pane, one bar back
+x = ta.highest(high, 20)
+plot(x[1], title="ta.highest[1]", pane="own")

@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -4.102294916
+// expect: plot 0 238 -2.545239555
+// expect: plot 0 239 0.1957654144
+// ta.smi_signal, own pane, one bar back
+x = ta.smi_signal(close, 20, 5, 5)
+plot(x[1], title="ta.smi_signal[1]", pane="own")

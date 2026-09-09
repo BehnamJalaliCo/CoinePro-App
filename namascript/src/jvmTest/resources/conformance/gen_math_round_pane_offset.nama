@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 110.0000000
+// expect: plot 0 238 110.0000000
+// expect: plot 0 239 111.0000000
+// math.round, own pane, one bar back
+x = math.round(close)
+plot(x[1], title="math.round[1]", pane="own")

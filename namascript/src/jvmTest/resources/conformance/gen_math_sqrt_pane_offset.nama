@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 10.47200320
+// expect: plot 0 238 10.48595521
+// expect: plot 0 239 10.51217124
+// math.sqrt, own pane, one bar back
+x = math.sqrt(close)
+plot(x[1], title="math.sqrt[1]", pane="own")

@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.4863996
+// expect: plot 0 238 109.5091180
+// expect: plot 0 239 109.4678745
+// ta.alligator_teeth
+plot(ta.alligator_teeth(), title="ta.alligator_teeth")

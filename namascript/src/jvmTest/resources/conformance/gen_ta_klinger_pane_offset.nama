@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 7906.177380
+// expect: plot 0 238 4037.644423
+// expect: plot 0 239 7174.965220
+// ta.klinger, own pane, one bar back
+x = ta.klinger(34, 55, 13)
+plot(x[1], title="ta.klinger[1]", pane="own")

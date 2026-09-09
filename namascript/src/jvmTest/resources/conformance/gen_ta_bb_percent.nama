@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 0.6645041533
+// expect: plot 0 238 0.7922597333
+// expect: plot 0 239 0.7623292824
+// ta.bb_percent
+plot(ta.bb_percent(close, 20, 2), title="ta.bb_percent")

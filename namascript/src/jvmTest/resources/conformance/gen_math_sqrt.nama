@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 10.48595521
+// expect: plot 0 238 10.51217124
+// expect: plot 0 239 10.51028755
+// math.sqrt
+plot(math.sqrt(close), title="math.sqrt")

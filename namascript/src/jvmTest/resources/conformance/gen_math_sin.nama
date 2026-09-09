@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 0.0004861351573
+// expect: plot 0 238 -0.5226883804
+// expect: plot 0 239 -0.4885276180
+// math.sin
+plot(math.sin(close), title="math.sin")

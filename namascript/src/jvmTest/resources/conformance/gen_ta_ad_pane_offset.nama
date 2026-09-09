@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 5443.999974
+// expect: plot 0 238 12230.49272
+// expect: plot 0 239 14220.19509
+// ta.ad, own pane, one bar back
+x = ta.ad()
+plot(x[1], title="ta.ad[1]", pane="own")

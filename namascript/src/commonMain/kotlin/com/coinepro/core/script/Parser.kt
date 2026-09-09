@@ -28,7 +28,7 @@ internal class Parser(private val tokens: List<Token>) {
             // `a = 1 b = 2` parses as something surprising instead of failing where it is written.
             if (!check(TokenType.EOF) && !check(TokenType.NEWLINE)) {
                 val token = peek()
-                throw ScriptError("پس از پایان دستور، «${token.text}» انتظار نمی‌رفت", "Did not expect “${token.text}” after the end of the statement", token.line, token.column)
+                throw ScriptError("پس از پایان دستور، «${token.text}» انتظار نمی‌رفت", "Did not expect “${token.text}” after the end of the statement", token.line, token.column, code = "E101")
             }
             skipNewlines()
         }
@@ -111,7 +111,7 @@ internal class Parser(private val tokens: List<Token>) {
                 inner
             }
             match(TokenType.IDENT) -> qualified(previous())
-            else -> throw ScriptError("عبارت ناتمام است — «${token.text}» انتظار نمی‌رفت", "The expression is incomplete — did not expect “${token.text}”", token.line, token.column)
+            else -> throw ScriptError("عبارت ناتمام است — «${token.text}» انتظار نمی‌رفت", "The expression is incomplete — did not expect “${token.text}”", token.line, token.column, code = "E104")
         }
     }
 
@@ -177,8 +177,15 @@ internal class Parser(private val tokens: List<Token>) {
     private fun expect(type: TokenType, message: String, messageEn: String): Token {
         if (!check(type)) {
             val token = peek()
-            throw ScriptError(message, messageEn, token.line, token.column)
+            throw ScriptError(message, messageEn, token.line, token.column, code = codeFor(type))
         }
         return advance()
+    }
+
+    /** The diagnostic code for a token the parser needed and did not get — see SPEC.md §7. */
+    private fun codeFor(type: TokenType): String = when (type) {
+        TokenType.RPAREN, TokenType.RBRACKET -> "E102"
+        TokenType.COLON -> "E103"
+        else -> "E104"
     }
 }

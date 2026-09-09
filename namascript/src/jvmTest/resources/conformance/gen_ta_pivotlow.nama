@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 107.7875972
+// expect: plot 0 238 na
+// expect: plot 0 239 na
+// ta.pivotlow
+plot(ta.pivotlow(5, 5), title="ta.pivotlow")

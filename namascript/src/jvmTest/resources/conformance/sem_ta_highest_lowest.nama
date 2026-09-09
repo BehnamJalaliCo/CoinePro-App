@@ -1,0 +1,4 @@
+// expect: plot 0 9 9
+// expect: plot 1 9 0
+plot(ta.highest(bar_index, 10))
+plot(ta.lowest(bar_index, 10))

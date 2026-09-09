@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 219.9105135
+// expect: plot 0 238 221.0114885
+// expect: plot 0 239 220.9322888
+x = close
+x := x * 2
+plot(x)

@@ -1,0 +1,5 @@
+// expect: ok
+// expect: plots 0
+// expect: markers 0 36
+// ta.rising: a condition series, counted through a marker
+marker(ta.rising(close, 3), title="r")

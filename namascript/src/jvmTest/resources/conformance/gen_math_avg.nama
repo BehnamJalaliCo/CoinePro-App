@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.8090538
+// expect: plot 0 238 110.2305005
+// expect: plot 0 239 110.4859443
+// math.avg
+plot(math.avg(close, open), title="math.avg")

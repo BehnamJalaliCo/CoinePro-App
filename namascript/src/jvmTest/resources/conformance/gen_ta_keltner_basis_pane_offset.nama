@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.4972357
+// expect: plot 0 238 109.5408567
+// expect: plot 0 239 109.6327508
+// ta.keltner_basis, own pane, one bar back
+x = ta.keltner_basis(20, 2)
+plot(x[1], title="ta.keltner_basis[1]", pane="own")

@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -0.2710158267
+// expect: plot 0 238 -0.3666472791
+// expect: plot 0 239 0.3372092527
+// ta.roc
+plot(ta.roc(close, 12), title="ta.roc")

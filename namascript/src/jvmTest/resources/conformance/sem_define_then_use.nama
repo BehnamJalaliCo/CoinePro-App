@@ -1,0 +1,4 @@
+// expect: plot 0 3 6
+a = bar_index
+b = a + a
+plot(b)

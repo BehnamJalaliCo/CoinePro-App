@@ -1,0 +1,2 @@
+// expect: plot 0 3 6
+plot(ta.cum(bar_index))

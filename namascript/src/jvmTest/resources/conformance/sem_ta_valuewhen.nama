@@ -1,0 +1,2 @@
+// expect: plot 0 150 100
+plot(ta.valuewhen(bar_index == 100, bar_index, 0))

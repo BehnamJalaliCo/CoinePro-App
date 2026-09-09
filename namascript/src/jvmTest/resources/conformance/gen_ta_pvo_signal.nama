@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -3.366143610
+// expect: plot 0 238 -2.430394276
+// expect: plot 0 239 -1.499511973
+// ta.pvo_signal
+plot(ta.pvo_signal(12, 26, 9), title="ta.pvo_signal")

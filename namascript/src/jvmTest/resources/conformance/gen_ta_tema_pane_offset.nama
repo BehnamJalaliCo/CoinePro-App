@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.3798254
+// expect: plot 0 238 109.5850787
+// expect: plot 0 239 109.9308781
+// ta.tema, own pane, one bar back
+x = ta.tema(close, 14)
+plot(x[1], title="ta.tema[1]", pane="own")

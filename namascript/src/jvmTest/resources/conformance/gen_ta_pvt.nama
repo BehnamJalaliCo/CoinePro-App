@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 171.4420331
+// expect: plot 0 238 196.3975289
+// expect: plot 0 239 194.2080786
+// ta.pvt
+plot(ta.pvt(), title="ta.pvt")

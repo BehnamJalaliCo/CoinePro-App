@@ -1,0 +1,2 @@
+// expect: plot 0 105 5
+plot(ta.barssince(bar_index == 100))

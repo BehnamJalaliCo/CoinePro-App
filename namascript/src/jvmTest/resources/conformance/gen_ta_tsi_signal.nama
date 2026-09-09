@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -6.085840569
+// expect: plot 0 238 -5.377721425
+// expect: plot 0 239 -4.533019162
+// ta.tsi_signal
+plot(ta.tsi_signal(close, 25, 13, 13), title="ta.tsi_signal")

@@ -1,0 +1,10 @@
+// expect: ok
+// expect: plots 2
+// expect: plot 0 237 109.9552567
+// expect: plot 0 238 110.5057442
+// expect: plot 0 239 110.4661444
+// expect: plot 1 237 109.6628509
+// expect: plot 1 238 109.9552567
+// expect: plot 1 239 110.5057442
+plot(close, title="c", color=color.gold, width=2, dashed=true)
+plot(open, title="o", color=color.new(color.blue, 40), pane="own")

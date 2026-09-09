@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.9552567
+// expect: plot 0 238 110.5057442
+// expect: plot 0 239 110.4661444
+log("hello")
+plot(close)

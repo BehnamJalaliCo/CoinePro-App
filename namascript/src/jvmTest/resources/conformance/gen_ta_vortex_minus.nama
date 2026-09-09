@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 1.018461044
+// expect: plot 0 238 0.9943221205
+// expect: plot 0 239 1.003346782
+// ta.vortex_minus
+plot(ta.vortex_minus(14), title="ta.vortex_minus")

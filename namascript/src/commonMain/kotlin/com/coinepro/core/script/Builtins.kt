@@ -4,6 +4,13 @@ import com.coinepro.core.chart.formatFixed
 import com.coinepro.core.chart.CandleSeries
 import com.coinepro.core.chart.Indicators
 import com.coinepro.core.chart.IndicatorsExt
+import kotlin.math.tan
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.log10
+import kotlin.math.exp
+import com.coinepro.core.chart.IndicatorsExtC
+import com.coinepro.core.chart.IndicatorsExtB
 import com.coinepro.core.chart.Line
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -292,6 +299,99 @@ internal object Builtins {
             "math.pow" -> binary(interpreter, node, arguments) { a, b -> a.pow(b) }
 
             /* ---------------------------------------------------------- control */
+            /* ---------------------------------------------------------- since 4.50.0: the rest of the engine */
+            "ta.ppo" -> series(interpreter, arguments.source(0).through { line(IndicatorsExtB.ppo(it, arguments.length(1, default = 12), arguments.length(2, default = 26), arguments.length(3, default = 9)).oscillator) })
+            "ta.ppo_signal" -> series(interpreter, arguments.source(0).through { line(IndicatorsExtB.ppo(it, arguments.length(1, default = 12), arguments.length(2, default = 26), arguments.length(3, default = 9)).signal) })
+            "ta.pvo" -> series(interpreter, withVolume(interpreter) { c -> line(IndicatorsExtB.pvo(c.volume, arguments.length(0, default = 12), arguments.length(1, default = 26), arguments.length(2, default = 9)).oscillator) })
+            "ta.pvo_signal" -> series(interpreter, withVolume(interpreter) { c -> line(IndicatorsExtB.pvo(c.volume, arguments.length(0, default = 12), arguments.length(1, default = 26), arguments.length(2, default = 9)).signal) })
+            "ta.tsi" -> series(interpreter, arguments.source(0).through { line(IndicatorsExtB.trueStrengthIndex(it, arguments.length(1, default = 25), arguments.length(2, default = 13), arguments.length(3, default = 13)).tsi) })
+            "ta.tsi_signal" -> series(interpreter, arguments.source(0).through { line(IndicatorsExtB.trueStrengthIndex(it, arguments.length(1, default = 25), arguments.length(2, default = 13), arguments.length(3, default = 13)).signal) })
+            "ta.aroon_up" -> series(interpreter, withHl(interpreter) { h, l -> line(IndicatorsExtB.aroon(h, l, arguments.length(0, default = 14)).up) })
+            "ta.aroon_down" -> series(interpreter, withHl(interpreter) { h, l -> line(IndicatorsExtB.aroon(h, l, arguments.length(0, default = 14)).down) })
+            "ta.mfi" -> series(interpreter, withVolume(interpreter) { c -> line(IndicatorsExtB.moneyFlowIndex(c.high, c.low, c.close, c.volume, arguments.length(0, default = 14))) })
+            "ta.cmf" -> series(interpreter, withVolume(interpreter) { c -> line(IndicatorsExtB.chaikinMoneyFlow(c.high, c.low, c.close, c.volume, arguments.length(0, default = 20))) })
+            "ta.dpo" -> series(interpreter, arguments.source(0).through { line(IndicatorsExtC.detrendedPriceOscillator(it, arguments.length(1, default = 20))) })
+            "ta.kst" -> series(interpreter, arguments.source(0).through { line(IndicatorsExtC.knowSureThing(it).kst) })
+            "ta.kst_signal" -> series(interpreter, arguments.source(0).through { line(IndicatorsExtC.knowSureThing(it).signal) })
+            "ta.mass" -> series(interpreter, withHl(interpreter) { h, l -> line(IndicatorsExtC.massIndex(h, l, arguments.length(0, default = 25), arguments.length(1, default = 9))) })
+            "ta.stochrsi_k" -> series(interpreter, arguments.source(0).through { line(IndicatorsExtB.stochasticRsi(it, arguments.length(1, default = 14), arguments.length(2, default = 14), arguments.length(3, default = 3), arguments.length(4, default = 3)).k) })
+            "ta.stochrsi_d" -> series(interpreter, arguments.source(0).through { line(IndicatorsExtB.stochasticRsi(it, arguments.length(1, default = 14), arguments.length(2, default = 14), arguments.length(3, default = 3), arguments.length(4, default = 3)).d) })
+            "ta.psar" -> series(interpreter, withHl(interpreter) { h, l -> line(IndicatorsExtB.parabolicSar(h, l, if (arguments.size > 0) arguments.constant(0, "گام", "The step") else 0.02, if (arguments.size > 1) arguments.constant(1, "بیشینه", "The maximum") else 0.2)) })
+            "ta.ao" -> series(interpreter, withHl(interpreter) { h, l -> line(IndicatorsExtB.awesomeOscillator(h, l)) })
+            "ta.ac" -> series(interpreter, withHl(interpreter) { h, l -> IndicatorsExt.accelerator(h, l) })
+            "ta.dema" -> series(interpreter, arguments.source(0).through { line(IndicatorsExtB.dema(it, arguments.length(1))) })
+            "ta.tema" -> series(interpreter, arguments.source(0).through { line(IndicatorsExtB.tema(it, arguments.length(1))) })
+            "ta.t3" -> series(interpreter, arguments.source(0).through { IndicatorsExt.t3(it, arguments.length(1, default = 10), if (arguments.size > 2) arguments.constant(2, "ضریب حجم", "The volume factor") else 0.7) })
+            "ta.vwma" -> series(interpreter, withVolume(interpreter) { c -> line(IndicatorsExtB.vwma(c.close, c.volume, arguments.length(0, default = 20))) })
+            "ta.alligator_jaw" -> series(interpreter, withHl(interpreter) { h, l -> line(IndicatorsExtB.alligator(h, l).jaw) })
+            "ta.alligator_teeth" -> series(interpreter, withHl(interpreter) { h, l -> line(IndicatorsExtB.alligator(h, l).teeth) })
+            "ta.alligator_lips" -> series(interpreter, withHl(interpreter) { h, l -> line(IndicatorsExtB.alligator(h, l).lips) })
+            "ta.cmo" -> series(interpreter, arguments.source(0).through { line(IndicatorsExtC.chandeMomentumOscillator(it, arguments.length(1, default = 9))) })
+            "ta.coppock" -> series(interpreter, arguments.source(0).through { line(IndicatorsExtC.coppockCurve(it, arguments.length(1, default = 14), arguments.length(2, default = 11), arguments.length(3, default = 10))) })
+            "ta.rvi" -> series(interpreter, line(IndicatorsExtC.relativeVigorIndex(interpreter.candles.open, interpreter.candles.high, interpreter.candles.low, interpreter.candles.close, arguments.length(0, default = 10)).rvi))
+            "ta.rvi_signal" -> series(interpreter, line(IndicatorsExtC.relativeVigorIndex(interpreter.candles.open, interpreter.candles.high, interpreter.candles.low, interpreter.candles.close, arguments.length(0, default = 10)).signal))
+            "ta.vstop" -> series(interpreter, withHlc(interpreter) { h, l, c -> line(IndicatorsExtC.volatilityStop(h, l, c, arguments.length(0, default = 20), if (arguments.size > 1) arguments.constant(1, "ضریب", "The multiplier") else 2.0).stop) })
+            "ta.netvolume" -> series(interpreter, withVolume(interpreter) { c -> line(IndicatorsExtC.netVolume(c.close, c.volume)) })
+            "ta.correlation" -> {
+                val a = arguments.source(0).toArray()
+                val b = arguments.source(1).toArray()
+                series(interpreter, line(IndicatorsExtC.correlationCoefficient(a, b, arguments.length(2, default = 20))))
+            }
+            "ta.variance" -> series(interpreter, rolling(interpreter, arguments.source(0), arguments.length(1)) { window ->
+                val mean = window.average()
+                window.sumOf { (it - mean) * (it - mean) } / window.size
+            })
+            "ta.avg" -> series(interpreter, rolling(interpreter, arguments.source(0), arguments.length(1)) { it.average() })
+
+            /* ---------------------------------------------------------- since 4.50.0: math */
+            "math.exp" -> unary(interpreter, node, arguments) { exp(it) }
+            "math.log10" -> unary(interpreter, node, arguments) { if (it <= 0) Double.NaN else log10(it) }
+            "math.sin" -> unary(interpreter, node, arguments) { sin(it) }
+            "math.cos" -> unary(interpreter, node, arguments) { cos(it) }
+            "math.tan" -> unary(interpreter, node, arguments) { tan(it) }
+            "math.avg" -> binary(interpreter, node, arguments) { a, b -> (a + b) / 2 }
+            "math.clamp" -> {
+                val lo = arguments.constant(1, "کمینه", "The minimum")
+                val hi = arguments.constant(2, "بیشینه", "The maximum")
+                unary(interpreter, node, arguments) { it.coerceIn(min(lo, hi), max(lo, hi)) }
+            }
+
+            /* ---------------------------------------------------------- since 4.50.0: inputs, plots, alerts */
+            "input.int" -> {
+                val value = input(interpreter, node, arguments) as Value.Num
+                Value.Num(kotlin.math.round(value.value))
+            }
+            "input.float" -> input(interpreter, node, arguments)
+            "input.bool" -> {
+                val default = arguments.flagOf(arguments.value(0))
+                val title = if (arguments.has("title")) arguments.textOf(arguments.named("title")) else "ورودی"
+                val supplied = interpreter.override(title)
+                val effective = if (supplied != null) supplied != 0.0 else default
+                interpreter.addInput(ScriptInput(title, if (effective) 1.0 else 0.0, 0.0, 1.0))
+                Value.Flag(effective)
+            }
+            "color.new" -> {
+                val base = arguments.colourOf(arguments.value(0))
+                val transparency = arguments.constant(1, "شفافیت", "The transparency").coerceIn(0.0, 100.0)
+                val alpha = kotlin.math.round(255 * (1 - transparency / 100)).toLong()
+                Value.Colour((alpha shl 24) or (base and 0xFFFFFF))
+            }
+            "plotshape", "plotchar" -> marker(interpreter, node, arguments)
+            "bgcolor" -> {
+                val flags = interpreter.flagLine(arguments.value(0), node)
+                val colour = if (arguments.size > 1) arguments.colourOf(arguments.value(1)) else if (arguments.has("color")) arguments.colourOf(arguments.named("color")) else 0x33D8A848
+                val bars = (0 until interpreter.barCount).filter { flags.flagAt(it) }
+                interpreter.addBackground(ScriptBackground(bars, colour))
+                Value.Num(bars.size.toDouble())
+            }
+            "alertcondition" -> {
+                val flags = interpreter.flagLine(arguments.value(0), node)
+                val title = if (arguments.size > 1) arguments.text(1) else if (arguments.has("title")) arguments.textOf(arguments.named("title")) else "هشدار"
+                val bars = (0 until interpreter.barCount).filter { flags.flagAt(it) }
+                interpreter.addAlert(ScriptAlert(title, bars))
+                Value.Flag(bars.lastOrNull() == interpreter.barCount - 1)
+            }
+
             "iff" -> {
                 val condition = interpreter.flagLine(arguments.value(0), node)
                 val whenTrue = arguments.source(1)
@@ -320,7 +420,7 @@ internal object Builtins {
                 Value.Flag(true)
             }
 
-            else -> throw ScriptError("تابع «${node.qualified}» وجود ندارد", "There is no function “${node.qualified}”", node.line, node.column)
+            else -> throw ScriptError("تابع «${node.qualified}» وجود ندارد", "There is no function “${node.qualified}”", node.line, node.column, code = "E304")
         }
     }
 
@@ -578,6 +678,11 @@ internal object Builtins {
         })
     }
 
+    /** An engine series with NaN for "nothing", as [Line]: the two conventions the engine uses. */
+    private fun line(values: DoubleArray): Line = Line.of(values.size) { values[it].takeIf(Double::isFinite) }
+
+    private fun Line.toArray(): DoubleArray = DoubleArray(size) { this[it] ?: Double.NaN }
+
     private fun series(interpreter: Interpreter, line: Line): Value {
         require(line.size == interpreter.barCount)
         return Value.NumberSeries(line)
@@ -610,8 +715,7 @@ internal object Builtins {
                 "plot یک سری عددی می‌خواهد. برای شرط از marker استفاده کنید",
                 "plot needs a number series; use marker for a condition",
                 node.line,
-                node.column,
-            )
+                node.column, code = "E207")
         }
         val line = interpreter.numberLine(value, node)
         // Numbered from the plots already added, so an untitled script still gets a legend that
@@ -690,8 +794,9 @@ internal object Builtins {
         val flags = interpreter.flagLine(arguments.value(0), node)
         val title = if (arguments.has("title")) arguments.textOf(arguments.named("title")) else "نشانه"
         val style = when (if (arguments.has("style")) arguments.textOf(arguments.named("style")) else "circle") {
-            "up" -> ScriptMarkerStyle.ARROW_UP
-            "down" -> ScriptMarkerStyle.ARROW_DOWN
+            // Pine's shape names beside the language's own, so a pasted plotshape keeps its arrow.
+            "up", "triangleup", "arrowup", "labelup" -> ScriptMarkerStyle.ARROW_UP
+            "down", "triangledown", "arrowdown", "labeldown" -> ScriptMarkerStyle.ARROW_DOWN
             else -> ScriptMarkerStyle.CIRCLE
         }
         val colour = if (arguments.has("color")) {
@@ -796,12 +901,12 @@ internal class Arguments(private val interpreter: Interpreter, private val node:
         is Value.Text -> value.value
         is Value.Num -> scriptNumberText(value.value)
         is Value.Flag -> if (value.value) "درست" else "نادرست"
-        else -> throw ScriptError("اینجا متن لازم است، نه ${value.typeName}", "Text is needed here, not ${value.typeNameEn}", node.line, node.column)
+        else -> throw ScriptError("اینجا متن لازم است، نه ${value.typeName}", "Text is needed here, not ${value.typeNameEn}", node.line, node.column, code = "E208")
     }
 
     fun colourOf(value: Value): Long = when (value) {
         is Value.Colour -> value.argb
-        else -> throw ScriptError("اینجا رنگ لازم است — مثلاً color.gold", "A colour is needed here — color.gold, say", node.line, node.column)
+        else -> throw ScriptError("اینجا رنگ لازم است — مثلاً color.gold", "A colour is needed here — color.gold, say", node.line, node.column, code = "E209")
     }
 
     fun flagOf(value: Value): Boolean = when (value) {

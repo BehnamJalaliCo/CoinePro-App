@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 110.4474107
+// expect: plot 0 238 110.5873475
+// expect: plot 0 239 110.7201941
+// ta.env_upper
+plot(ta.env_upper(close, 20, 1), title="ta.env_upper")

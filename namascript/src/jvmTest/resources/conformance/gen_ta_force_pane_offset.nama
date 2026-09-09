@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -268.7774770
+// expect: plot 0 238 158.6837470
+// expect: plot 0 239 528.0129186
+// ta.force, own pane, one bar back
+x = ta.force(13)
+plot(x[1], title="ta.force[1]", pane="own")

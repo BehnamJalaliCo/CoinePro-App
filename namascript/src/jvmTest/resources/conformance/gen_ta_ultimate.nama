@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 51.70194165
+// expect: plot 0 238 54.41473669
+// expect: plot 0 239 54.62209611
+// ta.ultimate
+plot(ta.ultimate(7, 14, 28), title="ta.ultimate")

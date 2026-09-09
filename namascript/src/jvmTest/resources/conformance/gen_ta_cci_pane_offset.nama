@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 29.36310425
+// expect: plot 0 238 23.31456601
+// expect: plot 0 239 93.51732445
+// ta.cci, own pane, one bar back
+x = ta.cci(20)
+plot(x[1], title="ta.cci[1]", pane="own")

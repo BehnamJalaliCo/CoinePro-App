@@ -1,0 +1,6 @@
+// expect: plot 0 0 5
+// expect: plot 1 0 2
+// expect: plot 2 0 3.5
+plot(math.max(2, 5))
+plot(math.min(2, 5))
+plot(math.avg(2, 5))

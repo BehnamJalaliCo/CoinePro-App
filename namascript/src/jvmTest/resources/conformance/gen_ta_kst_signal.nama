@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -7.497303782
+// expect: plot 0 238 -6.536839826
+// expect: plot 0 239 -5.597166901
+// ta.kst_signal
+plot(ta.kst_signal(close), title="ta.kst_signal")

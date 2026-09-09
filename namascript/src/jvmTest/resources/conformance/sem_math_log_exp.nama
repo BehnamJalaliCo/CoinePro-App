@@ -1,0 +1,4 @@
+// expect: plot 0 0 1
+// expect: plot 1 0 2
+plot(math.log(math.exp(1)))
+plot(math.log10(100))

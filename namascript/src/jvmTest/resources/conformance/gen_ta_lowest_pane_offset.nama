@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 106.8921646
+// expect: plot 0 238 106.8921646
+// expect: plot 0 239 106.8921646
+// ta.lowest, own pane, one bar back
+x = ta.lowest(low, 20)
+plot(x[1], title="ta.lowest[1]", pane="own")

@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -0.4877995116
+// expect: plot 0 238 -0.2960762223
+// expect: plot 0 239 0.1560764345
+// ta.fisher_signal
+plot(ta.fisher_signal(9), title="ta.fisher_signal")

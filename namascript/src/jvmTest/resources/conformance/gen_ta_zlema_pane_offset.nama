@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.1588585
+// expect: plot 0 238 109.4856641
+// expect: plot 0 239 109.7817487
+// ta.zlema, own pane, one bar back
+x = ta.zlema(close, 14)
+plot(x[1], title="ta.zlema[1]", pane="own")

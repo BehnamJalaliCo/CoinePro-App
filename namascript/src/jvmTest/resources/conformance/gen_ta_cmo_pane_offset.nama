@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -7.451308408
+// expect: plot 0 238 7.549334474
+// expect: plot 0 239 6.707797591
+// ta.cmo, own pane, one bar back
+x = ta.cmo(close, 9)
+plot(x[1], title="ta.cmo[1]", pane="own")

@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109557.3223
+// expect: plot 0 238 110710.5944
+// expect: plot 0 239 110372.8140
+// ta.sum, own pane, one bar back
+x = ta.sum(volume, 20)
+plot(x[1], title="ta.sum[1]", pane="own")

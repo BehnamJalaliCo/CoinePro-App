@@ -1,0 +1,18 @@
+// expect: ok
+// expect: plots 4
+// expect: plot 0 237 220.9105135
+// expect: plot 0 238 222.0114885
+// expect: plot 0 239 221.9322888
+// expect: plot 1 237 1.002666407
+// expect: plot 1 238 1.005006468
+// expect: plot 1 239 0.9996416490
+// expect: plot 2 237 9.955256740
+// expect: plot 2 238 0.5057442263
+// expect: plot 2 239 0.4661443797
+// expect: plot 3 237 -109.9552567
+// expect: plot 3 238 -110.5057442
+// expect: plot 3 239 -110.4661444
+plot(close * 2 + 1)
+plot(close / open)
+plot(close % 10, pane="own")
+plot(-close, pane="own")

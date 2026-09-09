@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.4514596
+// expect: plot 0 238 109.7088181
+// expect: plot 0 239 109.9064345
+// ta.dema
+plot(ta.dema(close, 14), title="ta.dema")

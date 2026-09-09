@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 11.02871877
+// expect: plot 0 238 11.21894033
+// expect: plot 0 239 11.10358405
+// ta.adx
+plot(ta.adx(14), title="ta.adx")

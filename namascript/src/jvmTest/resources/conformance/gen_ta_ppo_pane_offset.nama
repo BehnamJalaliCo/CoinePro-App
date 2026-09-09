@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -0.1721262509
+// expect: plot 0 238 -0.1194633255
+// expect: plot 0 239 -0.03679373441
+// ta.ppo, own pane, one bar back
+x = ta.ppo(close, 12, 26, 9)
+plot(x[1], title="ta.ppo[1]", pane="own")

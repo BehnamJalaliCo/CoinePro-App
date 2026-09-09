@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 52.41422754
+// expect: plot 0 238 65.72507090
+// expect: plot 0 239 64.76754258
+// ta.stoch_k
+plot(ta.stoch_k(14, 3), title="ta.stoch_k")

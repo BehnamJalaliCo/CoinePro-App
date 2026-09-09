@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.4074797
+// expect: plot 0 238 109.3731411
+// expect: plot 0 239 109.3581038
+// ta.ichimoku_span_a
+plot(ta.ichimoku_span_a(9, 26), title="ta.ichimoku_span_a")

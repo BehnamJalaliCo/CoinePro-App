@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 0.9139355416
+// expect: plot 0 238 0.8667983102
+// expect: plot 0 239 0.8026075536
+// ta.stdev
+plot(ta.stdev(close, 20), title="ta.stdev")

@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -2.777672026
+// expect: plot 0 238 0.5688711652
+// expect: plot 0 239 5.677775354
+// ta.smi, own pane, one bar back
+x = ta.smi(close, 20, 5, 5)
+plot(x[1], title="ta.smi[1]", pane="own")

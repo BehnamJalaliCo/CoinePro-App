@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 41.69212447
+// expect: plot 0 238 56.01427219
+// expect: plot 0 239 71.16800188
+// ta.stochrsi_k, own pane, one bar back
+x = ta.stochrsi_k(close, 14, 14, 3, 3)
+plot(x[1], title="ta.stochrsi_k[1]", pane="own")

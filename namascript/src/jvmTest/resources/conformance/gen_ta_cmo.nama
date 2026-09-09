@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 7.549334474
+// expect: plot 0 238 6.707797591
+// expect: plot 0 239 27.81144588
+// ta.cmo
+plot(ta.cmo(close, 9), title="ta.cmo")

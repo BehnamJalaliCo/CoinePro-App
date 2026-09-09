@@ -1,0 +1,7 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 1502.804937
+// expect: plot 0 238 2972.708825
+// expect: plot 0 239 4319.363938
+// ta.chaikin_osc
+plot(ta.chaikin_osc(3, 10), title="ta.chaikin_osc")

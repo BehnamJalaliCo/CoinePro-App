@@ -1,5 +1,6 @@
 package com.coinepro.core.script
 
+import com.coinepro.core.chart.currentTimeMillis
 import com.coinepro.core.chart.CandleSeries
 import com.coinepro.core.chart.Indicators
 import com.coinepro.core.chart.Line
@@ -34,6 +35,8 @@ import kotlin.math.sqrt
 internal class Interpreter(
     private val series: CandleSeries,
     private val overrides: Map<String, Double> = emptyMap(),
+    /** The sandbox's clock budget; the default is what a phone gets, a benchmark may ask for more. */
+    private val timeBudgetMillis: Long = MAX_MILLIS,
 ) {
     private val size = series.bars.size
     private val variables = HashMap<String, Value>()
@@ -43,7 +46,10 @@ internal class Interpreter(
     private val inputs = mutableListOf<ScriptInput>()
     private val log = mutableListOf<String>()
     private var setup: ScriptSetup? = null
+    private val backgrounds = mutableListOf<ScriptBackground>()
+    private val alerts = mutableListOf<ScriptAlert>()
     private var budget = MAX_NODES
+    private val startedAt = currentTimeMillis()
 
     fun run(program: Program): ScriptResult {
         for (statement in program.statements) {
@@ -54,16 +60,14 @@ internal class Interpreter(
                             "«${statement.name}» هنوز تعریف نشده — برای تعریف از «=» استفاده کنید",
                             "“${statement.name}” is not defined yet — define it with “=”",
                             statement.line,
-                            statement.column,
-                        )
+                            statement.column, code = "E303")
                     }
                     if (statement.declare && statement.name in BUILTIN_SERIES) {
                         throw ScriptError(
                             "«${statement.name}» یک نام درون‌ساخته است و نمی‌شود دوباره تعریفش کرد",
                             "“${statement.name}” is a built-in name and cannot be redefined",
                             statement.line,
-                            statement.column,
-                        )
+                            statement.column, code = "E302")
                     }
                     variables[statement.name] = evaluate(statement.value)
                 }
@@ -77,6 +81,8 @@ internal class Interpreter(
             setup = setup,
             inputs = inputs.toList(),
             log = log.toList(),
+            backgrounds = backgrounds.toList(),
+            alerts = alerts.toList(),
         )
     }
 
@@ -84,7 +90,12 @@ internal class Interpreter(
 
     private fun evaluate(expression: Expr): Value {
         if (--budget < 0) {
-            throw ScriptError("اسکریپت بیش از حد پیچیده است", "The script is too complex", expression.line, expression.column)
+            throw ScriptError("اسکریپت بیش از حد پیچیده است", "The script is too complex", expression.line, expression.column, code = "E401")
+        }
+        // The wall clock, read once every thousand nodes: the node budget bounds the work, this
+        // bounds the *time*, which on a slow phone or a very long chart is what the reader feels.
+        if (budget and CLOCK_MASK == 0 && currentTimeMillis() - startedAt > timeBudgetMillis) {
+            throw ScriptError("اجرای اسکریپت بیش از حد طول کشید", "The script took too long to run", expression.line, expression.column, code = "E406")
         }
         return when (expression) {
             is NumberLiteral -> Value.Num(expression.value)
@@ -103,7 +114,7 @@ internal class Interpreter(
         variables[node.name]?.let { return it }
         builtinSeries(node.name)?.let { return it }
         COLOURS[node.name]?.let { return Value.Colour(it) }
-        throw ScriptError("«${node.name}» تعریف نشده است", "“${node.name}” is not defined", node.line, node.column)
+        throw ScriptError("«${node.name}» تعریف نشده است", "“${node.name}” is not defined", node.line, node.column, code = "E301")
     }
 
     private fun builtinSeries(name: String): Value? = when (name) {
@@ -144,14 +155,14 @@ internal class Interpreter(
             TokenType.MINUS -> when (operand) {
                 is Value.Num -> Value.Num(-operand.value)
                 is Value.NumberSeries -> Value.NumberSeries(map(operand.line) { -it })
-                else -> throw ScriptError("منفی کردن روی ${operand.typeName} معنا ندارد", "Cannot negate ${operand.typeNameEn}", node.line, node.column)
+                else -> throw ScriptError("منفی کردن روی ${operand.typeName} معنا ندارد", "Cannot negate ${operand.typeNameEn}", node.line, node.column, code = "E201")
             }
             TokenType.NOT -> when (operand) {
                 is Value.Flag -> Value.Flag(!operand.value)
                 is Value.FlagSeries -> Value.FlagSeries(map(operand.line) { if (it != 0.0) 0.0 else 1.0 })
-                else -> throw ScriptError("«not» روی ${operand.typeName} معنا ندارد", "“not” does not apply to ${operand.typeNameEn}", node.line, node.column)
+                else -> throw ScriptError("«not» روی ${operand.typeName} معنا ندارد", "“not” does not apply to ${operand.typeNameEn}", node.line, node.column, code = "E201")
             }
-            else -> throw ScriptError("عملگر یکانی ناشناخته", "Unknown unary operator", node.line, node.column)
+            else -> throw ScriptError("عملگر یکانی ناشناخته", "Unknown unary operator", node.line, node.column, code = "E108")
         }
     }
 
@@ -174,7 +185,7 @@ internal class Interpreter(
             TokenType.NEQ -> equality(left, right, node, same = false)
             TokenType.AND -> logical(left, right, node) { a, b -> a && b }
             TokenType.OR -> logical(left, right, node) { a, b -> a || b }
-            else -> throw ScriptError("عملگر ناشناخته", "Unknown operator", node.line, node.column)
+            else -> throw ScriptError("عملگر ناشناخته", "Unknown operator", node.line, node.column, code = "E108")
         }
     }
 
@@ -235,9 +246,9 @@ internal class Interpreter(
     private fun offset(node: Offset): Value {
         val target = evaluate(node.target)
         val bars = (evaluate(node.bars) as? Value.Num)
-            ?: throw ScriptError("تعداد کندل‌های عقب‌تر باید یک عدد ثابت باشد", "The number of bars back must be a constant", node.line, node.column)
+            ?: throw ScriptError("تعداد کندل‌های عقب‌تر باید یک عدد ثابت باشد", "The number of bars back must be a constant", node.line, node.column, code = "E202")
         val shift = bars.value.roundToLong().toInt()
-        if (shift < 0) throw ScriptError("عقب رفتن با عدد منفی معنا ندارد", "Cannot look back a negative number of bars", node.line, node.column)
+        if (shift < 0) throw ScriptError("عقب رفتن با عدد منفی معنا ندارد", "Cannot look back a negative number of bars", node.line, node.column, code = "E202")
         // Absent before the series begins. Clamping to bar zero is what makes a script report a
         // crossover on the first bar of every chart it is ever run on.
         fun shifted(line: Line) = Line.of(size) { index ->
@@ -247,7 +258,7 @@ internal class Interpreter(
             is Value.NumberSeries -> Value.NumberSeries(shifted(target.line))
             is Value.FlagSeries -> Value.FlagSeries(shifted(target.line))
             is Value.Num, is Value.Flag -> target      // a constant is the same at every bar
-            else -> throw ScriptError("«[]» روی ${target.typeName} معنا ندارد", "“[]” does not apply to ${target.typeNameEn}", node.line, node.column)
+            else -> throw ScriptError("«[]» روی ${target.typeName} معنا ندارد", "“[]” does not apply to ${target.typeNameEn}", node.line, node.column, code = "E202")
         }
     }
 
@@ -258,7 +269,7 @@ internal class Interpreter(
         is Value.NumberSeries -> value.line
         is Value.Flag -> constantLine(size, if (value.value) 1.0 else 0.0)
         is Value.FlagSeries -> value.line
-        else -> throw ScriptError("اینجا عدد لازم است، نه ${value.typeName}", "A number is needed here, not ${value.typeNameEn}", node.line, node.column)
+        else -> throw ScriptError("اینجا عدد لازم است، نه ${value.typeName}", "A number is needed here, not ${value.typeNameEn}", node.line, node.column, code = "E203")
     }
 
     fun flagLine(value: Value, node: Node): Line = when (value) {
@@ -266,22 +277,22 @@ internal class Interpreter(
         is Value.FlagSeries -> value.line
         is Value.Num -> constantLine(size, if (value.value != 0.0) 1.0 else 0.0)
         is Value.NumberSeries -> value.line.asFlags()
-        else -> throw ScriptError("اینجا شرط لازم است، نه ${value.typeName}", "A condition is needed here, not ${value.typeNameEn}", node.line, node.column)
+        else -> throw ScriptError("اینجا شرط لازم است، نه ${value.typeName}", "A condition is needed here, not ${value.typeNameEn}", node.line, node.column, code = "E204")
     }
 
     fun scalar(value: Value, node: Node, what: String, whatEn: String): Double = when (value) {
         is Value.Num -> value.value
         // A series where a single number is required is almost always a mistake worth naming: a
         // length that varies per bar is not a length.
-        else -> throw ScriptError("$what باید یک عدد ثابت باشد، نه ${value.typeName}", "$whatEn must be a constant, not ${value.typeNameEn}", node.line, node.column)
+        else -> throw ScriptError("$what باید یک عدد ثابت باشد، نه ${value.typeName}", "$whatEn must be a constant, not ${value.typeNameEn}", node.line, node.column, code = "E205")
     }
 
     fun period(value: Value, node: Node, what: String, whatEn: String): Int {
         val number = scalar(value, node, what, whatEn)
         val rounded = number.roundToLong().toInt()
-        if (rounded < 1) throw ScriptError("$what باید دست‌کم ۱ باشد", "$whatEn must be at least 1", node.line, node.column)
+        if (rounded < 1) throw ScriptError("$what باید دست‌کم ۱ باشد", "$whatEn must be at least 1", node.line, node.column, code = "E206")
         if (rounded > size.coerceAtLeast(1) * 4) {
-            throw ScriptError("$what از طول چارت بسیار بزرگ‌تر است", "$whatEn is far longer than the chart", node.line, node.column)
+            throw ScriptError("$what از طول چارت بسیار بزرگ‌تر است", "$whatEn is far longer than the chart", node.line, node.column, code = "E206")
         }
         return rounded
     }
@@ -305,7 +316,7 @@ internal class Interpreter(
 
     fun addPlot(plot: ScriptPlot, node: Node) {
         if (plots.size >= MAX_PLOTS) {
-            throw ScriptError("بیش از $MAX_PLOTS خط قابل رسم نیست", "No more than $MAX_PLOTS lines can be plotted", node.line, node.column)
+            throw ScriptError("بیش از $MAX_PLOTS خط قابل رسم نیست", "No more than $MAX_PLOTS lines can be plotted", node.line, node.column, code = "E402")
         }
         plots += plot
     }
@@ -316,6 +327,14 @@ internal class Interpreter(
 
     fun addMarker(marker: ScriptMarker) {
         if (markers.size < MAX_PLOTS) markers += marker
+    }
+
+    fun addBackground(background: ScriptBackground) {
+        if (backgrounds.size < MAX_PLOTS) backgrounds += background
+    }
+
+    fun addAlert(alert: ScriptAlert) {
+        if (alerts.size < MAX_PLOTS) alerts += alert
     }
 
     fun addInput(input: ScriptInput) {
@@ -341,6 +360,10 @@ internal class Interpreter(
     internal companion object {
         const val MAX_NODES = 250_000
         const val MAX_PLOTS = 12
+
+        /** The sandbox's clock budget for one run, and how often it is read (every 1024 nodes). */
+        const val MAX_MILLIS = 2_000L
+        const val CLOCK_MASK = 0x3FF
         const val MAX_LOG_LINES = 40
 
         val BUILTIN_SERIES = setOf(

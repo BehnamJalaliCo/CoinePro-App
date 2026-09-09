@@ -1,0 +1,8 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 -4.922172801
+// expect: plot 0 238 -4.071834353
+// expect: plot 0 239 -2.594991976
+// ta.kst, own pane, one bar back
+x = ta.kst(close)
+plot(x[1], title="ta.kst[1]", pane="own")

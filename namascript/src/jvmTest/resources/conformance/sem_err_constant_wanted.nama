@@ -1,0 +1,2 @@
+// expect: error E205
+plot(ta.sma(close, close))
