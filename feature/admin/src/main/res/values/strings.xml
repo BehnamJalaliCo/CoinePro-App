@@ -1,215 +1,206 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Default language: Persian.
-
-  Two number rules, and they are not the same rule. A figure a reader compares against a server, a
-  broker or another log stays Latin — a status code, a duration in milliseconds, a version, a byte
-  count, a base URL. A count in a sentence is prose and takes Persian digits, which is why the
-  counters below are formatted with %1$s rather than %1$d: the digits are converted before they
-  arrive, and a `%d` would print Latin ones straight into a Persian phrase.
--->
 <resources>
 
     <!-- the door -->
-    <string name="admin_lock_title">پنل مدیریت</string>
-    <string name="admin_lock_body">این صفحه فقط نشان نمی‌دهد؛ کار هم می‌کند. از هر دو پلتفرم خارج می‌شود، جریان بازار را از نو راه می‌اندازد، کش را پاک می‌کند و از این نصب فایل خروجی می‌گیرد. برای همین نام کاربری و گذرواژه می‌خواهد.</string>
-    <string name="admin_lock_username">نام کاربری</string>
-    <string name="admin_lock_password">گذرواژه</string>
-    <string name="admin_lock_enter">ورود</string>
-    <string name="admin_lock_refused">نام کاربری یا گذرواژه درست نیست.</string>
-    <string name="admin_lock_locked">بعد از پنج تلاش ناموفق بسته شد. %1$s دقیقه‌ی دیگر دوباره امتحان کنید.</string>
-    <string name="admin_lock_unprovisioned">این بیلد هیچ کلیدی برای این در ندارد. تا وقتی اعتبارنامه در بیلد گذاشته نشود، پنل باز نمی‌شود — و این درست‌ترین رفتار برای یک در است.</string>
-    <string name="admin_lock_now">قفل کردن پنل</string>
+    <string name="admin_lock_title">Admin panel</string>
+    <string name="admin_lock_body">This screen does not only report; it acts. It signs both platforms out, restarts the market feed, drops caches and exports a file describing this install. That is why it asks for a username and a password.</string>
+    <string name="admin_lock_username">Username</string>
+    <string name="admin_lock_password">Password</string>
+    <string name="admin_lock_enter">Sign in</string>
+    <string name="admin_lock_refused">That username and password do not match.</string>
+    <string name="admin_lock_locked">Closed after five failed attempts. Try again in %1$s minutes.</string>
+    <string name="admin_lock_unprovisioned">This build has no key for this door. Until a credential is configured at build time the panel will not open — which is the correct behaviour for a door.</string>
+    <string name="admin_lock_now">Lock the panel</string>
 
     <!-- sections -->
-    <string name="admin_section_overview">نمای کلی</string>
-    <string name="admin_section_log">گزارش</string>
-    <string name="admin_section_network">شبکه</string>
-    <string name="admin_section_system">سامانه</string>
+    <string name="admin_section_overview">Overview</string>
+    <string name="admin_section_log">Log</string>
+    <string name="admin_section_network">Network</string>
+    <string name="admin_section_system">System</string>
 
     <!-- the verdict -->
-    <string name="admin_title">سلامت این نصب</string>
-    <string name="admin_subtitle">این اپ روی این گوشی، و دو سروری که با آن‌ها حرف می‌زند</string>
-    <string name="admin_verdict_healthy">مشکلی پیدا نشد</string>
-    <string name="admin_verdict_faulty">مشکل پیدا شد</string>
-    <string name="admin_verdict_note">۴۰۱ و ۴۰۳ خطا شمرده نمی‌شوند: وقتی وارد نشده‌اید، پاسخ درست همین است.</string>
-    <string name="admin_finding_crash">کرش ثبت‌شده</string>
-    <string name="admin_finding_route">مسیری که سرور سرو نمی‌کند</string>
-    <string name="admin_finding_server">خطای سرور</string>
-    <string name="admin_finding_transport">درخواستی که هیچ پاسخی نگرفت</string>
-    <string name="admin_finding_gateway">آدرس پایه در این بیلد تنظیم نشده</string>
-    <string name="admin_finding_errors">خطای ثبت‌شده در یک ساعت گذشته</string>
-    <string name="admin_finding_count">%1$s مورد</string>
+    <string name="admin_title">This install</string>
+    <string name="admin_subtitle">This app on this handset, and the two servers it talks to</string>
+    <string name="admin_verdict_healthy">Nothing wrong found</string>
+    <string name="admin_verdict_faulty">Something is wrong</string>
+    <string name="admin_verdict_note">401 and 403 are not counted as faults: while you are signed out they are the correct answer.</string>
+    <string name="admin_finding_crash">Recorded crash</string>
+    <string name="admin_finding_route">A route the server does not serve</string>
+    <string name="admin_finding_server">Server error</string>
+    <string name="admin_finding_transport">A request that never got an answer</string>
+    <string name="admin_finding_gateway">Base URL not configured in this build</string>
+    <string name="admin_finding_errors">Errors logged in the last hour</string>
+    <string name="admin_finding_count">%1$s of them</string>
 
-    <string name="admin_counter_errors">خطا</string>
-    <string name="admin_counter_warnings">هشدار</string>
-    <string name="admin_counter_lines">خط گزارش</string>
-    <string name="admin_counter_failures">درخواست ناموفق</string>
+    <string name="admin_counter_errors">Errors</string>
+    <string name="admin_counter_warnings">Warnings</string>
+    <string name="admin_counter_lines">Log lines</string>
+    <string name="admin_counter_failures">Failed calls</string>
 
     <!-- the export -->
-    <string name="admin_export_title">خروجی گرفتن</string>
-    <string name="admin_export_body">یک فایل متنی با نسخه‌ی بیلد، مشخصات گوشی، وضعیت لحظه‌ی خروجی، درخواست‌های ناموفق، آخرین کرش و همین گزارشی که الان فیلتر کرده‌اید. همان چیزی که یک برنامه‌نویس برای رفع اشکال لازم دارد.</string>
-    <string name="admin_export_share">اشتراک‌گذاری فایل</string>
-    <string name="admin_export_save">ذخیره‌ی فایل</string>
-    <string name="admin_export_copy">کپی گزارش</string>
-    <string name="admin_export_done_share">فایل به اپ انتخابی داده شد.</string>
-    <string name="admin_export_done_save">ذخیره شد.</string>
-    <string name="admin_export_failed">نوشتن فایل ممکن نشد.</string>
-    <string name="admin_export_copied">در حافظه کپی شد.</string>
-    <string name="admin_export_redaction">توکن، کلید، گذرواژه و نشانی ایمیل در فایل نوشته نمی‌شوند. فقط نام متغیر می‌ماند و مقدارش حذف می‌شود.</string>
+    <string name="admin_export_title">Export</string>
+    <string name="admin_export_body">A text file with the build, the handset, the state at the moment of export, the failing requests, the last crash, and the log exactly as you have filtered it. What a developer actually needs to fix something.</string>
+    <string name="admin_export_share">Share the file</string>
+    <string name="admin_export_save">Save the file</string>
+    <string name="admin_export_copy">Copy the log</string>
+    <string name="admin_export_done_share">Handed to the app you picked.</string>
+    <string name="admin_export_done_save">Saved.</string>
+    <string name="admin_export_failed">The file could not be written.</string>
+    <string name="admin_export_copied">Copied to the clipboard.</string>
+    <string name="admin_export_redaction">Tokens, keys, passwords and email addresses are never written into the file. The variable name stays and its value is dropped.</string>
 
     <!-- the log -->
-    <string name="admin_log_title">گزارش سامانه</string>
-    <string name="admin_log_count">%1$s خط از %2$s</string>
-    <string name="admin_log_search">جستجو در متن، برچسب و فیلدها</string>
-    <string name="admin_log_level">کمینه‌ی سطح</string>
-    <string name="admin_log_window">بازه‌ی زمانی</string>
-    <string name="admin_log_tags">برچسب‌ها</string>
-    <string name="admin_window_5m">۵ دقیقه</string>
-    <string name="admin_window_1h">۱ ساعت</string>
-    <string name="admin_window_1d">۱ روز</string>
-    <string name="admin_window_all">همه</string>
-    <string name="admin_log_clear_filter">برداشتن فیلترها</string>
-    <string name="admin_log_empty">هنوز چیزی ثبت نشده است.</string>
-    <string name="admin_log_empty_filtered">با این فیلترها چیزی پیدا نشد.</string>
-    <string name="admin_log_copy">کپی</string>
-    <string name="admin_log_copy_entry">کپی این خط</string>
-    <string name="admin_log_wipe">پاک کردن کامل گزارش</string>
-    <string name="admin_log_verbosity">حجم ثبت</string>
-    <string name="admin_log_verbosity_note">برای بازسازی یک اشکال روی TRACE بگذارید و بعد برگردانید. TRACE هر تیک و هر فریم را می‌نویسد و حافظه‌ی گزارش را در چند ثانیه پر می‌کند.</string>
-    <string name="admin_log_persisted">گزارش روی حافظه</string>
-    <string name="admin_log_persisted_note">گزارش روی دیسک هم نوشته می‌شود، وگرنه هر کرشی که پروسه را می‌کشد گزارشش را هم با خود می‌برد. «پاک کردن کامل» هم حافظه و هم فایل را خالی می‌کند.</string>
-    <string name="admin_log_thread">رشته</string>
-    <string name="admin_log_sequence">شماره</string>
+    <string name="admin_log_title">System log</string>
+    <string name="admin_log_count">%1$s lines of %2$s</string>
+    <string name="admin_log_search">Search the message, the tag and the fields</string>
+    <string name="admin_log_level">Minimum level</string>
+    <string name="admin_log_window">Time window</string>
+    <string name="admin_log_tags">Tags</string>
+    <string name="admin_window_5m">5 minutes</string>
+    <string name="admin_window_1h">1 hour</string>
+    <string name="admin_window_1d">1 day</string>
+    <string name="admin_window_all">All</string>
+    <string name="admin_log_clear_filter">Clear the filters</string>
+    <string name="admin_log_empty">Nothing recorded yet.</string>
+    <string name="admin_log_empty_filtered">Nothing matches these filters.</string>
+    <string name="admin_log_copy">Copy</string>
+    <string name="admin_log_copy_entry">Copy this line</string>
+    <string name="admin_log_wipe">Wipe the log</string>
+    <string name="admin_log_verbosity">Verbosity</string>
+    <string name="admin_log_verbosity_note">Set this to TRACE to reproduce something, then put it back. TRACE writes on every tick and every frame and fills the ring in seconds.</string>
+    <string name="admin_log_persisted">Log on disk</string>
+    <string name="admin_log_persisted_note">The log is written to disk as well, otherwise every crash that kills the process takes its own log with it. Wiping clears both the memory and the file.</string>
+    <string name="admin_log_thread">Thread</string>
+    <string name="admin_log_sequence">Sequence</string>
 
     <!-- the crash -->
-    <string name="admin_crash_title">آخرین کرش</string>
-    <string name="admin_crash_none">از آخرین پاک‌سازی، کرشی ثبت نشده است.</string>
-    <string name="admin_crash_at">زمان</string>
-    <string name="admin_crash_where">اولین فریم در کد این اپ</string>
-    <string name="admin_crash_copy">کپی ردیابی</string>
-    <string name="admin_crash_clear">پاک کردن</string>
+    <string name="admin_crash_title">Last crash</string>
+    <string name="admin_crash_none">No crash since the file was last cleared.</string>
+    <string name="admin_crash_at">When</string>
+    <string name="admin_crash_where">First frame in this app</string>
+    <string name="admin_crash_copy">Copy the trace</string>
+    <string name="admin_crash_clear">Clear</string>
 
     <!-- the network -->
-    <string name="admin_failures_title">درخواست‌های ناموفق</string>
-    <string name="admin_failures_body">هم‌شکل‌ها با هم جمع شده‌اند. چهل بار تلاش دوباره روی یک مسیر خراب، یک سطر است نه چهل سطر.</string>
-    <string name="admin_failures_empty">درخواست ناموفقی ثبت نشده است.</string>
-    <string name="admin_failures_expected">طبیعی است؛ نشست وارد نشده</string>
-    <string name="admin_failures_count">%1$s بار</string>
+    <string name="admin_failures_title">Failing requests</string>
+    <string name="admin_failures_body">Identical failures are grouped. Forty retries of one broken route is one row, not forty.</string>
+    <string name="admin_failures_empty">No failing request recorded.</string>
+    <string name="admin_failures_expected">Expected; the session is signed out</string>
+    <string name="admin_failures_count">%1$s times</string>
 
-    <string name="admin_build_title">مشخصات بیلد</string>
-    <string name="admin_version">نسخه</string>
-    <string name="admin_environment">محیط</string>
-    <string name="admin_application_id">شناسه‌ی اپ</string>
-    <string name="admin_debuggable">قابل دیباگ</string>
-    <string name="admin_firebase">فایربیس</string>
+    <string name="admin_build_title">Build details</string>
+    <string name="admin_version">Version</string>
+    <string name="admin_environment">Environment</string>
+    <string name="admin_application_id">Application id</string>
+    <string name="admin_debuggable">Debuggable</string>
+    <string name="admin_firebase">Firebase</string>
 
-    <string name="admin_device_title">دستگاه</string>
-    <string name="admin_device_model">مدل</string>
-    <string name="admin_device_android">اندروید</string>
-    <string name="admin_device_abi">معماری</string>
-    <string name="admin_device_locale">زبان سامانه</string>
-    <string name="admin_device_direction">جهت چیدمان</string>
-    <string name="admin_device_heap">حافظه‌ی اپ</string>
-    <string name="admin_device_storage">فضای آزاد</string>
-    <string name="admin_device_note">هیچ‌کدام از این‌ها کسی را نمی‌شناساند. مدل و نسخه و زبان، توصیف یک دسته دستگاه است نه توصیف صاحبش.</string>
+    <string name="admin_device_title">Device</string>
+    <string name="admin_device_model">Model</string>
+    <string name="admin_device_android">Android</string>
+    <string name="admin_device_abi">ABI</string>
+    <string name="admin_device_locale">System language</string>
+    <string name="admin_device_direction">Layout direction</string>
+    <string name="admin_device_heap">App memory</string>
+    <string name="admin_device_storage">Free space</string>
+    <string name="admin_device_note">None of this identifies anybody. Model, version and language describe a class of device, not its owner.</string>
 
-    <string name="admin_platform_title">اتصال</string>
-    <string name="admin_platform_forex">فارکس</string>
-    <string name="admin_platform_crypto">کریپتو</string>
-    <string name="admin_base_url">آدرس پایه</string>
-    <string name="admin_platform_configured">پیکربندی</string>
-    <string name="admin_install_id">شناسه‌ی نصب</string>
-    <string name="admin_masking_note">آدرس‌ها و شناسه‌ها ماسک شده‌اند. از این صفحه اسکرین‌شات گرفته می‌شود.</string>
+    <string name="admin_platform_title">Connection</string>
+    <string name="admin_platform_forex">Forex</string>
+    <string name="admin_platform_crypto">Crypto</string>
+    <string name="admin_base_url">Base URL</string>
+    <string name="admin_platform_configured">Configuration</string>
+    <string name="admin_install_id">Install id</string>
+    <string name="admin_masking_note">Hosts and identifiers are masked. This screen gets screenshotted.</string>
 
-    <string name="admin_probe_title">تطبیق مسیرها با سرور</string>
-    <string name="admin_probe_body">هر مسیر خواندنی یک بار صدا زده می‌شود. مسیرهایی که می‌نویسند یا سهمیه خرج می‌کنند فقط فهرست می‌شوند و اجرا نمی‌شوند. پاسخ ۴۰۱ یعنی آن آدرس واقعاً وجود دارد؛ ۴۰۴ یعنی مسیر اشتباه است.</string>
-    <string name="admin_probe_run">اجرای آزمون</string>
-    <string name="admin_probe_running">در حال اجرا…</string>
-    <string name="admin_probe_reached">پاسخ داد</string>
-    <string name="admin_probe_alive">زنده</string>
-    <string name="admin_probe_missing">پیدا نشد</string>
+    <string name="admin_probe_title">Routes against the server</string>
+    <string name="admin_probe_body">Every read-only route is called once. Routes that write or spend quota are listed but never fired. A 401 means the address really exists; a 404 means the path is wrong.</string>
+    <string name="admin_probe_run">Run the check</string>
+    <string name="admin_probe_running">Running…</string>
+    <string name="admin_probe_reached">Answered</string>
+    <string name="admin_probe_alive">Alive</string>
+    <string name="admin_probe_missing">Not found</string>
 
-    <string name="admin_outcome_reached">پاسخ داد</string>
-    <string name="admin_outcome_unauthorized">زنده است، توکن لازم دارد</string>
-    <string name="admin_outcome_not_found">این آدرس چیزی سرو نمی‌کند</string>
-    <string name="admin_outcome_server_error">خطای سرور</string>
-    <string name="admin_outcome_unreachable">در دسترس نبود</string>
-    <string name="admin_outcome_skipped">اجرا نشد</string>
+    <string name="admin_outcome_reached">Answered</string>
+    <string name="admin_outcome_unauthorized">Alive, needs a token</string>
+    <string name="admin_outcome_not_found">Nothing is served at this address</string>
+    <string name="admin_outcome_server_error">Server error</string>
+    <string name="admin_outcome_unreachable">Could not be reached</string>
+    <string name="admin_outcome_skipped">Not fired</string>
 
-    <string name="admin_requests_title">همه‌ی درخواست‌ها</string>
-    <string name="admin_requests_count">%1$s درخواست در حافظه</string>
-    <string name="admin_requests_failures">فقط خطاها</string>
-    <string name="admin_requests_all">همه</string>
-    <string name="admin_requests_clear">پاک کردن</string>
-    <string name="admin_requests_empty">هنوز درخواستی ثبت نشده است.</string>
+    <string name="admin_requests_title">Every request</string>
+    <string name="admin_requests_count">%1$s requests in memory</string>
+    <string name="admin_requests_failures">Failures only</string>
+    <string name="admin_requests_all">All</string>
+    <string name="admin_requests_clear">Clear</string>
+    <string name="admin_requests_empty">No requests recorded yet.</string>
 
-    <string name="admin_yes">بله</string>
-    <string name="admin_no">خیر</string>
-    <string name="admin_configured">تنظیم شده</string>
-    <string name="admin_not_configured">تنظیم نشده</string>
-    <string name="admin_on">روشن</string>
-    <string name="admin_off">خاموش</string>
-    <string name="admin_unknown">نامعلوم</string>
-    <string name="admin_rtl">راست‌به‌چپ</string>
-    <string name="admin_ltr">چپ‌به‌راست</string>
+    <string name="admin_yes">Yes</string>
+    <string name="admin_no">No</string>
+    <string name="admin_configured">Configured</string>
+    <string name="admin_not_configured">Not configured</string>
+    <string name="admin_on">On</string>
+    <string name="admin_off">Off</string>
+    <string name="admin_unknown">Unknown</string>
+    <string name="admin_rtl">Right to left</string>
+    <string name="admin_ltr">Left to right</string>
 
-    <string name="admin_tile_session">نشست</string>
-    <string name="admin_tile_feed">جریان بازار</string>
-    <string name="admin_tile_push">اعلان</string>
-    <string name="admin_tile_venue">صرافی</string>
-    <string name="admin_tile_routes">مسیر گم‌شده</string>
-    <string name="admin_tile_requests">خطای بی‌توضیح</string>
+    <string name="admin_tile_session">Session</string>
+    <string name="admin_tile_feed">Market feed</string>
+    <string name="admin_tile_push">Push</string>
+    <string name="admin_tile_venue">Venue</string>
+    <string name="admin_tile_routes">Missing routes</string>
+    <string name="admin_tile_requests">Unexplained failures</string>
 
-    <string name="admin_session_title">نشست‌ها</string>
-    <string name="admin_session_in">وارد شده</string>
-    <string name="admin_session_out">وارد نشده</string>
-    <string name="admin_sign_out">خروج</string>
-    <string name="admin_sign_out_everywhere">خروج از هر دو پلتفرم</string>
-    <string name="admin_session_note">خروج از یک پلتفرم، دیگری را خارج نمی‌کند. دو حساب جدا روی دو سرور جدا هستند. پلتفرم فعلی: %1$s</string>
+    <string name="admin_session_title">Sessions</string>
+    <string name="admin_session_in">Signed in</string>
+    <string name="admin_session_out">Signed out</string>
+    <string name="admin_sign_out">Sign out</string>
+    <string name="admin_sign_out_everywhere">Sign out of both platforms</string>
+    <string name="admin_session_note">Signing out of one platform does not sign you out of the other. They are separate accounts on separate servers. Current platform: %1$s</string>
 
-    <string name="admin_feed_title">جریان بازار</string>
-    <string name="admin_feed_state">وضعیت</string>
-    <string name="admin_feed_symbols">نمادهای مشترک‌شده</string>
-    <string name="admin_feed_cache">آخرین ذخیره</string>
-    <string name="admin_feed_restart">راه‌اندازی دوباره</string>
-    <string name="admin_sync_now">همگام‌سازی فوری</string>
-    <string name="admin_clear_market_cache">پاک کردن کش بازار</string>
+    <string name="admin_feed_title">Market feed</string>
+    <string name="admin_feed_state">State</string>
+    <string name="admin_feed_symbols">Subscribed symbols</string>
+    <string name="admin_feed_cache">Last stored</string>
+    <string name="admin_feed_restart">Restart the feed</string>
+    <string name="admin_sync_now">Sync now</string>
+    <string name="admin_clear_market_cache">Clear the market cache</string>
 
-    <string name="admin_push_title">اعلان‌ها</string>
-    <string name="admin_push_permission">مجوز اندروید</string>
-    <string name="admin_push_server">سرور</string>
-    <string name="admin_push_token">توکن دستگاه</string>
-    <string name="admin_push_request">درخواست مجوز</string>
-    <string name="admin_push_settings">باز کردن تنظیمات اندروید</string>
-    <string name="admin_push_reregister">ثبت دوباره‌ی توکن</string>
-    <string name="admin_push_new_signals">سیگنال تازه</string>
-    <string name="admin_push_signal_updates">به‌روزرسانی سیگنال</string>
-    <string name="admin_push_price_alerts">هشدار قیمت</string>
-    <string name="admin_push_not_configured">در این بیلد تنظیم نشده</string>
-    <string name="admin_push_not_required">در این نسخه‌ی اندروید لازم نیست</string>
-    <string name="admin_push_available">هنوز خواسته نشده</string>
-    <string name="admin_push_denied">رد شده</string>
-    <string name="admin_push_granted">داده شده</string>
+    <string name="admin_push_title">Notifications</string>
+    <string name="admin_push_permission">Android permission</string>
+    <string name="admin_push_server">Server</string>
+    <string name="admin_push_token">Device token</string>
+    <string name="admin_push_request">Ask for permission</string>
+    <string name="admin_push_settings">Open Android settings</string>
+    <string name="admin_push_reregister">Re-register the token</string>
+    <string name="admin_push_new_signals">New signals</string>
+    <string name="admin_push_signal_updates">Signal updates</string>
+    <string name="admin_push_price_alerts">Price alerts</string>
+    <string name="admin_push_not_configured">Not configured in this build</string>
+    <string name="admin_push_not_required">Not required on this Android version</string>
+    <string name="admin_push_available">Not asked for yet</string>
+    <string name="admin_push_denied">Denied</string>
+    <string name="admin_push_granted">Granted</string>
 
-    <string name="admin_venue_title">اتصال صرافی</string>
-    <string name="admin_venue_name">صرافی</string>
-    <string name="admin_venue_configured">کلید ذخیره شده</string>
-    <string name="admin_venue_connected">صرافی تأیید کرده</string>
-    <string name="admin_venue_note">ذخیره شدن کلید یعنی تنظیم شده، نه متصل. فقط تأیید خود صرافی «متصل» را روشن می‌کند.</string>
+    <string name="admin_venue_title">Venue connection</string>
+    <string name="admin_venue_name">Venue</string>
+    <string name="admin_venue_configured">Key stored</string>
+    <string name="admin_venue_connected">Venue verified it</string>
+    <string name="admin_venue_note">A stored key means configured, not connected. Only the venue\'s own verification turns "connected" on.</string>
 
-    <string name="admin_capabilities_title">قابلیت‌های سرور</string>
-    <string name="admin_capability_email">ورود با ایمیل</string>
-    <string name="admin_capability_google">ورود با گوگل</string>
-    <string name="admin_capability_telegram">ورود با تلگرام</string>
-    <string name="admin_capability_push">ارسال پوش</string>
-    <string name="admin_capability_vision">تحلیل تصویر چارت</string>
-    <string name="admin_capability_symbols">تعداد نمادها</string>
-    <string name="admin_capabilities_refresh">خواندن دوباره از سرور</string>
-    <string name="admin_capabilities_note">این‌ها را خود سرور اعلام می‌کند. اپ فقط چیزی را می‌کشد که سرور گفته روشن است.</string>
-    <string name="admin_relay_title">رله‌ی قیمت صرافی</string>
-    <string name="admin_relay_tier">لایه</string>
-    <string name="admin_relay_sockets">سوکت‌های زنده</string>
-    <string name="admin_relay_tick_age">سن آخرین تیک</string>
-    <string name="admin_relay_note">این اتصال سرور به صرافی است، نه اتصال اپ به سرور. سن تیک کران بالاست: رکورد سلامت هر ۵ ثانیه بازنویسی می‌شود، پس روی یک فید سالم هم تا ۵۰۰۰ میلی‌ثانیه دیده می‌شود.</string>
+    <string name="admin_capabilities_title">Server capabilities</string>
+    <string name="admin_capability_email">Email sign-in</string>
+    <string name="admin_capability_google">Google sign-in</string>
+    <string name="admin_capability_telegram">Telegram sign-in</string>
+    <string name="admin_capability_push">Push delivery</string>
+    <string name="admin_capability_vision">Chart image analysis</string>
+    <string name="admin_capability_symbols">Symbols offered</string>
+    <string name="admin_capabilities_refresh">Read again from the server</string>
+    <string name="admin_capabilities_note">The server declares these. The app draws only what it says is on.</string>
+    <string name="admin_relay_title">Venue price relay</string>
+    <string name="admin_relay_tier">Tier</string>
+    <string name="admin_relay_sockets">Live sockets</string>
+    <string name="admin_relay_tick_age">Newest tick age</string>
+    <string name="admin_relay_note">This is the server\'s link to the exchange, not the app\'s link to the server. The tick age is an upper bound: the health record is rewritten every 5 seconds, so a healthy feed reads up to 5000ms here.</string>
 </resources>

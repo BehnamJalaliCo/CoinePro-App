@@ -29,7 +29,9 @@ In practice that means:
 - Secrets in the two backend repositories are **not this app's business** — the owner will
   rotate them. Never raise them again. Only ever print variable *names*, never values.
 - The legal and IP position on the vendored icons is the owner's, settled. Do not re-raise it.
-- Font is IRANYekanX (Eco). Persian is the default locale.
+- Font is IRANYekanX (Eco). Persian is the product's default language (`AppLanguage.Default`).
+  **Resources: `values/` is English, `values-fa/` is Persian** (owner's decision, 4.52.0); the
+  Gradle task `checkDefaultLocaleIsEnglish` fails a build with Arabic script in `values/`.
 - **Latin digits for market figures; Persian digits for prose counts.**
 - No symbol without artwork ever reaches a list — no blank squares, no lettered discs.
   `SymbolArtwork.covers` is the filter, at the catalogue and at the live feed.

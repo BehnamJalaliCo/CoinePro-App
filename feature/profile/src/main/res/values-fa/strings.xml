@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_guest_name">مهمان</string>
+    <string name="profile_guest_tagline">بدون حساب، همه‌ی بازارها و چارت‌ها در دسترس شماست.</string>
+    <string name="profile_member_tagline">عضو پرو چارت</string>
+    <string name="profile_avatar_description">تصویر نیمرخ شما</string>
+    <string name="profile_edit_avatar">تغییر تصویر</string>
+    <string name="profile_account_section">حساب</string>
+    <string name="profile_local_note">نام، تصویر و توضیح شما فقط روی همین گوشی ذخیره می‌شود. با حذف یا نصب دوباره‌ی برنامه از بین می‌رود.</string>
+
+    <string name="profile_signin_title">حساب بسازید، اگر خواستید</string>
+    <string name="profile_signin_body">بازارها، چارت حرفه‌ای، جست‌وجو، ژورنال معاملات، معامله‌ی آزمایشی و نمااسکریپت بدون حساب کار می‌کنند. حساب فقط سیگنال‌ها، هوش مصنوعی، کیف پول و کپی‌ترید را اضافه می‌کند.</string>
+    <string name="profile_signin_action">ورود یا ثبت نام</string>
+    <string name="profile_signin_note">به زور کسی را ثبت نام نمی‌کنیم. هر وقت خواستید، همین‌جاست.</string>
+
+    <string name="profile_identity_title">نام و معرفی</string>
+    <string name="profile_identity_edit">ویرایش</string>
+    <string name="profile_identity_save">ذخیره</string>
+    <string name="profile_identity_cancel">انصراف</string>
+    <string name="profile_identity_unset">نامی انتخاب نکرده‌اید</string>
+    <string name="profile_field_name">نام نمایشی</string>
+    <string name="profile_field_tagline">یک خط درباره‌ی خودتان</string>
+
+    <string name="avatar_title">تصویر نیمرخ</string>
+    <string name="avatar_subtitle">یک تصویر یا یکی از نشان‌های ما را انتخاب کنید</string>
+    <string name="avatar_tab_mine">خودم</string>
+    <string name="avatar_tab_crypto">رمزارز</string>
+    <string name="avatar_tab_forex">فارکس</string>
+    <string name="avatar_tab_metal">فلزات</string>
+    <string name="avatar_tab_mark">نشان‌ها</string>
+    <string name="avatar_ring_none">بدون</string>
+    <string name="avatar_pick_photo">انتخاب تصویر از گوشی</string>
+    <string name="avatar_pick_another">انتخاب تصویر دیگر</string>
+    <string name="avatar_photo_note">تصویر روی همین گوشی می‌ماند و جایی فرستاده نمی‌شود.</string>
+    <string name="avatar_save">ذخیره</string>
+    <string name="avatar_cancel">انصراف</string>
+
+    <string name="avatar_mark_rocket">موشک</string>
+    <string name="avatar_mark_bull">گاو</string>
+    <string name="avatar_mark_bear">خرس</string>
+    <string name="avatar_mark_candle">کندل</string>
+    <string name="avatar_mark_diamond">الماس</string>
+    <string name="avatar_mark_flame">شعله</string>
+    <string name="avatar_mark_bolt">صاعقه</string>
+    <string name="avatar_mark_trend">روند</string>
+    <string name="avatar_mark_shield">سپر</string>
+    <string name="avatar_mark_globe">جهانی</string>
+    <string name="profile_identity_hint">نام نمایشی و یک خط معرفی، فقط روی همین گوشی.</string>
+    <string name="appearance_title">ظاهر برنامه</string>
+    <string name="appearance_subtitle">این انتخاب روی همین گوشی می‌ماند و با خروج از حساب پاک نمی‌شود.</string>
+    <string name="appearance_system">مثل گوشی</string>
+    <string name="appearance_system_note">هر چه گوشی باشد؛ شب تاریک، روز روشن.</string>
+    <string name="appearance_dark">همیشه تاریک</string>
+    <string name="appearance_dark_note">حتی وقتی گوشی روشن است.</string>
+    <string name="appearance_light">همیشه روشن</string>
+    <string name="appearance_light_note">حتی وقتی گوشی تاریک است.</string>
+    <string name="appearance_colours">رنگ صعود و نزول</string>
+    <string name="appearance_green_up">صعود سبز، نزول قرمز</string>
+    <string name="appearance_red_up">صعود قرمز، نزول سبز</string>
+
+    <!-- The four blocks a comprehensive profile divides into: who they are, what they have done,
+         what they own, and how the app behaves for them. -->
+    <string name="profile_standing_section">جایگاه شما</string>
+    <string name="profile_record_section">کارنامه‌ی شما</string>
+    <string name="profile_library_section">کارهای شما در برنامه</string>
+    <string name="profile_app_section">برنامه</string>
+    <string name="profile_session_section">خروج و حذف</string>
+
+    <string name="profile_fact_unknown">نامشخص</string>
+    <string name="profile_library_note">این‌ها فقط روی همین گوشی ذخیره می‌شوند؛ با حذف برنامه از بین می‌روند و روی گوشی دیگر نیستند.</string>
+
+    <string name="profile_standing_membership">عضویت</string>
+    <string name="profile_standing_verification">احراز هویت</string>
+    <string name="profile_standing_verification_submitted">ارسال‌شده در %1$s</string>
+    <string name="profile_standing_verification_level">سطح %1$s</string>
+    <string name="profile_standing_plan">اشتراک</string>
+    <string name="profile_standing_plan_vip">اشتراک ویژه</string>
+    <string name="profile_standing_plan_expires">تا %1$s</string>
+    <string name="profile_standing_plan_expires_in">تا %1$s، %2$s روز مانده</string>
+    <string name="profile_standing_email">ایمیل</string>
+
+    <!-- The membership words are the ones feature:membership prints. They must not drift. -->
+    <string name="profile_membership_awaiting_uid">در انتظار شناسه‌ی کاربری</string>
+    <string name="profile_membership_verifying">در حال بررسی</string>
+    <string name="profile_membership_approved">تأیید شده</string>
+    <string name="profile_membership_pending_deposit">در انتظار واریز</string>
+    <string name="profile_membership_rejected_referral">حساب متصل نیست</string>
+    <string name="profile_membership_error">بررسی ناتمام ماند</string>
+    <string name="profile_membership_pending">در انتظار</string>
+
+    <string name="profile_verify_not_started">انجام نشده</string>
+    <string name="profile_verify_pending">در انتظار بررسی</string>
+    <string name="profile_verify_approved">تأیید شد</string>
+    <string name="profile_verify_rejected">رد شد</string>
+
+    <string name="profile_record_journal">دفترچه‌ی معاملات</string>
+    <string name="profile_record_paper">معامله‌ی آزمایشی</string>
+    <string name="profile_record_closed">معامله‌های بسته‌شده</string>
+    <string name="profile_record_academy">آکادمی</string>
+    <string name="profile_record_win_rate">نرخ برد %1$s</string>
+    <string name="profile_record_academy_detail">%1$s روز پیاپی مطالعه</string>
+
+    <string name="profile_library_watchlists">فهرست‌های دیده‌بانی</string>
+    <string name="profile_library_layouts">چیدمان‌های چارت</string>
+    <string name="profile_library_indicators">قالب‌های اندیکاتور</string>
+    <string name="profile_library_drawings">قالب‌های ابزار ترسیم</string>
+    <string name="profile_library_intervals">تایم‌فریم‌های ستاره‌دار</string>
+    <string name="profile_library_alerts">هشدارهای قیمت</string>
+    <string name="profile_library_scripts">اسکریپت‌های ذخیره‌شده</string>
+    <string name="appearance_language">زبان</string>
+    <string name="appearance_language_note">با تغییر زبان، صفحه یک بار از نو ساخته می‌شود.</string>
+    <string name="appearance_theme_system_short">سیستم</string>
+    <string name="appearance_theme_light_short">روشن</string>
+    <string name="appearance_theme_dark_short">تیره</string>
+</resources>

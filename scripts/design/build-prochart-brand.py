@@ -276,26 +276,27 @@ def main() -> int:
 
     # The wordmark, in the language the reader is actually in.
     #
-    # Persian is this app's default locale and `values/` is Persian throughout, so the unqualified
-    # drawable is the Persian one and `drawable-en-*` carries the Latin lockup — the same convention
-    # the strings already use, applied to the one image that is also a piece of writing.
+    # Since 4.52.0 the unqualified resource set is English (`values/`, `drawable-*`) and Persian is
+    # the qualified one (`values-fa/`, `drawable-fa-*`) — the same convention the strings use,
+    # applied to the one image that is also a piece of writing. The product still opens in Persian
+    # (`AppLanguage.Default`), so the Persian wordmark is what most readers see.
     #
     # A single Latin wordmark on a Persian screen was the old behaviour and it was wrong in a way
     # that is easy to miss from outside the audience: the product's name in this market is «پروچارت»,
     # written, and a reader who has never seen the Latin form does not recognise it as the name of
     # the app they opened.
-    print("wordmark (fa, default):")
+    print("wordmark (fa):")
     for bucket, factor in DENSITIES.items():
         write(
             scaled_to_width(persian, round(WORDMARK_MDPI * factor)),
-            DESIGNSYSTEM / f"drawable-{bucket}" / "prochart_wordmark.png",
+            DESIGNSYSTEM / f"drawable-fa-{bucket}" / "prochart_wordmark.png",
         )
 
-    print("wordmark (en):")
+    print("wordmark (en, default):")
     for bucket, factor in DENSITIES.items():
         write(
             scaled_to_width(lockup, round(WORDMARK_MDPI * factor)),
-            DESIGNSYSTEM / f"drawable-en-{bucket}" / "prochart_wordmark.png",
+            DESIGNSYSTEM / f"drawable-{bucket}" / "prochart_wordmark.png",
         )
 
     # The launcher, in three layers.

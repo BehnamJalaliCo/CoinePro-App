@@ -1,33 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="kyc_state_not_started">احراز هویت انجام نشده</string>
-    <string name="kyc_state_pending">در انتظار بررسی</string>
-    <string name="kyc_state_approved">احراز هویت تأیید شد</string>
-    <string name="kyc_state_rejected">احراز هویت رد شد</string>
+    <string name="kyc_state_not_started">Identity not verified</string>
+    <string name="kyc_state_pending">Under review</string>
+    <string name="kyc_state_approved">Identity verified</string>
+    <string name="kyc_state_rejected">Verification refused</string>
 
-    <string name="kyc_body_not_started">برای باز شدن امکانات حساب، این چند مورد را وارد کنید.</string>
-    <string name="kyc_body_pending">اطلاعات شما ثبت شد و در حال بررسی است. تا اعلام نتیجه کاری لازم نیست.</string>
-    <string name="kyc_body_approved">حساب شما احراز شده است.</string>
-    <string name="kyc_body_rejected">اطلاعات ارسالی پذیرفته نشد. توضیح زیر را بخوانید و دوباره بفرستید.</string>
+    <string name="kyc_body_not_started">Enter these details to open the rest of your account.</string>
+    <string name="kyc_body_pending">Your details were received and are being reviewed. Nothing more is needed for now.</string>
+    <string name="kyc_body_approved">Your account is verified.</string>
+    <string name="kyc_body_rejected">The details were not accepted. Read the note below and send them again.</string>
 
-    <string name="kyc_full_name">نام و نام خانوادگی</string>
-    <string name="kyc_national_id">کد ملی</string>
-    <string name="kyc_country">کشور</string>
-    <string name="kyc_country_search">جست‌وجوی کشور</string>
-    <string name="kyc_document_type">مدرک شناسایی</string>
-    <string name="kyc_document_national_id">کارت ملی</string>
-    <string name="kyc_document_passport">گذرنامه</string>
-    <string name="kyc_document_driver_licence">گواهی‌نامه</string>
-    <string name="kyc_passport_number">شماره‌ی گذرنامه</string>
-    <string name="kyc_licence_number">شماره‌ی گواهی‌نامه</string>
-    <string name="kyc_id_number">شماره‌ی مدرک</string>
-    <string name="kyc_birth_date">تاریخ تولد</string>
-    <string name="kyc_phone">شماره‌ی موبایل</string>
+    <string name="kyc_full_name">Full name</string>
+    <string name="kyc_national_id">National ID</string>
+    <string name="kyc_country">Country</string>
+    <string name="kyc_country_search">Search countries</string>
+    <string name="kyc_document_type">Identity document</string>
+    <string name="kyc_document_national_id">National ID card</string>
+    <string name="kyc_document_passport">Passport</string>
+    <string name="kyc_document_driver_licence">Driving licence</string>
+    <string name="kyc_passport_number">Passport number</string>
+    <string name="kyc_licence_number">Licence number</string>
+    <string name="kyc_id_number">Document number</string>
+    <string name="kyc_birth_date">Date of birth</string>
+    <string name="kyc_phone">Mobile number</string>
 
-    <string name="kyc_submit">ارسال برای بررسی</string>
-    <string name="kyc_sending">در حال ارسال…</string>
-    <string name="kyc_refused_unexplained">اطلاعات تأیید نشد. لطفاً دوباره بررسی کنید.</string>
-    <string name="kyc_required_fields">موارد لازم: %1$s</string>
-    <string name="kyc_state_unknown">وضعیت احراز هویت در دسترس نیست</string>
-    <string name="kyc_body_unknown">وضعیت شما خوانده نشد. اگر پیش‌تر مدارک فرستاده‌اید، دوباره نفرستید — دوباره تلاش کنید یا بعداً برگردید.</string>
+    <string name="kyc_submit">Send for review</string>
+    <string name="kyc_sending">Sending…</string>
+    <string name="kyc_refused_unexplained">These details were not accepted. Please check them and try again.</string>
+    <string name="kyc_required_fields">Required: %1$s</string>
+    <string name="kyc_state_unknown">Verification status unavailable</string>
+    <string name="kyc_body_unknown">Your status could not be read. If you have already submitted, do not submit again — retry, or come back later.</string>
 </resources>

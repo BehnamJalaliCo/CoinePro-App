@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_home">خانه</string>
+    <string name="nav_signals">سیگنال‌ها</string>
+    <!-- Kept to one word: at the shipping type scale a two-word label wraps and grows the bar. -->
+    <string name="nav_ai">هوش</string>
+    <string name="nav_tools">ابزارها</string>
+    <string name="nav_activity">فعالیت</string>
+    <string name="nav_explore">کاوش</string>
+    <string name="nav_chart">چارت</string>
+    <!-- One word each, at the shipping type scale: a two-word tab label wraps and grows the bar. -->
+    <string name="nav_watchlist">دیده‌بان</string>
+    <string name="nav_ideas">ایده‌ها</string>
+    <string name="nav_menu">منو</string>
+    <string name="nav_community">انجمن</string>
+</resources>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Persian first: it is the product default and the unqualified values/ resource set. -->
+<!-- Persian first: it is the product default (AppLanguage.Default). English is the unqualified values/ set. -->
 <locale-config xmlns:android="http://schemas.android.com/apk/res/android">
     <locale android:name="fa" />
     <locale android:name="en" />

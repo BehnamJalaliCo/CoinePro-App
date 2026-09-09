@@ -3,8 +3,11 @@ package com.coinepro.core.common
 /**
  * The languages CoinePro ships.
  *
- * Persian is the product default and therefore lives in the unqualified `values/` resources, so it
- * is what any device falls back to. English is a qualified alternative in `values-en/`.
+ * Persian is the product default: [Default] is what the app opens in until the reader chooses,
+ * and `AppLanguageStore.apply` pins the activity's locale to it. The *resources* are arranged the
+ * other way round since 4.52.0 — English is the unqualified `values/` set and Persian the qualified
+ * `values-fa/` — so a device in neither language falls back to English, and a build with a Persian
+ * word in the default set fails (`checkDefaultLocaleIsEnglish`).
  */
 enum class AppLanguage(
     val tag: String,

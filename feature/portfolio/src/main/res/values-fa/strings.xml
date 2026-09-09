@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="portfolio_title">عملکرد</string>
+    <string name="portfolio_window_week">۷ روز</string>
+    <string name="portfolio_window_month">۳۰ روز</string>
+    <string name="portfolio_window_all">همه</string>
+
+    <string name="portfolio_net">سود خالص</string>
+    <string name="portfolio_trades">معامله</string>
+    <string name="portfolio_win_rate">نرخ برد</string>
+    <string name="portfolio_profit_factor">ضریب سود</string>
+    <string name="portfolio_expectancy">میانگین هر معامله</string>
+    <string name="portfolio_max_drawdown">بیشترین افت</string>
+    <string name="portfolio_best">بهترین</string>
+    <string name="portfolio_worst">بدترین</string>
+    <string name="portfolio_costs">کارمزد و سواپ</string>
+
+    <string name="portfolio_curve_balance">موجودی حساب</string>
+    <string name="portfolio_curve_profit">سود انباشته</string>
+    <string name="portfolio_curve_profit_note">این منحنی سود محقق‌شده است، نه موجودی حساب؛ سود شناور در آن نیست.</string>
+
+    <string name="portfolio_by_symbol">به تفکیک نماد</string>
+    <string name="portfolio_by_month">ماه‌به‌ماه</string>
+    <string name="portfolio_recent">معاملات بسته‌شده</string>
+    <string name="portfolio_load_more">قدیمی‌تر</string>
+
+    <string name="portfolio_empty">هنوز معامله‌ی بسته‌شده‌ای ندارید.</string>
+    <string name="portfolio_error_network">تاریخچه خوانده نشد.</string>
+    <string name="portfolio_error_not_connected">برای دیدن تاریخچه، حساب صرافی یا بروکرتان را وصل کنید.</string>
+    <string name="portfolio_retry">دوباره</string>
+    <string name="portfolio_open_connections">وصل کردن حساب</string>
+
+    <string name="portfolio_truncated">این بازه بزرگ‌تر از چیزی بود که یک‌جا خوانده می‌شود؛ اعداد زیر بخشی از بازه‌اند. بازه را کوتاه‌تر کنید.</string>
+    <!-- %1$s و %2$s تاریخ‌های واقعیِ سرو‌شده‌اند -->
+    <string name="portfolio_window_narrowed">بازه به %1$s تا %2$s کوتاه شد.</string>
+
+    <string name="portfolio_liquidated">لیکویید</string>
+    <string name="portfolio_value_missing">—</string>
+    <string name="portfolio_direction_buy">خرید</string>
+    <string name="portfolio_direction_sell">فروش</string>
+    <string name="portfolio_eyebrow">پرتفوی</string>
+    <string name="portfolio_reading_factor">ضریب سود</string>
+
+    <string name="portfolio_report_open">گزارش کامل</string>
+    <string name="portfolio_report_title">گزارش کامل</string>
+    <string name="portfolio_report_subtitle">سنجه‌های پیشرفته و خروجی فایل، بدون اشتراک.</string>
+    <string name="portfolio_report_empty">هنوز معامله‌ای بسته نشده تا گزارشی از آن ساخته شود.</string>
+    <string name="portfolio_report_empty_hint">وقتی اولین معامله‌تان بسته شد، منحنی سرمایه و همه‌ی سنجه‌ها همین‌جا می‌آیند.</string>
+    <string name="portfolio_report_metrics">سنجه‌ها</string>
+    <string name="portfolio_report_attribution">سهم هر نماد</string>
+    <string name="portfolio_report_year_total">کل سال</string>
+    <string name="portfolio_report_peak_note">خط چین، سقف تا آن لحظه است؛ ناحیه‌ی رنگی، فاصله‌ی سرمایه تا آن سقف.</string>
+    <string name="portfolio_report_drawdown_span">بیشترین افت</string>
+    <!-- %1$s تاریخ سقف و %2$s تاریخ کف است -->
+    <string name="portfolio_report_drawdown_between">از %1$s تا %2$s</string>
+    <string name="portfolio_report_runup_span">بیشترین رشد پیوسته</string>
+    <string name="portfolio_report_runup_note">از کف تا سقف منحنی سرمایه؛ بالاترین جایی که حساب رسید، نه جایی که ماند. فاصله‌ی آن تا امروز همان چیزی است که پس داده شده.</string>
+    <string name="portfolio_trade_in_runup">در بیشترین رشد</string>
+    <string name="portfolio_trade_in_drawdown">در بیشترین افت</string>
+    <string name="portfolio_report_drawdown_note">این عدد از سقف تا کف منحنی سرمایه است، نه بزرگ‌ترین معامله‌ی زیان‌ده؛ چند زیان پشت‌سرهم افتی بزرگ‌تر از هر کدامشان می‌سازد.</string>
+    <!-- %1$s تعداد معاملات آن دوره است -->
+    <string name="portfolio_report_drawdown_recovered">%1$s معامله طول کشید تا سقف قبلی دوباره زده شود.</string>
+    <string name="portfolio_report_drawdown_open">%1$s معامله است که هنوز زیر سقف قبلی هستید.</string>
+    <string name="portfolio_report_ratio_note">شارپ و سورتینو هر دو به ازای هر معامله محاسبه شده‌اند، نه سالانه؛ با عدد سالانه‌ی یک صندوق قابل مقایسه نیستند.</string>
+    <!-- %1$s تعداد معامله‌های دارای زمان باز شدن، %2$s کل معامله‌ها -->
+    <string name="portfolio_report_holding_sample">میانگین بر پایه‌ی %1$s معامله از %2$s معامله است؛ بقیه زمان باز شدن ندارند.</string>
+    <string name="portfolio_report_export">خروجی گرفتن</string>
+    <string name="portfolio_report_export_csv">CSV</string>
+    <string name="portfolio_report_export_xlsx">Excel</string>
+    <string name="portfolio_report_export_done">فایل ذخیره شد.</string>
+    <string name="portfolio_report_export_failed">فایل نوشته نشد. جای دیگری را انتخاب کنید.</string>
+
+    <string name="portfolio_metric_average_win">میانگین برد</string>
+    <string name="portfolio_metric_average_loss">میانگین باخت</string>
+    <string name="portfolio_metric_win_loss">نسبت برد به باخت</string>
+    <string name="portfolio_metric_largest_win">بزرگ‌ترین برد</string>
+    <string name="portfolio_metric_largest_loss">بزرگ‌ترین باخت</string>
+    <string name="portfolio_metric_longest_drawdown">طولانی‌ترین دوره‌ی افت</string>
+    <string name="portfolio_metric_sharpe">شارپ</string>
+    <string name="portfolio_metric_sortino">سورتینو</string>
+    <string name="portfolio_metric_holding">میانگین مدت نگهداری</string>
+    <string name="portfolio_metric_streak_wins">بیشترین بردهای پیاپی</string>
+    <string name="portfolio_metric_streak_losses">بیشترین باخت‌های پیاپی</string>
+    <string name="portfolio_metric_scratches">معاملات سربه‌سر</string>
+
+    <!-- ارقام فارسی: این‌ها شمارش در متن‌اند، نه عدد بازار -->
+    <string name="portfolio_duration_day_hour">%1$s روز و %2$s ساعت</string>
+    <string name="portfolio_duration_hour_minute">%1$s ساعت و %2$s دقیقه</string>
+    <string name="portfolio_duration_minute">%1$s دقیقه</string>
+    <string name="portfolio_duration_second">%1$s ثانیه</string>
+</resources>

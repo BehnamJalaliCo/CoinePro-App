@@ -42,7 +42,7 @@ all available to a guest; signals and copy trading require a free account.
 <td align="center"><b>~61.5k</b><br><sub>lines of Kotlin</sub></td>
 <td align="center"><b>2</b><br><sub>backends</sub></td>
 <td align="center"><b>4</b><br><sub>CI quality gates</sub></td>
-<td align="center"><b>fa-IR</b><br><sub>default locale, RTL</sub></td>
+<td align="center"><b>fa-IR</b><br><sub>product default, RTL (resources: values-fa)</sub></td>
 </tr>
 </table>
 
@@ -293,7 +293,7 @@ component, four identities.
 
 ## Numbers, dates and direction
 
-Persian is the default locale and the app is right-to-left. Three rules follow from that, and all
+Persian is the product's default language (the resource default is English since 4.52.0: `values/` is English, `values-fa/` Persian) and the app is right-to-left. Three rules follow from that, and all
 three are enforced in code rather than remembered:
 
 **Latin digits for market figures, Persian digits for prose counts.** A price, a quantity, a

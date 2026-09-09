@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default language: Persian. -->
+<resources>
+    <string name="news_title">اخبار بازار</string>
+    <string name="news_subtitle">خبرِ ساختاریافته با منبع مشخص</string>
+    <string name="news_public_subtitle">تازه‌ترین سرخط‌های بازار</string>
+    <string name="news_calendar">تقویم</string>
+    <string name="news_filter_all">همه</string>
+    <string name="news_loading">در حال دریافت اخبار تأییدشده…</string>
+    <string name="news_unavailable">اخبار بازار در دسترس نیست.</string>
+    <string name="news_empty">خبری با این فیلتر پیدا نشد.</string>
+    <string name="news_retry">تلاش دوباره</string>
+    <string name="news_refresh">به‌روزرسانی</string>
+    <string name="news_refreshing">در حال به‌روزرسانی زمانِ منابع…</string>
+    <string name="news_newest">تازه‌ترین خبرِ این فهرست: %1$s</string>
+    <string name="news_refresh_failed">به‌روزرسانی آخر ناموفق بود — تازه‌ترین خبرِ این فهرست: %1$s</string>
+    <!-- The failure that is invisible from both ends: HTTP 200, rows in the body, none of them in
+         a shape this build can read. Counted rather than described, because the count is the whole
+         diagnosis — see NewsFeedOutcome. Prose counts, so Persian digits. -->
+    <string name="news_none_readable">خبرها فعلاً نمایش داده نمی‌شوند.</string>
+    <string name="news_none_readable_hint">این قطعی نیست؛ خبرها به شکلی رسیده‌اند که این نسخه نمی‌خواند. به‌روزرسانی اپ یا یک گزارش از صفحه‌ی «ایمنی و نسخه» آن را حل می‌کند.</string>
+    <string name="news_partly_readable">%1$s خبر از %2$s خبر خوانده شد.</string>
+    <string name="news_timestamp_note">زمان انتشار به ساعت دستگاه شماست.</string>
+    <string name="news_stale">قدیمی</string>
+    <string name="news_relevance_gold">طلا</string>
+    <string name="news_relevance_silver">نقره</string>
+    <string name="news_relevance_crypto">کریپتو</string>
+    <string name="news_impact_high">تأثیر بالا</string>
+    <string name="news_impact_medium">تأثیر متوسط</string>
+    <string name="news_impact_low">تأثیر کم</string>
+    <string name="news_impact_unknown">تأثیر نامشخص</string>
+    <string name="news_sentiment_bullish">صعودی</string>
+    <string name="news_sentiment_bearish">نزولی</string>
+    <string name="news_sentiment_neutral">خنثی</string>
+    <string name="news_sentiment_unknown">جهت نامشخص</string>
+    <string name="news_open_chart">نمایش روی چارت</string>
+
+    <!-- The reading page. -->
+    <string name="news_back">برگشت</string>
+    <string name="news_share">ارسال برای دیگری</string>
+    <string name="news_share_subject">یک خبر از پرو‌چارت</string>
+    <string name="news_share_unavailable">روی این دستگاه برنامه‌ای برای ارسال پیدا نشد.</string>
+    <string name="news_save">ذخیره در پروفایل</string>
+    <string name="news_unsave">حذف از ذخیره‌شده‌ها</string>
+    <string name="news_image_of">تصویر خبر: %1$s</string>
+    <string name="news_no_summary">این خبر خلاصه ندارد.</string>
+    <string name="news_summary_is_all">همین اندازه‌ای که خواندید، تمام متنی است که منبع منتشر کرده.</string>
+    <string name="news_published_by">منتشرشده در %1$s</string>
+    <string name="news_open_source">صفحه‌ی منبع</string>
+    <string name="news_open_failed">مرورگری برای باز کردن این نشانی پیدا نشد.</string>
+    <string name="news_context_eyebrow">این خبر به چه مربوط است</string>
+    <string name="news_context_markets">این خبر روی %1$s اثر دارد.</string>
+    <string name="news_context_general">این خبر به بازار خاصی بسته نشده و عمومی است.</string>
+    <string name="news_market_join">و</string>
+    <string name="news_related_title">بیشتر از همین بازار</string>
+    <string name="news_article_gone">این خبر دیگر در فهرست نیست.</string>
+    <string name="news_article_gone_hint">فهرست اخبار هر دو ساعت تازه می‌شود و خبرهای قدیمی از آن می‌افتند. خبری که ذخیره کنید می‌ماند.</string>
+    <string name="news_back_to_list">بازگشت به فهرست</string>
+
+    <!-- The saved list. -->
+    <string name="news_saved_title">ذخیره‌شده‌ها</string>
+    <string name="news_saved_count">%1$s خبر که نگه داشته‌اید</string>
+    <string name="news_saved_empty">هنوز خبری ذخیره نکرده‌اید.</string>
+    <string name="news_saved_empty_hint">هر خبری را که باز کنید، با دکمه‌ی نشان‌گذاری بالای صفحه اینجا می‌ماند — حتی بعد از اینکه از فهرست بیفتد.</string>
+    <string name="news_saved_back">بازگشت به اخبار</string>
+
+    <!-- The announcements channel. TradeYar only; the entry is absent elsewhere. -->
+    <string name="announcements_title">اطلاعیه‌ها</string>
+    <string name="announcements_subtitle">آنچه سرویس رسماً اعلام کرده</string>
+    <string name="announcements_open">اطلاعیه‌ها</string>
+    <string name="announcements_back">برگشت</string>
+    <string name="announcements_count">%1$s اطلاعیه</string>
+    <string name="announcements_loading">در حال خواندن اطلاعیه‌ها…</string>
+    <string name="announcements_empty">تا امروز اطلاعیه‌ای منتشر نشده.</string>
+    <string name="announcements_empty_hint">این فهرست خبر نیست و خودش پر نمی‌شود؛ وقتی پر می‌شود که ما چیزی برای گفتن داشته باشیم — قطعیِ سرویس، نسخه‌ی تازه، بازارِ تازه، تغییر در قواعد اشتراک. هرچه اینجا نوشته شود می‌ماند، حتی اگر اعلانش را از دست بدهید. خالی بودنش یعنی چیزی گفته نشده، نه اینکه چیزی خراب است.</string>
+    <string name="announcements_offline">اتصال برقرار نشد. اطلاعیه‌ها بعداً به‌روز می‌شود.</string>
+    <string name="announcements_unavailable">سرویس اطلاعیه پاسخ نداد.</string>
+    <string name="announcements_retry">تلاش دوباره</string>
+    <string name="announcements_refresh_failed">تازه‌سازی انجام نشد؛ آنچه می‌بینید آخرین چیزی است که خوانده شده.</string>
+    <string name="announcements_important">مهم</string>
+    <string name="announcements_read_more">متن کامل</string>
+    <string name="announcements_open_failed">مرورگری برای باز کردن این نشانی پیدا نشد.</string>
+    <string name="news_platform_crypto">کریپتو</string>
+    <string name="news_platform_forex">فارکس</string>
+</resources>

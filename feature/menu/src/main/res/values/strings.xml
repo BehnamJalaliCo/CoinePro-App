@@ -1,66 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Default language: Persian. -->
 <resources>
-    <string name="menu_title">منو</string>
+    <string name="menu_title">Menu</string>
 
-    <!-- ── هویت خواننده ────────────────────────────────────────────────────────────────── -->
-    <string name="menu_guest_name">مهمان</string>
-    <string name="menu_member_name">حساب من</string>
-    <string name="menu_guest_line">بدون حساب — دیده‌بان، ابزارها و تمرین در دسترس است.</string>
-    <string name="menu_member_line">حساب فعال</string>
-    <string name="menu_plan_none">بدون اشتراک</string>
-    <string name="menu_guest_offer">با یک حساب، سیگنال‌ها، پرتفوی و دستیار هم باز می‌شوند. دیده‌بان و ابزارها همین‌طور رایگان می‌مانند.</string>
-    <string name="menu_sign_in">ورود یا ساخت حساب</string>
-    <string name="menu_locked">با ورود به حساب</string>
-    <string name="menu_footer">هر چه این برنامه دارد در همین صفحه است. آنچه به حساب نیاز دارد نشان داده می‌شود و پنهان نمی‌ماند.</string>
+    <string name="menu_guest_name">Guest</string>
+    <string name="menu_member_name">My account</string>
+    <string name="menu_guest_line">No account — the watchlist, the tools and practice are open.</string>
+    <string name="menu_member_line">Account active</string>
+    <string name="menu_plan_none">No subscription</string>
+    <string name="menu_guest_offer">An account also opens signals, the portfolio and the assistant. The watchlist and the tools stay free either way.</string>
+    <string name="menu_sign_in">Sign in or create an account</string>
+    <string name="menu_locked">Needs an account</string>
+    <string name="menu_footer">Everything this app contains is on this page. What needs an account is shown rather than hidden.</string>
 
-    <!-- ── بلوک‌ها ─────────────────────────────────────────────────────────────────────── -->
-    <string name="menu_group_market">بازار و دیده‌بان</string>
-    <string name="menu_group_trade">معامله و سبد</string>
-    <string name="menu_group_analysis">تحلیل و ابزار</string>
-    <string name="menu_group_learn">آموزش و برنامه</string>
-    <string name="menu_group_account">حساب من</string>
+    <string name="menu_group_market">Markets and watchlist</string>
+    <string name="menu_group_trade">Trading and portfolio</string>
+    <string name="menu_group_analysis">Analysis and tools</string>
+    <string name="menu_group_learn">Learning and the app</string>
+    <string name="menu_group_account">My account</string>
 
-    <!-- ── بازار و دیده‌بان ────────────────────────────────────────────────────────────── -->
-    <string name="menu_watchlist_title">دیده‌بان</string>
-    <string name="menu_search_title">جست‌وجوی بازار</string>
-    <string name="menu_screener_title">اسکرینر</string>
-    <string name="menu_heatmap_title">هیت‌مپ بازار</string>
-    <string name="menu_news_title">اخبار بازار</string>
-    <string name="menu_calendar_title">تقویم اقتصادی</string>
+    <string name="menu_watchlist_title">Watchlist</string>
+    <string name="menu_search_title">Search markets</string>
+    <string name="menu_screener_title">Screener</string>
+    <string name="menu_heatmap_title">Market heatmap</string>
+    <string name="menu_news_title">Market news</string>
+    <string name="menu_calendar_title">Economic calendar</string>
 
-    <!-- ── معامله و سبد ────────────────────────────────────────────────────────────────── -->
-    <string name="menu_portfolio_title">پرتفوی</string>
-    <string name="menu_ai_title">ستاپ‌ساز هوشمند</string>
-    <string name="menu_signals_title">سیگنال‌ها</string>
-    <string name="menu_home_title">خانه و خلاصه‌ی حساب</string>
-    <string name="menu_paper_title">معامله‌ی آزمایشی</string>
-    <string name="menu_journal_title">ژورنال معاملات</string>
-    <string name="menu_connections_title">اتصال حساب</string>
-    <string name="menu_copy_title">کپی‌ترید</string>
-    <string name="menu_terminal_title">ترمینال وب</string>
+    <string name="menu_portfolio_title">Portfolio</string>
+    <string name="menu_ai_title">AI setup builder</string>
+    <string name="menu_signals_title">Signals</string>
+    <string name="menu_home_title">Home and account summary</string>
+    <string name="menu_paper_title">Paper trading</string>
+    <string name="menu_journal_title">Trading journal</string>
+    <string name="menu_connections_title">Account connections</string>
+    <string name="menu_copy_title">Copy trading</string>
+    <string name="menu_terminal_title">Web terminal</string>
 
-    <!-- ── تحلیل و ابزار ───────────────────────────────────────────────────────────────── -->
-    <string name="menu_studio_title">استودیوی چارت</string>
-    <string name="menu_backtest_title">بک‌تست و اسکریپت</string>
-    <string name="menu_alerts_title">مرکز هشدار</string>
-    <string name="menu_tools_title">جعبه‌ابزار تریدر</string>
-    <string name="menu_vision_title">تحلیل تصویر چارت</string>
-    <string name="menu_assistant_title">دستیار</string>
+    <string name="menu_studio_title">Chart studio</string>
+    <string name="menu_backtest_title">Backtest and scripts</string>
+    <string name="menu_alerts_title">Alert centre</string>
+    <string name="menu_tools_title">Trader\'s toolkit</string>
+    <string name="menu_vision_title">Chart image analysis</string>
+    <string name="menu_assistant_title">Assistant</string>
 
-    <!-- ── آموزش و برنامه ──────────────────────────────────────────────────────────────── -->
-    <string name="menu_academy_title">آکادمی</string>
-    <string name="menu_safety_title">ایمنی و نسخه</string>
+    <string name="menu_academy_title">Academy</string>
+    <string name="menu_safety_title">Safety and version</string>
 
-    <!-- ── حساب من ─────────────────────────────────────────────────────────────────────── -->
-    <string name="menu_profile_title">پروفایل و تنظیمات</string>
-    <string name="menu_membership_title">اشتراک</string>
-    <string name="menu_verify_title">احراز هویت</string>
-    <string name="menu_activity_title">فعالیت</string>
-    <string name="menu_notifications_title">تنظیمات اعلان</string>
-    <string name="menu_delete_title">حذف حساب</string>
-    <string name="menu_explore_title">کاوش</string>
-    <string name="menu_community_title">انجمن</string>
-    <string name="menu_markets_title">بازارها</string>
-    <string name="menu_appearance">ظاهر و زبان</string>
+    <string name="menu_profile_title">Profile and settings</string>
+    <string name="menu_membership_title">Membership</string>
+    <string name="menu_verify_title">Identity verification</string>
+    <string name="menu_activity_title">Activity</string>
+    <string name="menu_notifications_title">Notification settings</string>
+    <string name="menu_delete_title">Delete account</string>
+    <string name="menu_explore_title">Explore</string>
+    <string name="menu_community_title">Community</string>
+    <string name="menu_markets_title">Markets</string>
+    <string name="menu_appearance">Appearance and language</string>
 </resources>

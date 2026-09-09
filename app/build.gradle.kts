@@ -648,4 +648,7 @@ dependencies {
 }
 
 // No build without the stray-asset check; see the task in the root build script.
-tasks.named("preBuild") { dependsOn(rootProject.tasks.named("checkStrayAssets")) }
+tasks.named("preBuild") {
+    dependsOn(rootProject.tasks.named("checkStrayAssets"))
+    dependsOn(rootProject.tasks.named("checkDefaultLocaleIsEnglish"))
+}

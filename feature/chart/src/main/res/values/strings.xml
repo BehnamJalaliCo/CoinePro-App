@@ -1,201 +1,179 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="setup_paper_trade">باز کردن به‌صورت معامله‌ی آزمایشی</string>
-    <string name="setup_paper_trade_note">با همان ورود و همان حجمی که بالا حساب شد، بدون پول. هیچ سفارشی به صرافی یا کارگزار فرستاده نمی‌شود.</string>
-    <string name="chart_label_title">متن این نشانه</string>
-    <string name="chart_label_subtitle">خالی بگذارید تا برداشته شود.</string>
-    <string name="chart_label_field">متن</string>
-    <string name="chart_label_save">ثبت</string>
-    <string name="chart_fullscreen_enter">تمام‌صفحه</string>
-    <string name="chart_fullscreen_exit">خروج از تمام‌صفحه</string>
-    <string name="chart_fullscreen_tools">ابزارها</string>
-    <string name="chart_source">منبع قیمت: %1$s</string>
+    <string name="setup_paper_trade">Open as a paper trade</string>
+    <string name="setup_paper_trade_note">Same entry and the size worked out above, with no money. No order is sent to any exchange or broker.</string>
+    <string name="chart_label_title">What this mark says</string>
+    <string name="chart_label_subtitle">Leave it empty to remove the text.</string>
+    <string name="chart_label_field">Text</string>
+    <string name="chart_label_save">Save</string>
+    <string name="chart_fullscreen_enter">Full screen</string>
+    <string name="chart_fullscreen_exit">Leave full screen</string>
+    <string name="chart_fullscreen_tools">Tools</string>
+    <string name="chart_source">Prices from %1$s</string>
 
-    <string name="chart_interval_other">بازه‌ی دیگر</string>
+    <string name="chart_interval_other">Other</string>
 
-    <!-- The one control band under the plot. Short labels: six of them share a phone's width. -->
-    <string name="chart_band_draw">ترسیم</string>
-    <string name="chart_band_studies">اندیکاتور</string>
-    <string name="chart_band_type">نوع</string>
-    <string name="chart_band_objects">ترسیم‌ها</string>
-    <string name="chart_band_fullscreen">تمام‌صفحه</string>
-    <string name="chart_band_more">تحلیل</string>
+    <string name="chart_band_draw">Draw</string>
+    <string name="chart_band_studies">Indicators</string>
+    <string name="chart_band_type">Type</string>
+    <string name="chart_band_objects">Objects</string>
+    <string name="chart_band_fullscreen">Full screen</string>
+    <string name="chart_band_more">Analysis</string>
 
-    <!-- Everything a reader reaches for about once a month, behind the band's «بیشتر». -->
-    <string name="chart_more_title">مرکز تحلیل</string>
-    <string name="chart_more_subtitle">چیدمان، مقیاس، بازه و ابزارها</string>
-    <string name="chart_more_span">بازه‌ی نمایش</string>
-    <string name="chart_more_span_note">چقدر تاریخچه جلوی چشم باشد. هر بازه، طول کندل مناسب خودش را هم انتخاب می‌کند.</string>
-    <string name="chart_more_goto">رفتن به تاریخ</string>
-    <string name="chart_more_undo">برگرداندن</string>
-    <string name="chart_more_undo_note">آخرین تغییرِ اندیکاتور، بازه، نوعِ چارت یا ترسیم</string>
-    <string name="chart_more_redo">انجام دوباره</string>
-    <string name="chart_more_redo_note">آنچه برگرداندن پس گرفت</string>
-    <string name="chart_more_compare">مقایسه با نماد دیگر</string>
-    <string name="chart_more_compare_note">یک نماد دیده‌بان را روی همین چارت بیندازید.</string>
-    <string name="chart_more_scale">مقیاس قیمت</string>
-    <string name="chart_more_layouts">چیدمان‌ها</string>
-    <string name="chart_more_layouts_note">این چارت را با اندیکاتورها و رنگ‌هایش ذخیره کنید.</string>
-    <string name="chart_more_alert">هشدار قیمت</string>
-    <string name="chart_more_alert_note">روی آخرین قیمت همین نماد.</string>
-    <string name="chart_more_backtest">بک‌تست</string>
-    <string name="chart_more_backtest_note">گزارش روی همین کندل‌هایی که بارگیری شده.</string>
-    <string name="chart_more_share">اشتراک تصویر</string>
-    <string name="chart_more_share_note">فقط خود چارت، بدون بقیه‌ی صفحه.</string>
-    <string name="chart_more_studio">استودیوی چارت</string>
-    <string name="chart_more_ask_ai">تحلیل با هوش مصنوعی</string>
-    <string name="chart_more_studio_note">اندیکاتور، ابزار، ریپلی و اسکریپت.</string>
+    <string name="chart_more_title">Analysis hub</string>
+    <string name="chart_more_subtitle">Span, date, comparison, axis and layouts</string>
+    <string name="chart_more_span">History shown</string>
+    <string name="chart_more_span_note">How much history is in front of you. Each span also picks the bar length that fits it.</string>
+    <string name="chart_more_goto">Go to a date</string>
+    <string name="chart_more_undo">Undo</string>
+    <string name="chart_more_undo_note">The last indicator, span, chart type or drawing change</string>
+    <string name="chart_more_redo">Redo</string>
+    <string name="chart_more_redo_note">What undo took back</string>
+    <string name="chart_more_compare">Compare with another symbol</string>
+    <string name="chart_more_compare_note">Draw a watchlist symbol over this one.</string>
+    <string name="chart_more_scale">Price scale</string>
+    <string name="chart_more_layouts">Layouts</string>
+    <string name="chart_more_layouts_note">Save this chart with its indicators and its colours.</string>
+    <string name="chart_more_alert">Price alert</string>
+    <string name="chart_more_alert_note">On this symbol\'s last price.</string>
+    <string name="chart_more_backtest">Backtest</string>
+    <string name="chart_more_backtest_note">A report over the bars already loaded.</string>
+    <string name="chart_more_share">Share the picture</string>
+    <string name="chart_more_share_note">The chart alone, without the rest of the page.</string>
+    <string name="chart_more_studio">Chart studio</string>
+    <string name="chart_more_ask_ai">Analyse with AI</string>
+    <string name="chart_more_studio_note">Indicators, tools, replay and scripts.</string>
 
-    <!-- The three readings, and the figure each one comes from. -->
-    <string name="chart_reading_title">این بازار چه می‌کند</string>
-    <string name="chart_reading_strength">قدرت روند</string>
-    <string name="chart_reading_volatility">نوسان</string>
-    <string name="chart_reading_bias">سوگیری</string>
-    <string name="chart_reading_volatility_why">%1$s دامنه‌ی اخیر</string>
-    <string name="chart_reading_bias_why">%1$s فاصله‌ی میانگین‌ها</string>
+    <string name="chart_reading_title">What this market is doing</string>
+    <string name="chart_reading_strength">Trend strength</string>
+    <string name="chart_reading_volatility">Volatility</string>
+    <string name="chart_reading_bias">Bias</string>
+    <string name="chart_reading_volatility_why">%1$s of its recent range</string>
+    <string name="chart_reading_bias_why">%1$s between the averages</string>
 
-    <!-- The multi-pane chart screen. Two panes on a phone, up to eight on a tablet — see
-         ChartPanesScreen for why one argument gives both numbers. -->
-    <string name="panes_title">%1$s چارت</string>
-    <string name="panes_single">یک چارت</string>
-    <string name="panes_count_label">تعداد قاب</string>
-    <string name="panes_layout_label">چیدمان</string>
-    <string name="panes_no_chart">این نماد در این پنجره چارت ندارد.</string>
-    <string name="panes_interval_title">تایم‌فریم</string>
-    <string name="panes_symbol_title">نماد این قاب</string>
-    <string name="panes_sync_title">هم‌گام‌سازی</string>
-    <string name="panes_sync_none">هیچ‌کدام</string>
-    <string name="panes_sync_open">باز کردن</string>
-    <string name="panes_sync_close">بستن</string>
+    <string name="panes_title">%1$s charts</string>
+    <string name="panes_single">One chart</string>
+    <string name="panes_count_label">Panes</string>
+    <string name="panes_layout_label">Layout</string>
+    <string name="panes_no_chart">This symbol has no chart at this bar length.</string>
+    <string name="panes_interval_title">Timeframe</string>
+    <string name="panes_symbol_title">This pane\'s symbol</string>
+    <string name="panes_sync_title">Sync</string>
+    <string name="panes_sync_none">Nothing</string>
+    <string name="panes_sync_open">Open</string>
+    <string name="panes_sync_close">Close</string>
 
-    <!-- The four ties. Each one runs from the first pane outward; with eight panes «the other
-         one» is not a thing that exists. -->
-    <string name="pane_sync_symbol">نماد</string>
-    <string name="pane_sync_symbol_note">انتخاب نماد در قاب اول، همان نماد را در بقیه باز می‌کند.</string>
-    <string name="pane_sync_interval">تایم‌فریم</string>
-    <string name="pane_sync_interval_note">تغییر تایم‌فریم در یک قاب، تایم‌فریم بقیه را هم عوض می‌کند.</string>
-    <string name="pane_sync_crosshair">نشانگر</string>
-    <string name="pane_sync_crosshair_note">نشانگر روی یک چارت، همان لحظه را روی بقیه‌ی چارت‌ها هم نشان می‌دهد.</string>
-    <string name="pane_sync_time_range">محدوده‌ی زمانی</string>
-    <string name="pane_sync_time_range_note">جابه‌جایی و بزرگ‌نمایی یک قاب، بقیه را روی همان کندل‌ها می‌برد.</string>
+    <string name="pane_sync_symbol">Symbol</string>
+    <string name="pane_sync_symbol_note">Choosing a symbol in the first pane opens it in all the others.</string>
+    <string name="pane_sync_interval">Timeframe</string>
+    <string name="pane_sync_interval_note">Changing the timeframe in one pane changes it in the rest.</string>
+    <string name="pane_sync_crosshair">Crosshair</string>
+    <string name="pane_sync_crosshair_note">The crosshair on one chart marks the same moment on the others.</string>
+    <string name="pane_sync_time_range">Time range</string>
+    <string name="pane_sync_time_range_note">Panning or zooming one pane moves the rest to the same bars.</string>
 
-    <!-- The permanent tool column a tablet gets in place of the drawing-tools sheet. -->
-    <string name="chart_tools_column_title">ابزارهای ترسیم</string>
-    <string name="chart_tools_column_count">%1$s ابزار</string>
+    <string name="chart_tools_column_title">Drawing tools</string>
+    <string name="chart_tools_column_count">%1$s tools</string>
 
-    <!-- The two state chips beside the instrument name. One is always drawn — whether the market
-         is trading — and the second only when the reader has put the chart into replay. See
-         ChartHeaderState for why the row is not padded out to a fixed two. -->
-    <string name="chart_state_open">باز</string>
-    <string name="chart_state_closed">بسته</string>
-    <string name="chart_state_weekend">تعطیل</string>
-    <string name="chart_state_replay">بازپخش</string>
+    <string name="chart_state_open">Open</string>
+    <string name="chart_state_closed">Closed</string>
+    <string name="chart_state_weekend">Weekend</string>
+    <string name="chart_state_replay">Replay</string>
 
-    <!-- The symbol switcher in the chart command band: the neighbours in the reader watchlist,
-         faint, either side of the one on screen. -->
-    <string name="chart_wheel_previous">نماد قبلی: %1$s</string>
-    <string name="chart_wheel_next">نماد بعدی: %1$s</string>
-    <string name="chart_wheel_position">%1$s از %2$s</string>
+    <string name="chart_wheel_previous">Previous symbol: %1$s</string>
+    <string name="chart_wheel_next">Next symbol: %1$s</string>
+    <string name="chart_wheel_position">%1$s of %2$s</string>
 
-    <!-- Events on the time axis, reachable from the phone chart «بیشتر» sheet. Until now the
-         switches existed only in the studio, so a phone reader could not turn the calendar on. -->
-    <string name="chart_more_events">رویدادها روی محور زمان</string>
-    <string name="chart_more_events_note">خبر و تقویم اقتصادی، به شکل نشانه زیر کندل‌ها</string>
-    <string name="chart_events_title">رویدادها روی چارت</string>
-    <string name="chart_events_subtitle">%1$s نوع روشن</string>
-    <string name="chart_position_entry">ورود</string>
-    <string name="chart_position_stop">حد ضرر</string>
-    <string name="chart_position_target">حد سود</string>
-    <!-- The vertical symbol scroll in the chart tool row — the control circled in the owner's
-         screenshot. The count is a prose count, so Persian digits; the ticker is not. -->
-    <string name="chart_seconds_warming">چارت %1$s روی همین گوشی از تیک‌های قیمت ساخته می‌شود.</string>
-    <string name="chart_seconds_warming_hint">اولین میله با اولین تغییر قیمت ساخته می‌شود؛ روی بازار آرام چند ثانیه طول می‌کشد. صفحه را باز نگه دار.</string>
-    <string name="chart_wheel_scroll">نماد: %1$s، از %2$s نماد فهرست. برای تعویض بکشید.</string>
-    <!-- ── Bar replay: the reader's own trades, and the report that comes out of them ─────────
-         The replay used to step bars and stop there. These are the strings for the other half:
-         a position with a stop and a target, checked against every bar the cursor reveals, and
-         a five-tab report of how the reader traded — the same document the strategy tab shows,
-         about a different hand. -->
-    <string name="replay_ledger_show">معامله‌ی تمرینی</string>
-    <string name="replay_ledger_hide">بستن دفتر تمرین</string>
-    <string name="replay_size">حجم</string>
-    <string name="replay_size_stake">سرمایه‌ی کامل</string>
-    <string name="replay_stop">حد ضرر</string>
-    <string name="replay_target">حد سود</string>
-    <string name="replay_buy">خرید</string>
-    <string name="replay_sell">فروش</string>
-    <string name="replay_position_close">بستن</string>
-    <string name="replay_break_even">سربه‌سر</string>
-    <string name="replay_run_up">سود میان‌راه</string>
-    <string name="replay_levels_wrong_side">حد ضرر باید پایین‌تر از قیمت این کندل باشد و حد سود بالاتر؛ برای فروش برعکس. تا وقتی درست نشده سفارش ثبت نمی‌شود، تا موقعیتی بدون حد باز نشود.</string>
-    <string name="replay_realised">نتیجه‌ی بسته‌شده</string>
-    <string name="replay_closed_count">تعداد معامله‌ی بسته</string>
-    <string name="replay_wins">برد</string>
-    <string name="replay_wins_of">%1$s برد از %2$s معامله</string>
-    <string name="replay_end_session">پایان جلسه و بستن همه</string>
-    <string name="replay_report_open">گزارش این جلسه</string>
-    <string name="replay_ledger_note">این دفتر فقط برای همین جلسه‌ی بازپخش است و در دفتر معامله‌ی آزمایشی ثبت نمی‌شود. با خروج از بازپخش پاک می‌شود. کارمزد هر طرف پنج صدم درصد حساب می‌شود، همان که بک‌تست حساب می‌کند. حد ضرر و حد سود روی کندل‌های بعدی بررسی می‌شوند: خرید با پایین‌ترین قیمت کندل استاپ می‌خورد، نه با قیمت بسته‌شدنش.</string>
-    <string name="replay_setup_entry">ورود تمرینی</string>
-    <string name="replay_setup_stop">حد ضرر</string>
-    <string name="replay_setup_target">حد سود</string>
-    <string name="replay_report_title">بک‌تست معامله‌های خودتان</string>
-    <string name="replay_report_subtitle">همان سنجه‌های گزارش استراتژی، روی معامله‌هایی که خودتان در این ریپلی گرفتید.</string>
-    <string name="replay_report_trades">معامله‌ی بسته‌شده</string>
-    <string name="replay_report_wins">برنده</string>
-    <string name="replay_report_losses">بازنده</string>
-    <string name="replay_report_open_positions">موقعیت باز</string>
-    <string name="replay_report_unrealised">سود شناور موقعیت‌های باز</string>
-    <string name="replay_report_exit_stop">با حد ضرر بسته شد</string>
-    <string name="replay_report_exit_target">با حد سود بسته شد</string>
-    <string name="replay_report_exit_manual">دستی بسته شد</string>
-    <string name="replay_report_exit_session">با پایان جلسه بسته شد</string>
-    <string name="replay_report_empty">هنوز معامله‌ای نبسته‌اید. یک موقعیت باز کنید، حد ضرر و حد سود بگذارید و کندل‌ها را جلو ببرید تا معلوم شود کدام‌یک زودتر خورد.</string>
-    <string name="replay_report_open_note">%1$s موقعیت هنوز باز است و در هیچ‌کدام از عددهای این گزارش نیست؛ سود شناورشان جدا نوشته شده.</string>
-    <string name="replay_report_sample">فقط %1$s معامله بسته شده. زیر %2$s معامله، درصد برد و ضریب سود اندازه‌گیری نیستند و به‌جای عدد خط تیره می‌بینید. برد و باخت را بشمارید، نه درصدشان را.</string>
-    <string name="replay_report_discipline">چند معامله را حد ضرر بست و چندتا را خودتان زودتر بستید: این همان چیزی است که بک‌تست یک راهبرد نمی‌تواند بگوید، چون راهبرد دستی ندارد که بترسد.</string>
-    <string name="replay_report_note">این گزارش فقط برای همین جلسه‌ی بازپخش است و هیچ‌جا ذخیره نمی‌شود. کارمزد هر طرف پنج صدم درصد و سرمایه‌ی اولیه همان است که بک‌تست راهبرد استفاده می‌کند تا دو گزارش کنار هم خوانده شوند. اگر یک کندل هم به حد ضرر و هم به حد سود رسیده باشد، حد ضرر حساب می‌شود؛ ترتیبشان درون کندل معلوم نیست و فرض بدبینانه تنها فرض درست است.</string>
-    <string name="chart_readings_disclosure">خوانش بازار و ابزارها</string>
-    <!-- The analysis hub, as TradingView's phone app names its sheet of tiles. -->
-    <string name="chart_hub_tools">ابزارها</string>
-    <string name="chart_hub_terminal">ترمینال</string>
-    <string name="chart_quote_scale">مقیاس قیمت</string>
-    <string name="chart_interval_heading">تایم‌فریم</string>
-    <string name="chart_interval_seconds">ثانیه — ساخته‌شده روی همین گوشی</string>
-    <string name="chart_interval_seconds_note">کندل زیر یک دقیقه از جریان زنده‌ی قیمت روی همین گوشی ساخته می‌شود. بار اول خالی باز می‌شود و با هر معامله پر می‌شود، و هرچه بسازد برای دفعه‌ی بعد می‌ماند.</string>
-    <string name="chart_hub_more">بیشتر</string>
-    <string name="chart_hub_help">مرکز راهنما</string>
-    <string name="chart_hub_trade">معامله با کارگزار</string>
-    <string name="chart_partners_title">معامله با کارگزار</string>
-    <string name="chart_partners_subtitle">جایی که می‌توانید معامله را واقعاً ثبت کنید</string>
-    <string name="chart_partners_heading">کارگزار و صرافی‌های همکار</string>
-    <string name="chart_partners_broker">کارگزار فارکس — حساب MT5</string>
-    <string name="chart_partners_exchange">صرافی ارز دیجیتال — حساب اسپات و فیوچرز</string>
-    <string name="chart_partners_open_account">افتتاح حساب</string>
-    <string name="chart_partners_disclaimer">این‌ها معرفی هستند، نه توصیه. حساب و پول شما نزد همان مجموعه است و شرایط، کارمزد و ریسکش را باید از خودشان بخوانید. لینک‌ها در مرورگر خودتان باز می‌شوند.</string>
-    <string name="chart_partners_here">باز کردن در پرو چارت</string>
-    <string name="chart_hub_replay">ریپلی</string>
-    <string name="chart_watermark_expand">نمایش نام برنامه</string>
-    <string name="chart_watermark_collapse">بستن نام برنامه</string>
+    <string name="chart_more_events">Events on the time axis</string>
+    <string name="chart_more_events_note">News and the economic calendar, as marks under the bars</string>
+    <string name="chart_events_title">Events on the chart</string>
+    <string name="chart_events_subtitle">%1$s kinds on</string>
+    <string name="chart_position_entry">Entry</string>
+    <string name="chart_position_stop">Stop loss</string>
+    <string name="chart_position_target">Take profit</string>
+    <string name="chart_seconds_warming">The %1$s chart is built on this phone from price ticks.</string>
+    <string name="chart_seconds_warming_hint">The first bar appears on the next price change; on a quiet market that takes a few seconds. Keep the screen open.</string>
+    <string name="chart_wheel_scroll">Symbol: %1$s, of %2$s in the list. Drag to switch.</string>
+    <!-- Bar replay: the reader\'s own trades, and the report that comes out of them. -->
+    <string name="replay_ledger_show">Practice trade</string>
+    <string name="replay_ledger_hide">Close practice book</string>
+    <string name="replay_size">Size</string>
+    <string name="replay_size_stake">Full stake</string>
+    <string name="replay_stop">Stop loss</string>
+    <string name="replay_target">Take profit</string>
+    <string name="replay_buy">Buy</string>
+    <string name="replay_sell">Sell</string>
+    <string name="replay_position_close">Close</string>
+    <string name="replay_break_even">Break even</string>
+    <string name="replay_run_up">Run-up</string>
+    <string name="replay_levels_wrong_side">A stop must sit below this candle\'s price and a target above it — the other way round for a sell. Until it does, the order is refused rather than opened without the level you typed.</string>
+    <string name="replay_realised">Closed result</string>
+    <string name="replay_closed_count">Closed trades</string>
+    <string name="replay_wins">Wins</string>
+    <string name="replay_wins_of">%1$s wins out of %2$s trades</string>
+    <string name="replay_end_session">End session and close everything</string>
+    <string name="replay_report_open">Report for this session</string>
+    <string name="replay_ledger_note">This book belongs to this replay session only. It is never written to the paper-trading journal and it is discarded when replay ends. Five basis points a side, the same fee the backtest charges. Stops and targets are checked against the candles that follow: a long is stopped by the candle\'s low, not by its close.</string>
+    <string name="replay_setup_entry">Practice entry</string>
+    <string name="replay_setup_stop">Stop loss</string>
+    <string name="replay_setup_target">Take profit</string>
+    <string name="replay_report_title">A backtest of your own trading</string>
+    <string name="replay_report_subtitle">The same measures the strategy report uses, over the trades you took in this replay.</string>
+    <string name="replay_report_trades">Closed trades</string>
+    <string name="replay_report_wins">Winners</string>
+    <string name="replay_report_losses">Losers</string>
+    <string name="replay_report_open_positions">Still open</string>
+    <string name="replay_report_unrealised">Unrealised on open positions</string>
+    <string name="replay_report_exit_stop">Closed at the stop</string>
+    <string name="replay_report_exit_target">Closed at the target</string>
+    <string name="replay_report_exit_manual">Closed by hand</string>
+    <string name="replay_report_exit_session">Closed with the session</string>
+    <string name="replay_report_empty">Nothing has closed yet. Open a position, give it a stop and a target, and step the candles forward to find out which one price reached first.</string>
+    <string name="replay_report_open_note">%1$s position(s) are still open and are in none of the figures here; what they are worth is stated separately.</string>
+    <string name="replay_report_sample">Only %1$s trades have closed. Under %2$s, a win rate and a profit factor are not measurements, so a dash is shown instead of a number. Count the wins and the losses rather than reading a percentage of them.</string>
+    <string name="replay_report_discipline">How many were closed by the stop and how many you closed early is the one thing a strategy backtest can never report, because a strategy has no hand to lose its nerve with.</string>
+    <string name="replay_report_note">This report belongs to this replay session and is saved nowhere. The fee and the starting equity are the ones the strategy backtest uses, so the two documents can be read side by side. Where a single candle reached both the stop and the target, the stop is taken: their order inside the candle is unknowable, and the pessimistic assumption is the only defensible one.</string>
+    <string name="chart_readings_disclosure">Market reading and tools</string>
+    <string name="chart_hub_tools">Tools</string>
+    <string name="chart_hub_terminal">Terminal</string>
+    <string name="chart_quote_scale">Price scale</string>
+    <string name="chart_interval_heading">Timeframe</string>
+    <string name="chart_interval_seconds">Seconds — built on this phone</string>
+    <string name="chart_interval_seconds_note">Bars under a minute are built from the live price stream on this phone. The chart opens empty the first time and fills with every trade, and whatever it builds is kept for next time.</string>
+    <string name="chart_hub_more">More</string>
+    <string name="chart_hub_help">Help Center</string>
+    <string name="chart_hub_trade">Trade with your broker</string>
+    <string name="chart_partners_title">Trade with a broker</string>
+    <string name="chart_partners_subtitle">Where you can actually place the trade</string>
+    <string name="chart_partners_heading">Partner broker and exchanges</string>
+    <string name="chart_partners_broker">Forex broker — MT5 account</string>
+    <string name="chart_partners_exchange">Crypto exchange — spot and futures</string>
+    <string name="chart_partners_open_account">Open an account</string>
+    <string name="chart_partners_disclaimer">These are introductions, not advice. Your account and your money sit with that company, and their terms, fees and risks are theirs to state. Links open in your own browser.</string>
+    <string name="chart_partners_here">Open in Pro Chart</string>
+    <string name="chart_hub_replay">Bar replay</string>
+    <string name="chart_watermark_expand">Show the app name</string>
+    <string name="chart_watermark_collapse">Hide the app name</string>
     <!-- The drawing settings sheet's three tabs and its coordinates / visibility controls. -->
-    <string name="drawing_settings_style">ظاهر</string>
-    <string name="drawing_settings_coordinates">مختصات</string>
-    <string name="drawing_settings_visibility">نمایش</string>
-    <string name="drawing_settings_custom_colour">رنگ دلخواه، مثل 1E88E5</string>
-    <string name="drawing_settings_save_default">ذخیره به‌عنوان پیش‌فرض این ابزار</string>
-    <string name="drawing_settings_point">نقطه‌ی %1$s</string>
-    <string name="drawing_settings_price">قیمت</string>
-    <string name="drawing_settings_lock">قفل</string>
-    <string name="drawing_settings_lock_note">ترسیم قفل‌شده با کشیدن یا لمس جابه‌جا و حذف نمی‌شود.</string>
-    <string name="drawing_settings_timeframe">تایم‌فریم ترسیم</string>
-    <string name="drawing_settings_timeframe_note">این ترسیم روی همه‌ی تایم‌فریم‌ها نشان داده می‌شود و برچسب تایم‌فریمی که روی آن کشیده شده کنارش می‌ماند.</string>
+    <string name="drawing_settings_style">Style</string>
+    <string name="drawing_settings_coordinates">Coordinates</string>
+    <string name="drawing_settings_visibility">Visibility</string>
+    <string name="drawing_settings_custom_colour">Custom colour, e.g. 1E88E5</string>
+    <string name="drawing_settings_save_default">Save as default for this tool</string>
+    <string name="drawing_settings_point">Point %1$s</string>
+    <string name="drawing_settings_price">Price</string>
+    <string name="drawing_settings_lock">Lock</string>
+    <string name="drawing_settings_lock_note">A locked drawing cannot be moved or deleted by a drag or a tap.</string>
+    <string name="drawing_settings_timeframe">Drawn on</string>
+    <string name="drawing_settings_timeframe_note">This drawing shows on every timeframe and keeps the tag of the one it was drawn on.</string>
     <!-- The indicator settings sheet: opened from a legend row's gear. -->
-    <string name="indicator_settings_inputs">ورودی‌ها</string>
-    <string name="indicator_settings_length">دوره</string>
-    <string name="indicator_settings_length_note">تعداد کندل‌هایی که این اندیکاتور روی آن‌ها حساب می‌شود. تغییر همان لحظه روی چارت دیده می‌شود.</string>
-    <string name="indicator_settings_no_inputs">این اندیکاتور ورودی قابل تغییر ندارد.</string>
-    <string name="indicator_settings_colour">رنگ خط</string>
-    <string name="indicator_settings_width">ضخامت خط</string>
-    <string name="indicator_settings_show">نمایش روی چارت</string>
-    <string name="indicator_settings_show_note">خاموش کردن، اندیکاتور را پنهان می‌کند و تنظیماتش را نگه می‌دارد.</string>
-    <string name="indicator_settings_remove">برداشتن از چارت</string>
+    <string name="indicator_settings_inputs">Inputs</string>
+    <string name="indicator_settings_length">Length</string>
+    <string name="indicator_settings_length_note">How many bars this indicator is computed over. The chart updates as you change it.</string>
+    <string name="indicator_settings_no_inputs">This indicator has no adjustable inputs.</string>
+    <string name="indicator_settings_colour">Line colour</string>
+    <string name="indicator_settings_width">Line width</string>
+    <string name="indicator_settings_show">Show on chart</string>
+    <string name="indicator_settings_show_note">Turning this off hides the indicator and keeps its settings.</string>
+    <string name="indicator_settings_remove">Remove from chart</string>
 </resources>

@@ -15,6 +15,28 @@ it is for.
 
 ---
 
+## [4.52.0] — 2026-09-09 — English is the resource default; Persian is the qualified set
+
+Item 1 of the 4.52 run, the owner's decision after five deferrals: `values/` is now English in
+every module and Persian lives in `values-fa/`, with the wordmark and the lockup flag following
+(`drawable-*` Latin, `drawable-fa-*` Persian). The product still opens in Persian —
+`AppLanguage.Default` is unchanged and `AppLanguageStore.apply` pins the activity to it — so a
+reader sees nothing different; what changes is what a device in a third language falls back to,
+and which file a new key lands in first.
+
+### Added
+- **`checkDefaultLocaleIsEnglish`**, a root Gradle task on `:app:preBuild`: any Arabic-script
+  character in a translatable string under any module's `values/` fails the build, with the key
+  named. The Python gate runs the same rule (`check_english_locale_is_english`) plus its inverse
+  (`check_persian_locale_is_persian`: every module with English strings has a `values-fa/`).
+
+### Changed
+- 48 resource files moved (47 `strings.xml`, one `bools.xml`) and five wordmark densities; no key
+  added, removed or edited.
+- `tools/i18n/lint_strings.py` reads Persian from `values-fa/` and English from `values/`;
+  `scripts/design/build-prochart-brand.py` writes the wordmark the same way round.
+- `CLAUDE.md`, `README.md`, `locales_config.xml`, `AppLanguage` say what is where.
+
 ## [4.51.0] — 2026-09-09 — the tablet is a first-class window, and the proof is generated
 
 §4 of the Pro Chart plan. The rail, the list-detail pages, the chart workbench and the eight-pane

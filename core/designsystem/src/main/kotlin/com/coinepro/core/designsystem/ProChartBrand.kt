@@ -40,8 +40,8 @@ import androidx.compose.ui.unit.dp
  *
  * ### The wordmark is written, so it follows the reader's language
  *
- * `drawable-<density>` carries the Persian «پروچارت» and `drawable-en-<density>` the Latin
- * lockup — the same convention `values/` and `values-en/` already use, applied to the one image
+ * `drawable-fa-<density>` carries the Persian «پروچارت» and `drawable-<density>` the Latin
+ * lockup — the same convention `values/` and `values-fa/` already use, applied to the one image
  * that is also a piece of writing. A single Latin wordmark on a Persian screen was the old
  * behaviour and it was wrong in a way that is easy to miss from outside the audience: the product's
  * name in this market is «پروچارت», written, and a reader who has never seen the Latin form does
@@ -242,7 +242,7 @@ fun ProChartMark(
  *
  * ### English draws one asset, not two
  *
- * `drawable-en-*` is not the Latin *name*; it is the whole Latin lockup, mark included, because that
+ * `drawable-*` (the default, English) is not the Latin *name*; it is the whole Latin lockup, mark included, because that
  * is the master the owner supplied for English. Composing a gold mark in front of it drew the mark
  * twice. `prochart_wordmark_is_lockup` says which of the two the current locale has, and where the
  * asset is already a lockup this draws only the asset — one colour in English, which is what the

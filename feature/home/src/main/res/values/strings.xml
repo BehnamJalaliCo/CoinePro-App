@@ -1,76 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Default language: Persian. Numbers stay Latin so prices match broker and exchange terminals. -->
 <resources>
-    <string name="home_agent_name">رَصد</string>
-    <string name="home_agent_subtitle">گزارش بازار تو</string>
-    <string name="home_agent_working">در حال بررسی…</string>
-    <string name="home_agent_working_body">دارم بازار و دارایی‌هایت را می‌خوانم. تا چند لحظه‌ی دیگر گزارش می‌دهم.</string>
-    <string name="home_agent_resting_body">هنوز گزارشی برای این بازه ندارم. یک سیگنال بساز یا تصویر چارتت را بفرست تا تحلیل کنم.</string>
-    <string name="home_agent_unavailable">گزارش لحظه‌ای در دسترس نیست.</string>
-    <string name="home_greeting">سلام %1$s 👋</string>
+    <string name="home_agent_name">Rasad</string>
+    <string name="home_agent_subtitle">your market briefing</string>
+    <string name="home_agent_working">Working…</string>
+    <string name="home_agent_working_body">Reading the market and your holdings. A briefing follows shortly.</string>
+    <string name="home_agent_resting_body">No briefing for this window yet. Generate a signal, or send a chart screenshot for analysis.</string>
+    <string name="home_agent_unavailable">Live briefing is unavailable.</string>
+    <string name="home_greeting">Hi %1$s 👋</string>
 
-    <string name="home_action_signal">سیگنال</string>
-    <string name="home_action_chart">چارت</string>
-    <string name="home_action_market">بازار</string>
+    <string name="home_action_signal">Signal</string>
+    <string name="home_action_chart">Chart</string>
+    <string name="home_action_market">Market</string>
 
-    <string name="home_holdings_title">دارایی‌های شما</string>
+    <string name="home_holdings_title">Your holdings</string>
 
-    <string name="home_portfolio_total">دارایی کل</string>
     <!-- Both values arrive already isolated as left-to-right runs. -->
     <string name="home_change_amount_and_percent">%1$s (%2$s)</string>
 
-    <string name="home_age_moments">همین حالا</string>
-    <string name="home_age_minutes">%1$d دقیقه پیش</string>
-    <string name="home_age_hours">%1$d ساعت پیش</string>
-    <string name="home_age_days">%1$d روز پیش</string>
+    <string name="home_age_moments">just now</string>
+    <string name="home_age_minutes">%1$d minutes ago</string>
+    <string name="home_age_hours">%1$d hours ago</string>
+    <string name="home_age_days">%1$d days ago</string>
 
-    <string name="home_watchlist_title">فهرست من</string>
-    <string name="home_market_title">بازار</string>
-    <string name="home_market_empty">هنوز داده‌ای از بازار نرسیده است.</string>
-    <string name="home_market_connecting">در حال اتصال به داده‌های بازار…</string>
-    <string name="home_retry">تلاش دوباره</string>
-    <string name="home_quote_stale">قدیمی</string>
+    <string name="home_portfolio_total">Total balance</string>
+
+    <string name="home_watchlist_title">My list</string>
+    <string name="home_market_title">Market</string>
+    <string name="home_market_empty">No market data has arrived yet.</string>
+    <string name="home_market_connecting">Connecting to market data…</string>
+    <string name="home_retry">Retry</string>
+    <string name="home_quote_stale">Stale</string>
     <string name="home_value_missing">—</string>
 
-    <string name="home_signals_title">سیگنال‌های باز</string>
-    <!-- Order is entry, stop loss, target; the three values are Latin runs isolated by the caller. -->
-    <string name="home_signal_levels">ورود %1$s · حد ضرر %2$s · هدف %3$s</string>
+    <string name="home_signals_title">Open signals</string>
+    <string name="home_signal_levels">Entry %1$s · Stop %2$s · Target %3$s</string>
 
-    <string name="home_status_live">لحظه‌ای</string>
-    <string name="home_status_connecting">در حال اتصال…</string>
-    <string name="home_status_idle">جریان بازار بی‌کار</string>
-    <string name="home_status_degraded">اتصال لحظه‌ای در حال بازیابی · قیمت‌ها هر چند ثانیه تازه می‌شوند</string>
-    <string name="home_status_offline">داده‌های بازار آفلاین است</string>
-    <string name="home_status_cached">آخرین داده‌ی ذخیره‌شده · آفلاین</string>
-    <string name="home_status_cached_refreshing">آخرین داده‌ی ذخیره‌شده · در حال به‌روزرسانی</string>
+    <string name="home_status_live">Realtime connected</string>
+    <string name="home_status_connecting">Connecting…</string>
+    <string name="home_status_idle">Market stream idle</string>
+    <string name="home_status_degraded">Realtime reconnecting · prices refresh every few seconds</string>
+    <string name="home_status_offline">Market data offline</string>
+    <string name="home_status_cached">Last saved data · offline</string>
+    <string name="home_status_cached_refreshing">Last saved data · refreshing</string>
 
-    <string name="home_cache_stored">ذخیره‌شده در %1$s · مقادیر لحظه‌ای نیستند</string>
-    <string name="home_cache_unknown">تصویر ذخیره‌شده‌ی بازار · زمان نامشخص</string>
+    <string name="home_cache_stored">Stored %1$s · values are not live</string>
+    <string name="home_cache_unknown">Stored market snapshot · age unknown</string>
 
-    <string name="home_note_refresh_failed">به‌روزرسانی شبکه ناموفق بود. آخرین داده‌ی ذخیره‌شده می‌ماند و «قدیمی» علامت خورده است.</string>
-    <string name="home_note_stream_recovering">جریان لحظه‌ای در حال بازیابی است. آخرین تصویر شبکه باقی می‌ماند.</string>
+    <string name="home_note_refresh_failed">Network refresh failed. The last saved data stays visible and is marked stale.</string>
+    <string name="home_note_stream_recovering">Realtime stream is recovering. The latest network snapshot remains visible.</string>
 
-    <string name="home_menu_account">حساب کاربری</string>
-    <string name="home_menu_verification">احراز هویت</string>
-    <string name="home_menu_safety">ایمنی</string>
-    <string name="home_menu_logout">خروج از حساب</string>
-    <string name="home_menu_delete_account">حذف حساب کاربری</string>
+    <string name="home_menu_account">Account</string>
+    <string name="home_menu_verification">Verify identity</string>
+    <string name="home_menu_safety">Safety</string>
+    <string name="home_menu_logout">Log out</string>
+    <string name="home_menu_delete_account">Delete account</string>
 
-    <string name="home_platform_crypto">کریپتو</string>
-    <string name="home_platform_forex">فارکس</string>
-    <string name="home_subscription_title">اشتراک شما</string>
-    <string name="home_subscription_active">اشتراک فعال</string>
-    <string name="home_subscription_vip">عضو ویژه</string>
+    <string name="home_platform_crypto">Crypto</string>
+    <string name="home_platform_forex">Forex</string>
+    <string name="home_subscription_title">Your subscription</string>
+    <string name="home_subscription_active">Active membership</string>
+    <string name="home_subscription_vip">VIP member</string>
     <plurals name="home_subscription_days">
-        <item quantity="one">%1$d روز باقی مانده</item>
-        <item quantity="other">%1$d روز باقی مانده</item>
+        <item quantity="one">%1$d day left</item>
+        <item quantity="other">%1$d days left</item>
     </plurals>
-    <string name="home_shortcut_tools">ابزارها</string>
-    <string name="home_shortcut_activity">فعالیت</string>
-    <string name="home_balance_hide">پنهان کردن موجودی</string>
-    <string name="home_balance_show">نمایش موجودی</string>
-    <string name="home_market_more">%1$s بازار دیگر</string>
-    <string name="home_holdings_count">%1$s دارایی · پرتفوی</string>
-    <string name="home_shortcut_news">اخبار</string>
-    <string name="home_value_missing_note">هنوز موجودی‌ای دریافت نشده.</string>
+    <string name="home_shortcut_tools">Toolkit</string>
+    <string name="home_shortcut_activity">Activity</string>
+    <string name="home_balance_hide">Hide balance</string>
+    <string name="home_balance_show">Show balance</string>
+    <string name="home_market_more">%1$s more markets</string>
+    <string name="home_holdings_count">%1$s holdings · portfolio</string>
+    <string name="home_shortcut_news">News</string>
+    <string name="home_value_missing_note">No balance has arrived yet.</string>
 </resources>

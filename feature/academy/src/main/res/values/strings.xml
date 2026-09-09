@@ -1,48 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="academy_title">آکادمی</string>
-    <string name="academy_continue">ادامه</string>
-    <string name="academy_xp">امتیاز</string>
-    <string name="academy_streak">روز پیاپی</string>
-    <string name="academy_streak_today">امروز انجام شد</string>
-    <string name="academy_progress">%1$s از %2$s درس</string>
-    <string name="academy_level_progress">%1$s از %2$s</string>
-    <string name="academy_badges">%1$s نشان</string>
+    <string name="academy_title">Academy</string>
+    <string name="academy_continue">Continue</string>
+    <string name="academy_xp">XP</string>
+    <string name="academy_streak">day streak</string>
+    <string name="academy_streak_today">Done today</string>
+    <string name="academy_progress">%1$s of %2$s lessons</string>
+    <string name="academy_badges">%1$s badges</string>
 
-    <string name="academy_locked_tier">نیازمند اشتراک</string>
-    <string name="academy_locked_phone">شماره‌ی موبایل لازم است</string>
-    <string name="academy_add_phone">ثبت شماره‌ی موبایل</string>
-    <string name="academy_locked_phone_body">سطح‌های حرفه‌ای وقتی باز می‌شوند که شماره‌ی موبایلت در پروفایل ثبت شده باشد.</string>
-    <string name="academy_locked_tier_body">این درس بخشی از اشتراک است.</string>
+    <string name="academy_locked_tier">Subscription required</string>
+    <string name="academy_locked_phone">Phone number required</string>
+    <string name="academy_add_phone">Add phone number</string>
+    <string name="academy_locked_phone_body">Professional levels open once your phone number is on your profile.</string>
+    <string name="academy_locked_tier_body">This lesson is part of the subscription.</string>
 
-    <string name="academy_error_network">آکادمی خوانده نشد.</string>
-    <string name="academy_error_disabled">آکادمی فعلاً در دسترس نیست.</string>
-    <string name="academy_retry">دوباره</string>
+    <string name="academy_error_network">The academy could not be loaded.</string>
+    <string name="academy_error_disabled">The academy is not available right now.</string>
+    <string name="academy_retry">Retry</string>
 
-    <string name="academy_reading_time">%1$s دقیقه خواندن</string>
-    <string name="academy_has_video">ویدیو دارد</string>
-    <string name="academy_video_note">ویدیوی این درس در نسخه‌ی وب پخش می‌شود.</string>
-    <string name="academy_mark_read">خواندم</string>
-    <string name="academy_done">انجام شد</string>
+    <string name="academy_reading_time">%1$s min read</string>
+    <string name="academy_has_video">Has video</string>
+    <string name="academy_video_note">The video for this lesson plays in the web app.</string>
+    <string name="academy_mark_read">Mark as read</string>
+    <string name="academy_done">Done</string>
 
-    <string name="academy_quiz">آزمون</string>
-    <string name="academy_quiz_submit">تصحیح</string>
-    <string name="academy_quiz_score">نمره: %1$s از ۱۰۰</string>
-    <string name="academy_quiz_passed">قبول شدی</string>
-    <string name="academy_quiz_failed">هنوز نه — دوباره بخوانید و امتحان کنید.</string>
-    <string name="academy_quiz_last_score">بهترین نمره‌ی قبلی: %1$s</string>
-    <string name="academy_quiz_correct">پاسخ درست</string>
-    <string name="academy_quiz_your_answer">پاسخ شما</string>
+    <string name="academy_quiz">Quiz</string>
+    <string name="academy_quiz_submit">Check answers</string>
+    <string name="academy_quiz_score">Score: %1$s of 100</string>
+    <string name="academy_quiz_passed">Passed</string>
+    <string name="academy_quiz_failed">Not yet — read it again and retry.</string>
+    <string name="academy_quiz_last_score">Best so far: %1$s</string>
+    <string name="academy_quiz_correct">Correct answer</string>
+    <string name="academy_quiz_your_answer">Your answer</string>
 
-    <string name="academy_close">بستن</string>
-    <string name="academy_achievements">نشان‌ها</string>
-    <string name="academy_achievements_count">%1$s از %2$s</string>
-    <string name="academy_leaderboard">جدول امتیازات</string>
-    <string name="academy_leaderboard_rank">رتبه‌ی شما: %1$s از %2$s</string>
-    <string name="academy_leaderboard_unranked">هنوز درسی کامل نکرده‌ای، پس رتبه‌ای نداری.</string>
-    <string name="academy_glossary">واژه‌نامه</string>
-    <string name="academy_glossary_search">جست‌وجوی واژه</string>
-    <string name="academy_extra_failed">خوانده نشد.</string>
-    <string name="academy_extra_empty">چیزی اینجا نیست.</string>
-    <string name="academy_eyebrow">درس</string>
+    <string name="academy_close">Close</string>
+    <string name="academy_achievements">Badges</string>
+    <string name="academy_achievements_count">%1$s of %2$s</string>
+    <string name="academy_leaderboard">Leaderboard</string>
+    <string name="academy_leaderboard_rank">Your rank: %1$s of %2$s</string>
+    <string name="academy_leaderboard_unranked">You have not completed a lesson yet, so you are not ranked.</string>
+    <string name="academy_glossary">Glossary</string>
+    <string name="academy_glossary_search">Search a term</string>
+    <string name="academy_extra_failed">Could not be loaded.</string>
+    <string name="academy_extra_empty">Nothing here.</string>
+    <string name="academy_eyebrow">Lesson</string>
+    <string name="academy_level_progress">%1$s of %2$s</string>
 </resources>

@@ -1,40 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Default language: Persian. Numbers stay Latin so prices match broker and exchange terminals. -->
 <resources>
-    <string name="signals_title">سیگنال‌ها</string>
-    <string name="signals_subtitle">موقعیت‌های قابل اجرا با ورود، حد ضرر و اهداف.</string>
+    <string name="signals_title">Signals</string>
+    <string name="signals_subtitle">Actionable setups with entry, risk and targets.</string>
 
-    <string name="signals_market_forex">فارکس</string>
-    <string name="signals_market_crypto">کریپتو</string>
-    <string name="signals_status_active">فعال</string>
-    <string name="signals_status_recent">اخیر</string>
-    <string name="signals_status_closed">بسته‌شده</string>
+    <string name="signals_market_forex">Forex</string>
+    <string name="signals_market_crypto">Crypto</string>
+    <string name="signals_status_active">Active</string>
+    <string name="signals_status_recent">Recent</string>
+    <string name="signals_status_closed">Closed</string>
 
-    <string name="signals_retry">تلاش دوباره</string>
-    <string name="signals_empty">سیگنالی در این نما وجود ندارد.</string>
+    <string name="signals_retry">Retry</string>
+    <string name="signals_empty">No signals in this view.</string>
 
-    <string name="signals_membership_title">سیگنال‌های ویژه</string>
-    <string name="signals_membership_body">سطوح معاملاتی فعال با اشتراک فعال در دسترس هستند.</string>
-    <string name="signals_membership_action">بررسی دوباره‌ی دسترسی</string>
-    <string name="signals_locked_title">دسترسی به سیگنال‌ها</string>
+    <string name="signals_membership_title">VIP Signals</string>
+    <string name="signals_membership_body">Active trade levels are available with an active subscription.</string>
+    <string name="signals_membership_action">Check access again</string>
+    <string name="signals_locked_title">Access to signals</string>
 
-    <string name="signals_direction_buy">خرید</string>
-    <string name="signals_direction_sell">فروش</string>
-    <string name="signals_direction_neutral">خنثی</string>
-    <string name="signals_confidence">اطمینان %1$s</string>
+    <string name="signals_direction_buy">BUY</string>
+    <string name="signals_direction_sell">SELL</string>
+    <string name="signals_direction_neutral">NEUTRAL</string>
+    <string name="signals_confidence">%1$s confidence</string>
 
-    <string name="signals_metric_entry">ورود</string>
-    <string name="signals_metric_stop_loss">حد ضرر</string>
-    <string name="signals_metric_target_one">هدف اول</string>
-    <string name="signals_quote_current">قیمت لحظه‌ای</string>
-    <string name="signals_quote_last">آخرین قیمت</string>
+    <string name="signals_metric_entry">Entry</string>
+    <string name="signals_metric_stop_loss">SL</string>
+    <string name="signals_metric_target_one">TP1</string>
+    <string name="signals_quote_current">Current</string>
+    <string name="signals_quote_last">Last price</string>
     <string name="signals_value_missing">—</string>
-    <string name="signals_column_symbol">نماد</string>
-    <string name="signals_column_direction">جهت</string>
-    <string name="signals_column_levels">قیمت لحظه‌ای</string>
-    <string name="signals_count">%1$s سیگنال</string>
-    <string name="signals_empty_active_hint">سیگنال باز اینجا می‌آید؛ همین که میز معاملات یکی منتشر کرد.</string>
-    <string name="signals_empty_recent_hint">تازه‌ترین سیگنال‌های منتشرشده اینجا جمع می‌شوند.</string>
-    <string name="signals_empty_closed_hint">هر سیگنالی که به هدف یا حد ضرر برسد، اینجا با نتیجه‌اش می‌ماند.</string>
-    <string name="signals_not_shown">%1$s سیگنال دیگر در تاریخچه</string>
+    <string name="signals_column_symbol">Symbol</string>
+    <string name="signals_column_direction">Direction</string>
+    <string name="signals_column_levels">Live price</string>
+    <string name="signals_count">%1$s signals</string>
+    <string name="signals_empty_active_hint">Open positions appear here as soon as the desk publishes one.</string>
+    <string name="signals_empty_recent_hint">The most recently published calls collect here.</string>
+    <string name="signals_empty_closed_hint">Every signal that reaches its target or its stop stays here with its result.</string>
+    <string name="signals_not_shown">%1$s more signals in the history</string>
 </resources>

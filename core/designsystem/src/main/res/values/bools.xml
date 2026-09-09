@@ -1,14 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Default language: Persian. English lives in values-en.
-
-    Whether `drawable/prochart_wordmark` is the whole lockup — the mark and the name in one picture —
-    or the name on its own. It decides whether `ProChartLockup` composes a gold mark in front of the
-    asset or just draws the asset, and it is a resource rather than a constant because the answer is
-    a property of the artwork the locale resolved to.
-
-    Persian: the name on its own, so the lockup is composed and the mark keeps its gold.
+    English, the default set: `drawable/prochart_wordmark` is cut from `design/brand/prochart-lockup-master.png`,
+    which is the whole Latin lockup — the mark and «Pro Chart» together, one colour. Composing a
+    second, gold mark in front of it drew the mark twice, which is what this flag stops.
 -->
 <resources>
-    <bool name="prochart_wordmark_is_lockup">false</bool>
+    <bool name="prochart_wordmark_is_lockup">true</bool>
 </resources>

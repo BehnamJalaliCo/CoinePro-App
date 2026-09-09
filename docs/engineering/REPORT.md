@@ -217,6 +217,38 @@ Numbers: 6 new test classes (`NavigationParityTest`, `ChartKeyboardTest`, `Sheet
 
 ---
 
+## Run 4.52 → 4.6x — the six locked items
+
+The owner's second prompt: six items, in order, each ending with proof here. Module report first,
+as asked: `settings.gradle.kts` includes `:chart-core`, `:chart-ui`, `:namascript` (lines 22, 24,
+27) among 85 modules; the no-`android.*`/`java.*` architecture tests pass (`:chart-core:jvmTest`
+3/3, `:namascript:jvmTest` 1/1). `:chart-ui` is Android by design (Compose Canvas) and has none.
+
+### Item 1 — locale inversion (4.52.0) — done
+
+| asked | done | proof |
+| --- | --- | --- |
+| `values/` → English, `values-fa/` → Persian | 47 `strings.xml` + `bools.xml` moved in every module; the wordmark follows (`drawable-*` Latin lockup, `drawable-fa-*` Persian); `app_name` moved to the default set; no key added, removed or edited | `git show --stat 4.52.0` — 48 renames + 48 edits |
+| Gradle check failing on Arabic script in `values/` | root task `checkDefaultLocaleIsEnglish`, on `:app:preBuild` | positive run: `BUILD SUCCESSFUL`; negative run with a probe key `probe_persian` in `core/navigation/.../values/strings.xml`: `Arabic script in the default (English) resource set — move the text to values-fa/: core/navigation/src/main/res/values/strings.xml: probe_persian` → `BUILD FAILED`; probe removed |
+| `aapt2 dump` proof | below | — |
+| product still opens in Persian | `AppLanguage.Default = PERSIAN`, `AppLanguageStore.apply` pins the activity locale; only the *fallback* for a device in a third language changes (Persian → English) | `aapt2 dump resources`: `string/app_name` has one entry `()`, every translatable key has `()` English and `(fa)` Persian |
+
+```
+$ aapt2 dump resources app-release-unsigned.apk | grep -A2 "string/nav_watchlist"
+    resource 0x7f1106e3 string/nav_watchlist
+      () "Watchlist"
+      (fa) "دیده‌بان"
+$ aapt2 dump resources app-release-unsigned.apk | grep -A2 "string/nav_chart"
+    resource 0x7f1106da string/nav_chart
+      () "Chart"
+      (fa) "چارت"
+$ aapt2 dump configurations app-release-unsigned.apk | grep -E "^fa"
+fa
+fa-hdpi … fa-xxxhdpi
+```
+
+No `(en)` configuration remains from the app's own resources (the `en-rAU`… entries in the APK are AndroidX's). Gates and the full unit suite are green on the inverted tree; the goldens did not change because every golden already ran under a `fa-rIR` qualifier.
+
 ## Definition of done — as it stands
 
 - [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).

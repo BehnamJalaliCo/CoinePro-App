@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """String-resource lint: one voice, one glossary, both locales complete.
 
-Runs over every `src/main/res/values/strings.xml` (Persian, the default locale) and its
-`values-en/strings.xml` sibling, and fails on:
+Runs over every `src/main/res/values-fa/strings.xml` (Persian, the product's language) and its
+`values/strings.xml` sibling (English, the unqualified resource set), and fails on:
 
   * a key present in one locale and not the other (unless `translatable="false"`),
   * a `%1$s`-style placeholder present in one locale and not the other,
@@ -398,8 +398,8 @@ class Lint:
         registry = self.load_note_registry()
         seen_notes: set[str] = set()
         fa_files = sorted(
-            list(self.root.glob("*/src/main/res/values/strings.xml"))
-            + list(self.root.glob("*/*/src/main/res/values/strings.xml"))
+            list(self.root.glob("*/src/main/res/values-fa/strings.xml"))
+            + list(self.root.glob("*/*/src/main/res/values-fa/strings.xml"))
         )
         if not fa_files:
             print("lint_strings: no strings.xml found", file=sys.stderr)
@@ -407,11 +407,11 @@ class Lint:
         for fa_path in fa_files:
             # The admin panel is internal-only and keeps its engineering vocabulary.
             internal = "feature/admin/" in fa_path.as_posix()
-            en_path = fa_path.parent.parent / "values-en" / "strings.xml"
+            en_path = fa_path.parent.parent / "values" / "strings.xml"
             fa = parse_strings(fa_path)
             en = parse_strings(en_path) if en_path.exists() else {}
             if not en_path.exists() and any(entry.translatable for entry in fa.values()):
-                self.fail(fa_path, None, "module has Persian strings and no values-en/strings.xml")
+                self.fail(fa_path, None, "module has Persian strings and no values/strings.xml (English, the default set)")
             self.check_parity(fa_path, fa, en_path, en)
             self.check_orthography(fa_path, fa)
             self.check_note_registry(fa_path, fa, registry, seen_notes)

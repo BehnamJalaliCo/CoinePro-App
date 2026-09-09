@@ -131,7 +131,7 @@ def check_bottom_navigation() -> None:
     ]
     require(entries == expected, f"Bottom navigation contract drifted: {entries}")
 
-    for language, directory in (("Persian", "values"), ("English", "values-en")):
+    for language, directory in (("Persian", "values-fa"), ("English", "values")):
         labels = read(f"core/navigation/src/main/res/{directory}/strings.xml")
         for destination, _ in expected:
             key = f'name="nav_{destination.lower()}"'
@@ -313,8 +313,8 @@ FORBIDDEN_BRAND_SPELLINGS = ("Pro CHart", "Pro-Chart", "پروچارت", "ProCha
 # Words a reader never uses for the thing they are looking at. The glossary in docs/audit names the
 # replacement for each; a new occurrence in a user-facing string is a regression.
 FORBIDDEN_UI_WORDS = {
-    "values/strings.xml": ("شیءها", "واگرد", "ازنو", "بازپخش نوار", "دیدبان<", "نما اسکریپت", "نقشهٔ حرارتی"),
-    "values-en/strings.xml": (">Studies<", ">Bar length<", "Connected surfaces", "Provider truth", ">STALE<", "server-side setting", "this build is pointed"),
+    "values-fa/strings.xml": ("شیءها", "واگرد", "ازنو", "بازپخش نوار", "دیدبان<", "نما اسکریپت", "نقشهٔ حرارتی"),
+    "values/strings.xml": (">Studies<", ">Bar length<", "Connected surfaces", "Provider truth", ">STALE<", "server-side setting", "this build is pointed"),
 }
 
 STRAY_ASSET_SUFFIXES = (".orig", ".bak", ".rej", ".tmp")
@@ -362,26 +362,47 @@ ARABIC_SCRIPT = re.compile(r"[\u0600-\u06FF]")
 
 
 def check_english_locale_is_english() -> None:
-    """No Persian text in `values-en/`.
+    """No Persian text in `values/`, and no Latin sentences in `values-fa/`.
 
-    Persian is the default locale by the owner's decision, so the failure that matters is the
-    inverse of the audit's: an English reader shown Persian because a key was copied across without
-    being translated. Keys marked `translatable="false"` are asset paths and brand names and are
-    allowed whatever they contain.
+    Since 4.52.0 the unqualified resource set is English and Persian is the qualified `values-fa/`
+    (the owner's decision; the product still opens in Persian through `AppLanguage.Default`). The
+    failure that matters is a key copied into the default set without being translated: every
+    reader whose device is in neither language would see it. Keys marked `translatable="false"`
+    are asset paths and brand names and are allowed whatever they contain. The same check runs in
+    Gradle (`checkDefaultLocaleIsEnglish`) so a developer's own build refuses too.
     """
     # English strings that quote a Persian word on purpose — a search hint showing what a Persian
     # name looks like. Each entry is a decision, not a leak, and the list should stay this short.
     quoting_persian = {"search_empty_hint"}
     offenders: list[str] = []
     for path in string_files():
-        if not str(path).endswith("values-en/strings.xml"):
+        if path.parent.name != "values":
             continue
         for match in re.finditer(r'<string name="([^"]+)"([^>]*)>(.*?)</string>', path.read_text(encoding="utf-8"), re.S):
             if 'translatable="false"' in match.group(2) or match.group(1) in quoting_persian:
                 continue
             if ARABIC_SCRIPT.search(match.group(3)):
                 offenders.append(f"{path.relative_to(ROOT)}: {match.group(1)}")
-    require(not offenders, "Persian text in the English locale:\n" + "\n".join(offenders))
+    require(not offenders, "Persian text in the default (English) locale:\n" + "\n".join(offenders))
+
+
+def check_persian_locale_is_persian() -> None:
+    """Every translatable key in `values/` has a Persian sibling in `values-fa/` — the inverse leak.
+
+    A key added to the default set alone is silently English on a Persian device; the string lint
+    checks parity key by key, and this is the one-line guard that the folder itself exists for
+    every module that has strings at all.
+    """
+    missing: list[str] = []
+    for path in string_files():
+        if path.parent.name != "values":
+            continue
+        sibling = path.parent.parent / "values-fa" / "strings.xml"
+        text = path.read_text(encoding="utf-8")
+        translatable = re.search(r'<string name="[^"]+"(?![^>]*translatable="false")[^>]*>', text)
+        if translatable and not sibling.exists():
+            missing.append(str(path.relative_to(ROOT)))
+    require(not missing, "modules with English strings and no values-fa/strings.xml:\n" + "\n".join(missing))
 
 
 SECRET_MODULES = ("core/security", "core/auth", "core/execution", "core/copytrade", "feature/connections", "core/network")
@@ -570,6 +591,7 @@ def main() -> None:
     check_brand_spelling()
     check_ui_vocabulary()
     check_english_locale_is_english()
+    check_persian_locale_is_persian()
     check_string_lint()
     check_icon_sources()
     check_grid()

@@ -1,90 +1,79 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Default language: Persian. -->
 <resources>
-    <string name="community_title">انجمن</string>
-    <string name="community_subtitle">گفت‌وگوی معامله‌گرهای کوینه‌پرو</string>
-    <string name="community_compose">نوشتن</string>
-    <string name="community_compose_close">بستن</string>
-    <string name="community_refresh">به‌روزرسانی</string>
-    <string name="community_more">بیشتر</string>
-    <string name="community_retry">تلاش دوباره</string>
-    <string name="community_send">ارسال</string>
-    <string name="community_photo_add">افزودن عکس</string>
-    <string name="community_photo_remove">حذف عکس</string>
-    <string name="community_photo_preparing">در حال آماده‌سازی عکس…</string>
-    <string name="community_photo_chosen">عکس انتخاب‌شده</string>
-    <string name="community_dismiss">باشه</string>
+    <string name="community_title">Community</string>
+    <string name="community_subtitle">Where CoinePro traders talk</string>
+    <string name="community_compose">Write</string>
+    <string name="community_compose_close">Close</string>
+    <string name="community_refresh">Refresh</string>
+    <string name="community_more">More</string>
+    <string name="community_retry">Retry</string>
+    <string name="community_send">Send</string>
+    <string name="community_photo_add">Add a picture</string>
+    <string name="community_photo_remove">Remove the picture</string>
+    <string name="community_photo_preparing">Preparing the picture…</string>
+    <string name="community_photo_chosen">The picture you chose</string>
 
-    <!-- The strip. These are the five categories the server itself stores on every post — the same
-         Persian words, because the route filters on membership of its own tuple and any other
-         spelling would quietly mean «همه». See CommunityCategory. -->
-    <string name="community_category_all">همه</string>
-    <string name="community_category_analysis">تحلیل</string>
-    <string name="community_category_question">سوال</string>
-    <string name="community_category_experience">تجربه</string>
-    <string name="community_category_news">اخبار</string>
-    <string name="community_category_general">عمومی</string>
+    <!-- Translated for the label only. The value that goes on the wire stays the server's own
+         Persian word; see CommunityCategory. -->
+    <string name="community_category_all">All</string>
+    <string name="community_category_analysis">Analysis</string>
+    <string name="community_category_question">Questions</string>
+    <string name="community_category_experience">Experience</string>
+    <string name="community_category_news">News</string>
+    <string name="community_category_general">General</string>
 
-    <!-- Prose counts, so Persian digits — unlike a price, which stays Latin so it can be checked
-         against another terminal. Nothing on this screen is checkable against another terminal. -->
-    <string name="community_like">پسند</string>
-    <string name="community_reply">پاسخ</string>
-    <string name="community_likes">%1$s پسند</string>
-    <string name="community_replies">%1$s پاسخ</string>
-    <string name="community_replies_heading">%1$s پاسخ</string>
+    <string name="community_likes">%1$s likes</string>
+    <string name="community_replies">%1$s replies</string>
+    <string name="community_replies_heading">%1$s replies</string>
 
-    <string name="community_loading">در حال گرفتن پست‌ها…</string>
-    <string name="community_unavailable">انجمن در دسترس نیست.</string>
-    <string name="community_empty">هنوز در این دسته چیزی نوشته نشده است.</string>
-    <string name="community_empty_hint">می‌توانید اولین نفر باشید.</string>
+    <string name="community_loading">Loading posts…</string>
+    <string name="community_unavailable">The community is unavailable.</string>
+    <string name="community_empty">Nothing has been posted in this category yet.</string>
+    <string name="community_empty_hint">You could be the first.</string>
 
-    <!-- The name. The board is readable by anyone; writing needs a name the reader chooses here,
-         and nothing else — no account on either platform, no phone, no email. -->
-    <string name="community_name_title">یک نام برای خودتان انتخاب کنید</string>
-    <string name="community_name_body">انجمن مستقل از حساب‌های شماست. فقط همین نام دیده می‌شود؛ نه شماره، نه ایمیل.</string>
-    <string name="community_name_label">نام نمایشی</string>
-    <string name="community_name_rule">بین %1$s تا %2$s نویسه: حرف، عدد، فاصله یا زیرخط.</string>
-    <string name="community_name_confirm">ثبت نام</string>
-    <string name="community_name_change">تغییر نام</string>
-    <string name="community_name_as">شما: %1$s</string>
-    <string name="community_name_needed">برای این کار ابتدا یک نام انتخاب کنید.</string>
+    <string name="community_locked">This install has been locked out of the board.</string>
+    <string name="community_locked_hint">Reading still works. Ask Telegram support for a review.</string>
 
-    <!-- Two refusals, two controls. A 401 is «name first» and a 403 is a ban; folding them into one
-         message asks a banned reader to pick a name. -->
-    <string name="community_unregistered">برای نوشتن در انجمن ابتدا یک نام انتخاب کنید.</string>
-    <string name="community_locked">دسترسی این نصب به انجمن بسته شده است.</string>
-    <string name="community_locked_hint">خواندن همچنان باز است. برای بازبینی، از پشتیبانی تلگرام کمک بگیرید.</string>
+    <string name="community_unreadable">%1$s posts arrived and none was in a shape this version can read.</string>
+    <string name="community_unreadable_hint">This is not an outage, it is a format mismatch. Take a diagnostics export and send it.</string>
 
-    <!-- HTTP 200 with rows in the body, none of them in a shape this build can read. Counted rather
-         than described, because the count is the whole diagnosis. -->
-    <string name="community_unreadable">%1$s پست رسید و هیچ‌کدام به شکلی نبود که این نسخه بتواند بخواند.</string>
-    <string name="community_unreadable_hint">این قطعی نیست، اختلافِ قالب است. از صفحه‌ی تشخیص خروجی بگیرید و بفرستید.</string>
+    <string name="community_compose_label">What did you see in the market?</string>
+    <string name="community_compose_hint">At least %1$s characters</string>
+    <string name="community_compose_count">%1$s of %2$s characters</string>
+    <string name="community_post_pending">This post is not on the board.</string>
 
-    <string name="community_compose_label">چه چیزی در بازار دیدید؟</string>
-    <string name="community_compose_hint">دست‌کم %1$s نویسه</string>
-    <string name="community_compose_count">%1$s از %2$s نویسه</string>
-    <string name="community_compose_rules">بدون لینک، شماره و آیدی. متن بلافاصله منتشر می‌شود.</string>
-    <string name="community_refused">این متن پذیرفته نشد.</string>
-    <string name="community_post_pending">این پست روی تابلو نیست.</string>
-
-    <string name="community_thread_title">گفت‌وگو</string>
-    <string name="community_thread_gone">این پست دیگر در دسترس نیست.</string>
-    <string name="community_thread_back">بازگشت</string>
-    <string name="community_reply_label">پاسخ شما</string>
-    <string name="community_reply_to">در پاسخ به %1$s</string>
-    <string name="community_best_badge">بهترین پاسخ</string>
-    <string name="community_best_mark">انتخاب بهترین</string>
-    <string name="community_best_clear">برداشتن نشان</string>
-    <string name="community_post_menu">گزینه‌های این نوشته</string>
-    <string name="community_report">گزارش تخلف</string>
-    <string name="community_copy">رونوشت متن</string>
-    <string name="community_reported">گزارش شما ثبت شد. با سه گزارش، نوشته پنهان می‌شود.</string>
-    <string name="community_copied">متن رونوشت شد.</string>
-    <string name="community_search">جست‌وجو در انجمن</string>
-    <string name="community_search_empty">نوشته‌ای با این عبارت پیدا نشد.</string>
-    <string name="community_leaderboard">جدول برترین‌ها</string>
-    <string name="community_leaderboard_rank">رتبه‌ی شما: %1$s از %2$s</string>
-    <string name="community_leaderboard_empty">هنوز کسی امتیازی نگرفته است.</string>
-    <string name="community_leaderboard_points">%1$s امتیاز</string>
-    <string name="community_leaderboard_posts">%1$s نوشته</string>
+    <string name="community_thread_title">Thread</string>
+    <string name="community_thread_gone">This post is no longer available.</string>
+    <string name="community_thread_back">Back</string>
+    <string name="community_reply_label">Your reply</string>
+    <string name="community_reply_to">In reply to %1$s</string>
+    <string name="community_best_mark">Mark as best reply</string>
+    <string name="community_best_clear">Remove the best-reply mark</string>
+    <string name="community_dismiss">OK</string>
+    <string name="community_name_title">Pick a name for yourself</string>
+    <string name="community_name_body">The board is independent of your accounts. Only this name is shown — no phone, no email.</string>
+    <string name="community_name_label">Display name</string>
+    <string name="community_name_rule">%1$s to %2$s characters: letters, digits, spaces or underscores.</string>
+    <string name="community_name_confirm">Save name</string>
+    <string name="community_name_change">Change name</string>
+    <string name="community_name_as">You: %1$s</string>
+    <string name="community_name_needed">Pick a name first to do this.</string>
+    <string name="community_unregistered">Pick a name before writing on the board.</string>
+    <string name="community_compose_rules">No links, numbers or handles. Posts go live at once.</string>
+    <string name="community_refused">This text was not accepted.</string>
+    <string name="community_post_menu">Post options</string>
+    <string name="community_report">Report</string>
+    <string name="community_copy">Copy text</string>
+    <string name="community_reported">Reported. Three reports hide a post.</string>
+    <string name="community_copied">Copied.</string>
+    <string name="community_search">Search the community</string>
+    <string name="community_search_empty">No post matched that.</string>
+    <string name="community_leaderboard">Leaderboard</string>
+    <string name="community_leaderboard_rank">Your rank: %1$s of %2$s</string>
+    <string name="community_leaderboard_empty">Nobody has scored yet.</string>
+    <string name="community_leaderboard_points">%1$s points</string>
+    <string name="community_leaderboard_posts">%1$s posts</string>
+    <string name="community_like">Like</string>
+    <string name="community_reply">Reply</string>
+    <string name="community_best_badge">Best answer</string>
 </resources>

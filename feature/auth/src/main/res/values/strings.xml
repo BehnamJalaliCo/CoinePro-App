@@ -1,61 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="auth_secure_sign_in">ورود امن</string>
-    <string name="auth_wordmark_description">پرو چارت</string>
+    <string name="auth_secure_sign_in">Secure sign-in</string>
+    <string name="auth_wordmark_description">Pro Chart</string>
 
-    <string name="auth_flow">سیگنال ← تحلیل ← ورود / حد ضرر / اهداف ← تأیید صریح اجرا ← پایش ← نتیجه</string>
-    <string name="auth_risk">معامله ریسکِ زیان دارد. سیگنال و تحلیل هوش مصنوعی تضمینِ نتیجه نیستند، و اپ هرگز موفقیت اجرا را از خودش نمی‌سازد.</string>
-    <string name="auth_loading_config">در حال دریافت تنظیمات ورود…</string>
-    <string name="auth_retry_config">تلاش دوباره برای ورود با تلگرام</string>
-    <string name="auth_continue_telegram">ادامه با تلگرام</string>
-    <string name="auth_cancel">انصراف</string>
-    <string name="auth_back">بازگشت</string>
-    <string name="auth_retry">تلاش دوباره</string>
-    <string name="auth_sign_out">خروج از حساب</string>
+    <string name="auth_flow">Signal → analysis → entry / stop / targets → explicit execution confirmation → monitor → result</string>
+    <string name="auth_risk">Trading carries the risk of loss. Signals and AI analysis are not guaranteed outcomes, and the app never invents execution success.</string>
+    <string name="auth_loading_config">Loading sign-in configuration…</string>
+    <string name="auth_retry_config">Retry Telegram sign-in</string>
+    <string name="auth_continue_telegram">Continue with Telegram</string>
+    <string name="auth_cancel">Cancel</string>
+    <string name="auth_back">Back</string>
+    <string name="auth_retry">Retry</string>
+    <string name="auth_sign_out">Sign out</string>
 
-    <string name="auth_email">ایمیل</string>
-    <string name="auth_password">رمز عبور</string>
-    <string name="auth_new_password">رمز عبور جدید</string>
-    <string name="auth_full_name">نام و نام خانوادگی</string>
-    <string name="auth_code">کد تأیید</string>
-    <string name="auth_reset_token">کد بازیابی</string>
+    <string name="auth_email">Email</string>
+    <string name="auth_password">Password</string>
+    <string name="auth_new_password">New password</string>
+    <string name="auth_full_name">Full name</string>
+    <string name="auth_code">Verification code</string>
+    <string name="auth_reset_token">Recovery code</string>
 
-    <string name="auth_sign_in">ورود</string>
-    <string name="auth_sign_in_title">ورود به حساب</string>
-    <string name="auth_register">ساخت حساب</string>
-    <string name="auth_register_title">ساخت حساب تازه</string>
-    <string name="auth_no_account">حساب ندارید؟ ثبت‌نام کنید</string>
-    <string name="auth_have_account">حساب دارید؟ وارد شوید</string>
-    <string name="auth_forgot">رمز عبور را فراموش کرده‌ام</string>
-    <string name="auth_forgot_title">بازیابی رمز عبور</string>
-    <string name="auth_forgot_body">آدرس ایمیل حساب را بنویسید. اگر حسابی با آن آدرس وجود داشته باشد، کد بازیابی فرستاده می‌شود.</string>
-    <string name="auth_send_reset">ارسال کد بازیابی</string>
-    <string name="auth_reset_title">رمز عبور تازه</string>
-    <string name="auth_reset_body">کد هشت‌حرفی داخل ایمیل را بنویسید — به شکل ABCD-EFGH. خط تیره و حروف کوچک هم پذیرفته می‌شود. اگر لینک ایمیل را روی همین گوشی باز کنید، کد خودش پر می‌شود.</string>
-    <string name="auth_reset_submit">تغییر رمز عبور</string>
-    <string name="auth_continue_google">ادامه با گوگل</string>
-    <string name="auth_back_to_sign_in">بازگشت به ورود</string>
+    <string name="auth_sign_in">Sign in</string>
+    <string name="auth_sign_in_title">Sign in</string>
+    <string name="auth_register">Create account</string>
+    <string name="auth_register_title">Create an account</string>
+    <string name="auth_no_account">No account? Register</string>
+    <string name="auth_have_account">Already have an account? Sign in</string>
+    <string name="auth_forgot">I forgot my password</string>
+    <string name="auth_forgot_title">Recover your password</string>
+    <string name="auth_forgot_body">Enter the account\'s email address. If an account exists for it, a recovery code is sent.</string>
+    <string name="auth_send_reset">Send recovery code</string>
+    <string name="auth_reset_title">A new password</string>
+    <string name="auth_reset_body">Enter the eight-letter code from the email — it looks like ABCD-EFGH. The dash and lower case are both fine. Opening the emailed link on this phone fills it in for you.</string>
+    <string name="auth_reset_submit">Change password</string>
+    <string name="auth_continue_google">Continue with Google</string>
+    <string name="auth_back_to_sign_in">Back to sign-in</string>
 
-    <string name="auth_verify_title">تأیید ایمیل</string>
-    <string name="auth_verify_body">کدی به %1$s فرستاده شد. همان را اینجا بنویسید.</string>
-    <string name="auth_verify_submit">تأیید و ادامه</string>
-    <string name="auth_start_over">کد نرسید؟ از ابتدا شروع کنید</string>
-    <string name="auth_start_over_in">اگر کد نرسید، تا %1$d ثانیه‌ی دیگر می‌توانید از ابتدا شروع کنید</string>
+    <string name="auth_verify_title">Verify your email</string>
+    <string name="auth_verify_body">A code was sent to %1$s. Enter it here.</string>
+    <string name="auth_verify_submit">Verify and continue</string>
+    <string name="auth_start_over">Code did not arrive? Start again</string>
+    <string name="auth_start_over_in">If the code did not arrive, you can start again in %1$d seconds</string>
 
-    <string name="auth_password_hint">دست‌کم ۱۰ نویسه. عبارتی که به یاد بسپارید بهتر از رمزی است که مجبور شوید جایی بنویسید.</string>
+    <string name="auth_password_hint">At least 10 characters. A phrase you can remember beats a password you have to write down somewhere.</string>
 
-    <string name="auth_notice_code_sent">کد فرستاده شد.</string>
-    <string name="auth_notice_reset_requested">اگر حسابی با این آدرس وجود داشته باشد، کد بازیابی فرستاده شد. ایمیل خود را ببینید.</string>
-    <string name="auth_notice_password_changed">رمز عبور عوض شد. حالا با رمز تازه وارد شوید.</string>
+    <string name="auth_notice_code_sent">The code was sent.</string>
+    <string name="auth_notice_reset_requested">If an account exists for that address, a recovery code was sent. Check your email.</string>
+    <string name="auth_notice_password_changed">Your password was changed. Sign in with the new one.</string>
 
-    <string name="auth_error_rejected">درخواست پذیرفته نشد.</string>
-    <string name="auth_error_invalid">اطلاعات واردشده پذیرفته نشد.</string>
-    <string name="auth_error_rate_limited">تلاش‌های زیادی انجام شد.</string>
-    <string name="auth_error_unreachable">پاسخی نرسید. این یعنی درخواست بررسی نشد، نه اینکه رد شد.</string>
-    <string name="auth_retry_in">تلاش دوباره تا %1$d ثانیه‌ی دیگر</string>
+    <string name="auth_error_rejected">The request was not accepted.</string>
+    <string name="auth_error_invalid">Those details were not accepted.</string>
+    <string name="auth_error_rate_limited">Too many attempts.</string>
+    <string name="auth_error_unreachable">No answer came back. That means the request was not judged, not that it was refused.</string>
+    <string name="auth_retry_in">You can try again in %1$d seconds</string>
 
-    <string name="auth_methods_unknown">هنوز معلوم نیست کدام روش‌های ورود در دسترس‌اند.</string>
-    <string name="auth_methods_retry">تلاش دوباره</string>
-    <string name="auth_methods_none">در حال حاضر هیچ روش ورودی فعال نیست.</string>
-    <string name="auth_telegram_unavailable">ورود با تلگرام فعلاً فقط در نسخه‌ی وب کار می‌کند. اینجا با ایمیل وارد شوید.</string>
+    <string name="auth_methods_unknown">It is not yet known which ways to sign in are available.</string>
+    <string name="auth_methods_retry">Try again</string>
+    <string name="auth_methods_none">No sign-in method is available right now.</string>
+    <string name="auth_telegram_unavailable">Telegram sign-in works in the web app only for now. Use e-mail here.</string>
 </resources>

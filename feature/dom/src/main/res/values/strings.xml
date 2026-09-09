@@ -1,76 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Default language: Persian. -->
 <resources>
-    <string name="dom_title">عمق بازار</string>
-    <string name="dom_source">منبع: %1$s</string>
-    <string name="dom_column_bid">حجم خرید</string>
-    <string name="dom_column_bid_cumulative">خرید تجمعی</string>
-    <string name="dom_column_price">قیمت</string>
-    <string name="dom_column_ask">حجم فروش</string>
-    <string name="dom_column_ask_cumulative">فروش تجمعی</string>
-    <string name="dom_spread">اسپرد</string>
-    <string name="dom_mid">میانه</string>
-    <string name="dom_imbalance">سهم خرید</string>
-    <string name="dom_imbalance_note">سهم خرید روی %1$s سطح نزدیک اسپرد در هر سمت سنجیده می‌شود، نه روی کل دفتری که گرفته شده و نه فقط سطرهای روی صفحه.</string>
-    <string name="dom_truncated">فقط نزدیک‌ترین سطح‌ها به اسپرد نشان داده شده‌اند؛ دفتر از این پایین‌تر ادامه دارد.</string>
-    <string name="dom_crossed">دفتر در این لحظه ناسازگار است: بهترین خرید از بهترین فروش بالاتر رفته. اسپرد را نخوان.</string>
-    <string name="dom_updated">زمان دفتر %1$s</string>
-    <!-- An upper bound, not a measurement: this venue publishes no time, so the only honest figure
-         is the age the relay's cache can guarantee the book is under. -->
-    <string name="dom_max_age">این دفتر حداکثر %1$s ثانیه قدیمی است، به‌اضافه‌ی زمان رفت‌وبرگشت شبکه.</string>
-    <string name="dom_loading">در حال دریافت دفتر سفارش…</string>
+    <string name="dom_title">Depth of market</string>
+    <string name="dom_source">Source: %1$s</string>
+    <string name="dom_column_bid">Bid size</string>
+    <string name="dom_column_bid_cumulative">Bid cumulative</string>
+    <string name="dom_column_price">Price</string>
+    <string name="dom_column_ask">Ask size</string>
+    <string name="dom_column_ask_cumulative">Ask cumulative</string>
+    <string name="dom_spread">Spread</string>
+    <string name="dom_mid">Mid</string>
+    <string name="dom_imbalance">Bid share</string>
+    <string name="dom_imbalance_note">Bid share is measured over the %1$s levels nearest the spread on each side — not over the whole book that was loaded, and not only the rows on screen.</string>
+    <string name="dom_truncated">Only the levels nearest the spread are shown; the book continues below them.</string>
+    <string name="dom_crossed">The book is momentarily inconsistent: the best bid is above the best ask. Do not read the spread.</string>
+    <string name="dom_updated">Book time %1$s</string>
+    <string name="dom_max_age">This book is at most %1$s seconds old, plus network round trip.</string>
+    <string name="dom_loading">Loading the order book…</string>
 
-    <!-- The honest answers. None of them is a spinner, and none of the five below has a retry. -->
-    <string name="dom_unavailable_feed">این فید عمق بازار منتشر نمی‌کند.</string>
-    <string name="dom_unavailable_feed_hint">کارگزارِ متاتریدر ۵ سطح دوم را منتشر نکرده است. تا وقتی منتشر نشود، دفتر سفارشی برای این بازار وجود ندارد.</string>
-    <string name="dom_unavailable_endpoint">دفتر سفارش این بازار هنوز در دسترس نیست.</string>
-    <string name="dom_unavailable_endpoint_hint">دفتر سفارش برای این بازار هنوز ارائه نمی‌شود. با فعال‌شدنش، این صفحه بدون تغییر در اپ کار می‌کند.</string>
-    <string name="dom_unavailable_symbol">این بازار روی این پلتفرم دفتر سفارش ندارد.</string>
-    <string name="dom_unavailable_symbol_hint">نمادی که خواسته شد بیرون از فهرست بازارهای این پلتفرم است. تلاش دوباره جواب نمی‌دهد؛ از فهرست بازارها نماد دیگری باز کنید.</string>
-    <string name="dom_unavailable_delisted">این بازار از صرافی حذف شده است.</string>
-    <string name="dom_unavailable_delisted_hint">صرافی این قرارداد را دلیست کرده، پس دیگر دفتر سفارشی برایش وجود ندارد.</string>
-    <!-- Not a connection problem, which is what this screen used to say about it. The depth route
-         needs a TradeYar session; the chart and the price on the same market do not, so a reader
-         without one saw a live chart above a ladder blaming their network. No retry: the request is
-         refused identically until they sign in. -->
-    <string name="dom_unavailable_session">برای دیدن دفتر سفارش باید روی بازار کریپتو وارد حساب شوی.</string>
-    <string name="dom_unavailable_session_hint">قیمت و چارت این بازار عمومی‌اند و بدون حساب هم کار می‌کنند، ولی دفتر سفارش از مسیری می‌آید که نشستِ همین پلتفرم را می‌خواهد. تلاش دوباره بدون ورود، همین جواب را می‌دهد.</string>
+    <string name="dom_unavailable_feed">This feed does not publish order-book data.</string>
+    <string name="dom_unavailable_feed_hint">The MetaTrader 5 broker does not publish Level II. Until it does, there is no order book for this market.</string>
+    <string name="dom_unavailable_endpoint">The order book for this market is not available yet.</string>
+    <string name="dom_unavailable_endpoint_hint">The order book is not offered for this market yet. Once it is, this screen works without any change to the app.</string>
+    <string name="dom_unavailable_symbol">This market has no order book on this platform.</string>
+    <string name="dom_unavailable_symbol_hint">The symbol requested is outside this platform\'s list of markets. Trying again will not help; open a different market from the list.</string>
+    <string name="dom_unavailable_delisted">This market has been removed by the exchange.</string>
+    <string name="dom_unavailable_delisted_hint">The exchange has delisted this contract, so there is no order book for it any more.</string>
+    <string name="dom_unavailable_session">Sign in on the crypto market to see the order book.</string>
+    <string name="dom_unavailable_session_hint">The price and the chart for this market are public and work without an account, but the order book comes from a route that needs this platform\'s own session. Trying again without signing in gives the same answer.</string>
 
-    <!-- Real failures. Each keeps its retry, and each says whose problem it is. -->
-    <string name="dom_failed">دفتر سفارش در دسترس نیست.</string>
-    <string name="dom_failed_hint">اتصال را بررسی کنید و دوباره بگیرید.</string>
-    <string name="dom_outage_exchange">صرافی در این لحظه پاسخ نمی‌دهد.</string>
-    <string name="dom_outage_exchange_hint">اتصال شما سالم است؛ صرافی است که در دسترس نیست. کمی بعد دوباره امتحان کنید.</string>
-    <string name="dom_outage_relay">دفتر سفارش موقتاً در دسترس نیست.</string>
-    <string name="dom_outage_relay_hint">مشکل از سمت شما نیست. کمی بعد دوباره امتحان کنید.</string>
-    <string name="dom_retry">تلاش دوباره</string>
+    <string name="dom_failed">The order book is unavailable.</string>
+    <string name="dom_failed_hint">Check the connection and load it again.</string>
+    <string name="dom_outage_exchange">The exchange is not responding right now.</string>
+    <string name="dom_outage_exchange_hint">Your connection is fine; it is the exchange that is unreachable. Try again shortly.</string>
+    <string name="dom_outage_relay">The order book is temporarily unavailable.</string>
+    <string name="dom_outage_relay_hint">The problem is not at your end. Try again shortly.</string>
+    <string name="dom_retry">Try again</string>
 
-    <!-- A successful call whose answer is an empty queue. Not a failure and not a closed market. -->
-    <string name="dom_empty">در این لحظه سفارشی در دفتر نیست.</string>
-    <string name="dom_empty_hint">صرافی دفتر را فرستاد و خالی بود: بازاری که هیچ سفارش منتظری روی آن نمانده. این خطا نیست و تلاش دوباره چیزی را عوض نمی‌کند.</string>
+    <string name="dom_empty">There are no resting orders right now.</string>
+    <string name="dom_empty_hint">The exchange returned the book and it was empty: a market with nothing waiting on it. This is not an error, and trying again will not change it.</string>
 
-    <!-- The legend for the stacked-level mark. Shown whenever the venue counts orders at all, not
-         only when a mark happens to be on screen, so the caption does not blink between snapshots.
-         %1$s is the threshold, in Persian digits: it is a prose count, not a market figure. -->
-    <string name="dom_orders_note">عددی که روی میله می‌آید تعداد سفارش‌های آن سطح است و فقط از %1$s سفارش به بالا نشان داده می‌شود؛ نزدیک نُه سطح از هر ده سطح یک سفارش بیشتر ندارند.</string>
-    <!-- Said once, where the polling happens. Four megabytes an hour is real money on a metered
-         Iranian connection, and dearer again through a VPN. -->
-    <string name="dom_data_note">دفتر تا وقتی این صفحه باز است ثانیه‌ای یک‌بار به‌روز می‌شود؛ نزدیک ۴ مگابایت در ساعت. با بستن صفحه به‌روزرسانی می‌ایستد.</string>
+    <string name="dom_orders_note">The number on a bar is how many orders rest at that level, shown only from %1$s orders upwards; about nine levels in ten hold a single order.</string>
+    <string name="dom_data_note">The book refreshes once a second while this screen is open — roughly 4 MB an hour. Leaving the screen stops it.</string>
 
-    <!-- The precision selector, and the switch between a level's own size and the running total.
-         Both change what every row on the ladder means, so both sit in the chrome above it. -->
-    <string name="dom_step_label">تجمیع قیمت</string>
-    <!-- The book exactly as the venue sent it: one row per tick, nothing folded together. -->
-    <string name="dom_step_raw">خام</string>
-    <string name="dom_figure_amount">اندازه</string>
-    <string name="dom_figure_cumulative">تجمعی</string>
-    <string name="dom_step_note">با تجمیع قیمت، چند سطح مجاور در یک ردیف جمع می‌شوند و ستون قیمت به همان اندازه رقم اعشار می‌گیرد. سمت خرید به پایینِ گام و سمت فروش به بالای آن گرد می‌شود، پس اسپرد فقط می‌تواند بازتر شود، هرگز تنگ‌تر.</string>
+    <string name="dom_step_label">Price aggregation</string>
+    <string name="dom_step_raw">Raw</string>
+    <string name="dom_figure_amount">Amount</string>
+    <string name="dom_figure_cumulative">Cumulative</string>
+    <string name="dom_step_note">Aggregating folds neighbouring levels into one row and gives the price column the step\'s own decimal places. Bids round down onto their bucket and asks round up onto theirs, so the spread can only widen, never tighten.</string>
 
-    <!-- The depth curve under the ladder: the same running totals, drawn over the whole loaded book
-         instead of over the eight rows on screen. -->
-    <string name="dom_curve_title">منحنی عمق</string>
-    <string name="dom_curve_description">منحنی عمق بازار. بیشترین حجم تجمعی %1$s است، در بازه‌ی قیمتی %2$s تا %3$s.</string>
+    <string name="dom_curve_title">Depth curve</string>
+    <string name="dom_curve_description">Market depth curve. The deepest cumulative volume is %1$s, over the price band %2$s to %3$s.</string>
 
-    <string name="dom_pick_price">ساختن هشدار روی قیمت %1$s</string>
-    <string name="dom_pick_price_orders">ساختن هشدار روی قیمت %1$s، %2$s سفارش در این سطح</string>
+    <string name="dom_pick_price">Create an alert at %1$s</string>
+    <string name="dom_pick_price_orders">Create an alert at %1$s, %2$s orders at this level</string>
 </resources>
