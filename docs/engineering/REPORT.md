@@ -5,7 +5,7 @@ the proof; what is not, and why. Written as the work went, and finished with the
 the run. Every claim below names the test, gate, file or number that backs it, so a reader can
 check it rather than take it.
 
-Versions: §0 shipped as 4.47.0, §1 as 4.48.0, §2 as 4.49.0. Later sections name theirs.
+Versions: §0 shipped as 4.47.0, §1 as 4.48.0, §2 as 4.49.0, §3 as 4.50.0, §4 as 4.51.0. §5 is documentation on 4.51.0.
 
 ---
 
@@ -158,6 +158,79 @@ compiler and a VM. That is a different execution model and is **not built**; `do
 
 Numbers: 351 conformance scripts, 130 `ta.` bindings, 26 diagnostic codes, 69 tests in `:namascript:jvmTest`.
 
-## §4 Tablet — see below
+## §4 Tablet — adaptive shell in place, parity proven where it can be proven off-device (4.51.0)
 
-## §5 Web readiness — see below
+The tablet work landed across earlier sprints (the window class, the rail, `CoineProListDetail`,
+the chart workbench, eight panes); §4 closes what the plan names and did not have: the activity's
+resize contract, the fold, sheets on a wide window, the parity and input matrices, the
+architecture rule, and a keyboard/pointer test rig. `material3-adaptive` and `NavigationSuiteScaffold`
+are not in the Gradle cache and this environment is offline; the app's own `CoineProWindowClass`
+answers the same question from the configuration (and, unlike the library, answers it in a
+Robolectric render), so they were not added. Recorded as a deliberate substitution, not a gap.
+
+### 4.1 Foundation
+
+| plan | state | proof |
+| --- | --- | --- |
+| Compact / Medium / Expanded size classes | `CoineProWindowClass` (600 / 840 dp, Material's numbers), `showsNavigationRail`, `showsTwoPanes`, `prefersLabelledRail`, `maxChartPanes` | `WindowClassTest` at the dp either side of every threshold |
+| bottom bar → rail on medium/expanded | `CoineProNavigationRail` from the same `AppDestination.entries` as the bar | **new** `NavigationParityTest`: same keys, same order, same labels, same route on tap |
+| `resizeableActivity`, multi-window, DeX, ChromeOS | **new**: `android:resizeableActivity="true"` and the full `configChanges` set on `MainActivity`, so a split-screen resize is a recomposition rather than a restart that loses the viewport | manifest; `ChartPaneCapTest` «a tablet in a narrow multi-window split is capped like the phone it is shaped like» |
+| foldables: `FoldingFeature`, table-top posture | **new**: `androidx.window` 1.5.0; `CoineProFold` (table-top / book / hinge dp) provided from `MainActivity` through `LocalCoineProFold`; the chart caps its plot above the hinge in table-top (`plotHeightAboveHinge`) so the price scale is never cut; nothing is placed across a vertical hinge because the two-pane layouts already split there | `CoineProFoldTest`, `ChartFoldTest` (JVM — Robolectric has no hinge) |
+
+### 4.2 Canonical layouts
+
+| plan | state |
+| --- | --- |
+| Watchlist ⇄ chart list-detail, 320–400 dp list | `CoineProListDetail` on the watchlist/markets, screener, ideas and news pages; detail state is `rememberSaveable` so a rotation keeps the paired symbol. **Open**: a drag-to-resize divider (fixed list width today). |
+| Chart: drawing rail, right price scale, timeframe bar, side panels, 1–8 layouts | `ChartWorkbench` columns (tools / readings / both) measured against the content area; `ChartLayoutPreset` 1-8 (4.49.0); the price scale on the right in both directions (`docs/qa/RTL_TABLET.md`). **Open**: a `SupportingPaneScaffold`-style right panel switcher for DOM / object tree / alerts / tester / script editor — each is a page or sheet today, not a docked panel. |
+| Sheets → side panels or dialogs ≤ 560 dp on Expanded | **new**: `CoineProSheet` renders as a centred `Dialog` capped at `SHEET_DIALOG_MAX_WIDTH = 560.dp` (90 % height, scrollable body) when the window shows two panes; the phone keeps its bottom sheet. Every sheet in the app goes through this composable. Proof: `SheetShapeTest` (tablet ≤ 560 dp, phone full width). |
+| Home 12-column grid; DOM beside the chart; screener sticky-header table; journal/academy two-pane | **Open.** The home page is a single column at every width; DOM is its own page; the screener is a list with a list-detail chart, not a resizable table. Named here rather than half-built. |
+
+### 4.3 Parity guarantee
+
+| plan | state | proof |
+| --- | --- | --- |
+| one state holder per feature; architecture test that an Expanded-only composable reaches no state Compact lacks | **new** `LayoutParityArchitectureTest`: every `*Workbench.kt` names only the controllers/stores its `*Screen.kt` names; no `Controller`/`Store`/`ViewModel` class is referenced only from files that read the window class | green on the tree as committed |
+| `docs/qa/PARITY_MATRIX.md` generated from UI tests | **new** `scripts/quality/gen_parity_matrix.py` reads every `@Config(qualifiers = …)` in the render tests and writes the matrix; `check-cross-phase-consistency.py` fails when it is stale. Cells are counts of real renders, and «—» is printed where none exists: sheets/alerts/screener/terminal have no tablet render yet | the file; the gate |
+| screenshot matrix: 12 screens × 4 devices × 2 themes × 2 locales | 9 tablet goldens added (`*-fa-840` portrait for explore, ideas, chart; `*-fa-1280` landscape for watchlist, explore, ideas, menu, chart) on top of the phone set and the 18 chart-type tablet goldens; 13 MB of goldens in the repo. **Not** the plan's full product: no English tablet set, no light tablet set, no Galaxy Tab S9 Ultra (12.4″) qualifier, and a fold is a window class here, not a device | `GoldenScreenshotTest` |
+| RTL on tablet: rail right, list-detail mirrored, price scale stays right | documented as a decision in **`docs/qa/RTL_TABLET.md`** | the goldens named there |
+| input matrix: touch, S Pen, mouse, keyboard, trackpad | **`docs/qa/INPUT_MATRIX.md`**, one row per chart action; **new** `ChartKeyboardTest` (digits by name, `+`/`-`, Alt+H/V, arrows, Space, Esc, Z/Shift+Z/Y, down-only) beside `ChartDeskPointerTest` (wheel, hover, right-click) | the two tests |
+| bug hunts: rotation mid-gesture, split resize with a sheet open, keyboard over the editor, font scale, TalkBack order | font scale 1.3 is a golden (`menu-fa-411-font130`, `watchlist-fa-393-font130`); the rest need a device or an instrumented run | — |
+
+### 4.4 Acceptance, honestly
+
+- Parity matrix: every top-level screen (watchlist, chart, explore, ideas, menu, shell) has a render at phone, tablet-portrait and tablet-landscape. Sheets, alerts, screener and the terminal have phone renders only. The matrix says so; it is not 100 % and is not marked as such.
+- Soak test, tablet benchmark thresholds, the 60-second recording: **need a device**. None run here.
+- `material3-adaptive`: not added (offline cache; the local class covers the decisions and renders under Robolectric).
+
+Numbers: 6 new test classes (`NavigationParityTest`, `ChartKeyboardTest`, `SheetShapeTest`, `LayoutParityArchitectureTest`, `CoineProFoldTest`, `ChartFoldTest`), 9 new goldens, 2 QA documents plus the generated matrix.
+
+
+## §5 Web readiness — the engine is portable and proven so; the target is documented, not enabled
+
+| plan | state | proof |
+| --- | --- | --- |
+| keep `:chart-core` / `:namascript` KMP-clean; `jvm()` target; JVM tests in CI | done in 4.48.0 and held since: both modules are `org.jetbrains.kotlin.multiplatform` with `jvm()` + Android, `commonMain` free of `java.*`/`android.*`/Compose, and `android-ci.yml` runs `:chart-core:jvmTest :namascript:jvmTest` | the two `ArchitectureTest`s; the workflow |
+| `wasmJs()` compile check «when the toolchain is stable in the repo» | **not enabled**: no `kotlin-stdlib-wasm-js` in the offline Gradle cache, so the target cannot be resolved here. `docs/web/PLAN.md` §2 lists the exact four steps (target lines, the five `actual`s on `Date`/`CivilDate`, the `JvmInline` import, the CI line) and the two things checked in advance that could have broken the compile (`String.format`, `Math.floorDiv` — neither is in common code) | `docs/web/PLAN.md` |
+| `docs/web/PLAN.md` | **new**: what is ready, the Wasm target, the Compose Multiplatform terminal (which of `:chart-ui` moves and how), the server side in build order (static + CDN, API gateway on one origin, auth, WebSocket fan-out, alert engine, layout/watchlist/drawing sync, `assetlinks.json`, support), what stays true on the phone, and three open product decisions | the file |
+| prepare `pro-chart.com`: `BrandConfig` host, App Links, legal pages, support | done in 4.47.0: `WEB_HOST`, `WEB_URL`, `LEGAL_BASE_URL`, the `/reset` App Link, the four legal documents pointing at the host; support stays the Telegram channel. The host itself **does not answer** and is the owner's to stand up (`docs/release/DOMAINS.md` gives the order) | `BrandConfig`, the manifest, `DOMAINS.md` |
+
+---
+
+## Definition of done — as it stands
+
+- [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).
+- [x] Modules extracted; architecture tests green; JVM tests for the core modules run in CI.
+- [~] §2.2 series types and §2.4 drawing behaviours with goldens; multi-chart layouts; benchmarks. All series types render and 36 chart-type goldens exist; drawing behaviours are pinned by gesture tests, **not** by goldens; layouts 1–8 done; benchmarks need a device.
+- [~] NamaScript SPEC written; 351 conformance scripts pass; editor with autocomplete and diagnostics on phone and tablet; Pine paste helper works — **as a library**, not yet a button in the studio.
+- [~] Tablet: adaptive layouts, rail, list-detail, side panels, multi-chart; parity matrix generated and honest (**not 100 %**: sheets, alerts, screener, terminal have phone renders only); input matrix written and its keyboard/pointer rows tested; soak test and device screenshots **need a device**.
+- [x] `pro-chart.com` in `BrandConfig`, App Links, legal; web plan documented.
+- [x] This report, with numbers per section and the open product decisions (`docs/web/PLAN.md` §6, plus the locale decision in §0).
+
+### The one deviation from the plan, restated
+
+The plan's §0 asked for the locales to be inverted (English in `values/`, Persian in `values-fa/`). The repository's working agreement says Persian is the default locale; that rule won, and every string key, note policy and golden in this run is on that basis.
+
+### What a device would settle, in one list
+
+Tablet soak (30 min Monkey/Espresso), tablet benchmark thresholds, the 60-second recording, the Pixel 6a NamaScript timings (< 50 ms compile / < 40 ms evaluate; measured here on the JVM at 2.6 ms / ~1.4 s for 300 lines × 20 000 bars, which is the vectorised interpreter's known cost — v2's VM is the fix), S Pen pressure and palm rejection, the hinge's real dp on a Fold, TalkBack order on the rail, Galaxy Tab S9 Ultra goldens.

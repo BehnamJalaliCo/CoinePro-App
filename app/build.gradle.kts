@@ -619,6 +619,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
+    // Fold posture — the hinge, and whether the device sits half-open. See `CoineProFold`.
+    implementation(libs.androidx.window)
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.navigation.compose)

@@ -10,7 +10,14 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.platform.LocalDensity
+import androidx.window.layout.FoldingFeature
+import androidx.window.layout.WindowInfoTracker
+import com.coinepro.core.designsystem.CoineProFold
+import com.coinepro.core.designsystem.LocalCoineProFold
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
@@ -245,6 +252,8 @@ class MainActivity : FragmentActivity() {
                 LocalTeachingDismissals provides rememberTeachingDismissals(teachingStore),
                 // Logos the drawn set does not cover, from the API host. See `LogoProvider`.
                 LocalLogoProvider provides remoteLogos,
+                // The hinge, for the chart and the parity report. See `CoineProFold`.
+                LocalCoineProFold provides rememberFoldPosture(),
             ) {
             CoineProApp(
                 sessionController = sessionController,
@@ -367,6 +376,38 @@ class MainActivity : FragmentActivity() {
      *
      * Failures are the engine's to absorb; it keeps the old prices and labels them.
      */
+    /**
+     * The fold posture as [CoineProFold], from `androidx.window`'s tracker.
+     *
+     * `produceState` so the collection lives exactly as long as the composition: the tracker's flow
+     * emits on every layout-info change (a fold, an unfold, a rotation), and the state it feeds is
+     * a `staticCompositionLocalOf`, so a change recomposes the app once. Devices without a hinge
+     * emit an empty feature list once and the value stays [CoineProFold.Flat].
+     */
+    @Composable
+    private fun rememberFoldPosture(): CoineProFold {
+        val density = LocalDensity.current
+        val posture by produceState(CoineProFold.Flat, this, density) {
+            WindowInfoTracker.getOrCreate(this@MainActivity)
+                .windowLayoutInfo(this@MainActivity)
+                .collect { info ->
+                    val fold = info.displayFeatures.filterIsInstance<FoldingFeature>().firstOrNull()
+                    value = if (fold == null) {
+                        CoineProFold.Flat
+                    } else {
+                        CoineProFold.of(
+                            halfOpened = fold.state == FoldingFeature.State.HALF_OPENED,
+                            horizontalHinge = fold.orientation == FoldingFeature.Orientation.HORIZONTAL,
+                            separating = fold.isSeparating,
+                            hingeTopDp = with(density) { fold.bounds.top.toDp() }.value.toInt(),
+                            hingeBottomDp = with(density) { fold.bounds.bottom.toDp() }.value.toInt(),
+                        )
+                    }
+                }
+        }
+        return posture
+    }
+
     private fun refreshWidgets() {
         lifecycleScope.launch {
             runCatching { widgetRefreshEngine.refresh() }

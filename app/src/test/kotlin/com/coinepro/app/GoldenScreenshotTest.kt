@@ -187,6 +187,53 @@ class GoldenScreenshotTest {
     @Config(sdk = [34], qualifiers = FA_840)
     fun menuTablet() = composeRule.assertMatchesGolden("menu-fa-840") { Menu() }
 
+    /* ------------------------------------------------------------------ the tablet, both ways */
+
+    /*
+     * §4 of the plan: every top-level screen on the tablet in both orientations, so the parity
+     * matrix in `docs/qa/PARITY_MATRIX.md` (generated from these qualifiers) has a picture behind
+     * every cell rather than a tick. Portrait is [FA_840], the two-pane threshold; landscape is
+     * [FA_1280], a ten-inch tablet on its side, where the rail is labelled and the chart's plot
+     * is wider than it is tall. A foldable open flat is the portrait case by window class; the
+     * hinge itself is a JVM matter (`ChartFoldTest`), because Robolectric has no hinge to render.
+     */
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_840)
+    fun exploreTablet() = composeRule.assertMatchesGolden("explore-fa-840") { Explore() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_840)
+    fun ideasTablet() = composeRule.assertMatchesGolden("ideas-signals-fa-840") { Ideas(IdeasFace.SIGNALS) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_840)
+    fun chartTablet() = composeRule.assertMatchesGolden("chart-fa-840") {
+        ChartScreen(controller = ScreenshotFixtures.chartController(scope))
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_1280)
+    fun watchlistTabletLandscape() = composeRule.assertMatchesGolden("watchlist-fa-1280") { Watchlist() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_1280)
+    fun exploreTabletLandscape() = composeRule.assertMatchesGolden("explore-fa-1280") { Explore() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_1280)
+    fun ideasTabletLandscape() = composeRule.assertMatchesGolden("ideas-signals-fa-1280") { Ideas(IdeasFace.SIGNALS) }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_1280)
+    fun menuTabletLandscape() = composeRule.assertMatchesGolden("menu-fa-1280") { Menu() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_1280)
+    fun chartTabletLandscape() = composeRule.assertMatchesGolden("chart-fa-1280") {
+        ChartScreen(controller = ScreenshotFixtures.chartController(scope))
+    }
+
     @Test
     @Config(sdk = [34], qualifiers = FA_411, fontScale = 1.3f)
     fun menuLargeType() = composeRule.assertMatchesGolden("menu-fa-411-font130") { Menu() }
@@ -352,6 +399,9 @@ class GoldenScreenshotTest {
 
         /** A tablet in portrait — past the width where lists and charts go two-pane. */
         const val FA_840 = "fa-rIR-ldrtl-w840dp-h1280dp-xhdpi"
+
+        /** The same tablet on its side — the labelled rail, and a plot wider than it is tall. */
+        const val FA_1280 = "fa-rIR-ldrtl-sw800dp-w1280dp-h800dp-xhdpi"
     }
 }
 

@@ -27,7 +27,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import com.coinepro.core.designsystem.CoineProFold
 import com.coinepro.core.designsystem.CoineProSkeleton
+import com.coinepro.core.designsystem.coineProFold
 import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.TeachingSurface
 import androidx.compose.ui.graphics.RectangleShape
@@ -1161,11 +1163,15 @@ fun ChartScreen(
     val configuration = LocalConfiguration.current
     val window = coineProWindowClass()
     val roomy = window.width != CoineProWindowSize.COMPACT
-    val plotHeight = remember(configuration.screenHeightDp, roomy) {
+    val fold = coineProFold()
+    val plotHeight = remember(configuration.screenHeightDp, roomy, fold) {
         val fraction = if (roomy) TABLET_PLOT_SCREEN_FRACTION else PLOT_SCREEN_FRACTION
         val floor = if (roomy) TABLET_PLOT_MIN else PLOT_MIN
         val ceiling = if (roomy) TABLET_PLOT_MAX else PLOT_MAX
-        (configuration.screenHeightDp * fraction).dp.coerceIn(floor, ceiling)
+        val wanted = (configuration.screenHeightDp * fraction).dp.coerceIn(floor, ceiling)
+        // Half-open on a table, hinge across the window: the plot stays above the crease so the
+        // price scale is never cut in two, and the tools and readings take the lower half.
+        plotHeightAboveHinge(wanted, fold)
     }
 
     /** Whether the price axis is off its defaults — inverted, locked, or a pinned precision. */
@@ -3932,6 +3938,23 @@ private val ADD_INTERVAL_HEIGHT = 56.dp
  */
 private const val PLOT_SCREEN_FRACTION = 0.72f
 private val PLOT_MIN = 260.dp
+
+/**
+ * The plot's height once the hinge has had its say: [wanted] on a flat device, and on a table-top
+ * posture the top half less the toolbar's row, never below [FOLD_PLOT_MIN]. Pure, so the arithmetic
+ * is asserted on the JVM in `ChartFoldTest`.
+ */
+internal fun plotHeightAboveHinge(wanted: Dp, fold: CoineProFold): Dp {
+    if (!fold.tableTop || fold.hingeTopDp <= 0) return wanted
+    val aboveHinge = (fold.hingeTopDp - FOLD_CHROME_ABOVE_PLOT_DP).dp
+    return wanted.coerceAtMost(aboveHinge).coerceAtLeast(FOLD_PLOT_MIN)
+}
+
+/** The header and the interval row that sit above the plot; what the hinge's top has to pay for. */
+private const val FOLD_CHROME_ABOVE_PLOT_DP = 96
+
+/** Below this the plot is a sparkline; a hinge that high is a device the layout does not know. */
+private val FOLD_PLOT_MIN = 180.dp
 private val PLOT_MAX = 780.dp
 
 /**

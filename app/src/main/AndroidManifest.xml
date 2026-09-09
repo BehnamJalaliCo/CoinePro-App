@@ -47,10 +47,19 @@
                 android:resource="@xml/shared_files" />
         </provider>
 
+        <!--
+            Resizeable, and told about every configuration change it can survive, because the
+            plan's first-class tablet is also a split-screen tablet, a Chromebook window and a DeX
+            desktop, and a chart that restarts on every resize loses its viewport and the gesture in
+            progress. Compose re-reads the window class on its own (`CoineProWindowClass`); the
+            activity only has to promise not to die.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
+            android:resizeableActivity="true"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|keyboard|keyboardHidden|navigation|uiMode"
             android:theme="@style/Theme.CoinePro.Launch">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

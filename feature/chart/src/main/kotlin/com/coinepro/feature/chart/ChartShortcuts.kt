@@ -26,7 +26,7 @@ import com.coinepro.core.marketdata.Timeframe
  * Key-down only. Android delivers both down and up, and acting on both fires every shortcut twice —
  * which on a timeframe key is invisible and on a step-forward key is two bars.
  */
-internal fun Modifier.chartShortcuts(
+fun Modifier.chartShortcuts(
     onTimeframe: (Timeframe) -> Unit,
     onReplayToggle: () -> Unit,
     onStep: () -> Unit,

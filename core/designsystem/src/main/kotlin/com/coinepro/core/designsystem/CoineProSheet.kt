@@ -41,6 +41,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Dialog
 import com.coinepro.core.common.toPersianDigits
 
 /**
@@ -70,6 +78,31 @@ fun CoineProSheet(
     scrimAlpha: Float = SHEET_SCRIM_ALPHA,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    // On an expanded window a bottom sheet is a strip across a twelve-inch glass — the wrong
+    // shape and, at full width, a wall of controls the reader has to walk. The same body opens as
+    // a dialog capped at [SHEET_DIALOG_MAX_WIDTH] instead: the reader's eye, not the glass, decides
+    // how wide a list of options is. Nothing about the content changes; the phone keeps its sheet.
+    if (coineProWindowClass().showsTwoPanes) {
+        Dialog(
+            onDismissRequest = onDismiss,
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Surface(
+                modifier = modifier
+                    .widthIn(max = SHEET_DIALOG_MAX_WIDTH)
+                    .fillMaxHeight(SHEET_DIALOG_MAX_HEIGHT_FRACTION)
+                    .padding(CoineProSpacing.Two),
+                shape = CoineProShapes.large,
+                color = CoineProColors.Surface,
+                border = BorderStroke(1.dp, CoineProColors.Border),
+            ) {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    CoineProSheetBody(title = title, subtitle = subtitle, onClose = onDismiss, content = content)
+                }
+            }
+        }
+        return
+    }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -83,6 +116,10 @@ fun CoineProSheet(
         CoineProSheetBody(title = title, subtitle = subtitle, onClose = onDismiss, content = content)
     }
 }
+
+/** The widest a sheet-as-dialog gets on a tablet: the plan's number, and about sixty characters of Persian. */
+val SHEET_DIALOG_MAX_WIDTH = 560.dp
+private const val SHEET_DIALOG_MAX_HEIGHT_FRACTION = 0.9f
 
 /**
  * The sheet's chrome without the sheet.

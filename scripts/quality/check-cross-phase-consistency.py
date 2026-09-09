@@ -553,8 +553,20 @@ def check_string_lint() -> None:
     require(result.returncode == 0, "string lint failed:\n" + result.stdout + result.stderr)
 
 
+def check_parity_matrix() -> None:
+    """docs/qa/PARITY_MATRIX.md is generated from the render tests' qualifiers; a committed copy
+    that no longer matches them is a matrix that claims renders which do not exist."""
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "quality" / "gen_parity_matrix.py"), "--check"],
+        capture_output=True,
+        text=True,
+    )
+    require(result.returncode == 0, "parity matrix stale:\n" + result.stdout + result.stderr)
+
+
 def main() -> None:
     check_module_map()
+    check_parity_matrix()
     check_brand_spelling()
     check_ui_vocabulary()
     check_english_locale_is_english()
