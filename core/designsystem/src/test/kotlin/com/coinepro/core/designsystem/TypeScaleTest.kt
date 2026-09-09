@@ -98,4 +98,29 @@ class TypeScaleTest {
             assertTrue("a dense role is carrying reading leading", ratio <= 1.45f)
         }
     }
+
+    /**
+     * Item 3 of the 4.52 run: tabular figures on every style the system offers, so nothing that
+     * carries a number — a row's price, an axis label, a ladder rung, a calculator's answer, or a
+     * body sentence with a figure in it — can reflow as its digits change.
+     */
+    @Test
+    fun `every style carries tabular figures`() {
+        val slots = with(CoineProTypography) {
+            listOf(
+                "displayLarge" to displayLarge, "displayMedium" to displayMedium, "displaySmall" to displaySmall,
+                "headlineLarge" to headlineLarge, "headlineMedium" to headlineMedium, "headlineSmall" to headlineSmall,
+                "titleLarge" to titleLarge, "titleMedium" to titleMedium, "titleSmall" to titleSmall,
+                "bodyLarge" to bodyLarge, "bodyMedium" to bodyMedium, "bodySmall" to bodySmall,
+                "labelLarge" to labelLarge, "labelMedium" to labelMedium, "labelSmall" to labelSmall,
+            )
+        } + listOf(
+            "Numeric" to CoineProTextStyles.Numeric, "NumericLarge" to CoineProTextStyles.NumericLarge,
+            "Balance" to CoineProTextStyles.Balance, "RowFigure" to CoineProTextStyles.RowFigure,
+            "TileFigure" to CoineProTextStyles.TileFigure, "Eyebrow" to CoineProTextStyles.Eyebrow,
+        )
+        val missing = slots.filter { (_, style) -> style.fontFeatureSettings?.contains(TABULAR_FIGURES) != true }.map { it.first }
+        assertTrue("styles without tnum: $missing", missing.isEmpty())
+        assertTrue(CoineProTypography.bodyMedium.numeric().fontFeatureSettings!!.contains(TABULAR_FIGURES))
+    }
 }

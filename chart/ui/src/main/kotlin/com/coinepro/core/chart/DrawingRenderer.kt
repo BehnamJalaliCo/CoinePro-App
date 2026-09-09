@@ -18,6 +18,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
+import com.coinepro.core.designsystem.TABULAR_FIGURES
+import com.coinepro.core.designsystem.CoineProLatinFontFamily
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -1424,7 +1426,13 @@ private fun spanText(seconds: Long): String {
 private fun degreesOf(from: Offset, to: Offset): Float =
     (atan2(-(to.y - from.y).toDouble(), (to.x - from.x).toDouble()) * 180 / Math.PI).toFloat()
 
-private fun boxStyle(colour: Color) = TextStyle(color = colour, fontSize = LABEL_SIZE)
+// Tabular figures and the Latin face: a price on a box label ticks like a price on the axis.
+private fun boxStyle(colour: Color) = TextStyle(
+    color = colour,
+    fontSize = LABEL_SIZE,
+    fontFamily = CoineProLatinFontFamily,
+    fontFeatureSettings = TABULAR_FIGURES,
+)
 
 // The two market colours, hard-coded rather than read from the theme: a stop-loss band is red in
 // both themes and in every terminal, and a drawing that changed sides with the palette would be a

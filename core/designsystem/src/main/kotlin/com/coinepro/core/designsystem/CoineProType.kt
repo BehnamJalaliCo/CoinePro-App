@@ -90,6 +90,11 @@ private fun coineProTextStyle(
     fontSize = fontSize.sp,
     lineHeight = lineHeight.sp,
     letterSpacing = letterSpacing.sp,
+    // Tabular figures on *every* style, not only the numeric ones (item 3 of the 4.52 run). For
+    // IRANYekanX it is a no-op — its Latin digits are already equal-width, and the gate proves it
+    // — but a price that lands in a body style through a fallback face, or a Latin word beside a
+    // figure, must not reflow as the digits tick. `TypeScaleTest` pins that no style lacks it.
+    fontFeatureSettings = TABULAR_FIGURES,
     lineHeightStyle = PersianLineHeightStyle,
 )
 

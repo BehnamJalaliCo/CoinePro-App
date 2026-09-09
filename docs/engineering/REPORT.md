@@ -264,6 +264,14 @@ No `(en)` configuration remains from the app's own resources (the `en-rAU`… en
 
 Not done: the home 12-column grid, DOM as a resizable table, journal/academy two-pane, ChromeOS/DeX on hardware, TalkBack order on the rail.
 
+### Item 3 — numerals and fonts (4.54.0) — tabular figures done; the two weights are the owner's files
+
+| asked | done | proof |
+| --- | --- | --- |
+| `FontFeatureSettings("tnum")` on every numeric text style (prices, axes, DOM, tables, calculators) | on **every** style: the base `coineProTextStyle` carries `tnum`, so all fifteen Material slots and the six `CoineProTextStyles` have it; the chart's axis labels already did (`axisStyle`) and the drawing-box labels now do. For IRANYekanX it is a no-op — its Latin digits are equal-width by design and `check_tabular_digits` measures the font — so the change is for the Latin face and for any fallback | `TypeScaleTest` «every style carries tabular figures» |
+| IRANYekanX Medium + SemiBold | **blocked on the owner**: the two TTFs are licensed and not in the repository; Medium and SemiBold resolve to Bold as before. `docs/OWNER_ACTIONS.md` §4 names the files and where they go | — |
+| proof: 5-second 60 fps tick recording, no glyph shift | a recording needs a device. What it would show is measured instead: `TabularFiguresTest` lays out the ten strings a price ticks through (`00,000.00` … `99,999.99`) under six styles with the shipped fonts on native Skia and asserts one width per style | `TabularFiguresTest` |
+
 ## Definition of done — as it stands
 
 - [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).

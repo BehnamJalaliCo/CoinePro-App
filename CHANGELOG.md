@@ -15,6 +15,24 @@ it is for.
 
 ---
 
+## [4.54.0] — 2026-09-09 — tabular figures everywhere
+
+Item 3 of the 4.52 run.
+
+### Changed
+- **`tnum` on every text style** the design system offers, not only the numeric ones: the base
+  `coineProTextStyle` carries `fontFeatureSettings = "tnum"`, so a figure in a row, an axis label,
+  a ladder rung, a table cell or a calculator's answer keeps its width as the digits tick; the
+  chart's drawing-box labels take the Latin face and tabular figures too.
+- Proof, measured rather than recorded: `TabularFiguresTest` lays out the ten strings a price can
+  tick through under six styles with the shipped fonts and asserts one width each;
+  `TypeScaleTest` fails on any style without `tnum`.
+
+### Not done, and said so
+- **IRANYekanX Medium and SemiBold** are licensed files the repository does not hold; the two
+  weights still resolve to Bold. `docs/OWNER_ACTIONS.md` §4 says where to put them.
+- The five-second 60 fps recording needs a device.
+
 ## [4.53.0] — 2026-09-09 — the tablet on Material's own scaffolds
 
 Item 2 of the 4.52 run. The window class, the two-pane pages and the chart's columns were the
