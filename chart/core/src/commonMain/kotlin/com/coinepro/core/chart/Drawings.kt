@@ -240,6 +240,10 @@ enum class DrawingSync {
  * `DrawingToolsTest` asserts that every tool has an icon that exists and a help entry that exists.
  */
 object DrawingTools {
+    /** The two one-tap lines, by id, for a keyboard that arms them. */
+    const val HORIZONTAL_LINE = "hline"
+    const val VERTICAL_LINE = "vline"
+
 
     /**
      * The two rail entries that are modes rather than drawings, and have no «؟».

@@ -54,6 +54,7 @@
     <string name="panes_title">%1$s charts</string>
     <string name="panes_single">One chart</string>
     <string name="panes_count_label">Panes</string>
+    <string name="panes_layout_label">Layout</string>
     <string name="panes_no_chart">This symbol has no chart at this bar length.</string>
     <string name="panes_interval_title">Timeframe</string>
     <string name="panes_symbol_title">This pane\'s symbol</string>

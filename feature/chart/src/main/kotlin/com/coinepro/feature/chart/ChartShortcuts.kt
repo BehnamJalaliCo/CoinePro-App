@@ -3,10 +3,12 @@ package com.coinepro.feature.chart
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.marketdata.Timeframe
 
 /**
@@ -32,9 +34,26 @@ internal fun Modifier.chartShortcuts(
     onCancelDrawing: () -> Unit,
     onUndoDrawing: () -> Unit,
     onRedo: () -> Unit,
+    /** One zoom notch, in (`true`) or out. Bound to `+`/`=` and `-`, on the row and the pad. */
+    onZoom: ((zoomIn: Boolean) -> Unit)? = null,
+    /** Arm a drawing tool by its catalogue id. Alt+H is the horizontal line, Alt+V the vertical. */
+    onArmTool: ((id: String) -> Unit)? = null,
 ): Modifier = onKeyEvent { event ->
     if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+    // The two line tools sit on Alt so that a bare H or V stays free for the future; TradingView
+    // binds them the same way, and a hand that learned it there should find it here.
+    if (event.isAltPressed && onArmTool != null) {
+        when (event.key) {
+            Key.H -> { onArmTool(DrawingTools.HORIZONTAL_LINE); return@onKeyEvent true }
+            Key.V -> { onArmTool(DrawingTools.VERTICAL_LINE); return@onKeyEvent true }
+            else -> Unit
+        }
+    }
     when (event.key) {
+        // Zoom, one notch per press. `=` is the unshifted `+` on every layout that has one.
+        Key.Plus, Key.Equals, Key.NumPadAdd -> { onZoom?.invoke(true) ?: return@onKeyEvent false; true }
+        Key.Minus, Key.NumPadSubtract -> { onZoom?.invoke(false) ?: return@onKeyEvent false; true }
+
         // The digits pick a timeframe, the way every terminal does it.
         //
         // Named constants rather than `entries[n]`. The ordinals moved the day M2, M3, M10, M45,

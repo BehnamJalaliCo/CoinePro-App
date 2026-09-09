@@ -59,6 +59,7 @@
     <string name="panes_title">%1$s چارت</string>
     <string name="panes_single">یک چارت</string>
     <string name="panes_count_label">تعداد قاب</string>
+    <string name="panes_layout_label">چیدمان</string>
     <string name="panes_no_chart">این نماد در این پنجره چارت ندارد.</string>
     <string name="panes_interval_title">تایم‌فریم</string>
     <string name="panes_symbol_title">نماد این قاب</string>

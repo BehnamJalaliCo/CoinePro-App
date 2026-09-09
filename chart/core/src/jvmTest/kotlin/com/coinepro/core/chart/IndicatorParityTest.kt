@@ -264,6 +264,12 @@ private class ParityFixture(val bars: List<Candle>, val series: Map<String, List
     fun assertMatches(name: String, actual: Line) {
         val expected = series[name] ?: error("fixture has no series '$name'")
         assertEquals("$name: length", expected.size, actual.size)
+        if (name in CORRECTED_SINCE_WEB) {
+            // Present in the fixture, so the day the web terminal is fixed and re-recorded the
+            // comparison comes back by deleting the name from the set — not by rediscovering it.
+            assertTrue("$name: the fixture still carries the series", expected.any { it != null })
+            return
+        }
         for (index in expected.indices) {
             val want = expected[index]
             val got = actual[index]
@@ -281,6 +287,22 @@ private class ParityFixture(val bars: List<Candle>, val series: Map<String, List
 
     companion object {
         const val TOLERANCE = 1e-6
+
+        /**
+         * Series where the engine and the web terminal disagree on purpose since 4.49.0, and this
+         * test therefore no longer compares. The JavaScript runs a signal line's EMA through the
+         * undefined head of its source as zeros (MACD's signal and histogram, force index's
+         * smoothing, the SMI ergodic and Klinger signals) and reports TRIX after one of its three stages has settled; the engine now
+         * starts a signal at the first defined value and waits for all three stages, which is
+         * what TradingView, TA-Lib and `ta` do, and what `IndicatorReferenceTest` proves against
+         * `ta`. The transient the zeros leave decays over ~40 bars, so the two disagree far into
+         * the series, not only at the head. The web terminal's copy of the defect is reported in
+         * `docs/backend/PROMPT_WEB_TERMINAL.md`; when it is fixed and the fixture re-recorded,
+         * delete the names here and the comparison resumes.
+         */
+        val CORRECTED_SINCE_WEB = setOf(
+            "macdSignal", "macdHist", "trix18", "trix18Signal", "forceIndex13", "smiErgodic", "smiErgodicSignal", "klingerSignal",
+        )
 
         fun load(): ParityFixture {
             val text = ParityFixture::class.java.getResourceAsStream("/indicator-parity.txt")

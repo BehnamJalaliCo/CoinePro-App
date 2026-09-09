@@ -156,6 +156,31 @@ object Indicators {
         return Line(out, present)
     }
 
+    /**
+     * An EMA over the values [defined] marks, ignoring the rest as if they were not there: seeded
+     * at the first defined value, reported once [period] defined values have been seen. For a
+     * series with an undefined head — a signal line over an oscillator that needs a warm-up.
+     */
+    internal fun emaOverDefined(source: DoubleArray, defined: BooleanArray, period: Int): Line {
+        require(period > 0) { "period must be positive" }
+        val out = DoubleArray(source.size)
+        val present = BooleanArray(source.size)
+        val k = 2.0 / (period + 1)
+        var previous = 0.0
+        var seen = 0
+        for (index in source.indices) {
+            if (!defined[index]) continue
+            val value = source[index]
+            previous = if (seen == 0) value else value * k + previous * (1 - k)
+            seen++
+            if (seen >= period) {
+                out[index] = previous
+                present[index] = true
+            }
+        }
+        return Line(out, present)
+    }
+
     fun wma(source: DoubleArray, period: Int): Line {
         require(period > 0) { "period must be positive" }
         val denominator = period * (period + 1) / 2.0
@@ -273,11 +298,13 @@ object Indicators {
                 defined[index] = true
             }
         }
-        val rawSignal = ema(difference, signalPeriod)
+        // The signal is an average of the MACD line and starts where the line does. It used to be
+        // an EMA run over the whole array, with the undefined head standing in as zeros, which drew
+        // a signal eight bars before there was anything to average and pulled it towards zero for
+        // the next forty. TradingView starts it at the first defined value; so does every reference.
+        val rawSignal = emaOverDefined(difference, defined, signalPeriod)
         val macdLine = Line.of(close.size) { if (defined[it]) difference[it] else null }
-        val signal = Line.of(close.size) {
-            if (defined[it] && rawSignal.isPresent(it)) rawSignal.raw(it) else null
-        }
+        val signal = Line.of(close.size) { if (defined[it]) rawSignal[it] else null }
         val histogram = Line.of(close.size) { index ->
             val line = macdLine[index]
             val average = signal[index]

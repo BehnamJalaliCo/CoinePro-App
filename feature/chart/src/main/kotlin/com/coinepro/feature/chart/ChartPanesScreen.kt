@@ -36,6 +36,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.Canvas
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.painterResource
@@ -157,6 +164,9 @@ fun ChartPanesScreen(
     }
     val symbols = remember(encoded) { encoded.split(',').filter(String::isNotBlank) }
     var sync by remember { mutableStateOf(PaneSync.OFF) }
+    // The named layout, or null until the store answers; the count is the truth and the layout is
+    // how it is cut, so a layout whose count no longer matches the symbols is not this layout.
+    var layout by remember { mutableStateOf<ChartLayoutPreset?>(null) }
 
     // What the panes share when a tie is on. Each carries the pane it came from, so the source
     // pane draws its own finger and its own window and only the *other* panes adopt them —
@@ -172,6 +182,7 @@ fun ChartPanesScreen(
     LaunchedEffect(workspace, maxPanes) {
         val store = workspace ?: return@LaunchedEffect
         sync = runCatching { store.paneSync.first() }.getOrDefault(PaneSync.OFF)
+        layout = runCatching { store.paneLayout.first() }.getOrNull()?.let(ChartLayoutPreset::byId)
         val saved = runCatching { store.extraPaneSymbols.first() }.getOrDefault(emptyList())
         // Clamped against *this* window and not against what was stored. A reader who arranged six
         // panes on a tablet and then opened the app on a phone gets two, and their six come back
@@ -227,6 +238,13 @@ fun ChartPanesScreen(
         workspace?.let { store -> scope.launch { runCatching { store.setPaneCount(count) } } }
     }
 
+    val setLayout: (ChartLayoutPreset) -> Unit = { preset ->
+        setCount(preset.count)
+        layout = preset
+        workspace?.let { store -> scope.launch { runCatching { store.setPaneLayout(preset) } } }
+    }
+    val shownLayout = layout?.takeIf { it.count == symbols.size } ?: ChartLayoutPreset.forCount(symbols.size)
+
     val setSync: (PaneSyncField, Boolean) -> Unit = { field, on ->
         val next = sync.with(field, on)
         sync = next
@@ -257,11 +275,13 @@ fun ChartPanesScreen(
             tied = sync.anyOn,
             count = symbols.size,
             maxPanes = maxPanes,
-            onSetCount = setCount,
+            layout = shownLayout,
+            onSetLayout = setLayout,
             onBack = onBack,
         )
         ChartPaneGrid(
             count = symbols.size,
+            preferredColumns = shownLayout.columns,
             modifier = Modifier.fillMaxWidth().weight(1f),
         ) { index, paneModifier ->
             ChartPane(
@@ -310,11 +330,13 @@ fun ChartPanesScreen(
 @Composable
 private fun ChartPaneGrid(
     count: Int,
+    /** What the layout asks for; the width has the last word — see [gridColumns]. */
+    preferredColumns: Int,
     modifier: Modifier = Modifier,
     pane: @Composable (index: Int, modifier: Modifier) -> Unit,
 ) {
     BoxWithConstraints(modifier = modifier) {
-        val columns = paneColumns(maxWidth, count)
+        val columns = gridColumns(maxWidth, count, preferredColumns)
         val rows = (count + columns - 1) / columns
         // At least the floor, and otherwise an equal share of the room. `maxOf` rather than
         // `coerceAtLeast` on a division, because the division is what decides whether this layout
@@ -353,6 +375,16 @@ internal fun paneColumns(width: Dp, count: Int): Int {
     val affordable = (width / PANE_MIN_WIDTH).toInt().coerceAtLeast(1)
     return minOf(affordable, count, PANE_MAX_COLUMNS)
 }
+
+/**
+ * The columns a layout gets: what it asked for, or fewer where the width cannot pay for them.
+ *
+ * Never more than [paneColumns] would have given the same count, so a preset can only narrow the
+ * grid — «2 down» on a landscape tablet is one column by request, «8» on a portrait one is the
+ * two columns it can afford, not the four it asked for.
+ */
+internal fun gridColumns(width: Dp, count: Int, preferredColumns: Int): Int =
+    minOf(paneColumns(width, count), preferredColumns.coerceAtLeast(1))
 
 /**
  * How many panes this window will carry: [CoineProWindowClass.PHONE_MAX_PANES] or
@@ -731,7 +763,8 @@ private fun PanesHeader(
     tied: Boolean,
     count: Int,
     maxPanes: Int,
-    onSetCount: (Int) -> Unit,
+    layout: ChartLayoutPreset,
+    onSetLayout: (ChartLayoutPreset) -> Unit,
     onBack: (() -> Unit)?,
 ) {
     Column(
@@ -789,10 +822,10 @@ private fun PanesHeader(
         // row with one choice in it — which reads as a broken segmented control rather than as a
         // setting that does not apply here.
         if (maxPanes > CoineProWindowClass.PHONE_MAX_PANES) {
-            PaneCountRow(
-                count = count,
-                maxPanes = maxPanes,
-                onSetCount = onSetCount,
+            LayoutPresetRow(
+                current = layout,
+                offered = ChartLayoutPreset.offered(maxPanes),
+                onSelect = onSetLayout,
                 modifier = Modifier.padding(top = CoineProSpacing.Half),
             )
         }
@@ -801,17 +834,18 @@ private fun PanesHeader(
 }
 
 /**
- * How many panes, as one key per count.
+ * The layouts, one key each, drawn as the grid they make.
  *
- * A row of keys rather than a stepper, because the reader almost always knows the number they want
- * — two to compare, four to watch a session — and a stepper makes six taps of what should be one.
- * Persian digits: a pane count is prose.
+ * A picture rather than a number because «4» and «2 down» are not counts a reader chooses between,
+ * they are shapes; and because two layouts share a count, and a row of digits could not tell them
+ * apart. The glyph is the layout at its asked-for columns — what the reader is choosing — even
+ * where the width will give it fewer.
  */
 @Composable
-private fun PaneCountRow(
-    count: Int,
-    maxPanes: Int,
-    onSetCount: (Int) -> Unit,
+private fun LayoutPresetRow(
+    current: ChartLayoutPreset,
+    offered: List<ChartLayoutPreset>,
+    onSelect: (ChartLayoutPreset) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -820,32 +854,55 @@ private fun PaneCountRow(
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
         Text(
-            text = stringResource(R.string.panes_count_label),
+            text = stringResource(R.string.panes_layout_label),
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
         )
-        for (value in CoineProWindowClass.PHONE_MAX_PANES..maxPanes) {
-            val selected = value == count
+        for (preset in offered) {
+            val selected = preset == current
+            val ink = if (selected) CoineProColors.TextPrimary else CoineProColors.TextMuted
             Box(
                 modifier = Modifier
                     .clip(CoineProShapes.small)
                     .background(
                         if (selected) CoineProColors.SurfaceElevated else CoineProColors.Surface,
                     )
-                    .clickable { onSetCount(value) }
-                    .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half),
+                    .clickable { onSelect(preset) }
+                    .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half)
+                    .semantics { contentDescription = preset.id },
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = value.toPersianDigits(),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (selected) CoineProColors.TextPrimary else CoineProColors.TextMuted,
+                LayoutGlyph(preset, ink)
+            }
+        }
+    }
+}
+
+/** The grid a preset makes, as cells of a [LAYOUT_GLYPH] square with a hairline between them. */
+@Composable
+private fun LayoutGlyph(preset: ChartLayoutPreset, ink: Color) {
+    val gap = with(LocalDensity.current) { LAYOUT_GLYPH_GAP.toPx() }
+    Canvas(modifier = Modifier.size(LAYOUT_GLYPH)) {
+        val columns = preset.columns
+        val rows = preset.rows
+        val cellWidth = (size.width - gap * (columns - 1)) / columns
+        val cellHeight = (size.height - gap * (rows - 1)) / rows
+        var drawn = 0
+        for (row in 0 until rows) {
+            for (column in 0 until columns) {
+                if (drawn++ >= preset.count) break
+                drawRect(
+                    color = ink,
+                    topLeft = Offset(column * (cellWidth + gap), row * (cellHeight + gap)),
+                    size = Size(cellWidth, cellHeight),
                 )
             }
         }
     }
 }
+
+private val LAYOUT_GLYPH = 16.dp
+private val LAYOUT_GLYPH_GAP = 2.dp
 
 /**
  * The narrowest a pane may be before it stops being a chart.

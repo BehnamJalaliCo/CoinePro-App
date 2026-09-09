@@ -15,6 +15,57 @@ it is for.
 
 ---
 
+## [4.49.0] — 2026-09-09 — The engine is held to an outside reference, and learns the desk
+
+§2 of the Pro Chart plan. The engine already had most of what the plan lists — eighteen series
+types, four scale modes plus inversion, ninety-three drawing tools with magnet, lock, z-order
+and clone, an eight-pane grid, replay with speed and seek, alerts on price, channel, move,
+indicator value and drawing touch, a strategy report with Sharpe, Sortino, expectancy and
+buy-and-hold, keyboard shortcuts, a fling benchmark. What it did not have was proof, and a
+mouse. `docs/engineering/REPORT.md` §2 has the full audit against the plan's list.
+
+### Added
+- **`IndicatorReferenceTest`**: sixty-three indicator series against an outside reference at
+  1e-6 — the `ta` Python library where its definition is the textbook one, and TA-Lib's /
+  TradingView's definition written out in pandas where it is not (Wilder's RSI and DMI seeds,
+  Aroon over length+1 bars, the P&F grid). `scripts/quality/gen_indicator_reference.py` makes the
+  fixture from the same 120-bar walk the JavaScript parity fixture uses, and writes beside every
+  series which reference it is and why.
+- **`SeriesTransformReferenceTest`**: Renko, three-line break, Kagi and point-and-figure against
+  their textbook constructions, same fixture.
+- **`ChartTypeGoldenTest`**: all eighteen series types as pixels, on a phone (411 dp) and a
+  tablet (840 dp) — thirty-six goldens.
+- **The desk pointer.** A mouse wheel zooms time at the cursor and, with Ctrl, the price scale;
+  a mouse or a hovering stylus places the crosshair without a press and takes it away on leaving;
+  the secondary button opens the axis menu over the gutter and holds a reading elsewhere. Touch
+  is untouched — a finger has no hover and no wheel. `ChartDeskPointerTest` injects a mouse
+  through the Compose test rule and reads what the chart reports back.
+- **Keys**: `+`/`=`/`-` zoom a notch (row and pad); Alt+H and Alt+V arm the horizontal and
+  vertical line tools, the way TradingView binds them.
+- **Named layouts.** The panes screen offers 2 across, 2 down, 3, 4, 6 and 8 as pictures of the
+  grid they make, not as a count; the layout is stored by a stable id with its count, and the
+  width still has the last word on columns — «8» is three by three on a tablet because a fourth
+  column would need a desktop.
+
+### Fixed
+- **Five signal lines started early and leaned towards zero.** MACD's signal and histogram,
+  force index, TRIX and its signal, the SMI ergodic and its signal, and the Klinger signal ran
+  their EMA over the undefined head of their source as zeros; the transient decayed over ~40
+  bars. TRIX and SMI also reported after one of their three stages had settled. Each now starts
+  at the first defined value and waits for every stage — what TradingView, TA-Lib and `ta` do.
+  The web terminal has the same defects; `docs/backend/PROMPT_WEB_TERMINAL.md` reports them,
+  and the parity test skips those seven series until it is fixed.
+- **Point-and-figure reversal columns were off the box grid** — a reversal column started at the
+  raw close rather than a whole number of boxes from the old extreme, so every column after the
+  first reversal sat a fraction of a box off. Columns now stay on the grid, as the reference
+  test checks bar by bar.
+
+### Not done
+- Rendering-budget numbers (p95 ≤ 8 ms phone, ≤ 12 ms on a 4-chart tablet) need a device; the
+  benchmark exists (`ChartFlingBenchmark`) and CI runs it, this environment cannot. Exchange time
+  zones alongside the reader's, volume footprint/TPO goldens against a reference, `MotionEvent`
+  tool-type palm rejection and `Surface.setFrameRate` are listed in REPORT.md §2 as open.
+
 ## [4.48.0] — 2026-09-09 — The chart engine and the language leave Android
 
 §1 of the Pro Chart plan: the code that decides what a chart shows is separated from the code

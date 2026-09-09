@@ -228,19 +228,24 @@ object IndicatorsExt {
     /**
      * TRIX, in basis points, with its signal line.
      *
-     * Pack B's version, which is the one the terminal loads: the signal EMA runs over the TRIX line
-     * with nulls read as zero and is then masked back to where the line exists. Pack A's would warm
-     * up nine samples later.
+     * Three EMAs chained without masking between them — each stage seeds on the first value the
+     * stage before produced — and the line reported only once every stage has seen a full period:
+     * `3 · (period - 1) + 1` bars, the same warm-up TradingView and TA-Lib observe. It used to be
+     * reported from the eighteenth bar, when only the first stage had settled, which is a line
+     * drawn from one sample smoothed three times. The signal starts where the line does; see
+     * `Indicators.macd` for why not through zeros.
      */
     fun trix(source: DoubleArray, period: Int = 18, signalPeriod: Int = 9): LinePair {
         val values = source.toNullable()
         val third = packB.ema(packB.ema(packB.ema(values, period), period), period)
+        val settled = 3 * (period - 1) + 1
         val line = List(source.size) { index ->
             val now = third[index]
             val then = third.getOrNull(index - 1)
-            if (index > 0 && now != null && then != null && then != 0.0) 10_000 * (now - then) / then else null
+            if (index >= settled && now != null && then != null && then != 0.0) 10_000 * (now - then) / then else null
         }
-        return LinePair(Line.from(line), Line.from(packB.emaMasked(line, signalPeriod)))
+        // The signal starts where the line does; see `Indicators.macd` for why not through zeros.
+        return LinePair(Line.from(line), Line.from(packA.ema(line, signalPeriod)))
     }
 
     /**
@@ -375,10 +380,14 @@ object IndicatorsExt {
 
     /** SMI Ergodic — Blau's true strength index, with an EMA signal. */
     fun smiErgodic(close: DoubleArray, long: Int = 20, short: Int = 5, signalPeriod: Int = 5): LinePair {
-        val change = List(close.size) { if (it == 0) 0.0 else close[it] - close[it - 1] }
-        val magnitude = change.map { abs(it!!) }
-        val smoothed = packB.ema(packB.ema(change, long), short)
-        val smoothedMagnitude = packB.ema(packB.ema(magnitude, long), short)
+        // Bar zero has no change and is not a zero: counting it as one seeded both stages a bar
+        // early and reported the second stage from a single sample, as TRIX once did. Each stage
+        // now waits for its own full period, the way `trueStrengthIndex` — the same arithmetic
+        // with other lengths — always has.
+        val change = List(close.size) { if (it == 0) null else close[it] - close[it - 1] }
+        val magnitude = change.map { it?.let(::abs) }
+        val smoothed = packA.ema(packA.ema(change, long), short)
+        val smoothedMagnitude = packA.ema(packA.ema(magnitude, long), short)
         val line = List(close.size) { index ->
             val numerator = smoothed[index]
             val denominator = smoothedMagnitude[index]
@@ -388,7 +397,8 @@ object IndicatorsExt {
                 null
             }
         }
-        return LinePair(Line.from(line), Line.from(packB.emaMasked(line, signalPeriod)))
+        // The signal starts where the line does; see `Indicators.macd` for why not through zeros.
+        return LinePair(Line.from(line), Line.from(packA.ema(line, signalPeriod)))
     }
 
     /**
@@ -537,11 +547,13 @@ object IndicatorsExt {
     /** Force index: the bar's price change times its volume, smoothed. */
     fun forceIndex(close: DoubleArray, volume: DoubleArray, period: Int = 13): Line {
         if (!volume.hasAny()) return Line.empty(close.size)
+        // Bar zero has no change to price and is left out of the average rather than counted as a
+        // zero — a zero seed is a thirteenth bar that never happened, and it biased the first forty
+        // readings towards nothing.
         val raw = List(close.size) { index ->
-            if (index == 0) 0.0 else (close[index] - close[index - 1]) * volume[index]
+            if (index == 0) null else (close[index] - close[index - 1]) * volume[index]
         }
-        val smoothed = packB.ema(raw, period)
-        return Line.of(close.size) { index -> if (index < 1) null else smoothed[index] }
+        return Line.from(packA.ema(raw, period))
     }
 
     /** Klinger volume oscillator, with its signal. */
@@ -578,7 +590,8 @@ object IndicatorsExt {
             val b = slowly[index]
             if (a != null && b != null) a - b else null
         }
-        return LinePair(Line.from(line), Line.from(packB.emaMasked(line, signalPeriod)))
+        // The signal starts where the line does; see `Indicators.macd` for why not through zeros.
+        return LinePair(Line.from(line), Line.from(packA.ema(line, signalPeriod)))
     }
 
     /** Price-volume trend: the running sum of fractional return times volume. */

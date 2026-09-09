@@ -435,13 +435,18 @@ object ChartTransforms {
                     points += flat(clock.next(bar.t), extreme)
                     direction = -1
                 }
+                // A reversal column starts on the grid too: as many whole boxes from the old
+                // extreme as the close has covered, never the close itself. Starting it at the raw
+                // close put every column after the first reversal off the box grid by a fraction
+                // of a box, which is a chart that looks like point-and-figure and is not one —
+                // `SeriesTransformReferenceTest` holds it to StockCharts' construction.
                 direction == 1 && price <= extreme - size * reversal -> {
-                    extreme = price
+                    extreme -= floor((extreme - price) / size) * size
                     points += flat(clock.next(bar.t), extreme)
                     direction = -1
                 }
                 direction == -1 && price >= extreme + size * reversal -> {
-                    extreme = price
+                    extreme += floor((price - extreme) / size) * size
                     points += flat(clock.next(bar.t), extreme)
                     direction = 1
                 }

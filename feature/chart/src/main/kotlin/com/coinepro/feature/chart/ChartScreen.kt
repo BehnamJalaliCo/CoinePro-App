@@ -1276,6 +1276,8 @@ fun ChartScreen(
                 onCancelDrawing = controller::cancelDrawing,
                 onUndoDrawing = controller::undoDrawing,
                 onRedo = controller::redo,
+                onZoom = { zoomIn -> zoomBy(if (zoomIn) ChartZoomNudge.STEP else 1f / ChartZoomNudge.STEP) },
+                onArmTool = { id -> DrawingTools.ALL.firstOrNull { it.id == id }?.let(controller::arm) },
             ),
     ) {
         // No header. TradingView's phone chart starts at the top of the screen: the instrument's

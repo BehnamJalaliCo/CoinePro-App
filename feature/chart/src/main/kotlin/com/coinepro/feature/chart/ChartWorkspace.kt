@@ -232,11 +232,28 @@ class ChartWorkspaceStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[PANE_COUNT] = count.coerceAtLeast(MIN_PANES) }
     }
 
+    /**
+     * The named layout, by [ChartLayoutPreset.id], or null for a record from before there were
+     * presets — the screen then reads the count and picks the layout that count means.
+     */
+    val paneLayout: Flow<String?> = dataStore.data
+        .map { preferences -> preferences[PANE_LAYOUT] }
+        .distinctUntilChanged()
+
+    /** Records the layout with its count, so the two can never disagree in the store. */
+    suspend fun setPaneLayout(preset: ChartLayoutPreset) {
+        dataStore.edit {
+            it[PANE_LAYOUT] = preset.id
+            it[PANE_COUNT] = preset.count.coerceAtLeast(MIN_PANES)
+        }
+    }
+
     private companion object {
         val PANE_SYNC = stringPreferencesKey("chart_pane_sync")
         val SECOND_PANE = stringPreferencesKey("chart_second_pane_symbol")
         val PANE_SYMBOLS = stringPreferencesKey("chart_pane_symbols")
         val PANE_COUNT = intPreferencesKey("chart_pane_count")
+        val PANE_LAYOUT = stringPreferencesKey("chart_pane_layout")
 
         /**
          * A comma, which is safe here because a wire symbol is letters and digits — `SymbolCatalog`

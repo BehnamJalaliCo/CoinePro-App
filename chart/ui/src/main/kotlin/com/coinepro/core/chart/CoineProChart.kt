@@ -50,6 +50,8 @@ import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
+import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.foundation.gestures.calculateCentroid
@@ -1581,6 +1583,90 @@ fun CoineProChart(
                                             alertHeld.value = true
                                         } else {
                                             alertHeld.value = false
+                                        }
+                                    }
+                                }
+                            }
+                            .pointerInput(Unit) {
+                                // The desk: a mouse, a trackpad, a stylus hovering.
+                                //
+                                // A tablet with a keyboard, a Chromebook, the web terminal one day:
+                                // on all of them the pointer has a wheel and a position *before*
+                                // it presses, and a chart that ignores both is a phone chart on a
+                                // bigger screen. Three things, each the way every terminal does
+                                // it: the wheel zooms time at the cursor (with Ctrl, the price
+                                // scale); a pointer that hovers reads the chart — the crosshair
+                                // follows it without a press, and leaves when it does; and the
+                                // secondary button opens the axis menu over the gutter, or reads
+                                // the chart where a long press would have.
+                                //
+                                // Watched on the Final pass like the observers above, and only the
+                                // wheel is consumed — a hover is nobody else's event to begin with,
+                                // and a right-click that reached here was wanted by nothing else.
+                                // Touch is never seen: a finger has no hover and no wheel, and the
+                                // handlers above own it entirely.
+                                awaitPointerEventScope {
+                                    var hovering = false
+                                    while (true) {
+                                        val event = awaitPointerEvent(PointerEventPass.Final)
+                                        val change = event.changes.firstOrNull() ?: continue
+                                        val desk = change.type == PointerType.Mouse || change.type == PointerType.Stylus
+                                        if (!desk) continue
+                                        val frame = frameOf(size.width.toFloat())
+                                        val plot = frame.toPlot(change.position)
+                                        when (event.type) {
+                                            PointerEventType.Scroll -> {
+                                                val delta = change.scrollDelta.y
+                                                if (delta == 0f || change.isConsumed) continue
+                                                val factor = if (delta > 0f) 1f / WHEEL_ZOOM_STEP else WHEEL_ZOOM_STEP
+                                                viewport = if (event.keyboardModifiers.isCtrlPressed) {
+                                                    viewport.priceZoomedBy(factor)
+                                                } else {
+                                                    val focal = (plot.x / frame.width).coerceIn(0f, 1f)
+                                                    viewport.zoomedBy(factor, focal)
+                                                }
+                                                change.consume()
+                                                invalidate(Invalidation.FULL)
+                                            }
+                                            PointerEventType.Move -> {
+                                                // Hover only: a pressed pointer is a drag, and the
+                                                // pan handler above is reading it.
+                                                if (change.pressed || tracking) continue
+                                                val view = lastView[0] ?: continue
+                                                val inside = plot.x in 0f..frame.width && plot.y >= 0f
+                                                if (inside) {
+                                                    hovering = true
+                                                    crosshair = view.crosshairAt(plot)
+                                                    invalidate(Invalidation.CURSOR)
+                                                } else if (hovering) {
+                                                    hovering = false
+                                                    crosshair = null
+                                                    invalidate(Invalidation.CURSOR)
+                                                }
+                                            }
+                                            PointerEventType.Exit -> {
+                                                if (hovering && !tracking) {
+                                                    hovering = false
+                                                    crosshair = null
+                                                    invalidate(Invalidation.CURSOR)
+                                                }
+                                            }
+                                            PointerEventType.Press -> {
+                                                if (!event.buttons.isSecondaryPressed) continue
+                                                val inGutter = frame.inGutter(change.position.x, 0f)
+                                                val axisMenu = currentAxisMenu.value
+                                                if (inGutter && axisMenu != null) {
+                                                    axisMenu()
+                                                } else {
+                                                    lastView[0]?.let { view ->
+                                                        tracking = true
+                                                        crosshair = view.crosshairAt(plot)
+                                                        invalidate(Invalidation.CURSOR)
+                                                    }
+                                                }
+                                                change.consume()
+                                            }
+                                            else -> Unit
                                         }
                                     }
                                 }
@@ -5870,6 +5956,9 @@ private class ScaleCache {
     var ticks: PriceTicks? = null
     var timeTicks: List<TimeTick>? = null
 }
+
+/** One notch of a mouse wheel, in bars-per-view. A quarter, the same as a keyboard step. */
+private const val WHEEL_ZOOM_STEP = 1.25f
 
 /**
  * One zoom step asked for from outside the canvas. See `CoineProChart.zoomNudge`.
